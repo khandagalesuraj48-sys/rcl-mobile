@@ -1,0 +1,16 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+# signing – NEVER in git (they live only in the private bucket and in GitHub secrets)
+*.jks
+*.keystore
+key.properties
+android/local.properties
+# golden pictures made by a test run (the checked ones sit in test/goldens/)
+test/failures/
