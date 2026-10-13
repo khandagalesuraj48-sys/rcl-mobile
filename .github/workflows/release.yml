@@ -1,0 +1,100 @@
+# RELEASE – run by hand (Actions → release → Run workflow) on main, after the owner says yes.
+# Builds the signed Android app and puts it in the Portal's PRIVATE store, where the app's "Update" and the Portal's
+# "Download the Android app" find it (rcl-portal /api/app). Needs two GitHub secrets (never in a file, never in chat):
+#   PORTAL_SUPABASE_URL  – the Portal's Supabase address      PORTAL_SUPABASE_KEY – a secret key of that project
+# The signing key is made ONCE by this workflow and kept only in the private bucket "app-keys" (Android installs an update
+# only when it carries the same key – it must never change; a copy can be downloaded from Supabase and kept offline).
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: 'What is new (shown in the app)'
+        required: false
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
+      SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
+    steps:
+      - name: The two settings
+        run: |
+          if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "::error::Add PORTAL_SUPABASE_URL and PORTAL_SUPABASE_KEY in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          SB_URL="${SB_URL%/}"; echo "SB_URL=$SB_URL" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Private buckets (made once)
+        run: |
+          for b in app-releases app-keys; do
+            c=$(curl -sS -o /tmp/b.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/bucket" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -d "{\"id\":\"$b\",\"name\":\"$b\",\"public\":false}")
+            if [ "$c" = "200" ]; then echo "::notice::Bucket $b made (private)."; elif grep -qiE "exist|duplicate" /tmp/b.json; then echo "bucket $b is there"; else echo "::error::Bucket $b: $c $(head -c 200 /tmp/b.json)"; exit 1; fi
+          done
+      - name: Signing key (made once; kept only in the private bucket app-keys)
+        run: |
+          set -e
+          cd android
+          get() { curl -sS -o "$2" -w "%{http_code}" "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY"; }
+          put() { curl -sS -o /tmp/put.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY" -H "Content-Type: $3" -H "x-upsert: false" --data-binary "@$2"; }
+          if [ "$(get upload-keystore.jks upload-keystore.jks)" = "200" ] && [ "$(get key.properties key.properties)" = "200" ]; then
+            echo "the signing key is there"
+          else
+            rm -f upload-keystore.jks key.properties
+            PW=$(openssl rand -hex 24); echo "::add-mask::$PW"
+            keytool -genkeypair -keystore upload-keystore.jks -storetype PKCS12 -keyalg RSA -keysize 4096 -validity 36500 -alias rcl \
+              -storepass "$PW" -keypass "$PW" -dname "CN=Rachana Construction Limited, O=RCL, C=IN" >/dev/null 2>&1
+            printf "storePassword=%s\nkeyPassword=%s\nkeyAlias=rcl\nstoreFile=upload-keystore.jks\n" "$PW" "$PW" > key.properties
+            [ "$(put upload-keystore.jks upload-keystore.jks application/octet-stream)" = "200" ] || { echo "::error::Could not keep the signing key: $(head -c 200 /tmp/put.json)"; exit 1; }
+            [ "$(put key.properties key.properties text/plain)" = "200" ] || { echo "::error::Could not keep key.properties: $(head -c 200 /tmp/put.json)"; exit 1; }
+            echo "::notice::A NEW signing key was made and kept in the private bucket app-keys. Download a copy from Supabase and keep it offline."
+          fi
+          echo "::add-mask::$(grep '^storePassword=' key.properties | cut -d= -f2-)"
+      - name: Version
+        run: |
+          VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          BN=$((100 + GITHUB_RUN_NUMBER))
+          echo "VER=$VER" >> "$GITHUB_ENV"; echo "BN=$BN" >> "$GITHUB_ENV"
+          echo "::notice::Releasing $VER ($BN)"
+      - run: flutter pub get
+      - name: Tests (a release only when they pass)
+        run: flutter test --exclude-tags golden
+      - name: Signed Android app
+        run: flutter build apk --release --build-name="$VER" --build-number="$BN"
+      - name: Check the signature (never the debug key)
+        run: |
+          AS=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+          "$AS" verify --print-certs build/app/outputs/flutter-apk/app-release.apk > certs.txt
+          if grep -q "CN=Android Debug" certs.txt; then echo "::error::The app is signed with the debug key – not released."; exit 1; fi
+          echo "::notice::Signed by: $(grep -m1 'certificate SHA-256 digest' certs.txt)"
+      - name: Into the Portal's store (the app file first, then latest.json)
+        env:
+          NOTES: ${{ github.event.inputs.notes }}
+        run: |
+          set -e
+          F="android/rcl-erp-$VER-$BN.apk"; APK=build/app/outputs/flutter-apk/app-release.apk
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          c=$(curl -sS -o /tmp/u.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-releases/$F" -H "apikey: $SB_KEY" -H "Content-Type: application/vnd.android.package-archive" -H "x-upsert: false" --data-binary "@$APK")
+          [ "$c" = "200" ] || { echo "::error::Upload of the app: $c $(head -c 300 /tmp/u.json)"; exit 1; }
+          python3 -c "import json,os;print(json.dumps({'build':int(os.environ['BN']),'version':os.environ['VER'],'file':'$F','sha256':'$SHA','notes':os.environ.get('NOTES','')[:500]}))" > latest.json
+          c=$(curl -sS -o /tmp/u.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-releases/android/latest.json" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -H "x-upsert: true" --data-binary @latest.json)
+          [ "$c" = "200" ] || { echo "::error::Upload of latest.json: $c $(head -c 300 /tmp/u.json)"; exit 1; }
+          echo "::notice::Released $VER ($BN) – $F, SHA-256 $SHA. The app shows it as an update; the Portal offers it for download."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rcl-erp-android-release
+          path: build/app/outputs/flutter-apk/app-release.apk

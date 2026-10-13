@@ -33,3 +33,16 @@ The first run makes the `android/` and `ios/` folders and saves them in the bran
 | Tests | `test/`, with a pretend server in `test/fake_server.dart` |
 
 Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-*.txt`).
+
+## Release (signed, into the Portal's store)
+`.github/workflows/release.yml` is run by hand on `main` (Actions → release → Run workflow), after the owner says yes.
+* **First time:** it makes the two private buckets **app-releases** and **app-keys** in the Portal's Supabase, and the
+  signing key, kept only in **app-keys**. A copy of that key should be kept offline: Android installs an update only when
+  it carries the same key.
+* **Every time:**
+  1. the tests;
+  2. the signed APK (build number 100 + run number);
+  3. a check that the debug key was not used;
+  4. the APK and its SHA-256 into **app-releases**, with `android/latest.json` last.
+* **Needs two GitHub secrets:** `PORTAL_SUPABASE_URL` and `PORTAL_SUPABASE_KEY` (a secret key of the Portal's Supabase,
+  made for this). They are never in a file and never in chat.
