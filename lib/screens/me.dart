@@ -118,7 +118,7 @@ class _MeTabState extends State<MeTab> {
                 sub: version,
                 color: C.blueSoft,
                 trailing: FilledButton(
-                  style: FilledButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontFamily: 'Rubik', fontSize: 13.5, fontWeight: FontWeight.w600)),
                   onPressed: checking ? null : _check,
                   child: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : const Text('Check Update'),
                 ),
