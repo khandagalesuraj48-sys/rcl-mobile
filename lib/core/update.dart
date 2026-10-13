@@ -1,15 +1,19 @@
-/* UPDATE FROM INSIDE THE APP (asked 13-10-2026): the app asks the Portal for its newest version.
- *   Android – the new app file (APK) is kept in a PRIVATE store of the Portal (Supabase Storage); the Portal gives a signed
- *             person a link that works for 10 minutes. The app downloads it, checks its fingerprint (SHA-256) and hands it
- *             to Android's installer – which installs it only if it is signed with the SAME key as the app on the phone.
- *   iPhone  – Apple lets an app be updated only through the App Store / TestFlight: the app opens that page. */
+/* UPDATE FROM INSIDE THE APP: the app looks at the newest GitHub Release of its repository (asked 14-10-2026: "git release
+ * madhe apk theun de"). The release carries the APK and, in its notes, its build number and fingerprint (SHA-256):
+ *   <!-- rcl:{"build":102,"version":"1.0.1","sha256":"…"} -->
+ *   Android – the app downloads the APK, checks the fingerprint and hands it to Android's installer – which installs it only
+ *             if it is signed with the SAME key as the app on the phone (the key never leaves the private store).
+ *   iPhone  – Apple lets an app be updated only through the App Store / TestFlight (not yet set up). */
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:ota_update/ota_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config.dart';
 import 'api.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -29,15 +33,32 @@ Future<String> appVersion() async {
   }
 }
 
+/// The update in a GitHub Release (its JSON from the GitHub API), when it is newer than [currentBuild] – else null.
+AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild) {
+  final m = RegExp(r'<!-- rcl:(\{.*?\}) -->').firstMatch((j['body'] ?? '').toString());
+  if (m == null || j['draft'] == true || j['prerelease'] == true) return null;
+  Map<String, dynamic> meta;
+  try {
+    meta = (jsonDecode(m.group(1)!) as Map).cast<String, dynamic>();
+  } catch (_) {
+    return null;
+  }
+  final b = meta['build'], sha = (meta['sha256'] ?? '').toString();
+  if (b is! num || b <= currentBuild || !RegExp(r'^[0-9a-f]{64}$').hasMatch(sha)) return null;
+  final apk = (j['assets'] as List? ?? []).whereType<Map>().firstWhere((a) => (a['name'] ?? '').toString().endsWith('.apk'), orElse: () => {});
+  final url = (apk['browser_download_url'] ?? '').toString();
+  if (!url.startsWith('https://github.com/')) return null;
+  return AppUpdate(build: b.toInt(), version: (meta['version'] ?? '').toString(), notes: (j['name'] ?? '').toString(), url: url, sha256: sha);
+}
+
 /// A newer version than the one on this phone, or null (also when it cannot be asked – the app works on).
 Future<AppUpdate?> checkUpdate(Api api) async {
+  if (Platform.isIOS) return null; // (the App Store / TestFlight – later)
   try {
     final info = await PackageInfo.fromPlatform();
-    final cur = int.tryParse(info.buildNumber) ?? 0;
-    final j = await api.latestApp(Platform.isIOS ? 'ios' : 'android');
-    final b = j['build'];
-    if (j['none'] == true || b is! num || b <= cur) return null;
-    return AppUpdate(build: b.toInt(), version: (j['version'] ?? '').toString(), notes: (j['notes'] ?? '').toString(), url: (j['url'] ?? '').toString(), sha256: (j['sha256'] ?? '').toString(), store: (j['store'] ?? '').toString());
+    final r = await http.get(Uri.parse(kReleasesApi), headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
+    if (r.statusCode != 200) return null;
+    return parseRelease((jsonDecode(utf8.decode(r.bodyBytes)) as Map).cast<String, dynamic>(), int.tryParse(info.buildNumber) ?? 0);
   } catch (_) {
     return null;
   }
