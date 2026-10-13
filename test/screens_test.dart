@@ -77,6 +77,7 @@ void main() {
     await settle(t, 300);
     await t.tap(find.text('MH-04-KU-3331'));
     await settle(t);
+    await t.ensureVisible(find.text('120'));
     await t.tap(find.text('120'));
     await settle(t, 300);
     expect(find.text('Hour meter'), findsOneWidget, reason: 'this machinery works on hours');

@@ -195,7 +195,11 @@ class _EntryFormState extends State<EntryForm> {
           leading: BackButton(onPressed: () => Navigator.pop(context, savedOne)),
           title: Row(children: [Flexible(child: Text(k.en, overflow: TextOverflow.ellipsis)), const SizedBox(width: 8), Text('· ${k.mr}', style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 17, color: C.muted))]),
         ),
-        body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 120), children: [
+        // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const FieldLabel('Date'),
           PickBox(text: showDate(date), icon: Icons.calendar_month_outlined, onTap: _pickDate),
           if (k.key != 'inward') ...[
@@ -266,7 +270,7 @@ class _EntryFormState extends State<EntryForm> {
           ],
           if (k.key != 'inward') ...[const FieldLabel('Remark'), TextField(controller: remark, decoration: const InputDecoration(hintText: 'Optional'))],
           if (err.isNotEmpty) InfoLine(err, bad: true),
-        ]),
+        ])),
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
