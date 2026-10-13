@@ -1,7 +1,7 @@
 name: rcl_mobile
-description: RCL ERP – the mobile app (Android and iPhone). Diesel Issue, Inward, Transfer; one sign-in through the Portal.
+description: RCL ERP – the mobile app (Android and iPhone). The whole web ERP inside the app, one sign-in through the Portal.
 publish_to: none
-version: 1.0.0+1
+version: 2.0.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -14,6 +14,10 @@ dependencies:
   package_info_plus: ^8.0.0
   ota_update: ^7.1.0
   url_launcher: ^6.3.0
+  flutter_inappwebview: ^6.1.5
+  permission_handler: ^13.0.0
+  share_plus: ^13.0.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
@@ -31,6 +35,8 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/web_bridge.js
   fonts:
     - family: Rubik
       fonts:
