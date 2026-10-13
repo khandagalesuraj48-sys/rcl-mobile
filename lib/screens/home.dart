@@ -81,7 +81,10 @@ class _HomeTabState extends State<HomeTab> {
                   onTap: s.sites.length > 1 ? () => pickSite(context) : null,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text('${s.siteName}${s.sites.length > 1 ? '  ▾' : ''}', style: const TextStyle(fontSize: 14.5, color: C.muted, fontWeight: FontWeight.w500)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(s.siteName, style: const TextStyle(fontSize: 14.5, color: C.muted, fontWeight: FontWeight.w500)),
+                      if (s.sites.length > 1) const Icon(Icons.expand_more_rounded, size: 20, color: C.muted),
+                    ]),
                   ),
                 ),
               ]),

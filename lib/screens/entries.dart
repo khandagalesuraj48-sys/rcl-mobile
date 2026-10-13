@@ -94,6 +94,7 @@ class _EntriesTabState extends State<EntriesTab> {
       floatingActionButton: s.canEdit(k.module)
           ? FloatingActionButton.extended(
               backgroundColor: k.color,
+              shape: const StadiumBorder(),
               foregroundColor: Colors.white,
               onPressed: () async {
                 final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k)));
@@ -119,8 +120,9 @@ class _EntriesTabState extends State<EntriesTab> {
           ),
         SizedBox(
           height: 68,
+          // today first (on the left), then the days before it
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
-            for (final d in days)
+            for (final d in days.reversed)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: _Day(d: d, on: dateKey(d) == day, onTap: () {
