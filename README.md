@@ -10,10 +10,11 @@ and a Home screen with the stock. Design 6 "Big Tiles".
   machinery and reading checks are decided by the server.
 * A Mechanical sign-in that ended is renewed by itself with a new Portal ticket. A save carries its own number, so it is
   saved once even when it is sent again.
-* **Update from inside the app:** the Portal's `/api/app` gives the newest version.
-  * Android: a 10-minute link to the APK kept in a private Supabase bucket. The fingerprint (SHA-256) is checked, then
-    Android installs it only if it carries the same signature.
-  * iPhone: the App Store / TestFlight page.
+* **Update from inside the app** (asked 14-10-2026: "git release madhe apk theun de"): the newest **GitHub Release** of this
+  repository.
+  * The release carries the APK, and its notes carry the build number and the SHA-256.
+  * The app downloads the APK and checks the fingerprint. Android then installs it only if it carries the same signature.
+  * iPhone: App Store / TestFlight, later.
 
 ## Build
 GitHub Actions (`.github/workflows/build.yml`) runs on every push:
@@ -34,15 +35,16 @@ The first run makes the `android/` and `ios/` folders and saves them in the bran
 
 Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-*.txt`).
 
-## Release (signed, into the Portal's store)
+## Release (signed, a GitHub Release)
 `.github/workflows/release.yml` is run by hand on `main` (Actions → release → Run workflow), after the owner says yes.
-* **First time:** it makes the two private buckets **app-releases** and **app-keys** in the Portal's Supabase, and the
-  signing key, kept only in **app-keys**. A copy of that key should be kept offline: Android installs an update only when
-  it carries the same key.
+* **First time:** it makes the private bucket **app-keys** in the Portal's Supabase and the signing key, kept only there. A
+  copy of that key should be kept offline: Android installs an update only when it carries the same key.
 * **Every time:**
   1. the tests;
-  2. the signed APK (build number 100 + run number);
+  2. the signed APK for every Android phone (ARM 32 + 64 bit), with build number 100 + run number;
   3. a check that the debug key was not used;
-  4. the APK and its SHA-256 into **app-releases**, with `android/latest.json` last.
-* **Needs two GitHub secrets:** `PORTAL_SUPABASE_URL` and `PORTAL_SUPABASE_KEY` (a secret key of the Portal's Supabase,
-  made for this). They are never in a file and never in chat.
+  4. a GitHub Release `v<version>-<build>` with the APK, its SHA-256 and the data line for the app.
+
+  People install the first time from the release page; later updates come inside the app.
+* **Needs two GitHub secrets:** `PORTAL_SUPABASE_URL` and `PORTAL_SUPABASE_KEY` (for the signing key only). They are never
+  in a file and never in chat.

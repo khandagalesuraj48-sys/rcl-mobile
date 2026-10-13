@@ -197,12 +197,4 @@ class Api {
     } catch (_) {/* it ends by itself */}
     await forget();
   }
-
-  /// The app's newest version on the Portal (in-app update): { build, version, notes, url, sha256 } or { none: true }.
-  Future<Map<String, dynamic>> latestApp(String platform) async {
-    final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/app'), headers: _portalHeaders, body: jsonEncode({'action': 'latest', 'platform': platform})));
-    final j = _json(r, 'The Portal');
-    if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
-    return j;
-  }
 }

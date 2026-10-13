@@ -1,9 +1,9 @@
 # RELEASE – run by hand (Actions → release → Run workflow) on main, after the owner says yes.
-# Builds the signed Android app and puts it in the Portal's PRIVATE store, where the app's "Update" and the Portal's
-# "Download the Android app" find it (rcl-portal /api/app). Needs two GitHub secrets (never in a file, never in chat):
-#   PORTAL_SUPABASE_URL  – the Portal's Supabase address      PORTAL_SUPABASE_KEY – a secret key of that project
-# The signing key is made ONCE by this workflow and kept only in the private bucket "app-keys" (Android installs an update
-# only when it carries the same key – it must never change; a copy can be downloaded from Supabase and kept offline).
+# Builds the signed Android app and publishes it as a GitHub Release of this repository (asked 14-10-2026: "git release madhe
+# apk theun de"): the file for the first install, and where the app's "Update" looks (lib/core/update.dart).
+# The signing key is made ONCE and kept only in the private bucket "app-keys" of the Portal's Supabase (Android installs an
+# update only when it carries the same key – it must never change). Needs two GitHub secrets (never in a file, never in chat):
+#   PORTAL_SUPABASE_URL – the Portal's Supabase address      PORTAL_SUPABASE_KEY – a secret key of that project
 name: release
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ on:
         required: false
         default: ''
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: release
   cancel-in-progress: false
@@ -39,9 +39,9 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Private buckets (made once)
+      - name: Private bucket for the signing key (made once)
         run: |
-          for b in app-releases app-keys; do
+          for b in app-keys; do
             c=$(curl -sS -o /tmp/b.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/bucket" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -d "{\"id\":\"$b\",\"name\":\"$b\",\"public\":false}")
             if [ "$c" = "200" ]; then echo "::notice::Bucket $b made (private)."; elif grep -qiE "exist|duplicate" /tmp/b.json; then echo "bucket $b is there"; else echo "::error::Bucket $b: $c $(head -c 200 /tmp/b.json)"; exit 1; fi
           done
@@ -74,31 +74,28 @@ jobs:
       - name: Tests (a release only when they pass)
         run: flutter test --exclude-tags golden
       - name: Signed Android app
-        # the file for 64-bit phones (arm64 – every Android phone of recent years): the smallest file for the store's size limit
+        # every Android phone (ARM 32 + 64 bit); the emulator part (x86_64) is left out
         run: |
-          flutter build apk --release --build-name="$VER" --build-number="$BN" --split-per-abi --target-platform android-arm64 --split-debug-info=build/symbols
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-release.apk
-          SZ=$(stat -c %s build/app/outputs/flutter-apk/app-release.apk); echo "SZ=$SZ" >> "$GITHUB_ENV"; echo "::notice::App file: $((SZ / 1048576)) MB ($SZ bytes)"
+          flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform android-arm,android-arm64 --split-debug-info=build/symbols
+          SZ=$(stat -c %s build/app/outputs/flutter-apk/app-release.apk); echo "::notice::App file: $((SZ / 1048576)) MB"
       - name: Check the signature (never the debug key)
         run: |
           AS=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
           "$AS" verify --print-certs build/app/outputs/flutter-apk/app-release.apk > certs.txt
           if grep -q "CN=Android Debug" certs.txt; then echo "::error::The app is signed with the debug key – not released."; exit 1; fi
           echo "::notice::Signed by: $(grep -m1 'certificate SHA-256 digest' certs.txt)"
-      - name: Into the Portal's store (the app file first, then latest.json)
+      - name: One place for the app – the Portal's store entry of before (14-10-2026, build 102) is taken out
+        run: |
+          curl -sS -o /dev/null -w "old store entry: %{http_code}\n" -X DELETE "$SB_URL/storage/v1/object/app-releases" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -d '{"prefixes":["android/latest.json"]}' || true
+      - name: GitHub Release (the app file + its fingerprint)
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTES: ${{ github.event.inputs.notes }}
         run: |
           set -e
-          F="android/rcl-erp-$VER-$BN.apk"; APK=build/app/outputs/flutter-apk/app-release.apk
-          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
-          c=$(curl -sS -o /tmp/u.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-releases/$F" -H "apikey: $SB_KEY" -H "Content-Type: application/vnd.android.package-archive" -H "x-upsert: false" --data-binary "@$APK")
-          [ "$c" = "200" ] || { echo "::error::Upload of the app ($((SZ / 1048576)) MB): $c $(head -c 300 /tmp/u.json) – in Supabase (rcl-portal) → Storage → Settings, the upload size limit must be above this."; exit 1; }
-          python3 -c "import json,os;print(json.dumps({'build':int(os.environ['BN']),'version':os.environ['VER'],'file':'$F','sha256':'$SHA','notes':os.environ.get('NOTES','')[:500]}))" > latest.json
-          c=$(curl -sS -o /tmp/u.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-releases/android/latest.json" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -H "x-upsert: true" --data-binary @latest.json)
-          [ "$c" = "200" ] || { echo "::error::Upload of latest.json: $c $(head -c 300 /tmp/u.json)"; exit 1; }
-          echo "::notice::Released $VER ($BN) – $F, SHA-256 $SHA. The app shows it as an update; the Portal offers it for download."
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rcl-erp-android-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          F="rcl-erp-$VER-$BN.apk"; cp build/app/outputs/flutter-apk/app-release.apk "$F"
+          SHA=$(sha256sum "$F" | cut -d' ' -f1)
+          META=$(python3 -c "import json,os;print(json.dumps({'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':'$SHA'}))")
+          printf "%s\n\nRCL ERP %s (%s) – Android.\nSHA-256: %s\n\n<!-- rcl:%s -->\n" "${NOTES:-RCL ERP $VER}" "$VER" "$BN" "$SHA" "$META" > notes.md
+          gh release create "v$VER-$BN" "$F" --title "RCL ERP $VER ($BN)" --notes-file notes.md --target "$GITHUB_SHA" --latest
+          echo "::notice::Released $VER ($BN) – https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VER-$BN (SHA-256 $SHA)"
