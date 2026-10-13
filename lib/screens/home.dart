@@ -227,17 +227,14 @@ class _HomeTabState extends State<HomeTab> {
                           alignment: Alignment.centerLeft,
                           child: Text(s.stockTotal == null ? '–' : '${fmtNum(s.stockTotal)} L', style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, height: 1.15)),
                         ),
+                        if (at != null)
+                          Row(children: [
+                            const Icon(Icons.schedule_rounded, size: 14, color: C.faint),
+                            const SizedBox(width: 4),
+                            Text('Updated ${at!.hour % 12 == 0 ? 12 : at!.hour % 12}:${at!.minute.toString().padLeft(2, '0')} ${at!.hour < 12 ? 'AM' : 'PM'}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                          ]),
                       ]),
                     ),
-                    if (at != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(color: C.bg, borderRadius: BorderRadius.circular(14)),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Text('Last updated', style: TextStyle(fontSize: 11, color: C.muted)),
-                          Text('${at!.hour % 12 == 0 ? 12 : at!.hour % 12}:${at!.minute.toString().padLeft(2, '0')} ${at!.hour < 12 ? 'AM' : 'PM'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                        ]),
-                      ),
                   ]),
                   const SizedBox(height: 14),
                   if (tiles.length <= 4)
@@ -285,7 +282,7 @@ class _HomeTabState extends State<HomeTab> {
                   padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26), boxShadow: softShadow(.05)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    SectionTitle("Today's Activity", mr: 'आजची कामे', action: 'View All', onAction: () => widget.onOpenEntries(''), trailing: Pill(showDate(s.today), color: C.muted, bg: C.bg, icon: Icons.calendar_today_rounded)),
+                    SectionTitle("Today's Activity", mr: 'आजची कामे · ${showDate(s.today)}', action: 'View All', onAction: () => widget.onOpenEntries('')),
                     if (loading && acts.isEmpty)
                       ...List.generate(3, (_) => const Padding(padding: EdgeInsets.only(bottom: 10), child: Shimmer(height: 70)))
                     else if (acts.isEmpty)
@@ -330,11 +327,13 @@ class _MiniTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         height: 132,
-        padding: const EdgeInsets.fromLTRB(6, 10, 6, 10),
+        padding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
         decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
         child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Pic(pic, size: 34),
-          Text(en, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, height: 1.15)),
+          en.contains(' ')
+              ? Text(en, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 1.15))
+              : FittedBox(fit: BoxFit.scaleDown, child: Text(en, maxLines: 1, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600))),
           Text(mr, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 10.5, color: C.muted)),
           FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
         ]),
@@ -371,8 +370,8 @@ class _ModuleCard extends StatelessWidget {
           ]),
           ),
           const Spacer(),
-          Text(m.en, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
-          Text(m.mr, maxLines: 1, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 11.5, color: C.muted)),
+          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(m.en, maxLines: 1, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
+          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(m.mr, maxLines: 1, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 11.5, color: C.muted))),
         ]),
       );
 }

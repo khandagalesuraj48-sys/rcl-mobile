@@ -359,7 +359,11 @@ class _EntryFormState extends State<EntryForm> {
                         if (sh?.jpg == null) Pic(pk.pic, size: 34),
                         const Spacer(),
                         Text(pk.en, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: sh?.jpg != null ? Colors.white : C.ink)),
-                        Text(sh?.busy == true ? 'Sending…' : done ? '✓ Sent' : '📷 Take photo', style: TextStyle(fontSize: 12, color: sh?.jpg != null ? Colors.white70 : C.muted)),
+                        Row(children: [
+                          Icon(sh?.busy == true ? Icons.cloud_upload_outlined : done ? Icons.check_circle_rounded : Icons.photo_camera_rounded, size: 14, color: sh?.jpg != null ? Colors.white70 : C.green),
+                          const SizedBox(width: 4),
+                          Text(sh?.busy == true ? 'Sending…' : done ? 'Sent' : 'Take photo', style: TextStyle(fontSize: 12, color: sh?.jpg != null ? Colors.white70 : C.muted)),
+                        ]),
                       ]),
                     ),
                     if (sh?.busy == true) const Positioned(right: 10, top: 10, child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))),
@@ -401,7 +405,7 @@ class _EntryFormState extends State<EntryForm> {
             _dateBox(),
             if (k.key != 'inward') ...[
               _label('Shift', 'पाळी'),
-              _chips<String>(const [('Day', '☀  Day'), ('Night', '🌙  Night')], shift, (v) {
+              _chips<String>(const [('Day', 'Day'), ('Night', 'Night')], shift, (v) {
                 setState(() => shift = v);
                 _balance();
               }),
