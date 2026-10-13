@@ -44,6 +44,15 @@ jobs:
               git commit -m "Platform folders made by the build (flutter create + tool/patch_platforms.py + icons)" && git push
             fi
           fi
+      - name: Company logo (first run only – the same picture the web ERP shows)
+        if: github.event_name == 'push'
+        run: |
+          if [ ! -f assets/brand/rachana_src.png ]; then
+            mkdir -p assets/brand
+            curl -fsSL --max-time 60 https://i.ibb.co/CpSfBqXX/RCL-LOGO-PDF.png -o assets/brand/rachana_src.png || { echo "::warning::the logo could not be downloaded"; exit 0; }
+            git config user.name "rcl-build"; git config user.email "rcl-build@users.noreply.github.com"
+            git add assets/brand/rachana_src.png && git commit -m "The company logo (from the web ERP's address)" && git pull --rebase -q && git push
+          fi
       - name: Packages
         run: |
           set +e
