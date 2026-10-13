@@ -2,7 +2,9 @@
 """Run ONCE by the build (GitHub Actions) right after `flutter create` made android/ and ios/: the app's own settings.
    Android: the app's name, internet, "install the update" (ota_update: its file provider and install receiver), Java desugaring
    (ota_update 7), and the release signing from key.properties (kept only in the private store – never in git).
-   iOS: the app's name. Every change is checked: a template that looks different stops the build with a clear message."""
+   App 2 (the web ERP inside the app): camera, location, microphone; the web view's file provider (a photo taken for a page);
+   the camera app and https links visible to the app (Android 11+).
+   iOS: the app's name; why it asks for the camera, location, microphone and photos. Every change is checked: a template that looks different stops the build with a clear message."""
 import os, re, sys
 
 def edit(path, fn):
@@ -16,7 +18,8 @@ def need(cond, what):
 
 MAN = 'android/app/src/main/AndroidManifest.xml'
 def manifest(s):
-    perms = ['android.permission.INTERNET', 'android.permission.REQUEST_INSTALL_PACKAGES']
+    perms = ['android.permission.INTERNET', 'android.permission.REQUEST_INSTALL_PACKAGES', 'android.permission.CAMERA', 'android.permission.ACCESS_FINE_LOCATION',
+             'android.permission.ACCESS_COARSE_LOCATION', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS']
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
     s = re.sub(r'android:label="[^"]*"', 'android:label="RCL ERP"', s, count=1)
@@ -31,6 +34,16 @@ def manifest(s):
                  '        </receiver>\n')
         need('</application>' in s, 'no </application> in the manifest')
         s = s.replace('</application>', block + '    </application>', 1)
+    if 'InAppWebViewFileProvider' not in s:
+        s = s.replace('</application>', '    <provider android:name="com.pichillilorenzo.flutter_inappwebview_android.InAppWebViewFileProvider"\n'
+                      '            android:authorities="${applicationId}.flutter_inappwebview_android.fileprovider"\n'
+                      '            android:exported="false" android:grantUriPermissions="true">\n'
+                      '            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/provider_paths"/>\n'
+                      '        </provider>\n    </application>', 1)
+    if 'android.media.action.IMAGE_CAPTURE' not in s:
+        q = ('        <intent>\n            <action android:name="android.media.action.IMAGE_CAPTURE"/>\n        </intent>\n'
+             '        <intent>\n            <action android:name="android.intent.action.VIEW"/>\n            <data android:scheme="https"/>\n        </intent>\n')
+        s = s.replace('    </queries>', q + '    </queries>', 1) if '</queries>' in s else s.replace('</manifest>', '    <queries>\n' + q + '    </queries>\n</manifest>', 1)
     return s
 
 def gradle(s):
@@ -53,10 +66,18 @@ def gradle(s):
         s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
     return s
 
+USES = [('NSCameraUsageDescription', 'RCL ERP uses the camera for the photos of an entry (Diesel Issue and others).'),
+        ('NSLocationWhenInUseUsageDescription', 'RCL ERP saves the place of every entry, as the web ERP does.'),
+        ('NSMicrophoneUsageDescription', 'RCL ERP uses the microphone for a screen-share help call.'),
+        ('NSPhotoLibraryUsageDescription', 'RCL ERP lets you choose a photo for an entry.')]
 def plist(s):
     if '<key>CFBundleDisplayName</key>' in s:
-        return re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1RCL ERP\2', s, count=1)
-    return s.replace('<dict>', '<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>RCL ERP</string>', 1)
+        s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1RCL ERP\2', s, count=1)
+    else:
+        s = s.replace('<dict>', '<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>RCL ERP</string>', 1)
+    for k, v in USES:
+        if '<key>%s</key>' % k not in s: s = s.replace('<dict>', '<dict>\n\t<key>%s</key>\n\t<string>%s</string>' % (k, v), 1)
+    return s
 
 edit(MAN, manifest)
 os.makedirs('android/app/src/main/res/xml', exist_ok=True)

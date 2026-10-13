@@ -1,36 +1,23 @@
-/* THE PERSON ON THIS PHONE: signed in or not, his site, what he may open (the same access as Mechanical on the web – set by
- * the site's Admin), and the site's lists the forms need (machinery, drivers, pumps, locations, stock). */
+/* THE PERSON ON THIS PHONE: signed in on the Portal or not, his sites, and the module the app opens on a site (Mechanical
+ * first – the web ERP; the Store and every module of that site are reached inside it, as on the web). */
 import 'package:flutter/foundation.dart';
 
 import 'api.dart';
 
 enum Stage { starting, signedOut, pickSite, ready }
 
-class SiteChoice {
-  SiteChoice(this.code, this.name, this.company);
-  final String code, name, company;
+class Module {
+  Module(this.key, this.name, this.url);
+  final String key, name, url;
 }
 
-class Machine {
-  Machine(this.m);
-  final Map<String, dynamic> m;
-  String get id => (m['id'] ?? '').toString();
-  String get name => (m['name'] ?? '').toString();
-  String get type => (m['type'] ?? '').toString();
-  String get owner => (m['owner'] ?? '').toString();
-  String get ownership => (m['ownership'] ?? '').toString();
-  String get status => (m['status'] ?? 'Active').toString();
-  bool get active => status != 'Inactive';
-  bool get debit => (m['supply'] ?? '') == 'Debit Basis'; // no readings are kept for diesel on Debit Basis
-  bool get km => !debit && m['meterKm'] == true;
-  bool get hr => !debit && m['meterHr'] == true;
-  String get label => [id, if (name.isNotEmpty && name != id) name, type].where((s) => s.isNotEmpty).join(' · ');
-  bool matches(String q) {
-    final words = q.toLowerCase().split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
-    final text = [id, name, type, owner, (m['no'] ?? '').toString()].join(' ').toLowerCase();
-    final flat = text.replaceAll(RegExp(r'[^a-z0-9]'), '');
-    return words.every((w) => text.contains(w) || flat.contains(w.replaceAll(RegExp(r'[^a-z0-9]'), '')));
-  }
+class SiteChoice {
+  SiteChoice(this.code, this.name, this.company, this.modules);
+  final String code, name, company;
+  final List<Module> modules;
+
+  /// The module the app opens on this site: Mechanical (the ERP's screen; the others are inside it), else the first one.
+  Module get main => modules.firstWhere((m) => m.key == 'mechanical', orElse: () => modules.first);
 }
 
 class Session extends ChangeNotifier {
@@ -40,32 +27,8 @@ class Session extends ChangeNotifier {
   Stage stage = Stage.starting;
   String error = '';
   String name = '', email = '';
-  bool admin = false;
-  Map<String, String> perms = {};
-  String siteCode = '', siteName = '';
   List<SiteChoice> sites = [];
-
-  // the site's lists (getInit)
-  String today = '';
-  List<Machine> machines = [];
-  List<String> drivers = [], pumps = [], locations = [];
-  num? stockTotal;
-  Map<String, num> stockByLoc = {};
-
-  /// May open the page (View or Edit) – as canSee on the web.
-  bool canSee(String module) => admin || perms[module] == 'Edit' || perms[module] == 'View';
-
-  /// May add / change (Edit) – as canEdit on the web.
-  bool canEdit(String module) => admin || perms[module] == 'Edit';
-
-  void _user(Map<String, dynamic>? u) {
-    if (u == null) return;
-    name = (u['name'] ?? '').toString();
-    email = (u['email'] ?? '').toString();
-    admin = u['admin'] == true;
-    final p = u['perms'];
-    perms = p is Map ? p.map((k, v) => MapEntry(k.toString(), v.toString())) : {};
-  }
+  SiteChoice? site;
 
   void _go(Stage s, [String err = '']) {
     stage = s;
@@ -73,20 +36,13 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The app opens: the sign-in kept on this phone is tried – nothing to type while the Portal still knows the person.
+  /// The app opens: the sign-in kept on this phone is used – nothing to type while the Portal still knows the person.
   Future<void> start() async {
     await api.load();
     if (!api.hasPortal) return _go(Stage.signedOut);
     try {
       await _loadSites();
-      final keep = api.site ?? '';
-      if (keep.isNotEmpty && sites.any((s) => s.code == keep)) {
-        await openSite(keep);
-      } else if (sites.length == 1) {
-        await openSite(sites.first.code);
-      } else {
-        _go(Stage.pickSite);
-      }
+      _afterSites();
     } on ApiError catch (e) {
       if (e.needsSignIn || e.status == 401) {
         await api.forget();
@@ -96,17 +52,35 @@ class Session extends ChangeNotifier {
     }
   }
 
+  void _afterSites() {
+    final kept = api.site ?? '';
+    final s = sites.where((x) => x.code == kept).toList();
+    if (s.isNotEmpty) {
+      site = s.first;
+      _go(Stage.ready);
+    } else if (sites.length == 1) {
+      chooseSite(sites.first.code);
+    } else {
+      _go(Stage.pickSite);
+    }
+  }
+
   Future<void> _loadSites() async {
-    final me = await api.portalAuth({'action': 'me'});
+    final me = await api.auth({'action': 'me'});
     if (me['signedIn'] != true) throw ApiError('Please sign in.', code: 'signin');
     final u = (me['user'] as Map?)?.cast<String, dynamic>() ?? {};
     if (u['super'] == true) {
       await api.signOut();
       throw ApiError('The Super Admin manages access on the Portal (web); the app is for the people at the sites.', code: 'super');
     }
-    final items = (me['items'] as List? ?? []).whereType<Map>().where((x) => x['module'] == 'mechanical');
-    sites = items.map((x) => SiteChoice(x['site'].toString(), (x['siteName'] ?? x['site']).toString(), (x['company'] ?? '').toString())).toList();
-    if (sites.isEmpty) throw ApiError('You have no site with Mechanical yet – ask the Super Admin.', code: 'nosite');
+    final by = <String, SiteChoice>{};
+    for (final x in (me['items'] as List? ?? []).whereType<Map>()) {
+      final code = (x['site'] ?? '').toString(), url = (x['url'] ?? '').toString();
+      if (code.isEmpty || !url.startsWith('https://')) continue;
+      by.putIfAbsent(code, () => SiteChoice(code, (x['siteName'] ?? code).toString(), (x['company'] ?? '').toString(), [])).modules.add(Module((x['module'] ?? '').toString(), (x['moduleName'] ?? '').toString(), url));
+    }
+    sites = by.values.toList();
+    if (sites.isEmpty) throw ApiError('You have no module on any site yet – ask the Super Admin.', code: 'nosite');
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();
   }
@@ -115,63 +89,50 @@ class Session extends ChangeNotifier {
   Future<void> signIn(String mail, String password) async {
     error = '';
     try {
-      final r = await api.portalAuth({'action': 'login', 'email': mail.trim(), 'password': password});
+      final r = await api.auth({'action': 'login', 'email': mail.trim(), 'password': password});
       if (r['mustChange'] == true) {
         await api.signOut();
         return _go(Stage.signedOut, 'Set your own password on the Portal (web) first, then sign in here.');
       }
       await _loadSites();
-      if (sites.length == 1) {
-        await openSite(sites.first.code);
-      } else {
-        _go(Stage.pickSite);
-      }
+      _afterSites();
     } on ApiError catch (e) {
       _go(Stage.signedOut, e.toString());
     }
   }
 
-  Future<void> openSite(String code) async {
-    final r = await api.openSite(code);
-    _user((r['user'] as Map?)?.cast<String, dynamic>());
-    siteCode = code;
-    siteName = (r['siteName'] ?? sites.firstWhere((s) => s.code == code, orElse: () => SiteChoice(code, code, '')).name).toString();
-    await loadInit();
+  Future<void> chooseSite(String code) async {
+    site = sites.firstWhere((s) => s.code == code);
+    await api.keepSite(code);
     _go(Stage.ready);
   }
 
-  Future<void> loadInit() async {
-    final d = (await api.call('getInit') as Map).cast<String, dynamic>();
-    today = (d['today'] ?? '').toString();
-    machines = (d['master'] as List? ?? []).whereType<Map>().map((m) => Machine(m.cast<String, dynamic>())).toList();
-    drivers = (d['drivers'] as List? ?? []).map((e) => e.toString()).toList();
-    pumps = (d['pumps'] as List? ?? []).map((e) => e.toString()).toList();
-    locations = (d['locations'] as List? ?? []).map((e) => e.toString()).toList();
-    setStock(d['stock']);
+  /// Another site opened from inside the web ("Change site"): it opens next time (the screen is not rebuilt).
+  Future<void> rememberSite(String code) async {
+    final s = sites.where((x) => x.code == code).toList();
+    if (s.isEmpty || site?.code == code) return;
+    site = s.first;
+    await api.keepSite(code);
   }
 
-  void setStock(dynamic s) {
-    if (s is! Map) return;
-    final t = s['stock'];
-    if (t is num) stockTotal = t;
-    final by = s['byLoc'];
-    if (by is Map) stockByLoc = by.map((k, v) => MapEntry(k.toString(), (v is num) ? v : 0));
-    notifyListeners();
-  }
-
-  Future<void> switchSite(String code) async {
-    _go(Stage.starting);
+  /// The address the app's web view opens: the site's main module, signed in with a fresh ticket (nothing typed).
+  Future<String> startUrl() async {
+    final s = site!, m = s.main;
     try {
-      await openSite(code);
+      final t = await api.ticket(s.code, m.key);
+      return '${m.url.replaceAll(RegExp(r'/+$'), '')}/#sso=$t';
     } on ApiError catch (e) {
-      _go(Stage.pickSite, e.toString());
+      if (e.needsSignIn) {
+        await api.forget();
+        _go(Stage.signedOut, 'Your sign-in has ended – please sign in again.');
+      }
+      rethrow;
     }
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut([String msg = '']) async {
     await api.signOut();
-    machines = [];
-    perms = {};
-    _go(Stage.signedOut);
+    site = null;
+    _go(Stage.signedOut, msg);
   }
 }

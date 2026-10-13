@@ -8,6 +8,14 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>RCL ERP</string>
+	<key>NSCameraUsageDescription</key>
+	<string>RCL ERP uses the camera for the photos of an entry (Diesel Issue and others).</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>RCL ERP saves the place of every entry, as the web ERP does.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>RCL ERP uses the microphone for a screen-share help call.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RCL ERP lets you choose a photo for an entry.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
