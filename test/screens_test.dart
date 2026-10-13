@@ -1,5 +1,5 @@
 /* The screens on a phone (360 × 780) with the pretend server: what a person sees and does.
- * The tests tagged "golden" also make pictures of the screens (test/goldens/*.png) – for looking at, in the build's files. */
+ * The tests tagged "golden" also make pictures of the screens (test/goldens/, one picture per screen) – for looking at, in the build's files. */
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
