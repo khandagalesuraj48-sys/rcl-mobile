@@ -74,7 +74,11 @@ jobs:
       - name: Tests (a release only when they pass)
         run: flutter test --exclude-tags golden
       - name: Signed Android app
-        run: flutter build apk --release --build-name="$VER" --build-number="$BN"
+        # the file for 64-bit phones (arm64 – every Android phone of recent years): the smallest file for the store's size limit
+        run: |
+          flutter build apk --release --build-name="$VER" --build-number="$BN" --split-per-abi --target-platform android-arm64 --split-debug-info=build/symbols
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-release.apk
+          SZ=$(stat -c %s build/app/outputs/flutter-apk/app-release.apk); echo "SZ=$SZ" >> "$GITHUB_ENV"; echo "::notice::App file: $((SZ / 1048576)) MB ($SZ bytes)"
       - name: Check the signature (never the debug key)
         run: |
           AS=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
@@ -89,7 +93,7 @@ jobs:
           F="android/rcl-erp-$VER-$BN.apk"; APK=build/app/outputs/flutter-apk/app-release.apk
           SHA=$(sha256sum "$APK" | cut -d' ' -f1)
           c=$(curl -sS -o /tmp/u.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-releases/$F" -H "apikey: $SB_KEY" -H "Content-Type: application/vnd.android.package-archive" -H "x-upsert: false" --data-binary "@$APK")
-          [ "$c" = "200" ] || { echo "::error::Upload of the app: $c $(head -c 300 /tmp/u.json)"; exit 1; }
+          [ "$c" = "200" ] || { echo "::error::Upload of the app ($((SZ / 1048576)) MB): $c $(head -c 300 /tmp/u.json) – in Supabase (rcl-portal) → Storage → Settings, the upload size limit must be above this."; exit 1; }
           python3 -c "import json,os;print(json.dumps({'build':int(os.environ['BN']),'version':os.environ['VER'],'file':'$F','sha256':'$SHA','notes':os.environ.get('NOTES','')[:500]}))" > latest.json
           c=$(curl -sS -o /tmp/u.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-releases/android/latest.json" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -H "x-upsert: true" --data-binary @latest.json)
           [ "$c" = "200" ] || { echo "::error::Upload of latest.json: $c $(head -c 300 /tmp/u.json)"; exit 1; }
