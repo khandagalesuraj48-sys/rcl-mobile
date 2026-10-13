@@ -1,0 +1,413 @@
+/* HOME (picture 1, 14-10-2026): the site's picture with "Namaskar" and the site; the diesel stock (total and each place), the
+ * machinery working today and today's Log Book entries; the modules he may open; today's diesel work. Every number is the
+ * server's, read now. */
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../core/format.dart';
+import '../core/kinds.dart';
+import '../core/session.dart';
+import '../core/update.dart';
+import '../ui/brand.dart';
+import '../ui/scope.dart';
+import '../ui/theme.dart';
+import '../ui/widgets.dart';
+import '../web/web_page.dart';
+
+/// A module tile of Home: where it goes and who may see it.
+class ModuleTile {
+  const ModuleTile(this.en, this.mr, this.pic, this.color, this.soft, {this.page = '', this.native = '', this.perm = '', this.module = '', this.admin = false});
+  final String en, mr, pic, page, native, perm, module;
+  final Color color, soft;
+  final bool admin;
+  bool visible(Session s) {
+    if (admin) return s.admin;
+    if (module.isNotEmpty) return s.hasModule(module);
+    if (native == 'diesel') return kKinds.any((k) => s.canSee(k.module));
+    if (native == 'reports') return reportsOf(s).isNotEmpty;
+    return perm.isEmpty || s.canSee(perm);
+  }
+}
+
+const kModules = [
+  ModuleTile('Machinery', 'यंत्रे', 'tractor', C.green, C.greenSoft, page: 'master', perm: 'Master'),
+  ModuleTile('Logbook', 'लॉगबुक', 'notebook', C.blue, C.blueSoft, page: 'log', perm: 'Log Book'),
+  ModuleTile('Diesel', 'डिझेल', 'fuel_pump', C.green, C.greenSoft, native: 'diesel'),
+  ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, page: 'brk', perm: 'Breakdown'),
+  ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, page: 'bill', perm: 'Machinery Billing'),
+  ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, page: 'store__dashboard', module: 'store'),
+  ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', C.blue, C.blueSoft, native: 'reports'),
+  ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, page: 'users', admin: true),
+];
+
+/// The reports of the web he may open.
+List<(String, String, String, String)> reportsOf(Session s) => [
+      if (s.canSee('Dashboard')) ('Dashboard', 'डॅशबोर्ड', 'dash', 'bar_chart'),
+      if (s.canSee('Reports')) ...[
+        ('Daily Inward & Issue', 'दैनिक आवक व वाटप', 'rdaily', 'calendar'),
+        ('Monthly Diesel Issue', 'मासिक डिझेल वाटप', 'rmonthly', 'fuel_pump'),
+        ('Monthly Diesel & Average', 'मासिक डिझेल व सरासरी', 'ravg', 'clipboard'),
+      ],
+    ];
+
+class HomeTab extends StatefulWidget {
+  const HomeTab({super.key, required this.onOpenEntries, required this.onOpenReports});
+  final ValueChanged<String> onOpenEntries;
+  final VoidCallback onOpenReports;
+  @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _Act {
+  _Act(this.kind, this.r);
+  final Kind kind;
+  final Map<String, dynamic> r;
+}
+
+class _HomeTabState extends State<HomeTab> {
+  bool loading = true;
+  DateTime? at;
+  int? logEntries, running;
+  List<_Act> acts = [];
+  AppUpdate? update;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+      final s = SessionScope.read(context);
+      checkUpdate(s.api).then((u) {
+        if (mounted && u != null) setState(() => update = u);
+      });
+    });
+  }
+
+  Future<void> _load({bool init = false}) async {
+    final s = SessionScope.read(context);
+    setState(() => loading = true);
+    try {
+      if (init) await s.loadInit();
+      final day = s.today;
+      final jobs = <Future<void>>[];
+      final got = <_Act>[];
+      for (final k in kKinds.where((k) => s.canSee(k.module))) {
+        jobs.add(s.api.call(k.list, [{'from': day, 'to': day, 'all': true}]).then((r) {
+          for (final x in ((r as Map)['rows'] as List? ?? []).whereType<Map>()) {
+            got.add(_Act(k, x.cast<String, dynamic>()));
+          }
+        }).catchError((_) {}));
+      }
+      int? le, run;
+      if (s.canSee('Log Book')) {
+        jobs.add(s.api.call('getLogBookList', [{'from': day, 'to': day, 'all': true}]).then((r) {
+          final rows = ((r as Map)['rows'] as List? ?? []).whereType<Map>().toList();
+          le = rows.length;
+          const off = ['Idle', 'Holiday', 'Breakdown'];
+          run = rows.where((x) => !off.contains('${x['mode'] ?? x['unit'] ?? ''}')).map((x) => '${x['no']}').toSet().length;
+        }).catchError((_) {}));
+      }
+      await Future.wait(jobs);
+      got.sort((a, b) => '${b.r['id']}'.compareTo('${a.r['id']}'));
+      if (!mounted) return;
+      setState(() {
+        acts = got;
+        logEntries = le;
+        running = run;
+        at = DateTime.now();
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => loading = false);
+      toast(context, errText(e), bad: true);
+    }
+  }
+
+  Future<void> _module(ModuleTile m) async {
+    HapticFeedback.selectionClick();
+    if (m.native == 'diesel') {
+      widget.onOpenEntries('');
+      return;
+    }
+    if (m.native == 'reports') {
+      widget.onOpenReports();
+      return;
+    }
+    await openWeb(context, m.en, m.page, pic: m.pic);
+  }
+
+  Future<void> _site() async {
+    final s = SessionScope.read(context);
+    if (s.sites.length < 2) {
+      toast(context, 'You have one site: ${s.siteName}.');
+      return;
+    }
+    if (await ask(context, 'Change site?', 'Open another of your sites. · दुसरी site उघडायची?', yes: 'Change')) s.pickAnotherSite();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context);
+    final top = MediaQuery.of(context).padding.top;
+    final first = s.name.split(' ').first;
+    final mods = kModules.where((m) => m.visible(s)).toList();
+    final locs = s.stockByLoc.entries.toList();
+    final tiles = <Widget>[
+      for (final (i, l) in locs.indexed)
+        _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: l.key.toLowerCase().contains('dispenser') ? 'डिस्पेन्सर' : 'स्टोअर', value: '${fmtNum(l.value)} L', color: i == 0 ? C.greenSoft : C.amberSoft),
+      if (s.canSee('Log Book')) ...[
+        _MiniTile(pic: 'tractor', en: 'Running Machines', mr: 'चालू यंत्रे', value: running == null ? '–' : '$running / ${s.machines.where((m) => m.active).length}', color: C.blueSoft),
+        _MiniTile(pic: 'notebook', en: 'Logbook Entries', mr: 'नोंदी (आज)', value: logEntries == null ? '–' : '$logEntries', color: C.purpleSoft),
+      ],
+    ];
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+      child: RefreshIndicator(
+        color: C.green,
+        edgeOffset: top,
+        onRefresh: () => _load(init: true),
+        child: ListView(padding: EdgeInsets.zero, children: [
+          // ---------- the picture, Namaskar, the site ----------
+          HeroScene(
+            height: 250 + top,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, top + 12, 14, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Namaskar${first.isNotEmpty ? ', $first' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
+                      const Text('Mechanical Management ERP', style: TextStyle(fontSize: 15, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                      const Text('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: Color(0xCCFFFFFF))),
+                    ]),
+                  ),
+                  _RoundBtn(icon: Icons.refresh_rounded, tip: 'Refresh', onTap: () => _load(init: true)),
+                ]),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: _site,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(.18)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.location_on_rounded, color: C.green, size: 26),
+                      const SizedBox(width: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 190),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                          Text(s.sites.length > 1 ? 'Site बदला · Tap to change' : (s.site?.code ?? ''), style: const TextStyle(fontSize: 12, color: C.green, fontWeight: FontWeight.w500)),
+                        ]),
+                      ),
+                      if (s.sites.length > 1) const Icon(Icons.keyboard_arrow_down_rounded),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+          // ---------- the stock card (over the picture) ----------
+          Transform.translate(
+            offset: const Offset(0, -34),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28), boxShadow: softShadow(.1)),
+                child: Column(children: [
+                  Row(children: [
+                    Container(width: 70, height: 70, decoration: const BoxDecoration(color: C.green, shape: BoxShape.circle), alignment: Alignment.center, child: const Icon(Icons.local_gas_station_rounded, color: Colors.white, size: 36)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const TwoLang('Total Diesel Stock', 'डिझेल साठा (एकूण)', size: 15.5),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(s.stockTotal == null ? '–' : '${fmtNum(s.stockTotal)} L', style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, height: 1.15)),
+                        ),
+                      ]),
+                    ),
+                    if (at != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(color: C.bg, borderRadius: BorderRadius.circular(14)),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          const Text('Last updated', style: TextStyle(fontSize: 11, color: C.muted)),
+                          Text('${at!.hour % 12 == 0 ? 12 : at!.hour % 12}:${at!.minute.toString().padLeft(2, '0')} ${at!.hour < 12 ? 'AM' : 'PM'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                  ]),
+                  const SizedBox(height: 14),
+                  if (tiles.length <= 4)
+                    Row(children: [for (final (i, t) in tiles.indexed) ...[if (i > 0) const SizedBox(width: 8), Expanded(child: t)]])
+                  else
+                    SizedBox(height: 132, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: tiles.length, separatorBuilder: (_, __) => const SizedBox(width: 8), itemBuilder: (_, i) => SizedBox(width: 92, child: tiles[i]))),
+                ]),
+              ),
+            ),
+          ),
+          if (update != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+              child: Press(
+                onTap: () => runUpdate(context, update!),
+                color: C.greenDeep,
+                border: C.greenDeep,
+                padding: const EdgeInsets.all(14),
+                child: Row(children: [
+                  const Icon(Icons.system_update_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(child: TwoLang('New version ${update!.version} – Update', 'नवीन version आली आहे', color: Colors.white, size: 15.5)),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                ]),
+              ),
+            ),
+          // ---------- the modules ----------
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const SectionTitle('Modules', mr: 'विभाग'),
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: .78,
+                children: [for (final m in mods) _ModuleCard(m: m, onTap: () => _module(m))],
+              ),
+              const SizedBox(height: 22),
+              // ---------- today's work ----------
+              if (kKinds.any((k) => s.canSee(k.module)))
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26), boxShadow: softShadow(.05)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    SectionTitle("Today's Activity", mr: 'आजची कामे', action: 'View All', onAction: () => widget.onOpenEntries(''), trailing: Pill(showDate(s.today), color: C.muted, bg: C.bg, icon: Icons.calendar_today_rounded)),
+                    if (loading && acts.isEmpty)
+                      ...List.generate(3, (_) => const Padding(padding: EdgeInsets.only(bottom: 10), child: Shimmer(height: 70)))
+                    else if (acts.isEmpty)
+                      const EmptyState('No diesel entry today yet', 'Issue, Inward and Transfer of today show here.', pic: 'fuel_pump')
+                    else
+                      for (final a in acts.take(6)) _ActRow(a: a, onTap: () => widget.onOpenEntries(a.kind.key)),
+                  ]),
+                ),
+              const SizedBox(height: 28),
+              Center(child: Opacity(opacity: .55, child: Image.asset('assets/brand/rachana_logo.png', height: 30))),
+              const SizedBox(height: 24),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _RoundBtn extends StatelessWidget {
+  const _RoundBtn({required this.icon, required this.tip, required this.onTap});
+  final IconData icon;
+  final String tip;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: tip,
+        child: Material(
+          color: Colors.white,
+          shape: const CircleBorder(),
+          elevation: 3,
+          shadowColor: Colors.black26,
+          child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: Padding(padding: const EdgeInsets.all(12), child: Icon(icon, color: C.ink, size: 24))),
+        ),
+      );
+}
+
+class _MiniTile extends StatelessWidget {
+  const _MiniTile({required this.pic, required this.en, required this.mr, required this.value, required this.color});
+  final String pic, en, mr, value;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 132,
+        padding: const EdgeInsets.fromLTRB(6, 10, 6, 10),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
+        child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Pic(pic, size: 34),
+          Text(en, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, height: 1.15)),
+          Text(mr, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 10.5, color: C.muted)),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+        ]),
+      );
+}
+
+class _ModuleCard extends StatelessWidget {
+  const _ModuleCard({required this.m, required this.onTap});
+  final ModuleTile m;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        radius: 20,
+        color: m.soft,
+        border: Colors.white,
+        padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Pic(m.pic, size: 40),
+            const Spacer(),
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .8), shape: BoxShape.circle),
+              child: Icon(Icons.chevron_right_rounded, size: 18, color: m.color),
+            ),
+          ]),
+          const Spacer(),
+          Text(m.en, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+          Text(m.mr, maxLines: 1, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 11.5, color: C.muted)),
+        ]),
+      );
+}
+
+class _ActRow extends StatelessWidget {
+  const _ActRow({required this.a, required this.onTap});
+  final _Act a;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final r = a.r, k = a.kind;
+    final title = switch (k.key) {
+      'issue' => '${r['no'] ?? ''}  •  ${fmtNum(asNum(r['qty']))} L',
+      'inward' => '${'${r['pump'] ?? ''}'.isEmpty ? 'Received' : r['pump']}  •  ${fmtNum(asNum(r['qty']))} L',
+      _ => '${r['from'] ?? ''} → ${r['to'] ?? ''}  •  ${fmtNum(asNum(r['qty']))} L',
+    };
+    final sub = switch (k.key) {
+      'issue' => '${r['driver'] ?? ''}'.isNotEmpty ? 'Operator: ${r['driver']}' : '${r['type'] ?? ''} · ${r['source'] ?? ''}',
+      'inward' => 'Received at ${r['location'] ?? ''}',
+      _ => '${r['remark'] ?? ''}'.isNotEmpty ? '${r['remark']}' : 'By: ${r['enteredBy'] ?? ''}',
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Press(
+        onTap: onTap,
+        radius: 18,
+        shadow: false,
+        padding: const EdgeInsets.all(10),
+        child: Row(children: [
+          Container(width: 52, height: 52, decoration: BoxDecoration(color: k.soft, borderRadius: BorderRadius.circular(15)), alignment: Alignment.center, child: Pic(k.key == 'issue' ? picOfType('${r['type'] ?? ''}') : k.pic, size: 36)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(k.en, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5)),
+              Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+            ]),
+          ),
+          if ('${r['shift'] ?? ''}'.isNotEmpty) Pill('${r['shift']}', color: k.color, bg: k.soft),
+          const Icon(Icons.chevron_right_rounded, color: C.faint),
+        ]),
+      ),
+    );
+  }
+}
