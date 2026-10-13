@@ -21,7 +21,8 @@ String safeFileName(String name) {
 
 /// The file's type from its name when the web gave none.
 String mimeOf(String name, String given) {
-  if (given.trim().isNotEmpty) return given.split(';').first.trim();
+  final g = given.split(';').first.trim().toLowerCase();
+  if (g.isNotEmpty && g != 'application/octet-stream') return g;
   final n = name.toLowerCase();
   if (n.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   if (n.endsWith('.csv')) return 'text/csv';

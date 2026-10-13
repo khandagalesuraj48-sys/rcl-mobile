@@ -135,6 +135,7 @@ void main() {
     expect(mimeOf('a.xlsx', ''), contains('spreadsheetml'));
     expect(mimeOf('a.csv', 'text/csv;charset=utf-8'), 'text/csv');
     expect(mimeOf('a.bin', ''), 'application/octet-stream');
+    expect(mimeOf('RCL_Master.xlsx', 'application/octet-stream'), contains('spreadsheetml'), reason: 'the Excel tool of the web gives no type');
   });
 
   test('the script given to the web view is in the app and answers what the app asks', () {
