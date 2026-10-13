@@ -353,16 +353,23 @@ class _ModuleCard extends StatelessWidget {
         border: Colors.white,
         padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: double.infinity,
+            height: 40,
+            child: Stack(children: [
             Pic(m.pic, size: 40),
-            const Spacer(),
-            Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .8), shape: BoxShape.circle),
-              child: Icon(Icons.chevron_right_rounded, size: 18, color: m.color),
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .85), shape: BoxShape.circle),
+                child: Icon(Icons.chevron_right_rounded, size: 16, color: m.color),
+              ),
             ),
           ]),
+          ),
           const Spacer(),
           Text(m.en, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
           Text(m.mr, maxLines: 1, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 11.5, color: C.muted)),

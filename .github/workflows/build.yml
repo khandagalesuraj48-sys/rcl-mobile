@@ -85,8 +85,11 @@ jobs:
           flutter test --tags golden --update-goldens --reporter expanded > shots.txt 2>&1; st=$?
           cat shots.txt
           if [ $st -ne 0 ]; then
-            msg=$(grep -vE "^\s*$" shots.txt | grep -iE -B2 -A14 "FAILED|Error:|Expected:|══╡" | head -60 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}')
-            echo "::error title=screens::$msg"
+            grep -E "^[0-9:]+ \+[0-9]+.*(-[0-9]+)?:|Expected:|Actual:|Which:|was:|file:///.*/lib/|file:///.*/test/|EXCEPTION|overflowed|Exception:|Error:" shots.txt | grep -v "◢◤" | awk '!seen[$0]++' > shots_short.txt
+            for part in 1 2 3; do
+              msg=$(sed -n "$(( (part-1)*40+1 )),$(( part*40 ))p" shots_short.txt | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}')
+              [ -n "$msg" ] && echo "::error title=screens part $part::$msg"
+            done
           fi
           exit $st
       - name: Save the screen pictures in screens/<branch>
