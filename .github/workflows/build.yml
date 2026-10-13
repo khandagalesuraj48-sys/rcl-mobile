@@ -1,9 +1,11 @@
-# Every push: the app is checked (analyze, tests), the screens are drawn (pictures for looking at) and an Android app file
-# is built. The first run also makes the android/ and ios/ folders (flutter create + tool/patch_platforms.py) and saves them
-# in the branch. No secret is needed here; the signed release is release.yml.
+# Every push: the app is checked (analyze, tests), the screens are drawn and an Android app file is built.
+# The first run also makes the android/ and ios/ folders (flutter create + tool/patch_platforms.py) and saves them in the branch.
+# What went wrong is written as annotations (readable through the GitHub API); the screen pictures are saved in the branch
+# "screens/<branch>". No secret is needed here; the signed release is release.yml.
 name: build
 on:
   push:
+    branches-ignore: ['screens/**']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -25,40 +27,69 @@ jobs:
         with:
           channel: stable
           cache: true
-      - run: flutter --version
+      - name: Flutter version
+        run: |
+          flutter --version | tee fv.txt
+          echo "::notice::$(head -1 fv.txt) / $(grep -o 'Dart [0-9.]*' fv.txt)"
       - name: Platform folders (first run only)
-        id: plat
         run: |
           if [ ! -d android ]; then
             flutter create --org in.rachana.rcl --project-name rcl_mobile --platforms=android,ios .
             python3 tool/patch_platforms.py
-            echo "made=1" >> "$GITHUB_OUTPUT"
+            flutter pub get
+            dart run flutter_launcher_icons
+            if [ "${{ github.event_name }}" = "push" ]; then
+              git config user.name "rcl-build"; git config user.email "rcl-build@users.noreply.github.com"
+              git add android ios .metadata pubspec.lock
+              git commit -m "Platform folders made by the build (flutter create + tool/patch_platforms.py + icons)" && git push
+            fi
           fi
       - run: flutter pub get
-      - name: App icons
-        run: dart run flutter_launcher_icons
-      - run: flutter analyze --no-fatal-infos
+      - name: Analyze
+        run: |
+          set +e
+          flutter analyze --no-fatal-infos > analyze.txt 2>&1; st=$?
+          cat analyze.txt
+          grep -E "^\s*(error|warning) •" analyze.txt | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+          exit $st
       - name: Tests
-        run: flutter test --exclude-tags golden
+        run: |
+          set +e
+          flutter test --exclude-tags golden --reporter expanded > test.txt 2>&1; st=$?
+          cat test.txt
+          if [ $st -ne 0 ]; then
+            for part in 1 2 3 4; do
+              msg=$(grep -vE "^\s*$" test.txt | grep -iE -B2 -A14 "FAILED|Error:|Expected:|error •|══╡" | sed -n "$(( (part-1)*45+1 )),$(( part*45 ))p" | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}')
+              [ -n "$msg" ] && echo "::error title=tests part $part::$msg"
+            done
+          fi
+          exit $st
       - name: Screens (pictures)
-        run: flutter test --tags golden --update-goldens
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: screens
-          path: test/goldens/*.png
-          if-no-files-found: warn
+        run: |
+          set +e
+          flutter test --tags golden --update-goldens --reporter expanded > shots.txt 2>&1; st=$?
+          cat shots.txt
+          if [ $st -ne 0 ]; then
+            msg=$(grep -vE "^\s*$" shots.txt | grep -iE -B2 -A14 "FAILED|Error:|Expected:|══╡" | head -60 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}')
+            echo "::error title=screens::$msg"
+          fi
+          exit $st
+      - name: Save the screen pictures in screens/<branch>
+        if: always() && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ls test/goldens/*.png >/dev/null 2>&1 || exit 0
+          rm -rf /tmp/shots && mkdir -p /tmp/shots && cp test/goldens/*.png /tmp/shots/ && cd /tmp/shots
+          git init -q && git config user.name "rcl-build" && git config user.email "rcl-build@users.noreply.github.com"
+          git add . && git commit -qm "Screens of ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/screens/${GITHUB_REF_NAME}"
       - name: Android app (debug-signed – for checking only)
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release 2>&1 | tee apk.txt; st=${PIPESTATUS[0]}
+          if [ $st -ne 0 ]; then msg=$(grep -iE -B3 -A10 "error|FAILURE|What went wrong" apk.txt | head -60 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}'); echo "::error title=apk::$msg"; fi
+          exit $st
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-      - name: Save the platform folders in the branch
-        if: steps.plat.outputs.made == '1' && github.event_name == 'push'
-        run: |
-          git config user.name "rcl-build"
-          git config user.email "rcl-build@users.noreply.github.com"
-          git add android ios .metadata pubspec.lock || true
-          git commit -m "Platform folders made by the build (flutter create + tool/patch_platforms.py)" || exit 0
-          git push
