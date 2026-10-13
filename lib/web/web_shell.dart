@@ -147,7 +147,7 @@ class _WebShellState extends State<WebShell> {
   void _handlers(InAppWebViewController c) {
     c.addJavaScriptHandler(
       handlerName: 'saveFile',
-      callback: (a) async {
+      callback: (List<dynamic> a) async {
         if (a.length < 3) return false;
         try {
           await saveAndShare('${a[0]}', '${a[1]}', '${a[2]}');
@@ -160,14 +160,14 @@ class _WebShellState extends State<WebShell> {
     );
     c.addJavaScriptHandler(
       handlerName: 'saveFailed',
-      callback: (a) {
+      callback: (List<dynamic> a) {
         if (mounted) toast(context, 'The file could not be made – try again.', bad: true);
         return false;
       },
     );
     c.addJavaScriptHandler(
       handlerName: 'print',
-      callback: (a) {
+      callback: (List<dynamic> a) {
         if (!mounted || a.isEmpty) return false;
         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: '${a[0]}', title: a.length > 1 ? '${a[1]}' : '')));
         return true;
@@ -175,7 +175,7 @@ class _WebShellState extends State<WebShell> {
     );
     c.addJavaScriptHandler(
       handlerName: 'openUrl',
-      callback: (a) {
+      callback: (List<dynamic> a) {
         if (a.isNotEmpty) _outside('${a[0]}');
         return true;
       },
