@@ -1,0 +1,50 @@
+name: rcl_mobile
+description: RCL ERP – the mobile app (Android and iPhone). Diesel Issue, Inward, Transfer; one sign-in through the Portal.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  flutter_secure_storage: ^9.2.0
+  package_info_plus: ^8.0.0
+  ota_update: ^7.1.0
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon/icon.png
+  adaptive_icon_background: "#2E7D32"
+  adaptive_icon_foreground: assets/icon/icon_fg.png
+  remove_alpha_ios: true
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Rubik
+      fonts:
+        - asset: assets/fonts/Rubik_400Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Rubik_500Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Rubik_600SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Rubik_700Bold.ttf
+          weight: 700
+    - family: NotoDeva
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari_400Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansDevanagari_600SemiBold.ttf
+          weight: 600
