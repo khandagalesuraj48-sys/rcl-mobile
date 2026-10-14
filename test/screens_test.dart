@@ -217,7 +217,7 @@ void main() {
 
   testWidgets('Log Book (native): the day\'s entries, the machinery still without one; a new entry – Start from the last one, Close typed – saved', (t) async {
     phone(t);
-    final srv = FakeServer();
+    final srv = FakeServer()..perms['Log Book'] = 'Edit';
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);

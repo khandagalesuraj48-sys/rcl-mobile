@@ -1,5 +1,7 @@
 /* THE APP AFTER SIGN-IN: four tabs at the bottom – Home · Entries · Reports · Me (picture 1–3). The tabs keep their place when
  * switched. Back on another tab goes to Home first; on Home a second Back within 3 s leaves the app. */
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -24,6 +26,7 @@ class _ShellState extends State<Shell> {
   String entriesKind = '';
   DateTime? lastBack;
   final hostKey = GlobalKey<WebHostState>();
+  Timer? warmUp;
 
   @override
   void initState() {
@@ -31,13 +34,14 @@ class _ShellState extends State<Shell> {
     webHost.reset();
     webHost.addListener(_hostChanged);
     // the web (for the modules not yet made for the phone) loads quietly in the background once Home is up
-    Future<void>.delayed(const Duration(seconds: 4), () {
+    warmUp = Timer(const Duration(seconds: 4), () {
       if (mounted) webHost.warm();
     });
   }
 
   @override
   void dispose() {
+    warmUp?.cancel();
     webHost.removeListener(_hostChanged);
     super.dispose();
   }
