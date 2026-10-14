@@ -115,12 +115,13 @@ void main() {
     expect(keep.data.containsKey('portal_cookie'), false);
   });
 
-  test('the Super Admin and a password still to be set are sent to the Portal (web)', () async {
+  test('the Super Admin opens his sites too (14-10-2026); a password still to be set is sent to the Portal (web)', () async {
     srv.superAdmin = true;
     final s = make();
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
-    expect(s.stage, Stage.signedOut);
-    expect(s.error, contains('Super Admin'));
+    expect(s.stage, isNot(Stage.signedOut));
+    expect(s.sites.map((x) => x.code), contains('S1'));
+    await s.signOut();
     srv
       ..superAdmin = false
       ..mustChange = true;
