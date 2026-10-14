@@ -12,6 +12,8 @@ class FakeServer {
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
+  bool billLock = false; // (14-10-2026) the entries are in a submitted bill: Mechanical refuses a change (not the Super Admin's)
+  final requests = <Map<String, dynamic>>[];
   bool tanker = false; // a water tanker (Log Book Format I) on the site, with an entry of 2 trips today
   final tankerCalls = <Map<String, dynamic>>[];
   static const _tTrips = [
@@ -78,7 +80,7 @@ class FakeServer {
       final fn = b['fn'] as String, args = b['args'] as List;
       if (fn == 'ssoLogin') {
         calls.add('mech:ssoLogin:${args[0]}');
-        return _j({'result': {'token': 'tok-${args[0]}', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': false, 'perms': perms}, 'site': b['site'], 'siteName': b['site'] == 'S1' ? 'VTR Site – NH 848' : '18B Kolhapur'}});
+        return _j({'result': {'token': 'tok-${args[0]}', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms}, 'site': b['site'], 'siteName': b['site'] == 'S1' ? 'VTR Site – NH 848' : '18B Kolhapur'}});
       }
       if (fn == 'logout') {
         calls.add('mech:logout');
@@ -92,6 +94,13 @@ class FakeServer {
         return _j({'error': 'SESSION_EXPIRED'}, 401);
       }
       final stock = {'stock': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}};
+      const lockMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: this machinery is in the submitted RA Bill 9 of Rana (RCL, 01-10-2026 to 14-10-2026) – its Log Book and diesel entries of those dates cannot be added, changed or deleted without the Super Admin.';
+      if (billLock && !superAdmin && action == 'updateLogRow') return _j({'error': lockMsg}, 500);
+      if (billLock && !superAdmin && action == 'saveLogRows') return _j({'result': {'ok': false, 'errors': [{'row': 1, 'msg': lockMsg}]}});
+      if (action == 'sendChangeRequest') {
+        requests.add((a[0] as Map).cast<String, dynamic>());
+        return _j({'result': {'ok': true, 'id': 'CR-0000${requests.length}'}});
+      }
       switch (action) {
         case 'getInit':
           return _j({'result': {'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': ['Dispenser', 'VTR Store'], 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,

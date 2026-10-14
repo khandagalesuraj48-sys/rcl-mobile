@@ -627,10 +627,12 @@ Future<bool> deleteLog(BuildContext context, String key) async {
   try {
     final e = ((await s.api.call('getLogEntry', [key])) as Map).cast<String, dynamic>();
     if (!context.mounted) return false;
-    if (e['lock'] != null) {
-      toast(context, 'This entry is in a saved bill – it cannot be deleted. · बिलमध्ये आहे.', bad: true);
+    // (14-10-2026) an entry of a submitted bill: the Super Admin deletes it; anybody else may send the delete for his approval
+    if (e['lock'] != null && !s.superAdmin &&
+        !await ask(context, 'In a submitted bill', 'This entry is in a saved bill. You can delete it: on "Delete" it goes to the Super Admin for approval and is deleted only when he approves. · बिलमध्ये आहे – Super Admin च्या मंजुरीने.', yes: 'Go on')) {
       return false;
     }
+    if (!context.mounted) return false;
     final km = hasKm('${e['unit']}'), hr = hasHr('${e['unit']}');
     String rd(dynamic k, dynamic h) => [if (km && asNum(k) != null) '${fmtNum(asNum(k))} km', if (hr && asNum(h) != null) '${fmtNum(asNum(h))} hr'].join(' / ');
     final next = e['next'] as Map?, prev = e['prev'] as Map?;

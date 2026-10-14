@@ -196,6 +196,7 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
 
 /// A short message at the bottom of the screen.
 void toast(BuildContext context, String msg, {bool bad = false}) {
+  if (msg == Api.crSent) bad = false;      // (14-10-2026) sent to the Super Admin for approval: not a fault
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: bad ? C.red : C.ink, duration: Duration(seconds: bad ? 6 : 3)));

@@ -93,6 +93,8 @@ class Session extends ChangeNotifier {
   String error = '';
   String name = '', email = '';
   bool admin = false;
+  /// (14-10-2026) the Super Admin (his Portal ticket says so): he changes entries of a submitted bill; others send them for approval.
+  bool superAdmin = false;
   Map<String, String> perms = {};
   List<SiteChoice> sites = [];
   SiteChoice? site;
@@ -233,6 +235,7 @@ class Session extends ChangeNotifier {
     if ((u['name'] ?? '').toString().isNotEmpty) name = u['name'].toString();
     email = (u['email'] ?? email).toString();
     admin = u['admin'] == true;
+    superAdmin = u['super'] == true;
     final p = u['perms'];
     perms = p is Map ? p.map((k, v) => MapEntry(k.toString(), v.toString())) : {};
     if ((r['siteName'] ?? '').toString().isNotEmpty) siteName = r['siteName'].toString();
@@ -321,6 +324,7 @@ class Session extends ChangeNotifier {
     machines = [];
     perms = {};
     admin = false;
+    superAdmin = false;
     _go(Stage.signedOut, msg);
   }
 }
