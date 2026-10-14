@@ -698,8 +698,7 @@ class _LogFormState extends State<LogForm> {
     if (date.isNotEmpty) return;
     final s = SessionScope.read(context);
     date = widget.date.isNotEmpty ? widget.date : (s.today.isNotEmpty ? s.today : dateKey(DateTime.now()));
-    final us = s.pref('shift');
-    if (kLogShifts.contains(us)) shift = us;
+    shift = s.myShift(kLogShifts); // (14-10-2026) his usual shift, else Day / Night by the time
     if (editing) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _openEdit());
     } else if (widget.no.isNotEmpty) {
@@ -1468,6 +1467,7 @@ class _TankerScreenState extends State<TankerScreen> {
     super.didChangeDependencies();
     if (date.isEmpty) {
       date = widget.date;
+      shift = SessionScope.read(context).myShift(const ['Day', 'Night']); // (14-10-2026) Day / Night by the time; a saved trip opened to change keeps its own
       if (widget.no.isNotEmpty) {
         tanker = SessionScope.read(context).machine(widget.no);
         WidgetsBinding.instance.addPostFrameCallback((_) async {

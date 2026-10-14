@@ -38,7 +38,7 @@ Future<void> net(WidgetTester t, [int ms = 1200]) async {
   await settle(t, 400);
 }
 
-Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client));
+Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))..clock = () => DateTime(2026, 10, 14, 10, 30); // (a Day-shift time: the screens are the same every run)
 
 Future<Session> ready(WidgetTester t, FakeServer srv) async {
   final s = make(srv);
@@ -246,7 +246,7 @@ void main() {
     await t.tap(find.text('Save Log Book'));
     await net(t);
     final row = srv.logSaved.single;
-    expect([row['no'], row['date'], row['shift'], row['mode'], row['openingKm'], row['closingKm']], ['MH-25-AJ-2169', '2026-10-14', 'Full Day', 'KM', 15230, 15350]);
+    expect([row['no'], row['date'], row['shift'], row['mode'], row['openingKm'], row['closingKm']], ['MH-25-AJ-2169', '2026-10-14', 'Day', 'KM', 15230, 15350]); // (14-10-2026: Day / Night by the time – 10:30 is Day)
     expect(find.text('Log Book saved'), findsOneWidget);
   }, tags: ['golden']);
 
