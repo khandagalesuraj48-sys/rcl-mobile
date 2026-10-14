@@ -14,6 +14,8 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.4 (14-10-2026: "user la pn disayla haw tyan approval sathi kay pathwale ahe … pending … milale"):** Me → **Approvals** opens the web's Approvals page in the app: a user sees the changes he sent (waiting / approved – saved / rejected with the reason); the Super Admin approves or rejects there. Shown to the Super Admin and to a user who may change Log Book or diesel. The notifications themselves are the web's (browser / installed web app); this app has no push service of its own yet.
+
 **Version 3.1.3 (14-10-2026: "bill entry change fkt super admin change kru shakel … user pn change kru shakel but approval tewach hoil jewa super admin approval deil"):** an entry of a submitted bill. The Super Admin (his Portal ticket says so) changes it on the phone too – Mechanical saves it, and the next bill of the vendor takes the difference. Anybody else: the save is refused as before, and the phone now asks "send it to the Super Admin?" with a reason (`Api.askApproval` → `sendChangeRequest`, the same as the web page); it is saved only when he approves it (Mechanical → Approvals). A Log Book entry or diesel issue of a bill can be opened again on the phone (the note under it says so). Tests: `session_test.dart` (sent with a reason / not sent / the Super Admin is not asked).
 
 **Version 3.1.2 (14-10-2026: "super admin la pages … disle pahijet"):** the Super Admin signs in on the phone too and opens every
