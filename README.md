@@ -14,6 +14,9 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.2 (14-10-2026: "super admin la pages … disle pahijet"):** the Super Admin signs in on the phone too and opens every
+site's modules as Admin (the Portal lists them all for him); before, the app sent him to the Portal.
+
 **Version 3.1.1 (14-10-2026: "ekach date madhe multiple entry … pratek entry seprate asawi … edit delete pn asaw"):**
 * A water tanker's Log Book entry is a **card per trip** (Trip 1, Trip 2 …: challan, dispatch – unload, chainage, use for), each
   with **Change** / **Delete** (`tripsOfRow`, `deleteTrip`); an entry made before trip by trip is read as its trips (as the web).

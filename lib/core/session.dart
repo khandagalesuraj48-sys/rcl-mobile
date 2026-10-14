@@ -167,10 +167,7 @@ class Session extends ChangeNotifier {
     final me = await api.auth({'action': 'me'});
     if (me['signedIn'] != true) throw ApiError('Please sign in.', code: 'signin');
     final u = (me['user'] as Map?)?.cast<String, dynamic>() ?? {};
-    if (u['super'] == true) {
-      await api.signOut();
-      throw ApiError('The Super Admin manages access on the Portal (web); the app is for the people at the sites.', code: 'super');
-    }
+    // (14-10-2026) the Super Admin opens every module of every site too (the Portal lists them all for him, as Admin)
     final by = <String, SiteChoice>{};
     for (final x in (me['items'] as List? ?? []).whereType<Map>()) {
       final code = (x['site'] ?? '').toString(), url = (x['url'] ?? '').toString().replaceAll(RegExp(r'/+$'), '');
