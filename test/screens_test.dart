@@ -250,6 +250,40 @@ void main() {
     expect(find.text('Log Book saved'), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('Log Book: a water tanker\'s entry is a card per trip (Trip 1, Trip 2), each with Change / Delete; Change opens that trip on the tanker screen', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms['Log Book'] = 'Edit'
+      ..tanker = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook'));
+    await net(t);
+    await pics(t);
+    await t.scrollUntilVisible(find.text('10:30 – 10:36'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Challan 123'), findsOneWidget, reason: 'the first trip, its own card');
+    expect(find.text('07:35 – 07:50'), findsOneWidget);
+    expect(find.text('Challan 18522'), findsOneWidget);
+    expect(find.text('Trip 1'), findsOneWidget);
+    expect(find.text('Trip 2'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13_tanker_trips.png'));
+    await t.tap(find.text('Challan 123'));
+    await settle(t, 800);
+    expect(find.text('Change'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    await t.tap(find.text('Change'));
+    await net(t);
+    await pics(t);
+    expect(find.text('Changing trip 1 of Day – challan 123'), findsOneWidget);
+    expect(find.text('Save change'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/14_tanker_change.png'));
+    await t.tap(find.text('Save change'));
+    await net(t);
+    final call = srv.tankerCalls.single;
+    expect([call['action'], call['no'], call['shift'], call['n'], call['c'], (call['trip'] as Map)['c'], (call['trip'] as Map)['a'], call['to']], ['updateTankerTrip', 'MH-04-J-9844', 'Day', 1, '123', '123', '07:35', 'Day']);
+  }, tags: ['golden']);
+
   testWidgets('My settings: default site, usual shift, diesel place, Log Book way, text size, mobile, photo, password', (t) async {
     phone(t);
     final srv = FakeServer();
