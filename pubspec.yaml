@@ -1,7 +1,7 @@
 name: rcl_mobile
 description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.1.0+1
+version: 3.1.1+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

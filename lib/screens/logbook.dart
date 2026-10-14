@@ -194,7 +194,15 @@ class _LogBookScreenState extends State<LogBookScreen> {
     final today = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     final days = [for (var i = 0; i < 21; i++) today.subtract(Duration(days: i))];
     final words = q.toLowerCase().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-    final list = rows.where((r) => words.isEmpty || words.every(r.values.map((v) => '$v').join(' ').toLowerCase().contains)).toList();
+    // a water tanker's entry: one card per trip (as the web's list, update-105) – each with its own Change / Delete
+    final view = [
+      for (final r in rows)
+        if (tripsOfRow(s, r) case final ts?)
+          for (final (i, t) in ts.indexed) {...r, '_t': t, '_n': i + 1, if (i > 0) 'qty': null}
+        else
+          r
+    ];
+    final list = view.where((r) => words.isEmpty || words.every(r.values.map((v) => '$v').join(' ').toLowerCase().contains)).toList();
     final worked = rows.where((r) => !kDayStatus.contains('${r['mode'] ?? r['unit']}')).length;
     final pend = _pendingToday;
     final tankers = s.machines.any((m) => m.active && m.waterTanker);
@@ -359,6 +367,25 @@ String workText(Map<String, dynamic> r) {
   return parts.isEmpty ? u : parts.join(' · ');
 }
 
+/// The trips of a water tanker's entry (Log Book Format I), for the list: its saved trips; an older entry (made before trip by trip)
+/// read the way the server reads it – its Trip count and challan nos, its time when it is one trip. null = not a tanker's trip entry.
+List<Map<String, dynamic>>? tripsOfRow(Session s, Map<String, dynamic> r) {
+  final m = s.machine('${r['no'] ?? ''}');
+  if (m == null || !m.waterTanker || '${r['unit'] ?? r['mode'] ?? ''}' != 'Trip') return null;
+  final tr = (r['itemWork'] as Map?)?['_trips'];
+  if (tr is List && tr.isNotEmpty) {
+    return [for (final t in tr.whereType<Map>()) {'c': '${t['c'] ?? ''}', 'a': '${t['a'] ?? ''}', 'b': '${t['b'] ?? ''}', 'ch': '${t['ch'] ?? ''}', 'u': '${t['u'] ?? ''}'}];
+  }
+  final n = ((asNum(r['trip']) ?? 0).round()).clamp(1, 999);
+  final list = '${r['challan'] ?? ''}'.split(RegExp(r'\s*[,;]\s*')).where((x) => x.isNotEmpty).toList();
+  final cnt = n > list.length ? n : list.length;
+  final ch = '${r['chainage'] ?? ''}'.isNotEmpty ? '${r['chainage']}' : ['${r['chFrom'] ?? ''}', '${r['chTo'] ?? ''}'].where((x) => x.isNotEmpty).join(' – ');
+  return [
+    for (var i = 0; i < cnt; i++)
+      {'c': i < list.length ? list[i] : '', 'a': cnt == 1 ? '${r['tStart'] ?? ''}' : '', 'b': cnt == 1 ? '${r['tEnd'] ?? ''}' : '', 'ch': ch, 'u': '${r['work'] ?? ''}', 'old': true},
+  ];
+}
+
 class LogCard extends StatelessWidget {
   const LogCard({super.key, required this.r, this.onChanged});
   final Map<String, dynamic> r;
@@ -371,8 +398,108 @@ class LogCard extends StatelessWidget {
     return [two(r['okm'], r['ckm'], 'km'), two(r['ohr'], r['chr'], 'hr'), if ('${r['tStart'] ?? ''}'.isNotEmpty) '${r['tStart']} – ${r['tEnd'] ?? ''}'].where((e) => e.isNotEmpty).join('   ');
   }
 
+  Map<String, dynamic>? get _t => (r['_t'] as Map?)?.cast<String, dynamic>();
+
+  /// One trip of a water tanker (update-105): its own card – trip no, challan, dispatch–unload, chainage, use for.
+  Widget _tripCard(BuildContext context, Map<String, dynamic> t) {
+    final time = '${t['a']}'.isNotEmpty ? '${t['a']} – ${t['b']}' : '';
+    return Press(
+      onTap: () => _tripDetails(context, t),
+      padding: const EdgeInsets.all(12),
+      child: Row(children: [
+        Container(width: 64, height: 64, decoration: BoxDecoration(color: C.blueSoft.withValues(alpha: .7), borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(picOfType('${r['type'] ?? ''}'), size: 48)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${r['no'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700)),
+            Text(['${t['c']}'.isNotEmpty ? 'Challan ${t['c']}' : 'No challan', if (time.isNotEmpty) time].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            if ('${t['ch']}${t['u']}'.isNotEmpty) Text([t['ch'], t['u']].where((e) => '$e'.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: C.muted)),
+            if (t['old'] == true) const Text('entered before trip by trip', style: TextStyle(fontSize: 12, color: C.muted)),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Pill('Trip ${r['_n']}', color: C.blue, bg: C.blueSoft),
+          const SizedBox(height: 6),
+          Text('${r['shift'] ?? ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if ((asNum(r['qty']) ?? 0) > 0) Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.local_gas_station_rounded, size: 14, color: C.green), Text(' ${fmtNum(asNum(r['qty']))} L', style: const TextStyle(fontSize: 12.5, color: C.green, fontWeight: FontWeight.w600))]),
+        ]),
+      ]),
+    );
+  }
+
+  Future<void> _tripDetails(BuildContext context, Map<String, dynamic> t) async {
+    final s = SessionScope.read(context);
+    final rowsOf = <(String, String)>[
+      ('Date', '${showDate('${r['date'] ?? ''}')} · ${r['shift'] ?? ''}'),
+      ('Machinery', '${r['no'] ?? ''}'),
+      ('Trip', '${r['_n']}${t['old'] == true ? '  (entered before trip by trip)' : ''}'),
+      ('Challan', '${t['c']}'),
+      ('Dispatch – Unload', '${t['a']}'.isEmpty ? '' : '${t['a']} – ${t['b']}'),
+      ('Chainage', '${t['ch']}'),
+      ('Use for', '${t['u']}'),
+      ('Entered by', [r['enteredBy'], if ('${r['updatedBy'] ?? ''}'.isNotEmpty) 'changed by ${r['updatedBy']}'].where((e) => '${e ?? ''}'.isNotEmpty).join(' · ')),
+    ].where((x) => x.$2.trim().isNotEmpty).toList();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(width: 58, height: 58, decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(picOfType('${r['type'] ?? ''}'), size: 44)),
+              const SizedBox(width: 14),
+              Expanded(child: TwoLang('${r['no'] ?? ''}', 'टँकर फेरी', size: 20, weight: FontWeight.w700)),
+              Pill('Trip ${r['_n']}', color: C.blue, bg: C.blueSoft, big: true),
+            ]),
+            const SizedBox(height: 14),
+            for (final x in rowsOf)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(width: 130, child: Text(x.$1, style: const TextStyle(color: C.muted, fontSize: 14))),
+                  Expanded(child: Text(x.$2, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5))),
+                ]),
+              ),
+            if (s.canEdit('Log Book')) ...[
+              const SizedBox(height: 16),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(foregroundColor: C.red, side: const BorderSide(color: C.redSoft)),
+                    onPressed: () async {
+                      Navigator.pop(c);
+                      if (await deleteTrip(context, '${r['no']}', '${r['date']}', '${r['shift']}', r['_n'] as int, t)) onChanged?.call();
+                    },
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: const Text('Delete'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: C.blue, minimumSize: const Size.fromHeight(52)),
+                    onPressed: () async {
+                      Navigator.pop(c);
+                      await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => TankerScreen(date: '${r['date']}', no: '${r['no']}', editShift: '${r['shift']}', editN: r['_n'] as int)));
+                      onChanged?.call();
+                    },
+                    icon: const Icon(Icons.edit_rounded),
+                    label: const Text('Change'),
+                  ),
+                ),
+              ]),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_t case final t?) return _tripCard(context, t);
     final st = kDayStatus.contains(_way);
     final color = st ? (_way == 'Idle' ? C.amber : C.red) : C.blue, soft = st ? (_way == 'Idle' ? C.amberSoft : C.redSoft) : C.blueSoft;
     return Press(
@@ -475,6 +602,21 @@ class LogCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Deletes one trip of a water tanker (the other trips of its entry stay; the last trip takes its entry with it).
+Future<bool> deleteTrip(BuildContext context, String no, String date, String shift, int n, Map<String, dynamic> t) async {
+  final s = SessionScope.read(context);
+  final what = '$no – ${showDate(date)} ($shift): trip $n${'${t['c']}'.isNotEmpty ? ', challan ${t['c']}' : ''}${'${t['a']}'.isNotEmpty ? ', ${t['a']}–${t['b']}' : ''}.';
+  if (!await ask(context, 'Delete this trip?', '$what\n\nThe other trips of that entry stay. · बाकी फेऱ्या राहतील.', yes: 'Delete', danger: true)) return false;
+  try {
+    await s.api.call('deleteTankerTrip', [{'no': no, 'date': date, 'shift': shift, 'c': t['c']}], true);
+    if (context.mounted) toast(context, 'Trip deleted.');
+    return true;
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e), bad: true);
+    return false;
   }
 }
 
@@ -1293,8 +1435,9 @@ class _LogFormState extends State<LogForm> {
 //  WATER TANKER – TRIP BY TRIP (Log Book Format I)
 // =====================================================================================================================
 class TankerScreen extends StatefulWidget {
-  const TankerScreen({super.key, required this.date});
-  final String date;
+  const TankerScreen({super.key, required this.date, this.no = '', this.editShift = '', this.editN = 0});
+  final String date, no, editShift;
+  final int editN; // a saved trip to change at once (from the Log Book list)
   @override
   State<TankerScreen> createState() => _TankerScreenState();
 }
@@ -1315,11 +1458,56 @@ class _TankerScreenState extends State<TankerScreen> {
   Map<String, dynamic>? got; // getTankerTrips
   final trips = <_Trip>[_Trip()];
   bool busy = false;
+  Map? editing; // (update-105) the saved trip being changed – its shift and n
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (date.isEmpty) date = widget.date;
+    if (date.isEmpty) {
+      date = widget.date;
+      if (widget.no.isNotEmpty) {
+        tanker = SessionScope.read(context).machine(widget.no);
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await _load();
+          if (!mounted || widget.editN <= 0) return;
+          final t = (got?['trips'] as List? ?? []).whereType<Map>().where((x) => x['shift'] == widget.editShift && asNum(x['n']) == widget.editN).firstOrNull;
+          if (t != null) _edit(t);
+        });
+      }
+    }
+  }
+
+  /// A saved trip into the box above, to be changed (its shift too); Save changes only that trip.
+  void _edit(Map t) {
+    for (final x in trips) {
+      x.dispose();
+    }
+    final n = _Trip();
+    n.c.text = '${t['c'] ?? ''}';
+    n.ch.text = '${t['ch'] ?? ''}';
+    n.u.text = '${t['u'] ?? ''}';
+    n.a = '${t['a'] ?? ''}';
+    n.b = '${t['b'] ?? ''}';
+    setState(() {
+      editing = t;
+      shift = t['shift'] == 'Night' ? 'Night' : 'Day';
+      trips
+        ..clear()
+        ..add(n);
+      err = '';
+    });
+  }
+
+  void _editEnd() {
+    for (final x in trips) {
+      x.dispose();
+    }
+    setState(() {
+      editing = null;
+      trips
+        ..clear()
+        ..add(_Trip());
+    });
   }
 
   @override
@@ -1377,6 +1565,30 @@ class _TankerScreenState extends State<TankerScreen> {
       busy = true;
       err = '';
     });
+    final ed = editing;
+    if (ed != null) {
+      final t = list.first;
+      try {
+        final r = ((await s.api.call('updateTankerTrip', [
+          {'no': m.id, 'date': date, 'shift': ed['shift'], 'n': ed['n'], 'c': ed['c'], 'trip': {'c': t.c.text.trim(), 'a': t.a, 'b': t.b, 'ch': t.ch.text.trim(), 'u': t.u.text.trim()}, 'to': shift},
+        ], true)) as Map).cast<String, dynamic>();
+        if (!mounted) return;
+        setState(() {
+          got = r;
+          busy = false;
+        });
+        _editEnd();
+        toast(context, 'Trip changed – ${m.id}, ${showDate(date)} ($shift).');
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            busy = false;
+            err = '${errText(e)}\nNothing was saved.';
+          });
+        }
+      }
+      return;
+    }
     try {
       final r = ((await s.api.call('saveTankerTrips', [{'no': m.id, 'date': date, 'shift': shift, 'trips': [for (final t in list) {'c': t.c.text.trim(), 'a': t.a, 'b': t.b, 'ch': t.ch.text.trim(), 'u': t.u.text.trim()}]}], true)) as Map).cast<String, dynamic>();
       if (!mounted) return;
@@ -1403,10 +1615,11 @@ class _TankerScreenState extends State<TankerScreen> {
 
   Future<void> _delete(Map t) async {
     final s = SessionScope.read(context), m = tanker!;
-    if (!await ask(context, 'Delete this trip?', '${m.id}, ${showDate(date)} (${t['shift']}): challan ${t['c']}, ${t['a']}–${t['b']}.', yes: 'Delete', danger: true)) return;
+    if (!await ask(context, 'Delete this trip?', '${m.id}, ${showDate(date)} (${t['shift']}): challan ${t['c']}${'${t['a']}'.isNotEmpty ? ', ${t['a']}–${t['b']}' : ''}.', yes: 'Delete', danger: true)) return;
     try {
       final r = ((await s.api.call('deleteTankerTrip', [{'no': m.id, 'date': date, 'shift': t['shift'], 'c': t['c']}], true)) as Map).cast<String, dynamic>();
       if (mounted) setState(() => got = r);
+      if (editing != null && mounted) _editEnd();
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
     }
@@ -1429,6 +1642,7 @@ class _TankerScreenState extends State<TankerScreen> {
                 final d = await showDatePicker(context: context, initialDate: parseKey(date), firstDate: DateTime(2024), lastDate: parseKey(s.today));
                 if (d != null) {
                   setState(() => date = dateKey(d));
+                  if (editing != null) _editEnd();
                   _load();
                 }
               },
@@ -1458,6 +1672,7 @@ class _TankerScreenState extends State<TankerScreen> {
                   tanker = m;
                   got = null;
                 });
+                if (editing != null) _editEnd();
                 _load();
               },
               selectedColor: C.blue,
@@ -1482,11 +1697,12 @@ class _TankerScreenState extends State<TankerScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Challan ${t['c']} · ${t['a']}–${t['b']}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text([t['shift'], t['ch'], t['u']].where((e) => '${e ?? ''}'.isNotEmpty).join(' · '), style: const TextStyle(color: C.muted, fontSize: 13)),
+                      Text(['${t['c'] ?? ''}'.isNotEmpty ? 'Challan ${t['c']}' : 'No challan', if ('${t['a'] ?? ''}'.isNotEmpty) '${t['a']}–${t['b']}'].join(' · '), style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text([t['shift'], t['ch'], t['u'], if (t['old'] == 1 || t['old'] == true) 'entered before trip by trip'].where((e) => '${e ?? ''}'.isNotEmpty).join(' · '), style: const TextStyle(color: C.muted, fontSize: 13)),
                     ]),
                   ),
-                  if (canEdit) IconButton(onPressed: () => _delete(t), icon: const Icon(Icons.delete_outline_rounded, color: C.red)),
+                  if (canEdit) IconButton(tooltip: 'Change', onPressed: () => _edit(t), icon: const Icon(Icons.edit_rounded, color: C.blue)),
+                  if (canEdit) IconButton(tooltip: 'Delete', onPressed: () => _delete(t), icon: const Icon(Icons.delete_outline_rounded, color: C.red)),
                 ]),
               ),
             ),
@@ -1494,7 +1710,18 @@ class _TankerScreenState extends State<TankerScreen> {
             Text('Day trips: ${saved.where((t) => t['shift'] != 'Night').length} · Night trips: ${saved.where((t) => t['shift'] == 'Night').length} · Total: ${saved.length}', style: const TextStyle(fontWeight: FontWeight.w600, color: C.blue)),
           if (canEdit) ...[
             const SizedBox(height: 18),
-            const SectionTitle('New trips', mr: 'नवीन फेऱ्या'),
+            if (editing case final ed?)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF3D9A4))),
+                child: Row(children: [
+                  Expanded(child: Text('Changing trip ${ed['n']} of ${ed['shift']}${'${ed['c'] ?? ''}'.isNotEmpty ? ' – challan ${ed['c']}' : ''}', style: const TextStyle(fontWeight: FontWeight.w600))),
+                  TextButton(onPressed: _editEnd, child: const Text('Cancel')),
+                ]),
+              )
+            else
+              const SectionTitle('New trips', mr: 'नवीन फेऱ्या'),
             for (final (i, t) in trips.indexed)
               Container(
                 margin: const EdgeInsets.only(bottom: 10),
@@ -1527,7 +1754,7 @@ class _TankerScreenState extends State<TankerScreen> {
                   ]),
                 ]),
               ),
-            TextButton.icon(onPressed: () => setState(() => trips.add(_Trip())), icon: const Icon(Icons.add_rounded), label: const Text('Add a trip')),
+            if (editing == null) TextButton.icon(onPressed: () => setState(() => trips.add(_Trip())), icon: const Icon(Icons.add_rounded), label: const Text('Add a trip')),
           ],
         ],
         if (err.isNotEmpty) InfoLine(err, bad: true),
@@ -1540,7 +1767,7 @@ class _TankerScreenState extends State<TankerScreen> {
                   style: FilledButton.styleFrom(backgroundColor: C.blue),
                   onPressed: busy ? null : _save,
                   icon: busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Icon(Icons.check_circle_rounded),
-                  label: Text(busy ? 'Saving…' : 'Save trips'),
+                  label: Text(busy ? 'Saving…' : editing != null ? 'Save change' : 'Save trips'),
                 ),
               ),
             )

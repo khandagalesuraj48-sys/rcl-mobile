@@ -12,6 +12,13 @@ class FakeServer {
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
+  bool tanker = false; // a water tanker (Log Book Format I) on the site, with an entry of 2 trips today
+  final tankerCalls = <Map<String, dynamic>>[];
+  static const _tTrips = [
+    {'shift': 'Day', 'n': 1, 'c': '123', 'a': '07:35', 'b': '07:50', 'ch': '', 'u': '', 'old': 0},
+    {'shift': 'Day', 'n': 2, 'c': '18522', 'a': '10:30', 'b': '10:36', 'ch': 'VTR', 'u': 'PQC curing', 'old': 0},
+  ];
+  Map<String, dynamic> get _tankerDay => {'machine': {'id': 'MH-04-J-9844', 'owner': 'Chalke Enterprises', 'type': 'Water Tanker'}, 'date': '2026-10-14', 'trips': _tTrips, 'problem': '', 'other': ''};
   Map<String, dynamic> prefs = {'shift': '', 'loc': '', 'lbMode': '', 'text': 'normal', 'mobile': '', 'photo': ''};
   String start = '';
 
@@ -93,6 +100,7 @@ class FakeServer {
               {'id': 'Sany 210 (No.1)', 'name': 'Sany 210', 'type': 'Excavator', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['Hrs', 'Time'], 'modesX': ['Time'], 'meterKm': false, 'meterHr': true},
               {'id': 'MH-25-AJ-2169', 'name': '', 'type': 'Tipper', 'owner': 'I E Enterprises', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'modesX': [], 'meterKm': true, 'meterHr': false},
               {'id': 'OLD-9', 'name': '', 'type': 'Roller', 'owner': 'RCL', 'ownership': 'Own', 'status': 'Inactive', 'modes': ['Hrs']},
+              if (tanker) {'id': 'MH-04-J-9844', 'name': '', 'type': 'Water Tanker', 'owner': 'Chalke Enterprises', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['Trip'], 'modesX': [], 'lbFormat': 'I'},
             ]}});
         case 'getDieselIssues':
           return _j({'result': {'count': issues.length, 'totalQty': 240, 'rows': issues}});
@@ -106,6 +114,9 @@ class FakeServer {
             {'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'shift': 'Full Day', 'mode': 'KM', 'okm': 15100, 'ckm': 15230, 'wkm': 130, 'qty': 80, 'work': 'Earth carting', 'key': 'MH-25-AJ-2169|2026-10-14|Full Day'},
             for (final n in ['A', 'B', 'C']) {'no': n, 'type': 'Tipper', 'mode': 'Trip', 'trip': 6, 'shift': 'Day', 'key': '$n|2026-10-14|Day'},
             {'no': 'D', 'type': 'Roller', 'mode': 'Idle', 'shift': 'Full Day', 'key': 'D|2026-10-14|Full Day'},
+            if (tanker)
+              {'no': 'MH-04-J-9844', 'type': 'Water Tanker', 'owner': 'Chalke Enterprises', 'date': '2026-10-14', 'shift': 'Day', 'unit': 'Trip', 'mode': 'Trip', 'trip': 2, 'challan': '123, 18522', 'key': 'MH-04-J-9844|2026-10-14|Day',
+                'itemWork': {'_trips': [for (final t in _tTrips) {'c': t['c'], 'a': t['a'], 'b': t['b'], if ('${t['ch']}'.isNotEmpty) 'ch': t['ch'], if ('${t['u']}'.isNotEmpty) 'u': t['u']}]}},
           ]}});
         case 'getMyPrefs':
           return _j({'result': {'prefs': prefs}});
@@ -131,6 +142,12 @@ class FakeServer {
           return _j({'result': {'ok': true}});
         case 'deleteLogRow':
           return _j({'result': {'ok': true}});
+        case 'getTankerTrips':
+          return _j({'result': _tankerDay});
+        case 'updateTankerTrip':
+        case 'deleteTankerTrip':
+          tankerCalls.add({'action': action, ...(a[0] as Map).cast<String, dynamic>()});
+          return _j({'result': {..._tankerDay, 'ok': true}});
         case 'getIssueBalance':
           return _j({'result': {'balance': 813, 'available': 813, 'loc': 'Dispenser'}});
         case 'dieselPhoto':
