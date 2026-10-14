@@ -1,6 +1,6 @@
-/* SIGN IN – the Portal's email and password (one password for every module). Asked 14-10-2026: "login page interesting banaw,
- * animations de … clean UI sobat beautiful": the green moving background, the RCL mark springing in, the card rising up; a
- * wrong password shakes the card. */
+/* SIGN IN – the Portal's email and password (one password for every module). Asked 14-10-2026: "login page attractive hawa,
+ * login page war rachana cha logo": the green moving background, the Rachana logo springing in, the card rising up; a wrong
+ * password shakes the card. */
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -94,14 +94,27 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 440),
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Arrive(anim: _open, at: 0, scale: true, child: const Mark(size: 88)),
-                        const SizedBox(height: 18),
-                        Arrive(anim: _open, at: .12, child: const Text('RCL ERP', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .5))),
-                        const SizedBox(height: 4),
+                        Arrive(
+                          anim: _open,
+                          at: 0,
+                          scale: true,
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(26),
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .25), blurRadius: 30, offset: const Offset(0, 12))],
+                            ),
+                            child: const RachanaLogo(height: 58),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Arrive(anim: _open, at: .12, child: const Text('Mechanical Management ERP', textAlign: TextAlign.center, style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: .2))),
+                        const SizedBox(height: 2),
                         Arrive(
                           anim: _open,
                           at: .18,
-                          child: Text('One Click Solution · Fleet ERP', style: TextStyle(fontSize: 15, color: Colors.white.withValues(alpha: .82), fontWeight: FontWeight.w500)),
+                          child: Text('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 15, color: Colors.white.withValues(alpha: .85))),
                         ),
                         const SizedBox(height: 28),
                         Arrive(anim: _open, at: .28, rise: 60, child: _card(err)),

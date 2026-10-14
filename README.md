@@ -2,21 +2,22 @@
 
 Android and iPhone app for the people at the sites.
 
-**Version 2 (14-10-2026: "web warcha full access app war"):** the app shows the **whole web ERP** – every page, the ☰ menu,
-the Dashboard, the same Edit / View / None access, the Store and every module of the site inside it – exactly as on the web.
-Nothing of the work is written twice: the pages, checks and saves are the web's own (`/api/rpc`).
-(Version 1 had its own Diesel Issue / Inward / Transfer screens – replaced.)
-
-* **One sign-in:** the app's own sign-in screen (animated) takes the Portal's email and password, lists the person's sites
-  and their modules, and opens the chosen site's ERP with a Portal ticket (`#sso=…`) – nothing else is typed. The Portal's
-  sign-in is also given to the web view, so the web's "Change site" and its modules open without a sign-in.
-* **What a phone's web view does not do by itself** – done by the app (`lib/web/web_shell.dart` + `assets/web_bridge.js`):
-  * the **camera** for a photo (Diesel Issue …) and the **location** of an entry – Android asks once;
-  * **Excel / CSV** made by the web – offered to open, send or keep (Android's share sheet);
-  * **print** – the web's print window opens inside the app (with its Portrait / Landscape / Excel / Print), then
-    Android's printing (a printer or Save as PDF);
-  * a link to **another site** (photo full size, map, backup sheet) – opened outside the app;
-  * the phone's **Back** – one step back in the ERP (the web's own Back); the web's **Logout** – the app's sign-out.
+**Version 3 (14-10-2026: "mobile UI purn wegla hawa … fkt app che all logics functions mobile madhe … premium"):** the app
+has its **own phone screens** (the desktop web stays as it is), on the same servers and with the same access:
+* **Sign-in** (animated, the Rachana logo) – the Portal's email and password; his sites; Mechanical opened with a ticket.
+* **Home** – the site's picture, the site (change it), the diesel stock (total and each place), machinery working today and
+  today's Log Book entries, the modules he may open, today's diesel work.
+* **Entries** – Diesel Issue / Diesel Inward / Transfer of a day (only those he may see): a strip of days, search, a filter by
+  place, a card per entry (its details on a tap), **New Entry** for those with Edit.
+* **New Diesel Issue** – machinery, its way (KM / Hrs …, picked by itself when there is one), readings, litres with the stock
+  after it, driver, remark and the **4 photos** (camera now, the place printed on each, sent at once – as on the web);
+  Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
+* **Reports**, **Me** (role, site, version / update, the full web ERP, sign out).
+* Modules not yet made for the phone (Machinery, Logbook, Maintenance, Billing, Store, Administration, the reports) open their
+  **web page inside the app** (`lib/web/web_page.dart` + `assets/web_bridge.js`: camera, location, Excel / CSV to the share
+  sheet, print / PDF, Back, Logout). The One Click opening film is not shown in the app.
+* 3D pictures: Microsoft Fluent Emoji (MIT, `assets/icons3d/LICENSE-fluentui-emoji.txt`). The Rachana logo is the picture the
+  web ERP shows (fetched once by the build, `assets/brand/`).
 * **Update from inside the app** (asked 14-10-2026: "git release madhe apk theun de"): the newest **GitHub Release** of this
   repository.
   * The release carries the APK, and its notes carry the build number and the SHA-256.
@@ -34,12 +35,13 @@ The first run makes the `android/` and `ios/` folders and saves them in the bran
 ## Code
 | Part | File |
 |---|---|
-| The Portal (sign-in, sites, ticket) | `lib/core/api.dart` |
-| Person, sites, the site open | `lib/core/session.dart` |
-| The web ERP in the app | `lib/web/web_shell.dart`, `assets/web_bridge.js`, `lib/web/print_view.dart`, `lib/web/files.dart` |
-| The app's own screens | `lib/screens/` (sign-in, sites), `lib/main.dart` (opening) |
-| Design | `lib/ui/theme.dart`, `lib/ui/brand.dart` (the moving green background, the RCL mark) |
-| Tests | `test/`, with a pretend Portal in `test/fake_server.dart` |
+| The Portal and Mechanical (sign-in, ticket, actions) | `lib/core/api.dart` |
+| Person, sites, access, the site's lists | `lib/core/session.dart` |
+| The 4 photos (camera, location, the printed band) | `lib/core/photo.dart` |
+| Screens | `lib/screens/` (login, site_pick, shell, home, entries, forms, reports, me), `lib/main.dart` (opening) |
+| A web page in the app | `lib/web/web_page.dart`, `assets/web_bridge.js`, `lib/web/print_view.dart`, `lib/web/files.dart` |
+| Design | `lib/ui/theme.dart`, `lib/ui/brand.dart` (backgrounds, Rachana mark and logo), `lib/ui/widgets.dart` |
+| Tests | `test/`, with pretend servers in `test/fake_server.dart` |
 | The web bridge in a real browser | `test_web/bridge.test.js` (a page built like the ERP), `test_web/real_erp.js` (the real ERP on the local test copy) – run by hand with Node + Chromium; a web view cannot run in Flutter's tests |
 
 Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-*.txt`).

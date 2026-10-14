@@ -8,6 +8,7 @@
  *      app ("print"), which opens Android's printing (a printer or "Save as PDF");
  *   3. a link to another site (the photo in full size, the map, the backup sheet) opens outside the app ("openUrl").
  * The phone's Back button asks the web for one step back (window.__rclAppBack → the web's own rclBack).
+ * The One Click opening film after the sign-in is not shown in the app (asked 14-10-2026: "video yeyla nko").
  * Nothing else of the web is changed; the frames of the page are found by themselves (the ERP is in a frame, a module's page
  * in a frame inside it). */
 (function () {
@@ -98,6 +99,12 @@
     var doc;
     try { doc = w.document; if (!doc || doc.__rclHook) return; doc.__rclHook = 1; } catch (e) { return; } // another site's frame
     if (layer && w.frameElement && layer.contains(w.frameElement)) return; // the print window: done in openLayer
+    try {
+      var st = doc.createElement('style');
+      st.id = 'rcl_app_css';
+      st.textContent = '#oc_intro{display:none!important}';
+      (doc.head || doc.documentElement).appendChild(st);
+    } catch (e) { /* not ready */ }
     var onClick = function (e) {
       var a = e.target;
       while (a && a.nodeName !== 'A') a = a.parentNode;

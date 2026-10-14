@@ -1,7 +1,7 @@
 name: rcl_mobile
-description: RCL ERP – the mobile app (Android and iPhone). The whole web ERP inside the app, one sign-in through the Portal.
+description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 2.0.0+1
+version: 3.0.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -18,6 +18,9 @@ dependencies:
   permission_handler: ^12.0.1
   share_plus: ^12.0.2
   path_provider: ^2.1.5
+  image_picker: ^1.1.2
+  geolocator: ^14.0.0
+  image: ^4.2.0
 
 dev_dependencies:
   flutter_test:
@@ -37,6 +40,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/web_bridge.js
+    - assets/icons3d/
+    - assets/brand/rachana_logo.png
+    - assets/brand/rachana_mark.png
   fonts:
     - family: Rubik
       fonts:

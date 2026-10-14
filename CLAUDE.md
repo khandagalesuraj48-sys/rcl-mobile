@@ -10,7 +10,7 @@ Store; the short version:
 
 ## Rules
 1. **Exactly what he asks, nothing extra.** He decides each step.
-2. **Simple screens**, clear at a glance. Design 6 "Big Tiles" (chosen 14-10-2026).
+2. **Simple screens**, clear at a glance. Premium phone design from his three pictures (14-10-2026): own phone screens, not the web's.
 3. **Live and business-critical:** the app uses the LIVE servers. No test entry is ever saved live. No push to `main` without
    his yes; a server change follows the server's own rules (Mechanical / Portal repos).
 4. **Evidence, not claims:** the build (GitHub Actions) runs analyze, the tests and draws the screens – say plainly what was not

@@ -1,14 +1,9 @@
-/* THE WHOLE WEB ERP INSIDE THE APP (asked 14-10-2026: "web warti jya user la jo access asel tya user la pratek task kam tya app
- * madhun hoil … same web warcha full access app war"; chosen: "web-ch app madhe").
- * The app opens the site's ERP – the very same pages, menu (☰), Dashboard, checks and access as on the web – signed in with a
- * Portal ticket (nothing typed). What a phone's web view does not do by itself, the app does:
- *   the camera for a photo (Diesel Issue …) and the location – the phone asks once;
- *   Excel / CSV files – offered to open, send or keep (assets/web_bridge.js → saveFile);
- *   printing – the print window inside the app, then Android's printing / Save as PDF (→ print);
- *   a link to another site (a photo in full size, the map) – opened outside the app;
- *   the phone's Back – one step back in the ERP (its own Back), never out of it by mistake;
- *   the web's Logout – the app's sign-out (back to the app's sign-in screen).
- * Every change stays on the server's side: the same /api/rpc, the same access, nothing is saved by the app itself. */
+/* A PAGE OF THE WEB ERP INSIDE THE APP – for the modules not yet made for the phone (Log Book, Maintenance, Billing, Store,
+ * Reports, Administration …). Asked 14-10-2026: the app has its own phone screens; until a module has its own, it opens here,
+ * signed in with a Portal ticket straight on its page (nothing typed). The One Click opening film is not shown in the app.
+ * What a phone's web view does not do by itself, the app does (assets/web_bridge.js): the camera and the location, Excel / CSV
+ * files (share sheet), printing (Android printing / PDF), links to other sites outside, Back = one step back in the web, the
+ * web's Logout = the app's sign-out. */
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io' show Platform;
@@ -22,8 +17,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config.dart';
 import '../core/api.dart';
 import '../core/session.dart';
-import '../core/update.dart';
-import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -49,20 +42,25 @@ Go whereTo(Uri u, bool mainFrame, Session s) {
   return Go.stay;
 }
 
-class WebShell extends StatefulWidget {
-  const WebShell({super.key});
+class WebPage extends StatefulWidget {
+  const WebPage({super.key, required this.title, required this.page, this.pic = 'clipboard'});
+
+  /// The page's name (shown at the top) and its key in the web ERP (log, brk, bill, store__dashboard …).
+  final String title, page, pic;
   @override
-  State<WebShell> createState() => _WebShellState();
+  State<WebPage> createState() => _WebPageState();
 }
 
-class _WebShellState extends State<WebShell> {
+/// Opens a web page of the ERP inside the app.
+Future<void> openWeb(BuildContext context, String title, String page, {String pic = 'clipboard'}) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WebPage(title: title, page: page, pic: pic)));
+
+class _WebPageState extends State<WebPage> {
   InAppWebViewController? _c;
   String? _url;
   String _bridge = '', _err = '';
   double _progress = 0;
   bool _ready = false, _leaving = false;
-  AppUpdate? _update;
-  DateTime? _lastBack;
   Timer? _poll;
 
   Session get _s => SessionScope.read(context);
@@ -71,9 +69,6 @@ class _WebShellState extends State<WebShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
-    checkUpdate(_s.api).then((u) {
-      if (mounted && u != null) setState(() => _update = u);
-    });
   }
 
   @override
@@ -90,7 +85,7 @@ class _WebShellState extends State<WebShell> {
     try {
       if (_bridge.isEmpty) _bridge = await rootBundle.loadString('assets/web_bridge.js');
       await _askOnce();
-      final url = await _s.startUrl();
+      final url = await _s.webUrl(widget.page);
       await _cookie();
       if (!mounted) return;
       if (_c != null) {
@@ -132,6 +127,7 @@ class _WebShellState extends State<WebShell> {
       await CookieManager.instance().deleteAllCookies();
       if (Platform.isAndroid) await WebStorageManager.instance().deleteAllData();
     } catch (_) {/* the sign-in ends on the servers anyway */}
+    if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     await _s.signOut(msg);
   }
 
@@ -213,7 +209,7 @@ class _WebShellState extends State<WebShell> {
   Future<void> _back() async {
     final c = _c;
     if (_err.isNotEmpty || c == null) {
-      _leaveAsk();
+      _leave();
       return;
     }
     String r = 'none';
@@ -222,24 +218,18 @@ class _WebShellState extends State<WebShell> {
     } catch (_) {/* below */}
     if (r == 'done') return;
     if (r == 'exit') {
-      await SystemNavigator.pop(); // the ERP already said "press Back again to leave"
+      _leave(); // the web is at its first page: back to the app's own screens
       return;
     }
     if (await c.canGoBack()) {
       await c.goBack();
       return;
     }
-    _leaveAsk();
+    _leave();
   }
 
-  void _leaveAsk() {
-    final now = DateTime.now();
-    if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 3)) {
-      SystemNavigator.pop();
-      return;
-    }
-    _lastBack = now;
-    toast(context, 'Press Back again to leave the app.');
+  void _leave() {
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<PermissionResponse> _permission(PermissionRequest r) async {
@@ -277,7 +267,7 @@ class _WebShellState extends State<WebShell> {
           supportZoom: false,
           disableDefaultErrorPage: true,
           allowsBackForwardNavigationGestures: false,
-          applicationNameForUserAgent: 'RCLApp/2',
+          applicationNameForUserAgent: 'RCLApp/3',
         ),
         onWebViewCreated: (c) {
           _c = c;
@@ -321,87 +311,68 @@ class _WebShellState extends State<WebShell> {
         },
       );
 
-  Widget _cover(String site) => Backdrop(
-        child: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Mark(size: 78),
-            const SizedBox(height: 22),
-            Text('Opening $site…', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 18),
-            const SizedBox(width: 30, height: 30, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)),
-          ]),
-        ),
+  Widget _cover() => Container(
+        color: C.bg,
+        alignment: Alignment.center,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Pic(widget.pic, size: 84),
+          const SizedBox(height: 16),
+          Text('Opening ${widget.title}…', textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          const SizedBox(width: 160, child: LinearProgressIndicator(minHeight: 4, color: C.green, backgroundColor: C.greenSoft, borderRadius: BorderRadius.all(Radius.circular(4)))),
+        ]),
       );
 
-  Widget _problem() => Backdrop(
-        road: false,
-        child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26)),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.wifi_off_rounded, size: 46, color: C.red),
-                  const SizedBox(height: 12),
-                  Text(_err, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.4, color: C.ink)),
-                  const Text('Internet तपासा आणि पुन्हा प्रयत्न करा.', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
-                  const SizedBox(height: 18),
-                  FilledButton.icon(onPressed: _start, icon: const Icon(Icons.refresh_rounded), label: const Text('Try again')),
-                  TextButton(onPressed: () => _signOut(), child: const Text('Sign out')),
-                ]),
-              ),
+  Widget _problem() => Container(
+        color: C.bg,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.wifi_off_rounded, size: 50, color: C.red),
+          const SizedBox(height: 12),
+          Text(_err, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.4, color: C.ink)),
+          const Text('Internet तपासा आणि पुन्हा प्रयत्न करा.', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
+          const SizedBox(height: 18),
+          FilledButton.icon(style: FilledButton.styleFrom(minimumSize: const Size(180, 52)), onPressed: _start, icon: const Icon(Icons.refresh_rounded), label: const Text('Try again')),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _back();
+        },
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
+          child: Scaffold(
+            backgroundColor: Colors.white,
+            body: SafeArea(
+              child: Column(children: [
+                // the app's own slim bar: back to the app's screens, the page's name
+                Container(
+                  height: 52,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: C.line))),
+                  child: Row(children: [
+                    IconButton(tooltip: 'Back to the app', onPressed: _leave, icon: const Icon(Icons.arrow_back_rounded)),
+                    Pic(widget.pic, size: 26),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(widget.title, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+                    IconButton(tooltip: 'Reload', onPressed: () => _c?.reload(), icon: const Icon(Icons.refresh_rounded, color: C.muted)),
+                  ]),
+                ),
+                if (_url != null && _progress < 1 && _ready) LinearProgressIndicator(value: _progress, minHeight: 2, color: C.green, backgroundColor: Colors.transparent),
+                Expanded(
+                  child: Stack(children: [
+                    if (_url != null) _web(),
+                    IgnorePointer(ignoring: _ready, child: AnimatedOpacity(opacity: _ready ? 0 : 1, duration: const Duration(milliseconds: 300), child: _cover())),
+                    if (_err.isNotEmpty) Positioned.fill(child: _problem()),
+                  ]),
+                ),
+              ]),
             ),
           ),
         ),
       );
-
-  @override
-  Widget build(BuildContext context) {
-    final site = SessionScope.of(context).site?.name ?? '';
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _back();
-      },
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: (_ready && _err.isEmpty ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light).copyWith(statusBarColor: Colors.transparent),
-        child: Scaffold(
-          backgroundColor: Colors.white,
-          body: Stack(children: [
-            if (_url != null) SafeArea(child: _web()),
-            if (_url != null && _progress < 1 && _ready) SafeArea(child: LinearProgressIndicator(value: _progress, minHeight: 3, color: C.green, backgroundColor: Colors.transparent)),
-            IgnorePointer(
-              ignoring: _ready,
-              child: AnimatedOpacity(opacity: _ready ? 0 : 1, duration: const Duration(milliseconds: 380), child: _cover(site)),
-            ),
-            if (_err.isNotEmpty) Positioned.fill(child: _problem()),
-            if (_update != null && _ready)
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: SafeArea(
-                  child: Material(
-                    color: C.ink,
-                    borderRadius: BorderRadius.circular(18),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
-                      child: Row(children: [
-                        const Icon(Icons.system_update_rounded, color: Colors.white),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text('New version ${_update!.version}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
-                        TextButton(onPressed: () => runUpdate(context, _update!), child: const Text('Update', style: TextStyle(color: Color(0xFFFFD54F), fontWeight: FontWeight.w700))),
-                        IconButton(tooltip: 'Later', onPressed: () => setState(() => _update = null), icon: const Icon(Icons.close_rounded, color: Colors.white70)),
-                      ]),
-                    ),
-                  ),
-                ),
-              ),
-          ]),
-        ),
-      ),
-    );
-  }
 }

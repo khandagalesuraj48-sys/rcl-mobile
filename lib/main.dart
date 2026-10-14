@@ -6,11 +6,11 @@ import 'config.dart';
 import 'core/api.dart';
 import 'core/session.dart';
 import 'screens/login.dart';
+import 'screens/shell.dart';
 import 'screens/site_pick.dart';
 import 'ui/brand.dart';
 import 'ui/scope.dart';
 import 'ui/theme.dart';
-import 'web/web_shell.dart';
 
 /// The sign-in kept in the phone's own safe (Android Keystore / iOS Keychain) – never in plain files.
 class SecureKeep implements Keep {
@@ -29,11 +29,8 @@ void main() {
 }
 
 class RclApp extends StatelessWidget {
-  const RclApp({super.key, required this.session, this.web});
+  const RclApp({super.key, required this.session});
   final Session session;
-
-  /// The screen of a site that is open (the web ERP); the tests give a stand-in (a web view cannot run in a test).
-  final WidgetBuilder? web;
   @override
   Widget build(BuildContext context) => SessionScope(
         session: session,
@@ -41,15 +38,14 @@ class RclApp extends StatelessWidget {
           title: 'RCL ERP',
           debugShowCheckedModeBanner: false,
           theme: appTheme(),
-          home: Gate(web: web),
+          home: const Gate(),
         ),
       );
 }
 
-/// Which screen: opening · sign-in · pick a site · the ERP.
+/// Which screen: opening · sign-in · pick a site · opening a site · the app.
 class Gate extends StatelessWidget {
-  const Gate({super.key, this.web});
-  final WidgetBuilder? web;
+  const Gate({super.key});
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
@@ -58,30 +54,34 @@ class Gate extends StatelessWidget {
       switchInCurve: Curves.easeOut,
       child: switch (s.stage) {
         Stage.starting => const Opening(key: ValueKey('start')),
+        Stage.opening => Opening(key: const ValueKey('opening'), what: s.siteName),
         Stage.signedOut => const LoginScreen(key: ValueKey('login')),
         Stage.pickSite => const SitePickScreen(key: ValueKey('site')),
-        Stage.ready => KeyedSubtree(key: const ValueKey('web'), child: web != null ? web!(context) : const WebShell()),
+        Stage.ready => Shell(key: ValueKey('app-${s.site?.code}')),
       },
     );
   }
 }
 
-/// The first moment: the RCL mark on the green background while the kept sign-in is checked.
+/// The first moment: the Rachana mark on the green background while the kept sign-in is checked, or a site is opened.
 class Opening extends StatelessWidget {
-  const Opening({super.key});
+  const Opening({super.key, this.what = ''});
+  final String what;
   @override
-  Widget build(BuildContext context) => const AnnotatedRegion<SystemUiOverlayStyle>(
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Scaffold(
           backgroundColor: C.greenDark,
           body: Backdrop(
             child: Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Mark(size: 92),
-                SizedBox(height: 20),
-                Text('RCL ERP', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white)),
-                SizedBox(height: 22),
-                SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)),
+                const Mark(size: 96),
+                const SizedBox(height: 22),
+                Text(what.isEmpty ? 'RCL ERP' : 'Opening $what…', textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(height: 4),
+                const Text('Mechanical Management ERP', style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF))),
+                const SizedBox(height: 24),
+                const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)),
               ]),
             ),
           ),
