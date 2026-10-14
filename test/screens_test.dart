@@ -261,7 +261,9 @@ void main() {
     await t.tap(find.text('My settings'));
     await net(t);
     expect(find.text('Default site'), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Change password'), 200, scrollable: find.byType(Scrollable).last);
     expect(find.text('Change password'), findsOneWidget);
+    await t.scrollUntilVisible(find.text('My usual shift'), -200, scrollable: find.byType(Scrollable).last);
     await t.tap(find.text('My usual shift'));
     await settle(t, 600);
     await t.tap(find.text('Night').last);
