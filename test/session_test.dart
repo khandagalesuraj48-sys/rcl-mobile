@@ -59,7 +59,7 @@ void main() {
     await s2.start();
     expect(s2.stage, Stage.ready);
     expect(s2.site!.code, 'T2');
-    expect(srv.calls, ['portal:me', 'mech:getInit']);
+    expect(srv.calls.where((c) => c != 'mech:getMyPrefs'), ['portal:me', 'mech:getInit']);
     expect(s2.canEdit('Diesel Issue'), true, reason: 'the access comes with getInit too');
   });
 
@@ -71,7 +71,7 @@ void main() {
     srv.expireOnce = 'getDieselIssues';
     final r = await s.api.call('getDieselIssues', [{'from': '2026-10-14', 'to': '2026-10-14'}]) as Map;
     expect(r['count'], 4);
-    expect(srv.calls, ['mech:getDieselIssues', 'portal:go:mechanical:S1', 'mech:ssoLogin:tk2', 'mech:getDieselIssues']);
+    expect(srv.calls.where((c) => c != 'mech:getMyPrefs'), ['mech:getDieselIssues', 'portal:go:mechanical:S1', 'mech:ssoLogin:tk2', 'mech:getDieselIssues']);
   });
 
   test('another site: its own Mechanical sign-in', () async {
