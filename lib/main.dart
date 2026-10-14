@@ -38,6 +38,11 @@ class RclApp extends StatelessWidget {
           title: 'RCL ERP',
           debugShowCheckedModeBanner: false,
           theme: appTheme(),
+          // his "Size of the text" (Settings) – on every screen of the app
+          builder: (context, child) {
+            final m = MediaQuery.of(context), k = SessionScope.of(context).textScale;
+            return k == 1.0 ? child! : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: child!);
+          },
           home: const Gate(),
         ),
       );

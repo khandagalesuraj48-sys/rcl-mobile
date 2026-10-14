@@ -126,3 +126,14 @@ Uint8List _toJpg(_Raw r) {
   if (jpg.length > 700 * 1024) jpg = img.encodeJpg(im, quality: 70);
   return jpg;
 }
+
+/// A smaller copy for the AI (longest side 1280 px) – it is read faster (as the web: update-87).
+Future<String> smallCopy(Uint8List jpg) async => 'data:image/jpeg;base64,${base64Encode(await compute(_small, jpg))}';
+
+Uint8List _small(Uint8List jpg) {
+  final im = img.decodeJpg(jpg);
+  if (im == null) return jpg;
+  final k = 1280 / (im.width > im.height ? im.width : im.height);
+  final out = k < 1 ? img.copyResize(im, width: (im.width * k).round(), height: (im.height * k).round(), interpolation: img.Interpolation.average) : im;
+  return img.encodeJpg(out, quality: 85);
+}

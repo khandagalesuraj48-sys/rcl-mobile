@@ -16,8 +16,11 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 
 class EntryForm extends StatefulWidget {
-  const EntryForm({super.key, required this.kind});
+  const EntryForm({super.key, required this.kind, this.edit});
   final Kind kind;
+
+  /// An entry being changed (as in the list); null = a new one.
+  final Map<String, dynamic>? edit;
   @override
   State<EntryForm> createState() => _EntryFormState();
 }
@@ -40,8 +43,15 @@ class _EntryFormState extends State<EntryForm> {
   String err = '';
   int balSeq = 0;
 
+  // what the AI read on the photos (dashboard → the reading, dispenser → the litres), as on the web (update-85 / 87)
+  final ai = <String, Map<String, dynamic>>{}; // dash / pump → its answer ({wait: true} while reading)
+  final aiPut = <TextEditingController>{}; // boxes the AI filled (typing over one makes it the person's)
+  int aiTok = 0;
+
   Kind get k => widget.kind;
   bool get issue => k.key == 'issue';
+  Map<String, dynamic>? get ed => widget.edit;
+  String get editId => '${ed?['id'] ?? ''}';
 
   @override
   void didChangeDependencies() {
@@ -49,10 +59,46 @@ class _EntryFormState extends State<EntryForm> {
     final s = SessionScope.read(context);
     if (source.isEmpty) {
       date = s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
-      source = s.locations.isNotEmpty ? s.locations.first : 'Dispenser';
+      // his usual diesel place and shift (Settings)
+      final loc = s.pref('loc');
+      source = s.locations.contains(loc) ? loc : (s.locations.isNotEmpty ? s.locations.first : 'Dispenser');
       from = source;
-      to = s.locations.length > 1 ? s.locations[1] : '';
+      to = s.locations.firstWhere((l) => l != from, orElse: () => '');
+      if (s.pref('shift') == 'Night') shift = 'Night';
+      final e = ed;
+      if (e != null) _fillFrom(s, e);
       if (issue) WidgetsBinding.instance.addPostFrameCallback((_) => _balance());
+    }
+  }
+
+  /// An entry being changed: its values in the boxes.
+  void _fillFrom(Session s, Map<String, dynamic> e) {
+    String v(String key) => '${e[key] ?? ''}';
+    if (v('date').isNotEmpty) date = v('date');
+    if (v('shift').isNotEmpty) shift = v('shift');
+    qty.text = v('qty');
+    remark.text = v('remark');
+    switch (k.key) {
+      case 'issue':
+        source = v('source').isEmpty ? source : v('source');
+        machine = s.machine(v('no'));
+        final m = machine;
+        // the way it was measured: as saved, else from its readings (KM, Hrs or both), else the machinery's own
+        final both = v('kmReading').isNotEmpty && v('hrReading').isNotEmpty;
+        final guess = both ? 'KM + Hrs' : v('kmReading').isNotEmpty ? 'KM' : v('hrReading').isNotEmpty ? 'Hrs' : '';
+        way = v('mode').isNotEmpty ? v('mode') : (m != null && m.modes.contains(guess) ? guess : (m?.wayAuto ?? ''));
+        km.text = v('kmReading');
+        hr.text = v('hrReading');
+        driver.text = v('driver');
+      case 'inward':
+        source = v('location').isEmpty ? source : v('location');
+        pump.text = v('pump');
+        rate.text = v('rate');
+        billNo.text = v('billNo');
+        billDate = v('billDate');
+      default:
+        from = v('from').isEmpty ? from : v('from');
+        to = v('to').isEmpty ? to : v('to');
     }
   }
 
@@ -69,7 +115,7 @@ class _EntryFormState extends State<EntryForm> {
     final s = SessionScope.read(context), my = ++balSeq;
     setState(() => bal = null);
     try {
-      final r = (await s.api.call('getIssueBalance', [date, shift, '', source]) as Map).cast<String, dynamic>();
+      final r = (await s.api.call('getIssueBalance', [date, shift, editId, source]) as Map).cast<String, dynamic>();
       if (my == balSeq && mounted) setState(() => bal = r);
     } catch (_) {/* the server checks the stock at the save anyway */}
   }
@@ -118,6 +164,8 @@ class _EntryFormState extends State<EntryForm> {
       final p = await takePhoto(pk.en, m.id);
       if (p == null || !mounted || machine?.id != m.id) return;
       setState(() => sh.jpg = p.jpg);
+      // the AI reads the dashboard (its reading) and the dispenser (its litres) NOW, while the photo is being sent
+      if ((pk.key == 'dash' && !m.debit) || pk.key == 'pump') _aiRead(pk.key, m.id, p.jpg);
       final r = (await s.api.call('dieselPhoto', [{'kind': pk.key, 'data': p.dataUrl, 'lat': p.spot.lat, 'lng': p.spot.lng, 'acc': p.spot.acc, 'at': p.at.toUtc().toIso8601String(), 'no': m.id}], true) as Map);
       if (!mounted || machine?.id != m.id) return;
       setState(() => sh.path = (r['path'] ?? '').toString());
@@ -133,6 +181,73 @@ class _EntryFormState extends State<EntryForm> {
     }
   }
 
+  Future<void> _aiRead(String kind, String no, Uint8List jpg) async {
+    final s = SessionScope.read(context), tok = ++aiTok;
+    setState(() => ai[kind] = {'wait': true});
+    Map<String, dynamic> r;
+    try {
+      r = ((await s.api.call('getMeterReading', [{'kind': kind, 'data': await smallCopy(jpg), 'no': no}])) as Map).cast<String, dynamic>();
+    } catch (e) {
+      r = {'error': errText(e)};
+    }
+    if (!mounted || machine?.id != no || tok < aiTok - 4) return;
+    setState(() {
+      if (r['off'] == true) {
+        ai.remove(kind); // the AI is not set up on this site
+        return;
+      }
+      ai[kind] = r;
+      void fill(TextEditingController c, dynamic v) {
+        final n = asNum(v);
+        if (n == null) return;
+        if (c.text.isEmpty || aiPut.contains(c)) {
+          c.text = fmtNum(n).replaceAll(',', '');
+          aiPut.add(c);
+        }
+      }
+
+      if (kind == 'dash') {
+        if (hasKm(way)) fill(km, r['km']);
+        if (hasHr(way)) fill(hr, r['hr']);
+      } else {
+        fill(qty, r['litres']);
+      }
+    });
+  }
+
+  /// The line under the photos: what the AI read, what to check, what it is still reading (as the web).
+  String get _aiNote {
+    final d = ai['dash'], p = ai['pump'], put = <String>[], warn = <String>[], waiting = <String>[];
+    if (d != null) {
+      if (d['wait'] == true) {
+        waiting.add('the meter');
+      } else if (d['error'] != null) {
+        warn.add('the meter could not be read now – type the reading');
+      } else {
+        if (asNum(d['km']) != null) put.add('${fmtNum(asNum(d['km']))} km');
+        if (asNum(d['hr']) != null) put.add('${fmtNum(asNum(d['hr']))} hr');
+        if ('${d['check'] ?? ''}'.isNotEmpty) warn.add('reading ${d['check']}');
+        if (asNum(d['km']) == null && asNum(d['hr']) == null) warn.add('the meter could not be read clearly – type the reading (or take the dashboard photo again, closer)');
+      }
+    }
+    if (p != null) {
+      if (p['wait'] == true) {
+        waiting.add('the litres');
+      } else if (p['error'] != null) {
+        warn.add('the litres could not be read now – type the litres');
+      } else {
+        if (asNum(p['litres']) != null) put.add('${fmtNum(asNum(p['litres']))} L');
+        if ('${p['check'] ?? ''}'.isNotEmpty) warn.add('litres: ${p['check']}');
+        if (asNum(p['litres']) == null) warn.add('the litres could not be read clearly – type the litres');
+      }
+    }
+    return [
+      if (put.isNotEmpty) 'AI read on the photos: ${put.join(' · ')} – check with the photos; type over it if it is wrong.',
+      if (warn.isNotEmpty) 'Check: ${warn.join('; ')}.',
+      if (waiting.isNotEmpty) 'The AI is reading ${waiting.join(' and ')} on the photo…',
+    ].join(' ');
+  }
+
   bool get _photoSending => shots.values.any((x) => x.busy);
   List<Map<String, String>> get _photoList => [for (final pk in kPhotoKinds) if ((shots[pk.key]?.path ?? '').isNotEmpty) {'k': pk.key, 'p': shots[pk.key]!.path}];
 
@@ -141,7 +256,7 @@ class _EntryFormState extends State<EntryForm> {
         'issue' => {
             'date': date, 'shift': shift, 'no': machine?.id ?? '', 'qty': asNum(qty.text) ?? '', 'kmReading': hasKm(way) ? (asNum(km.text) ?? '') : '', 'hrReading': hasHr(way) ? (asNum(hr.text) ?? '') : '',
             'driver': driver.text.trim(), 'remark': remark.text.trim(), 'source': source, 'force': false, 'mode': way,
-            if (_photoList.isNotEmpty) 'photos': _photoList,
+            if (_photoList.isNotEmpty && ed == null) 'photos': _photoList,
           },
         'inward' => {'date': date, 'location': source, 'pump': pump.text.trim(), 'qty': asNum(qty.text) ?? '', 'rate': asNum(rate.text) ?? '', 'billNo': billNo.text.trim(), 'billDate': billDate},
         _ => {'date': date, 'shift': shift, 'from': from, 'to': to, 'qty': asNum(qty.text) ?? '', 'remark': remark.text.trim()},
@@ -179,7 +294,7 @@ class _EntryFormState extends State<EntryForm> {
     try {
       final d = _data();
       if (force) d['force'] = true;
-      final r = (await s.api.call(k.save, [d], true) as Map).cast<String, dynamic>();
+      final r = (await (ed == null ? s.api.call(k.save, [d], true) : s.api.call(_updateOf(k.key), [editId, d], true)) as Map).cast<String, dynamic>();
       if (!mounted) return;
       if (r['warning'] != null) {
         setState(() => busy = false);
@@ -190,6 +305,13 @@ class _EntryFormState extends State<EntryForm> {
       if (issue && driver.text.trim().isNotEmpty && !s.drivers.contains(driver.text.trim())) s.drivers.add(driver.text.trim());
       savedOne = true;
       HapticFeedback.lightImpact();
+      if (ed != null) {
+        if (mounted) {
+          toast(context, '${k.en} $editId updated. · बदल जतन झाला.');
+          Navigator.pop(context, true);
+        }
+        return;
+      }
       await _savedSheet(r['id']?.toString() ?? '', d);
       if (!mounted) return;
       setState(() {
@@ -197,6 +319,8 @@ class _EntryFormState extends State<EntryForm> {
         machine = null;
         way = '';
         shots.clear();
+        ai.clear();
+        aiPut.clear();
         for (final c in [qty, km, hr, remark, rate, billNo]) {
           c.clear();
         }
@@ -287,7 +411,7 @@ class _EntryFormState extends State<EntryForm> {
 
   Widget _qtyField() => Container(
         padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: C.line)),
+        decoration: BoxDecoration(color: aiPut.contains(qty) ? C.blueSoft : Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: aiPut.contains(qty) ? C.blue : C.line)),
         child: Row(children: [
           Pic(k.pic, size: 34),
           const SizedBox(width: 12),
@@ -297,7 +421,7 @@ class _EntryFormState extends State<EntryForm> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
               style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() => aiPut.remove(qty)),
               decoration: const InputDecoration(hintText: '0', border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, filled: false, contentPadding: EdgeInsets.symmetric(vertical: 10)),
             ),
           ),
@@ -393,7 +517,7 @@ class _EntryFormState extends State<EntryForm> {
           title: Row(children: [
             Pic(k.pic, size: 30),
             const SizedBox(width: 10),
-            Expanded(child: TwoLang('New ${k.en}', k.mr, size: 19, weight: FontWeight.w700)),
+            Expanded(child: TwoLang(ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700)),
           ]),
         ),
         // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away
@@ -427,11 +551,11 @@ class _EntryFormState extends State<EntryForm> {
               ],
               if (m != null && hasKm(way)) ...[
                 _label('KM reading', 'KM रीडिंग'),
-                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'Odometer km', prefixIcon: Icon(Icons.speed_rounded))),
+                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: 'Odometer km', prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? 'Read by the AI on the dashboard photo – check it' : null)),
               ],
               if (m != null && hasHr(way)) ...[
                 _label('Hour meter', 'तास मीटर'),
-                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'Hours', prefixIcon: Icon(Icons.timer_outlined))),
+                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: 'Hours', prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? 'Read by the AI on the dashboard photo – check it' : null)),
               ],
               _label('Litres', 'लिटर'),
               _qtyField(),
@@ -450,9 +574,20 @@ class _EntryFormState extends State<EntryForm> {
                 onSelected: (v) => driver.text = v,
                 fieldViewBuilder: (c, ctl, f, sub) => TextField(controller: ctl, focusNode: f, onChanged: (v) => driver.text = v, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(hintText: 'Name (optional)', prefixIcon: Icon(Icons.person_outline_rounded))),
               ),
-              if (s.canEdit('Diesel Issue')) ...[
+              if (s.canEdit('Diesel Issue') && ed == null) ...[
                 _label('Photos', 'फोटो'),
                 _photos(),
+                if (_aiNote.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(14)),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Icon(Icons.auto_awesome_rounded, color: C.blue, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_aiNote, style: const TextStyle(fontSize: 13.5, color: C.blue, height: 1.35, fontWeight: FontWeight.w500))),
+                    ]),
+                  ),
                 const Padding(padding: EdgeInsets.only(top: 6, left: 2), child: Text('Taken with the camera now – date, time and place are printed on each photo.', style: TextStyle(fontSize: 12.5, color: C.muted))),
               ],
             ],
@@ -503,7 +638,7 @@ class _EntryFormState extends State<EntryForm> {
               style: FilledButton.styleFrom(backgroundColor: k.color),
               onPressed: busy ? null : _save,
               icon: busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Icon(Icons.check_circle_rounded),
-              label: Text(busy ? 'Saving…' : 'Save ${k.en}'),
+              label: Text(busy ? 'Saving…' : ed == null ? 'Save ${k.en}' : 'Save the change'),
             ),
           ),
         ),
@@ -566,6 +701,12 @@ class _MachinePickerState extends State<MachinePicker> {
     );
   }
 }
+
+String _updateOf(String kind) => switch (kind) { 'issue' => 'updateDieselIssue', 'inward' => 'updateInward', _ => 'updateTransfer' };
+String deleteOf(String kind) => switch (kind) { 'issue' => 'deleteDieselIssue', 'inward' => 'deleteInward', _ => 'deleteTransfer' };
+
+/// Changes an entry of [k] (from the list); true when it was changed.
+Future<bool> changeEntry(BuildContext context, Kind k, Map<String, dynamic> row) async => await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k, edit: row))) ?? false;
 
 /// Opens a new entry of [k]; true when something was saved.
 Future<bool> newEntry(BuildContext context, Kind k) async => await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k))) ?? false;

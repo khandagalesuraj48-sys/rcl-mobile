@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/main.dart';
+import 'package:rcl_mobile/web/web_host.dart';
 
 import 'fake_server.dart';
 
@@ -71,6 +72,7 @@ Future<void> pics(WidgetTester t) async {
 
 void main() {
   setUpAll(loadFonts);
+  setUp(() => webHost.enabled = false); // a web view cannot run in a test
   void phone(WidgetTester t) {
     t.view.physicalSize = const Size(1080, 2340);
     t.view.devicePixelRatio = 3;
@@ -212,4 +214,60 @@ void main() {
     final op = t.widget<Opacity>(find.ancestor(of: find.text('Mechanical Management ERP'), matching: find.byType(Opacity)).first);
     expect(op.opacity, 1);
   });
+
+  testWidgets('Log Book (native): the day\'s entries, the machinery still without one; a new entry – Start from the last one, Close typed – saved', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook'));
+    await net(t);
+    await pics(t);
+    expect(find.text('Log Book'), findsOneWidget);
+    expect(find.text('130 km'), findsOneWidget);
+    expect(find.text('Idle'), findsOneWidget);
+    expect(find.text('2 machinery without Log Book'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/10_logbook.png'));
+    await t.tap(find.text('New Entry'));
+    await net(t);
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('MH-25-AJ-2169'));
+    await net(t);
+    expect(find.text('KM reading'), findsOneWidget, reason: 'its one way (KM) is picked by itself');
+    expect(find.widgetWithText(TextField, 'Start'), findsOneWidget);
+    expect((t.widget<TextField>(find.widgetWithText(TextField, 'Start')).controller!).text, '15230', reason: 'the Start comes from its last entry');
+    await t.enterText(find.widgetWithText(TextField, 'Close'), '15350');
+    await settle(t, 300);
+    expect(find.text('Work: 120 km'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/11_log_form.png'));
+    await t.tap(find.text('Save Log Book'));
+    await net(t);
+    final row = srv.logSaved.single;
+    expect([row['no'], row['date'], row['shift'], row['mode'], row['openingKm'], row['closingKm']], ['MH-25-AJ-2169', '2026-10-14', 'Full Day', 'KM', 15230, 15350]);
+    expect(find.text('Log Book saved'), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('My settings: default site, usual shift, diesel place, Log Book way, text size, mobile, photo, password', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Me'));
+    await net(t);
+    await t.tap(find.text('My settings'));
+    await net(t);
+    expect(find.text('Default site'), findsOneWidget);
+    expect(find.text('Change password'), findsOneWidget);
+    await t.tap(find.text('My usual shift'));
+    await settle(t, 600);
+    await t.tap(find.text('Night').last);
+    await net(t);
+    expect(srv.prefs['shift'], 'Night');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/12_settings.png'));
+  }, tags: ['golden']);
 }

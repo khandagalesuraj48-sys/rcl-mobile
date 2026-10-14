@@ -1,0 +1,229 @@
+/* MY SETTINGS (asked 14-10-2026: "app madhe user setting banwaychi aahe, user default site set karu shakel, bakiche sagle
+ * settings"): the same settings as the web's Settings page, kept with his account (the web and the app use the same ones) –
+ * default site, usual shift, usual diesel place, the usual way of the Log Book entry, size of the text, mobile number,
+ * photo – and his password (the Portal's, for every module). Every change is saved at once. */
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
+
+import '../core/session.dart';
+import '../ui/scope.dart';
+import '../ui/theme.dart';
+import '../ui/widgets.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String busy = '';
+
+  Future<void> _save(String what, Future<void> Function() fn, [String done = 'Saved.']) async {
+    setState(() => busy = what);
+    try {
+      await fn();
+      if (mounted) toast(context, '$done · जतन झाले.');
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    } finally {
+      if (mounted) setState(() => busy = '');
+    }
+  }
+
+  Future<String?> _pick(String title, List<(String, String)> items, String cur) => showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        builder: (c) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * .7),
+            child: ListView(shrinkWrap: true, padding: const EdgeInsets.only(bottom: 12), children: [
+              Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+              for (final it in items)
+                ListTile(
+                  leading: Icon(it.$1 == cur ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: C.green),
+                  title: Text(it.$2, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  onTap: () => Navigator.pop(c, it.$1),
+                ),
+            ]),
+          ),
+        ),
+      );
+
+  Future<void> _password() async {
+    final old = TextEditingController(), now = TextEditingController(), again = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Change password'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: old, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
+          const SizedBox(height: 10),
+          TextField(controller: now, obscureText: true, decoration: const InputDecoration(labelText: 'New password')),
+          const SizedBox(height: 10),
+          TextField(controller: again, obscureText: true, decoration: const InputDecoration(labelText: 'New password again')),
+          const SizedBox(height: 8),
+          const Text('One password for the Portal and every module.', style: TextStyle(fontSize: 12.5, color: C.muted)),
+        ]),
+        actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')), FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(c, true), child: const Text('Change'))],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    if (now.text != again.text) {
+      toast(context, 'The two new passwords are not the same.', bad: true);
+      return;
+    }
+    final s = SessionScope.read(context);
+    await _save('pw', () => s.changePassword(old.text, now.text), 'Password changed');
+  }
+
+  Future<void> _photo() async {
+    final s = SessionScope.read(context);
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 400, maxHeight: 400, imageQuality: 85);
+    if (x == null) return;
+    final raw = await x.readAsBytes();
+    final im = img.decodeImage(raw);
+    if (im == null) {
+      if (mounted) toast(context, 'This picture cannot be read.', bad: true);
+      return;
+    }
+    final sq = img.copyResizeCropSquare(im, size: 160);
+    var q = 82;
+    Uint8List jpg = img.encodeJpg(sq, quality: q);
+    while (base64Encode(jpg).length > 60000 && q > 40) {
+      q -= 10;
+      jpg = img.encodeJpg(sq, quality: q);
+    }
+    await _save('photo', () => s.savePrefs({'photo': 'data:image/jpeg;base64,${base64Encode(jpg)}'}), 'Photo saved');
+  }
+
+  Future<void> _mobile() async {
+    final s = SessionScope.read(context);
+    final c = TextEditingController(text: s.pref('mobile'));
+    final v = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Mobile number'),
+        content: TextField(controller: c, keyboardType: TextInputType.phone, maxLength: 10, decoration: const InputDecoration(hintText: '10 digits')),
+        actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancel')), FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(d, c.text.trim()), child: const Text('Save'))],
+      ),
+    );
+    if (v != null) await _save('mobile', () => s.savePrefs({'mobile': v}));
+  }
+
+  Widget _row({required IconData icon, required Color color, required String en, required String mr, required String value, VoidCallback? onTap, String id = ''}) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Press(
+          onTap: busy.isEmpty ? onTap : null,
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          child: Row(children: [
+            Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: color)),
+            const SizedBox(width: 14),
+            Expanded(child: TwoLang(en, mr, size: 15.5)),
+            const SizedBox(width: 8),
+            Flexible(child: Text(value, textAlign: TextAlign.right, maxLines: 2, style: const TextStyle(fontSize: 14, color: C.greenDark, fontWeight: FontWeight.w600))),
+            busy == id && id.isNotEmpty ? const Padding(padding: EdgeInsets.all(6), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5))) : const Icon(Icons.chevron_right_rounded, color: C.faint),
+          ]),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context);
+    String nameOf(String code) => code.isEmpty ? 'Ask me / last one' : s.sites.firstWhere((x) => x.code == code, orElse: () => SiteChoice(code, code, '', [])).name;
+    const ways = [('', 'Ask me each time'), ('date', 'One date – many machinery'), ('mach', 'One machinery – many dates')];
+    const sizes = [('normal', 'Normal'), ('large', 'Large'), ('xlarge', 'Larger')];
+    final shift = s.pref('shift'), loc = s.pref('loc'), lb = s.pref('lbMode'), text = s.pref('text').isEmpty ? 'normal' : s.pref('text');
+    return Scaffold(
+      appBar: AppBar(title: const TwoLang('My settings', 'माझ्या सेटिंग्ज', size: 20, weight: FontWeight.w700)),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 30), children: [
+        Center(
+          child: GestureDetector(
+            onTap: _photo,
+            child: Stack(children: [
+              CircleAvatar(
+                radius: 46,
+                backgroundColor: C.green,
+                backgroundImage: s.pref('photo').startsWith('data:image') ? MemoryImage(base64Decode(s.pref('photo').split(',').last)) : null,
+                child: s.pref('photo').startsWith('data:image') ? null : Text(s.name.isEmpty ? '?' : s.name[0].toUpperCase(), style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: Colors.white)),
+              ),
+              const Positioned(right: 0, bottom: 0, child: CircleAvatar(radius: 15, backgroundColor: Colors.white, child: Icon(Icons.edit_rounded, size: 17, color: C.green))),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(child: Text(s.name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+        Center(child: Text(s.email, style: const TextStyle(color: C.muted))),
+        const SizedBox(height: 18),
+        _row(
+          id: 'site',
+          icon: Icons.location_on_rounded,
+          color: C.green,
+          en: 'Default site',
+          mr: 'नेहमीची site',
+          value: nameOf(s.defaultSite),
+          onTap: () async {
+            final v = await _pick('Default site · नेहमीची site', [('', 'Ask me / the last one'), for (final x in s.sites) (x.code, x.name)], s.defaultSite);
+            if (v != null && v != s.defaultSite) await _save('site', () => s.setDefaultSite(v));
+          },
+        ),
+        _row(
+          id: 'shift',
+          icon: Icons.wb_twilight_rounded,
+          color: C.amber,
+          en: 'My usual shift',
+          mr: 'नेहमीची पाळी',
+          value: shift.isEmpty ? 'None' : shift,
+          onTap: () async {
+            final v = await _pick('My usual shift', const [('', 'No usual shift'), ('Full Day', 'Full Day'), ('Day', 'Day'), ('Night', 'Night')], shift);
+            if (v != null && v != shift) await _save('shift', () => s.savePrefs({'shift': v}));
+          },
+        ),
+        _row(
+          id: 'loc',
+          icon: Icons.local_gas_station_rounded,
+          color: C.green,
+          en: 'My usual diesel place',
+          mr: 'नेहमीचे डिझेल ठिकाण',
+          value: loc.isEmpty ? 'None' : loc,
+          onTap: () async {
+            final v = await _pick('My usual diesel place', [('', 'None'), for (final l in s.locations) (l, l)], loc);
+            if (v != null && v != loc) await _save('loc', () => s.savePrefs({'loc': v}));
+          },
+        ),
+        _row(
+          id: 'lb',
+          icon: Icons.menu_book_rounded,
+          color: C.blue,
+          en: 'Log Book entry – usual way',
+          mr: 'लॉगबुक – नेहमीची पद्धत',
+          value: ways.firstWhere((w) => w.$1 == lb, orElse: () => ways.first).$2,
+          onTap: () async {
+            final v = await _pick('Log Book entry – usual way', ways, lb);
+            if (v != null && v != lb) await _save('lb', () => s.savePrefs({'lbMode': v}));
+          },
+        ),
+        _row(
+          id: 'text',
+          icon: Icons.format_size_rounded,
+          color: C.purple,
+          en: 'Size of the text',
+          mr: 'अक्षरांचा आकार',
+          value: sizes.firstWhere((w) => w.$1 == text, orElse: () => sizes.first).$2,
+          onTap: () async {
+            final v = await _pick('Size of the text', sizes, text);
+            if (v != null && v != text) await _save('text', () => s.savePrefs({'text': v}));
+          },
+        ),
+        _row(id: 'mobile', icon: Icons.phone_iphone_rounded, color: C.slate, en: 'Mobile number', mr: 'मोबाईल नंबर', value: s.pref('mobile').isEmpty ? 'Not set' : s.pref('mobile'), onTap: _mobile),
+        _row(id: 'photo', icon: Icons.account_circle_rounded, color: C.orange, en: 'My photo', mr: 'माझा फोटो', value: s.pref('photo').isEmpty ? 'Not set' : 'Set', onTap: _photo),
+        _row(id: 'pw', icon: Icons.password_rounded, color: C.red, en: 'Change password', mr: 'पासवर्ड बदला', value: '', onTap: _password),
+        const Padding(padding: EdgeInsets.fromLTRB(4, 8, 4, 0), child: Text('These settings are kept with your account – the web ERP uses the same ones.', style: TextStyle(fontSize: 12.5, color: C.muted))),
+      ]),
+    );
+  }
+}

@@ -5,7 +5,7 @@ import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/kinds.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/web/files.dart';
-import 'package:rcl_mobile/web/web_page.dart';
+import 'package:rcl_mobile/web/web_host.dart';
 
 import 'fake_server.dart';
 
@@ -180,5 +180,34 @@ void main() {
     final pub = File('pubspec.yaml').readAsStringSync();
     expect(pub, contains('- assets/icons3d/'));
     expect(File('assets/brand/rachana_logo.png').existsSync() && File('assets/brand/rachana_mark.png').existsSync(), true);
+  });
+
+  test('my settings: his own (Mechanical), his default site (Portal) – it opens at the next sign-in; his password', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    await s.loadPrefs();
+    await s.savePrefs({'shift': 'Night', 'loc': 'VTR Store', 'text': 'large'});
+    expect(s.pref('shift'), 'Night');
+    expect(s.textScale, 1.1);
+    expect(srv.calls, contains('mech:saveMyPrefs+rid'));
+    await s.setDefaultSite('T2');
+    expect(s.defaultSite, 'T2');
+    await s.signOut();
+    final s2 = make();
+    await s2.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s2.stage, Stage.ready, reason: 'the default site opens at once – no list of sites');
+    expect(s2.site!.code, 'T2');
+    await expectLater(s2.changePassword('wrong', 'New#Pass12345'), throwsA(isA<ApiError>()));
+    await s2.changePassword('Nashik#Road848!', 'New#Pass12345');
+  });
+
+  test('a machinery\'s ways as the web: its Log Book format fixes them; an hours machinery may also have Time', () {
+    expect(Machine({'id': 'X', 'lbFormat': 'F'}).modes, ['Time']);
+    expect(Machine({'id': 'X', 'lbFormat': 'C'}).modes, ['KM']);
+    expect(Machine({'id': 'X', 'worksOn': ['Hrs']}).modes, ['Hrs', 'Time']);
+    expect(Machine({'id': 'X', 'worksOn': ['Hrs']}).wayAuto, 'Hrs');
+    expect(Machine({'id': 'X', 'worksOn': ['KM', 'Hrs']}).modes, ['KM', 'Hrs', 'KM + Hrs', 'Time']);
+    expect(Machine({'id': 'X', 'lbFormat': 'I'}).waterTanker, true);
   });
 }

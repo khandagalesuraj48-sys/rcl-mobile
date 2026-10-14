@@ -12,7 +12,8 @@ import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_page.dart';
+import '../web/web_host.dart';
+import 'logbook.dart';
 
 /// A module tile of Home: where it goes and who may see it.
 class ModuleTile {
@@ -31,7 +32,7 @@ class ModuleTile {
 
 const kModules = [
   ModuleTile('Machinery', 'यंत्रे', 'tractor', C.green, C.greenSoft, page: 'master', perm: 'Master'),
-  ModuleTile('Logbook', 'लॉगबुक', 'notebook', C.blue, C.blueSoft, page: 'log', perm: 'Log Book'),
+  ModuleTile('Logbook', 'लॉगबुक', 'notebook', C.blue, C.blueSoft, native: 'logbook', perm: 'Log Book'),
   ModuleTile('Diesel', 'डिझेल', 'fuel_pump', C.green, C.greenSoft, native: 'diesel'),
   ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, page: 'brk', perm: 'Breakdown'),
   ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, page: 'bill', perm: 'Machinery Billing'),
@@ -128,6 +129,10 @@ class _HomeTabState extends State<HomeTab> {
     HapticFeedback.selectionClick();
     if (m.native == 'diesel') {
       widget.onOpenEntries('');
+      return;
+    }
+    if (m.native == 'logbook') {
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()));
       return;
     }
     if (m.native == 'reports') {

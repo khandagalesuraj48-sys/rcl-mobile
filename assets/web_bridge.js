@@ -17,6 +17,13 @@
   if (T.__rclAppBridge) return;
   T.__rclAppBridge = 1;
 
+  /* The web keeps a note to report a page that froze; a web view the app closed never says goodbye, so the next opening
+   * showed "Last time this page stopped … without closing properly". In the app that note is not a freeze: marked as closed. */
+  try {
+    var tr = JSON.parse(T.localStorage.getItem('rcl_trace') || 'null');
+    if (tr && !tr.clean) { tr.clean = true; T.localStorage.setItem('rcl_trace', JSON.stringify(tr)); }
+  } catch (e) { /* no storage */ }
+
   function call(name) {
     var args = [].slice.call(arguments, 1);
     try {
@@ -152,6 +159,14 @@
       if (w && typeof w.rclBack === 'function') return w.rclBack() === 'exit' ? 'exit' : 'done';
     } catch (e) { /* not the ERP's page */ }
     return 'none';
+  };
+  /* ---- another module of the web, without loading again: the web's own way of opening a page (#page=…) ---- */
+  T.__rclAppGo = function (p) {
+    try {
+      var f = T.document.getElementById('app'), w = f && f.contentWindow;
+      if (!w || !w.eval) return 'no';
+      return w.eval('(function (p) { if (typeof S === "undefined" || !S || !S.token || typeof wantTabGo !== "function") return "no"; S.wantTab = p; wantTabGo(); return "ok"; })(' + JSON.stringify(String(p || 'dash')) + ')');
+    } catch (e) { return 'no'; }
   };
   /* ---- the web's page is ready (the ERP in its frame, or another page of the site) ---- */
   T.__rclAppReady = function () {
