@@ -407,8 +407,9 @@ class EntryCard extends StatelessWidget {
                   Expanded(child: Text(x.$2, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5))),
                 ]),
               ),
-            if (r['lk'] != null) const InfoLine('This entry is in a saved bill – it is locked. · बिलमध्ये आहे – बदलता येणार नाही.', icon: Icons.lock_outline_rounded),
-            if (r['lk'] == null && SessionScope.read(context).canEdit(kind.module) && r['open'] != true) ...[
+            // (14-10-2026) an entry of a submitted bill: the Super Admin changes it; anybody else sends the change for his approval
+            if (r['lk'] != null) InfoLine(SessionScope.read(context).superAdmin ? 'This entry is in a saved bill – you are the Super Admin: your change is saved; the difference comes in the next bill.' : 'This entry is in a saved bill – a change goes to the Super Admin for approval. · बिलमध्ये आहे – बदल Super Admin च्या मंजुरीने.', icon: Icons.lock_outline_rounded),
+            if (SessionScope.read(context).canEdit(kind.module) && r['open'] != true) ...[
               const SizedBox(height: 16),
               Row(children: [
                 Expanded(

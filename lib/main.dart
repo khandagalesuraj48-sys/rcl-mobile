@@ -24,8 +24,37 @@ class SecureKeep implements Keep {
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
-  final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep()))..start();
+  final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep())..askApproval = askApprovalBox)..start();
   runApp(RclApp(session: session));
+}
+
+/// (14-10-2026) the app's navigator – the box "send it to the Super Admin?" opens over any screen (Api.askApproval).
+final appNav = GlobalKey<NavigatorState>();
+
+/// A save refused because its entry is in a submitted bill: the reason for the Super Admin, or null (not sent).
+Future<String?> askApprovalBox(String message) async {
+  final ctx = appNav.currentContext;
+  if (ctx == null) return null;
+  final why = TextEditingController();
+  return showDialog<String>(
+    context: ctx,
+    builder: (c) => AlertDialog(
+      title: const Text('In a submitted bill – send it to the Super Admin?'),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(message.replaceFirst(RegExp(r'^(Line|Row) [^:]+: '), ''), style: const TextStyle(fontSize: 13)),
+          const SizedBox(height: 10),
+          const Text('It is saved only when the Super Admin approves it. The bill is not changed – the difference comes in the next bill.', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          TextField(key: const ValueKey('cr_reason'), controller: why, maxLines: 2, maxLength: 300, decoration: const InputDecoration(labelText: 'Why is this change needed?')),
+        ]),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
+        FilledButton(onPressed: () { if (why.text.trim().isNotEmpty) Navigator.pop(c, why.text.trim()); }, child: const Text('Send for approval')),
+      ],
+    ),
+  );
 }
 
 class RclApp extends StatelessWidget {
@@ -35,6 +64,7 @@ class RclApp extends StatelessWidget {
   Widget build(BuildContext context) => SessionScope(
         session: session,
         child: MaterialApp(
+          navigatorKey: appNav,
           title: 'RCL ERP',
           debugShowCheckedModeBanner: false,
           theme: appTheme(),

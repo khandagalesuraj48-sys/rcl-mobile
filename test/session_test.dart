@@ -85,6 +85,42 @@ void main() {
     expect(srv.calls.where((c) => c.startsWith('mech:ssoLogin')).length, 2);
   });
 
+  test('(14-10-2026) an entry of a submitted bill: the change is sent to the Super Admin with a reason, as on the web; the Super Admin saves it', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    srv.billLock = true;
+    final asked = <String>[];
+    // no answer (Cancel): nothing is sent, the refusal stays as it was
+    s.api.askApproval = (m) async { asked.add(m); return null; };
+    await expectLater(s.api.call('updateLogRow', ['MH-25-AJ-2169|2026-10-14|Full Day', {'closingKm': 15250}], true), throwsA(predicate((e) => e is ApiError && e.message.contains('submitted RA Bill 9'))));
+    expect(srv.requests, isEmpty);
+    // a reason: exactly that save goes to the Super Admin; the screen hears "Sent …" (nothing saved)
+    s.api.askApproval = (m) async { asked.add(m); return '  meter photo shows 15250 '; };
+    await expectLater(s.api.call('updateLogRow', ['MH-25-AJ-2169|2026-10-14|Full Day', {'closingKm': 15250}], true), throwsA(predicate((e) => e is ApiError && e.message == Api.crSent)));
+    expect(srv.requests.single, {'fn': 'updateLogRow', 'args': ['MH-25-AJ-2169|2026-10-14|Full Day', {'closingKm': 15250}], 'reason': 'meter photo shows 15250'});
+    // a save that answers "not saved" with a refused line (saveLogRows) is offered the same way
+    await expectLater(s.api.call('saveLogRows', [{'rows': [{'no': 'MH-25-AJ-2169', 'date': '2026-10-14'}]}], true), throwsA(predicate((e) => e is ApiError && e.message == Api.crSent)));
+    expect(srv.requests.length, 2);
+    expect(asked.length, 3);
+    expect(srv.logSaved, isEmpty, reason: 'nothing is saved by the phone');
+    // a question, not a save, is never offered
+    expect(s.superAdmin, false);
+  });
+
+  test('(14-10-2026) the Super Admin (his ticket says so): his change of a billed entry is saved, nothing is asked', () async {
+    srv.superAdmin = true;
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    expect(s.superAdmin, true);
+    srv.billLock = true;
+    s.api.askApproval = (m) async => fail('the Super Admin is not asked');
+    final r = await s.api.call('updateLogRow', ['MH-25-AJ-2169|2026-10-14|Full Day', {'closingKm': 15250}], true) as Map;
+    expect(r['ok'], true);
+    expect(srv.requests, isEmpty);
+  });
+
   test('a save carries its own number (rid); a reading warning comes back as a question', () async {
     final s = make();
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');

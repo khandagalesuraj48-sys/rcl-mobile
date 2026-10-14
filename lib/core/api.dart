@@ -173,6 +173,24 @@ class Api {
 
   String _newRid() => 'm${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}${_rnd.nextInt(1 << 32).toRadixString(36)}';
 
+  /* (14-10-2026, update-108 of Mechanical) A SAVE THE BILL LOCK REFUSED – its entry is in a submitted bill: as on the web page, the
+   * person may send exactly that save to the Super Admin for approval, with a reason (sendChangeRequest). It is saved only when he
+   * approves it (Mechanical → Approvals). [askApproval] is set by the app (a box asking for the reason; null = not sent); the
+   * screen then gets [crSent] as its error – nothing was saved. The Super Admin himself is not refused (his ticket says so). */
+  static const crFns = {'saveLogRows', 'saveLogBook', 'saveLogDay', 'updateLogRow', 'deleteLogRow', 'saveLogBulk', 'importLogBook', 'saveTankerTrips', 'deleteTankerTrip',
+    'updateTankerTrip', 'saveTankerRange', 'importTankerTrips', 'saveDieselIssue', 'saveDieselBulk', 'importDiesel', 'updateDieselIssue', 'deleteDieselIssue'};
+  static const crSent = 'Sent to the Super Admin for approval – it is saved only when he approves (nothing is saved until then).';
+  static bool crLocked(String m) => m.contains('is in the submitted RA Bill');
+  Future<String?> Function(String message)? askApproval;
+  /// true = sent (with the person's reason); false = he did not send it.
+  Future<bool> _offer(String fn, List<dynamic> args, String msg) async {
+    final ask = askApproval;
+    final why = ask == null ? null : await ask(msg);
+    if (why == null || why.trim().isEmpty) return false;
+    await _rpc('api', [token, 'sendChangeRequest', [{'fn': fn, 'args': args, 'reason': why.trim()}]]);
+    return true;
+  }
+
   /// One action of Mechanical (getInit, saveDieselIssue …) with the person's sign-in. [save]: it changes data – it gets its
   /// own number and is sent again after a lost connection (at most 4 tries); a question is asked again at most twice.
   Future<dynamic> call(String fn, [List<dynamic> args = const [], bool save = false]) async {
@@ -181,8 +199,16 @@ class Api {
     for (var tryNo = 1;; tryNo++) {
       try {
         if ((token ?? '').isEmpty) throw ApiError('SESSION_EXPIRED', status: 401);
-        return await _rpc('api', [token, fn, args], rid: rid);
+        final res = await _rpc('api', [token, fn, args], rid: rid);
+        // a save that answers "not saved" with a line refused by the bill lock (saveLogRows …)
+        if (crFns.contains(fn) && res is Map && res['ok'] == false && res['errors'] is List) {
+          final lk = (res['errors'] as List).map((x) => x is Map ? (x['msg'] ?? '').toString() : x.toString()).where(crLocked).toList();
+          if (lk.isNotEmpty && await _offer(fn, args, lk.first)) throw ApiError(crSent, code: 'sent');
+        }
+        return res;
       } on ApiError catch (e) {
+        if (e.code == 'sent') rethrow;
+        if (crFns.contains(fn) && crLocked(e.message) && await _offer(fn, args, e.message)) throw ApiError(crSent, code: 'sent');
         if (e.sessionEnded && !renewed && (site ?? '').isNotEmpty && hasPortal) {
           renewed = true; // a new Mechanical sign-in with a new ticket, nothing typed
           await openSite(site!);
