@@ -261,12 +261,14 @@ void main() {
     await t.tap(find.text('Logbook'));
     await net(t);
     await pics(t);
-    await t.scrollUntilVisible(find.text('Challan 18522 · 10:30 – 10:36'), 300, scrollable: find.byType(Scrollable).first);
-    expect(find.text('Challan 123 · 07:35 – 07:50'), findsOneWidget, reason: 'the first trip, its own card');
+    await t.scrollUntilVisible(find.text('10:30 – 10:36'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Challan 123'), findsOneWidget, reason: 'the first trip, its own card');
+    expect(find.text('07:35 – 07:50'), findsOneWidget);
+    expect(find.text('Challan 18522'), findsOneWidget);
     expect(find.text('Trip 1'), findsOneWidget);
     expect(find.text('Trip 2'), findsOneWidget);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13_tanker_trips.png'));
-    await t.tap(find.text('Challan 123 · 07:35 – 07:50'));
+    await t.tap(find.text('Challan 123'));
     await settle(t, 800);
     expect(find.text('Change'), findsOneWidget);
     expect(find.text('Delete'), findsOneWidget);

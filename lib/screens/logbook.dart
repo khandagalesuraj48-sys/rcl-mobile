@@ -412,7 +412,8 @@ class LogCard extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${r['no'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700)),
-            Text(['${t['c']}'.isNotEmpty ? 'Challan ${t['c']}' : 'No challan', if (time.isNotEmpty) time].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            Text('${t['c']}'.isNotEmpty ? 'Challan ${t['c']}' : 'No challan', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            if (time.isNotEmpty) Text(time, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.blue)),
             if ('${t['ch']}${t['u']}'.isNotEmpty) Text([t['ch'], t['u']].where((e) => '$e'.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: C.muted)),
             if (t['old'] == true) const Text('entered before trip by trip', style: TextStyle(fontSize: 12, color: C.muted)),
           ]),
@@ -1739,6 +1740,7 @@ class _TankerScreenState extends State<TankerScreen> {
                         icon: const Icon(Icons.close_rounded, color: C.red),
                       ),
                   ]),
+                  const SizedBox(height: 8),
                   TextField(controller: t.c, decoration: const InputDecoration(labelText: 'Challan No')),
                   const SizedBox(height: 8),
                   Row(children: [
