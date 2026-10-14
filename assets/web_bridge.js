@@ -164,7 +164,10 @@
   T.__rclAppGo = function (p) {
     try {
       var f = T.document.getElementById('app'), w = f && f.contentWindow;
-      if (!w || !w.eval) return 'no';
+      if (!w) return 'no';
+      // the page's own door (web update-104): no text run as code – the web's watched security policy noted each eval as a fault
+      if (typeof w.rclGo === 'function') return w.rclGo(String(p || 'dash')) === 'ok' ? 'ok' : 'no';
+      if (!w.eval) return 'no';      // (a web page from before update-104)
       return w.eval('(function (p) { if (typeof S === "undefined" || !S || !S.token || typeof wantTabGo !== "function") return "no"; S.wantTab = p; wantTabGo(); return "ok"; })(' + JSON.stringify(String(p || 'dash')) + ')');
     } catch (e) { return 'no'; }
   };

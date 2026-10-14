@@ -33,6 +33,8 @@ const until = async (fn, ms) => { const t = Date.now(); while (Date.now() - t < 
       window.flutter_inappwebview = { callHandler: function () { window.__calls.push([].slice.call(arguments)); return Promise.resolve(true); } };
       (0, eval)(src);
     }, BRIDGE);
+    // (web update-104) what the web's watched security policy notes inside the ERP's frame – the page switch must run no eval
+    await p.evaluateOnNewDocument(() => { if (window === window.top) return; document.addEventListener('securitypolicyviolation', e => { try { (window.top.__csp = window.top.__csp || []).push(e.effectiveDirective + ' ' + (e.blockedURI || '')); } catch (x) {} }); });
     await p.setRequestInterception(true);
     p.on('request', r => { if (r.isNavigationRequest() && r.frame() === p.mainFrame() && /signout=1/.test(r.url())) { navs.push(r.url()); r.abort(); } else r.continue(); });
     const calls = () => p.evaluate(() => window.__calls || []);
@@ -62,6 +64,8 @@ const until = async (fn, ms) => { const t = Date.now(); while (Date.now() - t < 
     g = await p.evaluate(() => window.__rclAppGo('store__dashboard'));
     const sOpen = await until(() => app().evaluate(() => !document.getElementById('sec-ext').hidden), 15000);
     ok('   then the Store\'s Dashboard (a module inside the web)', g === 'ok' && !!sOpen, g);
+    const csp = await p.evaluate(() => (window.__csp || []).filter(x => /eval/.test(x)));
+    ok('   the page switches ran no eval (the web\'s security policy noted nothing)', csp.length === 0, csp);
     await app().evaluate(() => showTab('dash'));
     // 1. the Master's "Export" (XLSX.writeFile – the real Excel tool)
     await app().evaluate(() => { window.rclLoadXlsx(); showTab('master'); });
