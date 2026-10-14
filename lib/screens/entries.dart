@@ -306,7 +306,7 @@ class EntryCard extends StatelessWidget {
   String get _title => switch (kind.key) {
         'issue' => (r['no'] ?? '').toString(),
         'inward' => (r['pump'] ?? '').toString().isEmpty ? (r['open'] == true ? 'Opening stock' : 'Diesel received') : r['pump'].toString(),
-        _ => '${r['from'] ?? ''} → ${r['to'] ?? ''}',
+        _ => '${r['from'] ?? ''} › ${r['to'] ?? ''}',
       };
 
   String get _pic => kind.key == 'issue' ? picOfType('${r['type'] ?? ''}') : kind.pic;

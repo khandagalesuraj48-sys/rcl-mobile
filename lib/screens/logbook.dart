@@ -367,7 +367,7 @@ class LogCard extends StatelessWidget {
   String get _way => '${r['mode'] ?? r['unit'] ?? ''}';
 
   String get _reads {
-    String two(dynamic a, dynamic b, String u) => asNum(a) == null && asNum(b) == null ? '' : '${fmtNum(asNum(a))} → ${fmtNum(asNum(b))} $u';
+    String two(dynamic a, dynamic b, String u) => asNum(a) == null && asNum(b) == null ? '' : '${fmtNum(asNum(a))} – ${fmtNum(asNum(b))} $u';
     return [two(r['okm'], r['ckm'], 'km'), two(r['ohr'], r['chr'], 'hr'), if ('${r['tStart'] ?? ''}'.isNotEmpty) '${r['tStart']} – ${r['tEnd'] ?? ''}'].where((e) => e.isNotEmpty).join('   ');
   }
 
@@ -395,7 +395,7 @@ class LogCard extends StatelessWidget {
           Pill(workText(r), color: color, bg: soft),
           const SizedBox(height: 6),
           Text('${r['shift'] ?? ''}${r['half'] == true ? ' · ½' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-          if ((asNum(r['qty']) ?? 0) > 0) Text('⛽ ${fmtNum(asNum(r['qty']))} L', style: const TextStyle(fontSize: 12.5, color: C.green, fontWeight: FontWeight.w600)),
+          if ((asNum(r['qty']) ?? 0) > 0) Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.local_gas_station_rounded, size: 14, color: C.green), Text(' ${fmtNum(asNum(r['qty']))} L', style: const TextStyle(fontSize: 12.5, color: C.green, fontWeight: FontWeight.w600))]),
         ]),
       ]),
     );
@@ -493,7 +493,7 @@ Future<bool> deleteLog(BuildContext context, String key) async {
     final next = e['next'] as Map?, prev = e['prev'] as Map?;
     final body = [
       '${e['no']} – ${showDate('${e['date']}')} (${e['shift']})',
-      if (rd(e['okm'], e['ohr']).isNotEmpty) 'Start ${rd(e['okm'], e['ohr'])}  →  Close ${rd(e['ckm'], e['chr'])}',
+      if (rd(e['okm'], e['ohr']).isNotEmpty) 'Start ${rd(e['okm'], e['ohr'])}  –  Close ${rd(e['ckm'], e['chr'])}',
       if (next != null) 'The next entry ${showDate('${next['date']}')} (${next['shift']}) will start from ${prev != null ? 'the Close of ${showDate('${prev['date']}')}' : 'its own Start'}; later entries update by themselves.',
       'This cannot be undone. · हे परत आणता येणार नाही.',
     ].join('\n\n');

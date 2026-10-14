@@ -47,7 +47,7 @@ Future<Spot> whereNow() async {
   var p = await Geolocator.checkPermission();
   if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
   if (p == LocationPermission.denied || p == LocationPermission.deniedForever) {
-    throw PhotoProblem('Allow the location for RCL ERP (Settings → Apps → RCL ERP → Permissions), then take the photo again.');
+    throw PhotoProblem('Allow the location for RCL ERP (Settings › Apps › RCL ERP › Permissions), then take the photo again.');
   }
   try {
     final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 25)));
@@ -74,7 +74,7 @@ String stampOf(DateTime d) => '${two(d.day)}-${two(d.month)}-${d.year} ${two(d.h
 Future<TakenPhoto?> takePhoto(String label, String machineId) async {
   if (Platform.isAndroid) {
     final st = await Permission.camera.request();
-    if (!st.isGranted) throw PhotoProblem('Allow the camera for RCL ERP (Settings → Apps → RCL ERP → Permissions), then try again.');
+    if (!st.isGranted) throw PhotoProblem('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');
   }
   final x = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 92, preferredCameraDevice: CameraDevice.rear);
   if (x == null) return null;

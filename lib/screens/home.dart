@@ -391,7 +391,7 @@ class _ActRow extends StatelessWidget {
     final title = switch (k.key) {
       'issue' => '${r['no'] ?? ''}  •  ${fmtNum(asNum(r['qty']))} L',
       'inward' => '${'${r['pump'] ?? ''}'.isEmpty ? 'Received' : r['pump']}  •  ${fmtNum(asNum(r['qty']))} L',
-      _ => '${r['from'] ?? ''} → ${r['to'] ?? ''}  •  ${fmtNum(asNum(r['qty']))} L',
+      _ => '${r['from'] ?? ''} › ${r['to'] ?? ''}  •  ${fmtNum(asNum(r['qty']))} L',
     };
     final sub = switch (k.key) {
       'issue' => '${r['driver'] ?? ''}'.isNotEmpty ? 'Operator: ${r['driver']}' : '${r['type'] ?? ''} · ${r['source'] ?? ''}',

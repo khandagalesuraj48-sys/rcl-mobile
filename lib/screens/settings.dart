@@ -123,9 +123,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Row(children: [
             Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: color)),
             const SizedBox(width: 14),
-            Expanded(child: TwoLang(en, mr, size: 15.5)),
-            const SizedBox(width: 8),
-            Flexible(child: Text(value, textAlign: TextAlign.right, maxLines: 2, style: const TextStyle(fontSize: 14, color: C.greenDark, fontWeight: FontWeight.w600))),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(en, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+                Text(mr, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
+                if (value.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text(value, style: const TextStyle(fontSize: 13.5, color: C.greenDark, fontWeight: FontWeight.w600))),
+              ]),
+            ),
             busy == id && id.isNotEmpty ? const Padding(padding: EdgeInsets.all(6), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5))) : const Icon(Icons.chevron_right_rounded, color: C.faint),
           ]),
         ),
