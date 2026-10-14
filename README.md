@@ -12,7 +12,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 * **New Diesel Issue** – machinery, its way (KM / Hrs …, picked by itself when there is one), readings, litres with the stock
   after it, driver, remark and the **4 photos** (camera now, the place printed on each, sent at once – as on the web);
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
-* **Reports**, **Me** (role, site, version / update, the full web ERP, sign out).
+* **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
+
+**Version 3.1 (14-10-2026: "log book war loading, errors, web UI nko … dashboard photo reading auto … user settings"):**
+* **Log Book on the phone** (`lib/screens/logbook.dart`): the day's entries, the machinery still without one, a new entry
+  in every way (Start from the last entry, Time with split timings and break, Trip, Day, Idle / Holiday / Breakdown, No
+  reading with the estimate, a new meter, ½ day, the format's challan / particular / chainage, Item-wise BOQ pick or split,
+  Debit to, opening diesel of a first entry), change and delete, and a water tanker trip by trip – the web's own actions.
+* **Diesel Issue**: the dashboard photo fills the reading and the dispenser photo the litres (the AI, `getMeterReading`, as
+  the web); an entry can be changed or deleted from its details.
+* **My settings** (`lib/screens/settings.dart`): default site (the Portal's start), usual shift, usual diesel place, Log Book
+  usual way, size of the text, mobile number, photo, password – the same settings as the web.
+* Modules still on the web: ONE web view (`lib/web/web_host.dart`) loaded in the background and kept alive – a module opens
+  at once (the web switches its page, `__rclAppGo`); its "page stopped" box and the opening film are not shown.
 * Modules not yet made for the phone (Machinery, Logbook, Maintenance, Billing, Store, Administration, the reports) open their
   **web page inside the app** (`lib/web/web_page.dart` + `assets/web_bridge.js`: camera, location, Excel / CSV to the share
   sheet, print / PDF, Back, Logout). The One Click opening film is not shown in the app.
@@ -39,7 +51,7 @@ The first run makes the `android/` and `ios/` folders and saves them in the bran
 | Person, sites, access, the site's lists | `lib/core/session.dart` |
 | The 4 photos (camera, location, the printed band) | `lib/core/photo.dart` |
 | Screens | `lib/screens/` (login, site_pick, shell, home, entries, forms, reports, me), `lib/main.dart` (opening) |
-| A web page in the app | `lib/web/web_page.dart`, `assets/web_bridge.js`, `lib/web/print_view.dart`, `lib/web/files.dart` |
+| The web pages still in the app | `lib/web/web_host.dart`, `assets/web_bridge.js`, `lib/web/print_view.dart`, `lib/web/files.dart` |
 | Design | `lib/ui/theme.dart`, `lib/ui/brand.dart` (backgrounds, Rachana mark and logo), `lib/ui/widgets.dart` |
 | Tests | `test/`, with pretend servers in `test/fake_server.dart` |
 | The web bridge in a real browser | `test_web/bridge.test.js` (a page built like the ERP), `test_web/real_erp.js` (the real ERP on the local test copy) – run by hand with Node + Chromium; a web view cannot run in Flutter's tests |

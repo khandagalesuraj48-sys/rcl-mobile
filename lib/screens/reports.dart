@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_page.dart';
+import '../web/web_host.dart';
 import 'home.dart';
 
 class ReportsTab extends StatelessWidget {

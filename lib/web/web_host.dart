@@ -1,11 +1,14 @@
-/* A PAGE OF THE WEB ERP INSIDE THE APP – for the modules not yet made for the phone (Log Book, Maintenance, Billing, Store,
- * Reports, Administration …). Asked 14-10-2026: the app has its own phone screens; until a module has its own, it opens here,
- * signed in with a Portal ticket straight on its page (nothing typed). The One Click opening film is not shown in the app.
+/* THE WEB PAGES STILL IN THE APP – for the modules not yet made for the phone (Billing, Store, Machinery, Administration,
+ * the web's reports). Asked 14-10-2026: "module change krtana loading nko, patkn smooth": ONE web view is kept for the whole
+ * app – loaded once in the background after Home opens, kept alive behind the app's screens, and only SHOWN when a module of
+ * the web is opened: the next module opens at once (the web switches its page, no new loading). Signed in with a Portal ticket
+ * (nothing typed). The One Click opening film and the web's "page stopped" box are not shown in the app.
  * What a phone's web view does not do by itself, the app does (assets/web_bridge.js): the camera and the location, Excel / CSV
  * files (share sheet), printing (Android printing / PDF), links to other sites outside, Back = one step back in the web, the
  * web's Logout = the app's sign-out. */
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -42,20 +45,56 @@ Go whereTo(Uri u, bool mainFrame, Session s) {
   return Go.stay;
 }
 
-class WebPage extends StatefulWidget {
-  const WebPage({super.key, required this.title, required this.page, this.pic = 'clipboard'});
+/// Which web page is shown (null = none: the app's own screens are in front).
+class WebHostCtl extends ChangeNotifier {
+  String? page;
+  String title = '', pic = 'clipboard';
+  bool started = false; // the web view exists (loaded in the background, or shown)
+  bool enabled = true; // (the tests: no web view can run there)
+  int asks = 0; // every "show" – the host goes to the page even when it is the same one
+  bool get open => page != null;
+  void show(String t, String p, String pc) {
+    title = t;
+    page = p;
+    pic = pc;
+    started = enabled;
+    asks++;
+    notifyListeners();
+  }
 
-  /// The page's name (shown at the top) and its key in the web ERP (log, brk, bill, store__dashboard …).
-  final String title, page, pic;
-  @override
-  State<WebPage> createState() => _WebPageState();
+  void hide() {
+    if (page == null) return;
+    page = null;
+    notifyListeners();
+  }
+
+  /// Loads the web in the background (Home is open): the first web module then opens at once too.
+  void warm() {
+    if (started || !enabled) return;
+    started = true;
+    notifyListeners();
+  }
+
+  void reset() {
+    page = null;
+    started = false;
+    asks = 0;
+  }
 }
 
-/// Opens a web page of the ERP inside the app.
-Future<void> openWeb(BuildContext context, String title, String page, {String pic = 'clipboard'}) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => WebPage(title: title, page: page, pic: pic)));
+/// The one web view of the app (see the top of this file).
+final webHost = WebHostCtl();
 
-class _WebPageState extends State<WebPage> {
+/// Opens a web page of the ERP inside the app.
+Future<void> openWeb(BuildContext context, String title, String page, {String pic = 'clipboard'}) async => webHost.show(title, page, pic);
+
+class WebHost extends StatefulWidget {
+  const WebHost({super.key});
+  @override
+  State<WebHost> createState() => WebHostState();
+}
+
+class WebHostState extends State<WebHost> {
   InAppWebViewController? _c;
   String? _url;
   String _bridge = '', _err = '';
@@ -63,18 +102,49 @@ class _WebPageState extends State<WebPage> {
   bool _ready = false, _leaving = false;
   Timer? _poll;
 
+  int _asked = 0;
+  String _at = ''; // the page the web shows now
+
   Session get _s => SessionScope.read(context);
+  String get _want => webHost.page ?? '';
 
   @override
   void initState() {
     super.initState();
+    webHost.addListener(_changed);
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
   }
 
   @override
   void dispose() {
+    webHost.removeListener(_changed);
     _poll?.cancel();
     super.dispose();
+  }
+
+  /// A web module was asked for: the web, already loaded, switches its page (no loading); else it loads on that page.
+  Future<void> _changed() async {
+    if (!mounted) return;
+    setState(() {});
+    if (webHost.asks == _asked || !webHost.open) return;
+    _asked = webHost.asks;
+    final want = _want;
+    if (_err.isNotEmpty) return _start();
+    if (!_ready || _c == null) return; // still loading: it opens on the page asked last (_watchReady)
+    if (want == _at) return;
+    final ok = await _goTo(want);
+    if (!ok) await _start();
+  }
+
+  Future<bool> _goTo(String page) async {
+    try {
+      final r = await _c!.evaluateJavascript(source: 'window.__rclAppGo ? window.__rclAppGo(${jsonEncode(page.isEmpty ? 'dash' : page)}) : "no"');
+      if ('$r' == 'ok') {
+        _at = page;
+        return true;
+      }
+    } catch (_) {/* reloaded below */}
+    return false;
   }
 
   Future<void> _start() async {
@@ -85,7 +155,9 @@ class _WebPageState extends State<WebPage> {
     try {
       if (_bridge.isEmpty) _bridge = await rootBundle.loadString('assets/web_bridge.js');
       await _askOnce();
-      final url = await _s.webUrl(widget.page);
+      final url = await _s.webUrl(_want);
+      _at = _want;
+      _asked = webHost.asks;
       await _cookie();
       if (!mounted) return;
       if (_c != null) {
@@ -127,6 +199,7 @@ class _WebPageState extends State<WebPage> {
       await CookieManager.instance().deleteAllCookies();
       if (Platform.isAndroid) await WebStorageManager.instance().deleteAllData();
     } catch (_) {/* the sign-in ends on the servers anyway */}
+    webHost.hide();
     if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     await _s.signOut(msg);
   }
@@ -193,6 +266,8 @@ class _WebPageState extends State<WebPage> {
       if (ok || n > 50) {
         t.cancel();
         if (mounted && !_ready) setState(() => _ready = true);
+        // a module asked for while the web was loading
+        if (mounted && webHost.open && _want != _at && !(await _goTo(_want))) await _start();
       }
     });
     // the Portal's own sign-in page in the app = the Portal sign-in has ended: the app's sign-in screen instead
@@ -228,9 +303,11 @@ class _WebPageState extends State<WebPage> {
     _leave();
   }
 
-  void _leave() {
-    if (mounted) Navigator.of(context).pop();
-  }
+  /// Back to the app's own screens – the web stays loaded behind them.
+  void _leave() => webHost.hide();
+
+  /// The phone's Back while the web is shown (the app's screens ask it).
+  Future<void> back() => _back();
 
   Future<PermissionResponse> _permission(PermissionRequest r) async {
     final res = r.resources;
@@ -315,9 +392,9 @@ class _WebPageState extends State<WebPage> {
         color: C.bg,
         alignment: Alignment.center,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Pic(widget.pic, size: 84),
+          Pic(webHost.pic, size: 84),
           const SizedBox(height: 16),
-          Text('Opening ${widget.title}…', textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+          Text('Opening ${webHost.title}…', textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
           const SizedBox(height: 16),
           const SizedBox(width: 160, child: LinearProgressIndicator(minHeight: 4, color: C.green, backgroundColor: C.greenSoft, borderRadius: BorderRadius.all(Radius.circular(4)))),
         ]),
@@ -338,11 +415,7 @@ class _WebPageState extends State<WebPage> {
       );
 
   @override
-  Widget build(BuildContext context) => PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _back();
-        },
+  Widget build(BuildContext context) => _Plain(
         child: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
           child: Scaffold(
@@ -356,9 +429,9 @@ class _WebPageState extends State<WebPage> {
                   decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: C.line))),
                   child: Row(children: [
                     IconButton(tooltip: 'Back to the app', onPressed: _leave, icon: const Icon(Icons.arrow_back_rounded)),
-                    Pic(widget.pic, size: 26),
+                    Pic(webHost.pic, size: 26),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(widget.title, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+                    Expanded(child: Text(webHost.title, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
                     IconButton(tooltip: 'Reload', onPressed: () => _c?.reload(), icon: const Icon(Icons.refresh_rounded, color: C.muted)),
                   ]),
                 ),
@@ -375,4 +448,11 @@ class _WebPageState extends State<WebPage> {
           ),
         ),
       );
+}
+
+class _Plain extends StatelessWidget {
+  const _Plain({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => child;
 }

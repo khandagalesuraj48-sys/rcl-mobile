@@ -1,5 +1,7 @@
 /* ME (picture 3, 14-10-2026): who is signed in and his role, the site (change it), the app's version and its update, the full
  * web ERP, sign out (of the Portal and every module). */
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,7 +10,8 @@ import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_page.dart';
+import '../web/web_host.dart';
+import 'settings.dart';
 
 class MeTab extends StatefulWidget {
   const MeTab({super.key});
@@ -83,7 +86,10 @@ class _MeTabState extends State<MeTab> {
                 height: 92,
                 decoration: BoxDecoration(color: C.green, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4), boxShadow: softShadow(.3)),
                 alignment: Alignment.center,
-                child: Text(initial, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white)),
+                clipBehavior: Clip.antiAlias,
+                child: s.pref('photo').startsWith('data:image')
+                    ? Image.memory(base64Decode(s.pref('photo').split(',').last), fit: BoxFit.cover, width: 92, height: 92, gaplessPlayback: true)
+                    : Text(initial, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -123,6 +129,7 @@ class _MeTabState extends State<MeTab> {
                   child: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : const Text('Check Update'),
                 ),
               ),
+              _row(pic: 'gear', en: 'My settings', mr: 'माझ्या सेटिंग्ज', sub: 'Default site, shift, diesel place, text size, password', color: C.slateSoft, onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()))),
               _row(pic: 'office_building', en: 'Full web ERP', mr: 'पूर्ण web ERP', sub: 'Every page of the web, inside the app', color: C.amberSoft, onTap: () => openWeb(context, 'Web ERP', 'dash', pic: 'office_building')),
               const SizedBox(height: 6),
               _row(pic: 'locked_with_key', en: 'Sign out', mr: 'साईन आउट करा', sub: 'Signs out of the Portal and every module', color: C.redSoft, text: C.red, onTap: _signOut),

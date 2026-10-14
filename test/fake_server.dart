@@ -11,6 +11,9 @@ class FakeServer {
   String expireOnce = ''; // an action that first answers SESSION_EXPIRED (a Mechanical sign-in that ended)
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
   final saved = <Map<String, dynamic>>[];
+  final logSaved = <Map<String, dynamic>>[];
+  Map<String, dynamic> prefs = {'shift': '', 'loc': '', 'lbMode': '', 'text': 'normal', 'mobile': '', 'photo': ''};
+  String start = '';
 
   static final issues = [
     {'id': 'DI-000525', 'date': '2026-10-14', 'shift': 'Day', 'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'qty': 60, 'source': 'VTR Store', 'driver': 'Gupta', 'ph': 4},
@@ -34,13 +37,21 @@ class FakeServer {
       }
       if (b['action'] == 'me') {
         if (!portalSignedIn || r.headers['Cookie'] != 'rcl_portal=abc123') return _j({'signedIn': false});
-        return _j({'signedIn': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin}, 'items': superAdmin ? [] : [
+        return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin}, 'items': superAdmin ? [] : [
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
           {'site': 'T2', 'siteName': '18B Kolhapur', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'X9', 'siteName': 'Bad', 'company': '', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'javascript:alert(1)'},
           {'site': 'Z5', 'siteName': 'Store only', 'company': '', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
         ]});
+      }
+      if (b['action'] == 'setStart') {
+        start = b['module'] == '' ? '' : '${b['module']}|${b['site']}';
+        return _j({'ok': true, 'start': start});
+      }
+      if (b['action'] == 'changePassword') {
+        if (b['old'] != 'Nashik#Road848!') return _j({'error': 'Current password is wrong.', 'code': 'oldpw'}, 400);
+        return _j({'ok': true});
       }
       if (b['action'] == 'logout') {
         portalSignedIn = false;
@@ -91,9 +102,35 @@ class FakeServer {
           return _j({'result': {'count': 0, 'qty': 0, 'rows': []}});
         case 'getLogBookList':
           return _j({'result': {'count': 6, 'rows': [
-            for (final n in ['Sany 210 (No.1)', 'MH-25-AJ-2169', 'A', 'B', 'C']) {'no': n, 'mode': 'Hrs'},
-            {'no': 'D', 'mode': 'Idle'},
+            {'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'owner': 'RCL', 'shift': 'Full Day', 'mode': 'Hrs', 'ohr': 4692, 'chr': 4700, 'whr': 8, 'qty': 60, 'work': 'Excavation', 'chFrom': '12+000', 'chTo': '12+300', 'key': 'Sany 210 (No.1)|2026-10-14|Full Day'},
+            {'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'shift': 'Full Day', 'mode': 'KM', 'okm': 15100, 'ckm': 15230, 'wkm': 130, 'qty': 80, 'work': 'Earth carting', 'key': 'MH-25-AJ-2169|2026-10-14|Full Day'},
+            for (final n in ['A', 'B', 'C']) {'no': n, 'type': 'Tipper', 'mode': 'Trip', 'trip': 6, 'shift': 'Day', 'key': '$n|2026-10-14|Day'},
+            {'no': 'D', 'type': 'Roller', 'mode': 'Idle', 'shift': 'Full Day', 'key': 'D|2026-10-14|Full Day'},
           ]}});
+        case 'getMyPrefs':
+          return _j({'result': {'prefs': prefs}});
+        case 'saveMyPrefs':
+          prefs = {...prefs, ...(a[0] as Map).cast<String, dynamic>()};
+          return _j({'result': {'ok': true, 'prefs': prefs}});
+        case 'getMeterReading':
+          return _j({'result': (a[0] as Map)['kind'] == 'dash' ? {'hr': 4712.5, 'check': ''} : {'litres': 60}});
+        case 'logPending':
+          return _j({'result': {'items': [['OLD-9', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-13']]}});
+        case 'getLogRowPrefill':
+          final no = a[0] as String;
+          return _j({'result': {'machine': {'id': no}, 'problem': '', 'first': false, 'openingKm': no == 'MH-25-AJ-2169' ? 15230 : '', 'openingHr': no.startsWith('Sany') ? 4700 : '', 'firstKm': false, 'firstHr': false,
+            'lastDate': '2026-10-13', 'lastShift': 'Full Day', 'diesel': 80, 'dieselText': 'DI-000520', 'reads': [], 'boqItems': [], 'avgWork': {'km': 120, 'hr': '', 'src': 'own'}}});
+        case 'saveLogRows':
+          final rows = ((a[0] as Map)['rows'] as List).map((x) => (x as Map).cast<String, dynamic>()).toList();
+          logSaved.addAll(rows);
+          return _j({'result': {'ok': true, 'count': rows.length}});
+        case 'getLogEntry':
+          return _j({'result': {'key': a[0], 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'unit': 'KM', 'okm': 15100, 'ckm': 15230, 'ohr': '', 'chr': '', 'work': 'Earth carting', 'chFrom': '12+000', 'chTo': '12+500', 'first': false, 'boqItems': [], 'itemWork': {}, 'lock': null, 'next': null, 'prev': {'date': '2026-10-13', 'shift': 'Full Day'}}});
+        case 'updateLogRow':
+          logSaved.add({'update': a[0], ...(a[1] as Map).cast<String, dynamic>()});
+          return _j({'result': {'ok': true}});
+        case 'deleteLogRow':
+          return _j({'result': {'ok': true}});
         case 'getIssueBalance':
           return _j({'result': {'balance': 813, 'available': 813, 'loc': 'Dispenser'}});
         case 'dieselPhoto':

@@ -17,6 +17,9 @@ class EntriesTab extends StatefulWidget {
   State<EntriesTab> createState() => _EntriesTabState();
 }
 
+/// Kept while the app is open: a day already seen shows at once (then it is read again).
+final _entriesCache = <String, List<Map<String, dynamic>>>{};
+
 class _EntriesTabState extends State<EntriesTab> {
   String kind = '', day = '', q = '', place = '';
   bool loading = false;
@@ -48,9 +51,10 @@ class _EntriesTabState extends State<EntriesTab> {
   }
 
   Future<void> _load() async {
-    final s = SessionScope.read(context), k = kindOf(kind), my = ++seq;
+    final s = SessionScope.read(context), k = kindOf(kind), my = ++seq, ck = '${s.site?.code}|$kind|$day';
     setState(() {
-      loading = true;
+      rows = _entriesCache[ck] ?? [];
+      loading = rows.isEmpty;
       err = '';
     });
     try {
@@ -59,6 +63,7 @@ class _EntriesTabState extends State<EntriesTab> {
       if (r['stock'] != null) s.setStock(r['stock']);
       setState(() {
         rows = (r['rows'] as List? ?? []).whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
+        _entriesCache[ck] = rows;
         loading = false;
       });
     } catch (e) {
@@ -279,7 +284,7 @@ class _EntriesTabState extends State<EntriesTab> {
                 sliver: SliverList.separated(
                   itemCount: list.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => EntryCard(kind: k, r: list[i]),
+                  itemBuilder: (_, i) => EntryCard(kind: k, r: list[i], onChanged: _load),
                 ),
               ),
           ]),
@@ -291,14 +296,17 @@ class _EntriesTabState extends State<EntriesTab> {
 
 /// One entry as a card (picture 2).
 class EntryCard extends StatelessWidget {
-  const EntryCard({super.key, required this.kind, required this.r});
+  const EntryCard({super.key, required this.kind, required this.r, this.onChanged});
   final Kind kind;
   final Map<String, dynamic> r;
+
+  /// After a change or a delete (the list loads again).
+  final VoidCallback? onChanged;
 
   String get _title => switch (kind.key) {
         'issue' => (r['no'] ?? '').toString(),
         'inward' => (r['pump'] ?? '').toString().isEmpty ? (r['open'] == true ? 'Opening stock' : 'Diesel received') : r['pump'].toString(),
-        _ => '${r['from'] ?? ''} → ${r['to'] ?? ''}',
+        _ => '${r['from'] ?? ''} › ${r['to'] ?? ''}',
       };
 
   String get _pic => kind.key == 'issue' ? picOfType('${r['type'] ?? ''}') : kind.pic;
@@ -399,7 +407,43 @@ class EntryCard extends StatelessWidget {
                   Expanded(child: Text(x.$2, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5))),
                 ]),
               ),
-            if (r['lk'] != null) const InfoLine('This entry is in a saved bill – it is locked (changes on the web, after the bill).', icon: Icons.lock_outline_rounded),
+            if (r['lk'] != null) const InfoLine('This entry is in a saved bill – it is locked. · बिलमध्ये आहे – बदलता येणार नाही.', icon: Icons.lock_outline_rounded),
+            if (r['lk'] == null && SessionScope.read(context).canEdit(kind.module) && r['open'] != true) ...[
+              const SizedBox(height: 16),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(foregroundColor: C.red, side: const BorderSide(color: C.redSoft)),
+                    onPressed: () async {
+                      final s = SessionScope.read(context);
+                      if (!await ask(c, 'Delete ${r['id']}?', '$_title – ${fmtNum(asNum(r['qty']))} L, ${showDate('${r['date'] ?? ''}')}. This cannot be undone. · हे परत आणता येणार नाही.', yes: 'Delete', danger: true)) return;
+                      try {
+                        await s.api.call(deleteOf(kind.key), [r['id']], true);
+                        if (c.mounted) Navigator.pop(c);
+                        if (context.mounted) toast(context, '${r['id']} deleted.');
+                        onChanged?.call();
+                      } catch (e) {
+                        if (c.mounted) toast(c, errText(e), bad: true);
+                      }
+                    },
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: const Text('Delete'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: kind.color, minimumSize: const Size.fromHeight(52)),
+                    onPressed: () async {
+                      Navigator.pop(c);
+                      if (await changeEntry(context, kind, r)) onChanged?.call();
+                    },
+                    icon: const Icon(Icons.edit_rounded),
+                    label: const Text('Change'),
+                  ),
+                ),
+              ]),
+            ],
           ]),
         ),
       ),

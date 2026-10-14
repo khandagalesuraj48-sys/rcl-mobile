@@ -37,16 +37,38 @@ class Machine {
   bool get active => status != 'Inactive';
   bool get debit => (m['supply'] ?? '') == 'Debit Basis'; // no readings are kept for diesel on Debit Basis
   List<String> _list(String k) => (m[k] is List) ? (m[k] as List).map((e) => e.toString()).toList() : <String>[];
+  String get lbFormat => (m['lbFormat'] ?? 'A').toString();
 
-  /// The ways it is measured by (Asset Master: "Measured by") – KM, Hrs, KM + Hrs, Time, Trip, Day.
-  List<String> get modes => _list('modes');
+  /// Its own Log Book format fixes its ways (as the web: LB_FMT_MODES).
+  static const fmtModes = {'B': ['KM', 'Hrs', 'KM + Hrs', 'Trip'], 'C': ['KM'], 'D': ['Hrs'], 'E': ['Hrs'], 'F': ['Time'], 'G': ['Time'], 'H': ['Trip'], 'I': ['Trip']};
+  List<String> get _base {
+    final f = fmtModes[lbFormat];
+    if (f != null) return f;
+    final md = _list('modes');
+    if (md.isNotEmpty) return md;
+    final w = _list('worksOn'), o = <String>[];
+    if (w.contains('KM')) o.add('KM');
+    if (w.contains('Hrs')) o.add('Hrs');
+    if (w.contains('KM + Hrs') || (w.contains('KM') && w.contains('Hrs'))) o.add('KM + Hrs');
+    for (final x in ['Time', 'Trip', 'Day']) {
+      if (w.contains(x)) o.add(x);
+    }
+    return o;
+  }
+
+  /// A machinery on hours may also have a day on Time (its meter gave no reading) – as the web (update-76).
+  static List<String> _timeX(List<String> l) => l.any(hasHr) && !l.contains('Time') ? ['Time'] : [];
+
+  /// Every way it may be measured by (Asset Master "Measured by", its format).
+  List<String> get modes => [..._base, ..._timeX(_base)];
 
   /// The ways picked only on a special day (Time: the hour meter gave no reading).
-  List<String> get modesX => _list('modesX');
+  List<String> get modesX => m['modesX'] is List ? _list('modesX') : _timeX(_base);
   List<String> get modesMain => modes.where((w) => !modesX.contains(w)).toList();
 
   /// The way picked by itself: when there is only one usual way (as on the web).
   String get wayAuto => modesMain.length == 1 ? modesMain.first : '';
+  bool get waterTanker => lbFormat == 'I';
   bool get hasMeter => modes.any((w) => hasKm(w) || hasHr(w));
   num? get tankCap => asNum(m['tankCap']);
   String get label => [id, if (name.isNotEmpty && name != id) name, type].where((s) => s.isNotEmpty).join(' · ');
@@ -75,6 +97,18 @@ class Session extends ChangeNotifier {
   List<SiteChoice> sites = [];
   SiteChoice? site;
   String siteName = '';
+
+  /// His default site (the Portal's "start": 'mechanical|S1'), '' = none.
+  String startItem = '';
+
+  /// His own settings, kept with his account in Mechanical (the web's Settings page): usual shift, usual diesel place, the
+  /// usual way of the Log Book entry, text size, mobile number, photo …
+  Map<String, dynamic> prefs = {};
+  String pref(String k) => '${prefs[k] ?? ''}';
+  String get defaultSite => startItem.startsWith('mechanical|') ? startItem.substring(11) : '';
+
+  /// The app's text a little larger (Settings → Size of the text).
+  double get textScale => switch (pref('text')) { 'large' => 1.1, 'xlarge' => 1.2, _ => 1.0 };
 
   // the site's lists (getInit)
   String today = '', company = '', closedUpto = '';
@@ -148,6 +182,7 @@ class Session extends ChangeNotifier {
     if (sites.isEmpty) throw ApiError('You have no site with Mechanical yet – ask the Super Admin.', code: 'nosite');
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();
+    startItem = (me['start'] ?? '').toString();
   }
 
   /// Email + password of the Portal (one password for every module).
@@ -160,7 +195,10 @@ class Session extends ChangeNotifier {
         return _go(Stage.signedOut, 'Set your own password on the Portal (web) first, then sign in here.');
       }
       await _loadSites();
-      if (sites.length == 1) {
+      final def = defaultSite;
+      if (def.isNotEmpty && sites.any((x) => x.code == def)) {
+        await chooseSite(def); // his default site opens at once (Settings)
+      } else if (sites.length == 1) {
         await chooseSite(sites.first.code);
       } else {
         _go(Stage.pickSite);
@@ -182,6 +220,7 @@ class Session extends ChangeNotifier {
       if ((api.token ?? '').isEmpty) _user(await api.openSite(code));
       await loadInit();
       _go(Stage.ready);
+      loadPrefs(); // his settings – the screens use them as soon as they come
     } on ApiError catch (e) {
       if (e.needsSignIn) {
         await api.forget();
@@ -223,6 +262,33 @@ class Session extends ChangeNotifier {
     final by = s['byLoc'];
     if (by is Map) stockByLoc = by.map((k, v) => MapEntry(k.toString(), (v is num) ? v : 0));
     notifyListeners();
+  }
+
+  Future<void> loadPrefs() async {
+    try {
+      final r = (await api.call('getMyPrefs') as Map).cast<String, dynamic>();
+      prefs = ((r['prefs'] as Map?) ?? {}).cast<String, dynamic>();
+      notifyListeners();
+    } catch (_) {/* the app works with the usual settings */}
+  }
+
+  /// Saves some of his settings (only the ones given change).
+  Future<void> savePrefs(Map<String, dynamic> x) async {
+    final r = (await api.call('saveMyPrefs', [x], true) as Map).cast<String, dynamic>();
+    prefs = ((r['prefs'] as Map?) ?? prefs).cast<String, dynamic>();
+    notifyListeners();
+  }
+
+  /// His default site – it opens straight after the sign-in ('' = ask / the last one).
+  Future<void> setDefaultSite(String code) async {
+    final r = await api.auth({'action': 'setStart', 'module': code.isEmpty ? '' : 'mechanical', 'site': code});
+    startItem = (r['start'] ?? '').toString();
+    notifyListeners();
+  }
+
+  /// His password (the Portal's – one password for every module). The Portal ends his other sign-ins.
+  Future<void> changePassword(String old, String now) async {
+    await api.auth({'action': 'changePassword', 'old': old, 'password': now});
   }
 
   /// A page of the web ERP opened inside the app (a module not yet made for the phone): its address, signed in with a fresh

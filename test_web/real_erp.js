@@ -39,6 +39,7 @@ const until = async (fn, ms) => { const t = Date.now(); while (Date.now() - t < 
     const app = () => p.frames().find(f => f.parentFrame() === p.mainFrame() && f.url() === 'about:srcdoc');
 
     await p.goto(G + '/portal/', { waitUntil: 'load' });
+    await p.evaluate(() => localStorage.setItem('rcl_trace', JSON.stringify({ beat: Date.now() - 60000, clean: false, tab: 'x', crumbs: ['09:17:28 → orgInfo'] })));
     await p.waitForSelector('#l_email', { visible: true, timeout: 20000 });
     await p.type('#l_email', 'sujit@rcl.test'); await p.type('#l_pass', 'Nashik#Road848!'); await p.click('#l_btn');
     // (the Portal's home is drawn again once its list comes in: wait for the very link, then click it)
@@ -49,7 +50,19 @@ const until = async (fn, ms) => { const t = Date.now(); while (Date.now() - t < 
     await wait(2500);
     await app().evaluate(() => { const c = document.getElementById('cf_back'); if (c && !c.hidden) { try { closeConfirm(false); } catch (e) { document.getElementById('cf_ok').click(); } } });
     ok('the page reports ready to the app', await p.evaluate(() => window.__rclAppReady()));
+    ok('no "page stopped without closing properly" box in the app', !(await app().evaluate(() => [...document.querySelectorAll('div')].some(d => /without closing properly/.test(d.textContent) && d.children.length < 6))));
 
+    // 0. another module without loading again (the app's kept-alive web view): the web's own page switch
+    let g = await p.evaluate(() => window.__rclAppGo('log'));
+    let title = await until(() => app().evaluate(() => document.getElementById('page_title').textContent === 'Log Book' && 'Log Book'), 8000);
+    ok('__rclAppGo("log"): the web shows the Log Book at once (no new loading)', g === 'ok' && title === 'Log Book', [g, title]);
+    g = await p.evaluate(() => window.__rclAppGo('bill'));
+    title = await until(() => app().evaluate(() => /Billing/.test(document.getElementById('page_title').textContent) && document.getElementById('page_title').textContent), 8000);
+    ok('   then "bill": Machinery Billing', g === 'ok' && !!title, [g, title]);
+    g = await p.evaluate(() => window.__rclAppGo('store__dashboard'));
+    const sOpen = await until(() => app().evaluate(() => !document.getElementById('sec-ext').hidden), 15000);
+    ok('   then the Store\'s Dashboard (a module inside the web)', g === 'ok' && !!sOpen, g);
+    await app().evaluate(() => showTab('dash'));
     // 1. the Master's "Export" (XLSX.writeFile – the real Excel tool)
     await app().evaluate(() => { window.rclLoadXlsx(); showTab('master'); });
     await until(() => app().evaluate(() => typeof XLSX !== 'undefined'), 20000);
@@ -79,6 +92,7 @@ const until = async (fn, ms) => { const t = Date.now(); while (Date.now() - t < 
 
     // 3. Back inside the ERP: the search (Ctrl K) open → Back closes it
     await app().evaluate(() => gsOpen());
+    if (process.env.DEBUG) console.log(await app().evaluate(() => ['cf_back', 'pw_back', 'dlg_back', 'le_back', 'rule_back', 'fixbox', 'guidebox', 'gs_back', 'ai_panel'].filter(id => { const e = document.getElementById(id); return e && !e.hidden && e.getClientRects().length; }).concat(document.querySelector('.app').classList.contains('nav-open') ? ['nav-open'] : [])));
     r = await p.evaluate(() => window.__rclAppBack());
     ok('Back with the search open: the search closes (the ERP\'s own one step)', r === 'done' && await app().evaluate(() => document.getElementById('gs_back').hidden), r);
 

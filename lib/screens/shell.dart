@@ -1,5 +1,7 @@
 /* THE APP AFTER SIGN-IN: four tabs at the bottom – Home · Entries · Reports · Me (picture 1–3). The tabs keep their place when
  * switched. Back on another tab goes to Home first; on Home a second Back within 3 s leaves the app. */
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -11,6 +13,7 @@ import 'entries.dart';
 import 'home.dart';
 import 'me.dart';
 import 'reports.dart';
+import '../web/web_host.dart';
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -22,6 +25,30 @@ class _ShellState extends State<Shell> {
   int tab = 0;
   String entriesKind = '';
   DateTime? lastBack;
+  final hostKey = GlobalKey<WebHostState>();
+  Timer? warmUp;
+
+  @override
+  void initState() {
+    super.initState();
+    webHost.reset();
+    webHost.addListener(_hostChanged);
+    // the web (for the modules not yet made for the phone) loads quietly in the background once Home is up
+    warmUp = Timer(const Duration(seconds: 4), () {
+      if (mounted) webHost.warm();
+    });
+  }
+
+  @override
+  void dispose() {
+    warmUp?.cancel();
+    webHost.removeListener(_hostChanged);
+    super.dispose();
+  }
+
+  void _hostChanged() {
+    if (mounted) setState(() {});
+  }
 
   void _go(int i) {
     if (i == tab) return;
@@ -54,6 +81,10 @@ class _ShellState extends State<Shell> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        if (webHost.open) {
+          hostKey.currentState?.back();
+          return;
+        }
         if (cur != 0) {
           setState(() => tab = 0);
           return;
@@ -66,7 +97,8 @@ class _ShellState extends State<Shell> {
         lastBack = now;
         toast(context, 'Press Back again to leave the app.');
       },
-      child: Scaffold(
+      child: Stack(children: [
+        Scaffold(
         body: IndexedStack(index: cur, children: [for (final p in pages) p.$1]),
         bottomNavigationBar: DecoratedBox(
           decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .06), blurRadius: 16, offset: const Offset(0, -4))]),
@@ -78,7 +110,10 @@ class _ShellState extends State<Shell> {
             destinations: [for (final p in pages) p.$2],
           ),
         ),
-      ),
+        ),
+        // the one web view (modules not yet made for the phone) – kept alive, shown only when such a module is open
+        if (webHost.started) Positioned.fill(child: Offstage(offstage: !webHost.open, child: WebHost(key: hostKey))),
+      ]),
     );
   }
 }
