@@ -73,21 +73,34 @@ class _HomeTabState extends State<HomeTab> {
   List<_Act> acts = [];
   AppUpdate? update;
 
+  Session? _ls;
+  // (3.1.7) live: something changed on the server (another person, the web) – the figures load again by themselves
+  void _live() {
+    if (mounted) _load(quiet: true);
+  }
+
+  @override
+  void dispose() {
+    _ls?.dataTick.removeListener(_live);
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
       final s = SessionScope.read(context);
+      _ls = s..dataTick.addListener(_live);
       checkUpdate(s.api).then((u) {
         if (mounted && u != null) setState(() => update = u);
       });
     });
   }
 
-  Future<void> _load({bool init = false}) async {
+  Future<void> _load({bool init = false, bool quiet = false}) async {
     final s = SessionScope.read(context);
-    setState(() => loading = true);
+    if (!quiet) setState(() => loading = true);
     try {
       if (init) await s.loadInit();
       final day = s.today;
@@ -122,7 +135,7 @@ class _HomeTabState extends State<HomeTab> {
     } catch (e) {
       if (!mounted) return;
       setState(() => loading = false);
-      toast(context, errText(e), bad: true);
+      if (!quiet) toast(context, errText(e), bad: true);
     }
   }
 
@@ -163,7 +176,7 @@ class _HomeTabState extends State<HomeTab> {
       for (final (i, l) in locs.indexed)
         _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: l.key.toLowerCase().contains('dispenser') ? 'डिस्पेन्सर' : 'स्टोअर', value: '${fmtNum(l.value)} L', color: i == 0 ? C.greenSoft : C.amberSoft),
       if (s.canSee('Log Book')) ...[
-        _MiniTile(pic: 'tractor', en: 'Running Machines', mr: 'चालू यंत्रे', value: running == null ? '–' : '$running / ${s.machines.where((m) => m.active).length}', color: C.blueSoft),
+        _MiniTile(pic: 'tractor', en: 'Running Machines', mr: 'चालू यंत्रे', value: running == null ? '–' : '$running / ${s.machines.where((m) => m.onSite(s.today)).length}', color: C.blueSoft),
         _MiniTile(pic: 'notebook', en: 'Logbook Entries', mr: 'नोंदी (आज)', value: logEntries == null ? '–' : '$logEntries', color: C.purpleSoft),
       ],
     ];

@@ -1,6 +1,9 @@
 /* THE PERSON ON THIS PHONE: signed in on the Portal or not, his sites (and the modules he has there), the site open, what he
  * may open on it (the same Edit / View / None as on the web – set by the site's Admin) and the site's lists the screens need
  * (machinery, drivers, pumps, locations, stock). Every number comes from Mechanical, as on the web. */
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import 'api.dart';
@@ -36,6 +39,16 @@ class Machine {
   String get ownership => (m['ownership'] ?? '').toString();
   String get status => (m['status'] ?? 'Active').toString();
   bool get active => status != 'Inactive';
+  /// (15-10-2026, update-115) On the site on [dk] (yyyy-mm-dd): from its "Active From" until the day BEFORE its "Inactive
+  /// From" – the same rule as the server's check of an entry. From that date it is not offered where an entry is made.
+  bool onSite(String dk) {
+    String d(String k) { final v = '${m[k] ?? ''}'; return v.length >= 10 ? v.substring(0, 10) : v; }
+    final af = d('activeFrom'), inf = d('inactiveFrom');
+    if (dk.isEmpty) return active;
+    if (af.isNotEmpty && af.compareTo(dk) > 0) return false;
+    if (status == 'Inactive' && (inf.isEmpty || inf.compareTo(dk) <= 0)) return false;
+    return true;
+  }
   bool get debit => (m['supply'] ?? '') == 'Debit Basis'; // no readings are kept for diesel on Debit Basis
   List<String> _list(String k) => (m[k] is List) ? (m[k] as List).map((e) => e.toString()).toList() : <String>[];
   String get lbFormat => (m['lbFormat'] ?? 'A').toString();
@@ -282,8 +295,10 @@ class Session extends ChangeNotifier {
     try {
       if ((api.token ?? '').isEmpty) _user(await api.openSite(code));
       await loadInit();
+      versions = {};
       _go(Stage.ready);
       loadPrefs(); // his settings – the screens use them as soon as they come
+      await loadKept();
     } on ApiError catch (e) {
       if (e.needsSignIn) {
         await api.forget();
@@ -384,12 +399,158 @@ class Session extends ChangeNotifier {
     await api.keepSite(code);
   }
 
+  /* ---------------- LIVE (3.1.7, asked 15-10-2026: "app madhe live sync haway, app refresh kraychi kahich garaj nahi") ----------------
+   * While the app is on the screen it asks Mechanical every 15 seconds what changed (the same light "sync" as the web page). When
+   * the machinery, the stock, the Log Book or the diesel entries change – also by another person, on the web or another phone –
+   * the screens load again by themselves ([dataTick]); a verification request ("flow") updates the Approvals count. In the
+   * background nothing is asked. */
+  Map<String, String> versions = {};
+  final ValueNotifier<int> dataTick = ValueNotifier<int>(0);
+  Set<String> lastChanged = {};
+  Timer? _live;
+  bool _ticking = false;
+  static const liveEvery = Duration(seconds: 15);
+
+  void startLive() {
+    _live?.cancel();
+    _live = Timer.periodic(liveEvery, (_) => liveTick());
+    liveTick();
+  }
+
+  void stopLive() {
+    _live?.cancel();
+    _live = null;
+  }
+
+  Future<void> liveTick() async {
+    if (stage != Stage.ready || _ticking) return;
+    _ticking = true;
+    try {
+      final r = await api.call('sync', [<String, dynamic>{}]);
+      final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
+      final first = versions.isEmpty;
+      final changed = first ? <String>{} : v.keys.where((k) => versions[k] != v[k]).toSet();
+      versions = v;
+      if (first) {
+        await loadApprovals();
+      } else if (changed.isNotEmpty) {
+        if (changed.contains('master')) {
+          await loadInit();
+        } else if (changed.contains('stock')) {
+          try {
+            setStock(await api.call('getStock'));
+          } catch (_) {/* the stock only */}
+        }
+        if (changed.contains('flow')) await loadApprovals();
+        lastChanged = changed;
+        dataTick.value++;
+        notifyListeners();
+      }
+      await sendKept();
+    } catch (_) {/* the next tick tries again */} finally {
+      _ticking = false;
+    }
+  }
+
+  /// (update-114) Approvals: [crWaiting] = waiting in his list (what he sent, what waits for him); [crForMe] = for him to decide.
+  int crWaiting = 0, crForMe = 0;
+  Future<void> loadApprovals() async {
+    try {
+      final d = await api.call('getChangeRequests', [<String, dynamic>{}]);
+      if (d is! Map) return;
+      crWaiting = (d['pending'] is num) ? (d['pending'] as num).toInt() : 0;
+      crForMe = (d['forMe'] is num) ? (d['forMe'] as num).toInt() : 0;
+      notifyListeners();
+    } catch (_) {/* the count only */}
+  }
+
+  /* ---------------- KEPT ON THIS PHONE (3.1.7): an entry saved with no network ----------------
+   * The person may keep it on the phone; it is sent by itself when the network is back (every live tick, and when the app comes
+   * back), with the SAME save number – the server saves it once, also when the first try had reached it. What the server then
+   * refuses stays here with its words ("Waiting on this phone" in Me) until he deletes it; nothing is ever changed by the app. */
+  List<Map<String, dynamic>> kept = [];
+  /// Kept entries of the site open that the server did not save (they wait for the person).
+  int get keptBad => kept.where((x) => x['state'] == 'refused' && x['site'] == (site?.code ?? '')).length;
+  String get _keptKey => 'kept_${email.toLowerCase()}';
+  bool _sending = false;
+  /// Something the person should hear about the kept entries (the screen shows it once).
+  final ValueNotifier<String> keptNote = ValueNotifier<String>('');
+
+  Future<void> loadKept() async {
+    try {
+      final j = jsonDecode(await api.keep.read(_keptKey) ?? '[]');
+      kept = j is List ? j.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList() : [];
+    } catch (_) {
+      kept = [];
+    }
+    notifyListeners();
+  }
+
+  Future<void> _saveKept() async {
+    await api.keep.write(_keptKey, kept.isEmpty ? null : jsonEncode(kept));
+    notifyListeners();
+  }
+
+  /// Keeps a save that got no answer ([rid] = its number) to send it later.
+  Future<void> keepEntry(String fn, List<dynamic> args, String rid, String label) async {
+    kept.add({'rid': rid, 'fn': fn, 'args': args, 'label': label, 'site': site?.code ?? '', 'at': DateTime.now().toIso8601String(), 'state': 'waiting', 'msg': ''});
+    await _saveKept();
+  }
+
+  Future<void> dropKept(String rid) async {
+    kept.removeWhere((x) => x['rid'] == rid);
+    await _saveKept();
+  }
+
+  /// Sends what is kept for the site open (in the order kept); stops at the first "no network".
+  Future<void> sendKept({bool again = false}) async {
+    if (_sending || stage != Stage.ready) return;
+    final mine = kept.where((x) => x['site'] == (site?.code ?? '') && (x['state'] == 'waiting' || (again && x['state'] == 'refused'))).toList();
+    if (mine.isEmpty) return;
+    _sending = true;
+    var sent = 0;
+    try {
+      for (final x in mine) {
+        try {
+          final r = await api.call('${x['fn']}', (x['args'] as List?) ?? const [], true, '${x['rid']}');
+          if (r is Map && (r['ok'] == false || (r['errors'] is List && (r['errors'] as List).isNotEmpty))) {
+            final errs = (r['errors'] as List? ?? []).map((e) => e is Map ? '${e['msg'] ?? ''}' : '$e').where((e) => e.isNotEmpty).toList();
+            x['state'] = 'refused';
+            x['msg'] = errs.isEmpty ? '${r['error'] ?? r['warning'] ?? 'Not saved.'}' : errs.join(' | ');
+          } else {
+            kept.removeWhere((y) => y['rid'] == x['rid']);
+            sent++;
+          }
+        } on ApiError catch (e) {
+          if (e.noConnection) break;
+          if (e.code == 'sent') {
+            kept.removeWhere((y) => y['rid'] == x['rid']);
+            sent++;
+            keptNote.value = e.message;
+            continue;
+          }
+          x['state'] = 'refused';
+          x['msg'] = e.toString();
+        }
+      }
+    } finally {
+      _sending = false;
+      await _saveKept();
+    }
+    if (sent > 0) {
+      keptNote.value = bi('Entries kept on this phone sent: $sent', 'फोनवर ठेवलेल्या एन्ट्री पाठवल्या: $sent');
+      dataTick.value++;
+    }
+    if (kept.any((x) => x['state'] == 'refused' && x['site'] == (site?.code ?? ''))) keptNote.value = bi('An entry kept on this phone was not saved – see Me → Waiting on this phone.', 'फोनवर ठेवलेली एक एन्ट्री सेव्ह झाली नाही – Me पहा.');
+  }
+
   /// Back to the list of sites (another site).
   void pickAnotherSite() {
     if (sites.length > 1) _go(Stage.pickSite);
   }
 
   Future<void> signOut([String msg = '']) async {
+    stopLive();
     await api.signOut();
     site = null;
     machines = [];

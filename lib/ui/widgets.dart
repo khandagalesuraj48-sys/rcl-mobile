@@ -138,16 +138,30 @@ class InfoLine extends StatelessWidget {
   final bool bad;
   final IconData? icon;
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final sent = this.bad && Api.isGood(text.split('\n').first);      // (update-114) sent for verification: green, not an error
+    final bad = this.bad && !sent;
+    return Container(
         margin: const EdgeInsets.only(top: 14),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(color: bad ? C.redSoft : C.greenSoft, borderRadius: BorderRadius.circular(16)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(icon ?? (bad ? Icons.error_outline_rounded : Icons.local_gas_station_outlined), size: 20, color: bad ? C.red : C.greenDark),
+          Icon(sent ? Icons.hourglass_top_rounded : icon ?? (bad ? Icons.error_outline_rounded : Icons.local_gas_station_outlined), size: 20, color: bad ? C.red : C.greenDark),
           const SizedBox(width: 10),
           Expanded(child: Text(text, style: TextStyle(fontSize: 14, height: 1.35, color: bad ? C.red : C.greenDark, fontWeight: FontWeight.w500))),
         ]),
       );
+  }
+}
+
+/// (update-114) The server sent the entry for verification (it is saved when it is approved).
+bool isSent(Object e) => e is ApiError && e.code == 'sent';
+
+/// (3.1.7) A NEW entry that got no answer (no network): may it be kept on the phone and sent by itself later? true = yes.
+Future<bool> offerKeep(BuildContext context, Object e) async {
+  if (e is! ApiError || !e.noConnection || e.rid.isEmpty) return false;
+  return ask(context, 'No network', bi('Keep this entry on this phone? It is sent by itself when the network is back – you see it in Me → Waiting on this phone until then.',
+      'ही एन्ट्री फोनवर ठेवायची? नेटवर्क आल्यावर ती आपोआप पाठवली जाईल – तोपर्यंत Me → Waiting on this phone मध्ये दिसेल.'), yes: 'Keep it');
 }
 
 /// Grey boxes that shine while the numbers are coming.
@@ -197,7 +211,7 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
 
 /// A short message at the bottom of the screen.
 void toast(BuildContext context, String msg, {bool bad = false}) {
-  if (msg == Api.crSent) bad = false;      // (14-10-2026) sent to the Super Admin for approval: not a fault
+  if (Api.isGood(msg)) bad = false;      // (14-10-2026 / update-114) sent for approval / verification: not a fault
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: bad ? C.red : C.ink, duration: Duration(seconds: bad ? 6 : 3)));

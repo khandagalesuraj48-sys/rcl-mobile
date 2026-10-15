@@ -12,6 +12,7 @@
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../core/api.dart';
 import '../core/format.dart';
 import '../core/kinds.dart';
 import '../core/session.dart';
@@ -104,8 +105,21 @@ class _LogBookScreenState extends State<LogBookScreen> {
     }
   }
 
+  Session? _ls;
+  // (3.1.7) live: a Log Book entry made elsewhere (the web, another phone, an approval) – the day and the pending list load again
+  void _live() {
+    if (mounted && (_ls?.lastChanged.any((g) => g == 'log' || g == 'master' || g == 'flow') ?? true)) _load(pend: true);
+  }
+
+  @override
+  void dispose() {
+    _ls?.dataTick.removeListener(_live);
+    super.dispose();
+  }
+
   Future<void> _load({bool pend = false}) async {
     final s = SessionScope.read(context), my = ++seq, key = '${s.site?.code}|$day';
+    _ls ??= s..dataTick.addListener(_live);
     setState(() {
       loading = rows.isEmpty;
       err = '';
@@ -206,7 +220,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
     final list = view.where((r) => words.isEmpty || words.every(r.values.map((v) => '$v').join(' ').toLowerCase().contains)).toList();
     final worked = rows.where((r) => !kDayStatus.contains('${r['mode'] ?? r['unit']}')).length;
     final pend = _pendingToday;
-    final tankers = s.machines.any((m) => m.active && m.waterTanker);
+    final tankers = s.machines.any((m) => m.onSite(day) && m.waterTanker);
     return Scaffold(
       floatingActionButton: s.canEdit('Log Book')
           ? FloatingActionButton.extended(
@@ -928,7 +942,7 @@ class _LogFormState extends State<LogForm> {
   }
 
   Future<void> _pickMachine() async {
-    final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const MachinePicker());
+    final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: date));
     if (m == null || !mounted) return;
     if (m.waterTanker) {
       toast(context, '${m.id} is a water tanker – its trips are entered in "Water tanker – trip by trip".', bad: true);
@@ -1038,6 +1052,21 @@ class _LogFormState extends State<LogForm> {
       setState(() => busy = false);
       await _savedSheet();
     } catch (e) {
+      // (3.1.7) no network: a NEW entry may be kept on the phone and sent by itself later (with the same save number)
+      if (mounted && !editing && e is ApiError && await offerKeep(context, e)) {
+        await s.keepEntry('saveLogRows', [{'rows': [_row()]}], e.rid, '${tr('Log Book')} · ${showDate(date)} · ${machine?.id ?? ''} · ${tr(shift)}');
+        if (!mounted) return;
+        toast(context, Api.keptMsg);
+        Navigator.pop(context, true);
+        return;
+      }
+      if (mounted && isSent(e)) {
+        // (update-114) sent for verification: nothing saved yet – told in green; the form closes
+        HapticFeedback.lightImpact();
+        toast(context, errText(e));
+        Navigator.pop(context, true);
+        return;
+      }
       if (mounted) {
         setState(() {
           busy = false;
@@ -1608,6 +1637,20 @@ class _TankerScreenState extends State<TankerScreen> {
       });
       toast(context, '${r['added']} trip${r['added'] == 1 ? '' : 's'} saved – ${m.id}, ${showDate(date)} (${r['shift'] ?? shift}).');
     } catch (e) {
+      if (mounted && isSent(e)) {
+        // (update-114) sent for verification: the trips are emptied, the message in green
+        for (final x in trips) {
+          x.dispose();
+        }
+        setState(() {
+          busy = false;
+          err = errText(e);
+          trips
+            ..clear()
+            ..add(_Trip());
+        });
+        return;
+      }
       if (mounted) {
         setState(() {
           busy = false;
@@ -1632,7 +1675,7 @@ class _TankerScreenState extends State<TankerScreen> {
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
-    final tankers = s.machines.where((m) => m.active && m.waterTanker).toList();
+    final tankers = s.machines.where((m) => m.onSite(date) && m.waterTanker).toList();
     final saved = (got?['trips'] as List? ?? []).whereType<Map>().toList();
     final canEdit = s.canEdit('Log Book');
     return Scaffold(

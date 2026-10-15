@@ -132,9 +132,34 @@ class _MeTabState extends State<MeTab> {
                 ),
               ),
               _row(pic: 'gear', en: 'My settings', mr: 'माझ्या सेटिंग्ज', sub: 'Default site, shift, diesel place, text size, password', color: C.slateSoft, onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()))),
-              // (14-10-2026) Approvals: the Super Admin approves there; a user sees the changes he sent (waiting / approved / rejected)
-              if (s.superAdmin || s.canEdit('Log Book') || s.canEdit('Diesel Issue'))
-                _row(pic: 'bell', en: 'Approvals', mr: 'मंजुरी', sub: s.superAdmin ? 'Changes of a submitted bill sent by the users – approve or reject' : 'What you sent to the Super Admin – waiting, approved, rejected', color: C.blueSoft, onTap: () => openWeb(context, 'Approvals', 'approvals', pic: 'bell')),
+              // (update-114) Approvals – for everybody: what waits for him to approve (one or several at once), what he sent (waiting,
+              // approved, rejected); the Super Admin also sets the verification rules there. The web page, live.
+              _row(
+                pic: 'bell',
+                en: 'Approvals',
+                mr: 'मंजुरी',
+                sub: s.crForMe > 0
+                    ? bi('${s.crForMe} waiting for you to approve', '${s.crForMe} तुमच्या मंजुरीसाठी थांबले आहेत')
+                    : s.crWaiting > 0
+                        ? bi('${s.crWaiting} waiting', '${s.crWaiting} थांबलेले')
+                        : bi('What waits for you, and what you sent for verification', 'तुमच्यासाठी थांबलेले आणि तुम्ही पाठवलेले'),
+                color: s.crForMe > 0 ? C.amberSoft : C.blueSoft,
+                trailing: s.crForMe > 0 ? Badge(label: Text('${s.crForMe}'), child: const Icon(Icons.chevron_right_rounded, color: C.faint)) : null,
+                onTap: () async {
+                  await openWeb(context, 'Approvals', 'approvals', pic: 'bell');
+                  s.loadApprovals();
+                },
+              ),
+              // (3.1.7) entries kept on this phone with no network – sent by themselves when the network is back
+              if (s.kept.isNotEmpty)
+                _row(
+                  pic: 'calendar',
+                  en: 'Waiting on this phone',
+                  mr: 'फोनवर थांबलेल्या',
+                  sub: s.keptBad > 0 ? bi('${s.keptBad} not saved – open to see why', '${s.keptBad} सेव्ह झाल्या नाहीत – कारण पहा') : bi('${s.kept.length} to send when the network is back', 'नेटवर्क आल्यावर ${s.kept.length} पाठवायच्या'),
+                  color: s.keptBad > 0 ? C.redSoft : C.amberSoft,
+                  onTap: () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet()),
+                ),
               _row(pic: 'office_building', en: 'Full web ERP', mr: 'पूर्ण web ERP', sub: 'Every page of the web, inside the app', color: C.amberSoft, onTap: () => openWeb(context, 'Web ERP', 'dash', pic: 'office_building')),
               const SizedBox(height: 6),
               _row(pic: 'locked_with_key', en: 'Sign out', mr: 'साईन आउट करा', sub: 'Signs out of the Portal and every module', color: C.redSoft, text: C.red, onTap: _signOut),
@@ -142,6 +167,82 @@ class _MeTabState extends State<MeTab> {
               const Center(child: Opacity(opacity: .6, child: RachanaLogo(height: 34))),
               const SizedBox(height: 8),
             ]),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+/// (3.1.7) The entries kept on this phone: each with its state; "Send now"; a refused one shows the server's words and can be deleted.
+class KeptSheet extends StatefulWidget {
+  const KeptSheet({super.key});
+  @override
+  State<KeptSheet> createState() => _KeptSheetState();
+}
+
+class _KeptSheetState extends State<KeptSheet> {
+  bool busy = false;
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context);
+    final list = s.kept.where((x) => x['site'] == (s.site?.code ?? '')).toList();
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * .8,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 4), child: TwoLang('Waiting on this phone', 'फोनवर थांबलेल्या एन्ट्री', size: 20, weight: FontWeight.w700)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+          child: Text(bi('Saved with no network. They are sent by themselves when the network is back (each one once).', 'नेटवर्क नसताना ठेवलेल्या. नेटवर्क आल्यावर आपोआप पाठवल्या जातात (प्रत्येक एकदाच).'), style: const TextStyle(color: C.muted, fontSize: 13.5)),
+        ),
+        Expanded(
+          child: list.isEmpty
+              ? const EmptyState('Nothing waiting', 'Everything was sent.', pic: 'clipboard')
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: list.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) {
+                    final x = list[i], bad = x['state'] == 'refused';
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: bad ? C.redSoft : C.bg, borderRadius: BorderRadius.circular(16)),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Icon(bad ? Icons.error_outline_rounded : Icons.hourglass_top_rounded, color: bad ? C.red : C.amber),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text('${x['label']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            Text(bad ? tr('Not saved: ${x['msg']}') : bi('Waiting for the network', 'नेटवर्कची वाट'), style: TextStyle(fontSize: 13, color: bad ? C.red : C.muted)),
+                          ]),
+                        ),
+                        if (bad)
+                          IconButton(
+                            tooltip: tr('Delete'),
+                            icon: const Icon(Icons.delete_outline_rounded, color: C.red),
+                            onPressed: () async {
+                              if (await ask(context, 'Delete it?', bi('This entry was not saved. Delete it from this phone? (Enter it again if it is needed.)', 'ही एन्ट्री सेव्ह झाली नाही. फोनवरून काढायची?'), yes: 'Delete', danger: true)) {
+                                await s.dropKept('${x['rid']}');
+                              }
+                            },
+                          ),
+                      ]),
+                    );
+                  },
+                ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          child: FilledButton.icon(
+            onPressed: busy || list.isEmpty
+                ? null
+                : () async {
+                    setState(() => busy = true);
+                    await s.sendKept(again: true);
+                    if (mounted) setState(() => busy = false);
+                  },
+            icon: busy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : const Icon(Icons.send_rounded),
+            label: Text(busy ? tr('Sending…') : tr('Send now')),
           ),
         ),
       ]),
