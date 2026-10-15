@@ -11,6 +11,8 @@ import '../core/api.dart';
 import '../core/format.dart';
 import '../core/kinds.dart';
 import '../core/photo.dart';
+import '../core/plate.dart';
+import '../core/plate_read.dart';
 import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
@@ -51,6 +53,8 @@ class _EntryFormState extends State<EntryForm> {
   int aiTok = 0;
 
   Kind get k => widget.kind;
+  /// (3.1.8, update-116) this save goes to verification (the Super Admin's rule for him): the button says so
+  bool get _sends => SessionScope.read(context).flowWill(k.module, dates: [date], qty: asNum(qty.text) ?? 0);
   bool get issue => k.key == 'issue';
   Map<String, dynamic>? get ed => widget.edit;
   String get editId => '${ed?['id'] ?? ''}';
@@ -88,7 +92,7 @@ class _EntryFormState extends State<EntryForm> {
         // the way it was measured: as saved, else from its readings (KM, Hrs or both), else the machinery's own
         final both = v('kmReading').isNotEmpty && v('hrReading').isNotEmpty;
         final guess = both ? 'KM + Hrs' : v('kmReading').isNotEmpty ? 'KM' : v('hrReading').isNotEmpty ? 'Hrs' : '';
-        way = v('mode').isNotEmpty ? v('mode') : (m != null && m.modes.contains(guess) ? guess : (m?.wayAuto ?? ''));
+        way = v('mode').isNotEmpty ? v('mode') : (m != null && m.modes.contains(guess) ? guess : (m?.dieselWay ?? ''));
         km.text = v('kmReading');
         hr.text = v('hrReading');
         driver.text = v('driver');
@@ -138,6 +142,53 @@ class _EntryFormState extends State<EntryForm> {
     if (!bill) _balance();
   }
 
+  /* (3.1.8) THE NUMBER PLATE: a photo of the plate → the phone reads it → the machinery of the Asset Master (on site on the
+   * entry's date) is picked by itself. Several look alike: he picks among them; none: he is told what was read and picks. */
+  bool plateBusy = false;
+  Future<void> _scanPlate() async {
+    final s = SessionScope.read(context);
+    setState(() {
+      plateBusy = true;
+      err = '';
+    });
+    String? text;
+    try {
+      text = await readPlatePhoto();
+    } catch (e) {
+      if (mounted) setState(() => err = bi('The number plate could not be read on this phone – pick the machinery.', 'नंबर प्लेट वाचता आली नाही – यंत्र निवडा.'));
+    }
+    if (!mounted) return;
+    setState(() => plateBusy = false);
+    if (text == null) return;
+    final found = plateMatches(text, s.machines.where((m) => m.onSite(date)).toList());
+    if (found.length == 1) {
+      _useMachine(found.first);
+      HapticFeedback.lightImpact();
+      toast(context, bi('Number plate: ${found.first.id} – found in the Asset Master.', 'नंबर प्लेट: ${found.first.id} – Asset Master मध्ये सापडली.'));
+      return;
+    }
+    final read = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (found.isEmpty) {
+      setState(() => err = bi('This number is not in the Asset Master (read: "${read.length > 40 ? read.substring(0, 40) : read}") – pick the machinery, or take the photo again.',
+          'हा नंबर Asset Master मध्ये नाही – यंत्र निवडा किंवा पुन्हा फोटो घ्या.'));
+      return;
+    }
+    final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: date, only: found));
+    if (m != null && mounted) _useMachine(m);
+  }
+
+  void _useMachine(Machine m) {
+    setState(() {
+      if (machine?.id != m.id) {
+        shots.clear();
+        km.clear();
+        hr.clear();
+      }
+      machine = m;
+      way = m.debit ? '' : m.dieselWay;
+    });
+  }
+
   Future<void> _pickMachine() async {
     final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: date));
     if (m == null || !mounted) return;
@@ -148,7 +199,7 @@ class _EntryFormState extends State<EntryForm> {
         hr.clear();
       }
       machine = m;
-      way = m.debit ? '' : m.wayAuto;
+      way = m.debit ? '' : m.dieselWay;      // (3.1.8) by itself, from the Asset Master
     });
   }
 
@@ -266,7 +317,7 @@ class _EntryFormState extends State<EntryForm> {
 
   String? _check() {
     if (issue && machine == null) return 'Pick the machinery.';
-    if (issue && machine != null && !machine!.debit && machine!.modes.isNotEmpty && way.isEmpty) return 'Pick how the machinery is measured (KM / Hrs …).';
+    if (issue && machine != null && !machine!.debit && machine!.dieselWay.isNotEmpty && way.isEmpty) way = machine!.dieselWay;
     if (k.key == 'inward' && pump.text.trim().isEmpty) return 'Enter the Pump Name.';
     if (k.key == 'transfer' && from == to) return 'From and To cannot be the same.';
     if (!((asNum(qty.text) ?? 0) > 0)) return 'Enter the litres.';
@@ -590,9 +641,28 @@ class _EntryFormState extends State<EntryForm> {
               ],
               _label('Machinery', 'यंत्र'),
               _machineBox(),
-              if (m != null && !m.debit && m.modes.isNotEmpty) ...[
+              if (ed == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: OutlinedButton.icon(
+                    key: const Key('scan-plate'),
+                    onPressed: plateBusy ? null : _scanPlate,
+                    icon: plateBusy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5)) : const Icon(Icons.photo_camera_rounded),
+                    label: Text(plateBusy ? 'Reading the number…' : 'Photo of the number plate'),
+                  ),
+                ),
+              // (3.1.8) KM / Hrs / KM + Hrs by itself from the Asset Master – nothing to pick; only "Meter not working"
+              if (m != null && !m.debit && m.dieselWay.isNotEmpty) ...[
                 _label('Measured by', 'मोजणी'),
-                _chips<String>([for (final w in [...m.modes, if (m.hasMeter) kNoReading]) (w, w)], way, (v) => setState(() => way = v)),
+                Row(children: [
+                  Pill(way == kNoReading ? m.dieselWay : '${m.dieselWay} · Asset Master', icon: Icons.verified_rounded, color: way == kNoReading ? C.muted : C.greenDark, bg: way == kNoReading ? C.bg : C.greenSoft),
+                  const SizedBox(width: 10),
+                  FilterChip(
+                    label: Text(tr('Meter not working')),
+                    selected: way == kNoReading,
+                    onSelected: (on) => setState(() => way = on ? kNoReading : m.dieselWay),
+                  ),
+                ]),
               ],
               if (m != null && hasKm(way)) ...[
                 _label('KM reading', 'KM रीडिंग'),
@@ -683,7 +753,7 @@ class _EntryFormState extends State<EntryForm> {
               style: FilledButton.styleFrom(backgroundColor: k.color),
               onPressed: busy ? null : _save,
               icon: busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Icon(Icons.check_circle_rounded),
-              label: Text(busy ? 'Saving…' : ed == null ? 'Save ${k.en}' : 'Save the change'),
+              label: Text(busy ? 'Saving…' : _sends ? 'Send to verification' : ed == null ? 'Save ${k.en}' : 'Save the change'),
             ),
           ),
         ),
@@ -693,9 +763,11 @@ class _EntryFormState extends State<EntryForm> {
 }
 
 /// The machinery of the site on [date] (on site that day – update-115; empty = Active) – search by number, name, type or owner.
+/// [only]: just these (several read from a number plate).
 class MachinePicker extends StatefulWidget {
-  const MachinePicker({super.key, this.date = ''});
+  const MachinePicker({super.key, this.date = '', this.only});
   final String date;
+  final List<Machine>? only;
   @override
   State<MachinePicker> createState() => _MachinePickerState();
 }
@@ -705,7 +777,7 @@ class _MachinePickerState extends State<MachinePicker> {
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
-    final list = s.machines.where((m) => m.onSite(widget.date) && (q.isEmpty || m.matches(q))).take(100).toList();
+    final list = (widget.only ?? s.machines.where((m) => m.onSite(widget.date))).where((m) => q.isEmpty || m.matches(q)).take(100).toList();
     return SizedBox(
       height: MediaQuery.of(context).size.height * .86,
       child: Column(children: [

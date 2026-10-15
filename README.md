@@ -14,6 +14,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.8 (15-10-2026: "number plate cha photo … auto number detect hoil manual pn krta yeil"; "km aahe hrs aahe ki km+hrs aahe he pn auto select asaw"; "eka khali ek ashi list … jyala jo access aahe tyala tech disel"; "jr revert zal tr mahesh la continue push notification jatil"):**
+* Diesel Issue: **"Photo of the number plate"** – the phone reads it (Google ML Kit, on the phone: no internet, nothing paid) and
+  picks the machinery of the Asset Master on site that day (`lib/core/plate.dart`: two lines, letters the camera mixes up, one
+  letter wrong). Several alike → he picks among them; none → he is told and picks as before.
+* Diesel Issue: KM / Hrs / KM + Hrs **by itself** from the Asset Master (`Machine.dieselWay`); only "Meter not working".
+* The save button says **"Send to verification"** when the Super Admin's rule applies to him (Mechanical update-116, getInit
+  "flow"); else "Save …".
+* **Entries**: a list one under the other of the pages he may open – 1. Diesel Issue 2. Diesel Inward 3. Transfer 4. Log Book.
+* **Reports**: every report of the web he may open (Dashboard, the diesel reports, Bill Summary, Vendor Ledger / Outstanding).
+* **Notifications** on the phone (`lib/core/alerts.dart`): something new waits for him to approve (once); an entry of his sent
+  back with a question (again every 30 minutes until he answers). Also with the app closed: Android asks about every 15 minutes
+  (WorkManager). The phone asks to allow notifications once.
+
 **Version 3.1.7 (15-10-2026: verification of every work – Mechanical update-114; a machinery that left the site – update-115; "app madhe live sync haway … app refresh kraychi kahich garaj nahi"):**
 * An entry of a work the Super Admin put under verification comes back "Sent for verification to … – VF-00001": shown in green,
   the form is emptied (an edit is closed) – nothing is saved until it is approved (`Api.isSent`, code `sent`, never sent again).

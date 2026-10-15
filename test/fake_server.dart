@@ -20,6 +20,7 @@ class FakeServer {
   String flowFor = ''; // an action the Super Admin put under verification: answered "Sent for verification …" (nothing saved)
   Map<String, String> versions = {'master': '1', 'stock': '1', 'log': '1', 'users': '1', 'activity': '1', 'flow': '1'};
   int crPending = 0, crForMe = 0;
+  Map<String, dynamic> flowMine = {}; // (update-116) his works under verification (getInit "flow")
   bool down = false; // no network to Mechanical
   final rids = <String>[]; // the save numbers that came
   final tankerCalls = <Map<String, dynamic>>[];
@@ -128,7 +129,7 @@ class FakeServer {
         case 'getStock':
           return _j({'result': stock});
         case 'getInit':
-          return _j({'result': {'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': ['Dispenser', 'VTR Store'], 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
+          return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': ['Dispenser', 'VTR Store'], 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
             'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms},
             'master': [
               {'id': 'Sany 210 (No.1)', 'name': 'Sany 210', 'type': 'Excavator', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['Hrs', 'Time'], 'modesX': ['Time'], 'meterKm': false, 'meterHr': true},

@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'alerts.dart';
 import 'api.dart';
 import 'format.dart';
 import 'lang.dart';
@@ -82,6 +83,15 @@ class Machine {
 
   /// The way picked by itself: when there is only one usual way (as on the web).
   String get wayAuto => modesMain.length == 1 ? modesMain.first : '';
+
+  /// (3.1.8, Mechanical update-116) A DIESEL FILL: KM / Hrs / KM + Hrs by itself from the Asset Master – the readings its meters
+  /// give; nothing to pick (only "No reading" when its meter is broken). '' = no meter (no reading).
+  String get dieselWay {
+    final md = modes, unit = '${m['unit'] ?? ''}';
+    if (const ['KM', 'Hrs', 'KM + Hrs'].contains(unit) && md.contains(unit)) return unit;
+    final k = md.any(hasKm), h = md.any(hasHr);
+    return k && h && md.contains('KM + Hrs') ? 'KM + Hrs' : k ? 'KM' : h ? 'Hrs' : '';
+  }
   bool get waterTanker => lbFormat == 'I';
   bool get hasMeter => modes.any((w) => hasKm(w) || hasHr(w));
   num? get tankCap => asNum(m['tankCap']);
@@ -294,6 +304,7 @@ class Session extends ChangeNotifier {
     _go(Stage.opening);
     try {
       if ((api.token ?? '').isEmpty) _user(await api.openSite(code));
+      await api.keep.write(kMechUrl, api.mechUrl);      // (3.1.8) for the notifications with the app closed
       await loadInit();
       versions = {};
       _go(Stage.ready);
@@ -336,6 +347,7 @@ class Session extends ChangeNotifier {
     drivers = (d['drivers'] as List? ?? []).map((e) => e.toString()).toList();
     pumps = (d['pumps'] as List? ?? []).map((e) => e.toString()).toList();
     locations = (d['locations'] as List? ?? []).map((e) => e.toString()).toList();
+    _flow(d['flow']);
     setStock(d['stock']);
   }
 
@@ -446,6 +458,8 @@ class Session extends ChangeNotifier {
         dataTick.value++;
         notifyListeners();
       }
+      // (3.1.8) an entry sent back to him: asked again every 10 minutes (its notification every 30 – alerts.dart)
+      if (crBack > 0 && DateTime.now().difference(_apprAt).inMinutes >= 10) await loadApprovals();
       await sendKept();
     } catch (_) {/* the next tick tries again */} finally {
       _ticking = false;
@@ -453,14 +467,45 @@ class Session extends ChangeNotifier {
   }
 
   /// (update-114) Approvals: [crWaiting] = waiting in his list (what he sent, what waits for him); [crForMe] = for him to decide.
-  int crWaiting = 0, crForMe = 0;
+  int crWaiting = 0, crForMe = 0, crBack = 0;
+
+  /// (3.1.8) notifications on the phone (the tests switch them off)
+  bool notify = true;
+
+  /// (3.1.8, update-116) his works under verification (Mechanical's getInit "flow" / Approvals "mine"): {page: {daysBack, qtyAbove, to}}
+  Map<String, Map<String, dynamic>> flowMine = {};
+  void _flow(dynamic f) {
+    if (f is! Map) return;
+    flowMine = f.map((k, v) => MapEntry('$k', v is Map ? v.cast<String, dynamic>() : <String, dynamic>{}));
+  }
+
+  /// Does a save of [module] (dated [dates], [qty] litres) go to verification? Then its button says "Send to verification".
+  bool flowWill(String module, {List<String> dates = const [], num qty = 0}) {
+    final r = flowMine[module];
+    if (r == null) return false;
+    final db = num.tryParse('${r['daysBack'] ?? ''}'), qa = num.tryParse('${r['qtyAbove'] ?? ''}');
+    if (db == null && qa == null) return true;
+    if (db != null) {
+      final t = today.isNotEmpty ? DateTime.tryParse(today) ?? clock() : clock();
+      final lim = t.subtract(Duration(days: db.toInt()));
+      final limKey = '${lim.year.toString().padLeft(4, '0')}-${lim.month.toString().padLeft(2, '0')}-${lim.day.toString().padLeft(2, '0')}';
+      if (dates.any((d) => d.length == 10 && d.compareTo(limKey) < 0)) return true;
+    }
+    return qa != null && qty > qa;
+  }
+  String flowTo(String module) => ((flowMine[module]?['to'] as List?) ?? const []).join(', ');
+  DateTime _apprAt = DateTime.fromMillisecondsSinceEpoch(0);
   Future<void> loadApprovals() async {
+    _apprAt = DateTime.now();
     try {
       final d = await api.call('getChangeRequests', [<String, dynamic>{}]);
       if (d is! Map) return;
       crWaiting = (d['pending'] is num) ? (d['pending'] as num).toInt() : 0;
       crForMe = (d['forMe'] is num) ? (d['forMe'] as num).toInt() : 0;
+      crBack = (d['backToMe'] is num) ? (d['backToMe'] as num).toInt() : 0;
+      _flow(d['mine']);
       notifyListeners();
+      if (notify) await tellAlerts(d, api.keep);      // (3.1.8) waiting for him / sent back to him: a notification
     } catch (_) {/* the count only */}
   }
 

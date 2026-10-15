@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/core/alerts.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/plate.dart';
 import 'package:rcl_mobile/core/kinds.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/web/files.dart';
@@ -384,4 +386,58 @@ void main() {
     expect(srv.calls, contains('mech:getStock'), reason: 'only the stock is asked again');
     expect(srv.calls, isNot(contains('mech:getInit')));
   });
+
+  // ---------------- 3.1.8 ----------------
+  test('(3.1.8) the number plate: the text read on the phone → the machinery of the Asset Master (exact, two lines, a letter mixed up)', () {
+    final ms = [
+      Machine({'id': 'MH-25-AJ-2169', 'type': 'Tipper'}),
+      Machine({'id': 'MH-12-SY-6216', 'type': 'Bolero'}),
+      Machine({'id': 'Sany 210 (No.1)', 'no': '', 'type': 'Excavator'}),
+      Machine({'id': 'JCB-3', 'no': 'MH 14 GH 1010', 'type': 'JCB'}),
+    ];
+    expect(plateMatches('IND\nMH 25 AJ 2169', ms).map((m) => m.id), ['MH-25-AJ-2169']);
+    expect(plateMatches('MH 25\nAJ 2169', ms).map((m) => m.id), ['MH-25-AJ-2169'], reason: 'a plate on two lines');
+    expect(plateMatches('MH12 SY 62I6', ms).map((m) => m.id), ['MH-12-SY-6216'], reason: 'I read for 1 – the same');
+    expect(plateMatches('MH 25 AJ 2168', ms).map((m) => m.id), ['MH-25-AJ-2169'], reason: 'one letter different: still offered');
+    expect(plateMatches('MH14GH1010', ms).map((m) => m.id), ['JCB-3'], reason: 'by its number (the machinery is named otherwise)');
+    expect(plateMatches('KA 01 AB 9999', ms), isEmpty, reason: 'not in the Asset Master');
+    expect(plateMatches('', ms), isEmpty);
+  });
+
+  test('(3.1.8) diesel: KM / Hrs / KM + Hrs by itself from the Asset Master', () {
+    expect(Machine({'unit': 'KM', 'worksOn': ['KM']}).dieselWay, 'KM');
+    expect(Machine({'modes': ['Hrs', 'Time'], 'modesX': ['Time']}).dieselWay, 'Hrs');
+    expect(Machine({'unit': 'KM + Hrs', 'worksOn': ['KM', 'Hrs']}).dieselWay, 'KM + Hrs');
+    expect(Machine({'lbFormat': 'H'}).dieselWay, '', reason: 'trips only: no meter, no reading');
+  });
+
+  test('(3.1.8, update-116) "Send to verification": his rules from Mechanical, with "only when"', () async {
+    srv.flowMine = {'Diesel Issue': {'daysBack': '', 'qtyAbove': 50, 'to': ['Shubham'], 'levels': 1}, 'Log Book': {'daysBack': 3, 'qtyAbove': '', 'to': ['Shubham'], 'levels': 1}};
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    expect(s.flowWill('Diesel Issue', qty: 40), false);
+    expect(s.flowWill('Diesel Issue', qty: 60), true);
+    expect(s.flowWill('Log Book', dates: ['2026-10-13']), false, reason: 'today is 14-10 in the fake server: 1 day back');
+    expect(s.flowWill('Log Book', dates: ['2026-10-01']), true);
+    expect(s.flowWill('Diesel Inward'), false, reason: 'no rule: Save');
+    expect(s.flowTo('Diesel Issue'), 'Shubham');
+  });
+
+  test('(3.1.8) notifications: new for him once; sent back to him – again every 30 minutes until he answers', () {
+    final seen = <String, int>{};
+    Map d(List<Map> r) => {'requests': r};
+    final w = {'id': 'VF-00001', 'canDecide': true, 'task': 'Diesel Issue', 'by': 'Mahesh', 'summary': ['300 L MH-25']};
+    var out = alertsFrom(d([w]), seen, 0);
+    expect(out.single.$2, 'Waiting for your approval – Diesel Issue (Mahesh)');
+    expect(alertsFrom(d([w]), seen, 60000), isEmpty, reason: 'told once');
+    final b = {'id': 'VF-00002', 'canAnswer': true, 'summary': ['Vendor X'], 'reverted': {'by': 'Shubham', 'note': 'Which PAN?'}};
+    out = alertsFrom(d([w, b]), seen, 100000);
+    expect(out.single.$3, 'Shubham: Which PAN?');
+    expect(alertsFrom(d([w, b]), seen, 100000 + 29 * 60000), isEmpty);
+    expect(alertsFrom(d([w, b]), seen, 100000 + 31 * 60000).single.$2, startsWith('Sent back to you'));
+    alertsFrom(d([]), seen, 200000000);
+    expect(seen, isEmpty, reason: 'decided: forgotten');
+  });
 }
+
