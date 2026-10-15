@@ -552,11 +552,11 @@ class _EntryFormState extends State<EntryForm> {
               ],
               if (m != null && hasKm(way)) ...[
                 _label('KM reading', 'KM रीडिंग'),
-                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: tr(aiPut.contains(km) ? 'Read by the AI on the dashboard photo – check it' : null))),
+                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read by the AI on the dashboard photo – check it') : null)),
               ],
               if (m != null && hasHr(way)) ...[
                 _label('Hour meter', 'तास मीटर'),
-                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: tr(aiPut.contains(hr) ? 'Read by the AI on the dashboard photo – check it' : null))),
+                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read by the AI on the dashboard photo – check it') : null)),
               ],
               _label('Litres', 'लिटर'),
               _qtyField(),
