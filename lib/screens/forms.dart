@@ -654,9 +654,8 @@ class _EntryFormState extends State<EntryForm> {
               // (3.1.8) KM / Hrs / KM + Hrs by itself from the Asset Master – nothing to pick; only "Meter not working"
               if (m != null && !m.debit && m.dieselWay.isNotEmpty) ...[
                 _label('Measured by', 'मोजणी'),
-                Row(children: [
+                Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   Pill(way == kNoReading ? m.dieselWay : '${m.dieselWay} · Asset Master', icon: Icons.verified_rounded, color: way == kNoReading ? C.muted : C.greenDark, bg: way == kNoReading ? C.bg : C.greenSoft),
-                  const SizedBox(width: 10),
                   FilterChip(
                     label: Text(tr('Meter not working')),
                     selected: way == kNoReading,
