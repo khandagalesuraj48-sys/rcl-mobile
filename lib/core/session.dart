@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'api.dart';
 import 'format.dart';
 
-enum Stage { starting, signedOut, pickSite, opening, ready }
+enum Stage { starting, signedOut, setPassword, pickSite, opening, ready }
 
 class Module {
   Module(this.key, this.name, this.url);
@@ -174,6 +174,7 @@ class Session extends ChangeNotifier {
         _go(Stage.pickSite);
       }
     } on ApiError catch (e) {
+      if (e.code == 'mustchange') return _go(Stage.setPassword);
       if (e.needsSignIn || e.status == 401) {
         await api.forget();
         return _go(Stage.signedOut);
@@ -185,6 +186,8 @@ class Session extends ChangeNotifier {
   Future<void> _loadSites() async {
     final me = await api.auth({'action': 'me'});
     if (me['signedIn'] != true) throw ApiError('Please sign in.', code: 'signin');
+    // (15-10-2026) still on the password the Super Admin gave: he sets his own first (here in the app)
+    if (me['mustChange'] == true) throw ApiError('Set your own password first.', code: 'mustchange');
     final u = (me['user'] as Map?)?.cast<String, dynamic>() ?? {};
     // (14-10-2026) the Super Admin opens every module of every site too (the Portal lists them all for him, as Admin)
     final by = <String, SiteChoice>{};
@@ -206,22 +209,50 @@ class Session extends ChangeNotifier {
     error = '';
     try {
       final r = await api.auth({'action': 'login', 'email': mail.trim(), 'password': password});
-      if (r['mustChange'] == true) {
-        await api.signOut();
-        return _go(Stage.signedOut, 'Set your own password on the Portal (web) first, then sign in here.');
-      }
-      await _loadSites();
-      final def = defaultSite;
-      if (def.isNotEmpty && sites.any((x) => x.code == def)) {
-        await chooseSite(def); // his default site opens at once (Settings)
-      } else if (sites.length == 1) {
-        await chooseSite(sites.first.code);
-      } else {
-        _go(Stage.pickSite);
-      }
+      // (15-10-2026) a new user, or a one-time password of the Super Admin: he sets his own password here in the app
+      if (r['mustChange'] == true) return _go(Stage.setPassword);
+      await _afterSignIn();
     } on ApiError catch (e) {
       _go(Stage.signedOut, e.toString());
     }
+  }
+
+  Future<void> _afterSignIn() async {
+    await _loadSites();
+    final def = defaultSite;
+    if (def.isNotEmpty && sites.any((x) => x.code == def)) {
+      await chooseSite(def); // his default site opens at once (Settings)
+    } else if (sites.length == 1) {
+      await chooseSite(sites.first.code);
+    } else {
+      _go(Stage.pickSite);
+    }
+  }
+
+  /// (15-10-2026) The first sign-in with the password the Super Admin gave (or a one-time password): his own password is set
+  /// here – [given] is the password he was given. The Portal checks it and its rules; then the app opens as after a sign-in.
+  Future<void> setOwnPassword(String given, String now) async {
+    error = '';
+    try {
+      await api.auth({'action': 'changePassword', 'old': given, 'password': now});
+    } on ApiError catch (e) {
+      if (e.needsSignIn || e.status == 401) {
+        await api.forget();
+        return _go(Stage.signedOut, 'Please sign in again with the password you were given.');
+      }
+      return _go(Stage.setPassword, e.toString());
+    }
+    try {
+      await _afterSignIn();
+    } on ApiError catch (e) {
+      _go(Stage.signedOut, e.toString());
+    }
+  }
+
+  /// Back to the sign-in (the password is not set now).
+  Future<void> leaveSetPassword() async {
+    await api.signOut();
+    _go(Stage.signedOut);
   }
 
   /// Opens a site: Mechanical's sign-in (a kept one, else a new ticket), the person's access and the site's lists.

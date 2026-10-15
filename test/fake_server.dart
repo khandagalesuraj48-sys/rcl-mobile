@@ -8,6 +8,7 @@ class FakeServer {
   final calls = <String>[];
   int tickets = 0;
   bool portalSignedIn = false, superAdmin = false, mustChange = false;
+  String newPassword = '';
   String expireOnce = ''; // an action that first answers SESSION_EXPIRED (a Mechanical sign-in that ended)
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
   final saved = <Map<String, dynamic>>[];
@@ -46,6 +47,8 @@ class FakeServer {
       }
       if (b['action'] == 'me') {
         if (!portalSignedIn || r.headers['Cookie'] != 'rcl_portal=abc123') return _j({'signedIn': false});
+        // (as the Portal: still on a given password – no module until his own is set)
+        if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
         return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin}, 'items': [
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
@@ -59,8 +62,15 @@ class FakeServer {
         return _j({'ok': true, 'start': start});
       }
       if (b['action'] == 'changePassword') {
+        if (!portalSignedIn) return _j({'error': 'Please sign in.', 'code': 'signin'}, 401);
         if (b['old'] != 'Nashik#Road848!') return _j({'error': 'Current password is wrong.', 'code': 'oldpw'}, 400);
-        return _j({'ok': true});
+        final pw = (b['password'] ?? '').toString();
+        if (pw.length < 8 || !RegExp(r'[A-Za-z]').hasMatch(pw) || !RegExp(r'[0-9]').hasMatch(pw)) {
+          return _j({'error': 'The password must have at least 8 characters, with letters and numbers.', 'code': 'policy'}, 400);
+        }
+        mustChange = false;
+        newPassword = pw;
+        return _j({'ok': true}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});      // (a fresh sign-in)
       }
       if (b['action'] == 'logout') {
         portalSignedIn = false;

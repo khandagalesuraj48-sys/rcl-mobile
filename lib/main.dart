@@ -91,6 +91,7 @@ class Gate extends StatelessWidget {
         Stage.starting => const Opening(key: ValueKey('start')),
         Stage.opening => Opening(key: const ValueKey('opening'), what: s.siteName),
         Stage.signedOut => const LoginScreen(key: ValueKey('login')),
+        Stage.setPassword => const LoginScreen(key: ValueKey('setpw'), setPassword: true),
         Stage.pickSite => const SitePickScreen(key: ValueKey('site')),
         Stage.ready => Shell(key: ValueKey('app-${s.site?.code}')),
       },
