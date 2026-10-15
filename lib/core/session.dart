@@ -84,6 +84,16 @@ class Machine {
   /// The way picked by itself: when there is only one usual way (as on the web).
   String get wayAuto => modesMain.length == 1 ? modesMain.first : '';
 
+  /// (3.1.9, asked 16-10-2026: "vehicle select kel ki auto tyach km km+hrs trip je kay asel te auto select") THE LOG BOOK: the
+  /// way is picked by itself, as on the web – the way of its last entry ([last], from the server), else its Asset Master unit,
+  /// else its first way. It can still be changed (Idle, Holiday, Breakdown, a day on Time …).
+  String logWay([String last = '']) {
+    final main = modesMain, u = '${m['unit'] ?? ''}';
+    if (last.isNotEmpty && main.contains(last)) return last;
+    if (main.contains(u)) return u;
+    return main.isNotEmpty ? main.first : '';
+  }
+
   /// (3.1.8, Mechanical update-116) A DIESEL FILL: KM / Hrs / KM + Hrs by itself from the Asset Master – the readings its meters
   /// give; nothing to pick (only "No reading" when its meter is broken). '' = no meter (no reading).
   String get dieselWay {

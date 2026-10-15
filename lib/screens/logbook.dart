@@ -763,7 +763,7 @@ class _LogFormState extends State<LogForm> {
         loadingP = false;
         if (changed) {
           _clearFigures();
-          way = m.wayAuto;
+          way = m.logWay('${r['lastMode'] ?? ''}');      // (3.1.9) by itself: its last entry's way, else the Asset Master's
         }
         _startReadings();
       });
@@ -951,7 +951,7 @@ class _LogFormState extends State<LogForm> {
     setState(() {
       machine = m;
       p = null;
-      way = m.wayAuto;
+      way = m.logWay();      // (3.1.9) by itself (the last entry's way follows with the server's figures)
       _clearFigures();
     });
     _prefill();
