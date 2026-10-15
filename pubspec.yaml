@@ -1,7 +1,7 @@
 name: rcl_mobile
 description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.1.7+1
+version: 3.1.8+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -21,6 +21,9 @@ dependencies:
   image_picker: ^1.1.2
   geolocator: ^14.0.0
   image: ^4.2.0
+  google_mlkit_text_recognition: ^0.15.0 # (3.1.8) the number plate read on the phone
+  flutter_local_notifications: ^19.4.0 # (3.1.8) waiting for approval / sent back
+  android_alarm_manager_plus: ">=4.0.0 <6.0.0" # (3.1.8) those notifications also with the app closed (Android)
 
 dev_dependencies:
   flutter_test:

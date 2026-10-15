@@ -139,6 +139,15 @@ void main() {
     await t.tap(find.text('Entries'));
     await net(t);
     await pics(t);
+    // (3.1.8) a list one under the other: only the pages he may open (Transfer: no access)
+    expect(find.byKey(const Key('entries-Diesel Issue')), findsOneWidget);
+    expect(find.byKey(const Key('entries-Diesel Inward')), findsOneWidget);
+    expect(find.byKey(const Key('entries-Transfer')), findsNothing);
+    expect(find.byKey(const Key('entries-Log Book')), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/5a_entries_list.png'));
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await pics(t);
     expect(find.text('Sany 210 (No.1)'), findsOneWidget);
     expect(find.text('4 entries · 240 L'), findsOneWidget);
     expect(find.text('Transfer'), findsNothing);
@@ -158,14 +167,19 @@ void main() {
     await net(t);
     await t.tap(find.text('Entries'));
     await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
     await t.tap(find.text('New Entry'));
     await net(t);
+    expect(find.byKey(const Key('scan-plate')), findsOneWidget, reason: '(3.1.8) the photo of the number plate');
     await t.tap(find.text('Pick the machinery'));
     await settle(t, 800);
     expect(find.text('OLD-9'), findsNothing, reason: 'an Inactive machinery is not offered');
     await t.tap(find.text('Sany 210 (No.1)'));
     await settle(t, 800);
     expect(find.text('Hour meter'), findsOneWidget, reason: 'measured by Hrs – picked by itself');
+    expect(find.text('Hrs · Asset Master'), findsOneWidget, reason: '(3.1.8) from the Asset Master – nothing to pick');
+    expect(find.text('Meter not working'), findsOneWidget);
     await t.enterText(find.byType(TextField).at(1), '60');
     await settle(t, 300);
     expect(find.text('Stock after this issue: 753 L'), findsOneWidget);

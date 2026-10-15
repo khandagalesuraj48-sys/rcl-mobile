@@ -90,7 +90,7 @@ class Api {
     _cookie = null;
     token = null;
     site = null;
-    for (final k in [kCookie, kToken, kSite]) {
+    for (final k in [kCookie, kToken, kSite, 'mech_url', 'alerts_seen']) {
       await keep.write(k, null);
     }
   }

@@ -42,14 +42,29 @@ const kModules = [
   ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, page: 'users', admin: true),
 ];
 
-/// The reports of the web he may open.
+/// The reports of the web he may open – (3.1.8) every report of the web, one under the other, by his access.
 List<(String, String, String, String)> reportsOf(Session s) => [
       if (s.canSee('Dashboard')) ('Dashboard', 'डॅशबोर्ड', 'dash', 'bar_chart'),
       if (s.canSee('Reports')) ...[
         ('Daily Inward & Issue', 'दैनिक आवक व वाटप', 'rdaily', 'calendar'),
         ('Monthly Diesel Issue', 'मासिक डिझेल वाटप', 'rmonthly', 'fuel_pump'),
         ('Monthly Diesel & Average', 'मासिक डिझेल व सरासरी', 'ravg', 'clipboard'),
+        ('Actual vs Standard Average', 'प्रत्यक्ष व standard सरासरी', 'rp-average', 'bar_chart'),
+        ('Machinery Diesel Ledger', 'यंत्राचे डिझेल खाते', 'rp-ledger', 'ledger'),
+        ('Stock Register', 'स्टॉक रजिस्टर', 'rp-stock', 'oil_drum'),
+        ('Diesel Purchase Register', 'डिझेल खरेदी रजिस्टर', 'rp-purchase', 'receipt'),
+        ('Diesel Cost Report', 'डिझेल खर्च', 'rp-cost', 'receipt'),
+        ('Machinery Cost Sheet', 'यंत्र खर्च', 'rp-mcost', 'tractor'),
+        ('Owner / Vendor-wise Summary', 'मालक / vendor नुसार', 'rp-owner', 'office_building'),
+        ('Type-wise Summary', 'प्रकारानुसार', 'rp-type', 'articulated_lorry'),
+        ('Month vs Month', 'महिना विरुद्ध महिना', 'rp-compare', 'calendar'),
+        ('Diesel Watch – signs of loss', 'डिझेल वॉच – गळतीची चिन्हे', 'rp-watch', 'shield'),
+        ('Tank Check – System vs Physical', 'टँक तपासणी', 'rp-tank', 'oil_drum'),
+        ('Debit Recovery Statement', 'डेबिट वसुली', 'rp-debit', 'receipt'),
       ],
+      if (s.canSee('Bill Summary')) ('Bill Summary', 'बिल सारांश', 'breg', 'receipt'),
+      if (s.canSee('Vendor Ledger')) ('Vendor Ledger', 'vendor खाते', 'vled', 'ledger'),
+      if (s.canSee('Vendor Outstanding')) ('Vendor Outstanding', 'vendor बाकी', 'vout', 'ledger'),
     ];
 
 class HomeTab extends StatefulWidget {

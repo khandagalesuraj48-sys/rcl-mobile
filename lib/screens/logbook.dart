@@ -1449,7 +1449,7 @@ class _LogFormState extends State<LogForm> {
               style: FilledButton.styleFrom(backgroundColor: C.blue),
               onPressed: busy || multiRows ? null : _save,
               icon: busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Icon(Icons.check_circle_rounded),
-              label: Text(busy ? 'Saving…' : editing ? 'Save the change' : 'Save Log Book'),
+              label: Text(busy ? 'Saving…' : SessionScope.read(context).flowWill('Log Book', dates: [date]) ? 'Send to verification' : editing ? 'Save the change' : 'Save Log Book'),
             ),
           ),
         ),
@@ -1815,7 +1815,7 @@ class _TankerScreenState extends State<TankerScreen> {
                   style: FilledButton.styleFrom(backgroundColor: C.blue),
                   onPressed: busy ? null : _save,
                   icon: busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Icon(Icons.check_circle_rounded),
-                  label: Text(busy ? 'Saving…' : editing != null ? 'Save change' : 'Save trips'),
+                  label: Text(busy ? 'Saving…' : SessionScope.read(context).flowWill('Log Book', dates: [date]) ? 'Send to verification' : editing != null ? 'Save change' : 'Save trips'),
                 ),
               ),
             )

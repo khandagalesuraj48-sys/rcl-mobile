@@ -27,6 +27,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   int tab = 0;
   Session? _s;
   String entriesKind = '';
+  int entriesOpen = 0;
   DateTime? lastBack;
   final hostKey = GlobalKey<WebHostState>();
   Timer? warmUp;
@@ -89,20 +90,21 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
-    final diesel = kKinds.any((k) => s.canSee(k.module));
+    final diesel = kKinds.any((k) => s.canSee(k.module)) || s.canSee('Log Book');      // (3.1.8) Entries: diesel pages and the Log Book
     final reports = reportsOf(s).isNotEmpty;
     final pages = <(Widget, NavigationDestination)>[
       (
         HomeTab(
           onOpenEntries: (k) => setState(() {
             entriesKind = k;
+            entriesOpen++;
             if (diesel) tab = 1;
           }),
           onOpenReports: () => setState(() => tab = diesel ? 2 : 1),
         ),
         NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home_rounded), label: tr('Home'))
       ),
-      if (diesel) (EntriesTab(kind: entriesKind), NavigationDestination(icon: const Icon(Icons.list_alt_outlined), selectedIcon: const Icon(Icons.list_alt_rounded), label: tr('Entries'))),
+      if (diesel) (EntriesTab(kind: entriesKind, open: entriesOpen), NavigationDestination(icon: const Icon(Icons.list_alt_outlined), selectedIcon: const Icon(Icons.list_alt_rounded), label: tr('Entries'))),
       if (reports) (const ReportsTab(), NavigationDestination(icon: const Icon(Icons.bar_chart_outlined), selectedIcon: const Icon(Icons.bar_chart_rounded), label: tr('Reports'))),
       (
         const MeTab(),

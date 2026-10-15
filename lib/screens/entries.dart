@@ -1,6 +1,7 @@
-/* ENTRIES – Diesel Issue · Diesel Inward · Transfer of one day (picture 2, 14-10-2026): the three as tabs (only those he may
- * see), a strip of the last days, the day's count and litres, search and a filter by place, a card per entry with its picture,
- * and "New Entry" for those who may add. A tap on a card shows all its details. */
+/* ENTRIES – (3.1.8, asked 15-10-2026: "side la ek mekache te nko eka khali ek ashi list … jyala jo access aahe tyala tech
+ * disel") first a list, one under the other, of the pages of entries he may open: 1. Diesel Issue 2. Diesel Inward 3. Transfer
+ * 4. Log Book. A tap opens that page: a strip of the last days, the day's count and litres, search and a filter by place, a card
+ * per entry with its picture, and "New Entry" for those who may add (picture 2, 14-10-2026). Back = the list again. */
 import 'package:flutter/material.dart' hide Text;
 
 import '../core/format.dart';
@@ -10,11 +11,15 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart';
+import 'logbook.dart';
 import '../ui/t.dart';
 
 class EntriesTab extends StatefulWidget {
-  const EntriesTab({super.key, this.kind = ''});
+  const EntriesTab({super.key, this.kind = '', this.open = 0});
   final String kind;
+
+  /// Home asked to open [kind] (counted, so the same page can be asked again after going back to the list).
+  final int open;
   @override
   State<EntriesTab> createState() => _EntriesTabState();
 }
@@ -32,7 +37,7 @@ class _EntriesTabState extends State<EntriesTab> {
   @override
   void didUpdateWidget(covariant EntriesTab old) {
     super.didUpdateWidget(old);
-    if (widget.kind.isNotEmpty && widget.kind != old.kind) {
+    if (widget.kind.isNotEmpty && (widget.kind != old.kind || widget.open != old.open)) {
       kind = widget.kind;
       _load();
     }
@@ -43,12 +48,10 @@ class _EntriesTabState extends State<EntriesTab> {
     super.didChangeDependencies();
     final s = SessionScope.read(context);
     if (day.isEmpty) day = s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
-    if (kind.isEmpty) {
-      final allowed = kKinds.where((k) => s.canSee(k.module)).toList();
-      if (allowed.isNotEmpty) {
-        kind = widget.kind.isNotEmpty ? widget.kind : allowed.first.key;
-        WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-      }
+    if (kind.isEmpty && widget.kind.isNotEmpty && !_opened) {
+      _opened = true;
+      kind = widget.kind;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
   }
 
@@ -132,6 +135,49 @@ class _EntriesTabState extends State<EntriesTab> {
     if (v != null) setState(() => place = v);
   }
 
+  bool _opened = false;
+
+  /// (3.1.8) the list of his pages of entries, one under the other
+  Widget _menu(Session s) {
+    final items = <(String, String, String, Color, Color, VoidCallback)>[
+      for (final k in kKinds.where((k) => s.canSee(k.module)))
+        (k.en, k.mr, k.pic, k.color, k.soft, () {
+          setState(() {
+            kind = k.key;
+            rows = [];
+          });
+          _load();
+        }),
+      if (s.canSee('Log Book')) ('Log Book', 'लॉग बुक', 'notebook', C.blue, C.blueSoft, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()))),
+    ];
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
+          const Padding(padding: EdgeInsets.fromLTRB(4, 0, 4, 4), child: TwoLang('Your entries', 'तुमच्या एन्ट्री', size: 28, weight: FontWeight.w800)),
+          Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 16), child: Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600))),
+          if (items.isEmpty) const EmptyState('No pages of entries', 'Ask the Admin for access to Diesel Issue, Inward, Transfer or Log Book.', pic: 'locked_with_key'),
+          for (final (i, x) in items.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Press(
+                key: Key('entries-${x.$1}'),
+                onTap: x.$6,
+                padding: const EdgeInsets.all(14),
+                child: Row(children: [
+                  Container(width: 62, height: 62, decoration: BoxDecoration(color: x.$5, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(x.$3, size: 44)),
+                  const SizedBox(width: 14),
+                  Text('${i + 1}.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: x.$4)),
+                  const SizedBox(width: 8),
+                  Expanded(child: TwoLang(x.$1, x.$2, size: 17, weight: FontWeight.w700)),
+                  const Icon(Icons.chevron_right_rounded, color: C.faint),
+                ]),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
   Future<void> _add() async {
     if (await newEntry(context, kindOf(kind))) _load();
   }
@@ -139,8 +185,7 @@ class _EntriesTabState extends State<EntriesTab> {
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
-    final kinds = kKinds.where((k) => s.canSee(k.module)).toList();
-    if (kinds.isEmpty) return const Scaffold(body: SafeArea(child: EmptyState('No diesel pages', 'Ask the Admin for access to Diesel Issue, Inward or Transfer.', pic: 'locked_with_key')));
+    if (kind.isEmpty || !s.canSee(kindOf(kind).module)) return _menu(s);
     final k = kindOf(kind);
     final list = _shown;
     final total = list.fold<num>(0, (a, r) => a + (asNum(r['qty']) ?? 0));
@@ -168,6 +213,7 @@ class _EntriesTabState extends State<EntriesTab> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 14, 12, 6),
                 child: Row(children: [
+                  IconButton(tooltip: tr('All entries'), icon: const Icon(Icons.arrow_back_rounded), onPressed: () => setState(() => kind = '')),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(k.en, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
@@ -181,42 +227,6 @@ class _EntriesTabState extends State<EntriesTab> {
                     icon: const Icon(Icons.calendar_month_rounded),
                   ),
                 ]),
-              ),
-            ),
-            // the three kinds
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), boxShadow: softShadow(.05)),
-                  child: Row(children: [
-                    for (final x in kinds)
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            if (kind == x.key) return;
-                            setState(() {
-                              kind = x.key;
-                              rows = [];
-                            });
-                            _load();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOut,
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-                            decoration: BoxDecoration(color: kind == x.key ? x.color : Colors.transparent, borderRadius: BorderRadius.circular(18)),
-                            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Icon(x.icon, size: 22, color: kind == x.key ? Colors.white : C.ink),
-                              const SizedBox(width: 6),
-                              Flexible(child: TwoLang(x.en, x.mr, size: 13.5, color: kind == x.key ? Colors.white : C.ink)),
-                            ]),
-                          ),
-                        ),
-                      ),
-                  ]),
-                ),
               ),
             ),
             // the days
