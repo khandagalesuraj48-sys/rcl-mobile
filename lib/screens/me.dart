@@ -130,6 +130,9 @@ class _MeTabState extends State<MeTab> {
                 ),
               ),
               _row(pic: 'gear', en: 'My settings', mr: 'माझ्या सेटिंग्ज', sub: 'Default site, shift, diesel place, text size, password', color: C.slateSoft, onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()))),
+              // (14-10-2026) Approvals: the Super Admin approves there; a user sees the changes he sent (waiting / approved / rejected)
+              if (s.superAdmin || s.canEdit('Log Book') || s.canEdit('Diesel Issue'))
+                _row(pic: 'bell', en: 'Approvals', mr: 'मंजुरी', sub: s.superAdmin ? 'Changes of a submitted bill sent by the users – approve or reject' : 'What you sent to the Super Admin – waiting, approved, rejected', color: C.blueSoft, onTap: () => openWeb(context, 'Approvals', 'approvals', pic: 'bell')),
               _row(pic: 'office_building', en: 'Full web ERP', mr: 'पूर्ण web ERP', sub: 'Every page of the web, inside the app', color: C.amberSoft, onTap: () => openWeb(context, 'Web ERP', 'dash', pic: 'office_building')),
               const SizedBox(height: 6),
               _row(pic: 'locked_with_key', en: 'Sign out', mr: 'साईन आउट करा', sub: 'Signs out of the Portal and every module', color: C.redSoft, text: C.red, onTap: _signOut),

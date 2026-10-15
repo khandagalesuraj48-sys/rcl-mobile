@@ -121,6 +121,25 @@ void main() {
     expect(srv.requests, isEmpty);
   });
 
+  test('(14-10-2026) Day / Night by the time: the site\'s hours from getInit (8 AM / 8 PM unless set); his usual shift still wins', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    expect([s.dayFrom, s.nightFrom], ['08:00', '20:00']);
+    expect([for (final h in [7, 8, 13, 19, 20, 23, 2]) s.autoShift(DateTime(2026, 10, 14, h, h == 7 ? 59 : 0))], ['Night', 'Day', 'Day', 'Day', 'Night', 'Night', 'Night']);
+    s.dayFrom = '20:00';
+    s.nightFrom = '06:00';
+    expect([s.autoShift(DateTime(2026, 10, 14, 21)), s.autoShift(DateTime(2026, 10, 14, 12))], ['Day', 'Night'], reason: 'a "Day" over midnight');
+    s.dayFrom = '08:00';
+    s.nightFrom = '20:00';
+    s.clock = () => DateTime(2026, 10, 14, 22);
+    expect(s.myShift(const ['Day', 'Night']), 'Night');
+    s.prefs['shift'] = 'Day';
+    expect(s.myShift(const ['Day', 'Night']), 'Day', reason: 'his usual shift (Settings)');
+    s.prefs['shift'] = 'Full Day';
+    expect([s.myShift(const ['Full Day', 'Day', 'Night']), s.myShift(const ['Day', 'Night'])], ['Full Day', 'Night'], reason: 'Full Day only where the form has it');
+  });
+
   test('a save carries its own number (rid); a reading warning comes back as a question', () async {
     final s = make();
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');

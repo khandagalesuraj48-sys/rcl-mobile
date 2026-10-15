@@ -107,6 +107,19 @@ class Session extends ChangeNotifier {
   /// usual way of the Log Book entry, text size, mobile number, photo …
   Map<String, dynamic> prefs = {};
   String pref(String k) => '${prefs[k] ?? ''}';
+
+  /// (14-10-2026) Day or Night by the time (the site's hours), as on the web – a new entry starts with it; it can be changed by hand.
+  String autoShift([DateTime? at]) {
+    int m(String s) { final p = s.split(':'); return (int.tryParse(p[0]) ?? 0) * 60 + (int.tryParse(p.length > 1 ? p[1] : '0') ?? 0); }
+    final a = m(dayFrom), b = m(nightFrom), t = at ?? clock(), now = t.hour * 60 + t.minute;
+    return (a < b ? now >= a && now < b : now >= a || now < b) ? 'Day' : 'Night';
+  }
+
+  /// His own "usual shift" (Settings) when he set one, else [autoShift]; [allowed] = the shifts the form has.
+  String myShift(List<String> allowed) {
+    final p = pref('shift');
+    return allowed.contains(p) ? p : autoShift();
+  }
   String get defaultSite => startItem.startsWith('mechanical|') ? startItem.substring(11) : '';
 
   /// The app's text a little larger (Settings → Size of the text).
@@ -114,6 +127,10 @@ class Session extends ChangeNotifier {
 
   // the site's lists (getInit)
   String today = '', company = '', closedUpto = '';
+  /// (14-10-2026) the site's shift hours (Settings → Rules of the site on the web): Day from [dayFrom] to [nightFrom], Night the rest.
+  String dayFrom = '08:00', nightFrom = '20:00';
+  /// The clock (a test sets its own time).
+  DateTime Function() clock = DateTime.now;
   List<Machine> machines = [];
   List<String> drivers = [], pumps = [], locations = [];
   num? stockTotal;
@@ -248,6 +265,11 @@ class Session extends ChangeNotifier {
     today = (d['today'] ?? '').toString();
     company = (d['company'] ?? '').toString();
     closedUpto = (d['closedUpto'] ?? '').toString();
+    final rules = d['rules'];
+    if (rules is Map) {
+      dayFrom = RegExp(r'^\d{2}:\d{2}$').hasMatch('${rules['dayFrom']}') ? '${rules['dayFrom']}' : '08:00';
+      nightFrom = RegExp(r'^\d{2}:\d{2}$').hasMatch('${rules['nightFrom']}') ? '${rules['nightFrom']}' : '20:00';
+    }
     machines = (d['master'] as List? ?? []).whereType<Map>().map((m) => Machine(m.cast<String, dynamic>())).toList();
     drivers = (d['drivers'] as List? ?? []).map((e) => e.toString()).toList();
     pumps = (d['pumps'] as List? ?? []).map((e) => e.toString()).toList();

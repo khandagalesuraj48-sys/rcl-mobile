@@ -181,9 +181,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: C.amber,
           en: 'My usual shift',
           mr: 'नेहमीची पाळी',
-          value: shift.isEmpty ? 'None' : shift,
+          value: shift.isEmpty ? 'Automatic' : shift,
           onTap: () async {
-            final v = await _pick('My usual shift', const [('', 'No usual shift'), ('Full Day', 'Full Day'), ('Day', 'Day'), ('Night', 'Night')], shift);
+            final v = await _pick('My usual shift', const [('', 'Automatic – Day / Night by the time'), ('Full Day', 'Full Day'), ('Day', 'Day'), ('Night', 'Night')], shift);
             if (v != null && v != shift) await _save('shift', () => s.savePrefs({'shift': v}));
           },
         ),

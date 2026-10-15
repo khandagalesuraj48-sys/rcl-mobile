@@ -64,7 +64,7 @@ class _EntryFormState extends State<EntryForm> {
       source = s.locations.contains(loc) ? loc : (s.locations.isNotEmpty ? s.locations.first : 'Dispenser');
       from = source;
       to = s.locations.firstWhere((l) => l != from, orElse: () => '');
-      if (s.pref('shift') == 'Night') shift = 'Night';
+      shift = s.myShift(const ['Day', 'Night']); // (14-10-2026) his usual shift, else Day / Night by the time
       final e = ed;
       if (e != null) _fillFrom(s, e);
       if (issue) WidgetsBinding.instance.addPostFrameCallback((_) => _balance());
