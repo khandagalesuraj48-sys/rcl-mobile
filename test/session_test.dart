@@ -170,19 +170,49 @@ void main() {
     expect(keep.data.containsKey('portal_cookie'), false);
   });
 
-  test('the Super Admin opens his sites too (14-10-2026); a password still to be set is sent to the Portal (web)', () async {
+  test('the Super Admin opens his sites too (14-10-2026)', () async {
     srv.superAdmin = true;
     final s = make();
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
     expect(s.stage, isNot(Stage.signedOut));
     expect(s.sites.map((x) => x.code), contains('S1'));
-    await s.signOut();
-    srv
-      ..superAdmin = false
-      ..mustChange = true;
+  });
+
+  test('(15-10-2026) a new user with the password the Super Admin gave sets his own password in the app – no browser', () async {
+    srv.mustChange = true;
+    final s = make();
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
-    expect(s.stage, Stage.signedOut);
-    expect(s.error, contains('Set your own password'));
+    expect(s.stage, Stage.setPassword);
+    expect(s.sites, isEmpty);
+    // the given password wrong: said, still here
+    await s.setOwnPassword('wrong', 'Mule#2026x');
+    expect(s.stage, Stage.setPassword);
+    expect(s.error, contains('Current password is wrong'));
+    // too weak: the Portal's rule said
+    await s.setOwnPassword('Nashik#Road848!', 'short');
+    expect(s.stage, Stage.setPassword);
+    expect(s.error, contains('at least 8'));
+    expect(srv.mustChange, true);
+    // right: set, and the app opens as after a sign-in
+    await s.setOwnPassword('Nashik#Road848!', 'Mule#2026x');
+    expect(srv.newPassword, 'Mule#2026x');
+    expect(srv.mustChange, false);
+    expect(s.stage, isNot(anyOf(Stage.signedOut, Stage.setPassword)));
+    expect(s.sites.map((x) => x.code), contains('S1'));
+    expect(srv.calls.where((c) => c == 'portal:changePassword').length, 3);
+  });
+
+  test('(15-10-2026) the app opened again before the own password was set: the same screen; "Back to sign in" signs out', () async {
+    srv.mustChange = true;
+    final s1 = make();
+    await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s1.stage, Stage.setPassword);
+    final s2 = make();
+    await s2.start();
+    expect(s2.stage, Stage.setPassword);
+    await s2.leaveSetPassword();
+    expect(s2.stage, Stage.signedOut);
+    expect(srv.calls, contains('portal:logout'));
   });
 
   test('sign out: Mechanical and the Portal, nothing kept on the phone', () async {

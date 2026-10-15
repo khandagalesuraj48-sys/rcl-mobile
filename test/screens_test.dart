@@ -202,6 +202,37 @@ void main() {
     expect(find.text('Monthly Diesel Issue'), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('(15-10-2026) a new user: his own password set right here – the three boxes, the two new ones must match, then the app opens', (t) async {
+    phone(t);
+    final srv = FakeServer()..mustChange = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await settle(t);
+    await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
+    await t.enterText(find.byType(TextField).at(1), 'Nashik#Road848!');
+    await t.tap(find.text('Sign in'));
+    await net(t);
+    expect(s.stage, Stage.setPassword);
+    expect(find.text('Set your own password'), findsOneWidget);
+    expect(find.text('तुमचा स्वतःचा password बनवा'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(3));
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1b_own_password.png'));
+    await t.enterText(find.byType(TextField).at(0), 'Nashik#Road848!');
+    await t.enterText(find.byType(TextField).at(1), 'Mule#2026x');
+    await t.enterText(find.byType(TextField).at(2), 'Mule#2026y');
+    await t.tap(find.text('Save and open'));
+    await settle(t, 600);
+    expect(find.textContaining('The two new passwords are not the same.'), findsOneWidget);
+    expect(srv.calls, isNot(contains('portal:changePassword')));
+    await t.enterText(find.byType(TextField).at(2), 'Mule#2026x');
+    await t.tap(find.text('Save and open'));
+    await net(t);
+    expect(srv.newPassword, 'Mule#2026x');
+    expect(s.stage, Stage.pickSite);
+  }, tags: ['golden']);
+
   testWidgets('Less motion asked on the phone: the sign-in screen is complete at once', (t) async {
     phone(t);
     t.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
