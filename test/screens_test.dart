@@ -360,9 +360,11 @@ void main() {
     await t.tap(find.text('App language'));
     await settle(t, 600);
     await t.tap(find.text('मराठी').last);
-    for (var i = 0; i < 40 && Lang.i.code != 'mr'; i++) {
+    for (var i = 0; i < 60 && Lang.i.code != 'mr'; i++) {
       await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
+      await t.pump(const Duration(milliseconds: 50)); // (the words are read from the app's files; what follows runs on a pump)
     }
+    expect(Lang.i.code, 'mr');
     await net(t);
     expect(srv.prefs['appLang'], 'mr');
     expect(srv.prefs['lang'], 'mr', reason: 'the help of the web follows');
@@ -382,10 +384,12 @@ void main() {
     expect(find.text('यंत्रे'), findsOneWidget, reason: 'the module tile in the app\'s own Marathi');
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/14_home_marathi.png'));
     // हिंदी
-    await s.setLanguage('hi');
-    for (var i = 0; i < 40 && Lang.i.code != 'hi'; i++) {
+    unawaited(s.setLanguage('hi'));
+    for (var i = 0; i < 60 && Lang.i.code != 'hi'; i++) {
       await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
+      await t.pump(const Duration(milliseconds: 50)); // (the words are read from the app's files; what follows runs on a pump)
     }
+    expect(Lang.i.code, 'hi');
     await net(t);
     expect(srv.prefs['appLang'], 'hi');
     expect(find.text('यंत्रे'), findsNothing, reason: 'not the Marathi words in Hindi');
