@@ -1,9 +1,10 @@
 /* Small pieces every screen uses: the 3D pictures, a card that sinks a little when pressed, a section title, a pill, empty /
  * error states, the loading shimmer, toast and "Are you sure?". */
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../core/api.dart';
 import 'theme.dart';
+import 't.dart';
 
 /// A 3D picture from assets/icons3d (Microsoft Fluent Emoji, MIT).
 class Pic extends StatelessWidget {
@@ -24,8 +25,8 @@ class TwoLang extends StatelessWidget {
   final CrossAxisAlignment align;
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: align, mainAxisSize: MainAxisSize.min, children: [
-        Text(en, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: size, fontWeight: weight, color: color, height: 1.2)),
-        if (mr.isNotEmpty) Text(mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'NotoDeva', fontSize: size - 3, color: color.withValues(alpha: .72), height: 1.3)),
+        Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: size, fontWeight: weight, color: color, height: 1.2)),
+        if (mr.isNotEmpty) MrLine(mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'NotoDeva', fontSize: size - 3, color: color.withValues(alpha: .72), height: 1.3)),
       ]);
 }
 

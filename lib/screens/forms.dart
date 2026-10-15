@@ -4,7 +4,7 @@
  * (camera + location), as on the web. */
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/format.dart';
@@ -14,6 +14,7 @@ import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/t.dart';
 
 class EntryForm extends StatefulWidget {
   const EntryForm({super.key, required this.kind, this.edit});
@@ -307,7 +308,7 @@ class _EntryFormState extends State<EntryForm> {
       HapticFeedback.lightImpact();
       if (ed != null) {
         if (mounted) {
-          toast(context, '${k.en} $editId updated. · बदल जतन झाला.');
+          toast(context, bi(tr('${k.en} $editId updated.'), 'बदल जतन झाला.'));
           Navigator.pop(context, true);
         }
         return;
@@ -376,8 +377,8 @@ class _EntryFormState extends State<EntryForm> {
   Widget _label(String en, [String mr = '']) => Padding(
         padding: const EdgeInsets.only(top: 18, bottom: 8, left: 2),
         child: Row(children: [
-          Text(en, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.ink)),
-          if (mr.isNotEmpty) Text('  $mr', style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
+          Flexible(child: Text(en, mr: mr, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.ink))),
+          if (mr.isNotEmpty) MrLine('  $mr', style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
         ]),
       );
 
@@ -551,11 +552,11 @@ class _EntryFormState extends State<EntryForm> {
               ],
               if (m != null && hasKm(way)) ...[
                 _label('KM reading', 'KM रीडिंग'),
-                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: 'Odometer km', prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? 'Read by the AI on the dashboard photo – check it' : null)),
+                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read by the AI on the dashboard photo – check it') : null)),
               ],
               if (m != null && hasHr(way)) ...[
                 _label('Hour meter', 'तास मीटर'),
-                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: 'Hours', prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? 'Read by the AI on the dashboard photo – check it' : null)),
+                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read by the AI on the dashboard photo – check it') : null)),
               ],
               _label('Litres', 'लिटर'),
               _qtyField(),
@@ -572,7 +573,7 @@ class _EntryFormState extends State<EntryForm> {
               Autocomplete<String>(
                 optionsBuilder: (v) => v.text.isEmpty ? const Iterable<String>.empty() : s.drivers.where((d) => d.toLowerCase().contains(v.text.toLowerCase())).take(8),
                 onSelected: (v) => driver.text = v,
-                fieldViewBuilder: (c, ctl, f, sub) => TextField(controller: ctl, focusNode: f, onChanged: (v) => driver.text = v, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(hintText: 'Name (optional)', prefixIcon: Icon(Icons.person_outline_rounded))),
+                fieldViewBuilder: (c, ctl, f, sub) => TextField(controller: ctl, focusNode: f, onChanged: (v) => driver.text = v, textCapitalization: TextCapitalization.words, decoration: InputDecoration(hintText: tr('Name (optional)'), prefixIcon: Icon(Icons.person_outline_rounded))),
               ),
               if (s.canEdit('Diesel Issue') && ed == null) ...[
                 _label('Photos', 'फोटो'),
@@ -598,7 +599,7 @@ class _EntryFormState extends State<EntryForm> {
               Autocomplete<String>(
                 optionsBuilder: (v) => v.text.isEmpty ? s.pumps.take(8) : s.pumps.where((p) => p.toLowerCase().contains(v.text.toLowerCase())).take(8),
                 onSelected: (v) => pump.text = v,
-                fieldViewBuilder: (c, ctl, f, sub) => TextField(controller: ctl, focusNode: f, onChanged: (v) => pump.text = v, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(hintText: 'Petrol pump', prefixIcon: Icon(Icons.local_gas_station_outlined))),
+                fieldViewBuilder: (c, ctl, f, sub) => TextField(controller: ctl, focusNode: f, onChanged: (v) => pump.text = v, textCapitalization: TextCapitalization.words, decoration: InputDecoration(hintText: tr('Petrol pump'), prefixIcon: Icon(Icons.local_gas_station_outlined))),
               ),
               _label('Litres', 'लिटर'),
               _qtyField(),
@@ -606,7 +607,7 @@ class _EntryFormState extends State<EntryForm> {
               TextField(controller: rate, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: '0.00', prefixText: '₹ ')),
               if ((asNum(rate.text) ?? 0) > 0 && (q ?? 0) > 0) InfoLine('Amount ₹ ${fmtNum((asNum(rate.text) ?? 0) * (q ?? 0))}', icon: Icons.currency_rupee_rounded),
               _label('Bill number', 'बिल नंबर'),
-              TextField(controller: billNo, decoration: const InputDecoration(hintText: 'Optional')),
+              TextField(controller: billNo, decoration: InputDecoration(hintText: tr('Optional'))),
               _label('Bill date', 'बिल तारीख'),
               _box(
                 onTap: () => _pickDate(bill: true),
@@ -626,7 +627,7 @@ class _EntryFormState extends State<EntryForm> {
               _label('Litres', 'लिटर'),
               _qtyField(),
             ],
-            if (k.key != 'inward') ...[_label('Remark', 'शेरा'), TextField(controller: remark, decoration: const InputDecoration(hintText: 'Optional'))],
+            if (k.key != 'inward') ...[_label('Remark', 'शेरा'), TextField(controller: remark, decoration: InputDecoration(hintText: tr('Optional')))],
             if (err.isNotEmpty) InfoLine(err, bad: true),
           ]),
         ),
@@ -666,7 +667,7 @@ class _MachinePickerState extends State<MachinePicker> {
         const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Align(alignment: Alignment.centerLeft, child: TwoLang('Pick the machinery', 'यंत्र निवडा', size: 20, weight: FontWeight.w700))),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-          child: TextField(autofocus: false, onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: 'Number, name, type or owner', prefixIcon: const Icon(Icons.search_rounded), fillColor: C.bg, enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none))),
+          child: TextField(autofocus: false, onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Number, name, type or owner'), prefixIcon: const Icon(Icons.search_rounded), fillColor: C.bg, enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none))),
         ),
         Expanded(
           child: list.isEmpty

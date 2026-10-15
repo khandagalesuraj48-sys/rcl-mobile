@@ -6,13 +6,14 @@
  * password – the given one, the new one twice – and the app opens. No browser needed. */
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/update.dart';
 import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
+import '../ui/t.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.setPassword = false});
@@ -80,12 +81,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   Future<void> _setOwn() async {
     if (_busy) return;
     if (_given.text.isEmpty || _new.text.isEmpty || _again.text.isEmpty) {
-      setState(() => _localErr = 'Fill all three boxes.\nतीनही boxes भरा.');
+      setState(() => _localErr = bi('Fill all three boxes.', 'तीनही boxes भरा.', '\n'));
       _shake.forward(from: 0);
       return;
     }
     if (_new.text != _again.text) {
-      setState(() => _localErr = 'The two new passwords are not the same.\nदोन्ही नवीन password सारखे नाहीत.');
+      setState(() => _localErr = bi('The two new passwords are not the same.', 'दोन्ही नवीन password सारखे नाहीत.', '\n'));
       _shake.forward(from: 0);
       return;
     }
@@ -147,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         Arrive(
                           anim: _open,
                           at: .18,
-                          child: Text('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 15, color: Colors.white.withValues(alpha: .85))),
+                          child: MrLine('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 15, color: Colors.white.withValues(alpha: .85))),
                         ),
                         const SizedBox(height: 28),
                         Arrive(anim: _open, at: .28, rise: 60, child: widget.setPassword ? _pwCard(err) : _card(err)),
@@ -204,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             if (_localErr.isNotEmpty) setState(() => _localErr = '');
           },
           onSubmitted: (_) => go == null ? FocusScope.of(context).nextFocus() : go(),
-          decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
+          decoration: InputDecoration(labelText: tr(label), prefixIcon: Icon(icon)),
         ),
       );
 
@@ -221,22 +222,22 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Set your own password', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: C.ink)),
-            const Text('तुमचा स्वतःचा password बनवा', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 16, fontWeight: FontWeight.w600, color: C.ink)),
+            const MrLine('तुमचा स्वतःचा password बनवा', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 16, fontWeight: FontWeight.w600, color: C.ink)),
             const SizedBox(height: 6),
             const Text('Type the password you were given, then your new password twice.', style: TextStyle(fontSize: 14, color: C.muted)),
-            const Text('दिलेला password टाका, मग तुमचा नवीन password दोन वेळा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
+            const MrLine('दिलेला password टाका, मग तुमचा नवीन password दोन वेळा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
             const SizedBox(height: 6),
-            _pwBox(_given, 'Given password (दिलेला)', Icons.key_rounded),
-            _pwBox(_new, 'New password (नवीन)', Icons.lock_outline_rounded),
-            _pwBox(_again, 'New password again (परत)', Icons.lock_reset_rounded, next: TextInputAction.go, go: _setOwn),
+            _pwBox(_given, Lang.i.chosen ? tr('Given password') : 'Given password (दिलेला)', Icons.key_rounded),
+            _pwBox(_new, Lang.i.chosen ? tr('New password') : 'New password (नवीन)', Icons.lock_outline_rounded),
+            _pwBox(_again, Lang.i.chosen ? tr('New password again') : 'New password again (परत)', Icons.lock_reset_rounded, next: TextInputAction.go, go: _setOwn),
             Row(children: [
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: const Text('At least 8 characters, letters and numbers.\nकिमान 8 अक्षरे – अक्षरे आणि अंक दोन्ही.', style: TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
+                  child: Text(bi('At least 8 characters, letters and numbers.', 'किमान 8 अक्षरे – अक्षरे आणि अंक दोन्ही.', '\n'), style: TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
                 ),
               ),
-              IconButton(tooltip: _show ? 'Hide passwords' : 'Show passwords', icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show)),
+              IconButton(tooltip: tr(_show ? 'Hide passwords' : 'Show passwords'), icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show)),
             ]),
             _errBox(err),
             const SizedBox(height: 18),
@@ -262,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               const Text('Namaskar', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: C.ink)),
               const SizedBox(height: 4),
               const Text('Sign in with your Portal email and password.', style: TextStyle(fontSize: 14.5, color: C.muted)),
-              const Text('Portal चाच email आणि password वापरा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
+              const MrLine('Portal चाच email आणि password वापरा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
               const SizedBox(height: 20),
               TextField(
                 controller: _mail,
@@ -271,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 textInputAction: TextInputAction.next,
                 autocorrect: false,
                 onSubmitted: (_) => _pwFocus.requestFocus(),
-                decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.alternate_email_rounded)),
+                decoration: InputDecoration(labelText: tr('Email'), prefixIcon: Icon(Icons.alternate_email_rounded)),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -282,9 +283,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 textInputAction: TextInputAction.go,
                 onSubmitted: (_) => _go(),
                 decoration: InputDecoration(
-                  labelText: 'Password',
+                  labelText: tr('Password'),
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(tooltip: _show ? 'Hide password' : 'Show password', icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show)),
+                  suffixIcon: IconButton(tooltip: tr(_show ? 'Hide password' : 'Show password'), icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show)),
                 ),
               ),
               _errBox(err),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -11,6 +11,7 @@ import 'screens/site_pick.dart';
 import 'ui/brand.dart';
 import 'ui/scope.dart';
 import 'ui/theme.dart';
+import 'ui/t.dart';
 
 /// The sign-in kept in the phone's own safe (Android Keystore / iOS Keychain) – never in plain files.
 class SecureKeep implements Keep {
@@ -46,7 +47,7 @@ Future<String?> askApprovalBox(String message) async {
           const SizedBox(height: 10),
           const Text('It is saved only when the Super Admin approves it. The bill is not changed – the difference comes in the next bill.', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
-          TextField(key: const ValueKey('cr_reason'), controller: why, maxLines: 2, maxLength: 300, decoration: const InputDecoration(labelText: 'Why is this change needed?')),
+          TextField(key: const ValueKey('cr_reason'), controller: why, maxLines: 2, maxLength: 300, decoration: InputDecoration(labelText: tr('Why is this change needed?'))),
         ]),
       ),
       actions: [
@@ -63,7 +64,7 @@ class RclApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SessionScope(
         session: session,
-        child: MaterialApp(
+        child: LangScope(child: MaterialApp(
           navigatorKey: appNav,
           title: 'RCL ERP',
           debugShowCheckedModeBanner: false,
@@ -74,7 +75,7 @@ class RclApp extends StatelessWidget {
             return k == 1.0 ? child! : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: child!);
           },
           home: const Gate(),
-        ),
+        )),
       );
 }
 

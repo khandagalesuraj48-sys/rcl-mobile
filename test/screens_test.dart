@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/lang.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/main.dart';
 import 'package:rcl_mobile/web/web_host.dart';
@@ -73,6 +74,7 @@ Future<void> pics(WidgetTester t) async {
 void main() {
   setUpAll(loadFonts);
   setUp(() => webHost.enabled = false); // a web view cannot run in a test
+  tearDown(() => Lang.i.set('')); // (15-10-2026) every test starts in the app's usual language
   void phone(WidgetTester t) {
     t.view.physicalSize = const Size(1080, 2340);
     t.view.devicePixelRatio = 3;
@@ -341,5 +343,58 @@ void main() {
     expect(srv.prefs['shift'], 'Night');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/12_settings.png'));
+  }, tags: ['golden']);
+
+  testWidgets('(15-10-2026) App language: मराठी chosen in My settings – saved with his account, the whole app in Marathi; then हिंदी', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Me'));
+    await net(t);
+    await t.tap(find.text('My settings'));
+    await net(t);
+    await t.scrollUntilVisible(find.text('App language'), 200, scrollable: find.byType(Scrollable).last);
+    expect(find.text('ॲपची भाषा'), findsOneWidget, reason: 'nothing chosen yet: English with the Marathi line, as before');
+    await t.tap(find.text('App language'));
+    await settle(t, 600);
+    await t.tap(find.text('मराठी').last);
+    for (var i = 0; i < 60 && Lang.i.code != 'mr'; i++) {
+      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
+      await t.pump(const Duration(milliseconds: 50)); // (the words are read from the app's files; what follows runs on a pump)
+    }
+    expect(Lang.i.code, 'mr');
+    await net(t);
+    expect(srv.prefs['appLang'], 'mr');
+    expect(srv.prefs['lang'], 'mr', reason: 'the help of the web follows');
+    expect(Lang.i.code, 'mr');
+    expect(find.text('App language'), findsNothing);
+    expect(find.text('ॲपची भाषा'), findsOneWidget, reason: 'the row in Marathi – once, no English line');
+    expect(find.text('माझ्या सेटिंग्ज'), findsOneWidget);
+    expect(find.text('My settings'), findsNothing);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13_settings_marathi.png'));
+    await t.pageBack();
+    await net(t);
+    await t.tap(find.text(tr('Home')));
+    await net(t);
+    await pics(t);
+    expect(find.text('Machinery'), findsNothing);
+    expect(find.text('यंत्रे'), findsOneWidget, reason: 'the module tile in the app\'s own Marathi');
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/14_home_marathi.png'));
+    // हिंदी
+    unawaited(s.setLanguage('hi'));
+    for (var i = 0; i < 60 && Lang.i.code != 'hi'; i++) {
+      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
+      await t.pump(const Duration(milliseconds: 50)); // (the words are read from the app's files; what follows runs on a pump)
+    }
+    expect(Lang.i.code, 'hi');
+    await net(t);
+    expect(srv.prefs['appLang'], 'hi');
+    expect(find.text('यंत्रे'), findsNothing, reason: 'not the Marathi words in Hindi');
+    expect(find.text(tr('Machinery')), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/15_home_hindi.png'));
   }, tags: ['golden']);
 }

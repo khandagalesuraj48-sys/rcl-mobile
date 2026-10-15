@@ -1,7 +1,7 @@
 /* HOME (picture 1, 14-10-2026): the site's picture with "Namaskar" and the site; the diesel stock (total and each place), the
  * machinery working today and today's Log Book entries; the modules he may open; today's diesel work. Every number is the
  * server's, read now. */
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/format.dart';
@@ -14,6 +14,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
 import 'logbook.dart';
+import '../ui/t.dart';
 
 /// A module tile of Home: where it goes and who may see it.
 class ModuleTile {
@@ -148,7 +149,7 @@ class _HomeTabState extends State<HomeTab> {
       toast(context, 'You have one site: ${s.siteName}.');
       return;
     }
-    if (await ask(context, 'Change site?', 'Open another of your sites. · दुसरी site उघडायची?', yes: 'Change')) s.pickAnotherSite();
+    if (await ask(context, 'Change site?', bi('Open another of your sites.', 'दुसरी site उघडायची?'), yes: 'Change')) s.pickAnotherSite();
   }
 
   @override
@@ -184,7 +185,7 @@ class _HomeTabState extends State<HomeTab> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('Namaskar${first.isNotEmpty ? ', $first' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
                       const Text('Mechanical Management ERP', style: TextStyle(fontSize: 15, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
-                      const Text('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: Color(0xCCFFFFFF))),
+                      const MrLine('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: Color(0xCCFFFFFF))),
                     ]),
                   ),
                   _RoundBtn(icon: Icons.refresh_rounded, tip: 'Refresh', onTap: () => _load(init: true)),
@@ -202,7 +203,7 @@ class _HomeTabState extends State<HomeTab> {
                         constraints: const BoxConstraints(maxWidth: 190),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                          Text(s.sites.length > 1 ? 'Site बदला · Tap to change' : (s.site?.code ?? ''), style: const TextStyle(fontSize: 12, color: C.green, fontWeight: FontWeight.w500)),
+                          Text(s.sites.length > 1 ? bi('Tap to change', 'साइट बदला') : (s.site?.code ?? ''), style: const TextStyle(fontSize: 12, color: C.green, fontWeight: FontWeight.w500)),
                         ]),
                       ),
                       if (s.sites.length > 1) const Icon(Icons.keyboard_arrow_down_rounded),
@@ -337,9 +338,9 @@ class _MiniTile extends StatelessWidget {
         child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Pic(pic, size: 34),
           en.contains(' ')
-              ? Text(en, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 1.15))
-              : FittedBox(fit: BoxFit.scaleDown, child: Text(en, maxLines: 1, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600))),
-          Text(mr, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 10.5, color: C.muted)),
+              ? Text(en, mr: mr, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 1.15))
+              : FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600))),
+          MrLine(mr, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 10.5, color: C.muted)),
           FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
         ]),
       );
@@ -375,8 +376,8 @@ class _ModuleCard extends StatelessWidget {
           ]),
           ),
           const Spacer(),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(m.en, maxLines: 1, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(m.mr, maxLines: 1, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 11.5, color: C.muted))),
+          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(m.en, mr: m.mr, maxLines: 1, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
+          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: MrLine(m.mr, maxLines: 1, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 11.5, color: C.muted))),
         ]),
       );
 }

@@ -1,12 +1,13 @@
 /* REPORTS – the reports of the web he may open (Dashboard, Daily Inward & Issue, Monthly Diesel Issue, Monthly Diesel &
  * Average). Each opens inside the app, on its page; Excel and Print there go to the phone (share sheet, Android printing). */
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
 import 'home.dart';
+import '../ui/t.dart';
 
 class ReportsTab extends StatelessWidget {
   const ReportsTab({super.key});

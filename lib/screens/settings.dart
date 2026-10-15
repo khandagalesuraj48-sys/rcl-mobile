@@ -5,7 +5,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
@@ -13,6 +13,7 @@ import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/t.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -27,7 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => busy = what);
     try {
       await fn();
-      if (mounted) toast(context, '$done · जतन झाले.');
+      if (mounted) toast(context, bi(tr(done), 'जतन झाले.'));
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
     } finally {
@@ -61,11 +62,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (c) => AlertDialog(
         title: const Text('Change password'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: old, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
+          TextField(controller: old, obscureText: true, decoration: InputDecoration(labelText: tr('Current password'))),
           const SizedBox(height: 10),
-          TextField(controller: now, obscureText: true, decoration: const InputDecoration(labelText: 'New password')),
+          TextField(controller: now, obscureText: true, decoration: InputDecoration(labelText: tr('New password'))),
           const SizedBox(height: 10),
-          TextField(controller: again, obscureText: true, decoration: const InputDecoration(labelText: 'New password again')),
+          TextField(controller: again, obscureText: true, decoration: InputDecoration(labelText: tr('New password again'))),
           const SizedBox(height: 8),
           const Text('One password for the Portal and every module.', style: TextStyle(fontSize: 12.5, color: C.muted)),
         ]),
@@ -108,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (d) => AlertDialog(
         title: const Text('Mobile number'),
-        content: TextField(controller: c, keyboardType: TextInputType.phone, maxLength: 10, decoration: const InputDecoration(hintText: '10 digits')),
+        content: TextField(controller: c, keyboardType: TextInputType.phone, maxLength: 10, decoration: InputDecoration(hintText: tr('10 digits'))),
         actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancel')), FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(d, c.text.trim()), child: const Text('Save'))],
       ),
     );
@@ -125,8 +126,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(en, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
-                Text(mr, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
+                Text(en, mr: mr, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+                MrLine(mr, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
                 if (value.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text(value, style: const TextStyle(fontSize: 13.5, color: C.greenDark, fontWeight: FontWeight.w600))),
               ]),
             ),
@@ -171,7 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mr: 'नेहमीची site',
           value: nameOf(s.defaultSite),
           onTap: () async {
-            final v = await _pick('Default site · नेहमीची site', [('', 'Ask me / the last one'), for (final x in s.sites) (x.code, x.name)], s.defaultSite);
+            final v = await _pick(bi('Default site', 'नेहमीची site'), [('', 'Ask me / the last one'), for (final x in s.sites) (x.code, x.name)], s.defaultSite);
             if (v != null && v != s.defaultSite) await _save('site', () => s.setDefaultSite(v));
           },
         ),
@@ -221,6 +222,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: () async {
             final v = await _pick('Size of the text', sizes, text);
             if (v != null && v != text) await _save('text', () => s.savePrefs({'text': v}));
+          },
+        ),
+        // (15-10-2026) the language of the whole app – the same at all his sites and on the web
+        _row(
+          id: 'lang',
+          icon: Icons.translate_rounded,
+          color: C.blue,
+          en: 'App language',
+          mr: 'ॲपची भाषा',
+          value: const {'mr': 'मराठी', 'hi': 'हिंदी', 'en': 'English'}[Lang.i.code] ?? 'English + मराठी',
+          onTap: () async {
+            final cur = Lang.i.code;
+            final v = await _pick(bi('App language', 'ॲपची भाषा'), const [('mr', 'मराठी'), ('hi', 'हिंदी'), ('en', 'English')], cur);
+            if (v != null && v != cur) await _save('lang', () => s.setLanguage(v));
           },
         ),
         _row(id: 'mobile', icon: Icons.phone_iphone_rounded, color: C.slate, en: 'Mobile number', mr: 'मोबाईल नंबर', value: s.pref('mobile').isEmpty ? 'Not set' : s.pref('mobile'), onTap: _mobile),

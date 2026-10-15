@@ -1,7 +1,7 @@
 /* ENTRIES – Diesel Issue · Diesel Inward · Transfer of one day (picture 2, 14-10-2026): the three as tabs (only those he may
  * see), a strip of the last days, the day's count and litres, search and a filter by place, a card per entry with its picture,
  * and "New Entry" for those who may add. A tap on a card shows all its details. */
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 
 import '../core/format.dart';
 import '../core/kinds.dart';
@@ -9,6 +9,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart';
+import '../ui/t.dart';
 
 class EntriesTab extends StatefulWidget {
   const EntriesTab({super.key, this.kind = ''});
@@ -160,7 +161,7 @@ class _EntriesTabState extends State<EntriesTab> {
                     ]),
                   ),
                   IconButton.filledTonal(
-                    tooltip: 'Pick a date',
+                    tooltip: tr('Pick a date'),
                     style: IconButton.styleFrom(backgroundColor: C.greenSoft, foregroundColor: C.greenDark, fixedSize: const Size(50, 50)),
                     onPressed: _pickDate,
                     icon: const Icon(Icons.calendar_month_rounded),
@@ -250,7 +251,7 @@ class _EntriesTabState extends State<EntriesTab> {
                   Expanded(
                     child: TextField(
                       onChanged: (v) => setState(() => q = v),
-                      decoration: InputDecoration(hintText: kind == 'issue' ? 'Search vehicle, operator, issue ID…' : 'Search…', prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 14)),
+                      decoration: InputDecoration(hintText: tr(kind == 'issue' ? 'Search vehicle, operator, issue ID…' : 'Search…'), prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 14)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -408,7 +409,7 @@ class EntryCard extends StatelessWidget {
                 ]),
               ),
             // (14-10-2026) an entry of a submitted bill: the Super Admin changes it; anybody else sends the change for his approval
-            if (r['lk'] != null) InfoLine(SessionScope.read(context).superAdmin ? 'This entry is in a saved bill – you are the Super Admin: your change is saved; the difference comes in the next bill.' : 'This entry is in a saved bill – a change goes to the Super Admin for approval. · बिलमध्ये आहे – बदल Super Admin च्या मंजुरीने.', icon: Icons.lock_outline_rounded),
+            if (r['lk'] != null) InfoLine(SessionScope.read(context).superAdmin ? 'This entry is in a saved bill – you are the Super Admin: your change is saved; the difference comes in the next bill.' : bi('This entry is in a saved bill – a change goes to the Super Admin for approval.', 'बिलमध्ये आहे – बदल Super Admin च्या मंजुरीने.'), icon: Icons.lock_outline_rounded),
             if (SessionScope.read(context).canEdit(kind.module) && r['open'] != true) ...[
               const SizedBox(height: 16),
               Row(children: [
@@ -417,7 +418,7 @@ class EntryCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(foregroundColor: C.red, side: const BorderSide(color: C.redSoft)),
                     onPressed: () async {
                       final s = SessionScope.read(context);
-                      if (!await ask(c, 'Delete ${r['id']}?', '$_title – ${fmtNum(asNum(r['qty']))} L, ${showDate('${r['date'] ?? ''}')}. This cannot be undone. · हे परत आणता येणार नाही.', yes: 'Delete', danger: true)) return;
+                      if (!await ask(c, 'Delete ${r['id']}?', '$_title – ${fmtNum(asNum(r['qty']))} L, ${showDate('${r['date'] ?? ''}')}. ${bi('This cannot be undone.', 'हे परत आणता येणार नाही.')}', yes: 'Delete', danger: true)) return;
                       try {
                         await s.api.call(deleteOf(kind.key), [r['id']], true);
                         if (c.mounted) Navigator.pop(c);

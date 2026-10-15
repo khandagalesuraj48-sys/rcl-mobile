@@ -9,7 +9,7 @@
  *   a water tanker trip by trip (getTankerTrips / saveTankerTrips / deleteTankerTrip).
  * "One date – many machinery" and "One machinery – many dates" of the web: after a save, "Next machinery" (same date) or
  * "Next date" (same machinery) – the usual one first, as set in My settings. */
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/format.dart';
@@ -19,6 +19,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
+import '../ui/t.dart';
 
 const kDayStatus = ['Idle', 'Holiday', 'Breakdown'];
 const kLogShifts = ['Full Day', 'Day', 'Night'];
@@ -238,14 +239,14 @@ class _LogBookScreenState extends State<LogBookScreen> {
                   ),
                   if (tankers && s.canSee('Log Book'))
                     IconButton.filledTonal(
-                      tooltip: 'Water tanker – trip by trip',
+                      tooltip: tr('Water tanker – trip by trip'),
                       style: IconButton.styleFrom(backgroundColor: C.blueSoft, foregroundColor: C.blue, fixedSize: const Size(48, 48)),
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: day))).then((_) => _load()),
                       icon: const Icon(Icons.water_drop_rounded),
                     ),
                   const SizedBox(width: 6),
                   IconButton.filledTonal(
-                    tooltip: 'Pick a date',
+                    tooltip: tr('Pick a date'),
                     style: IconButton.styleFrom(backgroundColor: C.blueSoft, foregroundColor: C.blue, fixedSize: const Size(48, 48)),
                     onPressed: () async {
                       final d = await showDatePicker(context: context, initialDate: parseKey(day), firstDate: DateTime(2024), lastDate: today);
@@ -325,7 +326,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: TextField(onChanged: (v) => setState(() => q = v), decoration: const InputDecoration(hintText: 'Search machinery, work, chainage…', prefixIcon: Icon(Icons.search_rounded), contentPadding: EdgeInsets.symmetric(vertical: 14))),
+                child: TextField(onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Search machinery, work, chainage…'), prefixIcon: Icon(Icons.search_rounded), contentPadding: EdgeInsets.symmetric(vertical: 14))),
               ),
             ),
             if (loading)
@@ -372,9 +373,9 @@ String workText(Map<String, dynamic> r) {
 List<Map<String, dynamic>>? tripsOfRow(Session s, Map<String, dynamic> r) {
   final m = s.machine('${r['no'] ?? ''}');
   if (m == null || !m.waterTanker || '${r['unit'] ?? r['mode'] ?? ''}' != 'Trip') return null;
-  final tr = (r['itemWork'] as Map?)?['_trips'];
-  if (tr is List && tr.isNotEmpty) {
-    return [for (final t in tr.whereType<Map>()) {'c': '${t['c'] ?? ''}', 'a': '${t['a'] ?? ''}', 'b': '${t['b'] ?? ''}', 'ch': '${t['ch'] ?? ''}', 'u': '${t['u'] ?? ''}'}];
+  final tripsRaw = (r['itemWork'] as Map?)?['_trips'];
+  if (tripsRaw is List && tripsRaw.isNotEmpty) {
+    return [for (final t in tripsRaw.whereType<Map>()) {'c': '${t['c'] ?? ''}', 'a': '${t['a'] ?? ''}', 'b': '${t['b'] ?? ''}', 'ch': '${t['ch'] ?? ''}', 'u': '${t['u'] ?? ''}'}];
   }
   final n = ((asNum(r['trip']) ?? 0).round()).clamp(1, 999);
   final list = '${r['challan'] ?? ''}'.split(RegExp(r'\s*[,;]\s*')).where((x) => x.isNotEmpty).toList();
@@ -610,7 +611,7 @@ class LogCard extends StatelessWidget {
 Future<bool> deleteTrip(BuildContext context, String no, String date, String shift, int n, Map<String, dynamic> t) async {
   final s = SessionScope.read(context);
   final what = '$no – ${showDate(date)} ($shift): trip $n${'${t['c']}'.isNotEmpty ? ', challan ${t['c']}' : ''}${'${t['a']}'.isNotEmpty ? ', ${t['a']}–${t['b']}' : ''}.';
-  if (!await ask(context, 'Delete this trip?', '$what\n\nThe other trips of that entry stay. · बाकी फेऱ्या राहतील.', yes: 'Delete', danger: true)) return false;
+  if (!await ask(context, 'Delete this trip?', '$what\n\n${bi('The other trips of that entry stay.', 'बाकी फेऱ्या राहतील.')}', yes: 'Delete', danger: true)) return false;
   try {
     await s.api.call('deleteTankerTrip', [{'no': no, 'date': date, 'shift': shift, 'c': t['c']}], true);
     if (context.mounted) toast(context, 'Trip deleted.');
@@ -629,7 +630,7 @@ Future<bool> deleteLog(BuildContext context, String key) async {
     if (!context.mounted) return false;
     // (14-10-2026) an entry of a submitted bill: the Super Admin deletes it; anybody else may send the delete for his approval
     if (e['lock'] != null && !s.superAdmin &&
-        !await ask(context, 'In a submitted bill', 'This entry is in a saved bill. You can delete it: on "Delete" it goes to the Super Admin for approval and is deleted only when he approves. · बिलमध्ये आहे – Super Admin च्या मंजुरीने.', yes: 'Go on')) {
+        !await ask(context, 'In a submitted bill', bi('This entry is in a saved bill. You can delete it: on "Delete" it goes to the Super Admin for approval and is deleted only when he approves.', 'बिलमध्ये आहे – Super Admin च्या मंजुरीने.'), yes: 'Go on')) {
       return false;
     }
     if (!context.mounted) return false;
@@ -640,7 +641,7 @@ Future<bool> deleteLog(BuildContext context, String key) async {
       '${e['no']} – ${showDate('${e['date']}')} (${e['shift']})',
       if (rd(e['okm'], e['ohr']).isNotEmpty) 'Start ${rd(e['okm'], e['ohr'])}  –  Close ${rd(e['ckm'], e['chr'])}',
       if (next != null) 'The next entry ${showDate('${next['date']}')} (${next['shift']}) will start from ${prev != null ? 'the Close of ${showDate('${prev['date']}')}' : 'its own Start'}; later entries update by themselves.',
-      'This cannot be undone. · हे परत आणता येणार नाही.',
+      bi('This cannot be undone.', 'हे परत आणता येणार नाही.'),
     ].join('\n\n');
     if (!await ask(context, 'Delete Log Book entry?', body, yes: 'Delete', danger: true)) return false;
     await s.api.call('deleteLogRow', [key], true);
@@ -1017,7 +1018,7 @@ class _LogFormState extends State<LogForm> {
       if (editing) {
         await s.api.call('updateLogRow', [widget.editKey, _change()], true);
         if (!mounted) return;
-        toast(context, 'Log Book of ${machine?.id} (${showDate(date)}) updated. · बदल जतन झाला.');
+        toast(context, bi(tr('Log Book of ${machine?.id} (${showDate(date)}) updated.'), 'बदल जतन झाला.'));
         Navigator.pop(context, true);
         return;
       }
@@ -1126,8 +1127,8 @@ class _LogFormState extends State<LogForm> {
   Widget _label(String en, [String mr = '']) => Padding(
         padding: const EdgeInsets.only(top: 18, bottom: 8, left: 2),
         child: Row(children: [
-          Text(en, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-          if (mr.isNotEmpty) Text('  $mr', style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
+          Flexible(child: Text(en, mr: mr, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+          if (mr.isNotEmpty) MrLine('  $mr', style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
         ]),
       );
 
@@ -1149,12 +1150,12 @@ class _LogFormState extends State<LogForm> {
       ]);
 
   Widget _num2(String a, String la, String b, String lb, {String unit = ''}) => Row(children: [
-        Expanded(child: TextField(controller: t(a), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: la, suffixText: unit))),
+        Expanded(child: TextField(controller: t(a), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr(la), suffixText: unit))),
         const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.arrow_forward_rounded, color: C.faint)),
-        Expanded(child: TextField(controller: t(b), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: lb, suffixText: unit))),
+        Expanded(child: TextField(controller: t(b), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr(lb), suffixText: unit))),
       ]);
 
-  Widget _field(String k, String hint, {TextInputType? kb, IconData? icon}) => TextField(controller: t(k), keyboardType: kb, onChanged: (_) => setState(() {}), decoration: InputDecoration(hintText: hint, prefixIcon: icon == null ? null : Icon(icon)));
+  Widget _field(String k, String hint, {TextInputType? kb, IconData? icon}) => TextField(controller: t(k), keyboardType: kb, onChanged: (_) => setState(() {}), decoration: InputDecoration(hintText: tr(hint), prefixIcon: icon == null ? null : Icon(icon)));
 
   Widget _timeBox(int i, int j) => Expanded(
         child: Press(
@@ -1186,7 +1187,7 @@ class _LogFormState extends State<LogForm> {
           for (final it in its.where((i) => !i.rest)) {
             out.add(Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: TextField(controller: t('it:${it.name}'), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: it.name, suffixText: kItemWord[k])),
+              child: TextField(controller: t('it:${it.name}'), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr(it.name), suffixText: kItemWord[k])),
             ));
           }
           final rest = its.where((i) => i.rest).toList();
@@ -1359,7 +1360,7 @@ class _LogFormState extends State<LogForm> {
                       label: const Text('Add time (worked in parts)'),
                     ),
                     const Spacer(),
-                    SizedBox(width: 120, child: TextField(controller: t('brk'), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Break', suffixText: 'min'))),
+                    SizedBox(width: 120, child: TextField(controller: t('brk'), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Break'), suffixText: 'min'))),
                   ]),
                   if (timeHrs != null) _work('${fmtNum(timeHrs)} hr in all'),
                 ],
@@ -1375,9 +1376,9 @@ class _LogFormState extends State<LogForm> {
                 if (off) ...[
                   _label('Estimated work of the day', 'अंदाजे काम'),
                   Row(children: [
-                    if (_canK) Expanded(child: TextField(controller: t('estKm'), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'est. km', suffixText: 'km'))),
+                    if (_canK) Expanded(child: TextField(controller: t('estKm'), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('est. km'), suffixText: 'km'))),
                     if (_canK && _canH) const SizedBox(width: 10),
-                    if (_canH) Expanded(child: TextField(controller: t('estHr'), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'est. hr', suffixText: 'hr'))),
+                    if (_canH) Expanded(child: TextField(controller: t('estHr'), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('est. hr'), suffixText: 'hr'))),
                   ]),
                   if (p?['avgWork'] is Map)
                     Padding(
@@ -1404,7 +1405,7 @@ class _LogFormState extends State<LogForm> {
                 Row(children: [
                   Expanded(flex: 3, child: _field('debitTo', 'Party (leave empty if none)')),
                   const SizedBox(width: 10),
-                  Expanded(flex: 2, child: TextField(controller: t('debitRate'), keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'Rate', prefixText: '₹ '))),
+                  Expanded(flex: 2, child: TextField(controller: t('debitRate'), keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(hintText: tr('Rate'), prefixText: '₹ '))),
                 ]),
               ],
               if (err.isNotEmpty) InfoLine(err, bad: true),
@@ -1704,8 +1705,8 @@ class _TankerScreenState extends State<TankerScreen> {
                       Text([t['shift'], t['ch'], t['u'], if (t['old'] == 1 || t['old'] == true) 'entered before trip by trip'].where((e) => '${e ?? ''}'.isNotEmpty).join(' · '), style: const TextStyle(color: C.muted, fontSize: 13)),
                     ]),
                   ),
-                  if (canEdit) IconButton(tooltip: 'Change', onPressed: () => _edit(t), icon: const Icon(Icons.edit_rounded, color: C.blue)),
-                  if (canEdit) IconButton(tooltip: 'Delete', onPressed: () => _delete(t), icon: const Icon(Icons.delete_outline_rounded, color: C.red)),
+                  if (canEdit) IconButton(tooltip: tr('Change'), onPressed: () => _edit(t), icon: const Icon(Icons.edit_rounded, color: C.blue)),
+                  if (canEdit) IconButton(tooltip: tr('Delete'), onPressed: () => _delete(t), icon: const Icon(Icons.delete_outline_rounded, color: C.red)),
                 ]),
               ),
             ),
@@ -1743,7 +1744,7 @@ class _TankerScreenState extends State<TankerScreen> {
                       ),
                   ]),
                   const SizedBox(height: 8),
-                  TextField(controller: t.c, decoration: const InputDecoration(labelText: 'Challan No')),
+                  TextField(controller: t.c, decoration: InputDecoration(labelText: tr('Challan No'))),
                   const SizedBox(height: 8),
                   Row(children: [
                     Expanded(child: OutlinedButton.icon(onPressed: () => _time(t, true), icon: const Icon(Icons.schedule_rounded), label: Text(t.a.isEmpty ? 'Dispatch' : t.a))),
@@ -1752,9 +1753,9 @@ class _TankerScreenState extends State<TankerScreen> {
                   ]),
                   const SizedBox(height: 8),
                   Row(children: [
-                    Expanded(child: TextField(controller: t.ch, decoration: const InputDecoration(labelText: 'Chainage', hintText: 'e.g. 12+500'))),
+                    Expanded(child: TextField(controller: t.ch, decoration: InputDecoration(labelText: tr('Chainage'), hintText: tr('e.g. 12+500')))),
                     const SizedBox(width: 8),
-                    Expanded(child: TextField(controller: t.u, decoration: const InputDecoration(labelText: 'Use for', hintText: 'e.g. Curing'))),
+                    Expanded(child: TextField(controller: t.u, decoration: InputDecoration(labelText: tr('Use for'), hintText: tr('e.g. Curing')))),
                   ]),
                 ]),
               ),
