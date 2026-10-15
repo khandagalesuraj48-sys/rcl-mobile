@@ -2,7 +2,7 @@
  * web ERP, sign out (of the Portal and every module). */
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/update.dart';
@@ -12,6 +12,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
 import 'settings.dart';
+import '../ui/t.dart';
 
 class MeTab extends StatefulWidget {
   const MeTab({super.key});
@@ -38,7 +39,7 @@ class _MeTabState extends State<MeTab> {
     if (!mounted) return;
     setState(() => checking = false);
     if (u == null) {
-      toast(context, 'You have the newest version. · नवीनतम version आहे.');
+      toast(context, bi('You have the newest version.', 'नवीनतम version आहे.'));
     } else {
       await runUpdate(context, u);
     }
@@ -46,7 +47,7 @@ class _MeTabState extends State<MeTab> {
 
   Future<void> _signOut() async {
     final s = SessionScope.read(context);
-    if (await ask(context, 'Sign out?', 'You will be signed out of the Portal and every module. · Portal आणि सर्व modules मधून sign out होईल.', yes: 'Sign out', danger: true)) await s.signOut();
+    if (await ask(context, 'Sign out?', bi('You will be signed out of the Portal and every module.', 'Portal आणि सर्व modules मधून sign out होईल.'), yes: 'Sign out', danger: true)) await s.signOut();
   }
 
   Widget _row({required String pic, required String en, required String mr, String sub = '', Widget? trailing, VoidCallback? onTap, Color color = C.greenSoft, Color text = C.ink}) => Padding(
@@ -112,7 +113,8 @@ class _MeTabState extends State<MeTab> {
               _row(
                 pic: 'round_pushpin',
                 en: s.siteName,
-                mr: s.sites.length > 1 ? 'Site बदला · Tap to change site' : 'Your site · तुमची site',
+                mr: '',
+                sub: s.sites.length > 1 ? bi('Tap to change site', 'साइट बदला') : bi('Your site', 'तुमची साइट'),
                 onTap: s.sites.length > 1 ? () => s.pickAnotherSite() : null,
                 trailing: s.sites.length > 1 ? null : const SizedBox.shrink(),
               ),

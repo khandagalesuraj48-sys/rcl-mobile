@@ -14,6 +14,7 @@ import 'home.dart';
 import 'me.dart';
 import 'reports.dart';
 import '../web/web_host.dart';
+import '../ui/t.dart' show tr;
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -70,11 +71,11 @@ class _ShellState extends State<Shell> {
           }),
           onOpenReports: () => setState(() => tab = diesel ? 2 : 1),
         ),
-        const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Home')
+        NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home_rounded), label: tr('Home'))
       ),
-      if (diesel) (EntriesTab(kind: entriesKind), const NavigationDestination(icon: Icon(Icons.list_alt_outlined), selectedIcon: Icon(Icons.list_alt_rounded), label: 'Entries')),
-      if (reports) (const ReportsTab(), const NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart_rounded), label: 'Reports')),
-      (const MeTab(), const NavigationDestination(icon: Icon(Icons.person_outline_rounded), selectedIcon: Icon(Icons.person_rounded), label: 'Me')),
+      if (diesel) (EntriesTab(kind: entriesKind), NavigationDestination(icon: const Icon(Icons.list_alt_outlined), selectedIcon: const Icon(Icons.list_alt_rounded), label: tr('Entries'))),
+      if (reports) (const ReportsTab(), NavigationDestination(icon: const Icon(Icons.bar_chart_outlined), selectedIcon: const Icon(Icons.bar_chart_rounded), label: tr('Reports'))),
+      (const MeTab(), NavigationDestination(icon: const Icon(Icons.person_outline_rounded), selectedIcon: const Icon(Icons.person_rounded), label: tr('Me'))),
     ];
     final cur = tab.clamp(0, pages.length - 1);
     return PopScope(

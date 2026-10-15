@@ -11,7 +11,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -25,6 +25,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'files.dart';
 import 'print_view.dart';
+import '../ui/t.dart';
 
 /// Where a link may go inside the app (else it opens outside): the ERP's own address and the site's module addresses.
 bool ownHost(String host, Session s) {
@@ -408,7 +409,7 @@ class WebHostState extends State<WebHost> {
           const Icon(Icons.wifi_off_rounded, size: 50, color: C.red),
           const SizedBox(height: 12),
           Text(_err, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.4, color: C.ink)),
-          const Text('Internet तपासा आणि पुन्हा प्रयत्न करा.', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
+          const MrLine('Internet तपासा आणि पुन्हा प्रयत्न करा.', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
           const SizedBox(height: 18),
           FilledButton.icon(style: FilledButton.styleFrom(minimumSize: const Size(180, 52)), onPressed: _start, icon: const Icon(Icons.refresh_rounded), label: const Text('Try again')),
         ]),
@@ -428,11 +429,11 @@ class WebHostState extends State<WebHost> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: C.line))),
                   child: Row(children: [
-                    IconButton(tooltip: 'Back to the app', onPressed: _leave, icon: const Icon(Icons.arrow_back_rounded)),
+                    IconButton(tooltip: tr('Back to the app'), onPressed: _leave, icon: const Icon(Icons.arrow_back_rounded)),
                     Pic(webHost.pic, size: 26),
                     const SizedBox(width: 8),
                     Expanded(child: Text(webHost.title, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
-                    IconButton(tooltip: 'Reload', onPressed: () => _c?.reload(), icon: const Icon(Icons.refresh_rounded, color: C.muted)),
+                    IconButton(tooltip: tr('Reload'), onPressed: () => _c?.reload(), icon: const Icon(Icons.refresh_rounded, color: C.muted)),
                   ]),
                 ),
                 if (_url != null && _progress < 1 && _ready) LinearProgressIndicator(value: _progress, minHeight: 2, color: C.green, backgroundColor: Colors.transparent),

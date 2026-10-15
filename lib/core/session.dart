@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import 'api.dart';
 import 'format.dart';
+import 'lang.dart';
 
 enum Stage { starting, signedOut, setPassword, pickSite, opening, ready }
 
@@ -86,8 +87,22 @@ bool hasKm(String w) => w == 'KM' || w == 'KM + Hrs';
 bool hasHr(String w) => w == 'Hrs' || w == 'KM + Hrs';
 
 class Session extends ChangeNotifier {
-  Session(this.api);
+  Session(this.api, {this.langRead});
   final Api api;
+
+  /// (15-10-2026) how the language files are read (the app's files; the tests give their own)
+  final Future<String> Function(String path)? langRead;
+  static const kLang = 'app_lang';
+
+  /// The language of the app: his choice (kept with his account, the same at all his sites and on the web); on this phone
+  /// the last one is kept, so the sign-in screen is in it too.
+  Future<void> _lang(String c) async {
+    await Lang.i.set(c, read: langRead);
+    await api.keep.write(kLang, Lang.i.code);
+  }
+
+  /// Settings → App language: '' / 'en' / 'mr' / 'hi' – the help of the web follows it.
+  Future<void> setLanguage(String c) => savePrefs({'appLang': c, 'lang': c == 'mr' || c == 'hi' ? c : 'en'});
 
   Stage stage = Stage.starting;
   String error = '';
@@ -162,6 +177,7 @@ class Session extends ChangeNotifier {
   /// The app opens: the sign-in kept on this phone is used – nothing to type while the Portal still knows the person.
   Future<void> start() async {
     await api.load();
+    await Lang.i.set(await api.keep.read(kLang) ?? '', read: langRead);
     if (!api.hasPortal) return _go(Stage.signedOut);
     try {
       await _loadSites();
@@ -321,6 +337,7 @@ class Session extends ChangeNotifier {
     try {
       final r = (await api.call('getMyPrefs') as Map).cast<String, dynamic>();
       prefs = ((r['prefs'] as Map?) ?? {}).cast<String, dynamic>();
+      if (prefs.containsKey('appLang')) await _lang('${prefs['appLang']}');
       notifyListeners();
     } catch (_) {/* the app works with the usual settings */}
   }
@@ -329,6 +346,7 @@ class Session extends ChangeNotifier {
   Future<void> savePrefs(Map<String, dynamic> x) async {
     final r = (await api.call('saveMyPrefs', [x], true) as Map).cast<String, dynamic>();
     prefs = ((r['prefs'] as Map?) ?? prefs).cast<String, dynamic>();
+    if (prefs.containsKey('appLang')) await _lang('${prefs['appLang']}');
     notifyListeners();
   }
 

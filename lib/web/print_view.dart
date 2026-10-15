@@ -1,11 +1,12 @@
 /* PRINT: the page the web asked to print (a Log Book, a bill, a report) shown as it will be on paper, and Android's printing
  * opened for it – a printer, or "Save as PDF" to send it on. "Print" at the top opens it again. */
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../config.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/t.dart';
 
 class PrintView extends StatefulWidget {
   const PrintView({super.key, required this.html, required this.title});

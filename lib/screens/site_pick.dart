@@ -1,12 +1,13 @@
 /* WHICH SITE – when the person has more than one site. Each site shows the modules he has there. */
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
+import '../ui/t.dart';
 
 class SitePickScreen extends StatefulWidget {
   const SitePickScreen({super.key});
@@ -63,7 +64,7 @@ class _SitePickScreenState extends State<SitePickScreen> with SingleTickerProvid
                 at: .08,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Which site do you want to open?', style: TextStyle(fontSize: 15.5, color: Colors.white.withValues(alpha: .85))),
-                  Text('कोणती site उघडायची?', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 14, color: Colors.white.withValues(alpha: .75))),
+                  MrLine('कोणती site उघडायची?', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 14, color: Colors.white.withValues(alpha: .75))),
                 ]),
               ),
               if (s.error.isNotEmpty)

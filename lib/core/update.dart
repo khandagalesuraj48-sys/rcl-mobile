@@ -7,7 +7,7 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:http/http.dart' as http;
 import 'package:ota_update/ota_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -17,6 +17,7 @@ import '../config.dart';
 import 'api.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/t.dart';
 
 class AppUpdate {
   AppUpdate({required this.build, required this.version, this.notes = '', this.url = '', this.sha256 = '', this.store = ''});
@@ -69,7 +70,7 @@ Future<void> runUpdate(BuildContext context, AppUpdate u) async {
     if (u.store.isNotEmpty) await launchUrl(Uri.parse(u.store), mode: LaunchMode.externalApplication);
     return;
   }
-  final ok = await ask(context, 'Update to ${u.version}?', [if (u.notes.isNotEmpty) u.notes, 'The app downloads the new version and Android asks you to install it.', 'नवीन version download होईल; Android install विचारेल.'].join('\n\n'), yes: 'Update');
+  final ok = await ask(context, 'Update to ${u.version}?', [if (u.notes.isNotEmpty) u.notes, bi('The app downloads the new version and Android asks you to install it.', 'नवीन version download होईल; Android install विचारेल.', '\n\n')].join('\n\n'), yes: 'Update');
   if (!ok || !context.mounted) return;
   final progress = ValueNotifier<String>('Starting…');
   showDialog<void>(
