@@ -16,6 +16,12 @@ class FakeServer {
   bool billLock = false; // (14-10-2026) the entries are in a submitted bill: Mechanical refuses a change (not the Super Admin's)
   final requests = <Map<String, dynamic>>[];
   bool tanker = false; // a water tanker (Log Book Format I) on the site, with an entry of 2 trips today
+  // (3.1.7) verification (update-114), the live sync, no network
+  String flowFor = ''; // an action the Super Admin put under verification: answered "Sent for verification …" (nothing saved)
+  Map<String, String> versions = {'master': '1', 'stock': '1', 'log': '1', 'users': '1', 'activity': '1', 'flow': '1'};
+  int crPending = 0, crForMe = 0;
+  bool down = false; // no network to Mechanical
+  final rids = <String>[]; // the save numbers that came
   final tankerCalls = <Map<String, dynamic>>[];
   static const _tTrips = [
     {'shift': 'Day', 'n': 1, 'c': '123', 'a': '07:35', 'b': '07:50', 'ch': '', 'u': '', 'old': 0},
@@ -36,6 +42,7 @@ class FakeServer {
 
   late final client = MockClient((r) async {
     final path = r.url.path;
+    if (down && path.endsWith('/api/rpc')) throw http.ClientException('no network');
     if (path.endsWith('/portal/api/auth')) {
       final b = jsonDecode(r.body) as Map;
       calls.add('portal:${b['action']}');
@@ -111,7 +118,15 @@ class FakeServer {
         requests.add((a[0] as Map).cast<String, dynamic>());
         return _j({'result': {'ok': true, 'id': 'CR-0000${requests.length}'}});
       }
+      if (b['rid'] != null) rids.add('$action:${b['rid']}');
+      if (flowFor == action) return _j({'error': 'Sent for verification to Checker One – VF-00007. It is saved when it is approved; nothing is saved until then.'}, 500);
       switch (action) {
+        case 'sync':
+          return _j({'result': {'versions': versions}});
+        case 'getChangeRequests':
+          return _j({'result': {'requests': [], 'pending': crPending, 'forMe': crForMe}});
+        case 'getStock':
+          return _j({'result': stock});
         case 'getInit':
           return _j({'result': {'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': ['Dispenser', 'VTR Store'], 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
             'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms},

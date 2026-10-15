@@ -14,6 +14,20 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.7 (15-10-2026: verification of every work – Mechanical update-114; a machinery that left the site – update-115; "app madhe live sync haway … app refresh kraychi kahich garaj nahi"):**
+* An entry of a work the Super Admin put under verification comes back "Sent for verification to … – VF-00001": shown in green,
+  the form is emptied (an edit is closed) – nothing is saved until it is approved (`Api.isSent`, code `sent`, never sent again).
+* **Approvals** in Me for everybody (the web's Approvals page in the app: approve one or several, the Super Admin's rules), with
+  the number waiting for him – also on the Me tab.
+* **Live**: while the app is on the screen it asks Mechanical every 15 s what changed (`Session.liveTick`, the web's "sync"):
+  Home, Entries and the Log Book load again by themselves; a new machinery (Asset Master) or stock comes in; the Approvals count.
+  Nothing is asked in the background.
+* **No network**: a NEW diesel entry or Log Book entry that got no answer may be **kept on the phone**; it is sent by itself when
+  the network is back – with the save number of the first try, so it is saved once. Me → **Waiting on this phone** shows them; one
+  the server refuses stays there with its words until it is deleted. (`Session.keepEntry` / `sendKept`.)
+* The machinery picker offers only the machinery **on the site on the entry's date** (from Active From until the day before
+  Inactive From – as the server); the Home count too.
+
 **Version 3.1.6 (15-10-2026: "app madhe mala language change ha option hawa aahe all site user sathi hindi marathi english … purn app tyach language madhe asel error suggestions pn tyach language madhe"):** Me → My settings → **App language**: मराठी / हिंदी / English. The whole app is shown in it – titles, buttons, hints, messages, the servers' errors – and the web pages inside the app too. It is kept with his account: the same on the web and at all his sites (Mechanical update-112), and on the phone for the next start (the sign-in screen too). Not chosen yet: the app as before (English with the Marathi line). The code stays English: `lib/core/lang.dart` turns what is shown from `assets/i18n/web_<lang>.json` (the web's words, the server's messages) and `assets/i18n/app_<lang>.json` (the app's own); `lib/ui/t.dart` is the app's `Text` (every screen imports material without its Text), `MrLine` the Marathi second line; strings given to Flutter's own widgets (hints, labels, tooltips, the bottom menu) go through `tr()`, two-language messages through `bi()`. Photos' printed stamps stay English.
 
 **Version 3.1.5 (15-10-2026: "super admin new user banwel test password dila … user la first time swatacha pn banwaycha asel tr to app madhun pn banau shakel"):** the first sign-in with the password the Super Admin gave (a new user, or a one-time password) no longer sends the person to the web: the same screen asks for the given password and his new password twice (English + Marathi), the Portal checks it and its rules, and the app opens. Opened again before it is set: the same screen; "Back to sign in" signs out.

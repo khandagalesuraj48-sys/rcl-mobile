@@ -13,10 +13,14 @@ import 'package:http/http.dart' as http;
 
 /// What the server answered instead of a result – its own words (English, as the web app shows them).
 class ApiError implements Exception {
-  ApiError(this.message, {this.status = 0, this.code = ''});
+  ApiError(this.message, {this.status = 0, this.code = '', this.rid = ''});
   final String message;
   final int status;
   final String code;
+
+  /// (3.1.7) The number of a save that got no answer: kept with it on the phone, it is sent again with the SAME number – the
+  /// server saves it once, also when the first try did reach it.
+  final String rid;
 
   /// The Mechanical sign-in ended (a new ticket fixes it).
   bool get sessionEnded => message.contains('SESSION_EXPIRED');
@@ -181,6 +185,12 @@ class Api {
     'updateTankerTrip', 'saveTankerRange', 'importTankerTrips', 'saveDieselIssue', 'saveDieselBulk', 'importDiesel', 'updateDieselIssue', 'deleteDieselIssue'};
   static const crSent = 'Sent to the Super Admin for approval – it is saved only when he approves (nothing is saved until then).';
   static bool crLocked(String m) => m.contains('is in the submitted RA Bill');
+  /// (15-10-2026, update-114) A work the Super Admin put under verification: the server CHECKED the entry and sent it to the
+  /// people who approve it ("Sent for verification to … – VF-00001 …"); it is saved when the last of them approves. Not a fault.
+  static bool isSent(String m) => m.startsWith('Sent for verification ') || m == crSent;
+  /// (3.1.7) An entry kept on the phone (no network) – sent by itself later.
+  static const keptMsg = 'Kept on this phone – it is sent by itself when the network is back (Me → Waiting on this phone).';
+  static bool isGood(String m) => isSent(m) || m == keptMsg;
   Future<String?> Function(String message)? askApproval;
   /// true = sent (with the person's reason); false = he did not send it.
   Future<bool> _offer(String fn, List<dynamic> args, String msg) async {
@@ -193,8 +203,8 @@ class Api {
 
   /// One action of Mechanical (getInit, saveDieselIssue …) with the person's sign-in. [save]: it changes data – it gets its
   /// own number and is sent again after a lost connection (at most 4 tries); a question is asked again at most twice.
-  Future<dynamic> call(String fn, [List<dynamic> args = const [], bool save = false]) async {
-    final rid = save ? _newRid() : null;
+  Future<dynamic> call(String fn, [List<dynamic> args = const [], bool save = false, String? sameRid]) async {
+    final rid = save ? (sameRid ?? _newRid()) : null;
     var renewed = false;
     for (var tryNo = 1;; tryNo++) {
       try {
@@ -208,6 +218,7 @@ class Api {
         return res;
       } on ApiError catch (e) {
         if (e.code == 'sent') rethrow;
+        if (isSent(e.message)) throw ApiError(e.message, code: 'sent');      // sent for verification: told as it is, never sent again
         if (crFns.contains(fn) && crLocked(e.message) && await _offer(fn, args, e.message)) throw ApiError(crSent, code: 'sent');
         if (e.sessionEnded && !renewed && (site ?? '').isNotEmpty && hasPortal) {
           renewed = true; // a new Mechanical sign-in with a new ticket, nothing typed
@@ -219,6 +230,7 @@ class Api {
           await Future<void>.delayed(Duration(milliseconds: 700 * tryNo));
           continue;
         }
+        if (e.noConnection && rid != null) throw ApiError(e.message, status: e.status, code: e.code, rid: rid);
         rethrow;
       }
     }

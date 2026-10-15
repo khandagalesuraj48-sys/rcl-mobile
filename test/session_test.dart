@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -295,5 +296,92 @@ void main() {
     expect(Machine({'id': 'X', 'worksOn': ['Hrs']}).wayAuto, 'Hrs');
     expect(Machine({'id': 'X', 'worksOn': ['KM', 'Hrs']}).modes, ['KM', 'Hrs', 'KM + Hrs', 'Time']);
     expect(Machine({'id': 'X', 'lbFormat': 'I'}).waterTanker, true);
+  });
+
+  // ---------------- 3.1.7 ----------------
+  test('(update-115) a machinery that left the site: on site until the day BEFORE its Inactive From (as the server)', () {
+    final left = Machine({'id': 'L-1', 'status': 'Inactive', 'activeFrom': '2026-09-01', 'inactiveFrom': '2026-10-01'});
+    expect(['2026-08-31', '2026-09-01', '2026-09-30', '2026-10-01', '2026-10-15'].map(left.onSite).toList(), [false, true, true, false, false]);
+    expect(Machine({'status': 'Inactive', 'inactiveFrom': ''}).onSite('2026-10-15'), false, reason: 'Inactive with no date: not on site');
+    expect(Machine({'status': 'Inactive', 'inactiveFrom': '2026-10-20'}).onSite('2026-10-15'), true, reason: 'leaving next week: still on site today');
+    expect(Machine({'status': 'Active'}).onSite('2026-10-15'), true);
+    expect(Machine({'status': 'Inactive'}).onSite(''), false, reason: 'no date: as before (Active only)');
+  });
+
+  test('(update-114) a work under verification: "Sent for verification …" is a sent entry (code sent), asked once – never sent again', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    srv.flowFor = 'saveDieselIssue';
+    try {
+      await s.api.call('saveDieselIssue', [{'no': 'Sany 210 (No.1)', 'qty': 300}], true);
+      fail('should be sent');
+    } on ApiError catch (e) {
+      expect(e.code, 'sent');
+      expect(e.message, startsWith('Sent for verification to Checker One – VF-00007'));
+      expect(Api.isGood(e.message), true, reason: 'shown in green, not as an error');
+    }
+    expect(srv.calls.where((c) => c == 'mech:saveDieselIssue+rid').length, 1);
+    expect(srv.saved, isEmpty);
+  });
+
+  test('(3.1.7) no network: the save keeps its number; kept on the phone, it is sent by itself later with the SAME number – once', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    srv.down = true;
+    final d = {'no': 'Sany 210 (No.1)', 'qty': 40, 'hrReading': 4710, 'date': '2026-10-14'};
+    ApiError? err;
+    try {
+      await s.api.call('saveDieselIssue', [d], true);
+    } on ApiError catch (e) {
+      err = e;
+    }
+    expect(err?.noConnection, true);
+    expect(err!.rid, isNotEmpty);
+    await s.keepEntry('saveDieselIssue', [d], err.rid, 'Diesel Issue · 14-10-2026 · Sany 210 (No.1) · 40 L');
+    expect(s.kept.length, 1);
+    expect(jsonDecode((await keep.read('kept_sujit@rcl.test'))!), hasLength(1), reason: 'kept on the phone (survives a restart)');
+    await s.sendKept();
+    expect(s.kept.length, 1, reason: 'still no network: it waits');
+    srv.down = false;
+    await s.sendKept();
+    expect(s.kept, isEmpty);
+    expect(srv.saved.length, 1);
+    expect(srv.rids.where((r) => r == 'saveDieselIssue:${err!.rid}').length, 1, reason: 'sent with the number of the first try');
+    // a kept entry the server refuses: kept with its words until the person deletes it
+    srv.flowFor = '';
+    await s.keepEntry('saveDieselIssue', [{'no': 'X', 'qty': 1, 'hrReading': 1}], 'rid-refused', 'Diesel Issue · X');
+    await s.sendKept();
+    expect(s.kept.single['state'], 'refused');
+    expect('${s.kept.single['msg']}', contains('Save anyway'));
+    expect(s.keptBad, 1);
+    await s.dropKept('rid-refused');
+    expect(s.kept, isEmpty);
+    expect(await keep.read('kept_sujit@rcl.test'), isNull);
+  });
+
+  test('(3.1.7) live: a version that changes makes the screens load again; "flow" brings the Approvals count', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    srv.crPending = 2;
+    srv.crForMe = 1;
+    await s.liveTick();
+    expect([s.crWaiting, s.crForMe], [2, 1], reason: 'the first tick: the count');
+    final t0 = s.dataTick.value;
+    await s.liveTick();
+    expect(s.dataTick.value, t0, reason: 'nothing changed');
+    srv.versions = {...srv.versions, 'log': '2', 'flow': '2'};
+    srv.crForMe = 0;
+    await s.liveTick();
+    expect(s.dataTick.value, t0 + 1);
+    expect(s.lastChanged, {'log', 'flow'});
+    expect(s.crForMe, 0);
+    srv.calls.clear();
+    srv.versions = {...srv.versions, 'stock': '2'};
+    await s.liveTick();
+    expect(srv.calls, contains('mech:getStock'), reason: 'only the stock is asked again');
+    expect(srv.calls, isNot(contains('mech:getInit')));
   });
 }

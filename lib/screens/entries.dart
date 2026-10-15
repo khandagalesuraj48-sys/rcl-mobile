@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../core/format.dart';
 import '../core/kinds.dart';
+import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -51,8 +52,21 @@ class _EntriesTabState extends State<EntriesTab> {
     }
   }
 
+  Session? _ls;
+  // (3.1.7) live: an entry added or changed elsewhere (the web, another phone, an approval) – the list loads again by itself
+  void _live() {
+    if (mounted && kind.isNotEmpty && (_ls?.lastChanged.any((g) => g == 'stock' || g == 'master' || g == 'flow') ?? true)) _load();
+  }
+
+  @override
+  void dispose() {
+    _ls?.dataTick.removeListener(_live);
+    super.dispose();
+  }
+
   Future<void> _load() async {
     final s = SessionScope.read(context), k = kindOf(kind), my = ++seq, ck = '${s.site?.code}|$kind|$day';
+    _ls ??= s..dataTick.addListener(_live);
     setState(() {
       rows = _entriesCache[ck] ?? [];
       loading = rows.isEmpty;

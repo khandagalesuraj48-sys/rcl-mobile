@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../core/api.dart';
 import '../core/format.dart';
 import '../core/kinds.dart';
 import '../core/photo.dart';
@@ -138,7 +139,7 @@ class _EntryFormState extends State<EntryForm> {
   }
 
   Future<void> _pickMachine() async {
-    final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const MachinePicker());
+    final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: date));
     if (m == null || !mounted) return;
     setState(() {
       if (machine?.id != m.id) {
@@ -292,9 +293,11 @@ class _EntryFormState extends State<EntryForm> {
       busy = true;
       err = '';
     });
+    Map<String, dynamic>? sentD;
     try {
       final d = _data();
       if (force) d['force'] = true;
+      sentD = d;
       final r = (await (ed == null ? s.api.call(k.save, [d], true) : s.api.call(_updateOf(k.key), [editId, d], true)) as Map).cast<String, dynamic>();
       if (!mounted) return;
       if (r['warning'] != null) {
@@ -328,6 +331,47 @@ class _EntryFormState extends State<EntryForm> {
       });
       _balance();
     } catch (e) {
+      // (3.1.7) no network: a NEW entry may be kept on the phone and sent by itself later (with the same save number)
+      if (mounted && ed == null && sentD != null && e is ApiError && await offerKeep(context, e)) {
+        final m0 = machine;
+        await s.keepEntry(k.save, [sentD], e.rid, '${tr(k.en)} · ${showDate(date)}${m0 != null ? ' · ${m0.id}' : ''} · ${qty.text.trim()} L');
+        if (!mounted) return;
+        setState(() {
+          busy = false;
+          err = Api.keptMsg;
+          machine = null;
+          way = '';
+          shots.clear();
+          ai.clear();
+          aiPut.clear();
+          for (final c in [qty, km, hr, remark, rate, billNo]) {
+            c.clear();
+          }
+        });
+        return;
+      }
+      if (mounted && isSent(e)) {
+        // (update-114) sent for verification: nothing saved yet; the form is emptied for the next entry (an edit is closed)
+        HapticFeedback.lightImpact();
+        if (ed != null) {
+          toast(context, errText(e));
+          Navigator.pop(context, false);
+          return;
+        }
+        setState(() {
+          busy = false;
+          err = errText(e);
+          machine = null;
+          way = '';
+          shots.clear();
+          ai.clear();
+          aiPut.clear();
+          for (final c in [qty, km, hr, remark, rate, billNo]) {
+            c.clear();
+          }
+        });
+        return;
+      }
       if (mounted) {
         setState(() {
           busy = false;
@@ -648,9 +692,10 @@ class _EntryFormState extends State<EntryForm> {
   }
 }
 
-/// The machinery of the site (Active only) – search by number, name, type or owner.
+/// The machinery of the site on [date] (on site that day – update-115; empty = Active) – search by number, name, type or owner.
 class MachinePicker extends StatefulWidget {
-  const MachinePicker({super.key});
+  const MachinePicker({super.key, this.date = ''});
+  final String date;
   @override
   State<MachinePicker> createState() => _MachinePickerState();
 }
@@ -660,7 +705,7 @@ class _MachinePickerState extends State<MachinePicker> {
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
-    final list = s.machines.where((m) => m.active && (q.isEmpty || m.matches(q))).take(100).toList();
+    final list = s.machines.where((m) => m.onSite(widget.date) && (q.isEmpty || m.matches(q))).take(100).toList();
     return SizedBox(
       height: MediaQuery.of(context).size.height * .86,
       child: Column(children: [
