@@ -222,11 +222,16 @@ void main() {
     await t.enterText(find.byType(TextField).at(0), 'Nashik#Road848!');
     await t.enterText(find.byType(TextField).at(1), 'Mule#2026x');
     await t.enterText(find.byType(TextField).at(2), 'Mule#2026y');
+    await t.ensureVisible(find.text('Save and open'));
+    await settle(t, 400);
     await t.tap(find.text('Save and open'));
     await settle(t, 600);
     expect(find.textContaining('The two new passwords are not the same.'), findsOneWidget);
     expect(srv.calls, isNot(contains('portal:changePassword')));
     await t.enterText(find.byType(TextField).at(2), 'Mule#2026x');
+    await settle(t, 600);
+    await t.ensureVisible(find.text('Save and open'));      // (on a small phone the button may be below the screen's end)
+    await settle(t, 400);
     await t.tap(find.text('Save and open'));
     await net(t);
     expect(srv.newPassword, 'Mule#2026x');
