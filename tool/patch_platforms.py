@@ -19,7 +19,8 @@ def need(cond, what):
 MAN = 'android/app/src/main/AndroidManifest.xml'
 def manifest(s):
     perms = ['android.permission.INTERNET', 'android.permission.REQUEST_INSTALL_PACKAGES', 'android.permission.CAMERA', 'android.permission.ACCESS_FINE_LOCATION',
-             'android.permission.ACCESS_COARSE_LOCATION', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS', 'android.permission.POST_NOTIFICATIONS']
+             'android.permission.ACCESS_COARSE_LOCATION', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS', 'android.permission.POST_NOTIFICATIONS',
+             'android.permission.RECEIVE_BOOT_COMPLETED', 'android.permission.WAKE_LOCK']
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
     s = re.sub(r'android:label="[^"]*"', 'android:label="RCL ERP"', s, count=1)
@@ -40,6 +41,12 @@ def manifest(s):
                       '            android:exported="false" android:grantUriPermissions="true">\n'
                       '            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/provider_paths"/>\n'
                       '        </provider>\n    </application>', 1)
+    if 'androidalarmmanager.AlarmService' not in s:      # (3.1.8) notifications with the app closed
+        s = s.replace('</application>', '    <service android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false"/>\n'
+                      '        <receiver android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver" android:exported="false"/>\n'
+                      '        <receiver android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver" android:enabled="false" android:exported="false">\n'
+                      '            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>\n'
+                      '        </receiver>\n    </application>', 1)
     if 'android.media.action.IMAGE_CAPTURE' not in s:
         q = ('        <intent>\n            <action android:name="android.media.action.IMAGE_CAPTURE"/>\n        </intent>\n'
              '        <intent>\n            <action android:name="android.intent.action.VIEW"/>\n            <data android:scheme="https"/>\n        </intent>\n')

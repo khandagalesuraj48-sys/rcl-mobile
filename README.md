@@ -25,7 +25,7 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 * **Reports**: every report of the web he may open (Dashboard, the diesel reports, Bill Summary, Vendor Ledger / Outstanding).
 * **Notifications** on the phone (`lib/core/alerts.dart`): something new waits for him to approve (once); an entry of his sent
   back with a question (again every 30 minutes until he answers). Also with the app closed: Android asks about every 15 minutes
-  (WorkManager). The phone asks to allow notifications once.
+  (an Android alarm). The phone asks to allow notifications once.
 
 **Version 3.1.7 (15-10-2026: verification of every work – Mechanical update-114; a machinery that left the site – update-115; "app madhe live sync haway … app refresh kraychi kahich garaj nahi"):**
 * An entry of a work the Super Admin put under verification comes back "Sent for verification to … – VF-00001": shown in green,

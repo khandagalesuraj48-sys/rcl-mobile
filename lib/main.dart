@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:workmanager/workmanager.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
 import 'config.dart';
 import 'core/alerts.dart';
@@ -24,24 +24,22 @@ class SecureKeep implements Keep {
   Future<void> write(String key, String? value) => value == null ? _s.delete(key: key) : _s.write(key: key, value: value);
 }
 
-/// (3.1.8) With the app closed: Android runs this about every 15 minutes – Approvals asked once, a notification when something
-/// waits for him or was sent back to him (alerts.dart).
+/// (3.1.8) With the app closed: Android runs this about every 15 minutes (an alarm) – Approvals asked once, a notification when
+/// something waits for him or was sent back to him (alerts.dart).
 @pragma('vm:entry-point')
-void alertsInBackground() {
-  Workmanager().executeTask((task, input) async {
-    try {
-      await backgroundAlerts(Api(portalUrl: kPortalUrl, keep: SecureKeep()));
-    } catch (_) {/* the next time */}
-    return true;
-  });
+Future<void> alertsInBackground() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await backgroundAlerts(Api(portalUrl: kPortalUrl, keep: SecureKeep()));
+  } catch (_) {/* the next time */}
 }
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   () async {
     try {
-      await Workmanager().initialize(alertsInBackground);
-      await Workmanager().registerPeriodicTask('rcl-alerts', 'alerts', frequency: const Duration(minutes: 15));
+      await AndroidAlarmManager.initialize();
+      await AndroidAlarmManager.periodic(const Duration(minutes: 15), 3108, alertsInBackground, allowWhileIdle: true, rescheduleOnReboot: true);
     } catch (_) {/* no background work on this phone: the notifications come while the app is open */}
     await Alerts.init(ask: true);
   }();

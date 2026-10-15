@@ -4,7 +4,7 @@
  *   – an entry of his was SENT BACK to him with a question → a notification, and again every 30 minutes until he answers it or
  *     takes it back (Me → Approvals).
  * Asked while the app is open (every live tick that brings "flow") and, with the app closed, by Android every 15 minutes
- * (WorkManager – Android decides the exact moment; it may wait longer when the phone saves battery). What was told is kept on the
+ * (an Android alarm – Android decides the exact moment; it may wait longer when the phone saves battery). What was told is kept on the
  * phone, so nothing is told twice too soon. */
 import 'dart:convert';
 
@@ -81,7 +81,7 @@ Future<void> tellAlerts(Map d, Keep keep) async {
   }
 }
 
-/// With the app closed (WorkManager): the sign-in kept on the phone asks Mechanical's Approvals list once.
+/// With the app closed (an Android alarm): the sign-in kept on the phone asks Mechanical's Approvals list once.
 Future<void> backgroundAlerts(Api api) async {
   await api.load();
   api.mechUrl = await api.keep.read(kMechUrl) ?? '';
