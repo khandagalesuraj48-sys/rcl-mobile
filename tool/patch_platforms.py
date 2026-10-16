@@ -73,6 +73,13 @@ def gradle(s):
         s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
     return s
 
+ROOT_KT = ('\n// (3.11.0) file_picker 11 leaves its Kotlin code to AGP 9\'s built-in Kotlin, which this project keeps off (android.builtInKotlin=false):\n'
+           '// its Kotlin is compiled with the Kotlin plugin, as the other plugins do.\n'
+           'subprojects {\n    if (name == "file_picker") {\n        pluginManager.withPlugin("com.android.library") {\n'
+           '            if (!pluginManager.hasPlugin("org.jetbrains.kotlin.android")) pluginManager.apply("org.jetbrains.kotlin.android")\n        }\n    }\n}\n')
+def root_gradle(s):
+    return s if 'name == "file_picker"' in s else s + ROOT_KT
+
 USES = [('NSCameraUsageDescription', 'RCL ERP uses the camera for the photos of an entry (Diesel Issue and others).'),
         ('NSLocationWhenInUseUsageDescription', 'RCL ERP saves the place of every entry, as the web ERP does.'),
         ('NSMicrophoneUsageDescription', 'RCL ERP uses the microphone for a screen-share help call.'),
@@ -92,6 +99,7 @@ with open('android/app/src/main/res/xml/filepaths.xml', 'w') as f:
     f.write('<?xml version="1.0" encoding="utf-8"?>\n<paths>\n    <files-path name="internal_apk_storage" path="ota_update/"/>\n</paths>\n')
 need(os.path.exists('android/app/build.gradle.kts'), 'android/app/build.gradle.kts is missing (an older Groovy template?)')
 edit('android/app/build.gradle.kts', gradle)
+if os.path.exists('android/build.gradle.kts'): edit('android/build.gradle.kts', root_gradle)
 if os.path.exists('ios/Runner/Info.plist'): edit('ios/Runner/Info.plist', plist)
 # flutter create adds a sample test for its counter app – not this app
 w = 'test/widget_test.dart'
