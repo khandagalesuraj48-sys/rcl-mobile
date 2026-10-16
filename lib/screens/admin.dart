@@ -53,7 +53,10 @@ class AdminHub extends StatelessWidget {
     ];
     return Scaffold(
       appBar: AppBar(title: const TwoLang('Administration', 'प्रशासन', size: 20, weight: FontWeight.w700)),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
+      // (3.14.0) one column (every tile built), so a tile below the screen is there to be found and tapped
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         if (!s.admin) const EmptyState('Admin only', 'These pages are for the Admin of the site.', pic: 'gear'),
@@ -144,6 +147,7 @@ class AdminHub extends StatelessWidget {
           ),
         ],
       ]),
+      ),
     );
   }
 }

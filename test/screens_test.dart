@@ -1917,7 +1917,7 @@ void main() {
     expect(t.widget<TextField>(find.byKey(const Key('d-driver'))).controller!.text, 'Ramesh', reason: 'the driver of the last fill');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/40_issue_history.png'));
-    await t.pageBack();
+    await t.tap(find.byIcon(Icons.arrow_back_rounded).first);
     await net(t);
     // the photos of a saved fill
     await t.tap(find.text('Sany 210 (No.1)').first);
