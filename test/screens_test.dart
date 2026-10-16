@@ -2420,13 +2420,13 @@ void main() {
     await net(t);
     await tapK(t, 'sa-pages-mechanical');
     await net(t);
-    expect(srv.portalAdminSent.last, {'action': 'mechPages', 'site': 'S1'});
+    expect(saves(srv).last, {'action': 'mechPages', 'site': 'S1'});
     expect(find.text('Diesel Issue'), findsOneWidget);
     await tapIn(t, 'sa-pg-log', 'Edit');
     await t.pump();
     await tapK(t, 'sa-pg-save');
     await net(t);
-    expect(srv.portalAdminSent.last, {'action': 'mechPagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'perms': {'diesel': 'Edit', 'log': 'Edit', 'reports': 'None'}});
+    expect(saves(srv).last, {'action': 'mechPagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'perms': {'diesel': 'Edit', 'log': 'Edit', 'reports': 'None'}});
     expect(find.text('Pages saved in Mechanical.'), findsOneWidget);
     // the Store: he is its Admin now – every page, nothing to give
     await tapK(t, 'sa-pages-store');
@@ -2452,7 +2452,7 @@ void main() {
     expect(find.byKey(const Key('sa-st-del')), findsNothing, reason: 'an Active site is not deleted');
     await tapK(t, 'sa-st-places');
     await net(t);
-    expect(srv.portalAdminSent.last, {'action': 'placesGet', 'site': 'S1'});
+    expect(saves(srv).last, {'action': 'placesGet', 'site': 'S1'});
     expect(find.text('Camp Pump'), findsOneWidget);
     expect(find.text('Stock now: 12,450.5 Ltr'), findsOneWidget);
     expect(find.byKey(const Key('pl-del-0')), findsNothing, reason: 'a place with entries stays');
@@ -2463,7 +2463,7 @@ void main() {
     await t.enterText(find.byKey(const Key('pl-cap-2')), '5000');
     await tapK(t, 'pl-save');
     await net(t);
-    expect(srv.portalAdminSent.last, {
+    expect(saves(srv).last, {
       'action': 'placesSave', 'site': 'S1',
       'places': [{'name': 'Camp Pump', 'cap': 18000}, {'name': 'MH12ZE1739', 'cap': 2650}, {'name': 'VTR Store', 'cap': 5000}],
     });
@@ -2482,7 +2482,7 @@ void main() {
     await t.enterText(find.byKey(const Key('pl-cap-0')), '18000');
     await tapK(t, 'ns-check');
     await net(t);
-    expect(srv.portalAdminSent.last, {
+    expect(saves(srv).last, {
       'action': 'siteSetup', 'code': 'PN4', 'name': 'Pune Ring Road', 'company': '', 'url': 'https://abcdefghijklmnopqrst.supabase.co', 'sheet': '',
       'places': [{'name': 'Camp Pump', 'cap': 18000}],
     });
@@ -2515,7 +2515,7 @@ void main() {
     await t.enterText(find.byKey(const Key('note-box')), 'k7');
     await tapK(t, 'note-ok');
     await net(t);
-    expect(srv.portalAdminSent.last, {'action': 'siteDelete', 'code': 'K7', 'confirm': 'k7'});
+    expect(saves(srv).last, {'action': 'siteDelete', 'code': 'K7', 'confirm': 'k7'});
     expect(find.text('Site K7 deleted. Its data stays in its own database.'), findsOneWidget);
     expect(find.byKey(const Key('sa-st-K7')), findsNothing);
   }, tags: ['golden']);
@@ -2549,7 +2549,7 @@ void main() {
     await net(t);
     await t.tap(find.text('Delete').last);
     await net(t);
-    expect(srv.portalAdminSent.last, {'action': 'companyDelete', 'id': 'SKETCHLINE'});
+    expect(saves(srv).last, {'action': 'companyDelete', 'id': 'SKETCHLINE'});
     expect(find.text('Company deleted.'), findsOneWidget);
     // Modules: Mechanical is never deleted; HR (Off) – Live without a link is refused; deleted with its key typed
     await t.tap(find.byKey(const Key('sa-t-modules')));
@@ -2571,7 +2571,7 @@ void main() {
     await t.enterText(find.byKey(const Key('note-box')), 'hr');
     await tapK(t, 'note-ok');
     await net(t);
-    expect(srv.portalAdminSent.last, {'action': 'moduleDelete', 'key': 'hr', 'confirm': 'hr'});
+    expect(saves(srv).last, {'action': 'moduleDelete', 'key': 'hr', 'confirm': 'hr'});
     expect(find.text('Module deleted.'), findsOneWidget);
     expect(find.byKey(const Key('sa-m-hr')), findsNothing);
     // Activity: the last 200
