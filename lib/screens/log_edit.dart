@@ -477,6 +477,15 @@ class _LogEditScreenState extends State<LogEditScreen> {
                     await _open(ask: false);
                   }
                   if (v == 'print') _print();
+                  if (v == 'clear' && (!(fig?.canSave ?? false) || await ask(context, 'Clear the opened entries?', 'What is typed here and not saved will be removed. Saved entries are not touched.', yes: 'Clear'))) {
+                    _drop();
+                    setState(() {
+                      ed = null;
+                      lt = null;
+                      fig = null;
+                      no = '';
+                    });
+                  }
                   if (v == 'export') _ltExport();
                 },
                 itemBuilder: (_) => [
@@ -485,6 +494,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
                   PopupMenuItem(key: const Key('lx-selall'), value: 'all', child: Text(nSel == 0 ? 'Select all rows' : 'Clear the ticks')),
                   if (nSel > 0) PopupMenuItem(key: const Key('lx-delsel'), value: 'del', child: Text('Delete selected ($nSel)')),
                   PopupMenuItem(key: const Key('lx-reload'), value: 'reload', child: Text('Undo all (reload)')),
+                  PopupMenuItem(key: const Key('lx-clear'), value: 'clear', child: Text('Clear')),
                   if (l != null) PopupMenuItem(key: const Key('lt-export'), value: 'export', child: Text('Export Excel')),
                   PopupMenuItem(key: const Key('lx-print'), value: 'print', child: Text('Print Log Book')),
                 ],

@@ -215,6 +215,14 @@ class _BreakdownScreenState extends State<BreakdownScreen> {
                 ),
               if (can && x.report != null) OutlinedButton.icon(key: const Key('bk-del'), onPressed: busy ? null : _delete, icon: const Icon(Icons.delete_outline_rounded, color: C.red), label: Text('Delete this day')),
               OutlinedButton.icon(key: const Key('bk-print'), onPressed: () => printDoc(context, s, x.dayDoc(list, owns)), icon: const Icon(Icons.print_rounded), label: Text('Print')),
+              if (can)
+                OutlinedButton(
+                  key: const Key('bk-clear'),
+                  onPressed: () async {
+                    if (await ask(context, 'Clear the breakdown sheet?', 'What is typed here and not saved will be removed. Saved entries are not touched.', yes: 'Clear')) _load();
+                  },
+                  child: Text('Clear'),
+                ),
             ]),
             const SizedBox(height: 12),
             if (list.isEmpty) Padding(padding: const EdgeInsets.all(20), child: Text('No machinery for these choices.', textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
@@ -363,6 +371,16 @@ class _BreakdownScreenState extends State<BreakdownScreen> {
       Wrap(spacing: 8, children: [
         OutlinedButton.icon(key: const Key('bp-print'), onPressed: () => printDoc(context, s, bpDoc(rows, pView, pFrom, pTo, own: pOwn, owner: pOwner)), icon: const Icon(Icons.print_rounded), label: Text('Print')),
         OutlinedButton.icon(key: const Key('bp-xls'), onPressed: () => shareDocXlsx(s, bpXlsDoc(rows, pFrom, pTo), bare: true), icon: const Icon(Icons.table_view_rounded), label: Text('Excel')),
+        OutlinedButton(
+          key: const Key('bp-clear'),
+          onPressed: () => setState(() {
+            pFrom = '${x.today.substring(0, 8)}01';
+            pTo = x.today;
+            pOwn = pOwner = pNo = '';
+            pOnly = false;
+          }),
+          child: Text('Clear filters'),
+        ),
       ]),
       const SizedBox(height: 10),
       Container(
