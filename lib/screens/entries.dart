@@ -404,6 +404,7 @@ class EntryCard extends StatelessWidget {
         ('Rate', asNum(r['rate']) != null ? '₹ ${fmtNum(asNum(r['rate']))} / L' : ''),
         ('Amount', asNum(r['amount']) != null ? '₹ ${fmtNum(asNum(r['amount']))}' : ''),
         ('Bill', [r['billNo'], showDate('${r['billDate'] ?? ''}')].where((e) => '${e ?? ''}'.isNotEmpty).join(' · ')),
+        ('Bill copy', (asNum(r['ph']) ?? 0) == 1 ? '1 photo' : (asNum(r['ph']) ?? 0) > 1 ? '${fmtNum(asNum(r['ph']))} photos' : ''),      // (3.1.13, update-120)
       ],
       if (kind.key == 'transfer') ...[('From', '${r['from'] ?? ''}'), ('To', '${r['to'] ?? ''}')],
       ('Litres', '${fmtNum(asNum(r['qty']))} L'),

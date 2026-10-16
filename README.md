@@ -14,6 +14,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.13 (16-10-2026, with Mechanical update-120 – "inward bill copy pn add krayche aahet … inward copy eka weli multiple
+click krun save kru shakel user"):** New / Change Diesel Inward has **Bill copy**: "Take photo" (the camera, one after another) and
+"Choose photos" (several at once from the gallery), up to 10; each made a JPG of at most 2000 px and sent at once (`inwardPhoto`),
+✓ on its tile, ✕ takes it out, a tap shows it large. A change shows the copies the inward has (`getInwardPhotos`) and sends the
+list only when it was changed. The details of an inward say how many copies it has. The web's words (Marathi / Hindi) copied again.
+
 **Version 3.1.12 (16-10-2026, with Mechanical update-119 – a machinery on a site several times: "vehicle ali … inactive hote …
 part ali … period wise active inactive haway"):** `Machine.onSite` counts its earlier periods on site too (Mechanical's `earlier`),
 so a machinery that came back is offered again from the day it came back, and not on the days it was away.

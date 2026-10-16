@@ -137,3 +137,67 @@ Uint8List _small(Uint8List jpg) {
   final out = k < 1 ? img.copyResize(im, width: (im.width * k).round(), height: (im.height * k).round(), interpolation: img.Interpolation.average) : im;
   return img.encodeJpg(out, quality: 85);
 }
+
+/* (3.1.13, Mechanical update-120, asked 16-10-2026: "diesel inward hote tewa inward bill copy pn add krayche aahet … inward copy
+ * eka weli multiple click krun save kru shakel user") THE BILL COPIES OF A DIESEL INWARD – as on the web: from the camera (one
+ * after another) or from the gallery (several at once); each made a JPG of at most 2000 px (the writing of the bill stays
+ * clear), no band on it. Sent at once (inwardPhoto); the inward takes them when it is saved (at most 10). */
+const kBillMax = 10;
+
+/// The camera (one photo) or the gallery (up to [room] at once) → the JPGs, ready to send ([] when the person went back).
+Future<List<Uint8List>> pickBills({required bool camera, int room = kBillMax}) async {
+  if (room < 1) return [];
+  if (camera && Platform.isAndroid) {
+    final st = await Permission.camera.request();
+    if (!st.isGranted) throw PhotoProblem('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');
+  }
+  final picker = ImagePicker();
+  final List<XFile> xs;
+  if (camera) {
+    final x = await picker.pickImage(source: ImageSource.camera, maxWidth: 2000, maxHeight: 2000, imageQuality: 92, preferredCameraDevice: CameraDevice.rear);
+    xs = [if (x != null) x];
+  } else if (room == 1) {
+    final x = await picker.pickImage(source: ImageSource.gallery, maxWidth: 2000, maxHeight: 2000, imageQuality: 92);
+    xs = [if (x != null) x];
+  } else {
+    xs = await picker.pickMultiImage(maxWidth: 2000, maxHeight: 2000, imageQuality: 92, limit: room);
+  }
+  final out = <Uint8List>[];
+  for (final x in xs.take(room)) {
+    out.add(await billJpg(await x.readAsBytes()));
+  }
+  return out;
+}
+
+/// A picture of the bill → a JPG, longest side at most 2000 px, at most about 1.3 MB (the server keeps up to 1.5 MB).
+Future<Uint8List> billJpg(Uint8List raw) async {
+  final codec = await ui.instantiateImageCodec(raw);
+  final frame = await codec.getNextFrame();
+  final src = frame.image;
+  final sc = 2000 / (src.width > src.height ? src.width : src.height);
+  final k = sc < 1 ? sc : 1.0;
+  final w = (src.width * k).round(), h = (src.height * k).round();
+  final rec = ui.PictureRecorder();
+  ui.Canvas(rec).drawImageRect(src, ui.Rect.fromLTWH(0, 0, src.width.toDouble(), src.height.toDouble()), ui.Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()), ui.Paint()..filterQuality = ui.FilterQuality.high);
+  final out = await rec.endRecording().toImage(w, h);
+  final rgba = (await out.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+  src.dispose();
+  out.dispose();
+  return compute(_toBillJpg, _Raw(rgba.buffer.asUint8List(), w, h));
+}
+
+Uint8List _toBillJpg(_Raw r) {
+  final im = img.Image.fromBytes(width: r.w, height: r.h, bytes: r.bytes.buffer, numChannels: 4);
+  var jpg = img.encodeJpg(im, quality: 82);
+  if (jpg.length > 700 * 1024) jpg = img.encodeJpg(im, quality: 70);
+  if (jpg.length > 1300 * 1024) jpg = img.encodeJpg(im, quality: 55);
+  return jpg;
+}
+
+/// What a save sends for the bill copies (as the web, update-120): a new inward – the copies added (none: nothing, as before);
+/// an edit – the whole list only when it was changed (else the inward keeps its own); copies not read / still being read: nothing.
+List<Map<String, String>>? billsForSave({required bool isEdit, required String mode, required bool changed, required List<String> paths}) {
+  if (!isEdit) return paths.isEmpty ? null : [for (final p in paths) {'p': p}];
+  if (mode == 'edit' && changed) return [for (final p in paths) {'p': p}];
+  return null;
+}
