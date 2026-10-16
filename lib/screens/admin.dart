@@ -859,7 +859,7 @@ Future<void> showDbCheck(BuildContext context, Session s) async {
     await tellLines(context, 'Database check', ['This site does not run on Supabase – nothing to check.']);
     return;
   }
-  final checks = [for (final x in (h['checks'] as List? ?? const []).whereType<Map>()) x], bad = checks.where((x) => x['ok'] != true).length;
+  final checks = [for (final x in (h['checks'] as List? ?? const []).whereType<Map>()) x], bad = checks.where((x) => x['ok'] != true).length, at = '${h['at'] ?? ''}';
   final again = await showDialog<bool>(
     context: context,
     builder: (dc) => AlertDialog(
@@ -882,7 +882,7 @@ Future<void> showDbCheck(BuildContext context, Session s) async {
           ),
         if (bad > 0) Text('Where: Supabase → SQL Editor → New query → paste the file → Run. The text of every file is in Administration → Read Me. Every file only adds what is missing and can be run again.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 6),
-        Text('Checked ${whenText('${h['at'] ?? ''}')}.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        Text('Checked ${whenText(at)}.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
       ]),
       actions: [
         TextButton(key: const Key('db-again'), onPressed: () => Navigator.pop(dc, true), child: Text('Check again now')),
