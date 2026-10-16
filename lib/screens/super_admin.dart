@@ -54,7 +54,9 @@ bool portalSignInEnded(BuildContext context, Object e) {
   if (e is! ApiError || !(e.needsSignIn || e.status == 401 || e.code == 'session')) return false;
   final s = SessionScope.read(context);
   // (a message still on the screen would be drawn on both the app and the sign-in while one turns into the other)
-  ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
+  ScaffoldMessenger.maybeOf(context)
+    ?..clearSnackBars()
+    ..removeCurrentSnackBar(); // at once – not with its closing animation
   Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
   s.signOut(kPortalMr['session']!);
   return true;
