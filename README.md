@@ -14,6 +14,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.12.0 (16-10-2026, part 11 of the whole web in the app):** the rest of the **Log Book** (Log Book → ⋮) in the app's own
+screens: **Log Book – all dates** (the web's list with its filters – dates, the "Last N days" button, machinery, shift, and the
+rest under "More filters"; the period's totals; **Print** of the list), the two **Exports** (one date – many machinery, one
+machinery – many dates: the web's files cell by cell, with the Total formulas and the drop-downs), **Import from Excel** (for
+Edit: the file read as the web reads it, every row checked by the server – checkLogImport / checkTankerImport, the rows already in
+the Log Book shown with "overwrite or keep" – then importLogBook / importTankerTrips) and the two **templates** (the web's
+200-line files with the machinery of the site on a hidden tab).
+
 **Version 3.11.0 (16-10-2026, part 10 of the whole web in the app):** the rest of the **diesel pages** (Entries → Diesel Issue /
 Diesel Inward / Transfer → ⋮) in the app's own screens: **All dates & Export** (the web's list with its filters – dates, Today /
 Yesterday / Last 7 days / This month, and the page's own filters under "More filters"; the server's totals; on Diesel Issue each
