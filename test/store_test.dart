@@ -1,4 +1,4 @@
-/* (3.10.0) Store – the Dashboard as the web works it out from the Item Master (counts, added this month by India's time,
+/* (3.10.0) Store – the Dashboard as the web works it out from the Item Master (counts, added this month (the stored date against India's month),
  * recently added, items by category) and the Export to Excel's columns. */
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/screens/store.dart';
@@ -9,9 +9,10 @@ void main() {
     {'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'category': 'Canteen', 'hsn': '', 'gst_pct': 5, 'min_stock': null, 'status': 'Active', 'created_at': '2026-09-30T19:00:00Z'},
     {'code': 'ITM-0003', 'name': 'Oil Filter', 'unit': 'Nos', 'category': 'Spare Parts', 'hsn': '8421', 'gst_pct': 18.5, 'min_stock': 4, 'status': 'Inactive', 'created_at': '2026-09-20T06:00:00Z'},
   ];
-  test('The Store dashboard: items, active, categories, added this month (India time), recent first, by category', () {
+  test('The Store dashboard: items, active, categories, added this month (the stored date against India\'s month), recent first, by category', () {
     final d = storeDash(items, DateTime.utc(2026, 10, 14, 4));
-    expect([d.all, d.active, d.all - d.active, d.cats, d.newMonth], [3, 2, 1, 2, 2], reason: '30-09 19:00 UTC is 01-10 in India');
+    expect([d.all, d.active, d.all - d.active, d.cats, d.newMonth], [3, 2, 1, 2, 1],
+        reason: 'as the web: the month of the date as stored (30-09 19:00 UTC is September) against this month in India');
     expect(d.recent.map((i) => i['code']), ['ITM-0001', 'ITM-0002', 'ITM-0003']);
     expect(d.byCat, [('Canteen', 1, 1), ('Spare Parts', 2, 1)]);
   });
