@@ -71,6 +71,14 @@ Future<void> pics(WidgetTester t) async {
   await t.pump();
 }
 
+/// (3.2.0) Taps a widget by its key, brought into view first (a list may hold it below the screen).
+Future<void> tapK(WidgetTester t, String key) async {
+  final f = find.byKey(Key(key));
+  await t.ensureVisible(f);
+  await t.pump(const Duration(milliseconds: 250));
+  await t.tap(f);
+}
+
 void main() {
   setUpAll(loadFonts);
   setUp(() => webHost.enabled = false); // a web view cannot run in a test
@@ -156,6 +164,102 @@ void main() {
     expect(find.text('Reminder sent: VF-00009.'), findsOneWidget);
     expect(find.textContaining('reminded 1×'), findsOneWidget);
   });
+
+  testWidgets('(3.2.0) Approvals – the app\'s own screen: the counts, the requests; Approve, Reject (a reason), several at once', (t) async {
+    phone(t);
+    final srv = FakeServer()..crForMe = 3;
+    final now = DateTime.now().toUtc().toIso8601String();
+    Map<String, dynamic> req(String id, String what) => {'kind': 'Flow', 'mine': false, 'id': id, 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': 'Pending', 'at': now, 'waitSince': now, 'by': 'Mahesh Jadhav', 'waitingFor': ['Sujit Mule'], 'level': 1, 'levels': 1, 'canDecide': true, 'qty': 100, 'summary': [what],
+          'history': [{'step': 'Sent', 'by': 'Mahesh Jadhav', 'at': now}]};
+    srv.flowReqs.addAll([
+      req('VF-00003', 'Delete diesel issue DI-000003: DLC PAVER-RCL · 16-10-2026 · Day (saved now: Litres 100)'),
+      req('VF-00004', 'Add: MH-25-AJ-2169 · 16-10-2026 · Day: Litres 60'),
+      req('VF-00005', 'Add: Sany 210 (No.1) · 16-10-2026 · Day: Litres 80'),
+    ]);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Me'));
+    await net(t);
+    await t.ensureVisible(find.text('Approvals').first);
+    await settle(t, 300);
+    await t.tap(find.text('Approvals').first);
+    await net(t);
+    expect(find.byKey(const Key('cr-forme')), findsOneWidget);
+    expect(find.byKey(const Key('cr-VF-00003')), findsOneWidget);
+    expect(find.textContaining('Delete diesel issue DI-000003'), findsOneWidget);
+    expect(find.text('level 1 of 1: Sujit Mule'), findsWidgets);
+    expect(srv.calls.where((c) => c.startsWith('mech:getChangeRequests')).isNotEmpty, true);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13_approvals.png'));
+    // one: Approve → asked → saved
+    await tapK(t, 'ok:VF-00003');
+    await settle(t, 600);
+    expect(find.text('Approve this entry?'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    expect(srv.decided.last, {'id': 'VF-00003', 'approve': true, 'note': ''});
+    expect(find.text('VF-00003 approved – saved.'), findsOneWidget);
+    // Reject needs a reason
+    await tapK(t, 'no:VF-00004');
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('note-ok')));
+    await settle(t, 300);
+    expect(find.text('Write why the change is rejected.'), findsOneWidget, reason: 'nothing sent without a reason');
+    expect(srv.decided.length, 1);
+    await t.enterText(find.byKey(const Key('note-box')), 'Wrong litres');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(srv.decided.last, {'id': 'VF-00004', 'approve': false, 'note': 'Wrong litres'});
+    // several at once
+    await tapK(t, 'tick-VF-00005');
+    await settle(t, 300);
+    expect(find.byKey(const Key('bulk-ok')), findsOneWidget);
+    await tapK(t, 'bulk-ok');
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(srv.decided.last['ids'], ['VF-00005']);
+    expect(srv.decided.last['approve'], true);
+    expect(find.text('1 done.'), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.2.0) Approvals: the sender answers an entry sent back, or takes it back; the Super Admin\'s rules', (t) async {
+    phone(t);
+    final srv = FakeServer()..superAdmin = true;
+    final now = DateTime.now().toUtc().toIso8601String();
+    srv.flowReqs.add({'kind': 'Flow', 'mine': true, 'id': 'VF-00007', 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': 'Reverted', 'at': now, 'by': 'Sujit Mule', 'canAnswer': true, 'summary': ['Add: MH-25-AJ-2169 · 60 L'],
+      'reverted': {'by': 'Shubham', 'note': 'Which tank?', 'at': now}});
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Me'));
+    await net(t);
+    await t.ensureVisible(find.text('Approvals').first);
+    await settle(t, 300);
+    await t.tap(find.text('Approvals').first);
+    await net(t);
+    expect(find.text('Which tank?'), findsOneWidget);
+    await tapK(t, 'ans:VF-00007');
+    await settle(t, 600);
+    await t.enterText(find.byKey(const Key('note-box')), 'Dispenser');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(srv.decided.last, {'answer': true, 'id': 'VF-00007', 'note': 'Dispenser', 'withdraw': false});
+    // the rules
+    await tapK(t, 'flow-rules');
+    await net(t);
+    expect(find.byKey(const Key('fr-Diesel Issue')), findsOneWidget);
+    expect(find.text('Mahesh Jadhav'), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/14_flow_rules.png'));
+    await tapK(t, 'fr-save');
+    await net(t);
+    final saved = srv.rulesSaved.single;
+    expect((saved['tasks'] as Map)['Diesel Issue'], {'on': true, 'levels': [['mahesh@rcl.test']], 'daysBack': '', 'qtyAbove': '200'});
+    expect((saved['tasks'] as Map)['Log Book'], {'on': false, 'levels': [[]], 'daysBack': '', 'qtyAbove': ''});
+    expect(saved['remindHours'], '4');
+  }, tags: ['golden']);
 
   testWidgets('Entries: the day\'s diesel issues as cards; Transfer (no access) is not a tab', (t) async {
     phone(t);

@@ -14,6 +14,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.2.0 (16-10-2026, "purn web application completely app ui madhe … app madhe mala kuthunch web ui dista kama naye"):**
+the first part of the whole web in the app's own screens – **Approvals**: the counts (waiting for you, sent back, waiting in all,
+yours, the oldest), every request (when, who, which work, what it changes, its steps, waiting at whom / sent back / decided),
+Approve / Send back / Reject one or several ticked at once, Answer and send again / Take back, Remind; the Super Admin's
+**Verification rules** (works, levels of people, "only when", remind after). The same actions and checks as the web.
+
 **Version 3.1.13 (16-10-2026, with Mechanical update-120 – "inward bill copy pn add krayche aahet … inward copy eka weli multiple
 click krun save kru shakel user"):** New / Change Diesel Inward has **Bill copy**: "Take photo" (the camera, one after another) and
 "Choose photos" (several at once from the gallery), up to 10; each made a JPG of at most 2000 px and sent at once (`inwardPhoto`),

@@ -11,6 +11,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'approvals.dart';
 import 'settings.dart';
 import '../ui/t.dart';
 
@@ -133,7 +134,7 @@ class _MeTabState extends State<MeTab> {
               ),
               _row(pic: 'gear', en: 'My settings', mr: 'माझ्या सेटिंग्ज', sub: 'Default site, shift, diesel place, text size, password', color: C.slateSoft, onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()))),
               // (update-114) Approvals – for everybody: what waits for him to approve (one or several at once), what he sent (waiting,
-              // approved, rejected); the Super Admin also sets the verification rules there. The web page, live.
+              // approved, rejected); the Super Admin also sets the verification rules there. (3.2.0) The app's own screens, live.
               _row(
                 pic: 'bell',
                 en: 'Approvals',
@@ -146,7 +147,7 @@ class _MeTabState extends State<MeTab> {
                 color: s.crForMe > 0 ? C.amberSoft : C.blueSoft,
                 trailing: s.crForMe > 0 ? Badge(label: Text('${s.crForMe}'), child: const Icon(Icons.chevron_right_rounded, color: C.faint)) : null,
                 onTap: () async {
-                  await openWeb(context, 'Approvals', 'approvals', pic: 'bell');
+                  await openApprovals(context);      // (3.2.0) the app's own screen
                   s.loadApprovals();
                 },
               ),

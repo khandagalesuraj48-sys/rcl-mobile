@@ -24,6 +24,8 @@ class FakeServer {
   final flowReqs = <Map<String, dynamic>>[]; // (3.1.11, update-118) the Approvals list (his entries in verification)
   final reminded = <List<String>>[];
   int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
+  final decided = <Map<String, dynamic>>[]; // (3.2.0) what the Approvals screen sent (decide, several, answer)
+  final rulesSaved = <Map<String, dynamic>>[];
   bool down = false; // no network to Mechanical
   final rids = <String>[]; // the save numbers that came
   final tankerCalls = <Map<String, dynamic>>[];
@@ -138,6 +140,42 @@ class FakeServer {
             r['remindedAt'] = DateTime.now().toUtc().toIso8601String();
           }
           return _j({'result': {'ok': true, 'reminded': ids, 'later': [], 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
+        // (3.2.0) the Approvals screen: decide one / several, answer, the rules
+        case 'decideChangeRequest':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          decided.add(x);
+          final r = flowReqs.firstWhere((r) => r['id'] == x['id']);
+          final st = x['revert'] == true ? 'Reverted' : x['approve'] == true ? 'Approved' : 'Rejected';
+          r['status'] = st;
+          r['canDecide'] = false;
+          r['decidedBy'] = 'Sujit Mule';
+          r['note'] = '${x['note'] ?? ''}';
+          return _j({'result': {'ok': true, 'id': x['id'], 'status': st, 'level': 1, 'levels': 1, 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
+        case 'decideChangeRequests':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          decided.add(x);
+          final ids = (x['ids'] as List).map((e) => '$e').toList();
+          for (final r in flowReqs.where((r) => ids.contains(r['id']))) {
+            r['status'] = x['revert'] == true ? 'Reverted' : x['approve'] == true ? 'Approved' : 'Rejected';
+            r['canDecide'] = false;
+          }
+          return _j({'result': {'ok': true, 'done': [for (final id in ids) {'id': id, 'status': 'Approved'}], 'failed': [], 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
+        case 'answerFlow':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          decided.add({'answer': true, ...x});
+          final r = flowReqs.firstWhere((r) => r['id'] == x['id']);
+          r['status'] = x['withdraw'] == true ? 'Withdrawn' : 'Pending';
+          r['canAnswer'] = false;
+          return _j({'result': {'ok': true, 'id': x['id'], 'status': r['status'], 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
+        case 'getFlowRules':
+          return _j({'result': {
+            'tasks': [{'m': 'Diesel Issue', 'label': 'Diesel Issue', 'fns': ['saveDieselIssue'], 'diesel': true}, {'m': 'Log Book', 'label': 'Log Book', 'fns': ['saveLogRows'], 'diesel': false}],
+            'rules': {'remindHours': 4, 'tasks': {'Diesel Issue': {'on': true, 'levels': [['mahesh@rcl.test']], 'daysBack': '', 'qtyAbove': '200'}}},
+            'users': [{'email': 'mahesh@rcl.test', 'name': 'Mahesh Jadhav'}, {'email': 'shubham@rcl.test', 'name': 'Shubham'}],
+          }});
+        case 'saveFlowRules':
+          rulesSaved.add((a[0] as Map).cast<String, dynamic>());
+          return _j({'result': {'ok': true, 'rules': (a[0] as Map)}});
         case 'getStock':
           return _j({'result': stock});
         case 'getInit':

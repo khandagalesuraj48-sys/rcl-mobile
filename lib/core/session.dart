@@ -516,12 +516,14 @@ class Session extends ChangeNotifier {
     try {
       final d = await api.call('getChangeRequests', [<String, dynamic>{}]);
       if (d is! Map) return;
-      _takeApprovals(d);
+      takeApprovals(d);
       if (notify) await tellAlerts(d, api.keep);      // (3.1.8) waiting for him / sent back to him: a notification; (3.1.11) a reminder
     } catch (_) {/* the count only */}
   }
 
-  void _takeApprovals(Map d) {
+  /// (3.2.0) The Approvals answer [d] taken: the counts, his works under verification, his entries (the Approvals screen gives
+  /// every answer of a decision here too).
+  void takeApprovals(Map d) {
     crWaiting = (d['pending'] is num) ? (d['pending'] as num).toInt() : 0;
     crForMe = (d['forMe'] is num) ? (d['forMe'] as num).toInt() : 0;
     crBack = (d['backToMe'] is num) ? (d['backToMe'] as num).toInt() : 0;
@@ -564,7 +566,7 @@ class Session extends ChangeNotifier {
   Future<Map<String, dynamic>> remindFlow({List<String> ids = const [], bool all = false}) async {
     final r = await api.call('remindFlow', [all ? <String, dynamic>{'all': true} : <String, dynamic>{'ids': ids}]);
     final m = r is Map ? r.cast<String, dynamic>() : <String, dynamic>{};
-    if (m['list'] is Map) _takeApprovals(m['list'] as Map);
+    if (m['list'] is Map) takeApprovals(m['list'] as Map);
     return m;
   }
 

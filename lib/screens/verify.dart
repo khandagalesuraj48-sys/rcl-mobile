@@ -11,7 +11,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_host.dart';
+import 'approvals.dart';
 
 String _ago(String iso) {
   final t = DateTime.tryParse(iso);
@@ -135,7 +135,7 @@ class _VerifySheetState extends State<VerifySheet> {
           child: Row(children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => openWeb(context, 'Approvals', 'approvals', pic: 'bell'),
+                onPressed: () => openApprovals(context),
                 icon: const Icon(Icons.open_in_new_rounded),
                 label: Text(tr('Open Approvals')),
               ),
@@ -197,7 +197,7 @@ class _VerifySheetState extends State<VerifySheet> {
         else if (r['canAnswer'] == true)
           OutlinedButton(
               style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
-              onPressed: () => openWeb(context, 'Approvals', 'approvals', pic: 'bell'),
+              onPressed: () => openApprovals(context),
               child: Text(tr('Answer'))),
       ]),
     );

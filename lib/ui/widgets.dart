@@ -233,3 +233,60 @@ Future<bool> ask(BuildContext context, String title, String body, {String yes = 
       ),
     ) ??
     false;
+
+/// (3.2.0) A question with a box to write in (a remark, a reason, an answer) – null when Cancel. [needed]: it must be written
+/// ([neededMsg] is said when it is empty). [body]: what the question is about, shown above the box.
+Future<String?> askNote(BuildContext context, String title, {List<Widget> body = const [], String label = '', String ok = 'OK', bool needed = true, String neededMsg = 'Write it first.', bool danger = false, int max = 300}) {
+  final c = TextEditingController();
+  String err = '';
+  return showDialog<String>(
+    context: context,
+    builder: (dc) => StatefulBuilder(
+      builder: (dc, set) => AlertDialog(
+        title: Text(title),
+        scrollable: true,
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ...body,
+          if (body.isNotEmpty) const SizedBox(height: 12),
+          if (label.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600))),
+          TextField(key: const Key('note-box'), controller: c, maxLines: 3, minLines: 2, maxLength: max, autofocus: true, decoration: InputDecoration(errorText: err.isEmpty ? null : tr(err))),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dc), child: const Text('Cancel')),
+          FilledButton(
+            key: const Key('note-ok'),
+            style: FilledButton.styleFrom(minimumSize: const Size(110, 46), backgroundColor: danger ? C.red : C.green),
+            onPressed: () {
+              final v = c.text.trim();
+              if (needed && v.isEmpty) {
+                set(() => err = neededMsg);
+                return;
+              }
+              Navigator.pop(dc, v);
+            },
+            child: Text(ok),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// (3.2.0) "Are you sure?" with what it is about as lines (Yes returns true).
+Future<bool> askLines(BuildContext context, String title, List<String> lines, {String note = '', String yes = 'Yes', bool danger = false}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(title),
+        scrollable: true,
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $l', style: const TextStyle(fontSize: 14.5, height: 1.35))),
+          if (note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(note, style: const TextStyle(fontSize: 14, color: C.muted, height: 1.4))),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(key: const Key('ask-yes'), style: FilledButton.styleFrom(minimumSize: const Size(110, 46), backgroundColor: danger ? C.red : C.green), onPressed: () => Navigator.pop(c, true), child: Text(yes)),
+        ],
+      ),
+    ) ??
+    false;
