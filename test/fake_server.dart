@@ -347,8 +347,9 @@ class FakeServer {
           return _j({'result': {'date': (a[0] as Map)['date'], 'history': [], 'onDate': []}});
         case 'submitBdReport':
           bdSent.add({'fn': action, 'x': a[0]});
-          bdSaved = ((a[0] as Map)['rows'] as List).cast<Map>().map((r) => r.cast<String, dynamic>()).toList();
-          return _j({'result': {'ok': true, 'date': (a[0] as Map)['date'], 'replaced': false, 'total': bdSaved.length, 'count': bdSaved.where((r) => r['status'] == 'Breakdown').length, 'list': ''}});
+          final sent = ((a[0] as Map)['rows'] as List).cast<Map>().map((r) => r.cast<String, dynamic>()).toList();
+          bdSaved = sent;
+          return _j({'result': {'ok': true, 'date': (a[0] as Map)['date'], 'replaced': false, 'total': sent.length, 'count': sent.where((r) => r['status'] == 'Breakdown').length, 'list': ''}});
         case 'deleteBdReport':
           bdSent.add({'fn': action, 'date': a[0]});
           bdSaved = null;
