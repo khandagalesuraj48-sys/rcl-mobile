@@ -14,6 +14,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.17.0 (17-10-2026, part 16 of the whole web in the app):** the Portal's **Super Admin** console in the app's own
+screens (Me → **Super Admin**, for the Super Admin only) – the same Portal actions (`/api/admin`), checks and words:
+**Users & Access** (one site at a time: every user with No access / User / Admin for each module; a user added with a one-time
+password, switched off, given a new one-time password; his **pages** in Mechanical – Edit / View / No access, kept in Mechanical –
+and in the Store), **Sites** (name, company, Active / Closed; **Diesel places** with the tank size and the stock now; **New site** –
+the checklist the system works through until Ready: the key in Vercel, Mechanical's SQL copied, the Supabase links; a Closed site
+deleted with its code typed again – its data stays in its own database), **Companies** (one no site belongs to can be deleted),
+**Modules** (Live / Off and the link; one that is Off deleted with its key typed again – never Mechanical), **Activity** (the last
+200). A Portal sign-in that ended goes back to the sign-in. His own password: My settings → Change password (as the Portal's "My
+account").
+
 **Version 3.16.0 (17-10-2026, part 15 of the whole web in the app):** the web's **help** on every screen of the app, in its own
 words (`assets/help/web_help.json`): every red message – a toast, a red box, a "Nothing saved / Fix the file first" message, a
 question that says "anyway" – has **Help**: what is wrong and what to do (the web's first three rules that know the message, else

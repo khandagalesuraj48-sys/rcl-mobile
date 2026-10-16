@@ -468,6 +468,7 @@ void main() {
     expect(find.text('Sujit Mule'), findsOneWidget);
     expect(find.text('Check Update'), findsOneWidget);
     expect(find.text('Sign out'), findsOneWidget);
+    expect(find.text('Super Admin'), findsNothing, reason: '(3.17.0) the console is the Super Admin\'s only');
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9_me.png'));
     await t.tap(find.text('Reports'));
     await net(t);
@@ -2340,4 +2341,250 @@ void main() {
     await settle(t, 400);
     expect(find.text('या page बद्दल'), findsOneWidget);
   }, tags: ['golden']);
+
+  /* (3.17.0) The Super Admin's console of the whole system (the Portal's "Super Admin") in the app's own screens. */
+  Future<FakeServer> openConsole(WidgetTester t) async {
+    final srv = FakeServer()..superAdmin = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Me'));
+    await net(t);
+    await t.tap(find.text('Super Admin'));
+    await net(t);
+    return srv;
+  }
+
+  /// A choice of a row of choices (a role, a page): brought into view, then tapped.
+  Future<void> tapIn(WidgetTester t, String key, String text) async {
+    final f = find.descendant(of: find.byKey(Key(key)), matching: find.text(text));
+    FocusManager.instance.primaryFocus?.unfocus();
+    await t.ensureVisible(f);
+    await settle(t, 400);
+    await t.tap(f);
+    await t.pump();
+  }
+
+  List<Map<String, dynamic>> saves(FakeServer srv) => srv.adminSent.where((x) => x['action'] != 'overview').toList();
+
+  testWidgets('(3.17.0) Super Admin – Users & Access: each user\'s modules on a site; a role and a one-time password; a user added (a refusal in the Portal\'s words); his pages in Mechanical and the Store', (t) async {
+    phone(t);
+    final srv = await openConsole(t);
+    expect(srv.calls, contains('admin:overview'));
+    expect(find.byKey(const Key('sa-u-amol@rcl.test')), findsOneWidget);
+    expect(find.byKey(const Key('sa-u-sujit@rcl.test')), findsNothing, reason: 'the Super Admin himself is not in the list');
+    expect(find.text('2 users · 1 active'), findsOneWidget);
+    expect(find.textContaining('must set password'), findsOneWidget);
+    expect(find.text('Switched off'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/47_super_admin.png'));
+    // Amol: the Store made Admin, a new one-time password – only the role that changed is sent
+    await tapK(t, 'sa-u-amol@rcl.test');
+    await net(t);
+    expect(find.byKey(const Key('sa-pages-mechanical')), findsOneWidget);
+    await tapIn(t, 'sa-role-store', 'Admin');
+    await t.pump();
+    await t.enterText(find.byKey(const Key('sa-u-pw')), 'Temp1234');
+    await tapK(t, 'sa-u-save');
+    await net(t);
+    expect(saves(srv), [
+      {'action': 'userSave', 'isNew': false, 'email': 'amol@rcl.test', 'name': 'Amol Patil', 'active': true, 'newPassword': 'Temp1234'},
+      {'action': 'accessSet', 'email': 'amol@rcl.test', 'site': 'S1', 'module': 'store', 'role': 'admin'},
+    ]);
+    expect(find.text('Saved: amol@rcl.test – tell him the one-time password.'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing, reason: 'back on the list');
+    // a new user: a one-time password too short – the Portal\'s words, the screen stays; then added with Mechanical (User)
+    await tapK(t, 'sa-u-new');
+    await net(t);
+    await t.enterText(find.byKey(const Key('sa-u-email')), 'Nitin@RCL.test');
+    await t.enterText(find.byKey(const Key('sa-u-name')), 'Nitin Jadhav');
+    await t.enterText(find.byKey(const Key('sa-u-pw')), 'abc');
+    await tapIn(t, 'sa-role-mechanical', 'User');
+    await t.pump();
+    await tapK(t, 'sa-u-save');
+    await net(t);
+    expect(find.text('Give a one-time password of at least 6 characters – the user must change it at the first sign-in.'), findsOneWidget);
+    expect(find.byKey(const Key('sa-u-email')), findsOneWidget);
+    await t.enterText(find.byKey(const Key('sa-u-pw')), 'Start123');
+    await tapK(t, 'sa-u-save');
+    await net(t);
+    expect(saves(srv).skip(3).toList(), [
+      {'action': 'userSave', 'isNew': true, 'email': 'nitin@rcl.test', 'name': 'Nitin Jadhav', 'active': true, 'newPassword': 'Start123'},
+      {'action': 'accessSet', 'email': 'nitin@rcl.test', 'site': 'S1', 'module': 'mechanical', 'role': 'user'},
+    ]);
+    expect(find.text('User added: nitin@rcl.test – tell him the one-time password.'), findsOneWidget);
+    expect(find.byKey(const Key('sa-u-nitin@rcl.test')), findsOneWidget);
+    // Amol's pages in Mechanical (kept in Mechanical): Log Book made Edit
+    await tapK(t, 'sa-u-amol@rcl.test');
+    await net(t);
+    await tapK(t, 'sa-pages-mechanical');
+    await net(t);
+    expect(srv.adminSent.last, {'action': 'mechPages', 'site': 'S1'});
+    expect(find.text('Diesel Issue'), findsOneWidget);
+    await tapIn(t, 'sa-pg-log', 'Edit');
+    await t.pump();
+    await tapK(t, 'sa-pg-save');
+    await net(t);
+    expect(srv.adminSent.last, {'action': 'mechPagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'perms': {'diesel': 'Edit', 'log': 'Edit', 'reports': 'None'}});
+    expect(find.text('Pages saved in Mechanical.'), findsOneWidget);
+    // the Store: he is its Admin now – every page, nothing to give
+    await tapK(t, 'sa-pages-store');
+    await net(t);
+    expect(find.textContaining('Store Admin has every page'), findsOneWidget);
+    expect(find.byKey(const Key('sa-spg-save')), findsNothing);
+  }, tags: ['golden']);
+
+  testWidgets('(3.17.0) Super Admin – Sites: a site\'s diesel places; New site – the checklist until Ready (the SQL copied); a closed site deleted with its code typed', (t) async {
+    phone(t);
+    var copied = '';
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (c) async {
+      if (c.method == 'Clipboard.setData') copied = '${(c.arguments as Map)['text']}';
+      return null;
+    });
+    addTearDown(() => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    final srv = await openConsole(t);
+    await t.tap(find.byKey(const Key('sa-t-sites')));
+    await net(t);
+    expect(find.byKey(const Key('sa-st-K7')), findsOneWidget);
+    await tapK(t, 'sa-st-S1');
+    await net(t);
+    expect(find.byKey(const Key('sa-st-del')), findsNothing, reason: 'an Active site is not deleted');
+    await tapK(t, 'sa-st-places');
+    await net(t);
+    expect(srv.adminSent.last, {'action': 'placesGet', 'site': 'S1'});
+    expect(find.text('Camp Pump'), findsOneWidget);
+    expect(find.text('Stock now: 12,450.5 Ltr'), findsOneWidget);
+    expect(find.byKey(const Key('pl-del-0')), findsNothing, reason: 'a place with entries stays');
+    expect(find.byKey(const Key('pl-del-1')), findsOneWidget);
+    await tapK(t, 'pl-add');
+    await t.pump();
+    await t.enterText(find.byKey(const Key('pl-name-2')), 'VTR Store');
+    await t.enterText(find.byKey(const Key('pl-cap-2')), '5000');
+    await tapK(t, 'pl-save');
+    await net(t);
+    expect(srv.adminSent.last, {
+      'action': 'placesSave', 'site': 'S1',
+      'places': [{'name': 'Camp Pump', 'cap': 18000}, {'name': 'MH12ZE1739', 'cap': 2650}, {'name': 'VTR Store', 'cap': 5000}],
+    });
+    expect(find.text('Diesel places of S1 saved: Camp Pump, MH12ZE1739, VTR Store.'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // New site: the key is not in Vercel yet → the tables are not there → Ready
+    await tapK(t, 'sa-st-new');
+    await net(t);
+    await t.enterText(find.byKey(const Key('ns-code')), 'PN4');
+    await t.enterText(find.byKey(const Key('ns-name')), 'Pune Ring Road');
+    await t.enterText(find.byKey(const Key('ns-url')), 'https://abcdefghijklmnopqrst.supabase.co');
+    await t.enterText(find.byKey(const Key('pl-name-0')), 'Camp Pump');
+    await t.enterText(find.byKey(const Key('pl-cap-0')), '18000');
+    await tapK(t, 'ns-check');
+    await net(t);
+    expect(srv.adminSent.last, {
+      'action': 'siteSetup', 'code': 'PN4', 'name': 'Pune Ring Road', 'company': '', 'url': 'https://abcdefghijklmnopqrst.supabase.co', 'sheet': '',
+      'places': [{'name': 'Camp Pump', 'cap': 18000}],
+    });
+    expect(find.textContaining('add SITE_PN4_KEY = this project'), findsOneWidget);
+    expect(find.byKey(const Key('ns-keys')), findsOneWidget);
+    srv.siteKey = true;
+    await tapK(t, 'ns-check');
+    await net(t);
+    await tapK(t, 'ns-sql');
+    await net(t);
+    expect(copied, startsWith('-- Mechanical'));
+    expect(find.textContaining('The SQL is copied ('), findsOneWidget);
+    srv.siteTables = true;
+    await tapK(t, 'ns-check');
+    await net(t);
+    expect(find.text('Site PN4 is ready.'), findsOneWidget);
+    expect(find.textContaining('The site is Active.'), findsOneWidget);
+    await t.ensureVisible(find.byKey(const Key('ns-step-ready')));
+    await settle(t, 400);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/48_new_site.png'));
+    await t.pageBack();
+    await net(t);
+    expect(find.byKey(const Key('sa-st-PN4')), findsOneWidget);
+    // K7 is Closed: deleted with its code typed – its data stays in its own database
+    await tapK(t, 'sa-st-K7');
+    await net(t);
+    await tapK(t, 'sa-st-del');
+    await net(t);
+    await t.enterText(find.byKey(const Key('note-box')), 'k7');
+    await tapK(t, 'note-ok');
+    await net(t);
+    expect(srv.adminSent.last, {'action': 'siteDelete', 'code': 'K7', 'confirm': 'k7'});
+    expect(find.text('Site K7 deleted. Its data stays in its own database.'), findsOneWidget);
+    expect(find.byKey(const Key('sa-st-K7')), findsNothing);
+  }, tags: ['golden']);
+
+  testWidgets('(3.17.0) Super Admin – Companies, Modules, Activity; the Portal\'s refusals in its words; a sign-in that ended goes to the sign-in', (t) async {
+    phone(t);
+    final srv = await openConsole(t);
+    await t.tap(find.byKey(const Key('sa-t-companies')));
+    await net(t);
+    expect(find.byKey(const Key('sa-co-RACHANA')), findsOneWidget);
+    await tapK(t, 'sa-co-new');
+    await net(t);
+    await t.enterText(find.byKey(const Key('co-name')), 'Mule Infra');
+    await t.enterText(find.byKey(const Key('co-gstin')), '27ABC');
+    await tapK(t, 'co-save');
+    await net(t);
+    expect(find.text('GST Number "27ABC" is not in the right format (15 characters, e.g. 27ABCDE1234F1Z5).'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('co-gstin')), '');
+    await tapK(t, 'co-save');
+    await net(t);
+    expect(find.text('Company saved.'), findsOneWidget);
+    expect(srv.saCompanies.map((c) => c['name']), contains('Mule Infra'));
+    await tapK(t, 'sa-co-RACHANA');
+    await net(t);
+    expect(find.byKey(const Key('co-del')), findsNothing, reason: 'sites belong to it');
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'sa-co-SKETCHLINE');
+    await net(t);
+    await tapK(t, 'co-del');
+    await net(t);
+    await t.tap(find.text('Delete').last);
+    await net(t);
+    expect(srv.adminSent.last, {'action': 'companyDelete', 'id': 'SKETCHLINE'});
+    expect(find.text('Company deleted.'), findsOneWidget);
+    // Modules: Mechanical is never deleted; HR (Off) – Live without a link is refused; deleted with its key typed
+    await t.tap(find.byKey(const Key('sa-t-modules')));
+    await net(t);
+    await tapK(t, 'sa-m-mechanical');
+    await net(t);
+    expect(find.byKey(const Key('m-del')), findsNothing);
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'sa-m-hr');
+    await net(t);
+    await tapIn(t, 'm-status', 'Live');
+    await t.pump();
+    await tapK(t, 'm-save');
+    await net(t);
+    expect(find.text('A module can be Live only with its link.'), findsOneWidget);
+    await tapK(t, 'm-del');
+    await net(t);
+    await t.enterText(find.byKey(const Key('note-box')), 'hr');
+    await tapK(t, 'note-ok');
+    await net(t);
+    expect(srv.adminSent.last, {'action': 'moduleDelete', 'key': 'hr', 'confirm': 'hr'});
+    expect(find.text('Module deleted.'), findsOneWidget);
+    expect(find.byKey(const Key('sa-m-hr')), findsNothing);
+    // Activity: the last 200
+    await t.tap(find.byKey(const Key('sa-t-audit')));
+    await net(t);
+    expect(srv.calls.where((c) => c == 'admin:audit').length, 1);
+    expect(find.text('Signed in'), findsOneWidget);
+    expect(find.text('sujit@rcl.test → amol@rcl.test'), findsOneWidget);
+    // his sign-in on the Portal ended: back to the sign-in, with the Portal's words
+    srv.portalSignedIn = false;
+    await t.tap(find.byKey(const Key('sa-reload')));
+    await net(t);
+    expect(find.byKey(const Key('sa-users')), findsNothing);
+    expect(find.textContaining('तुमचा login संपला आहे'), findsOneWidget);
+  });
 }

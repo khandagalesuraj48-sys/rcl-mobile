@@ -159,6 +159,17 @@ class Api {
     return j;
   }
 
+  /// (3.17.0) POST <portal>/api/admin { action, … } – the Super Admin's console (users, access, sites, companies, modules, activity).
+  Future<Map<String, dynamic>> admin(Map<String, dynamic> body) async {
+    final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/admin'), headers: _portalHeaders, body: jsonEncode(body)));
+    await _keepCookie(r);
+    final j = _json(r, 'The Portal');
+    if (r.statusCode >= 400 || j['error'] != null) {
+      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? (r.statusCode == 401 ? 'signin' : '')).toString());
+    }
+    return j;
+  }
+
   /// A ticket of the Portal for [module] on [siteCode] – an answer, no page change (json=1).
   Future<String> ticket(String siteCode, [String module = 'mechanical']) async {
     final u = Uri.parse('$portalUrl/api/go').replace(queryParameters: {'module': module, 'site': siteCode, 'json': '1'});

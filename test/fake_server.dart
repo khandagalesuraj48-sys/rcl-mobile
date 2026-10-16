@@ -230,6 +230,239 @@ class FakeServer {
 
   http.Response _j(Object o, [int code = 200, Map<String, String> h = const {}]) => http.Response(jsonEncode(o), code, headers: {'content-type': 'application/json', ...h});
 
+  /* ---- (3.17.0) the Portal's Super Admin console (api/admin): its data and its checks, as the Portal's (the same words) ---- */
+  final adminSent = <Map<String, dynamic>>[];
+  final saUsers = <Map<String, dynamic>>[
+    {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'active': true, 'super': true, 'mustChange': false, 'noPassword': false},
+    {'email': 'amol@rcl.test', 'name': 'Amol Patil', 'active': true, 'super': false, 'mustChange': false, 'noPassword': false},
+    {'email': 'ravi@rcl.test', 'name': 'Ravi Shinde', 'active': false, 'super': false, 'mustChange': true, 'noPassword': false},
+  ];
+  final saSites = <Map<String, dynamic>>[
+    {'code': 'S1', 'name': 'VTR Site – NH 848', 'company_id': 'RACHANA', 'status': 'active', 'sort': 1},
+    {'code': 'T2', 'name': '18B Kolhapur', 'company_id': 'RACHANA', 'status': 'active', 'sort': 2},
+    {'code': 'K7', 'name': 'Karad Bypass', 'company_id': null, 'status': 'closed', 'sort': 3},
+  ];
+  final saModules = <Map<String, dynamic>>[
+    {'key': 'mechanical', 'name': 'Mechanical', 'url': 'https://erp.test', 'status': 'live', 'sort': 1},
+    {'key': 'store', 'name': 'Store', 'url': 'https://erp.test/store', 'status': 'live', 'sort': 2},
+    {'key': 'hr', 'name': 'HR', 'url': null, 'status': 'off', 'sort': 3},
+  ];
+  final saCompanies = <Map<String, dynamic>>[
+    {'id': 'RACHANA', 'name': 'Rachana Construction', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'pan': 'ABCDE1234F', 'logo': ''},
+    {'id': 'SKETCHLINE', 'name': 'Sketchline', 'address': '', 'gstin': '', 'pan': '', 'logo': ''},
+  ];
+  final saAccess = <Map<String, dynamic>>[
+    {'email': 'amol@rcl.test', 'site': 'S1', 'module': 'mechanical', 'role': 'user', 'pages': null},
+    {'email': 'amol@rcl.test', 'site': 'S1', 'module': 'store', 'role': 'user', 'pages': {'dashboard': 'View', 'items': 'View'}},
+    {'email': 'ravi@rcl.test', 'site': 'S1', 'module': 'mechanical', 'role': 'admin', 'pages': null},
+  ];
+  final saAudit = <Map<String, dynamic>>[
+    {'at': '2026-10-16T13:35:12Z', 'actor': 'sujit@rcl.test', 'action': 'Access', 'target': 'amol@rcl.test', 'detail': {'site': 'S1', 'module': 'store', 'role': 'user'}},
+    {'at': '2026-10-16T09:02:00Z', 'actor': 'amol@rcl.test', 'action': 'Signed in', 'target': '', 'detail': null},
+  ];
+  final mechUserPerms = <String, Map<String, String>>{'amol@rcl.test': {'diesel': 'Edit', 'log': 'View'}};
+  static const mechPageList = [
+    {'key': 'diesel', 'label': 'Diesel Issue'},
+    {'key': 'log', 'label': 'Log Book'},
+    {'key': 'reports', 'label': 'Reports'},
+  ];
+  List<Map<String, dynamic>> sitePlaces = [
+    {'name': 'Camp Pump', 'cap': 18000, 'used': true, 'stock': 12450.5},
+    {'name': 'MH12ZE1739', 'cap': 2650, 'used': false, 'stock': 800},
+  ];
+  bool siteKey = false, siteTables = false; // the New site checklist: the key in Vercel, Mechanical's tables run
+  static const kStorePages = [
+    {'key': 'dashboard', 'label': 'Dashboard', 'opts': ['View', 'None']},
+    {'key': 'items', 'label': 'Item Master', 'opts': ['Edit', 'View', 'None']},
+  ];
+
+  http.Response _no(String msg, [int code = 400, String c = '']) => _j({'error': msg, if (c.isNotEmpty) 'code': c}, code);
+
+  http.Response _admin(String a, Map<String, dynamic> x) {
+    Map<String, dynamic>? user(String e) => saUsers.where((u) => u['email'] == e).firstOrNull;
+    Map<String, dynamic>? acc(String e, String site, String m) => saAccess.where((y) => y['email'] == e && y['site'] == site && y['module'] == m).firstOrNull;
+    bool siteOk(String c) => saSites.any((y) => y['code'] == c);
+    void log(String what, String target, [Object? detail]) => saAudit.insert(0, {'at': '2026-10-17T10:00:00Z', 'actor': 'sujit@rcl.test', 'action': what, 'target': target, 'detail': detail});
+    final email = '${x['email'] ?? ''}'.trim().toLowerCase(), site = '${x['site'] ?? ''}'.toUpperCase();
+    switch (a) {
+      case 'overview':
+        {
+          return _j({'users': saUsers, 'sites': saSites, 'modules': saModules, 'companies': saCompanies, 'access': saAccess, 'storePages': kStorePages});
+        }
+      case 'userSave':
+        {
+          if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) return _no('Enter a proper email.');
+          final cur = user(email), temp = '${x['newPassword'] ?? ''}', name = '${x['name'] ?? ''}'.trim();
+          if (cur != null && cur['super'] == true) return _no('The Super Admin changes his own account under "My account".');
+          if (temp.isNotEmpty && temp.length < 6) return _no('Give a one-time password of at least 6 characters – the user must change it at the first sign-in.');
+          if (x['isNew'] == true) {
+            if (cur != null) return _no('$email is already a user.', 409);
+            if (temp.isEmpty) return _no('Give a one-time password of at least 6 characters – the user must change it at the first sign-in.');
+            if (name.length < 2) return _no('Enter the name of the user (2 to 80 letters).');
+            saUsers.add({'email': email, 'name': name, 'active': x['active'] != false, 'super': false, 'mustChange': true, 'noPassword': false});
+            log('User added', email, {'name': name});
+            return _j({'ok': true, 'added': true});
+          }
+          if (cur == null) return _no('User $email was not found.', 404);
+          if (name.isNotEmpty) cur['name'] = name;
+          if (x['active'] is bool) cur['active'] = x['active'];
+          if (temp.isNotEmpty) cur['mustChange'] = true;
+          return _j({'ok': true, 'changed': true});
+        }
+      case 'accessSet':
+        {
+          final u = user(email), role = '${x['role'] ?? ''}', m = '${x['module'] ?? ''}';
+          if (u == null) return _no('User $email was not found.', 404);
+          if (!siteOk(site)) return _no('This site is not in the list.', 404);
+          if (role.isNotEmpty && !['admin', 'user'].contains(role)) return _no('Choose Admin, User or No access.');
+          saAccess.removeWhere((y) => y['email'] == email && y['site'] == site && y['module'] == m);
+          if (role.isNotEmpty) saAccess.add({'email': email, 'site': site, 'module': m, 'role': role, 'pages': null});
+          log('Access', email, {'site': site, 'module': m, 'role': role.isEmpty ? 'none' : role});
+          return _j({'ok': true});
+        }
+      case 'mechPages':
+        {
+          if (!siteOk(site)) return _no('Pick a site.');
+          return _j({'site': site, 'pages': mechPageList, 'users': [for (final e in mechUserPerms.entries) {'email': e.key, 'perms': e.value}]});
+        }
+      case 'mechPagesSave':
+        {
+          final y = acc(email, site, 'mechanical');
+          if (y == null) return _no('First give him Mechanical on this site (Admin or User), then his pages.', 400, 'noaccess');
+          final given = (x['perms'] as Map).map((k, v) => MapEntry('$k', '$v')), was = mechUserPerms[email] ?? {};
+          final ch = [for (final e in given.entries) if (was[e.key] != e.value) e.key];
+          mechUserPerms[email] = given;
+          return _j({'ok': true, 'added': was.isEmpty, 'changes': ch.join(', ')});
+        }
+      case 'storePagesSave':
+        {
+          final y = acc(email, site, 'store');
+          if (y == null) return _no('First give him the Store on this site (Admin or User), then his pages.', 400, 'noaccess');
+          if (y['role'] == 'admin') return _no('A Store Admin has every page. To give single pages, make him User first.', 400, 'admin');
+          y['pages'] = x['pages'];
+          return _j({'ok': true, 'pages': x['pages']});
+        }
+      case 'placesGet':
+        {
+          if (!siteOk(site)) return _no('Pick a site.');
+          return _j({'site': site, 'places': sitePlaces, 'set': true, 'entries': true, 'firstFixed': true});
+        }
+      case 'placesSave':
+        {
+          final l = [for (final p in (x['places'] as List? ?? const [])) if (p is Map) {'name': '${p['name'] ?? ''}', 'cap': p['cap'] ?? 0}];
+          if (l.isEmpty) return _no('Add at least one diesel place (its name and tank size).');
+          sitePlaces = [for (final p in l) {...p, 'used': p['name'] == 'Camp Pump', 'stock': p['name'] == 'Camp Pump' ? 12450.5 : 0}];
+          return _j({'ok': true, 'site': site, 'places': sitePlaces, 'set': true, 'entries': true, 'firstFixed': true});
+        }
+      case 'siteSave':
+        {
+          final cur = saSites.where((y) => y['code'] == '${x['code']}'.toUpperCase()).firstOrNull;
+          if ('${x['name'] ?? ''}'.trim().length < 2) return _no('Give the site a name (2 to 80 letters).');
+          if (cur == null) return _no('This site is not in the list.', 404);
+          cur['name'] = '${x['name']}'.trim();
+          cur['company_id'] = '${x['company'] ?? ''}'.isEmpty ? null : x['company'];
+          cur['status'] = x['status'];
+          return _j({'ok': true});
+        }
+      case 'siteSetup':
+        {
+          final code = '${x['code'] ?? ''}'.trim().toUpperCase(), url = '${x['url'] ?? ''}'.trim();
+          if (!RegExp(r'^[A-Z0-9]{1,12}$').hasMatch(code)) return _no('The site code: 1 to 12 capital letters or digits (e.g. VTR, 18B).');
+          if ('${x['name'] ?? ''}'.trim().length < 2) return _no('Give the site a name (2 to 80 letters).');
+          if (!siteOk(code)) saSites.add({'code': code, 'name': '${x['name']}'.trim(), 'company_id': '${x['company'] ?? ''}'.isEmpty ? null : x['company'], 'status': 'closed', 'sort': saSites.length + 1});
+          final steps = <Map<String, dynamic>>[];
+          Map<String, dynamic> out([Map<String, dynamic> more = const {}]) => {'site': code, 'keyName': 'SITE_${code}_KEY', 'steps': steps, 'ready': false, ...more};
+          const ref = 'abcdefghijklmnopqrst';
+          if (!RegExp(r'^https://[a-z0-9]{20}\.supabase\.co$').hasMatch(url)) {
+            steps.add({'step': 'link', 'ok': false, 'note': 'The link must be the project\'s address, like https://abcdefghijklmnopqrst.supabase.co (Supabase → the project → Connect).'});
+            return _j(out());
+          }
+          steps.add({'step': 'link', 'ok': true, 'note': ''});
+          final links = {'sqlLink': 'https://supabase.com/dashboard/project/$ref/sql/new', 'keysLink': 'https://supabase.com/dashboard/project/$ref/settings/api-keys'};
+          steps.add({'step': 'key', 'ok': siteKey, 'note': 'Vercel → …'});
+          if (!siteKey) return _j(out(links));
+          steps.add({'step': 'connect', 'ok': true, 'note': ''});
+          steps.add({'step': 'tables', 'ok': siteTables, 'note': siteTables ? '' : 'Not there yet: rcl_diesel_issue · rcl_log_book'});
+          if (!siteTables) return _j(out({'sqlLink': links['sqlLink']}));
+          steps.add({'step': 'company', 'ok': true, 'note': ''});
+          steps.add({'step': 'places', 'ok': true, 'note': '2 diesel places set'});
+          steps.add({'step': 'ready', 'ok': true, 'note': ''});
+          saSites.firstWhere((y) => y['code'] == code)['status'] = 'active';
+          return _j(out({'ready': true, 'backupEmail': 'backup@rcl-erp.iam.test'}));
+        }
+      case 'siteSql':
+        {
+          return _j({'sql': '-- Mechanical\n${'create table x (id int);\n' * 200}', 'files': ['supabase_step1.sql']});
+        }
+      case 'siteDelete':
+        {
+          final code = '${x['code'] ?? ''}'.toUpperCase(), cur = saSites.where((y) => y['code'] == code).firstOrNull;
+          if (cur == null) return _no('This site is not in the list.', 404);
+          if (cur['status'] != 'closed') return _no('First set the site to Closed and Save – then delete it.', 400, 'notclosed');
+          if ('${x['confirm'] ?? ''}'.trim().toUpperCase() != code) return _no('Type the site code ($code) to delete it.', 400, 'confirm');
+          final n = saAccess.where((y) => y['site'] == code).length;
+          saAccess.removeWhere((y) => y['site'] == code);
+          saSites.remove(cur);
+          return _j({'ok': true, 'accessRemoved': n});
+        }
+      case 'companySave':
+        {
+          final name = '${x['name'] ?? ''}'.trim(), gstin = '${x['gstin'] ?? ''}'.trim().toUpperCase(), id = '${x['id'] ?? ''}';
+          if (name.length < 2) return _no('Enter the name of the company (2 to 80 letters).');
+          if (gstin.isNotEmpty && !RegExp(r'^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$').hasMatch(gstin)) return _no('GST Number "$gstin" is not in the right format (15 characters, e.g. 27ABCDE1234F1Z5).');
+          final row = {'name': name, 'gstin': gstin, 'pan': '${x['pan'] ?? ''}'.toUpperCase(), 'address': '${x['address'] ?? ''}', 'logo': '${x['logo'] ?? ''}'};
+          if (id.isNotEmpty) {
+            saCompanies.firstWhere((c) => c['id'] == id).addAll(row);
+            return _j({'ok': true, 'id': id});
+          }
+          final nid = name.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]+'), '');
+          saCompanies.add({'id': nid, ...row});
+          return _j({'ok': true, 'id': nid});
+        }
+      case 'companyDelete':
+        {
+          final used = saSites.where((y) => y['company_id'] == x['id']).map((y) => y['code']).toList();
+          if (used.isNotEmpty) return _no('Sites of this company: ${used.join(', ')} – give them another company first (Sites), then delete it.', 400, 'inuse');
+          saCompanies.removeWhere((c) => c['id'] == x['id']);
+          return _j({'ok': true});
+        }
+      case 'moduleSave':
+        {
+          final key = '${x['key'] ?? ''}', url = '${x['url'] ?? ''}', status = '${x['status'] ?? 'off'}';
+          if (!RegExp(r'^[a-z]{2,20}$').hasMatch(key)) return _no('The module key: 2 to 20 small letters (e.g. store).');
+          if (status == 'live' && url.isEmpty) return _no('A module can be Live only with its link.');
+          final cur = saModules.where((m) => m['key'] == key).firstOrNull;
+          if (x['isNew'] == true) {
+            if (cur != null) return _no('This module is already there.', 409);
+            saModules.add({'key': key, 'name': '${x['name']}'.trim(), 'url': url.isEmpty ? null : url, 'status': status, 'sort': saModules.length + 1});
+          } else {
+            final m = cur!;
+            m['url'] = url.isEmpty ? null : url;
+            m['status'] = status;
+            if ('${x['name'] ?? ''}'.trim().isNotEmpty) m['name'] = '${x['name']}'.trim();
+          }
+          return _j({'ok': true});
+        }
+      case 'moduleDelete':
+        {
+          final key = '${x['key'] ?? ''}', m = saModules.where((y) => y['key'] == key).firstOrNull;
+          if (m == null) return _no('This module is not in the list.', 404);
+          if (key == 'mechanical') return _no('Mechanical cannot be deleted – the sites and the pages are set up through it. Set it Off instead.', 400, 'mech');
+          if (m['status'] != 'off') return _no('First set the module Off and Save – then delete it.', 400, 'notoff');
+          if ('${x['confirm'] ?? ''}'.trim().toLowerCase() != key) return _no('Type the module key ($key) to delete it.', 400, 'confirm');
+          final n = saAccess.where((y) => y['module'] == key).length;
+          saAccess.removeWhere((y) => y['module'] == key);
+          saModules.remove(m);
+          return _j({'ok': true, 'accessRemoved': n});
+        }
+      case 'audit':
+        {
+          return _j({'rows': saAudit});
+        }
+    }
+    return _no('Unknown action.', 404);
+  }
+
   late final client = MockClient((r) async {
     final path = r.url.path;
     if (down && path.endsWith('/api/rpc')) throw http.ClientException('no network');
@@ -273,6 +506,16 @@ class FakeServer {
         portalSignedIn = false;
         return _j({'ok': true}, 200, {'set-cookie': 'rcl_portal=; Path=/; Max-Age=0'});
       }
+    }
+    // (3.17.0) the Portal's Super Admin console: only the Super Admin, signed in (his own password set)
+    if (path.endsWith('/portal/api/admin')) {
+      final x = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      adminSent.add(x);
+      calls.add('admin:${x['action']}');
+      if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused'}, 403);
+      if (!portalSignedIn || r.headers['Cookie'] != 'rcl_portal=abc123') return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      if (!superAdmin) return _j({'error': 'Only the Super Admin can do this.', 'code': 'forbidden'}, 403);
+      return _admin('${x['action']}', x);
     }
     if (path.endsWith('/portal/api/go')) {
       final q = r.url.queryParameters;

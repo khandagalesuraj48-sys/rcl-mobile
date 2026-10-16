@@ -13,6 +13,7 @@ import '../ui/widgets.dart';
 import '../web/web_host.dart';
 import 'approvals.dart';
 import 'settings.dart';
+import 'super_admin.dart';
 import '../ui/t.dart';
 
 class MeTab extends StatefulWidget {
@@ -119,6 +120,16 @@ class _MeTabState extends State<MeTab> {
                 onTap: s.sites.length > 1 ? () => s.pickAnotherSite() : null,
                 trailing: s.sites.length > 1 ? null : const SizedBox.shrink(),
               ),
+              // (3.17.0) the Super Admin's console of the whole system (the Portal's "Super Admin"), in the app's own screens
+              if (s.superAdmin)
+                _row(
+                  pic: 'shield',
+                  en: 'Super Admin',
+                  mr: 'सुपर ॲडमिन',
+                  sub: 'Users & access, sites, companies, modules, activity',
+                  color: C.purpleSoft,
+                  onTap: () => openSuperAdmin(context),
+                ),
               const Padding(padding: EdgeInsets.fromLTRB(6, 8, 6, 10), child: Text('App', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.muted))),
               _row(
                 pic: 'mobile_phone',
