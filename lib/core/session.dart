@@ -194,6 +194,8 @@ class Session extends ChangeNotifier {
   String get siteLabel => '${org['site'] ?? ''}'.isNotEmpty ? '${org['site']}' : siteName;
   /// (14-10-2026) the site's shift hours (Settings → Rules of the site on the web): Day from [dayFrom] to [nightFrom], Night the rest.
   String dayFrom = '08:00', nightFrom = '20:00';
+  /// (3.9.0) the rules of the site as the server gave them (backDays, announce, dayFrom, nightFrom) – Administration shows them
+  Map<String, dynamic> siteRules = {};
   /// The clock (a test sets its own time).
   DateTime Function() clock = DateTime.now;
   List<Machine> machines = [];
@@ -368,6 +370,7 @@ class Session extends ChangeNotifier {
     closedUpto = (d['closedUpto'] ?? '').toString();
     final rules = d['rules'];
     if (rules is Map) {
+      siteRules = rules.cast<String, dynamic>();
       dayFrom = RegExp(r'^\d{2}:\d{2}$').hasMatch('${rules['dayFrom']}') ? '${rules['dayFrom']}' : '08:00';
       nightFrom = RegExp(r'^\d{2}:\d{2}$').hasMatch('${rules['nightFrom']}') ? '${rules['nightFrom']}' : '20:00';
     }

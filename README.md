@@ -14,6 +14,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.9.0 (16-10-2026, part 8 of the whole web in the app):** **Administration** (Home → Administration, Admin only) in
+the app's own screens: **Users & Access** (every user and his access per page – Edit / View / No access; read only once the
+Super Admin gives users and access, else add a user, change one, a one-time password, set a whole column; the Access report and
+its full list as a file), **Company & site**, the **Rules of this site** (days back, the notice, the shift hours), **Screen share
+– who may use it**, the **Activity Log** (dates, user, module, action, record / text; what changed, field by field), the
+**Database check** and **Read Me** (drawn with the app's own widgets – headings, lists, tables, the SQL to copy, the first
+Admin's SQL as it is typed); Approvals from here too. The same server actions as the web.
+
 **Version 3.8.0 (16-10-2026, part 7 of the whole web in the app):** **Billing** (Home → Billing) in the app's own screens, each
 by its access as the web's tabs: **Machinery Billing** – the period, the bill date, the name on the bill, the vendors and their
 machinery (search, a vendor ticks all its machinery), one bill per vendor or per machinery; **Build bills** works every bill out

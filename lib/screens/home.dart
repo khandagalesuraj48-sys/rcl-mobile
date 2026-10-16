@@ -13,6 +13,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'admin.dart';
 import 'billing.dart';
 import 'breakdown.dart';
 import 'verify.dart';
@@ -45,7 +46,7 @@ const kModules = [
   ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, native: 'billing'), // (3.8.0) the app's own Billing screens
   ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, page: 'store__dashboard', module: 'store'),
   ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', C.blue, C.blueSoft, native: 'reports'),
-  ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, page: 'users', admin: true),
+  ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, native: 'admin', admin: true), // (3.9.0) the app's own Admin screens
 ];
 
 /// The reports of the web he may open – (3.1.8) every report of the web, one under the other, by his access.
@@ -184,6 +185,10 @@ class _HomeTabState extends State<HomeTab> {
     }
     if (m.native == 'billing') {
       await openBilling(context);
+      return;
+    }
+    if (m.native == 'admin') {
+      await openAdmin(context);
       return;
     }
     await openWeb(context, m.en, m.page, pic: m.pic);

@@ -33,6 +33,16 @@ Future<void> shareXlsx(Uint8List bytes, String fileName) async {
   await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', name: name)], title: name));
 }
 
+/// (3.9.0) Any file to the phone's sharing (a .csv list …).
+Future<void> shareFile(Uint8List bytes, String fileName, String mime) async {
+  final dir = Directory('${(await getTemporaryDirectory()).path}/rcl_files');
+  await dir.create(recursive: true);
+  final name = safeFileName(fileName);
+  final f = File('${dir.path}/$name');
+  await f.writeAsBytes(bytes, flush: true);
+  await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: mime, name: name)], title: name));
+}
+
 /// The report / list as Excel (every table a sheet; [bare]: the heading line first – an export to be imported back).
 Future<void> shareDocXlsx(Session s, RDoc d, {bool bare = false}) => shareXlsx(reportXlsx(d, bare ? const [] : sheetTop(s, d)), '${d.file}.xlsx');
 

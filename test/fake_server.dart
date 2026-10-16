@@ -169,6 +169,17 @@ class FakeServer {
     ],
     'totalBill': 39750.5, 'totalPaid': 40000, 'closing': 4750.5,
   };
+  // (3.9.0) Administration: the users and their access, the activity, the rules, Read Me; what was sent
+  final adminSent = <Map<String, dynamic>>[];
+  bool usersBySuper = false;
+  final adminUsers = <Map<String, dynamic>>[
+    {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'active': true, 'admin': true, 'mustChange': false, 'perms': {'Dashboard': 'Edit', 'Log Book': 'Edit', 'Machinery Billing': 'Edit'}},
+    {'email': 'clerk@rcl.test', 'name': 'Site Clerk', 'active': true, 'admin': false, 'mustChange': true, 'perms': {'Dashboard': 'View', 'Log Book': 'Edit', 'Machinery Billing': 'None'}},
+  ];
+  static const _readme = '<div class="rm-toc"><a href="#rm-what" data-rmgo="rm-what">1. हे app काय आहे</a></div><h3 id="rm-what">1. हे app काय आहे</h3><p>App चे <b>तीन</b> भाग &amp; <code>Code.gs</code>.</p>'
+      '<table class="rm-t"><tr><th>भाग</th><th>काम</th></tr><tr><td><b>Supabase</b></td><td>data</td></tr></table><ol><li>पहिले</li><li>दुसरे <span class="rm-ok">✔ ok</span></li></ol>'
+      '<div class="rm-step"><div class="rm-n">1</div><div class="rm-sb"><h4>Supabase project</h4><p>New project.</p></div></div>'
+      '<div class="rm-adm"><label>Email <input id="rm_ad_email" type="email" placeholder="admin@company.com"></label></div><div class="rm-code"><button class="btn ghost small rm-copy" data-copy="rm_sql_admin">Copy</button><pre id="rm_sql_admin"></pre></div>';
   Map<String, dynamic> get _compliance => {
         'today': '2026-10-14', 'soonDays': 30, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'noPapers': 1,
         'machines': [
@@ -492,6 +503,38 @@ class FakeServer {
           return _j({'result': {'ok': true, 'id': a[0], 'stock': stock}});
         case 'getTransfers':
           return _j({'result': {'count': 0, 'qty': 0, 'rows': []}});
+        // (3.9.0) Administration
+        case 'usersAdmin':
+          return _j({'result': {'users': adminUsers, 'modules': [{'key': 'Dashboard', 'label': 'Dashboard'}, {'key': 'Log Book', 'label': 'Log Book'}, {'key': 'Machinery Billing', 'label': 'Machinery Billing'}], 'managedBySuper': usersBySuper, 'canCreateSuper': false}});
+        case 'saveUserAdmin':
+          adminSent.add({'fn': action, 'x': a[0]});
+          final x = (a[0] as Map).cast<String, dynamic>();
+          if (x['isNew'] == true) adminUsers.add({'email': x['email'], 'name': x['name'], 'active': x['active'], 'admin': x['admin'], 'mustChange': true, 'perms': x['perms']});
+          return _j({'result': {'ok': true}});
+        case 'accessReport':
+          return _j({'result': {'users': 2, 'modules': 3, 'count': {'written': 5, 'empty': 1, 'admin': 3}, 'rows': [{'name': 'Site Clerk', 'email': 'clerk@rcl.test', 'active': true, 'admin': false, 'module': 'Machinery Billing', 'raw': '', 'effective': 'View', 'why': 'empty'}]}});
+        case 'getActivity':
+          adminSent.add({'fn': action, 'f': a[0]});
+          return _j({'result': {'count': 2, 'rows': [
+            {'id': 'L-2', 'when': '14-10-2026 10:12:03', 'email': 'clerk@rcl.test', 'name': 'Site Clerk', 'action': 'Edit', 'module': 'Log Book', 'record': 'MH-25-AJ-2169|2026-10-13|Full Day', 'summary': 'Log Book entry changed', 'changes': 'Close KM: 15100 → 15130; Work: Earth carting → Earth carting (Ch 12+000)'},
+            {'id': 'L-1', 'when': '14-10-2026 09:01:44', 'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'action': 'Login', 'module': '', 'record': '', 'summary': 'Signed in (app)', 'changes': ''},
+          ]}});
+        case 'saveSiteRules':
+          adminSent.add({'fn': action, 'x': a[0]});
+          final r = (a[0] as Map).cast<String, dynamic>();
+          return _j({'result': {'ok': true, 'rules': {'backDays': r['backDays'] == '' ? '' : int.parse('${r['backDays']}'), 'announce': r['announce'], 'dayFrom': r['dayFrom'], 'nightFrom': r['nightFrom']}}});
+        case 'saveOrgSettings':
+          adminSent.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'ok': true, 'org': a[0]}});
+        case 'rtcRights':
+          return _j({'result': {'users': [{'uid': 'u1', 'name': 'Site Clerk', 'admin': false, 'on': true}, {'uid': 'u2', 'name': 'Sujit Mule', 'admin': true, 'on': true}]}});
+        case 'rtcRightsSave':
+          adminSent.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'users': [{'uid': 'u1', 'name': 'Site Clerk', 'admin': false, 'on': false}, {'uid': 'u2', 'name': 'Sujit Mule', 'admin': true, 'on': true}]}});
+        case 'dbHealth':
+          return _j({'result': {'ok': false, 'at': '2026-10-14T05:00:00.000Z', 'checks': [{'name': 'Database answers', 'ok': true, 'fix': '', 'note': ''}, {'name': '"½ day" in the Log Book (step 1v)', 'ok': false, 'fix': 'supabase_step1v_half_day.sql', 'note': ''}]}});
+        case 'readme':
+          return _j({'result': {'html': _readme, 'adminCols': [{'col': 'email'}, {'col': 'name'}, {'col': 'password_hash'}, {'col': 'active'}, {'col': 'admin'}, {'col': 'perm_dashboard'}, {'col': 'mobile'}]}});
         // (3.8.0) Billing
         case 'getLogBookList' when billing && _arg(a, 'all') == true:
           billSent.add({'fn': action, 'args': a});
