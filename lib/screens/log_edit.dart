@@ -9,11 +9,13 @@ import 'package:flutter/services.dart';
 
 import '../core/format.dart';
 import '../core/log_edit.dart';
-import '../core/rdoc.dart' show RDoc, RTable, RRow, RCell;
 import '../core/session.dart';
 import '../core/xlsx.dart';
 import '../ui/fields.dart';
+import '../core/more_imports.dart' show tankerExport, tankerImportRows;
+import '../core/sheet_read.dart' show readSheets, SheetError, jsTrue;
 import '../ui/outputs.dart' show shareXlsx;
+import '../ui/pick_file.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
@@ -385,33 +387,67 @@ class _LogEditScreenState extends State<LogEditScreen> {
     }
   }
 
-  /// Export: the Water Tanker Report layout with empty lines to fill.
+  /// Export: the Water Tanker Report layout with 100 empty lines to fill and the Shift drop-down – the web's file (3.13.0).
   Future<void> _ltExport() async {
     final l = lt!, s = SessionScope.read(context);
-    final owner = '${l.machine['owner'] ?? ''}';
-    const head = ['SR. NO.', 'DATE', 'SHIFT', 'NAME OF AGENCY', 'VEHICLE NO', 'CHALLAN NO', 'DISPATCH TIME', 'UNLOAD TIME', 'TRIP', 'CHAINAGE NO', 'USE FOR'];
-    final saved = (l.d['trips'] as List? ?? const []).whereType<Map>().toList();
-    final rows = <RRow>[
-      for (var i = 0; i < saved.length; i++)
-        RRow([
-          RCell('${i + 1}', n: true, value: i + 1),
-          RCell(showDate('${saved[i]['date']}')),
-          RCell('${saved[i]['shift']}'),
-          RCell(owner),
-          RCell(l.no),
-          RCell('${saved[i]['c'] ?? ''}'),
-          RCell('${saved[i]['a'] ?? ''}'),
-          RCell('${saved[i]['b'] ?? ''}'),
-          const RCell('1', n: true, value: 1),
-          RCell('${saved[i]['ch'] ?? ''}'),
-          RCell('${saved[i]['u'] ?? ''}'),
-        ]),
-      for (var k = 0; k < 100; k++) RRow([const RCell(''), const RCell(''), const RCell(''), RCell(owner), RCell(l.no)]),
-    ];
-    final title = 'WATER TANKER REPORT – ${l.no} – ${showDate(l.from)} to ${showDate(l.to)}';
-    final doc = RDoc(title: title, blocks: [RTable(sheet: 'Trips', head: head, rows: rows, numCols: const {0, 8})]);
+    final x = tankerExport(
+      machine: {...l.machine, 'id': l.no},
+      trips: (l.d['trips'] as List? ?? const []).whereType<Map>().toList(),
+      from: l.from,
+      to: l.to,
+      company: s.printNames.isEmpty ? 'Rachana Construction Limited' : s.printNames.first,
+      site: s.siteLabel,
+    );
     try {
-      await shareXlsx(reportXlsx(doc, [s.printNames.isEmpty ? 'Rachana Construction Limited' : s.printNames.first, s.siteLabel, title]), 'Water tanker ${l.no} ${showDate(l.from)} to ${showDate(l.to)}.xlsx');
+      await shareXlsx(sheetsXlsx([x.sheet]), x.file);
+      if (mounted) toast(context, x.said);
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    }
+  }
+
+  /// (3.13.0) Import Excel: the trips of a file (this layout, any tanker, any date) – the web's lt_file: checked by the server
+  /// (checkTankerImport), the ones already saved left out, then imported (importTankerTrips); the tanker open here read again.
+  Future<void> _ltImport() async {
+    final s = SessionScope.read(context), me = lt?.no ?? '';
+    final f = await pickSheetFile();
+    if (f == null || !mounted) return;
+    List<Map<String, Object?>> rows;
+    try {
+      rows = tankerImportRows(readSheets(f.bytes), me);
+    } on SheetError catch (e) {
+      toast(context, e.message, bad: true);
+      return;
+    } catch (_) {
+      toast(context, 'Could not read the file.', bad: true);
+      return;
+    }
+    List<Map> errs(Object? v) => [for (final x in (v as List? ?? const []).whereType<Map>()) x];
+    String line(Map x) => '${jsTrue(x['row']) ? 'Line ${x['row']}: ' : ''}${x['msg'] ?? ''}';
+    try {
+      final chk = (await s.api.call('checkTankerImport', [{'rows': rows}]) as Map).cast<String, dynamic>();
+      if (!mounted) return;
+      if (chk['ok'] != true) {
+        await tellLines(context, 'Fix the file first', ['Nothing was imported.', for (final x in errs(chk['errors'])) line(x)]);
+        return;
+      }
+      final added = (asNum(chk['added']) ?? 0).toInt(), same = (asNum(chk['same']) ?? 0).toInt(), tankers = (asNum(chk['tankers']) ?? 0).toInt();
+      if (added == 0) {
+        await tellLines(context, 'Already in the Log Book', ['All $same trips of this file are already saved. Nothing to import.']);
+        return;
+      }
+      if (!await askLines(context, 'Import the trips?', ['$added trip${added == 1 ? '' : 's'} will be added ($tankers tanker${tankers == 1 ? '' : 's'})', '$same already saved – skipped'],
+          note: 'The trips of a date and shift go into that entry. All are saved together, or none.', yes: 'Import')) {
+        return;
+      }
+      final res = (await s.api.call('importTankerTrips', [{'rows': rows}], true) as Map).cast<String, dynamic>();
+      if (!mounted) return;
+      if (res['ok'] != true) {
+        await tellLines(context, 'Nothing imported', [for (final x in errs(res['errors'])) line(x)]);
+        return;
+      }
+      toast(context, 'Water tanker: ${res['added']} trip${res['added'] == 1 ? '' : 's'} added, ${res['same']} already saved.');
+      if (lt != null) await _open(ask: false);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
     }
@@ -487,6 +523,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
                     });
                   }
                   if (v == 'export') _ltExport();
+                  if (v == 'import') _ltImport();
                 },
                 itemBuilder: (_) => [
                   if (can) PopupMenuItem(key: const Key('lx-add'), value: 'add', child: Text('+ Add row')),
@@ -496,6 +533,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
                   PopupMenuItem(key: const Key('lx-reload'), value: 'reload', child: Text('Undo all (reload)')),
                   PopupMenuItem(key: const Key('lx-clear'), value: 'clear', child: Text('Clear')),
                   if (l != null) PopupMenuItem(key: const Key('lt-export'), value: 'export', child: Text('Export Excel')),
+                  if (l != null && can) PopupMenuItem(key: const Key('lt-import'), value: 'import', child: Text('Import Excel')),
                   PopupMenuItem(key: const Key('lx-print'), value: 'print', child: Text('Print Log Book')),
                 ],
               ),
@@ -1055,6 +1093,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (can) OutlinedButton(key: const Key('lt-add'), onPressed: () => setState(() => l.add()), child: Text('+ Add row')),
           OutlinedButton.icon(key: const Key('lt-export-b'), onPressed: _ltExport, icon: const Icon(Icons.table_view_rounded), label: Text('Export Excel')),
+          if (can) OutlinedButton.icon(key: const Key('lt-import-b'), onPressed: _ltImport, icon: const Icon(Icons.upload_file_rounded), label: Text('Import Excel')),
           OutlinedButton.icon(key: const Key('lx-print-b'), onPressed: _print, icon: const Icon(Icons.print_rounded), label: Text('Print Log Book')),
         ]),
       ]);

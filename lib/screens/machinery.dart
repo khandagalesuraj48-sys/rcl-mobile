@@ -12,13 +12,20 @@ import 'package:flutter/services.dart';
 
 import '../core/assets.dart';
 import '../core/format.dart';
+import '../core/imports.dart' show onSiteOn;
+import '../core/lb_io.dart' show localeCmp;
+import '../core/more_imports.dart' show masterImportRows, qrLabelsHtml, qrPrintHtml;
 import '../core/session.dart';
+import '../core/sheet_read.dart' show readSheets, SheetError;
 import '../ui/fields.dart';
 import '../ui/outputs.dart';
+import '../ui/pick_file.dart';
+import '../web/print_view.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'forms.dart' show MachinePicker;
 import 'machine_form.dart';
 
 Future<void> openAssetMaster(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AssetMasterScreen()));
@@ -106,9 +113,11 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
             onSelected: _menu,
             itemBuilder: (_) => [
               if (can) PopupMenuItem(value: 'many', child: Text('Add multiple machinery')),
+              if (can) PopupMenuItem(key: const Key('m-import'), value: 'import', child: Text('Import from Excel')),
               PopupMenuItem(value: 'xlsx', child: Text('Export to Excel')),
               PopupMenuItem(value: 'print', child: Text('Print list')),
               PopupMenuItem(value: 'alist', child: Text('Asset list (date / month) – print')),
+              PopupMenuItem(key: const Key('m-qr'), value: 'qr', child: Text('QR labels')),
             ],
           ),
         ],
@@ -369,7 +378,92 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
         await printDoc(context, s, masterListDoc(rows, f.vc));
       case 'alist':
         await _assetList(s);
+      case 'import':
+        await _import(s);
+      case 'qr':
+        await _qr(s);
     }
+  }
+
+  /// (3.13.0) Import from Excel – the web's m_file: the file read (the tab "Master" or the first, the columns by their names),
+  /// checked by the server (importMaster without saving), what it will do asked, then saved (importMaster, saving).
+  Future<void> _import(Session s) async {
+    final f = await pickSheetFile();
+    if (f == null || !mounted) return;
+    await _run('import', () async {
+      List<Map<String, Object?>> rows;
+      try {
+        rows = masterImportRows(readSheets(f.bytes));
+      } on SheetError catch (e) {
+        if (mounted) toast(context, e.message, bad: true);
+        return;
+      } catch (_) {
+        if (mounted) toast(context, 'Could not read the file.', bad: true);
+        return;
+      }
+      final check = (await s.api.call('importMaster', [rows, false]) as Map).cast<String, dynamic>();
+      if (!mounted) return;
+      final errs = (check['errors'] as List? ?? const []).whereType<Map>().toList();
+      if (errs.isNotEmpty) {
+        await tellLines(context, 'Nothing imported', ['Fix the rows listed below in the file and import again.', for (final x in errs) 'Excel row ${x['row']}: ${x['msg']}']);
+        return;
+      }
+      final adds = asNum(check['adds']) ?? 0, updates = asNum(check['updates']) ?? 0;
+      if (adds == 0 && updates == 0) {
+        toast(context, 'Nothing to import – the file matches Master (${check['same']} unchanged).');
+        return;
+      }
+      if (!await askLines(context, 'Import this file?', ['New machinery: ${check['adds']}', 'Existing machinery that will be updated: ${check['updates']}', 'Unchanged: ${check['same']}'], yes: 'Import')) return;
+      final res = (await s.api.call('importMaster', [rows, true], true) as Map).cast<String, dynamic>();
+      if (!mounted) return;
+      if ((res['errors'] as List? ?? const []).isNotEmpty) {
+        toast(context, 'Nothing imported. Try again.', bad: true);
+        return;
+      }
+      s.setMaster(res['master']);
+      toast(context, 'Imported: ${res['adds']} new, ${res['updates']} updated.');
+    });
+  }
+
+  /// (3.13.0) QR labels – the web's: a label with a QR code for the machinery (all on site today, or one), 12 on an A4 page.
+  /// A scan with a phone opens Mechanical on that machinery (after sign-in): Diesel Issue or Log Book entry.
+  Future<void> _qr(Session s) async {
+    final all = [for (final m in s.machines) m.m].where((m) => onSiteOn(m, s.today)).toList();
+    if (all.isEmpty) {
+      toast(context, 'There is no active machinery.', bad: true);
+      return;
+    }
+    final how = await showModalBottomSheet<String>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const TwoLang('QR labels', 'QR लेबल', size: 20, weight: FontWeight.w700),
+            const SizedBox(height: 8),
+            Text('A label with a QR code for the machinery – stick it where the driver / operator can reach it. A scan with a phone opens this app on that machinery (after sign-in): Diesel Issue or Log Book entry.', style: const TextStyle(fontSize: 14, height: 1.4)),
+            const SizedBox(height: 6),
+            Text('12 labels on an A4 page (portrait). Print on sticker paper, or on paper and laminate.', style: const TextStyle(fontSize: 13, color: C.muted)),
+            const SizedBox(height: 16),
+            FilledButton.icon(key: const Key('qr-all'), onPressed: () => Navigator.pop(c, 'all'), icon: const Icon(Icons.qr_code_2_rounded), label: Text('All ${all.length} active machinery')),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(key: const Key('qr-one'), onPressed: () => Navigator.pop(c, 'one'), icon: const Icon(Icons.search_rounded), label: Text('One machinery')),
+          ]),
+        ),
+      ),
+    );
+    if (how == null || !mounted) return;
+    Map<String, dynamic>? m1;
+    if (how == 'one') {
+      final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(only: s.machines));
+      if (m == null || !mounted) return;
+      m1 = m.m;
+    }
+    final list = [...(m1 != null ? [m1] : all)]..sort((a, b) => localeCmp('${a['id']}', '${b['id']}', numeric: true));
+    final customer = '${s.org['customer'] ?? ''}';
+    final title = 'QR labels – ${m1 != null ? m1['id'] : '${list.length} machinery'}';
+    final html = qrPrintHtml(title, qrLabelsHtml(list, s.api.mechUrl, customer), customer);
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: html, title: title)));
   }
 
   Future<void> _assetList(Session s) async {

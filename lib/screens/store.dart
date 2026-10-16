@@ -6,14 +6,21 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../core/api.dart' show ApiError;
 import '../core/format.dart';
+import '../core/lb_io.dart' show XSheet;
+import '../core/more_imports.dart' show storeImportRows, asShown;
 import '../core/rdoc.dart';
+import '../core/sheet_read.dart' show readSheets, isZipSheet, SheetError;
 import '../core/xlsx.dart';
 import '../ui/fields.dart';
 import '../ui/outputs.dart';
+import '../ui/pick_file.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+
+/// The columns of the web's item files (Export, Import template).
+const kStoreHead = ['Item Code', 'Item Name', 'Unit', 'Category', 'HSN Code', 'GST %', 'Min Stock', 'Status'];
 
 Future<void> openStore(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const StoreScreen()));
 
@@ -50,7 +57,7 @@ RDoc storeItemsDoc(List<Map> items, String day) => RDoc(
       blocks: [
         RTable(
           sheet: 'Items',
-          head: const ['Item Code', 'Item Name', 'Unit', 'Category', 'HSN Code', 'GST %', 'Min Stock', 'Status'],
+          head: kStoreHead,
           numCols: const {5, 6},
           rows: [
             for (final i in items)
@@ -161,6 +168,38 @@ class _StoreScreenState extends State<StoreScreen> {
     final day = dateKey(DateTime.now());
     await shareXlsx(reportXlsx(storeItemsDoc(items, day), const []), 'Items_$day.xlsx');
     if (mounted) toast(context, 'Exported ${items.length} items.');
+  }
+
+  /// (3.13.0) Import template – the web's b_tpl: the headings and one example row.
+  Future<void> _template() async {
+    try {
+      await shareXlsx(
+          sheetsXlsx([
+            XSheet('Items', [kStoreHead, ['', 'Hydraulic Hose 1/2 inch', 'Mtr', 'Spare Parts', '40092100', 18, 10]], widths: const [10, 40, 8, 22, 12, 8, 10, 10]),
+          ]),
+          'Items_template.xlsx');
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    }
+  }
+
+  /// (3.13.0) Import from Excel – the web's f_file: the first tab, the cells as the sheet shows them, the heading row found by its
+  /// names ("Item Code" of the file is not used – the next codes are given); then the check, row by row, before anything is saved.
+  Future<void> _import() async {
+    final f = await pickSheetFile();
+    if (f == null || !mounted) return;
+    List<Map<String, Object?>> rows;
+    try {
+      rows = storeImportRows(isZipSheet(f.bytes) ? asShown(readSheets(f.bytes)) : readSheets(f.bytes, shown: true));
+    } on SheetError catch (e) {
+      toast(context, e.message, bad: true);
+      return;
+    } catch (_) {
+      toast(context, 'Could not read the file.', bad: true);
+      return;
+    }
+    final done = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => StoreImportScreen(rows: rows, call: _call)));
+    if (done == true) _load();
   }
 
   @override
@@ -281,6 +320,15 @@ class _StoreScreenState extends State<StoreScreen> {
           Expanded(child: Text('${list.length} of ${items.length} items', key: const Key('st-count'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
           OutlinedButton.icon(key: const Key('st-export'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 12)), onPressed: _export, icon: const Icon(Icons.table_view_rounded), label: Text('Export to Excel')),
         ]),
+        if (_admin)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(children: [
+              Expanded(child: OutlinedButton.icon(key: const Key('st-import'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 10)), onPressed: _import, icon: const Icon(Icons.upload_file_rounded), label: Text('Import from Excel'))),
+              const SizedBox(width: 8),
+              TextButton.icon(key: const Key('st-tpl'), style: TextButton.styleFrom(minimumSize: const Size(0, 42)), onPressed: _template, icon: const Icon(Icons.download_rounded), label: Text('Import template')),
+            ]),
+          ),
         const SizedBox(height: 8),
         if (list.isEmpty) Padding(padding: const EdgeInsets.all(20), child: Text(items.isEmpty ? 'No item yet – press "+ Add item".' : 'No item for this search.', textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
         for (final i in list) _itemTile(i),
@@ -515,4 +563,143 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
           ],
         ]),
       );
+}
+
+/// (3.13.0) Import from Excel – check: the web's p_imp. Every row of the file and what will happen to it (new – will be added,
+/// already there – left out, near name – confirm, mistake); a near name is added only when "Different item – add it" is ticked.
+/// Nothing is imported while a mistake is left.
+class StoreImportScreen extends StatefulWidget {
+  const StoreImportScreen({super.key, required this.rows, required this.call});
+  final List<Map<String, Object?>> rows;
+  final Future<Map<String, dynamic>> Function(Map<String, dynamic>) call;
+  @override
+  State<StoreImportScreen> createState() => _StoreImportScreenState();
+}
+
+const _kImpSt = {
+  'new': ('New – will be added', C.greenDark, C.greenSoft),
+  'exists': ('Already there – left out', C.muted, C.slateSoft),
+  'similar': ('Near name – confirm', C.amber, C.amberSoft),
+  'error': ('Mistake', C.red, C.redSoft),
+};
+
+class _StoreImportScreenState extends State<StoreImportScreen> {
+  final confirm = <String, List<String>>{};
+  Map<String, dynamic>? r;
+  String err = '';
+  bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+  }
+
+  Future<void> _check() async {
+    try {
+      final x = await widget.call({'action': 'import', 'check': true, 'rows': widget.rows, 'confirm': confirm});
+      if (mounted) setState(() => r = x);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
+  }
+
+  int _n(String k) => (asNum(r?[k]) ?? 0).toInt();
+
+  Future<void> _go() async {
+    setState(() {
+      busy = true;
+      err = '';
+    });
+    try {
+      final x = await widget.call({'action': 'import', 'rows': widget.rows, 'confirm': confirm});
+      if (!mounted) return;
+      final exists = (asNum(x['exists']) ?? 0).toInt();
+      toast(context, '${x['added']} items imported${exists > 0 ? ', $exists already there (left out)' : ''}.');
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (e is ApiError && e.data['report'] != null) await _check();
+      if (!mounted) return;
+      setState(() {
+        busy = false;
+        err = errText(e);
+      });
+      toast(context, errText(e), bad: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rr = r;
+    final list = [for (final x in (rr?['rows'] as List? ?? const []).whereType<Map>()) x.cast<String, dynamic>()];
+    final errors = _n('errors');
+    return Scaffold(
+      appBar: AppBar(title: Text('Import from Excel – check')),
+      body: rr == null
+          ? (err.isEmpty ? const Center(child: CircularProgressIndicator()) : ListView(padding: const EdgeInsets.all(16), children: [InfoLine(err, bad: true)]))
+          : ListView(key: const Key('si-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 24), children: [
+              Text(
+                '${widget.rows.length} rows: ${_n('fresh')} new, ${_n('exists')} already there (left out), ${_n('similar')} near names to confirm, $errors with a mistake.'
+                '${errors > 0 ? ' Correct the mistakes in the file and choose it again – nothing is imported while one is left.' : ''}',
+                key: const Key('si-sum'),
+                style: TextStyle(fontSize: 13.5, color: errors > 0 ? C.red : C.muted, height: 1.35),
+              ),
+              if (err.isNotEmpty) InfoLine(err, bad: true),
+              const SizedBox(height: 10),
+              for (final x in list) _row(x),
+            ]),
+      bottomNavigationBar: rr == null
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                child: Row(children: [
+                  Expanded(child: OutlinedButton(key: const Key('si-x'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: busy ? null : () => Navigator.pop(context, false), child: Text('Cancel'))),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      key: const Key('si-go'),
+                      style: FilledButton.styleFrom(minimumSize: const Size(0, 48), backgroundColor: C.green),
+                      onPressed: busy || errors > 0 || _n('fresh') + _n('similar') == 0 ? null : _go,
+                      child: Text(busy ? 'Importing…' : 'Import'),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+    );
+  }
+
+  Widget _row(Map<String, dynamic> x) {
+    final st = _kImpSt['${x['status']}'] ?? _kImpSt['error']!;
+    final line = '${x['line']}';
+    final near = [for (final y in (x['similar'] as List? ?? const []).whereType<Map>()) y];
+    final codes = [for (final y in near) '${y['code']}'];
+    final note = '${x['msg'] ?? ''}'.isNotEmpty ? '${x['msg']}' : '${x['catNote'] ?? ''}';
+    return Container(
+      key: Key('si-row-$line'),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: x['status'] == 'error' ? C.red : C.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Text('Line $line · ${x['name'] ?? ''}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
+          Pill(st.$1, color: st.$2, bg: st.$3),
+        ]),
+        if (x['status'] == 'similar') ...[
+          Padding(padding: const EdgeInsets.only(top: 4), child: Text('Near: ${[for (final y in near) '${y['code']} ${y['name']}'].join(', ')}', style: const TextStyle(fontSize: 13, color: C.muted))),
+          CheckboxListTile(
+            key: Key('si-ok-$line'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: confirm.containsKey(line),
+            onChanged: (v) => setState(() => v == true ? confirm[line] = codes : confirm.remove(line)),
+            title: Text('Different item – add it', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          ),
+        ] else if (note.isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 4), child: Text(note, style: TextStyle(fontSize: 13, color: x['status'] == 'error' ? C.red : C.muted))),
+      ]),
+    );
+  }
 }

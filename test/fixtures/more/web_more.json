@@ -1,0 +1,349 @@
+{
+ "master": [
+  {
+   "line": 4,
+   "no": "MH25AJ3232",
+   "name": "",
+   "type": "Tipper",
+   "make": "Tata",
+   "unit": "KM",
+   "worksOn": "KM",
+   "kmStd": 3.5,
+   "hrStd": "",
+   "owner": "I E Enterprises",
+   "ownership": "Rental",
+   "supply": "Company",
+   "status": "Active",
+   "activeFrom": "2026-09-01",
+   "inactiveFrom": "",
+   "taxUpto": "LIFETIME",
+   "pucUpto": "NA",
+   "permitUpto": "2027-03-31",
+   "insuranceUpto": "2027-09-30",
+   "engineNo": "E-1001"
+  },
+  {
+   "line": 5,
+   "no": "",
+   "name": "Sany 210",
+   "type": "Excavator",
+   "make": "Sany",
+   "unit": "Hrs",
+   "worksOn": "Hrs, Time",
+   "kmStd": "",
+   "hrStd": 14,
+   "owner": "RCL",
+   "ownership": "Own",
+   "supply": "Company",
+   "status": "Inactive",
+   "activeFrom": "2026-09-01",
+   "inactiveFrom": "2026-10-01",
+   "taxUpto": "LIFETIME",
+   "pucUpto": "",
+   "permitUpto": "NA",
+   "insuranceUpto": "",
+   "engineNo": ""
+  },
+  {
+   "line": 6,
+   "no": "",
+   "name": "",
+   "type": "",
+   "make": "",
+   "unit": "",
+   "worksOn": "",
+   "kmStd": "",
+   "hrStd": "",
+   "owner": "",
+   "ownership": "",
+   "supply": "",
+   "status": "",
+   "activeFrom": "",
+   "inactiveFrom": "",
+   "taxUpto": "",
+   "pucUpto": "",
+   "permitUpto": "",
+   "insuranceUpto": "",
+   "engineNo": ""
+  },
+  {
+   "line": 7,
+   "no": 400,
+   "name": "400 KVA DG",
+   "type": "DG Set",
+   "make": "",
+   "unit": "Hrs",
+   "worksOn": "",
+   "kmStd": "",
+   "hrStd": 2.5,
+   "owner": "Power Rentals",
+   "ownership": "Rental",
+   "supply": "Debit Basis",
+   "status": "",
+   "activeFrom": "",
+   "inactiveFrom": "",
+   "taxUpto": "NA",
+   "pucUpto": "NA",
+   "permitUpto": "",
+   "insuranceUpto": "",
+   "engineNo": 12345
+  }
+ ],
+ "compliance": [
+  {
+   "line": 2,
+   "no": "MH-25-AJ-3232",
+   "docs": {
+    "Tax": "LIFETIME",
+    "PUC": "2026-09-30",
+    "Permit": "NA",
+    "Fitness": "2027-09-30",
+    "Insurance": "2027-03-31"
+   },
+   "raw": {
+    "Tax": "Lifetime",
+    "PUC": "30-09-2026",
+    "Permit": "N/A",
+    "Fitness": "",
+    "Insurance": "31/03/2027"
+   }
+  },
+  {
+   "line": 3,
+   "no": "MH-12-SY-6216",
+   "docs": {
+    "Tax": "",
+    "PUC": "NOT NEEDED",
+    "Permit": "NA",
+    "Fitness": "",
+    "Insurance": "LIFETIME"
+   },
+   "raw": {
+    "Tax": "",
+    "PUC": "Not needed",
+    "Permit": "na",
+    "Fitness": "",
+    "Insurance": "one time tax"
+   }
+  },
+  {
+   "line": 5,
+   "no": "JCB-3DX",
+   "docs": {
+    "Tax": "LIFETIME",
+    "PUC": "2026-11-05",
+    "Permit": "",
+    "Fitness": "abc",
+    "Insurance": ""
+   },
+   "raw": {
+    "Tax": "lifetime tax paid",
+    "PUC": "2026-11-5",
+    "Permit": "",
+    "Fitness": "abc",
+    "Insurance": ""
+   }
+  }
+ ],
+ "compliance_short": [
+  {
+   "line": 2,
+   "no": "MH-25-AJ-3232",
+   "docs": {
+    "PUC": "2027-01-01",
+    "Insurance": "NA"
+   },
+   "raw": {
+    "PUC": "01-01-2027",
+    "Insurance": "NA"
+   }
+  }
+ ],
+ "compliance_none": {
+  "error": "The file needs a \"Machinery No\" column. Use Export Excel to get the right format."
+ },
+ "tanker": [
+  {
+   "line": "Trips – 6",
+   "no": "MH-04-J-9844",
+   "date": "2026-10-14",
+   "shift": "Day",
+   "c": "WT-101",
+   "a": "08:10",
+   "b": "08:40",
+   "ch": "12+000",
+   "u": "Curing"
+  },
+  {
+   "line": "Trips – 7",
+   "no": "MH-04-J-9844",
+   "date": "2026-10-14",
+   "shift": "Night",
+   "c": "WT-102",
+   "a": "21:15",
+   "b": "21:55",
+   "ch": "",
+   "u": ""
+  },
+  {
+   "line": "Trips – 9",
+   "no": "MH-04-J-0001",
+   "date": "2026-10-15",
+   "shift": "Day",
+   "c": "",
+   "a": "9.30",
+   "b": "",
+   "ch": "",
+   "u": "Dust"
+  },
+  {
+   "line": "Trips – 10",
+   "no": "MH-04-J-9844",
+   "date": "2026-10-15",
+   "shift": "Day",
+   "c": "WT-104",
+   "a": "00:00",
+   "b": "",
+   "ch": "",
+   "u": ""
+  },
+  {
+   "line": "Other – 2",
+   "no": "T-2",
+   "date": "2026-10-16",
+   "shift": "Day",
+   "c": "X-1",
+   "a": "",
+   "b": "",
+   "ch": "",
+   "u": ""
+  }
+ ],
+ "tanker_nome": [
+  {
+   "line": "Trips – 6",
+   "no": "MH-04-J-9844",
+   "date": "2026-10-14",
+   "shift": "Day",
+   "c": "WT-101",
+   "a": "08:10",
+   "b": "08:40",
+   "ch": "12+000",
+   "u": "Curing"
+  },
+  {
+   "line": "Trips – 7",
+   "no": "",
+   "date": "2026-10-14",
+   "shift": "Night",
+   "c": "WT-102",
+   "a": "21:15",
+   "b": "21:55",
+   "ch": "",
+   "u": ""
+  },
+  {
+   "line": "Trips – 9",
+   "no": "MH-04-J-0001",
+   "date": "2026-10-15",
+   "shift": "Day",
+   "c": "",
+   "a": "9.30",
+   "b": "",
+   "ch": "",
+   "u": "Dust"
+  },
+  {
+   "line": "Trips – 10",
+   "no": "MH-04-J-9844",
+   "date": "2026-10-15",
+   "shift": "Day",
+   "c": "WT-104",
+   "a": "00:00",
+   "b": "",
+   "ch": "",
+   "u": ""
+  },
+  {
+   "line": "Other – 2",
+   "no": "T-2",
+   "date": "2026-10-16",
+   "shift": "Day",
+   "c": "X-1",
+   "a": "",
+   "b": "",
+   "ch": "",
+   "u": ""
+  }
+ ],
+ "store": [
+  {
+   "line": 2,
+   "name": "Hydraulic Hose 1/2 inch",
+   "unit": "Mtr",
+   "category": "Spare Parts",
+   "hsn": "40092100",
+   "gst": "18",
+   "minStock": "10"
+  },
+  {
+   "line": 3,
+   "name": "Sugar",
+   "unit": "Kg",
+   "category": "Canteen",
+   "hsn": "",
+   "gst": "5",
+   "minStock": "0.5"
+  },
+  {
+   "line": 5,
+   "name": "Oil Filter",
+   "unit": "Nos",
+   "category": "Spare Parts",
+   "hsn": "8421",
+   "gst": "18.5",
+   "minStock": "12345678901"
+  },
+  {
+   "line": 6,
+   "name": "Grease",
+   "unit": "",
+   "category": "",
+   "hsn": "",
+   "gst": "",
+   "minStock": "0.3"
+  },
+  {
+   "line": 7,
+   "name": "",
+   "unit": "Ltr",
+   "category": "",
+   "hsn": "",
+   "gst": "",
+   "minStock": ""
+  }
+ ],
+ "store_csv": [
+  {
+   "line": 2,
+   "name": "Gloves",
+   "unit": "Pair",
+   "category": "Safety",
+   "hsn": "6116",
+   "gst": "18",
+   "minStock": "1,000"
+  },
+  {
+   "line": 3,
+   "name": "Helmet",
+   "unit": "Nos",
+   "category": "Safety",
+   "hsn": "6506",
+   "gst": "18",
+   "minStock": "1e2"
+  }
+ ],
+ "store_none": {
+  "error": "The file has no \"Item Name\" heading – use the Import template (or an exported file)."
+ }
+}

@@ -30,14 +30,18 @@ class SheetError implements Exception {
   String toString() => message;
 }
 
-/// Every tab of the file, in the workbook's order (a CSV: one tab "Sheet1").
-List<SheetTab> readSheets(Uint8List b) {
+/// Every tab of the file, in the workbook's order (a CSV: one tab "Sheet1"). [shown]: every cell as the sheet shows it (raw:
+/// false – a CSV cell as typed; an .xlsx number in General: more_imports.dart asShown).
+List<SheetTab> readSheets(Uint8List b, {bool shown = false}) {
   if (b.length >= 4 && b[0] == 0x50 && b[1] == 0x4B && b[2] < 9 && b[3] < 9) return _xlsx(b);
   if (b.length >= 8 && b[0] == 0xD0 && b[1] == 0xCF && b[2] == 0x11 && b[3] == 0xE0) {
     throw SheetError('This is an old Excel file (.xls) or a file with a password. Open it in Excel, save it as "Excel Workbook (.xlsx)" (or CSV) and import that.');
   }
-  return [SheetTab('Sheet1', csvRows(_text(b)))];
+  return [SheetTab('Sheet1', csvRows(_text(b), text: shown))];
 }
+
+/// Is it an .xlsx (a zip) – else a CSV / text.
+bool isZipSheet(Uint8List b) => b.length >= 4 && b[0] == 0x50 && b[1] == 0x4B && b[2] < 9 && b[3] < 9;
 
 /* ---------------- what JavaScript does with a value (the web's own code turns cells into text and numbers) ---------------- */
 
@@ -468,7 +472,7 @@ String _guessSep(String str) {
 }
 
 /// SheetJS dsv_to_sheet_str, then sheet_to_json(header 1, raw, defval '') – see the note on top about dates.
-List<List<Object?>> csvRows(String str) {
+List<List<Object?>> csvRows(String str, {bool text = false}) {
   var sep = '';
   if (str.startsWith('sep=') && str.length > 5) {
     if (str.length > 6 && str.codeUnitAt(5) == 13 && str.codeUnitAt(6) == 10) {
@@ -507,12 +511,12 @@ List<List<Object?>> csvRows(String str) {
         v = s;
       }
     } else if (s == 'TRUE') {
-      v = true;
+      v = text ? s : true;
     } else if (s == 'FALSE') {
-      v = false;
+      v = text ? s : false;
     } else {
       final n = fuzzyNum(s);
-      v = n.isNaN ? s : n;
+      v = n.isNaN || text ? s : n; // shown: the number as it was typed (the cell's text)
     }
     if (keep) (cells[R] ??= {})[C] = v;
     start = end + 1;

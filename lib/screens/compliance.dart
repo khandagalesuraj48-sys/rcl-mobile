@@ -9,10 +9,13 @@ import 'package:flutter/services.dart';
 
 import '../core/format.dart';
 import '../core/masters.dart';
+import '../core/more_imports.dart' show complianceImportRows;
 import '../core/rdoc.dart' show RDoc, RTable, RRow, RCell;
 import '../core/session.dart';
+import '../core/sheet_read.dart' show readSheets, SheetError;
 import '../ui/fields.dart';
 import '../ui/outputs.dart';
+import '../ui/pick_file.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
@@ -108,10 +111,12 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
             onSelected: (k) {
               if (k == 'rules') _rules();
               if (k == 'xlsx') _export(s, rows);
+              if (k == 'import') _import(s);
             },
             itemBuilder: (_) => [
               if (can) PopupMenuItem(value: 'rules', child: Text('Papers per type')),
               PopupMenuItem(value: 'xlsx', child: Text('Export Excel')),
+              if (can) PopupMenuItem(key: const Key('cp-import'), value: 'import', child: Text('Import Excel')),
             ],
           ),
         ],
@@ -291,6 +296,50 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       } catch (_) {/* the live sync brings it */}
     } catch (e) {
       if (mounted) toast(context, tr(errText(e)), bad: true);
+    }
+  }
+
+  /// (3.13.0) Import Excel – the web's cp_file: the tab "Compliance" (or the first), Machinery No and the paper columns read,
+  /// checked by the server (importCompliance without saving), the dates it will change asked, then saved; the list read again.
+  Future<void> _import(Session s) async {
+    final f = await pickSheetFile();
+    if (f == null || !mounted) return;
+    List<Map<String, Object?>> rows;
+    try {
+      rows = complianceImportRows(readSheets(f.bytes));
+    } on SheetError catch (e) {
+      toast(context, e.message, bad: true);
+      return;
+    } catch (_) {
+      toast(context, 'Could not read the file.', bad: true);
+      return;
+    }
+    try {
+      final chk = (await s.api.call('importCompliance', [rows, false]) as Map).cast<String, dynamic>();
+      if (!mounted) return;
+      final errs = (chk['errors'] as List? ?? const []).whereType<Map>().toList();
+      if (errs.isNotEmpty) {
+        await tellLines(context, 'Nothing imported – please correct the file', [
+          for (final x in errs.take(40)) 'Excel row ${x['row']}: ${x['msg']}',
+          if (errs.length > 40) '… and ${errs.length - 40} more.',
+        ]);
+        return;
+      }
+      final n = (asNum(chk['changes']) ?? 0).toInt(), preview = [for (final x in (chk['preview'] as List? ?? const [])) '$x'];
+      if (n == 0) {
+        toast(context, 'Nothing to import – the file matches Asset Master.');
+        return;
+      }
+      if (!await askLines(context, 'Import $n date${n == 1 ? '' : 's'}?', [...preview, if (n > preview.length) '… and ${n - preview.length} more.'],
+          note: '$n paper date(s) on ${chk['machines']} machinery will be saved in Asset Master; the old dates go into the history.', yes: 'Import')) {
+        return;
+      }
+      final res = (await s.api.call('importCompliance', [rows, true], true) as Map).cast<String, dynamic>();
+      if (!mounted) return;
+      toast(context, 'Imported: ${res['changes']} date(s) on ${res['machines']} machinery.');
+      await _load(quiet: true);
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
     }
   }
 
