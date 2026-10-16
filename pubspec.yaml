@@ -25,7 +25,7 @@ dependencies:
   flutter_local_notifications: ^19.4.0 # (3.1.8) waiting for approval / sent back
   android_alarm_manager_plus: ">=4.0.0 <6.0.0" # (3.1.8) those notifications also with the app closed (Android)
   archive: ">=3.6.0 <5.0.0" # (3.2.0) the reports as Excel files (an .xlsx is a zip)
-  file_picker: ^13.1.0 # (3.11.0) an Excel / CSV file to import, from the phone's files
+  file_picker: ^11.0.3 # (3.11.0) (13.x needs another win32 than share_plus 12) an Excel / CSV file to import, from the phone's files
 
 dev_dependencies:
   flutter_test:

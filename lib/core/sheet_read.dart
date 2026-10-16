@@ -70,7 +70,7 @@ double jsNumber(String s) {
   if (_jsNumRe.hasMatch(t)) {
     var x = t.replaceFirst(RegExp(r'\.(?=[eE]|$)'), '');
     if (x.startsWith('.')) x = '0$x';
-    x = x.replaceFirst(RegExp(r'^([+-])\.'), r'$10.');
+    x = x.replaceFirstMapped(RegExp(r'^([+-])\.'), (m) => '${m[1]}0.');
     return double.parse(x);
   }
   final h = RegExp(r'^0([xXbBoO])([0-9a-fA-F]+)$').firstMatch(t);
