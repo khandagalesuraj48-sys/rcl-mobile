@@ -584,12 +584,14 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: C.line))),
-                child: Row(children: [
-                  Expanded(child: OutlinedButton(key: const Key('mb-preview'), onPressed: busy ? null : () => _preview(), child: Text('Preview', maxLines: 1))),
-                  const SizedBox(width: 6),
-                  Expanded(child: OutlinedButton(key: const Key('mb-logbook'), onPressed: busy ? null : () => _logPrint(bills), child: Text('Log Book', maxLines: 1))),
-                  const SizedBox(width: 6),
-                  Expanded(flex: 2, child: FilledButton(key: const Key('mb-submit'), onPressed: busy || !can ? null : _submit, child: Text('Verify & Submit', maxLines: 1))),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Row(children: [
+                    Expanded(child: OutlinedButton.icon(key: const Key('mb-preview'), style: kSmallBtn, onPressed: busy ? null : () => _preview(), icon: const Icon(Icons.visibility_outlined, size: 20), label: Text('Preview', maxLines: 1))),
+                    const SizedBox(width: 8),
+                    Expanded(child: OutlinedButton.icon(key: const Key('mb-logbook'), style: kSmallBtn, onPressed: busy ? null : () => _logPrint(bills), icon: const Icon(Icons.menu_book_rounded, size: 20), label: Text('Log Book', maxLines: 1))),
+                  ]),
+                  const SizedBox(height: 8),
+                  SizedBox(width: double.infinity, child: FilledButton.icon(key: const Key('mb-submit'), style: FilledButton.styleFrom(minimumSize: const Size(0, 50)), onPressed: busy || !can ? null : _submit, icon: const Icon(Icons.verified_rounded), label: Text('Verify & Submit', maxLines: 1))),
                 ]),
               ),
             ),
@@ -627,7 +629,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
           FilledButton(key: const Key('lk-save'), onPressed: busy ? null : () => _lock(true), child: Text('Close up to this date')),
-          OutlinedButton(key: const Key('lk-open'), onPressed: busy ? null : () => _lock(false), child: Text('Reopen (close nothing)')),
+          OutlinedButton(key: const Key('lk-open'), style: kSmallBtn, onPressed: busy ? null : () => _lock(false), child: Text('Reopen (close nothing)')),
         ]),
         const SizedBox(height: 6),
         Text(s.closedUpto.isNotEmpty ? 'Now closed up to ${showDate(s.closedUpto)}.' : 'Nothing is closed now.', key: const Key('lk-now'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -685,8 +687,8 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
         FilledButton.icon(key: const Key('mb-build'), onPressed: busy ? null : _build, icon: const Icon(Icons.receipt_long_rounded), label: Text(busy ? 'Building…' : 'Build bills')),
-        OutlinedButton(key: const Key('mb-clear'), onPressed: busy ? null : _clear, child: Text('Clear')),
-        if (can) OutlinedButton(key: const Key('mb-co-btn'), onPressed: () => setState(() => showCo = !showCo), child: Text('Company details')),
+        OutlinedButton(key: const Key('mb-clear'), style: kSmallBtn, onPressed: busy ? null : _clear, child: Text('Clear')),
+        if (can) OutlinedButton(key: const Key('mb-co-btn'), style: kSmallBtn, onPressed: () => setState(() => showCo = !showCo), child: Text('Company details')),
       ]),
     ]);
   }
@@ -878,8 +880,8 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
         ),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          OutlinedButton.icon(key: Key('mb-papers-$i'), onPressed: () => _preview(i), icon: const Icon(Icons.description_outlined), label: Text('Papers')),
-          OutlinedButton.icon(key: Key('mb-lb-$i'), onPressed: () => _logPrint([b]), icon: const Icon(Icons.menu_book_rounded), label: Text('Log Book')),
+          OutlinedButton.icon(key: Key('mb-papers-$i'), style: kSmallBtn, onPressed: () => _preview(i), icon: const Icon(Icons.description_outlined), label: Text('Papers')),
+          OutlinedButton.icon(key: Key('mb-lb-$i'), style: kSmallBtn, onPressed: () => _logPrint([b]), icon: const Icon(Icons.menu_book_rounded), label: Text('Log Book')),
         ]),
       ]),
       ),

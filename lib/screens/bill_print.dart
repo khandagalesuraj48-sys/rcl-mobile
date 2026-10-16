@@ -14,6 +14,9 @@ import '../ui/widgets.dart';
 import '../web/print_view.dart';
 import 'log_print.dart';
 
+/// A button in a row of buttons (the theme's buttons are as wide as the screen).
+final kSmallBtn = OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14), textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600));
+
 String _logo = '';
 
 /// The Rachana logo as a data: address (for the papers and the Log Book under the Rachana name).

@@ -233,9 +233,9 @@ class _DriveScreenState extends State<DriveScreen> {
         ]),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          OutlinedButton.icon(key: Key('sbv-${b['id']}'), onPressed: () => viewSavedBill(context, s, '${b['id']}'), icon: const Icon(Icons.print_rounded), label: Text('View / Print')),
-          OutlinedButton.icon(key: Key('sbl-${b['id']}'), onPressed: () => printSavedBillLog(context, s, '${b['id']}'), icon: const Icon(Icons.menu_book_rounded), label: Text('Log Book')),
-          if (s.admin) OutlinedButton.icon(key: Key('sbd-${b['id']}'), onPressed: () => _delete(b), icon: const Icon(Icons.delete_outline_rounded, color: C.red), label: Text('Delete')),
+          OutlinedButton.icon(key: Key('sbv-${b['id']}'), style: kSmallBtn, onPressed: () => viewSavedBill(context, s, '${b['id']}'), icon: const Icon(Icons.print_rounded), label: Text('View / Print')),
+          OutlinedButton.icon(key: Key('sbl-${b['id']}'), style: kSmallBtn, onPressed: () => printSavedBillLog(context, s, '${b['id']}'), icon: const Icon(Icons.menu_book_rounded), label: Text('Log Book')),
+          if (s.admin) OutlinedButton.icon(key: Key('sbd-${b['id']}'), style: kSmallBtn, onPressed: () => _delete(b), icon: const Icon(Icons.delete_outline_rounded, color: C.red), label: Text('Delete')),
         ]),
       ]),
     );
@@ -284,8 +284,8 @@ class _DriveScreenState extends State<DriveScreen> {
         ]),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          OutlinedButton.icon(key: Key('dnv-${n['id']}'), onPressed: () => viewDebitNote(context, s, '${n['id']}'), icon: const Icon(Icons.print_rounded), label: Text('View / Print')),
-          if (s.admin && !off && !billed) OutlinedButton.icon(key: Key('dnc-${n['id']}'), onPressed: () => _cancel(n), icon: const Icon(Icons.block_rounded, color: C.red), label: Text('Cancel')),
+          OutlinedButton.icon(key: Key('dnv-${n['id']}'), style: kSmallBtn, onPressed: () => viewDebitNote(context, s, '${n['id']}'), icon: const Icon(Icons.print_rounded), label: Text('View / Print')),
+          if (s.admin && !off && !billed) OutlinedButton.icon(key: Key('dnc-${n['id']}'), style: kSmallBtn, onPressed: () => _cancel(n), icon: const Icon(Icons.block_rounded, color: C.red), label: Text('Cancel')),
         ]),
       ]),
     );
@@ -315,8 +315,8 @@ class _DriveScreenState extends State<DriveScreen> {
         ]),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          OutlinedButton.icon(key: Key('dnbv-${b['id']}'), onPressed: () => viewBillDebitNote(context, s, '${b['id']}'), icon: const Icon(Icons.print_rounded), label: Text('View / Print')),
-          OutlinedButton.icon(key: Key('dnbb-${b['id']}'), onPressed: () => viewSavedBill(context, s, '${b['id']}'), icon: const Icon(Icons.receipt_long_rounded), label: Text('Bill')),
+          OutlinedButton.icon(key: Key('dnbv-${b['id']}'), style: kSmallBtn, onPressed: () => viewBillDebitNote(context, s, '${b['id']}'), icon: const Icon(Icons.print_rounded), label: Text('View / Print')),
+          OutlinedButton.icon(key: Key('dnbb-${b['id']}'), style: kSmallBtn, onPressed: () => viewSavedBill(context, s, '${b['id']}'), icon: const Icon(Icons.receipt_long_rounded), label: Text('Bill')),
         ]),
       ]),
     );
@@ -493,7 +493,7 @@ class _DebitNoteScreenState extends State<DebitNoteScreen> {
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
           FilledButton.icon(key: const Key('dn-fetch'), onPressed: busy ? null : _fetch, icon: const Icon(Icons.download_rounded), label: Text('Get Log Book entries')),
-          OutlinedButton(key: const Key('dn-clear'), onPressed: busy ? null : _clear, child: Text('Clear')),
+          OutlinedButton(key: const Key('dn-clear'), style: kSmallBtn, onPressed: busy ? null : _clear, child: Text('Clear')),
         ]),
         const SizedBox(height: 12),
         if (lines.isEmpty) Padding(padding: const EdgeInsets.all(16), child: Text('No lines yet – pick the party and the dates and press "Get Log Book entries", or add a line by hand.', textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
