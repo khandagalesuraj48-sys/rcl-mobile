@@ -42,10 +42,16 @@ class Machine {
   bool get active => status != 'Inactive';
   /// (15-10-2026, update-115) On the site on [dk] (yyyy-mm-dd): from its "Active From" until the day BEFORE its "Inactive
   /// From" – the same rule as the server's check of an entry. From that date it is not offered where an entry is made.
+  /// (3.1.12, Mechanical update-119) A machinery may be on a site several times: its EARLIER periods (it left and came back –
+  /// Mechanical's "earlier": [{from, until}], until = the first day away) count too.
   bool onSite(String dk) {
     String d(String k) { final v = '${m[k] ?? ''}'; return v.length >= 10 ? v.substring(0, 10) : v; }
     final af = d('activeFrom'), inf = d('inactiveFrom');
     if (dk.isEmpty) return active;
+    for (final p in (m['earlier'] as List? ?? const []).whereType<Map>()) {
+      final f = '${p['from'] ?? ''}', u = '${p['until'] ?? ''}';
+      if (u.isNotEmpty && (f.isEmpty || f.compareTo(dk) <= 0) && dk.compareTo(u) < 0) return true;
+    }
     if (af.isNotEmpty && af.compareTo(dk) > 0) return false;
     if (status == 'Inactive' && (inf.isEmpty || inf.compareTo(dk) <= 0)) return false;
     return true;
