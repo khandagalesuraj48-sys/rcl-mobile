@@ -10,6 +10,7 @@ import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'entry_more.dart';
 import 'forms.dart';
 import 'logbook.dart';
 import '../ui/t.dart';
@@ -182,6 +183,23 @@ class _EntriesTabState extends State<EntriesTab> {
     if (await newEntry(context, kindOf(kind))) _load();
   }
 
+  /// (3.11.0) The rest of the web's page: all dates & Export, multiple entries, Import from Excel, Download template.
+  Future<void> _more(String v) async {
+    final k = kindOf(kind);
+    switch (v) {
+      case 'find':
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EntryFindScreen(kind: k)));
+      case 'many':
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => k.key == 'issue' ? const IssueManyScreen() : const TransferManyScreen()));
+      case 'import':
+        await importEntries(context, k);
+      case 'template':
+        await downloadTemplate(context, k);
+        return;
+    }
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
@@ -225,6 +243,18 @@ class _EntriesTabState extends State<EntriesTab> {
                     style: IconButton.styleFrom(backgroundColor: C.greenSoft, foregroundColor: C.greenDark, fixedSize: const Size(50, 50)),
                     onPressed: _pickDate,
                     icon: const Icon(Icons.calendar_month_rounded),
+                  ),
+                  PopupMenuButton<String>(
+                    key: const Key('en-more'),
+                    tooltip: tr('More'),
+                    icon: const Icon(Icons.more_vert_rounded),
+                    onSelected: _more,
+                    itemBuilder: (_) => [
+                      PopupMenuItem(key: const Key('en-find'), value: 'find', child: Text('All dates & Export')),
+                      if (s.canEdit(k.module) && k.key != 'inward') PopupMenuItem(key: const Key('en-many'), value: 'many', child: Text('Multiple entries')),
+                      if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-import'), value: 'import', child: Text('Import from Excel')),
+                      if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-template'), value: 'template', child: Text('Download template')),
+                    ],
                   ),
                 ]),
               ),
@@ -321,9 +351,12 @@ class _EntriesTabState extends State<EntriesTab> {
 
 /// One entry as a card (picture 2).
 class EntryCard extends StatelessWidget {
-  const EntryCard({super.key, required this.kind, required this.r, this.onChanged});
+  const EntryCard({super.key, required this.kind, required this.r, this.onChanged, this.note = ''});
   final Kind kind;
   final Map<String, dynamic> r;
+
+  /// (3.11.0) a small line under the litres (the list of all dates: the date, its % of the total)
+  final String note;
 
   /// After a change or a delete (the list loads again).
   final VoidCallback? onChanged;
@@ -381,6 +414,7 @@ class EntryCard extends StatelessWidget {
             const SizedBox(height: 8),
             if ('${r['shift'] ?? ''}'.isNotEmpty) Text('${r['shift']} shift', style: const TextStyle(fontSize: 12.5, color: C.muted)),
             if (kind.key == 'inward' && asNum(r['amount']) != null) Text('₹ ${fmtNum(asNum(r['amount']))}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+            if (note.isNotEmpty) Text(note, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
           ]),
         ]),
       );

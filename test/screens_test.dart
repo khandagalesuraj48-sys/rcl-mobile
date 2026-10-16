@@ -2,6 +2,7 @@
  * The tests tagged "golden" also make pictures of the screens (test/goldens/) – for looking at, in the build's files. */
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,8 +11,11 @@ import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/lang.dart';
 import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
 import 'package:rcl_mobile/core/session.dart';
+import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm;
+import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
+import 'package:rcl_mobile/ui/pick_file.dart';
 import 'package:rcl_mobile/web/web_host.dart';
 
 import 'fake_server.dart';
@@ -1438,5 +1442,201 @@ void main() {
     expect([for (final x in saves) x['confirm']], [[], ['ITM-0002']]);
     expect((saves.last['item'] as Map)['name'], 'Sugaar');
     expect(find.text('4 of 4 items'), findsOneWidget, reason: 'the list read again');
+  }, tags: ['golden']);
+
+  // (3.11.0) the files made (Excel) are read back here; a file "picked" from the phone
+  List<(String, Uint8List)> catchFiles() {
+    final files = <(String, Uint8List)>[];
+    fileSink = (b, n, m) async => files.add((n, b));
+    addTearDown(() => fileSink = null);
+    return files;
+  }
+
+  void pickThis(String name, List<int> bytes) {
+    final orig = pickSheetFile;
+    pickSheetFile = () async => (name: name, bytes: Uint8List.fromList(bytes));
+    addTearDown(() => pickSheetFile = orig);
+  }
+
+  Future<void> more(WidgetTester t, String item) async {
+    await t.tap(find.byKey(const Key('en-more')));
+    await settle(t, 600);
+    await t.tap(find.byKey(Key(item)));
+    await net(t);
+  }
+
+  testWidgets('(3.11.0) Diesel Issue ⋮: Import from Excel – each row checked (Fix the file first / Import N rows) → importDiesel; the template; All dates & Export', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    final files = catchFiles();
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    // a file whose machinery is not in this site's Master: nothing can be imported
+    pickThis('diesel_issue.xlsx', File('test/fixtures/sheets/diesel_issue.xlsx').readAsBytesSync());
+    await more(t, 'en-import');
+    expect(find.text('Fix the file first'), findsOneWidget);
+    expect(find.textContaining('rows have a problem (marked ✗). Nothing was imported.'), findsOneWidget);
+    expect(find.textContaining('machinery not in Master'), findsWidgets);
+    await t.tap(find.byKey(const Key('imp-ok')));
+    await net(t);
+    expect(srv.importSent, isEmpty);
+    // a good CSV: by number / name in other letters, the place in small letters, "1,250"
+    pickThis('issues.csv', utf8.encode('Date,Shift,Diesel Source,Machinery Number / Name,Diesel Qty (Ltr),Hrs Reading\n14-10-2026,Day,dispenser,sany 210 (no.1),60,4712\n13-10-2026,night,VTR Store,MH-25-AJ-2169,"1,250",\n'));
+    await more(t, 'en-import');
+    expect(find.text('Import 2 diesel issues?'), findsOneWidget);
+    expect(find.textContaining('Total 1,310 Ltr.'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/34_import_check.png'));
+    await t.tap(find.byKey(const Key('imp-go')));
+    await net(t);
+    final sent = srv.importSent.single;
+    expect(sent['fn'], 'importDiesel');
+    expect(sent['rows'], [
+      {'line': '2', 'date': '2026-10-14', 'shift': 'Day', 'source': 'Dispenser', 'no': 'Sany 210 (No.1)', 'qty': 60, 'kmReading': '', 'hrReading': 4712, 'driver': '', 'remark': ''},
+      {'line': '3', 'date': '2026-10-13', 'shift': 'Night', 'source': 'VTR Store', 'no': 'MH-25-AJ-2169', 'qty': 1250, 'kmReading': '', 'hrReading': '', 'driver': '', 'remark': ''},
+    ]);
+    expect(find.text('2 diesel issues imported (1,310 Ltr).'), findsOneWidget);
+    // the template: the web's headings, a machinery on site today
+    await more(t, 'en-template');
+    expect(files.last.$1, 'Diesel Issue – import template.xlsx');
+    final tpl = readSheets(files.last.$2).single;
+    expect(tpl.name, 'Diesel Issue');
+    expect(tpl.rows.first, ['Date', 'Shift', 'Diesel Source', 'Machinery Number / Name', 'Diesel Qty (Ltr)', 'KM Reading', 'Hrs Reading', 'Driver Name', 'Remark']);
+    expect(tpl.rows[1].take(3), ['14-10-2026', 'Day', 'Dispenser']);
+    expect(tpl.rows[1][3], isIn(['Sany 210 (No.1)', 'MH-25-AJ-2169']));
+    expect(tpl.rows[1][4], 60);
+    // all dates: the web's filter; Today; the % of the total; % by machinery; Export – the web's file
+    await more(t, 'en-find');
+    expect(srv.listAsked.last, {'fn': 'getDieselIssues', 'from': '', 'to': '', 'no': '', 'shift': '', 'source': '', 'owner': '', 'driver': '', 'q': ''});
+    expect(find.text('Entries: 4   Total diesel: 240 Ltr'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ef-r-today')));
+    await net(t);
+    expect(srv.listAsked.last['from'], '2026-10-14');
+    expect(srv.listAsked.last['to'], '2026-10-14');
+    expect(find.textContaining('25% of total'), findsOneWidget, reason: '60 of 240');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/35_entry_find.png'));
+    await tapK(t, 'ef-share');
+    await settle(t, 500);
+    expect(find.text('Sany 210 (No.1)'), findsWidgets);
+    expect(find.text('80 Ltr · 33.33%'), findsWidgets);
+    await tapK(t, 'ef-export');
+    await net(t);
+    expect(srv.listAsked.last['all'], true);
+    expect(files.last.$1, 'Diesel Issue 14-10-2026 to 14-10-2026.xlsx');
+    final ex = readSheets(files.last.$2).single.rows;
+    expect(ex[2].first, 'Diesel Issue – 14-10-2026 to 14-10-2026');
+    expect(ex[4].take(5), ['Issue ID', 'Date', 'Shift', 'Diesel Source', 'Machinery Number']);
+    expect([for (final r in ex.sublist(5, 9)) r.first], ['DI-000520', 'DI-000521', 'DI-000522', 'DI-000525'], reason: 'oldest first, as the web');
+    expect(ex.last.first, 'Total');
+    expect(ex.last[8], 240);
+    expect(find.text('4 diesel issues exported.'), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.11.0) Multiple entries: Transfer rows → saveTransferBulk; Diesel one date – many machinery (a warning: Save all anyway); one machinery – many dates', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms['Diesel Transfer'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Transfer')));
+    await net(t);
+    await more(t, 'en-many');
+    expect(find.byKey(const Key('tm-row-1')), findsOneWidget, reason: 'two rows to start');
+    await t.enterText(box('tm-qty-0'), '500');
+    await t.enterText(box('tm-qty-1'), '300');
+    await t.enterText(box('tm-remark-1'), 'For night work');
+    await settle(t, 300);
+    expect(find.text('Rows: 2  Qty: 800 Ltr'), findsOneWidget);
+    await tapK(t, 'tm-add');
+    await settle(t, 300);
+    expect(find.byKey(const Key('tm-row-2')), findsOneWidget);
+    await tapK(t, 'tm-save');
+    await settle(t, 600);
+    expect(find.text('Save 2 transfers?'), findsOneWidget);
+    await t.tap(find.text('Save 2 transfers'));
+    await net(t);
+    expect(srv.importSent.single, {
+      'fn': 'saveTransferBulk',
+      'rows': [
+        {'line': 1, 'date': '2026-10-14', 'shift': 'Day', 'from': 'Dispenser', 'to': 'VTR Store', 'qty': 500, 'remark': ''},
+        {'line': 2, 'date': '2026-10-14', 'shift': 'Day', 'from': 'Dispenser', 'to': 'VTR Store', 'qty': 300, 'remark': 'For night work'},
+      ],
+    });
+    expect(find.text('2 transfers saved (800 Ltr).'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // Diesel Issue – one date, many machinery
+    await t.tap(find.byTooltip('All entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await more(t, 'en-many');
+    expect(find.textContaining('Dispenser stock on this date: 813 Ltr'), findsOneWidget);
+    await tapK(t, 'im-row-0-pick');
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)').last);
+    await settle(t, 600);
+    await t.enterText(box('im-row-0-qty'), '60');
+    await t.enterText(box('im-row-0-hr'), '1');
+    await settle(t, 300);
+    expect(find.text('753 Ltr'), findsOneWidget, reason: 'the stock after this row');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/36_issue_many.png'));
+    await tapK(t, 'im-save');
+    await net(t);
+    expect(find.text('Please check these rows'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    final bulk = [for (final x in srv.importSent.where((x) => x['fn'] == 'saveDieselBulk')) x['b'] as Map];
+    expect([for (final b in bulk) b['force']], [false, true]);
+    expect(bulk.first['rows'], [
+      {'no': 'Sany 210 (No.1)', 'qty': '60', 'kmReading': '', 'hrReading': '1', 'driver': '', 'remark': '', 'mode': 'Hrs'},
+      {'no': '', 'qty': '', 'kmReading': '', 'hrReading': '', 'driver': '', 'remark': '', 'mode': ''},
+    ], reason: 'as the web: every row, the typed text');
+    expect([bulk.first['date'], bulk.first['shift'], bulk.first['source']], ['2026-10-14', 'Day', 'Dispenser']);
+    expect(find.text('1 diesel issues saved (DI-000527 to DI-000527).'), findsOneWidget);
+    // one machinery, many dates: the next row is the next day; the KM its meter gives
+    await tapK(t, 'im-t-mach');
+    await settle(t, 500);
+    await tapK(t, 'im-mach');
+    await settle(t, 800);
+    await t.tap(find.text('MH-25-AJ-2169').last);
+    await settle(t, 600);
+    await tapK(t, 'im-mrow-0-date');
+    await settle(t, 600);
+    await t.tap(find.text('13').last);
+    await settle(t, 300);
+    await t.tap(find.text('OK'));
+    await settle(t, 600);
+    await t.enterText(box('im-mrow-0-qty'), '50');
+    await t.enterText(box('im-mrow-0-km'), '15130');
+    await tapK(t, 'im-madd');
+    await net(t);
+    await t.enterText(box('im-mrow-1-qty'), '40');
+    await t.enterText(box('im-mrow-1-km'), '15200');
+    await settle(t, 300);
+    expect(find.text('Rows: 2  Diesel: 90 Ltr'), findsOneWidget);
+    await tapK(t, 'im-madd');
+    await settle(t, 400);
+    expect(find.text('Diesel can be entered only up to today (14-10-2026).'), findsOneWidget);
+    await tapK(t, 'im-msave');
+    await settle(t, 600);
+    expect(find.text('Save 2 diesel issues of MH-25-AJ-2169?'), findsOneWidget);
+    await t.tap(find.text('Save 2 entries'));
+    await net(t);
+    final imp = srv.importSent.lastWhere((x) => x['fn'] == 'importDiesel');
+    expect(imp['rows'], [
+      {'line': 1, 'date': '2026-10-13', 'shift': 'Day', 'source': 'Dispenser', 'no': 'MH-25-AJ-2169', 'qty': 50, 'kmReading': 15130, 'hrReading': '', 'driver': '', 'remark': ''},
+      {'line': 2, 'date': '2026-10-14', 'shift': 'Day', 'source': 'Dispenser', 'no': 'MH-25-AJ-2169', 'qty': 40, 'kmReading': 15200, 'hrReading': '', 'driver': '', 'remark': ''},
+    ]);
+    expect(find.text('2 diesel issues saved for MH-25-AJ-2169 (90 Ltr).'), findsOneWidget);
   }, tags: ['golden']);
 }

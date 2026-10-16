@@ -23,8 +23,12 @@ import 'theme.dart';
 /// The lines on top of every sheet: the company, the site, the title, the dates.
 List<String> sheetTop(Session s, RDoc d, [String? head]) => [head ?? s.printNames.first, if (s.siteLabel.isNotEmpty) s.siteLabel, d.title, if (d.period.isNotEmpty) d.period];
 
+/// (3.11.0) Where a made file goes instead of the phone's sharing (a test reads it back) – null: the phone's sharing.
+Future<void> Function(Uint8List bytes, String name, String mime)? fileSink;
+
 /// An .xlsx to the phone's sharing.
 Future<void> shareXlsx(Uint8List bytes, String fileName) async {
+  if (fileSink != null) return fileSink!(bytes, fileName.endsWith('.xlsx') ? fileName : '$fileName.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   final dir = Directory('${(await getTemporaryDirectory()).path}/rcl_files');
   await dir.create(recursive: true);
   final name = safeFileName(fileName.endsWith('.xlsx') ? fileName : '$fileName.xlsx');
@@ -35,6 +39,7 @@ Future<void> shareXlsx(Uint8List bytes, String fileName) async {
 
 /// (3.9.0) Any file to the phone's sharing (a .csv list …).
 Future<void> shareFile(Uint8List bytes, String fileName, String mime) async {
+  if (fileSink != null) return fileSink!(bytes, fileName, mime);
   final dir = Directory('${(await getTemporaryDirectory()).path}/rcl_files');
   await dir.create(recursive: true);
   final name = safeFileName(fileName);

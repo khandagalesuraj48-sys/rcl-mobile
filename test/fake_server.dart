@@ -119,6 +119,9 @@ class FakeServer {
   // diesel above the standard), the saved bills, notes, payments, ledger; what was sent
   bool billing = false;
   static Object? _arg(List a, String k) => a.isNotEmpty && a[0] is Map ? (a[0] as Map)[k] : null;
+  // (3.11.0) the imports and the multiple entries of the diesel pages: what was sent, the lists' filters asked
+  final importSent = <Map<String, dynamic>>[];
+  final listAsked = <Map<String, dynamic>>[];
   final billSent = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get _billRows => [
         for (var d = 1; d <= 6; d++)
@@ -528,7 +531,24 @@ class FakeServer {
           tankChecks.removeWhere((x) => x['id'] == a[0]);
           return _j({'result': {'ok': true}});
         case 'getDieselIssues':
-          return _j({'result': {'count': issues.length, 'totalQty': 240, 'rows': issues}});
+          if (a.isNotEmpty && a[0] is Map) listAsked.add({'fn': action, ...(a[0] as Map).cast<String, dynamic>()});
+          return _j({'result': {'count': issues.length, 'totalQty': 240, 'rows': issues, 'share': [
+            for (final i in issues) {'no': i['no'], 'type': i['type'], 'owner': '', 'entries': 1, 'qty': i['qty']},
+          ]}});
+        case 'importInward' || 'importDiesel' || 'saveTransferBulk':
+          final rows = [for (final r in a[0] as List) (r as Map).cast<String, dynamic>()];
+          importSent.add({'fn': action, 'rows': rows});
+          final no = rows.where((r) => r['remark'] == 'server says no').toList();
+          if (no.isNotEmpty) return _j({'result': {'ok': false, 'errors': [for (final r in no) {'row': r['line'], 'msg': 'The server refused this row.'}]}});
+          return _j({'result': {'ok': true, 'count': rows.length, 'qty': rows.fold<num>(0, (x, r) => x + (r['qty'] as num)), 'stock': stock}});
+        case 'saveDieselBulk':
+          final b = (a[0] as Map).cast<String, dynamic>();
+          importSent.add({'fn': action, 'b': b});
+          final rows = [for (final r in b['rows'] as List) (r as Map).cast<String, dynamic>()];
+          if (b['force'] != true && rows.any((r) => r['hrReading'] == '1')) return _j({'result': {'warnings': [{'row': 1, 'msg': 'The Hrs reading 1 is lower than the last one (4,700).'}]}});
+          return _j({'result': {'ok': true, 'count': rows.where((r) => '${r['no']}'.isNotEmpty).length, 'firstId': 'DI-000527', 'lastId': 'DI-000527'}});
+        case 'getStockPoints':
+          return _j({'result': [for (final _ in a[0] as List) {'balance': 813, 'available': 813}]});
         case 'getInwards':
           return _j({'result': {'count': 1, 'qty': 500, 'stock': stock, 'rows': [{'id': 'IN-000050', 'date': '2026-10-14', 'qty': 500, 'pump': 'IOC Bunk', 'rate': 90, 'amount': 45000, 'billNo': 'B-1', 'billDate': '2026-10-14', 'location': 'VTR Store', 'ph': 2}]}});
         case 'getInwardPhotos': // (3.1.13, update-120) the bill copies of an inward
@@ -543,6 +563,7 @@ class FakeServer {
           saved.add({'update': a[0], ...(a[1] as Map).cast<String, dynamic>()});
           return _j({'result': {'ok': true, 'id': a[0], 'stock': stock}});
         case 'getTransfers':
+          if (a.isNotEmpty && a[0] is Map) listAsked.add({'fn': action, ...(a[0] as Map).cast<String, dynamic>()});
           return _j({'result': {'count': 0, 'qty': 0, 'rows': []}});
         // (3.9.0) Administration
         case 'usersAdmin':
