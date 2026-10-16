@@ -736,11 +736,14 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
             Text(v, style: TextStyle(fontSize: strong ? 17 : 14.5, fontWeight: strong ? FontWeight.w800 : FontWeight.w700, color: color ?? C.ink)),
           ]),
         );
-    return Container(
+    return Padding(
       key: Key('mb-bill-$i'),
-      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: warns.isEmpty ? C.line : C.amber)),
+      child: Padding(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: warns.isEmpty ? C.line : C.amber)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
@@ -879,6 +882,8 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
           OutlinedButton.icon(key: Key('mb-lb-$i'), onPressed: () => _logPrint([b]), icon: const Icon(Icons.menu_book_rounded), label: Text('Log Book')),
         ]),
       ]),
+      ),
+      ),
     );
   }
 
