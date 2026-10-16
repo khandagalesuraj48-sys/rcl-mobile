@@ -521,7 +521,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
                     Expanded(
                       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                         if (e != null && c != null) ...[
-                          Text(c.sum, key: const Key('lx-sum'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(c.sum, key: const Key('lx-sum'), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.25)),
                           if (c.badSay.isNotEmpty) Text(c.badSay, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.red, height: 1.25)),
                         ],
                         if (l != null) Text(l.dirty ? 'Not saved yet' : 'No changes yet', key: const Key('lt-sum'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -647,7 +647,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
       if (e.nextText.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 10), child: Text(e.nextText, style: const TextStyle(fontSize: 13, height: 1.35))),
       if (can)
         Wrap(spacing: 8, runSpacing: 8, children: [
-          OutlinedButton.icon(key: const Key('lx-add-b'), onPressed: _addRow, icon: const Icon(Icons.add_rounded), label: Text('+ Add row')),
+          OutlinedButton(key: const Key('lx-add-b'), onPressed: _addRow, child: Text('+ Add row')),
           OutlinedButton.icon(key: const Key('lx-fill-b'), onPressed: _fill, icon: const Icon(Icons.playlist_add_rounded), label: Text('Add all missing dates')),
           OutlinedButton.icon(key: const Key('lx-print-b'), onPressed: _print, icon: const Icon(Icons.print_rounded), label: Text('Print Log Book')),
         ])
@@ -1043,7 +1043,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
           ]),
         ),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          if (can) OutlinedButton.icon(key: const Key('lt-add'), onPressed: () => setState(() => l.add()), icon: const Icon(Icons.add_rounded), label: Text('+ Add row')),
+          if (can) OutlinedButton(key: const Key('lt-add'), onPressed: () => setState(() => l.add()), child: Text('+ Add row')),
           OutlinedButton.icon(key: const Key('lt-export-b'), onPressed: _ltExport, icon: const Icon(Icons.table_view_rounded), label: Text('Export Excel')),
           OutlinedButton.icon(key: const Key('lx-print-b'), onPressed: _print, icon: const Icon(Icons.print_rounded), label: Text('Print Log Book')),
         ]),
