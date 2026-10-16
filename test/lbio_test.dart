@@ -128,7 +128,7 @@ void main() {
     final tabs = readSheets(sheetsXlsx(t.sheets));
     expect(tabs.map((x) => x.name), ['Log Book', 'Lists']);
     expect(tabs.first.rows.first.take(4), ['Date', 'Shift', 'Machinery', 'Measured by']);
-    expect(tabs.first.rows[1][4], 1260, reason: 'a number stays a number');
+    expect(tabs.first.rows[1][5], 1260, reason: 'a number stays a number (Close KM)');
     final e = maps(fx['exports']).firstWhere((e) => e['case'] == 'kmhr_monthly' && e['kind'] == 'date' && e['no'] == '');
     final c = (fx['cases'] as Map)['kmhr_monthly'] as Map;
     final x = lbExport(kind: 'date', f: lbExportFilter(from: '${c['from']}', to: '${c['to']}', no: '', picked: null), picked: null, rows0: maps(c['rows']), itemBoq: const {}, master: maps(c['master']), today: '${c['today']}', company: 'Rachana Construction Limited', site: 'VTR Site – NH 848');

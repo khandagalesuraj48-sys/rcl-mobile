@@ -671,6 +671,28 @@ class FakeServer {
           return _j({'result': {..._tankerRange('${(a[0] as Map)['from']}', '${(a[0] as Map)['to']}', (a[0] as Map)['trips'] as List), 'ok': true, 'changed': 1, 'added': 1, 'removed': 0}});
         case 'logPrintExtra':
           return _j({'result': {'debit': {}, 'boq': {}, 'issues': {}, 'avgRate': 90, 'lastRate': 92}});
+        // (3.12.0) Log Book – all dates (the web's list filter has "ownership"), the import
+        case 'getLogBookList' when ((a.isNotEmpty ? a[0] : null) as Map?)?.containsKey('ownership') == true:
+          listAsked.add({'fn': action, ...(a[0] as Map).cast<String, dynamic>()});
+          return _j({'result': {'count': 3, 'rows': [
+            {'date': '2026-10-14', 'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'owner': 'RCL', 'shift': 'Full Day', 'unit': 'Hrs', 'mode': 'Hrs', 'ohr': 4692, 'chr': 4700, 'whr': 8, 'wkm': '', 'okm': '', 'ckm': '', 'qty': 60, 'work': 'Excavation', 'chFrom': '12+000', 'chTo': '12+300', 'key': 'Sany 210 (No.1)|2026-10-14|Full Day'},
+            {'date': '2026-10-14', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'shift': 'Full Day', 'unit': 'KM', 'mode': 'KM', 'okm': 15100, 'ckm': 15230, 'wkm': 130, 'whr': '', 'ohr': '', 'chr': '', 'qty': 80, 'work': 'Earth carting', 'key': 'MH-25-AJ-2169|2026-10-14|Full Day'},
+            {'date': '2026-10-13', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'shift': 'Full Day', 'unit': 'KM', 'mode': 'KM', 'okm': 14970, 'ckm': 15100, 'wkm': 130, 'whr': '', 'ohr': '', 'chr': '', 'qty': 0, 'work': 'Earth carting', 'key': 'MH-25-AJ-2169|2026-10-13|Full Day'},
+          ], 'totals': {'machines': 2, 'km': 260, 'hr': 8, 'issued': 140, 'consumed': 186.29}, 'summary': [
+            {'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'unit': 'KM', 'days': 2, 'okm': 14970, 'ckm': 15230, 'ohr': '', 'chr': '', 'firstDate': '2026-10-13', 'lastDate': '2026-10-14', 'km': 260, 'hr': 0, 'issued': 80, 'consumed': 74.29, 'diff': 5.71, 'average': '3.25 km/L', 'kmStd': 3.5, 'hrStd': ''},
+            {'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'unit': 'Hrs', 'days': 1, 'okm': '', 'ckm': '', 'ohr': 4692, 'chr': 4700, 'firstDate': '2026-10-14', 'lastDate': '2026-10-14', 'km': 0, 'hr': 8, 'issued': 60, 'consumed': 112, 'diff': -52, 'average': '7.5 L/hr', 'kmStd': '', 'hrStd': 14},
+          ], 'itemBoq': {}}});
+        case 'checkLogImport':
+          importSent.add({'fn': action, 'x': a[0]});
+          final rs = [for (final r in (a[0] as Map)['rows'] as List) (r as Map).cast<String, dynamic>()];
+          return _j({'result': {'ok': true, 'errors': [], 'fresh': rs.length - 1, 'same': 0, 'changed': [
+            {'line': rs.last['line'], 'no': rs.last['no'], 'date': rs.last['date'], 'shift': rs.last['shift'], 'diffs': [{'f': 'Close Hrs', 'from': 4700, 'to': rs.last['closingHr']}]},
+          ]}});
+        case 'importLogBook':
+          importSent.add({'fn': action, 'x': a[0]});
+          final rs = (a[0] as Map)['rows'] as List;
+          final ow = (a[0] as Map)['overwrite'] == true;
+          return _j({'result': {'ok': true, 'added': rs.length - 1, 'overwritten': ow ? 1 : 0, 'same': 0, 'changed': ow ? [] : [{}]}});
         case 'getLogBookList':
           return _j({'result': {'count': 6, 'rows': [
             {'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'owner': 'RCL', 'shift': 'Full Day', 'mode': 'Hrs', 'ohr': 4692, 'chr': 4700, 'whr': 8, 'qty': 60, 'work': 'Excavation', 'chFrom': '12+000', 'chTo': '12+300', 'key': 'Sany 210 (No.1)|2026-10-14|Full Day'},

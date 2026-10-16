@@ -1665,4 +1665,68 @@ void main() {
     ]);
     expect(find.text('2 diesel issues saved for MH-25-AJ-2169 (90 Ltr).'), findsOneWidget);
   }, tags: ['golden']);
+
+  testWidgets('(3.12.0) Log Book ⋮: All dates – the web\'s filter, the totals, the period total; Export date-wise read back; Import from Excel – a changed entry overwritten', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    final files = catchFiles();
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Log Book')));
+    await net(t);
+    await t.tap(find.byKey(const Key('lb-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('lb-find')));
+    await net(t);
+    expect(srv.listAsked.last, {'fn': 'getLogBookList', 'from': '2026-10-13', 'to': '2026-10-14', 'no': '', 'shift': '', 'ownership': '', 'type': '', 'owner': '', 'q': ''},
+        reason: 'the last 2 days, as the web opens its list');
+    expect(find.text('Entries: 3   Machinery: 2   KM: 260   Hrs: 8   Issued: 140 L   Consumed: 186.29 L'), findsOneWidget);
+    expect(find.textContaining('Period total – machinery-wise (13-10-2026 to 14-10-2026)'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/37_log_find.png'));
+    await reach(t, 'lf-exp-date', 'lf-list');
+    await tapK(t, 'lf-exp-date');
+    await net(t);
+    expect(srv.listAsked.last['all'], true);
+    expect(srv.listAsked.last['own'], '');
+    expect(files.last.$1, 'Log Book date-wise 13-10-2026 to 14-10-2026.xlsx');
+    final tab = readSheets(files.last.$2).single;
+    expect(tab.name, 'Date-wise');
+    expect(tab.rows[2].first, 'Log Book – date-wise – 13-10-2026 to 14-10-2026');
+    expect(tab.rows[4].take(5), ['Date', 'Shift', 'Machinery', 'Type', 'Measured by']);
+    expect(tab.rows[5].take(5), ['13-10-2026', 'Full Day', 'MH-25-AJ-2169', 'Tipper', 'KM']);
+    expect(tab.rows[6].take(3), ['13-10-2026', 'Full Day', 'Sany 210 (No.1)'], reason: 'a date without its entry: blank to fill');
+    expect(tab.rows.last.first, 'Total – 3 entries');
+    expect(find.text('4 Log Book rows exported.'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // Import from Excel: a blank row left out; the server says one entry is already there, different – overwrite
+    pickThis('log.csv', utf8.encode('Date,Shift,Machinery,Measured by,Close KM,Close Hrs,Work Done\n13-10-2026,Full Day,MH-25-AJ-2169,km,15100,,Carting\n14-10-2026,,sany 210 (no.1),,,4712,Excavation\n15-10-2026,,MH-25-AJ-2169,,,,\n'));
+    await t.tap(find.byKey(const Key('lb-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('lb-import')));
+    await net(t);
+    expect(find.text('Import into the Log Book'), findsOneWidget);
+    expect(find.byKey(const Key('li-row-1')), findsOneWidget);
+    await tapK(t, 'li-go');
+    await net(t);
+    expect(find.text('1 entry is already in the Log Book – but different'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    expect(find.text('Import into the Log Book?'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    final chk = srv.importSent.firstWhere((x) => x['fn'] == 'checkLogImport')['x'] as Map;
+    expect((chk['rows'] as List).first, {
+      'line': '2', 'date': '2026-10-13', 'shift': 'Full Day', 'no': 'MH-25-AJ-2169', 'unit': 'KM', 'mode': 'KM', 'tStart': '', 'tEnd': '', 'tBreak': '', 'trip': '', 'challan': '',
+      'openingKm': '', 'closingKm': 15100, 'openingHr': '', 'closingHr': '', 'openingDiesel': '', 'chFrom': '', 'chTo': '', 'work': 'Carting', 'driver': '', 'remark': '', 'debitTo': '', 'debitRate': '', 'needWork': false,
+    });
+    final imp = srv.importSent.lastWhere((x) => x['fn'] == 'importLogBook')['x'] as Map;
+    expect(imp['overwrite'], true);
+    expect([for (final r in imp['rows'] as List) (r as Map)['no']], ['MH-25-AJ-2169', 'Sany 210 (No.1)']);
+    expect(find.text('Log Book: 1 added, 1 overwritten, 0 skipped.'), findsOneWidget);
+  }, tags: ['golden']);
 }
