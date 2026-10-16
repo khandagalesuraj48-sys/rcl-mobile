@@ -1,7 +1,7 @@
 /* ASK – THE ASSISTANT (3.15.0), the web's "Ask" panel in the app's own screen: the conversation, the ⚡ questions the app answers
  * itself, a prepared entry with Save / Open in the form / Cancel, "check the reading – Save anyway", the page buttons of an answer
  * (each opens the app's own screen for that page), "New chat", the Admin's "Test the AI service", the daily summary once a day
- * (a red dot on Home's "Ask the app"). The working is the web's own (core/assistant.dart, core/ai_chat.dart); nothing is saved without
+ * (a red dot on Home's "Ask"). The working is the web's own (core/assistant.dart, core/ai_chat.dart); nothing is saved without
  * his Save. Opened from Home (the web's Dashboard). */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as mt show Text;

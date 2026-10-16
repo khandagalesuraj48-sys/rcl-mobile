@@ -256,25 +256,59 @@ class _HomeTabState extends State<HomeTab> {
                   _RoundBtn(icon: Icons.refresh_rounded, tip: 'Refresh', onTap: () => _load(init: true)),
                 ]),
                 const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: _site,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(.18)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.location_on_rounded, color: C.green, size: 26),
-                      const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 190),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                          Text(s.sites.length > 1 ? bi('Tap to change', 'साइट बदला') : (s.site?.code ?? ''), style: const TextStyle(fontSize: 12, color: C.green, fontWeight: FontWeight.w500)),
+                Row(children: [
+                  Flexible(
+                    child: GestureDetector(
+                      onTap: _site,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(.18)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.location_on_rounded, color: C.green, size: 26),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 190),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                Text(s.sites.length > 1 ? bi('Tap to change', 'साइट बदला') : (s.site?.code ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.green, fontWeight: FontWeight.w500)),
+                              ]),
+                            ),
+                          ),
+                          if (s.sites.length > 1) const Icon(Icons.keyboard_arrow_down_rounded),
                         ]),
                       ),
-                      if (s.sites.length > 1) const Icon(Icons.keyboard_arrow_down_rounded),
-                    ]),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  // (3.15.0) the assistant – the web's "Ask"; a red dot when the daily summary waits (once a day)
+                  ValueListenableBuilder<bool>(
+                    valueListenable: s.briefDue,
+                    builder: (_, due, __) => Badge(
+                      isLabelVisible: due,
+                      smallSize: 13,
+                      backgroundColor: C.brandRed,
+                      child: Material(
+                        color: C.greenDeep,
+                        shape: const StadiumBorder(),
+                        elevation: 3,
+                        child: InkWell(
+                          key: const Key('home-ask'),
+                          customBorder: const StadiumBorder(),
+                          onTap: () => openAssistant(context, entries: widget.onOpenEntries),
+                          child: const Padding(
+                            padding: EdgeInsets.fromLTRB(12, 11, 16, 11),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD54F), size: 22),
+                              SizedBox(width: 6),
+                              Text('Ask', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ]),
               ]),
             ),
           ),
@@ -312,32 +346,6 @@ class _HomeTabState extends State<HomeTab> {
                     Row(children: [for (final (i, t) in tiles.indexed) ...[if (i > 0) const SizedBox(width: 8), Expanded(child: t)]])
                   else
                     SizedBox(height: 132, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: tiles.length, separatorBuilder: (_, __) => const SizedBox(width: 8), itemBuilder: (_, i) => SizedBox(width: 92, child: tiles[i]))),
-                ]),
-              ),
-            ),
-          ),
-          // (3.15.0) the assistant – the web's "Ask": a red dot when the daily summary waits (once a day)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-            child: ValueListenableBuilder<bool>(
-              valueListenable: s.briefDue,
-              builder: (_, due, __) => Press(
-                key: const Key('home-ask'),
-                onTap: () => openAssistant(context, entries: widget.onOpenEntries),
-                color: C.greenDeep,
-                border: C.greenDeep,
-                padding: const EdgeInsets.fromLTRB(16, 13, 14, 13),
-                child: Row(children: [
-                  Badge(isLabelVisible: due, smallSize: 12, backgroundColor: C.brandRed, child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD54F), size: 26)),
-                  const SizedBox(width: 12),
-                  const Expanded(child: TwoLang('Ask the app', 'ॲपला विचारा', color: Colors.white, size: 16.5, weight: FontWeight.w700)),
-                  if (due)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
-                      child: const Text('Today\'s summary', style: TextStyle(fontSize: 12.5, color: Colors.white, fontWeight: FontWeight.w600)),
-                    ),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white),
                 ]),
               ),
             ),

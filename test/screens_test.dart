@@ -2115,8 +2115,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await net(t);
-    expect(s.briefDue.value, true, reason: 'once a day: the summary waits on Home');
-    expect(find.text("Today's summary"), findsOneWidget);
+    expect(s.briefDue.value, true, reason: 'once a day: the summary waits on Home (a red dot on Ask)');
     await tapK(t, 'home-ask');
     await net(t);
     await net(t);

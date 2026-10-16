@@ -15,7 +15,7 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
 **Version 3.15.0 (17-10-2026, part 14 of the whole web in the app):** the web's **assistant ("Ask")** in the app's own screen
-(Home → **Ask the app**), its working the web's own: the **⚡ questions** the app answers itself (the daily summary, the Log Book
+(Home → **Ask**, next to the site), its working the web's own: the **⚡ questions** the app answers itself (the daily summary, the Log Book
 entries still pending, yesterday's / today's diesel and to whom, the stock, those over the standard); a **typed question** the app
 understands by itself (diesel, pending, stock, average, work, the last reading – in English, मराठी, हिंदी, also Marathi in English
 letters; the machinery and the dates found in the words); an **entry from words** ("8511 ला 60 लिटर diesel दे, km 148200",
@@ -23,7 +23,7 @@ letters; the machinery and the dates found in the words); an **entry from words*
 checks (his access; "check the reading – Save anyway"); half said → it asks, and the next words complete it; otherwise the **AI
 service** (getAiReply) with the day's figures, its look-ups run with his own sign-in, "Looked up …" under the answer, the page
 buttons of an answer opening the app's screens; when the service fails, the app's own best answer or the guide of the page that
-fits; **the daily summary once a day** (a red dot on "Ask the app"; Settings → Daily summary); the Admin's **Test the AI service**.
+fits; **the daily summary once a day** (a red dot on Ask; Settings → Daily summary); the Admin's **Test the AI service**.
 The web's **help** – what every page is for and the help for every error message, in three languages – is in the app as the
 web's own words (`assets/help/web_help.json`, made by `tool/web_help.js` from the web page).
 
