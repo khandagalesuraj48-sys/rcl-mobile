@@ -1116,7 +1116,8 @@ void main() {
     await net(t);
     final x = srv.logBulk.firstWhere((c) => c['fn'] == 'saveLogBulk')['x'] as Map;
     final rows = (x['rows'] as List).cast<Map>();
-    expect((x['no'], x['from'], x['to'], x['deleted']), ('MH-25-AJ-2169', '2026-10-01', '2026-10-14', []));
+    expect((x['no'], x['from'], x['to']), ('MH-25-AJ-2169', '2026-10-01', '2026-10-14'));
+    expect(x['deleted'], isEmpty);
     expect([for (final r in rows) '${r['date']} ${r['openingKm']}-${r['closingKm']} ${r['same']}'], ['2026-10-12 15000-15050 false', '2026-10-13 15050-15100 false', '2026-10-14 15100-15230 true']);
     expect(srv.rids.any((r) => r.startsWith('saveLogBulk:')), true, reason: 'saved once, with its own number');
     expect(srv.logBulk.where((c) => c['fn'] == 'getLogEditData').length, 2, reason: 'opened again after the save');
