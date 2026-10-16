@@ -452,10 +452,29 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 child: mt.Text(n, style: const TextStyle(fontSize: 13.5, color: Color(0xFF7A4A00))),
               ),
             const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              FilledButton(key: const Key('ai-save'), onPressed: m.live && !chat.busy ? () => chat.act('save') : null, child: const Text('Save')),
-              OutlinedButton(key: const Key('ai-form'), onPressed: m.live && !chat.busy ? () => chat.act('form') : null, child: mt.Text(w(const {'en': 'Open in the form', 'mr': 'Form मध्ये उघडा', 'hi': 'Form में खोलें'}))),
-              TextButton(key: const Key('ai-cancel'), onPressed: m.live && !chat.busy ? () => chat.act('cancel') : null, child: mt.Text(w(const {'en': 'Cancel', 'mr': 'रद्द', 'hi': 'रद्द'}))),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(key: const Key('ai-save'), onPressed: m.live && !chat.busy ? () => chat.act('save') : null, child: const Text('Save')),
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  key: const Key('ai-form'),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                  onPressed: m.live && !chat.busy ? () => chat.act('form') : null,
+                  child: mt.Text(w(const {'en': 'Open in the form', 'mr': 'Form मध्ये उघडा', 'hi': 'Form में खोलें'}), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextButton(
+                  key: const Key('ai-cancel'),
+                  style: TextButton.styleFrom(minimumSize: const Size(0, 46)),
+                  onPressed: m.live && !chat.busy ? () => chat.act('cancel') : null,
+                  child: mt.Text(w(const {'en': 'Cancel', 'mr': 'रद्द', 'hi': 'रद्द'})),
+                ),
+              ),
             ]),
           ]),
         );
