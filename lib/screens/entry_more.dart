@@ -371,7 +371,8 @@ class _EntryFindScreenState extends State<EntryFindScreen> {
     final s = SessionScope.of(context), k = widget.kind, today = _today(s);
     final rows = [for (final r in (res?['rows'] as List? ?? const []).whereType<Map>()) r.cast<String, dynamic>()];
     final count = asNum(res?['count']) ?? 0;
-    final total = asNum(k.key == 'issue' ? res?['totalQty'] : res?['qty']) ?? 0;
+    final totKey = k.key == 'issue' ? 'totalQty' : 'qty';
+    final total = asNum(res?[totKey]) ?? 0;
     final shareList = [for (final x in (res?['share'] as List? ?? const []).whereType<Map>()) x];
     final sum = switch (k.key) {
       'inward' => 'Entries: ${fmt(count)}   Qty: ${fmt(res?['qty'])} Ltr   Amount: ₹${money(res?['amount'])}',
