@@ -449,5 +449,10 @@ void main() {
     expect(Machine({'modes': ['Hrs', 'Time'], 'modesX': ['Time']}).logWay('Time'), 'Hrs', reason: 'a Time day is only for a day the meter gave no reading');
     expect(Machine({'lbFormat': 'H'}).logWay(), 'Trip');
   });
-}
 
+  test('(3.1.10) the Marathi word under each diesel place on Home: the first site as before; 18B\'s pump and dispensers their own', () {
+    expect([placeMr('Dispenser'), placeMr('VTR Store')], ['डिस्पेन्सर', 'स्टोअर'], reason: 'the first site: as before');
+    expect([placeMr('Camp Pump'), placeMr('MH12ZE1739'), placeMr('MH12WJ1381'), placeMr('MH 12 ZE 1739')], ['पंप', 'डिस्पेन्सर', 'डिस्पेन्सर', 'डिस्पेन्सर']);
+    expect(placeMr('Tank 2'), 'डिझेल जागा', reason: 'any other place');
+  });
+}

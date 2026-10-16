@@ -189,7 +189,7 @@ class _HomeTabState extends State<HomeTab> {
     final locs = s.stockByLoc.entries.toList();
     final tiles = <Widget>[
       for (final (i, l) in locs.indexed)
-        _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: l.key.toLowerCase().contains('dispenser') ? 'डिस्पेन्सर' : 'स्टोअर', value: '${fmtNum(l.value)} L', color: i == 0 ? C.greenSoft : C.amberSoft),
+        _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: placeMr(l.key), value: '${fmtNum(l.value)} L', color: i == 0 ? C.greenSoft : C.amberSoft),
       if (s.canSee('Log Book')) ...[
         _MiniTile(pic: 'tractor', en: 'Running Machines', mr: 'चालू यंत्रे', value: running == null ? '–' : '$running / ${s.machines.where((m) => m.onSite(s.today)).length}', color: C.blueSoft),
         _MiniTile(pic: 'notebook', en: 'Logbook Entries', mr: 'नोंदी (आज)', value: logEntries == null ? '–' : '$logEntries', color: C.purpleSoft),
