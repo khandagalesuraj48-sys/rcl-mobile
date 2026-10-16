@@ -181,6 +181,17 @@ class Session extends ChangeNotifier {
 
   // the site's lists (getInit)
   String today = '', company = '', closedUpto = '';
+  /// (3.2.0) the site's "Company & site" (web Settings): the customer, the site's name, the names bills are made in
+  Map<String, dynamic> org = {};
+  /// The name a report / Log Book print is headed with – the company first, then the other bill names (as the web).
+  List<String> get printNames {
+    final names = (org['billNames'] is List ? (org['billNames'] as List).map((e) => '$e').where((e) => e.isNotEmpty).toList() : <String>[]);
+    final cust = '${org['customer'] ?? company}';
+    final list = [if (names.contains(cust) || names.isEmpty) cust, ...names.where((n) => n != cust)];
+    return list.where((n) => n.isNotEmpty).toList().isEmpty ? ['Rachana Construction Limited'] : list.where((n) => n.isNotEmpty).toList();
+  }
+  /// The site as printed on every report (web: SITE_NAME).
+  String get siteLabel => '${org['site'] ?? ''}'.isNotEmpty ? '${org['site']}' : siteName;
   /// (14-10-2026) the site's shift hours (Settings → Rules of the site on the web): Day from [dayFrom] to [nightFrom], Night the rest.
   String dayFrom = '08:00', nightFrom = '20:00';
   /// The clock (a test sets its own time).
@@ -353,6 +364,7 @@ class Session extends ChangeNotifier {
     if (u is Map) _user({'user': u});
     today = (d['today'] ?? '').toString();
     company = (d['company'] ?? '').toString();
+    org = (d['org'] is Map) ? (d['org'] as Map).cast<String, dynamic>() : <String, dynamic>{};
     closedUpto = (d['closedUpto'] ?? '').toString();
     final rules = d['rules'];
     if (rules is Map) {

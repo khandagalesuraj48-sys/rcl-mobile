@@ -1,0 +1,65 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Diesel Cost Report",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 16:16",
+ "rateText": "Rate of the day (latest purchase on or before the issue date)",
+ "groups": [
+  {
+   "ownership": "Own",
+   "rows": [
+    {
+     "no": "MH-15-AB-0002",
+     "type": "Tipper",
+     "owner": "Rachana Construction Limited",
+     "ownership": "Own",
+     "supply": "Company",
+     "entries": 2,
+     "qty": 2,
+     "amount": 180,
+     "rate": 90
+    }
+   ],
+   "qty": 2,
+   "amount": 180,
+   "entries": 2
+  },
+  {
+   "ownership": "Rental",
+   "rows": [
+    {
+     "no": "MV-1",
+     "type": "Excavator",
+     "owner": "Multi Vendor",
+     "ownership": "Rental",
+     "supply": "Debit Basis",
+     "entries": 1,
+     "qty": 15,
+     "amount": 1387.5,
+     "rate": 92.5
+    },
+    {
+     "no": "TKX-1",
+     "type": "Tipper",
+     "owner": "Tank Vendor",
+     "ownership": "Rental",
+     "supply": "Company",
+     "entries": 2,
+     "qty": 90,
+     "amount": 8325,
+     "rate": 92.5
+    }
+   ],
+   "qty": 105,
+   "amount": 9712.5,
+   "entries": 3
+  }
+ ],
+ "total": {
+  "qty": 107,
+  "amount": 9892.5,
+  "rate": 92.45,
+  "machines": 3
+ }
+}

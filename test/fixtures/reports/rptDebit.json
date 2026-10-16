@@ -1,0 +1,39 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Debit Recovery Statement",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 16:16",
+ "rateText": "Rate of the day (latest purchase on or before the issue date)",
+ "vendors": [
+  {
+   "owner": "Multi Vendor",
+   "rows": [
+    {
+     "date": "2026-09-20",
+     "shift": "Day",
+     "id": "DI-002506",
+     "no": "MV-1",
+     "type": "Excavator",
+     "driver": "",
+     "source": "Dispenser",
+     "qty": 15,
+     "rate": 92.5,
+     "autoRate": 92.5,
+     "manual": false,
+     "amount": 1387.5
+    }
+   ],
+   "qty": 15,
+   "amount": 1387.5,
+   "machines": 1,
+   "rate": 92.5
+  }
+ ],
+ "total": {
+  "qty": 15,
+  "amount": 1387.5,
+  "entries": 1,
+  "machines": 1
+ }
+}

@@ -261,6 +261,53 @@ void main() {
     expect(saved['remindHours'], '4');
   }, tags: ['golden']);
 
+  testWidgets('(3.2.0) Reports – the app\'s own screens: the list, a report\'s filters, Generate, its tables and figures', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.scrollUntilVisible(find.text('Stock Register'), 300, scrollable: find.ancestor(of: find.text('Daily Inward & Issue'), matching: find.byType(Scrollable)).first);
+    await settle(t, 300);
+    await t.tap(find.text('Stock Register'));
+    await net(t);
+    expect(find.byKey(const Key('rep-go')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/15_report_filters.png'));
+    await tapK(t, 'rep-go');
+    await net(t);
+    expect(srv.reportAsked.single['fn'], 'rptStock');
+    expect(srv.reportAsked.single['from'], '2026-10-01');
+    expect(srv.reportAsked.single['location'], 'Dispenser');
+    expect(find.byKey(const Key('rtable-Stock register')), findsOneWidget);
+    expect(find.text('Opening balance'), findsOneWidget);
+    expect(find.byKey(const Key('rep-xlsx')), findsOneWidget);
+    expect(find.byKey(const Key('rep-pdf')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/16_report_stock.png'));
+  }, tags: ['golden']);
+
+  testWidgets('(3.2.0) Monthly Diesel & Average: the day-by-day table with its status, sideways on the phone', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.text('Monthly Diesel & Average'));
+    await net(t);
+    await tapK(t, 'rep-go');
+    await net(t);
+    expect(srv.reportAsked.single['fn'], 'getMonthlyAvgReport');
+    expect(srv.reportAsked.single['withReadings'], true);
+    expect(find.byKey(const Key('rtable-Diesel & Average')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/17_report_monthly_avg.png'));
+  }, tags: ['golden']);
+
   testWidgets('Entries: the day\'s diesel issues as cards; Transfer (no access) is not a tab', (t) async {
     phone(t);
     final srv = FakeServer();

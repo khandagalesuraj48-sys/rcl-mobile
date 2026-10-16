@@ -14,6 +14,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.3.0 (16-10-2026, part 2 of the whole web in the app):** **Reports** in the app's own screens – Daily Inward & Issue,
+Monthly Diesel Issue, Monthly Diesel & Average and the 12 diesel reports (Debit Recovery – its rates can be changed, Machinery Cost,
+Diesel Cost, Purchase Register, Machinery Diesel Ledger, Diesel Watch, Owner / Vendor-wise, Type-wise, Stock Register, Month vs
+Month, Tank Check, Actual vs Standard): the same filters and the same server report as the web, the figures as tiles, the
+tables as the web draws them (sideways on the phone), **Excel** (every table a sheet, made on the phone) and **Print** (A4 as the
+web, the company chosen on top, the signatures; a printer or "Save as PDF").
+
 **Version 3.2.0 (16-10-2026, "purn web application completely app ui madhe … app madhe mala kuthunch web ui dista kama naye"):**
 the first part of the whole web in the app's own screens – **Approvals**: the counts (waiting for you, sent back, waiting in all,
 yours, the oldest), every request (when, who, which work, what it changes, its steps, waiting at whom / sent back / decided),

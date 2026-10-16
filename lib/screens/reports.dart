@@ -1,5 +1,5 @@
-/* REPORTS – the reports of the web he may open (Dashboard, Daily Inward & Issue, Monthly Diesel Issue, Monthly Diesel &
- * Average). Each opens inside the app, on its page; Excel and Print there go to the phone (share sheet, Android printing). */
+/* REPORTS – the reports of the web he may open, by his access. (3.2.0) Each opens in the app's own screen (report_screen.dart):
+ * the same filters and the same server report as the web; Excel and Print (PDF) made on the phone. */
 import 'package:flutter/material.dart' hide Text;
 
 import '../ui/scope.dart';
@@ -7,6 +7,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
 import 'home.dart';
+import 'report_screen.dart';
 import '../ui/t.dart';
 
 class ReportsTab extends StatelessWidget {
@@ -25,7 +26,10 @@ class ReportsTab extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Press(
-                onTap: () => openWeb(context, r.$1, r.$3, pic: r.$4),
+                onTap: () {
+                  final def = reportOfPage(r.$3);
+                  def != null ? openReport(context, def) : openWeb(context, r.$1, r.$3, pic: r.$4);
+                },
                 padding: const EdgeInsets.all(14),
                 child: Row(children: [
                   Container(width: 62, height: 62, decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(r.$4, size: 44)),

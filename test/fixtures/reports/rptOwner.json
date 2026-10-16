@@ -1,0 +1,108 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Owner / Vendor-wise Diesel Summary",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 16:16",
+ "owners": [
+  {
+   "owner": "Rachana Construction Limited",
+   "ownership": "Own",
+   "qty": 2,
+   "amount": 184.96,
+   "entries": 2,
+   "machines": [
+    {
+     "no": "MH-15-AB-0002",
+     "type": "Tipper",
+     "qty": 2,
+     "entries": 2,
+     "bySource": {
+      "Dispenser": 2
+     }
+    }
+   ],
+   "share": 1.87
+  },
+  {
+   "owner": "Tank Vendor",
+   "ownership": "Rental",
+   "qty": 90,
+   "amount": 8325,
+   "entries": 2,
+   "machines": [
+    {
+     "no": "TKX-1",
+     "type": "Tipper",
+     "qty": 90,
+     "entries": 2,
+     "bySource": {
+      "Dispenser": 90
+     }
+    }
+   ],
+   "share": 84.11
+  },
+  {
+   "owner": "Multi Vendor",
+   "ownership": "Rental",
+   "qty": 15,
+   "amount": 1387.5,
+   "entries": 1,
+   "machines": [
+    {
+     "no": "MV-1",
+     "type": "Excavator",
+     "qty": 15,
+     "entries": 1,
+     "bySource": {
+      "Dispenser": 15
+     }
+    }
+   ],
+   "share": 14.02
+  }
+ ],
+ "total": {
+  "qty": 107,
+  "amount": 9897.46,
+  "owners": 3
+ },
+ "locations": [
+  "Dispenser",
+  "VTR Store"
+ ],
+ "transfers": [],
+ "transferQty": 0,
+ "stock": [
+  {
+   "loc": "Dispenser",
+   "opening": 0,
+   "inward": 20121,
+   "tin": 0,
+   "tout": 0,
+   "issued": 107,
+   "closing": 20014,
+   "current": 20014
+  },
+  {
+   "loc": "VTR Store",
+   "opening": 0,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 0,
+   "current": 0
+  },
+  {
+   "loc": "All locations",
+   "opening": 0,
+   "inward": 20121,
+   "tin": 0,
+   "tout": 0,
+   "issued": 107,
+   "closing": 20014
+  }
+ ]
+}

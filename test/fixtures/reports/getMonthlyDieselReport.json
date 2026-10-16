@@ -1,0 +1,199 @@
+{
+ "company": "Rachana Construction Limited",
+ "month": "2026-10",
+ "monthName": "01-10-2026 to 16-10-2026",
+ "from": "2026-10-01",
+ "to": "2026-10-16",
+ "nDays": 16,
+ "days": [
+  {
+   "d": 1,
+   "date": "2026-10-01",
+   "mon": "Oct",
+   "dow": "Th"
+  },
+  {
+   "d": 2,
+   "date": "2026-10-02",
+   "mon": "",
+   "dow": "Fr"
+  },
+  {
+   "d": 3,
+   "date": "2026-10-03",
+   "mon": "",
+   "dow": "Sa"
+  },
+  {
+   "d": 4,
+   "date": "2026-10-04",
+   "mon": "",
+   "dow": "Su"
+  },
+  {
+   "d": 5,
+   "date": "2026-10-05",
+   "mon": "",
+   "dow": "Mo"
+  },
+  {
+   "d": 6,
+   "date": "2026-10-06",
+   "mon": "",
+   "dow": "Tu"
+  },
+  {
+   "d": 7,
+   "date": "2026-10-07",
+   "mon": "",
+   "dow": "We"
+  },
+  {
+   "d": 8,
+   "date": "2026-10-08",
+   "mon": "",
+   "dow": "Th"
+  },
+  {
+   "d": 9,
+   "date": "2026-10-09",
+   "mon": "",
+   "dow": "Fr"
+  },
+  {
+   "d": 10,
+   "date": "2026-10-10",
+   "mon": "",
+   "dow": "Sa"
+  },
+  {
+   "d": 11,
+   "date": "2026-10-11",
+   "mon": "",
+   "dow": "Su"
+  },
+  {
+   "d": 12,
+   "date": "2026-10-12",
+   "mon": "",
+   "dow": "Mo"
+  },
+  {
+   "d": 13,
+   "date": "2026-10-13",
+   "mon": "",
+   "dow": "Tu"
+  },
+  {
+   "d": 14,
+   "date": "2026-10-14",
+   "mon": "",
+   "dow": "We"
+  },
+  {
+   "d": 15,
+   "date": "2026-10-15",
+   "mon": "",
+   "dow": "Th"
+  },
+  {
+   "d": 16,
+   "date": "2026-10-16",
+   "mon": "",
+   "dow": "Fr"
+  }
+ ],
+ "groups": [
+  {
+   "ownership": "Own",
+   "rows": [
+    {
+     "id": "MH-15-AB-0002",
+     "name": "Tipper",
+     "type": "Tipper",
+     "owner": "Rachana Construction Limited",
+     "ownership": "Own",
+     "unit": "KM",
+     "supply": "Company",
+     "status": "Active",
+     "inactiveFrom": "",
+     "days": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2
+     ],
+     "total": 2,
+     "entries": 2
+    }
+   ],
+   "dayTotals": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2
+   ],
+   "total": 2,
+   "entries": 2
+  }
+ ],
+ "dayTotals": [
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  2
+ ],
+ "total": 2,
+ "entries": 2,
+ "machines": 1,
+ "filters": {
+  "source": "All",
+  "shift": "All",
+  "supply": "All",
+  "ownerships": [
+   "Own",
+   "Rental",
+   "Hired",
+   "Other",
+   "Debit"
+  ],
+  "machines": "All"
+ },
+ "generated": "16-10-2026 16:16"
+}

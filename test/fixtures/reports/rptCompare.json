@@ -1,0 +1,67 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Month vs Month Diesel Comparison",
+ "from": "",
+ "to": "",
+ "generated": "16-10-2026 16:16",
+ "monthA": "2026-09",
+ "monthB": "2026-10",
+ "nameA": "September 2026",
+ "nameB": "October 2026",
+ "groups": [
+  {
+   "ownership": "Own",
+   "rows": [
+    {
+     "no": "MH-15-AB-0002",
+     "type": "Tipper",
+     "owner": "Rachana Construction Limited",
+     "ownership": "Own",
+     "a": 0,
+     "b": 2,
+     "diff": 2,
+     "pct": ""
+    }
+   ],
+   "a": 0,
+   "b": 2,
+   "diff": 2,
+   "pct": ""
+  },
+  {
+   "ownership": "Rental",
+   "rows": [
+    {
+     "no": "TKX-1",
+     "type": "Tipper",
+     "owner": "Tank Vendor",
+     "ownership": "Rental",
+     "a": 90,
+     "b": 0,
+     "diff": -90,
+     "pct": -100
+    },
+    {
+     "no": "MV-1",
+     "type": "Excavator",
+     "owner": "Multi Vendor",
+     "ownership": "Rental",
+     "a": 15,
+     "b": 0,
+     "diff": -15,
+     "pct": -100
+    }
+   ],
+   "a": 105,
+   "b": 0,
+   "diff": -105,
+   "pct": -100
+  }
+ ],
+ "total": {
+  "a": 105,
+  "b": 2,
+  "diff": -103,
+  "pct": -98.1
+ }
+}

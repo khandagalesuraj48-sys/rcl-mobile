@@ -1,5 +1,6 @@
 /* A pretend Portal + Mechanical for the tests (no network): it answers like the real ones, from data kept here. */
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -26,6 +27,7 @@ class FakeServer {
   int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
   final decided = <Map<String, dynamic>>[]; // (3.2.0) what the Approvals screen sent (decide, several, answer)
   final rulesSaved = <Map<String, dynamic>>[];
+  final reportAsked = <Map<String, dynamic>>[]; // (3.2.0) the reports asked, with their filters
   bool down = false; // no network to Mechanical
   final rids = <String>[]; // the save numbers that came
   final tankerCalls = <Map<String, dynamic>>[];
@@ -140,6 +142,12 @@ class FakeServer {
             r['remindedAt'] = DateTime.now().toUtc().toIso8601String();
           }
           return _j({'result': {'ok': true, 'reminded': ids, 'later': [], 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
+        // (3.2.0) the reports: the real answers of the test server (test/fixtures/reports)
+        case 'rptDebit' || 'rptMachineCost' || 'rptCost' || 'rptPurchase' || 'rptLedger' || 'rptWatch' || 'rptOwner' || 'rptType' || 'rptStock' || 'rptCompare' || 'rptTank' || 'rptAverage' || 'getDailyInwardIssueReport' || 'getMonthlyDieselReport' || 'getMonthlyAvgReport':
+          reportAsked.add({'fn': action, ...((a.isNotEmpty ? a[0] : const {}) as Map).cast<String, dynamic>()});
+          return _j({'result': jsonDecode(File('test/fixtures/reports/$action.json').readAsStringSync())});
+        case 'saveDebitRates':
+          return _j({'result': {'ok': true, 'count': (a[0] as List).length}});
         // (3.2.0) the Approvals screen: decide one / several, answer, the rules
         case 'decideChangeRequest':
           final x = (a[0] as Map).cast<String, dynamic>();

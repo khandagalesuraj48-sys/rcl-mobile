@@ -1,0 +1,78 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Machinery Diesel Ledger",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 16:16",
+ "machine": {
+  "id": "EX-200",
+  "no": "EX-200",
+  "name": "Excavator",
+  "type": "Excavator",
+  "make": "",
+  "lbFormat": "A",
+  "worksOn": [
+   "Hrs"
+  ],
+  "unit": "Hrs",
+  "modes": [
+   "Hrs",
+   "Time"
+  ],
+  "modesX": [
+   "Time"
+  ],
+  "meterKm": false,
+  "meterHr": true,
+  "kmStd": "",
+  "hrStd": 12,
+  "owner": "Item Vendor",
+  "ownership": "Rental",
+  "supply": "Company",
+  "status": "Active",
+  "activeFrom": "2026-09-01",
+  "inactiveFrom": "",
+  "earlier": [],
+  "tankCap": 300,
+  "monthlyRate": "",
+  "engineNo": "",
+  "chassisNo": "",
+  "engineMake": "",
+  "taxUpto": "",
+  "pucUpto": "",
+  "permitUpto": "",
+  "fitnessUpto": "",
+  "insuranceUpto": "",
+  "tdsRate": "",
+  "enteredBy": "Tester",
+  "updatedBy": ""
+ },
+ "rows": [
+  {
+   "date": "2026-09-01",
+   "shift": "",
+   "id": "",
+   "source": "",
+   "driver": "",
+   "qty": "",
+   "km": "",
+   "hr": "",
+   "kmRun": "",
+   "hrRun": 24,
+   "used": "",
+   "upto": "2026-10-16",
+   "avg": "On diesel filled before 01-09-2026",
+   "remark": "",
+   "pre": true
+  }
+ ],
+ "total": {
+  "entries": 0,
+  "qty": 0,
+  "kmRun": 0,
+  "hrRun": 24,
+  "used": 0,
+  "overall": "",
+  "std": "12 L/hr"
+ }
+}
