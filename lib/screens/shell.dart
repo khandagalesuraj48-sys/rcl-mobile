@@ -1,7 +1,5 @@
 /* THE APP AFTER SIGN-IN: four tabs at the bottom – Home · Entries · Reports · Me (picture 1–3). The tabs keep their place when
  * switched. Back on another tab goes to Home first; on Home a second Back within 3 s leaves the app. */
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -16,7 +14,6 @@ import 'me.dart';
 import 'reports.dart';
 import 'assistant.dart' show shellEntries;
 import 'start_page.dart';
-import '../web/web_host.dart';
 import '../ui/t.dart' show tr;
 
 class Shell extends StatefulWidget {
@@ -31,8 +28,6 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   String entriesKind = '';
   int entriesOpen = 0;
   DateTime? lastBack;
-  final hostKey = GlobalKey<WebHostState>();
-  Timer? warmUp;
 
   /// The Entries tab of a diesel page (issue / inward / transfer).
   void _entries(String k) {
@@ -49,8 +44,6 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     shellEntries = _entries; // (3.16.0) the assistant opened from a help card can open the Entries tab too
-    webHost.reset();
-    webHost.addListener(_hostChanged);
     // (3.1.7) live: while the app is on the screen it hears what changed (Session.liveTick) and sends what is kept on the phone
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -60,17 +53,11 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         ..startLive();
       _start();
     });
-    // the web (for the modules not yet made for the phone) loads quietly in the background once Home is up
-    warmUp = Timer(const Duration(seconds: 4), () {
-      if (mounted) webHost.warm();
-    });
   }
 
   @override
   void dispose() {
     if (shellEntries == _entries) shellEntries = null;
-    warmUp?.cancel();
-    webHost.removeListener(_hostChanged);
     WidgetsBinding.instance.removeObserver(this);
     _s?.keptNote.removeListener(_note);
     _s?.stopLive();
@@ -109,10 +96,6 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         if (diesel) tab = 1;
       });
     });
-  }
-
-  void _hostChanged() {
-    if (mounted) setState(() {});
   }
 
   void _go(int i) {
@@ -155,10 +138,6 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (webHost.open) {
-          hostKey.currentState?.back();
-          return;
-        }
         if (cur != 0) {
           setState(() => tab = 0);
           return;
@@ -171,8 +150,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         lastBack = now;
         toast(context, 'Press Back again to leave the app.');
       },
-      child: Stack(children: [
-        Scaffold(
+      child: Scaffold(
         body: IndexedStack(index: cur, children: [for (final p in pages) p.$1]),
         bottomNavigationBar: DecoratedBox(
           decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .06), blurRadius: 16, offset: const Offset(0, -4))]),
@@ -184,10 +162,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
             destinations: [for (final p in pages) p.$2],
           ),
         ),
-        ),
-        // the one web view (modules not yet made for the phone) – kept alive, shown only when such a module is open
-        if (webHost.started) Positioned.fill(child: Offstage(offstage: !webHost.open, child: WebHost(key: hostKey))),
-      ]),
+      ),
     );
   }
 }

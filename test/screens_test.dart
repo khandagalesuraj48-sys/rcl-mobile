@@ -20,7 +20,6 @@ import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
-import 'package:rcl_mobile/web/web_host.dart';
 
 import 'fake_server.dart';
 
@@ -96,7 +95,6 @@ Future<void> tapK(WidgetTester t, String key) async {
 
 void main() {
   setUpAll(loadFonts);
-  setUp(() => webHost.enabled = false); // a web view cannot run in a test
   tearDown(() => Lang.i.set('')); // (15-10-2026) every test starts in the app's usual language
   void phone(WidgetTester t) {
     t.view.physicalSize = const Size(1080, 2340);

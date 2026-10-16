@@ -14,6 +14,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.18.0 (17-10-2026, the last part of the whole web in the app):** **no web page anywhere in the app** – every page of
+the web is the app's own screen. Gone: Me → "Full web ERP", the web view that loaded in the background at the start, and the web
+page a module or a report fell back to (every module and every report has its own screen now). The only web view left prints
+what the app made (a report, a bill, a Log Book page → PDF).
+
 **Version 3.17.0 (17-10-2026, part 16 of the whole web in the app):** the Portal's **Super Admin** console in the app's own
 screens (Me → **Super Admin**, for the Super Admin only) – the same Portal actions (`/api/admin`), checks and words:
 **Users & Access** (one site at a time: every user with No access / User / Admin for each module; a user added with a one-time
@@ -242,11 +247,9 @@ site's modules as Admin (the Portal lists them all for him); before, the app sen
   the web); an entry can be changed or deleted from its details.
 * **My settings** (`lib/screens/settings.dart`): default site (the Portal's start), usual shift, usual diesel place, Log Book
   usual way, size of the text, mobile number, photo, password – the same settings as the web.
-* Modules still on the web: ONE web view (`lib/web/web_host.dart`) loaded in the background and kept alive – a module opens
-  at once (the web switches its page, `__rclAppGo`); its "page stopped" box and the opening film are not shown.
-* Modules not yet made for the phone (Machinery, Logbook, Maintenance, Billing, Store, Administration, the reports) open their
-  **web page inside the app** (`lib/web/web_page.dart` + `assets/web_bridge.js`: camera, location, Excel / CSV to the share
-  sheet, print / PDF, Back, Logout). The One Click opening film is not shown in the app.
+* **No web page in the app** (3.18.0, asked 16-10-2026: "app madhe mala kuthunch web ui dista kama naye"): every page of the
+  web is the app's own screen, with the same server actions, checks and access. The only web view left prints a page the app
+  made itself (`lib/web/print_view.dart` – a report, a bill, a Log Book page to PDF).
 * 3D pictures: Microsoft Fluent Emoji (MIT, `assets/icons3d/LICENSE-fluentui-emoji.txt`). The Rachana logo is the picture the
   web ERP shows (fetched once by the build, `assets/brand/`).
 * **Update from inside the app** (asked 14-10-2026: "git release madhe apk theun de"): the newest **GitHub Release** of this
@@ -270,10 +273,9 @@ The first run makes the `android/` and `ios/` folders and saves them in the bran
 | Person, sites, access, the site's lists | `lib/core/session.dart` |
 | The 4 photos (camera, location, the printed band) | `lib/core/photo.dart` |
 | Screens | `lib/screens/` (login, site_pick, shell, home, entries, forms, reports, me), `lib/main.dart` (opening) |
-| The web pages still in the app | `lib/web/web_host.dart`, `assets/web_bridge.js`, `lib/web/print_view.dart`, `lib/web/files.dart` |
+| Printing and the files the app makes (no web page) | `lib/web/print_view.dart`, `lib/web/files.dart` |
 | Design | `lib/ui/theme.dart`, `lib/ui/brand.dart` (backgrounds, Rachana mark and logo), `lib/ui/widgets.dart` |
 | Tests | `test/`, with pretend servers in `test/fake_server.dart` |
-| The web bridge in a real browser | `test_web/bridge.test.js` (a page built like the ERP), `test_web/real_erp.js` (the real ERP on the local test copy) – run by hand with Node + Chromium; a web view cannot run in Flutter's tests |
 
 Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-*.txt`).
 

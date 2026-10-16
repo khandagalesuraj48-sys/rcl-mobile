@@ -5,7 +5,6 @@ import 'package:flutter/material.dart' hide Text;
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_host.dart';
 import 'billing.dart';
 import 'dashboard.dart';
 import 'home.dart';
@@ -36,9 +35,7 @@ class ReportsTab extends StatelessWidget {
                   } else if (bill[r.$3] != null) {
                     openBillPage(context, bill[r.$3]!); // (3.8.0) the app's own billing screens
                   } else if (def != null) {
-                    openReport(context, def);
-                  } else {
-                    openWeb(context, r.$1, r.$3, pic: r.$4);
+                    openReport(context, def); // (3.18.0) every report is the app's own screen – no web page
                   }
                 },
                 padding: const EdgeInsets.all(14),

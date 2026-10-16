@@ -12,7 +12,6 @@ import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_host.dart';
 import 'assistant.dart';
 import 'label_scan.dart';
 import 'search.dart';
@@ -197,9 +196,8 @@ class _HomeTabState extends State<HomeTab> {
     }
     if (m.native == 'store') {
       await openStore(context);
-      return;
     }
-    await openWeb(context, m.en, m.page, pic: m.pic);
+    // (3.18.0) every module is the app's own screens – no web page in the app
   }
 
   Future<void> _site() async {

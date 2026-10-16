@@ -1,5 +1,5 @@
-/* ME (picture 3, 14-10-2026): who is signed in and his role, the site (change it), the app's version and its update, the full
- * web ERP, sign out (of the Portal and every module). */
+/* ME (picture 3, 14-10-2026): who is signed in and his role, the site (change it), the app's version and its update, sign out
+ * (of the Portal and every module). (3.18.0) No web page in the app any more: every page of the web is the app's own screen. */
 import 'dart:convert';
 
 import 'package:flutter/material.dart' hide Text;
@@ -10,7 +10,6 @@ import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_host.dart';
 import 'approvals.dart';
 import 'settings.dart';
 import 'super_admin.dart';
@@ -172,7 +171,6 @@ class _MeTabState extends State<MeTab> {
                   color: s.keptBad > 0 ? C.redSoft : C.amberSoft,
                   onTap: () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet()),
                 ),
-              _row(pic: 'office_building', en: 'Full web ERP', mr: 'पूर्ण web ERP', sub: 'Every page of the web, inside the app', color: C.amberSoft, onTap: () => openWeb(context, 'Web ERP', 'dash', pic: 'office_building')),
               const SizedBox(height: 6),
               _row(pic: 'locked_with_key', en: 'Sign out', mr: 'साईन आउट करा', sub: 'Signs out of the Portal and every module', color: C.redSoft, text: C.red, onTap: _signOut),
               const SizedBox(height: 18),
