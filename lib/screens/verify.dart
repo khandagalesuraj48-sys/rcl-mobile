@@ -190,11 +190,15 @@ class _VerifySheetState extends State<VerifySheet> {
         if (r['canRemind'] == true)
           FilledButton.tonal(
             key: Key('verify-remind-$id'),
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),      // (the app's buttons are as wide as the screen)
             onPressed: busy.isNotEmpty ? null : () => _remind(s, id: id),
             child: busy == id ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)) : Text(tr('Remind')),
           )
         else if (r['canAnswer'] == true)
-          OutlinedButton(onPressed: () => openWeb(context, 'Approvals', 'approvals', pic: 'bell'), child: Text(tr('Answer'))),
+          OutlinedButton(
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
+              onPressed: () => openWeb(context, 'Approvals', 'approvals', pic: 'bell'),
+              child: Text(tr('Answer'))),
       ]),
     );
   }
