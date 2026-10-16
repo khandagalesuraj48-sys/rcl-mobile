@@ -59,6 +59,7 @@ String reportHtml(RDoc doc, {required String company, required String site, requ
     }
     b.write('</tbody></table>');
   }
-  b.write('<div class="sign">${['Prepared by', 'Checked by', 'Approved by'].map((s) => '<div><b>$s</b><small>Name, Sign &amp; Date</small></div>').join()}</div></body></html>');
+  final signs = doc.signs.isNotEmpty ? doc.signs : const [('Prepared by', 'Name, Sign & Date'), ('Checked by', 'Name, Sign & Date'), ('Approved by', 'Name, Sign & Date')];
+  b.write('<div class="sign">${signs.map((s) => '<div><b>${_e(s.$1)}</b><small>${_e(s.$2)}</small></div>').join()}</div></body></html>');
   return b.toString();
 }

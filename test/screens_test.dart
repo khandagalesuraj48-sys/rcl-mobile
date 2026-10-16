@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/lang.dart';
+import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/main.dart';
 import 'package:rcl_mobile/web/web_host.dart';
@@ -72,10 +73,15 @@ Future<void> pics(WidgetTester t) async {
 }
 
 /// (3.2.0) Taps a widget by its key, brought into view first (a list may hold it below the screen).
+/// (3.4.0) A typed box is let go first (its "show the caret" scroll would still be running and the tap would be ignored).
 Future<void> tapK(WidgetTester t, String key) async {
   final f = find.byKey(Key(key));
+  FocusManager.instance.primaryFocus?.unfocus();
+  await t.pump(const Duration(milliseconds: 150));
   await t.ensureVisible(f);
-  await t.pump(const Duration(milliseconds: 250));
+  for (var i = 0; i < 6; i++) {
+    await t.pump(const Duration(milliseconds: 100));
+  }
   await t.tap(f);
 }
 
@@ -652,4 +658,321 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/15_home_hindi.png'));
   }, tags: ['golden']);
+
+  /* ---------------- (3.4.0) Machinery: Asset Master and the other masters – the app's own screens ---------------- */
+  FakeServer editor() => FakeServer()..perms.addAll({'Master': 'Edit', 'Vendor Master': 'Edit', 'Vendor BOQ': 'Edit', 'Vehicle Compliance': 'Edit'});
+  Finder box(String k) => find.descendant(of: find.byKey(Key(k)), matching: find.byType(TextField));
+  Future<void> openMaster(WidgetTester t, Session s, String page) async {
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Machinery').first);
+    await net(t);
+    await t.tap(find.byKey(Key('mp-$page')));
+    await net(t);
+  }
+
+  testWidgets('(3.4.0) Machinery → Asset Master: on site today, the vendor chips, papers; all dates; a machinery\'s details', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Machinery').first);
+    await net(t);
+    for (final p in ['Asset Master', 'Vendor Master', 'Vendor BOQ', 'Vehicle Compliance', 'Log Book Format']) {
+      expect(find.byKey(Key('mp-$p')), findsOneWidget);
+    }
+    await t.tap(find.byKey(const Key('mp-Asset Master')));
+    await net(t);
+    expect(find.text('Machinery: 2 of 3 · on site on 14-10-2026'), findsOneWidget, reason: 'OLD-9 left on 01-10-2026');
+    expect(find.byKey(const Key('m-OLD-9')), findsNothing);
+    expect(find.text('Papers: 1 expired'), findsOneWidget);
+    expect(find.text('earlier: 01-06-2026 – 31-07-2026'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/18_asset_master.png'));
+    await t.tap(find.byKey(const Key('m-alldates')));
+    await settle(t, 300);
+    expect(find.byKey(const Key('m-OLD-9')), findsOneWidget);
+    await t.tap(find.byKey(const Key('vc-none')));
+    await settle(t, 300);
+    expect(find.byKey(const Key('m-OLD-9')), findsOneWidget);
+    expect(find.byKey(const Key('m-MH-25-AJ-2169')), findsNothing);
+    await t.tap(find.byKey(const Key('vc-all')));
+    await settle(t, 300);
+    await t.tap(find.text('MH-25-AJ-2169'));
+    await settle(t, 800);
+    expect(find.text('Engine Number'), findsOneWidget);
+    expect(find.text('Lifetime'), findsOneWidget);
+    expect(find.byKey(const Key('md-edit')), findsOneWidget);
+    expect(find.byKey(const Key('md-del')), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.4.0) Asset Master read-only (View): no add, no ticks, no Edit / Delete', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Machinery').first);
+    await net(t);
+    expect(find.byKey(const Key('mp-Vendor BOQ')), findsNothing, reason: 'no access to Vendor BOQ');
+    expect(find.byKey(const Key('mp-Log Book Format')), findsOneWidget, reason: 'Log Book Format is Master');
+    await t.tap(find.byKey(const Key('mp-Asset Master')));
+    await net(t);
+    expect(find.byKey(const Key('m-add')), findsNothing);
+    expect(find.byKey(const Key('mt-MH-25-AJ-2169')), findsNothing);
+    await t.tap(find.text('MH-25-AJ-2169'));
+    await settle(t, 800);
+    expect(find.byKey(const Key('md-edit')), findsNothing);
+  });
+
+  testWidgets('(3.4.0) Add machinery: the number written as the server does, KM asks its standard, Ownership from the vendor, a paper N/A – saveMaster', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Asset Master');
+    await t.tap(find.byKey(const Key('m-add')));
+    await net(t);
+    await t.enterText(box('mf-no'), 'mh12ab1234');
+    await t.enterText(box('mf-type'), 'Tipper');
+    await settle(t, 300);
+    expect(find.text('MH-12-AB-1234'), findsOneWidget);
+    expect(t.widget<TextField>(box('mf-kmstd')).enabled, false, reason: 'no KM ticked yet');
+    await tapK(t, 'mw-KM');
+    await settle(t, 300);
+    await t.enterText(box('mf-kmstd'), '3.2');
+    await t.enterText(box('mf-owner'), 'I E Enterprises');
+    await settle(t, 300);
+    expect(find.text('Rental'), findsWidgets, reason: 'Ownership picked by itself from the vendor');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/19_machine_form.png'));
+    await tapK(t, 'mna-permit');
+    await settle(t, 300);
+    await tapK(t, 'mf-save');
+    await net(t);
+    final c = srv.masterCalls.last;
+    expect((c['fn'], c['mode']), ('saveMaster', 'add'));
+    final m = c['m'] as Map;
+    expect(m['no'], 'MH-12-AB-1234');
+    expect((m['worksOn'], m['unit'], m['kmStd'], m['hrStd']), ('KM', 'KM', 3.2, ''));
+    expect((m['ownership'], m['supply'], m['status']), ('Rental', 'Company', 'Active'));
+    expect((m['permitUpto'], m['taxUpto']), ('NA', ''));
+    expect(m.containsKey('earlier'), false, reason: 'a new machinery has no earlier periods');
+    expect(s.machine('MH-12-AB-1234'), isNotNull, reason: 'the app has the new list at once');
+    expect(find.text('Machinery saved.'), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.4.0) Edit: what changes is shown first; a machinery made Active again – "did it come back?" – its earlier period kept', (t) async {
+    phone(t);
+    WidgetController.hitTestWarningShouldBeFatal = true;
+    addTearDown(() => WidgetController.hitTestWarningShouldBeFatal = false);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Asset Master');
+    await t.tap(find.text('MH-25-AJ-2169'));
+    await settle(t, 800);
+    await tapK(t, 'md-edit');
+    await net(t);
+    await t.enterText(box('mf-kmstd'), '4');
+    await tapK(t, 'mf-save');
+    await settle(t, 600);
+    expect(find.text('Update MH-25-AJ-2169?'), findsOneWidget);
+    expect(find.text('Standard Average (KM/Ltr)'), findsWidgets);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    var c = srv.masterCalls.last;
+    expect((c['mode'], c['id']), ('edit', 'MH-25-AJ-2169'));
+    expect((c['m'] as Map)['kmStd'], 4);
+    expect((c['m'] as Map)['earlier'], [{'from': '2026-06-01', 'until': '2026-08-01'}]);
+    // OLD-9 (left on 01-10-2026) made Active again
+    await t.tap(find.byKey(const Key('m-alldates')));
+    await settle(t, 300);
+    await t.tap(find.text('OLD-9'));
+    await settle(t, 800);
+    await tapK(t, 'md-edit');
+    await net(t);
+    await tapK(t, 'mf-status');
+    await settle(t, 400);
+    await t.tap(find.text('Active').last);
+    await settle(t, 600);
+    expect(find.text('Did OLD-9 come back to the site?'), findsOneWidget);
+    await t.tap(find.byKey(const Key('m-cameback')));
+    await settle(t, 400);
+    await tapK(t, 'mf-save');
+    await settle(t, 600);
+    expect(find.text('It came back'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    c = srv.masterCalls.last;
+    expect(((c['m'] as Map)['status'], (c['m'] as Map)['activeFrom'], (c['m'] as Map)['inactiveFrom']), ('Active', '2026-10-14', ''));
+  });
+
+  testWidgets('(3.4.0) Several ticked: Edit selected sends only what was changed; Delete selected – they have entries – asked again', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Asset Master');
+    await t.longPress(find.text('Sany 210 (No.1)'));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('mt-MH-25-AJ-2169')));
+    await settle(t, 300);
+    expect(find.text('2 selected'), findsOneWidget);
+    await t.tap(find.byKey(const Key('m-seledit')));
+    await net(t);
+    expect(find.text('Ownership – different'), findsOneWidget);
+    await tapK(t, 'me-ownership');
+    await settle(t, 400);
+    await t.tap(find.text('Hired').last);
+    await settle(t, 400);
+    await t.tap(find.byKey(const Key('me-save')));
+    await net(t);
+    var c = srv.masterCalls.last;
+    expect(c['fn'], 'editMasterMany');
+    expect(c['changes'], {'ownership': 'Hired'});
+    expect((c['ids'] as List).toSet(), {'Sany 210 (No.1)', 'MH-25-AJ-2169'});
+    expect(find.text('2 machinery updated.'), findsOneWidget);
+    await t.tap(find.byKey(const Key('mt-MH-25-AJ-2169')));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('m-seldel')));
+    await settle(t, 500);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    expect(find.text('1 of them already have entries'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    c = srv.masterCalls.last;
+    expect((c['fn'], c['force']), ('deleteMasterMany', true));
+    expect(s.machine('MH-25-AJ-2169'), isNull);
+  });
+
+  testWidgets('(3.4.0) Vendor Master: the list; a new vendor – the GST number gives the State and the PAN, the IFSC the bank and branch – saveVendor', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vendor Master');
+    expect(find.text('I E Enterprises'), findsOneWidget);
+    expect(find.text('Incomplete'), findsOneWidget);
+    expect(find.text('Bank: State Bank of India · ••••4321'), findsOneWidget);
+    expect(find.byKey(const Key('v-mkall')), findsOneWidget, reason: 'RCL is an owner not yet saved as a vendor');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/20_vendors.png'));
+    await t.tap(find.byKey(const Key('v-new')));
+    await net(t);
+    await t.enterText(box('vf-name'), 'Shree Ganesh Transport');
+    await tapK(t, 'vf-gstreg');
+    await settle(t, 400);
+    await t.tap(find.text('Yes').last);
+    await settle(t, 400);
+    const g14 = '27ABCPE1234F1Z';
+    await t.enterText(box('vf-gst'), g14 + gstCheckLetter(g14));
+    await settle(t, 300);
+    expect(find.textContaining('Maharashtra (27) · Individual / Proprietor · PAN ABCPE1234F filled in'), findsOneWidget);
+    await t.enterText(box('vf-ifsc'), 'SBIN0001234');
+    await net(t);
+    expect(find.textContaining('State Bank of India – Nashik Road, Nashik, Maharashtra'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/21_vendor_form.png'));
+    await tapK(t, 'vf-save');
+    await net(t);
+    final c = srv.masterCalls.last;
+    expect((c['fn'], c['mode']), ('saveVendor', 'add'));
+    final v = c['v'] as Map;
+    expect((v['name'], v['gstReg'], v['pan'], v['bank'], v['branch'], v['ifsc'], v['oldName']), ('Shree Ganesh Transport', 'Yes', 'ABCPE1234F', 'State Bank of India', 'Nashik Road', 'SBIN0001234', ''));
+    expect(find.text('Vendor saved: Shree Ganesh Transport'), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.4.0) Vendor BOQ: the list; a new BOQ – the vendor\'s machinery ticked, Per Trip with a Night trip rate – saveBoq', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vendor BOQ');
+    expect(find.byKey(const Key('boq-BOQ-0001')), findsOneWidget);
+    expect(find.textContaining('Monthly ₹45,000'), findsOneWidget);
+    await t.tap(find.byKey(const Key('b-new')));
+    await net(t);
+    await tapK(t, 'bq-vendor');
+    await settle(t, 400);
+    await t.tap(find.text('Chalke Enterprises').last);
+    await settle(t, 400);
+    expect(t.widget<TextField>(box('bq-no')).controller!.text, '1');
+    expect(t.widget<TextField>(box('bq-gst')).controller!.text, '18', reason: 'a GST-registered vendor: 18% at first');
+    await tapK(t, 'bq-tick-MH-04-J-9844');
+    await settle(t, 400);
+    expect(find.byKey(const Key('bl-0')), findsOneWidget);
+    await tapK(t, 'bl-basis-0-Monthly');
+    await settle(t, 400);
+    await t.tap(find.text('Per trip').last);
+    await settle(t, 400);
+    await t.enterText(find.descendant(of: find.byKey(const Key('bl-rate-0')), matching: find.byType(TextField)), '900');
+    await t.enterText(find.descendant(of: find.byKey(const Key('bl-night-0')), matching: find.byType(TextField)), '1100');
+    await settle(t, 300);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/22_boq_form.png'));
+    await tapK(t, 'bq-save');
+    await net(t);
+    final c = srv.masterCalls.last;
+    expect((c['fn'], c['mode']), ('saveBoq', 'add'));
+    final b = c['b'] as Map;
+    expect((b['vendor'], b['no'], b['from'], b['gstPct']), ('Chalke Enterprises', '1', '2026-10-01', '18'));
+    final l = (b['lines'] as List).single as Map;
+    expect((l['no'], l['basis'], l['rate'], l['nightRate'], l['diesel']), ('MH-04-J-9844', 'Per Trip', '900', '1100', 'Company'));
+  }, tags: ['golden']);
+
+  testWidgets('(3.4.0) Vehicle Compliance: the counts and chips; a paper renewed (N/A) – renewDoc; Papers per type', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vehicle Compliance');
+    expect(find.byKey(const Key('cp-MH-25-AJ-2169')), findsOneWidget);
+    expect(find.byKey(const Key('cp-Sany 210 (No.1)')), findsNothing, reason: 'its papers are fine: not in "Needs attention"');
+    expect(find.text('expired 14 days ago'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/23_compliance.png'));
+    await tapK(t, 'cpr-MH-25-AJ-2169-Permit');
+    await settle(t, 600);
+    expect(find.text('Enter Permit'), findsOneWidget);
+    await t.tap(find.byKey(const Key('cp-na')));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('cp-save')));
+    await net(t);
+    final c = srv.masterCalls.firstWhere((x) => x['fn'] == 'renewDoc');
+    expect((c['x'] as Map)['to'], 'NA');
+    expect(((c['x'] as Map)['no'], (c['x'] as Map)['doc'], (c['x'] as Map)['on']), ('MH-25-AJ-2169', 'Permit', '2026-10-14'));
+    await t.ensureVisible(find.byKey(const Key('cp-chips')));
+    await settle(t, 300);
+    await t.scrollUntilVisible(find.byKey(const Key('cpc-all')), 150, scrollable: find.descendant(of: find.byKey(const Key('cp-chips')), matching: find.byType(Scrollable)).first);
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('cpc-all')));
+    await settle(t, 300);
+    expect(find.byKey(const Key('cp-Sany 210 (No.1)')), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.4.0) Log Book Format: a machinery set to Format C, Save – saveLbFormats; a format renamed', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Log Book Format');
+    expect(find.byKey(const Key('lbm-MH-25-AJ-2169')), findsOneWidget);
+    expect(find.byKey(const Key('lbo-MH-25-AJ-2169')), findsOneWidget, reason: 'its format box');
+    await tapK(t, 'lbo-MH-25-AJ-2169');
+    await settle(t, 400);
+    await t.tap(find.text('C').last);
+    await settle(t, 400);
+    expect(find.text('Save (1 change not saved)'), findsOneWidget);
+    await t.tap(find.byKey(const Key('lbf-save')));
+    await net(t);
+    expect(srv.masterCalls.last['ch'], {'MH-25-AJ-2169': 'C'});
+    expect(s.machine('MH-25-AJ-2169')!.lbFormat, 'C');
+    await t.ensureVisible(find.byKey(const Key('lbf-strip')));
+    await settle(t, 300);
+    await t.scrollUntilVisible(find.byKey(const Key('lbf-ren-C')), 200, scrollable: find.descendant(of: find.byKey(const Key('lbf-strip')), matching: find.byType(Scrollable)).first);
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('lbf-ren-C')));
+    await settle(t, 400);
+    await t.enterText(find.byKey(const Key('lbf-name')), 'KM book');
+    await t.tap(find.byKey(const Key('lbf-name-ok')));
+    await net(t);
+    expect(srv.lbNames, {'C': 'KM book'});
+    expect(find.text('KM book'), findsWidgets);
+  });
 }

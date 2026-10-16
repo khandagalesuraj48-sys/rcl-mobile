@@ -95,6 +95,20 @@ class Api {
     }
   }
 
+  /// (3.4.0) Vendor Master: the bank and branch of an IFSC, from the public IFSC list of Razorpay (ifsc.razorpay.com – free, no
+  /// key; only the code is sent), as the web. {'missing': true} = not a branch; null = no answer (no internet).
+  Future<Map<String, dynamic>?> ifsc(String code) async {
+    try {
+      final r = await _c.get(Uri.parse('https://ifsc.razorpay.com/${Uri.encodeComponent(code)}')).timeout(const Duration(seconds: 7));
+      if (r.statusCode == 404) return {'missing': true};
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(utf8.decode(r.bodyBytes));
+      return j is Map<String, dynamic> ? j : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ---------------- the Portal ----------------
   Map<String, String> get _portalHeaders => {
         'Content-Type': 'application/json',

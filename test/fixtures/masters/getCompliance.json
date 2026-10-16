@@ -1,0 +1,483 @@
+{
+ "today": "2026-10-16",
+ "soonDays": 30,
+ "docs": [
+  "Tax",
+  "PUC",
+  "Permit",
+  "Fitness",
+  "Insurance"
+ ],
+ "machines": [
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 1
+  },
+  {
+   "no": "GAPX-1",
+   "type": "Tipper",
+   "owner": "Vendor 5",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 5
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "ownership": "Own",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 5
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "ownership": "Own",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 5
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "ownership": "Own",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 5
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "ownership": "Own",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 5
+  },
+  {
+   "no": "MV-1",
+   "type": "Excavator",
+   "owner": "Multi Vendor",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 1
+  },
+  {
+   "no": "MV-2",
+   "type": "Excavator",
+   "owner": "Multi Vendor",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 1
+  },
+  {
+   "no": "MV-3",
+   "type": "Excavator",
+   "owner": "Multi Vendor",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 1
+  },
+  {
+   "no": "MV-4",
+   "type": "Excavator",
+   "owner": "Multi Vendor",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "notreq",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 1
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 5
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 5
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "ownership": "Rental",
+   "docs": {
+    "Tax": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "PUC": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Permit": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Fitness": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    },
+    "Insurance": {
+     "v": "",
+     "s": "missing",
+     "days": ""
+    }
+   },
+   "needs": 5
+  }
+ ],
+ "history": [],
+ "types": [
+  {
+   "type": "Excavator",
+   "key": "EXCAVATOR",
+   "count": 5,
+   "docs": [
+    "Insurance"
+   ],
+   "set": false,
+   "guess": "Site equipment – insurance only"
+  },
+  {
+   "type": "Tipper",
+   "key": "TIPPER",
+   "count": 8,
+   "docs": [
+    "Tax",
+    "PUC",
+    "Permit",
+    "Fitness",
+    "Insurance"
+   ],
+   "set": false,
+   "guess": "Road vehicle – all papers"
+  }
+ ],
+ "noPapers": 0
+}

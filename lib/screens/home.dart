@@ -15,6 +15,7 @@ import '../ui/widgets.dart';
 import '../web/web_host.dart';
 import 'verify.dart';
 import 'logbook.dart';
+import 'masters.dart';
 import '../ui/t.dart';
 
 /// A module tile of Home: where it goes and who may see it.
@@ -28,12 +29,13 @@ class ModuleTile {
     if (module.isNotEmpty) return s.hasModule(module);
     if (native == 'diesel') return kKinds.any((k) => s.canSee(k.module));
     if (native == 'reports') return reportsOf(s).isNotEmpty;
+    if (native == 'masters') return mastersOf(s).isNotEmpty;
     return perm.isEmpty || s.canSee(perm);
   }
 }
 
 const kModules = [
-  ModuleTile('Machinery', 'यंत्रे', 'tractor', C.green, C.greenSoft, page: 'master', perm: 'Master'),
+  ModuleTile('Machinery', 'यंत्रे', 'tractor', C.green, C.greenSoft, native: 'masters'), // (3.4.0) the app's own Master screens
   ModuleTile('Logbook', 'लॉगबुक', 'notebook', C.blue, C.blueSoft, native: 'logbook', perm: 'Log Book'),
   ModuleTile('Diesel', 'डिझेल', 'fuel_pump', C.green, C.greenSoft, native: 'diesel'),
   ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, page: 'brk', perm: 'Breakdown'),
@@ -167,6 +169,10 @@ class _HomeTabState extends State<HomeTab> {
     }
     if (m.native == 'reports') {
       widget.onOpenReports();
+      return;
+    }
+    if (m.native == 'masters') {
+      await openMasters(context);
       return;
     }
     await openWeb(context, m.en, m.page, pic: m.pic);

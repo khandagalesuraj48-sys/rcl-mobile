@@ -14,6 +14,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.4.0 (16-10-2026, part 3 of the whole web in the app):** **Machinery** (Home) – the web's Master pages in the app's own
+screens, by access: **Asset Master** (the list with its filters and "on site" dates, the vendor chips, papers; a machinery's details;
+Add / Edit – the changes shown first, a new Number moves everything, "did it come back?", earlier periods, papers with Lifetime /
+N/A –; Add multiple; several ticked: Assign vendor, Edit selected, Delete selected; Export to Excel, Print list, Asset list by date /
+month / period), **Vendor Master** (the list, a vendor's form – the GST number's State and PAN, the IFSC's bank and branch –, a
+rename, save all owners as vendors), **Vendor BOQ** (BOQs and amendments, the form with every rent type – hour slabs, Night trip,
+Item-wise –, the vendor's machinery ticked, same terms for others, machinery without a BOQ, Rate check, Print), **Vehicle
+Compliance** (the counts and chips, renew a paper, papers per type, Export Excel, the history) and **Log Book Format** (each
+machinery's format, set several, a format's name). The same server actions and checks as the web. Still to come with later parts:
+the Excel imports, QR labels, a Log Book format's sample print.
+
 **Version 3.3.0 (16-10-2026, part 2 of the whole web in the app):** **Reports** in the app's own screens – Daily Inward & Issue,
 Monthly Diesel Issue, Monthly Diesel & Average and the 12 diesel reports (Debit Recovery – its rates can be changed, Machinery Cost,
 Diesel Cost, Purchase Register, Machinery Diesel Ledger, Diesel Watch, Owner / Vendor-wise, Type-wise, Stock Register, Month vs

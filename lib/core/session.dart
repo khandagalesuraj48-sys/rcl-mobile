@@ -379,6 +379,16 @@ class Session extends ChangeNotifier {
     setStock(d['stock']);
   }
 
+  /// (3.4.0) The machinery list the server sent back after a change in Asset Master (saveMaster … : "master") – every screen
+  /// of the app has it at once, as the web's setMaster.
+  void setMaster(dynamic list) {
+    if (list is! List) return;
+    machines = list.whereType<Map>().map((m) => Machine(m.cast<String, dynamic>())).toList()..sort((a, b) => a.id.compareTo(b.id));
+    lastChanged = {'master'};
+    dataTick.value++;
+    notifyListeners();
+  }
+
   void setStock(dynamic s) {
     if (s is! Map) return;
     final t = s['stock'];

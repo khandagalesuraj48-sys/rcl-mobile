@@ -36,11 +36,13 @@ class RNote {
 }
 
 class RDoc {
-  RDoc({required this.title, this.meta = '', this.kpis = const [], this.blocks = const [], this.portrait = true, this.period = '', this.file = 'RCL_report'});
+  RDoc({required this.title, this.meta = '', this.kpis = const [], this.blocks = const [], this.portrait = true, this.period = '', this.file = 'RCL_report', this.signs = const []});
   final String title, meta, period, file;
   final List<(String, String)> kpis;
   final List<Object> blocks; // RTable · RNote
   final bool portrait;
+  /// (3.4.0) the signatures under the print (title, small line) – none given: Prepared / Checked / Approved by
+  final List<(String, String)> signs;
   List<RTable> get tables => blocks.whereType<RTable>().toList();
 }
 

@@ -1,27 +1,19 @@
 /* ONE REPORT (3.2.0) – the app's own screen for a report of the web: its filters (the same as the web page: dates, ownership,
  * vendor, rate, pump, location, machinery, months, source / shift / supply), "Generate report" (the same server report), the
  * report on the phone, and Excel / Print-PDF of it. The Debit Recovery Statement: the rates may be changed and saved, as on the web. */
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart' hide Text;
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:share_plus/share_plus.dart';
 
 import '../core/format.dart';
 import '../core/rdoc.dart';
 import '../core/report_defs.dart';
-import '../core/rprint.dart';
 import '../core/session.dart';
-import '../core/xlsx.dart';
+import '../ui/outputs.dart';
 import '../ui/report_view.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/files.dart' show safeFileName;
-import '../web/print_view.dart';
 import 'forms.dart' show MachinePicker;
 
 Future<void> openReport(BuildContext context, ReportDef def) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportScreen(def: def)));
@@ -167,20 +159,12 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  List<String> _top(Session s, String head) => [head, if (s.siteLabel.isNotEmpty) s.siteLabel, doc!.title, if (doc!.period.isNotEmpty) doc!.period];
-
   Future<void> _excel() async {
     final s = SessionScope.read(context), d = doc;
     if (d == null) return;
     setState(() => out = 'x');
     try {
-      final bytes = reportXlsx(d, _top(s, s.printNames.first));
-      final dir = Directory('${(await getTemporaryDirectory()).path}/rcl_files');
-      await dir.create(recursive: true);
-      final name = safeFileName('${d.file}.xlsx');
-      final f = File('${dir.path}/$name');
-      await f.writeAsBytes(bytes, flush: true);
-      await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', name: name)], title: name));
+      await shareDocXlsx(s, d);
     } catch (e) {
       if (mounted) toast(context, tr(errText(e)), bad: true);
     } finally {
@@ -191,19 +175,9 @@ class _ReportScreenState extends State<ReportScreen> {
   Future<void> _pdf() async {
     final s = SessionScope.read(context), d = doc;
     if (d == null) return;
-    final head = await pickPrintName(context, s.printNames, 'Print – ${def.label}');
-    if (head == null || !mounted) return;
     setState(() => out = 'p');
     try {
-      var logo = '';
-      if (head.toLowerCase().contains('rachana')) {
-        try {
-          logo = 'data:image/png;base64,${base64Encode((await rootBundle.load('assets/brand/rachana_logo.png')).buffer.asUint8List())}';
-        } catch (_) {/* the name only */}
-      }
-      final html = reportHtml(d, company: head, site: s.siteLabel, printed: '${data?['generated'] ?? whenText(DateTime.now().toIso8601String())}', logo: logo);
-      if (!mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: html, title: d.title)));
+      await printDoc(context, s, d, printed: '${data?['generated'] ?? whenText(DateTime.now().toIso8601String())}');
     } catch (e) {
       if (mounted) toast(context, tr(errText(e)), bad: true);
     } finally {
@@ -466,21 +440,6 @@ class _ReportScreenState extends State<ReportScreen> {
       if (mounted) toast(context, tr(errText(e)), bad: true);
     }
   }
-}
-
-/// Which name heads the print (the site's bill names; the company first) – asked only when there is more than one.
-Future<String?> pickPrintName(BuildContext context, List<String> names, String title) async {
-  if (names.length < 2) return names.isEmpty ? 'Rachana Construction Limited' : names.first;
-  return showDialog<String>(
-    context: context,
-    builder: (c) => SimpleDialog(
-      title: Text(title),
-      children: [
-        Padding(padding: const EdgeInsets.fromLTRB(24, 0, 24, 8), child: Text('Which name should be printed at the top?', style: const TextStyle(color: C.muted))),
-        for (final n in names) SimpleDialogOption(key: Key('pn-$n'), onPressed: () => Navigator.pop(c, n), child: Text(n, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-      ],
-    ),
-  );
 }
 
 /// Several machinery picked for the monthly reports (within the ownerships ticked).

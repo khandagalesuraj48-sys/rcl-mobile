@@ -70,7 +70,7 @@ Uint8List reportXlsx(RDoc doc, List<String> top) {
     for (final l in [...top, if (tb.title.isNotEmpty) tb.title]) {
       line([RCell(l)], 1, title: true);
     }
-    r++; // an empty line
+    if (top.isNotEmpty || tb.title.isNotEmpty) r++; // an empty line (an export to import back: its heading line first)
     line([for (final h in tb.head) RCell(h)], 2);
     for (final row in tb.rows) {
       line(row.cells, row.kind == RKind.group ? 3 : row.kind == RKind.sub || row.kind == RKind.grand ? 1 : 0);

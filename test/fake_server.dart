@@ -46,6 +46,49 @@ class FakeServer {
     {'id': 'DI-000520', 'date': '2026-10-14', 'shift': 'Night', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'qty': 80, 'source': 'Dispenser', 'driver': 'Rupesh'},
   ];
 
+  // (3.4.0) Asset Master and the other masters: the machinery (changed by the saves), the vendors, the BOQs, the papers
+  final masterCalls = <Map<String, dynamic>>[];
+  final master = <Map<String, dynamic>>[
+    {'id': 'Sany 210 (No.1)', 'name': 'Sany 210', 'type': 'Excavator', 'make': 'Sany', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['Hrs', 'Time'], 'modesX': ['Time'], 'meterKm': false, 'meterHr': true,
+      'worksOn': ['Hrs'], 'unit': 'Hrs', 'hrStd': 14, 'kmStd': '', 'tankCap': 400, 'activeFrom': '2026-09-01', 'inactiveFrom': '', 'earlier': [], 'insuranceUpto': '2027-03-31', 'enteredBy': 'Tester'},
+    {'id': 'MH-25-AJ-2169', 'no': 'MH-25-AJ-2169', 'name': '', 'type': 'Tipper', 'make': 'Tata', 'owner': 'I E Enterprises', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'modesX': [], 'meterKm': true, 'meterHr': false,
+      'worksOn': ['KM'], 'unit': 'KM', 'kmStd': 3.5, 'hrStd': '', 'tankCap': 300, 'activeFrom': '', 'inactiveFrom': '', 'earlier': [{'from': '2026-06-01', 'until': '2026-08-01'}],
+      'taxUpto': 'LIFETIME', 'pucUpto': '2026-09-30', 'insuranceUpto': '2026-10-20', 'engineNo': 'E123', 'chassisNo': 'C456', 'enteredBy': 'Tester', 'updatedBy': 'Checker'},
+    {'id': 'OLD-9', 'no': 'OLD-9', 'name': '', 'type': 'Roller', 'owner': '', 'ownership': 'Own', 'status': 'Inactive', 'inactiveFrom': '2026-10-01', 'modes': ['Hrs'], 'worksOn': ['Hrs'], 'unit': 'Hrs', 'hrStd': 8},
+  ];
+  List<Map<String, dynamic>> get _master => [
+        ...master,
+        if (tanker) {'id': 'MH-04-J-9844', 'name': '', 'type': 'Water Tanker', 'owner': 'Chalke Enterprises', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['Trip'], 'modesX': [], 'lbFormat': 'I'},
+      ];
+  final vendors = <Map<String, dynamic>>[
+    {'name': 'I E Enterprises', 'saved': true, 'complete': false, 'gstReg': 'No', 'pan': 'ABCDE1234F', 'bank': 'State Bank of India', 'account': '000000004321', 'ifsc': 'SBIN0001234', 'phone': '9000000000', 'boqs': 1,
+      'ownership': 'Rental', 'machines': [{'id': 'MH-25-AJ-2169', 'type': 'Tipper', 'ownership': 'Rental', 'status': 'Active'}]},
+    {'name': 'RCL', 'saved': false, 'complete': true, 'gstReg': 'No', 'boqs': 0, 'ownership': 'Own', 'machines': [{'id': 'Sany 210 (No.1)', 'type': 'Excavator', 'ownership': 'Own', 'status': 'Active'}]},
+    {'name': 'Chalke Enterprises', 'saved': true, 'complete': true, 'gstReg': 'Yes', 'gst': '27AAAAA0000A1Z5', 'gstPct': 18, 'pan': 'AAAAA0000A', 'bank': 'Bank of Maharashtra', 'account': '000000009999', 'ifsc': 'MAHB0000123', 'boqs': 0, 'ownership': 'Rental', 'machines': [{'id': 'MH-04-J-9844', 'type': 'Water Tanker', 'ownership': 'Rental', 'status': 'Active'}]},
+  ];
+  final boqs = <Map<String, dynamic>>[
+    {'id': 'BOQ-0001', 'no': '1', 'vendor': 'I E Enterprises', 'from': '2026-09-01', 'to': '', 'amendOf': '', 'amendNo': 0, 'gstPct': '', 'tdsPct': 2, 'woNo': 'WO-12', 'woDate': '', 'remark': '', 'enteredBy': 'Tester',
+      'lines': [{'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'basis': 'Monthly', 'rate': 45000, 'slabs': [], 'slabOn': '', 'diesel': 'Company', 'remark': ''}]},
+  ];
+  Map<String, String> lbNames = {};
+  Map<String, dynamic> get _compliance => {
+        'today': '2026-10-14', 'soonDays': 30, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'noPapers': 1,
+        'machines': [
+          {'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'ownership': 'Rental', 'docs': {
+            'Tax': {'v': 'LIFETIME', 's': 'life', 'days': ''}, 'PUC': {'v': '2026-09-30', 's': 'expired', 'days': -14}, 'Permit': {'v': '', 's': 'missing', 'days': ''},
+            'Fitness': {'v': '2027-01-31', 's': 'ok', 'days': 109}, 'Insurance': {'v': '2026-10-20', 's': 'due', 'days': 6}}},
+          {'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'owner': 'RCL', 'ownership': 'Own', 'docs': {
+            'Tax': {'v': '', 's': 'notreq', 'days': ''}, 'PUC': {'v': '', 's': 'notreq', 'days': ''}, 'Permit': {'v': '', 's': 'notreq', 'days': ''}, 'Fitness': {'v': '', 's': 'notreq', 'days': ''},
+            'Insurance': {'v': '2027-03-31', 's': 'ok', 'days': 168}}},
+        ],
+        'types': [
+          {'type': 'Tipper', 'key': 'TIPPER', 'count': 1, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'set': false, 'guess': 'Road vehicle – all papers'},
+          {'type': 'Excavator', 'key': 'EXCAVATOR', 'count': 1, 'docs': ['Insurance'], 'set': true, 'guess': ''},
+        ],
+        'history': [{'on': '2026-10-02', 'no': 'MH-25-AJ-2169', 'doc': 'Fitness', 'from': '2026-09-30', 'to': '2027-01-31', 'docNo': 'F-77', 'amount': 1200, 'remark': '', 'source': '', 'by': 'Tester'}],
+      };
+  List<String> _works(dynamic w) => '${w ?? ''}'.split(',').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+
   http.Response _j(Object o, [int code = 200, Map<String, String> h = const {}]) => http.Response(jsonEncode(o), code, headers: {'content-type': 'application/json', ...h});
 
   late final client = MockClient((r) async {
@@ -99,6 +142,10 @@ class FakeServer {
       if (!portalSignedIn) return _j({'error': 'Sign in on the Portal first.', 'code': 'signin'}, 401);
       tickets++;
       return _j({'ticket': 'tk$tickets'});
+    }
+    if (r.url.host == 'ifsc.razorpay.com') {
+      calls.add('ifsc:${r.url.path}');
+      return r.url.path == '/SBIN0001234' ? _j({'BANK': 'State Bank of India', 'BRANCH': 'Nashik Road', 'CITY': 'Nashik', 'STATE': 'Maharashtra'}) : _j('Not Found', 404);
     }
     if (path.endsWith('/api/rpc')) {
       final b = jsonDecode(r.body) as Map;
@@ -189,12 +236,117 @@ class FakeServer {
         case 'getInit':
           return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': ['Dispenser', 'VTR Store'], 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
             'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms},
-            'master': [
-              {'id': 'Sany 210 (No.1)', 'name': 'Sany 210', 'type': 'Excavator', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['Hrs', 'Time'], 'modesX': ['Time'], 'meterKm': false, 'meterHr': true},
-              {'id': 'MH-25-AJ-2169', 'name': '', 'type': 'Tipper', 'owner': 'I E Enterprises', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'modesX': [], 'meterKm': true, 'meterHr': false},
-              {'id': 'OLD-9', 'name': '', 'type': 'Roller', 'owner': 'RCL', 'ownership': 'Own', 'status': 'Inactive', 'modes': ['Hrs']},
-              if (tanker) {'id': 'MH-04-J-9844', 'name': '', 'type': 'Water Tanker', 'owner': 'Chalke Enterprises', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['Trip'], 'modesX': [], 'lbFormat': 'I'},
-            ]}});
+            'master': _master}});
+        // (3.4.0) the masters
+        case 'getVendors':
+          return _j({'result': vendors});
+        case 'getBoqs':
+          return _j({'result': {'vendors': vendors, 'boqs': boqs}});
+        case 'saveMaster':
+          final m = (a[0] as Map).cast<String, dynamic>();
+          masterCalls.add({'fn': action, 'm': m, 'mode': a[1], 'id': a.length > 2 ? a[2] : null});
+          final id = '${m['no'] ?? ''}'.isNotEmpty ? '${m['no']}' : '${m['name']}';
+          if (a[1] == 'add') {
+            master.add({...m, 'id': id, 'worksOn': _works(m['worksOn'])});
+          } else {
+            final i = master.indexWhere((x) => x['id'] == a[2]);
+            master[i] = {...master[i], ...m, 'id': id, 'worksOn': _works(m['worksOn'])};
+          }
+          return _j({'result': {'ok': true, 'master': _master, 'renamed': a[1] == 'edit' && id != a[2] ? {'from': a[2], 'to': id, 'text': '3 diesel issues'} : null}});
+        case 'saveMasterBulk':
+          final list = (a[0] as List).whereType<Map>().map((x) => x.cast<String, dynamic>()).toList();
+          masterCalls.add({'fn': action, 'list': list});
+          final errs = [
+            for (final (k, m) in list.indexed)
+              if (['no', 'name', 'type', 'make', 'unit', 'kmStd', 'hrStd', 'owner', 'ownership'].any((f) => '${m[f] ?? ''}'.isNotEmpty) && '${m['ownership']}'.isEmpty) {'row': k + 1, 'msg': '${'${m['no']}'.isNotEmpty ? m['no'] : m['name']}: select Ownership (Own / Rental / Hired / Debit / Other).'}
+          ];
+          if (errs.isNotEmpty) return _j({'result': {'ok': false, 'errors': errs}});
+          final add = list.where((m) => '${m['no']}${m['name']}'.isNotEmpty).toList();
+          for (final m in add) {
+            master.add({...m, 'id': '${m['no']}'.isNotEmpty ? m['no'] : m['name'], 'status': 'Active'});
+          }
+          return _j({'result': {'ok': true, 'count': add.length, 'master': _master}});
+        case 'deleteMaster':
+          masterCalls.add({'fn': action, 'id': a[0], 'force': a[1]});
+          if (a[1] != true && a[0] == 'MH-25-AJ-2169') return _j({'result': {'ok': false, 'warning': 'MH-25-AJ-2169 has 3 Diesel Issue and 2 Log Book entries. Those entries will stay, but this machinery will be removed from Master. Delete anyway?'}});
+          master.removeWhere((x) => x['id'] == a[0]);
+          return _j({'result': {'ok': true, 'master': _master}});
+        case 'editMasterMany':
+          final ids = (a[0] as List).map((e) => '$e').toList(), ch = (a[1] as Map).cast<String, dynamic>();
+          masterCalls.add({'fn': action, 'ids': ids, 'changes': ch});
+          for (final m in master.where((x) => ids.contains(x['id']))) {
+            m.addAll(ch);
+          }
+          return _j({'result': {'ok': true, 'count': ids.length, 'master': _master}});
+        case 'deleteMasterMany':
+          final ids = (a[0] as List).map((e) => '$e').toList();
+          masterCalls.add({'fn': action, 'ids': ids, 'force': a[1]});
+          if (a[1] != true && ids.contains('MH-25-AJ-2169')) return _j({'result': {'ok': false, 'used': [{'id': 'MH-25-AJ-2169', 'diesel': 3, 'log': 2}]}});
+          master.removeWhere((x) => ids.contains(x['id']));
+          return _j({'result': {'ok': true, 'count': ids.length, 'ids': ids, 'master': _master}});
+        case 'assignVendors':
+          final items = (a[0] as List).whereType<Map>().map((x) => x.cast<String, dynamic>()).toList();
+          masterCalls.add({'fn': action, 'items': items});
+          for (final it in items) {
+            master.firstWhere((x) => x['id'] == it['id'])['owner'] = it['vendor'];
+          }
+          return _j({'result': {'ok': true, 'count': items.length, 'master': _master, 'vendors': vendors}});
+        case 'vendorsFromOwners':
+          masterCalls.add({'fn': action, 'names': a[0]});
+          return _j({'result': {'ok': true, 'count': (a[0] as List).length, 'names': a[0], 'vendors': vendors}});
+        case 'exportMaster':
+          return _j({'result': {'headers': ['Machinery Number', 'Machinery Name', 'Type of Machinery', 'Standard Average (KM/Ltr)'], 'rows': [for (final m in master) [m['no'] ?? '', m['name'] ?? '', m['type'] ?? '', m['kmStd'] ?? '']]}});
+        case 'getBreakdowns':
+          return _j({'result': {'date': (a[0] as Map)['date'], 'history': [], 'onDate': []}});
+        case 'saveVendor':
+          final v = (a[0] as Map).cast<String, dynamic>();
+          masterCalls.add({'fn': action, 'v': v, 'mode': a[1]});
+          final was = '${v['oldName']}'.isNotEmpty ? '${v['oldName']}' : '${v['name']}';
+          final i = vendors.indexWhere((x) => x['name'] == was);
+          if (i > -1) {
+            vendors[i] = {...vendors[i], ...v, 'saved': true};
+          } else {
+            vendors.add({...v, 'saved': true, 'machines': [], 'boqs': 0});
+          }
+          return _j({'result': {'ok': true, 'name': v['name'], 'renamed': '${v['oldName']}'.isNotEmpty ? {'from': v['oldName'], 'to': v['name'], 'text': '1 assets'} : null, 'vendors': vendors}});
+        case 'deleteVendor':
+          masterCalls.add({'fn': action, 'name': a[0]});
+          return _j({'result': {'ok': true}});
+        case 'saveBoq':
+          final b = (a[0] as Map).cast<String, dynamic>();
+          masterCalls.add({'fn': action, 'b': b, 'mode': a[1], 'id': a.length > 2 ? a[2] : null});
+          return _j({'result': {'ok': true, 'id': 'BOQ-0002', 'no': '${b['no']}'.isEmpty ? '2' : b['no'], 'amendNo': b['amendOf'] != null ? 1 : 0}});
+        case 'deleteBoq':
+          masterCalls.add({'fn': action, 'id': a[0]});
+          boqs.removeWhere((x) => x['id'] == a[0]);
+          return _j({'result': {'ok': true}});
+        case 'boqMissing':
+          return _j({'result': {'date': (a[0] as Map)['date'], 'rows': [{'no': 'MH-04-J-9844', 'type': 'Water Tanker', 'vendor': 'Chalke Enterprises', 'ownership': 'Rental', 'vendorSaved': true}]}});
+        case 'boqRateCheck':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          return _j({'result': {'no': x['no'], 'date': x['date'], 'vendor': 'I E Enterprises', 'hit': {'line': boqs.first['lines'][0], 'boqNo': '1', 'amendNo': 0, 'from': '2026-09-01', 'to': ''}}});
+        case 'getCompliance':
+          return _j({'result': _compliance});
+        case 'renewDoc':
+          masterCalls.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'ok': true}});
+        case 'saveCmpRules':
+          masterCalls.add({'fn': action, 'rules': a[0]});
+          return _j({'result': {'ok': true}});
+        case 'getLbFormatNames':
+          return _j({'result': lbNames});
+        case 'saveLbFormatName':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          masterCalls.add({'fn': action, ...x});
+          lbNames['${x['id']}'] = '${x['name']}';
+          return _j({'result': {'ok': true, 'names': lbNames}});
+        case 'saveLbFormats':
+          final ch = (a[0] as Map).cast<String, dynamic>();
+          masterCalls.add({'fn': action, 'ch': ch});
+          for (final e in ch.entries) {
+            master.firstWhere((x) => x['id'] == e.key)['lbFormat'] = e.value;
+          }
+          return _j({'result': {'ok': true, 'count': ch.length, 'master': _master}});
         case 'getDieselIssues':
           return _j({'result': {'count': issues.length, 'totalQty': 240, 'rows': issues}});
         case 'getInwards':
