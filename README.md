@@ -14,6 +14,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.7.0 (16-10-2026, part 6 of the whole web in the app):** **Breakdown** (Home → Maintenance) in the app's own screen:
+the daily machinery status – every machinery on site on a date (Own / Rental / Hired / Other, search), Working or Breakdown with
+its reason (a list to pick from) and a remark, since when and for how many days (the breakdowns carried from the last saved day);
+Submit / Save changes, Delete this day, Print; the saved days (tap one to open it); the period report – breakdown days per
+machinery, per owner or owner → machinery, with when and why, Print and Excel. The same server actions as the web.
+
 **Version 3.6.0 (16-10-2026, part 5 of the whole web in the app):** **Edit Log Book** (Log Book → ⋮) in the app's own screen: a
 machinery and dates (Yesterday / This month / Last month) – all its entries as cards, worked out live (total, opening / issued /
 consumed / closing diesel); a changed Close moves the next Start; red cards say what is wrong ("Use it"); + Add row (the first free

@@ -13,6 +13,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'breakdown.dart';
 import 'verify.dart';
 import 'logbook.dart';
 import 'masters.dart';
@@ -38,7 +39,7 @@ const kModules = [
   ModuleTile('Machinery', 'यंत्रे', 'tractor', C.green, C.greenSoft, native: 'masters'), // (3.4.0) the app's own Master screens
   ModuleTile('Logbook', 'लॉगबुक', 'notebook', C.blue, C.blueSoft, native: 'logbook', perm: 'Log Book'),
   ModuleTile('Diesel', 'डिझेल', 'fuel_pump', C.green, C.greenSoft, native: 'diesel'),
-  ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, page: 'brk', perm: 'Breakdown'),
+  ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, native: 'breakdown', perm: 'Breakdown'), // (3.7.0) the app's own Breakdown
   ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, page: 'bill', perm: 'Machinery Billing'),
   ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, page: 'store__dashboard', module: 'store'),
   ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', C.blue, C.blueSoft, native: 'reports'),
@@ -173,6 +174,10 @@ class _HomeTabState extends State<HomeTab> {
     }
     if (m.native == 'masters') {
       await openMasters(context);
+      return;
+    }
+    if (m.native == 'breakdown') {
+      await openBreakdown(context);
       return;
     }
     await openWeb(context, m.en, m.page, pic: m.pic);

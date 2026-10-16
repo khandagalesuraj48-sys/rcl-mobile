@@ -1160,4 +1160,53 @@ void main() {
     expect([for (final tr in (x['trips'] as List).cast<Map>()) '${tr['date']} ${tr['shift']} ${tr['c']} ${tr['a']}-${tr['b']}'], ['2026-10-14 Day 123 07:35-07:50', '2026-10-14 Day 18523 10:30-10:36']);
     expect(find.text('No changes yet'), findsOneWidget, reason: 'opened again from what was saved');
   }, tags: ['golden']);
+
+  testWidgets('(3.7.0) Maintenance → Breakdown: the day – a breakdown carried with its days; a breakdown needs its reason; Submit; the period report', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms['Breakdown'] = 'Edit'
+      ..bdRich = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Maintenance'));
+    await net(t);
+    expect(srv.bdSent.first, {'fn': 'getBreakdowns', 'args': [{'date': '2026-10-14'}]});
+    expect(find.text('Status of 14-10-2026 not submitted yet · breakdowns carried from 13-10-2026'), findsOneWidget);
+    final list = find.descendant(of: find.byKey(const Key('bk-list')), matching: find.byType(Scrollable)).first;
+    await t.scrollUntilVisible(find.byKey(const Key('bk-days-MH-25-AJ-2169')), 300, scrollable: list);
+    expect(find.text('5 days'), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const Key('bk-sw-Sany 210 (No.1)')), -300, scrollable: list);
+    await t.tap(find.descendant(of: find.byKey(const Key('bk-sw-Sany 210 (No.1)')), matching: find.text('Breakdown')));
+    await settle(t, 400);
+    await t.scrollUntilVisible(find.byKey(const Key('bk-submit')), -300, scrollable: list);
+    await tapK(t, 'bk-submit');
+    await settle(t, 600);
+    expect(find.text('Write the reason for: Sany 210 (No.1).'), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const Key('bk-reason-Sany 210 (No.1)')), 300, scrollable: list);
+    await t.enterText(box('bk-reason-Sany 210 (No.1)'), 'Hydraulic problem');
+    ScaffoldMessenger.of(t.element(find.byKey(const Key('bk-list')))).clearSnackBars();
+    await settle(t, 600);
+    await t.scrollUntilVisible(find.byKey(const Key('bk-status')), -300, scrollable: list);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 300);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/29_breakdown.png'));
+    await tapK(t, 'bk-submit');
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    final x = srv.bdSent.firstWhere((c) => c['fn'] == 'submitBdReport')['x'] as Map;
+    expect(x['date'], '2026-10-14');
+    expect([for (final r in (x['rows'] as List).cast<Map>()) '${r['no']} ${r['status']} ${r['reason']}'], ['Sany 210 (No.1) Breakdown Hydraulic problem', 'MH-25-AJ-2169 Breakdown Tyre puncture']);
+    expect(srv.rids.any((r) => r.startsWith('submitBdReport:')), true, reason: 'saved once, with its own number');
+    expect(find.text('✔ Submitted by Tester at 14-10-2026 18:05 – 2 machinery, 2 breakdown'), findsOneWidget);
+    await t.tap(find.byKey(const Key('bt-period')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('bpm-MH-25-AJ-2169')), findsOneWidget);
+    expect(find.text('10-10 →: Tyre puncture (5 d)'), findsOneWidget);
+    await t.tap(find.byKey(const Key('bt-days')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('bkd-2026-10-13')), findsOneWidget);
+  }, tags: ['golden']);
 }

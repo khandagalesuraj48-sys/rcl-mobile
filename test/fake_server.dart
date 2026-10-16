@@ -94,6 +94,27 @@ class FakeServer {
         'trips': [for (final t in trips) {'date': t['date'] ?? '2026-10-14', 'shift': t['shift'], 'c': t['c'], 'a': t['a'], 'b': t['b'], 'ch': t['ch'], 'u': t['u'], 'old': 0}],
         'days': [], 'locks': [],
       };
+  // (3.7.0) Breakdown: a breakdown carried from the last saved day, the history of breakdown runs; what was sent
+  bool bdRich = false;
+  final bdSent = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>>? bdSaved; // the status saved for 14-10-2026
+  Map<String, dynamic> _bd(String date) => {
+        'today': '2026-10-14', 'date': date.isEmpty ? '2026-10-14' : date,
+        'report': bdSaved == null ? null : {'date': '2026-10-14', 'at': '14-10-2026 18:05', 'by': 'Tester', 'rows': bdSaved, 'count': bdSaved!.where((r) => r['status'] == 'Breakdown').length},
+        'carried': bdSaved == null ? '2026-10-13' : '',
+        'status': bdSaved == null
+            ? {'MH25AJ2169': {'status': 'Breakdown', 'reason': 'Tyre puncture', 'remark': '', 'carried': true}}
+            : {for (final r in bdSaved!) '${r['no']}'.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), ''): {'status': r['status'], 'reason': r['reason'], 'remark': r['remark']}},
+        'onDate': [{'no': 'MH-25-AJ-2169', 'from': '2026-10-10', 'days': 5, 'reason': 'Tyre puncture', 'remark': '', 'id': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'ownership': 'Rental'}],
+        'history': [
+          {'no': 'MH-25-AJ-2169', 'from': '2026-10-10', 'backOn': '', 'reason': 'Tyre puncture', 'remark': '', 'days': 5, 'type': 'Tipper', 'owner': 'I E Enterprises', 'ownership': 'Rental', 'id': 'MH-25-AJ-2169|2026-10-10'},
+          {'no': 'Sany 210 (No.1)', 'from': '2026-10-02', 'backOn': '2026-10-05', 'reason': 'Hydraulic problem', 'remark': '', 'days': 3, 'type': 'Excavator', 'owner': 'RCL', 'ownership': 'Own', 'id': 'Sany 210 (No.1)|2026-10-02'},
+        ],
+        'reports': [
+          if (bdSaved != null) {'date': '2026-10-14', 'at': '14-10-2026 18:05', 'by': 'Tester', 'total': bdSaved!.length, 'count': bdSaved!.where((r) => r['status'] == 'Breakdown').length},
+          {'date': '2026-10-13', 'at': '13-10-2026 18:00', 'by': 'Tester', 'total': 2, 'count': 1},
+        ],
+      };
   Map<String, dynamic> get _compliance => {
         'today': '2026-10-14', 'soonDays': 30, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'noPapers': 1,
         'machines': [
@@ -319,8 +340,19 @@ class FakeServer {
           return _j({'result': {'ok': true, 'count': (a[0] as List).length, 'names': a[0], 'vendors': vendors}});
         case 'exportMaster':
           return _j({'result': {'headers': ['Machinery Number', 'Machinery Name', 'Type of Machinery', 'Standard Average (KM/Ltr)'], 'rows': [for (final m in master) [m['no'] ?? '', m['name'] ?? '', m['type'] ?? '', m['kmStd'] ?? '']]}});
+        case 'getBreakdowns' when bdRich:
+          bdSent.add({'fn': action, 'args': a});
+          return _j({'result': _bd('${(a[0] as Map)['date'] ?? ''}')});
         case 'getBreakdowns':
           return _j({'result': {'date': (a[0] as Map)['date'], 'history': [], 'onDate': []}});
+        case 'submitBdReport':
+          bdSent.add({'fn': action, 'x': a[0]});
+          bdSaved = ((a[0] as Map)['rows'] as List).cast<Map>().map((r) => r.cast<String, dynamic>()).toList();
+          return _j({'result': {'ok': true, 'date': (a[0] as Map)['date'], 'replaced': false, 'total': bdSaved.length, 'count': bdSaved.where((r) => r['status'] == 'Breakdown').length, 'list': ''}});
+        case 'deleteBdReport':
+          bdSent.add({'fn': action, 'date': a[0]});
+          bdSaved = null;
+          return _j({'result': {'ok': true, 'date': a[0], 'deleted': true}});
         case 'saveVendor':
           final v = (a[0] as Map).cast<String, dynamic>();
           masterCalls.add({'fn': action, 'v': v, 'mode': a[1]});
