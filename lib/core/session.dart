@@ -510,13 +510,56 @@ class Session extends ChangeNotifier {
     try {
       final d = await api.call('getChangeRequests', [<String, dynamic>{}]);
       if (d is! Map) return;
-      crWaiting = (d['pending'] is num) ? (d['pending'] as num).toInt() : 0;
-      crForMe = (d['forMe'] is num) ? (d['forMe'] as num).toInt() : 0;
-      crBack = (d['backToMe'] is num) ? (d['backToMe'] as num).toInt() : 0;
-      _flow(d['mine']);
-      notifyListeners();
-      if (notify) await tellAlerts(d, api.keep);      // (3.1.8) waiting for him / sent back to him: a notification
+      _takeApprovals(d);
+      if (notify) await tellAlerts(d, api.keep);      // (3.1.8) waiting for him / sent back to him: a notification; (3.1.11) a reminder
     } catch (_) {/* the count only */}
+  }
+
+  void _takeApprovals(Map d) {
+    crWaiting = (d['pending'] is num) ? (d['pending'] as num).toInt() : 0;
+    crForMe = (d['forMe'] is num) ? (d['forMe'] as num).toInt() : 0;
+    crBack = (d['backToMe'] is num) ? (d['backToMe'] as num).toInt() : 0;
+    _flow(d['mine']);
+    crMine = mineOf(d);
+    notifyListeners();
+  }
+
+  /* (3.1.11, Mechanical update-118, asked 16-10-2026: "jyan verification sathi pathwale aahe to pn direct entry wise or all send
+   * reminder dable ki … approval krnar aahe tyala samjel patkan") HIS ENTRIES IN VERIFICATION – the ones he sent (Mechanical's
+   * Approvals list): Home and the entry forms show them – waiting (at whom), sent back, approved, not saved – and "Remind" tells the
+   * approver now (one entry, or all that wait). The same entry once in 5 minutes (Mechanical says when). */
+  List<Map<String, dynamic>> crMine = [];
+
+  /// His entries of the Approvals answer [d]: waiting and sent back always, the decided ones of the last [days] days.
+  static List<Map<String, dynamic>> mineOf(Map d, {int days = 7, DateTime? now}) {
+    final since = (now ?? DateTime.now()).subtract(Duration(days: days));
+    return (d['requests'] as List? ?? []).whereType<Map>().map((r) => r.cast<String, dynamic>()).where((r) {
+      if (r['kind'] != 'Flow' || r['mine'] != true) return false;
+      final st = '${r['status'] ?? ''}';
+      if (st == 'Pending' || st == 'Reverted') return true;
+      final at = DateTime.tryParse('${r['decidedAt'] ?? ''}') ?? DateTime.tryParse('${r['at'] ?? ''}');
+      return at != null && at.isAfter(since);
+    }).toList();
+  }
+
+  /// His entries of one page ([module] = Mechanical's page, e.g. "Diesel Issue"); all pages when empty.
+  List<Map<String, dynamic>> mineFor(String module, {int days = 7}) {
+    final since = DateTime.now().subtract(Duration(days: days));
+    return crMine.where((r) {
+      if (module.isNotEmpty && r['m'] != module) return false;
+      final st = '${r['status'] ?? ''}';
+      if (st == 'Pending' || st == 'Reverted') return true;
+      final at = DateTime.tryParse('${r['decidedAt'] ?? ''}') ?? DateTime.tryParse('${r['at'] ?? ''}');
+      return at != null && at.isAfter(since);
+    }).toList();
+  }
+
+  /// "Remind": the approver of each entry is told now. Returns Mechanical's answer (reminded, later: [{id, at, next}]).
+  Future<Map<String, dynamic>> remindFlow({List<String> ids = const [], bool all = false}) async {
+    final r = await api.call('remindFlow', [all ? <String, dynamic>{'all': true} : <String, dynamic>{'ids': ids}]);
+    final m = r is Map ? r.cast<String, dynamic>() : <String, dynamic>{};
+    if (m['list'] is Map) _takeApprovals(m['list'] as Map);
+    return m;
   }
 
   /* ---------------- KEPT ON THIS PHONE (3.1.7): an entry saved with no network ----------------

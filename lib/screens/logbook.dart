@@ -20,6 +20,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
+import 'verify.dart';
 import '../ui/t.dart';
 
 const kDayStatus = ['Idle', 'Holiday', 'Breakdown'];
@@ -1266,6 +1267,7 @@ class _LogFormState extends State<LogForm> {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             if (editing && loadingP && p == null) ...[const SizedBox(height: 20), const Shimmer(height: 300)],
+            if (!editing) const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(top: 12)),      // (3.1.11, update-118)
             if (!editing || p != null) ...[
               _label('Date', 'तारीख'),
               Press(
@@ -1682,6 +1684,7 @@ class _TankerScreenState extends State<TankerScreen> {
       appBar: AppBar(titleSpacing: 0, title: const Row(children: [Pic('delivery_truck', size: 30), SizedBox(width: 10), Expanded(child: TwoLang('Water tanker – trips', 'टँकर – फेऱ्या', size: 19, weight: FontWeight.w700))])),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 120), children: [
         const SizedBox(height: 8),
+        const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(bottom: 8)),      // (3.1.11, update-118)
         Row(children: [
           Expanded(
             child: Press(

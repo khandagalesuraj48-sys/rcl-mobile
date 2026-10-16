@@ -18,6 +18,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
+import 'verify.dart';
 
 class EntryForm extends StatefulWidget {
   const EntryForm({super.key, required this.kind, this.edit});
@@ -621,6 +622,8 @@ class _EntryFormState extends State<EntryForm> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 130),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            // (3.1.11, update-118) his entries of this page in verification – waiting / sent back / approved, "Remind"
+            if (ed == null) VerifyStrip(module: k.module, margin: const EdgeInsets.only(top: 12)),
             _label('Date', 'तारीख'),
             _dateBox(),
             if (k.key != 'inward') ...[

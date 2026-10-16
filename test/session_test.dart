@@ -7,6 +7,7 @@ import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/plate.dart';
 import 'package:rcl_mobile/core/kinds.dart';
 import 'package:rcl_mobile/core/session.dart';
+import 'package:rcl_mobile/screens/verify.dart';
 import 'package:rcl_mobile/web/files.dart';
 import 'package:rcl_mobile/web/web_host.dart';
 
@@ -454,5 +455,39 @@ void main() {
     expect([placeMr('Dispenser'), placeMr('VTR Store')], ['डिस्पेन्सर', 'स्टोअर'], reason: 'the first site: as before');
     expect([placeMr('Camp Pump'), placeMr('MH12ZE1739'), placeMr('MH12WJ1381'), placeMr('MH 12 ZE 1739')], ['पंप', 'डिस्पेन्सर', 'डिस्पेन्सर', 'डिस्पेन्सर']);
     expect(placeMr('Tank 2'), 'डिझेल जागा', reason: 'any other place');
+  });
+
+  test('(3.1.11) his entries in verification: waiting and sent back always, decided ones of the last days; counts; the words of a reminder', () {
+    final now = DateTime.utc(2026, 10, 16, 12);
+    final d = {'requests': [
+      {'kind': 'Flow', 'mine': true, 'id': 'VF-1', 'm': 'Diesel Issue', 'status': 'Pending', 'at': '2026-10-01T10:00:00Z'},
+      {'kind': 'Flow', 'mine': true, 'id': 'VF-2', 'm': 'Diesel Issue', 'status': 'Approved', 'at': '2026-10-16T09:00:00Z', 'decidedAt': '2026-10-16T10:00:00Z'},
+      {'kind': 'Flow', 'mine': true, 'id': 'VF-3', 'm': 'Diesel Issue', 'status': 'Rejected', 'at': '2026-10-01T09:00:00Z', 'decidedAt': '2026-10-02T10:00:00Z'},
+      {'kind': 'Flow', 'mine': true, 'id': 'VF-4', 'm': 'Diesel Inward', 'status': 'Reverted', 'at': '2026-09-01T09:00:00Z'},
+      {'kind': 'Flow', 'mine': false, 'id': 'VF-5', 'status': 'Pending'},
+      {'kind': 'Request', 'mine': true, 'id': 'CR-1', 'status': 'Pending'},
+    ]};
+    final l = Session.mineOf(d, now: now);
+    expect(l.map((r) => r['id']), ['VF-1', 'VF-2', 'VF-4']);
+    expect(Session.mineOf(d, days: 1, now: now).map((r) => r['id']), ['VF-1', 'VF-2', 'VF-4']);
+    expect(verifyCounts(l), (1, 1, 1, 0));
+    expect(remindWords({'reminded': ['VF-1'], 'later': [{'id': 'VF-7', 'at': '12:41', 'next': '12:46'}]}), 'Reminder sent: VF-1. VF-7 was reminded at 12:41 – again after 12:46');
+  });
+
+  test('(3.1.11) the approver: a reminder of the sender is a notification – once for each press', () {
+    final seen = <String, int>{};
+    Map d(Map r) => {'requests': [r]};
+    final w = <String, dynamic>{'id': 'VF-00009', 'canDecide': true, 'task': 'Diesel Issue', 'by': 'Mahesh', 'summary': ['60 L MH-25']};
+    expect(alertsFrom(d(w), seen, 1000).single.$2, startsWith('Waiting for your approval'));
+    final t1 = DateTime.utc(2026, 10, 16, 12, 0).millisecondsSinceEpoch;
+    w['remindedAt'] = DateTime.fromMillisecondsSinceEpoch(t1, isUtc: true).toIso8601String();
+    var out = alertsFrom(d(w), seen, t1 + 60000);
+    expect(out.single.$2, 'Reminder from Mahesh – Diesel Issue waits for your approval');
+    expect(out.single.$3, 'VF-00009: 60 L MH-25');
+    expect(alertsFrom(d(w), seen, t1 + 120000), isEmpty, reason: 'the same reminder: told once');
+    w['remindedAt'] = DateTime.fromMillisecondsSinceEpoch(t1 + 6 * 60000, isUtc: true).toIso8601String();
+    expect(alertsFrom(d(w), seen, t1 + 7 * 60000).single.$2, startsWith('Reminder from Mahesh'), reason: 'pressed again');
+    final fresh = <String, int>{};
+    expect(alertsFrom(d(w), fresh, t1 + 7 * 60000).single.$2, startsWith('Waiting for your approval'), reason: 'first seen with a reminder: one notification, not two');
   });
 }

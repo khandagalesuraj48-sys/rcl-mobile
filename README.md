@@ -14,6 +14,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.11 (16-10-2026, with Mechanical update-118: "jewa t entry sent verification krel tyala pn samajayla haw konti entry
+verification madhe aahe ani konte approval zale aahet … tyach reminder pn to pathau shakel"):**
+* **My entries in verification** (`lib/screens/verify.dart`): on Home (all pages – waiting, sent back, approved today) and on the
+  Diesel Issue / Inward / Transfer forms and the Log Book (that page's): Waiting / Sent back / Approved / Not saved; tap → each
+  entry (at whom it waits, since when) with **Remind**, and **Remind all waiting**. The approver is told at once.
+* The approver's phone: a notification for each reminder (`alertsFrom`: open app – the live tick; closed – Android every ~15 min).
+
 **Version 3.1.10 (16-10-2026, with Mechanical update-117 – every site its own diesel places, set by the Super Admin in the
 Portal: 18B's Camp Pump and the dispensers MH12ZE1739 / MH12WJ1381):** the app already takes the site's places from Mechanical
 (every place list, the stock tiles on Home); now the Marathi word under each place on Home is its own (pump / dispenser / store –

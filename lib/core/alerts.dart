@@ -2,7 +2,8 @@
  * From Mechanical's Approvals list (the same one the web shows):
  *   – something new WAITS FOR HIM to approve → one notification for it;
  *   – an entry of his was SENT BACK to him with a question → a notification, and again every 30 minutes until he answers it or
- *     takes it back (Me → Approvals).
+ *     takes it back (Me → Approvals);
+ *   – (3.1.11, Mechanical update-118) the sender of an entry that waits for him pressed "Remind" → a notification for each reminder.
  * Asked while the app is open (every live tick that brings "flow") and, with the app closed, by Android every 15 minutes
  * (an Android alarm – Android decides the exact moment; it may wait longer when the phone saves battery). What was told is kept on the
  * phone, so nothing is told twice too soon. */
@@ -22,9 +23,18 @@ List<(int, String, String)> alertsFrom(Map d, Map<String, int> seen, int now) {
     final what = ((r['summary'] as List?)?.isNotEmpty ?? false) ? '${(r['summary'] as List).first}' : id;
     if (r['canDecide'] == true) {
       live.add('w$id');
-      if (!seen.containsKey('w$id')) {
+      final first = !seen.containsKey('w$id');
+      if (first) {
         seen['w$id'] = now;
         out.add((id.hashCode & 0x3fffffff, 'Waiting for your approval – ${r['task'] ?? ''} (${r['by'] ?? ''})', what));
+      }
+      // (3.1.11) a reminder of its sender: told once for each press (not again for one that came with the first notice)
+      final rem = DateTime.tryParse('${r['remindedAt'] ?? ''}')?.millisecondsSinceEpoch;
+      if (rem != null) {
+        live.add('r$id');
+        final last = seen['r$id'];
+        if (!first && (last == null ? now - rem < 30 * 60000 : rem > last)) out.add(((id.hashCode ^ 0x2545f491) & 0x3fffffff, 'Reminder from ${r['by'] ?? ''} – ${r['task'] ?? ''} waits for your approval', '$id: $what'));
+        seen['r$id'] = rem;
       }
     }
     if (r['canAnswer'] == true) {
