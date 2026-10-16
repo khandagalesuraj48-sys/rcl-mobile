@@ -26,13 +26,14 @@ Future<void> openAdmin(BuildContext context) => Navigator.of(context).push(Mater
 
 final _small = OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14));
 
-Widget _panel(List<Widget> kids, {Key? key, Color? bg}) => Container(
+/// A card on its own Material (the switches and tiles in it draw on it).
+Widget _card(Widget child, {Key? key, Color? bg, Color line = C.line, EdgeInsets margin = const EdgeInsets.only(bottom: 12), double radius = 18}) => Padding(
       key: key,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: bg ?? Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.line)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: kids),
+      padding: margin,
+      child: Material(color: bg ?? Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius), side: BorderSide(color: line)), clipBehavior: Clip.antiAlias, child: child),
     );
+
+Widget _panel(List<Widget> kids, {Key? key, Color? bg}) => _card(Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: kids)), key: key, bg: bg);
 
 Widget _note(String t) => Text(t, style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35));
 
@@ -339,11 +340,12 @@ class _UsersScreenState extends State<UsersScreen> {
   Widget _userCard(Map<String, dynamic> u) {
     final email = '${u['email']}', e = _ed(u), dirty = edits.containsKey(email) && (e['active'] != (u['active'] != false) || e['admin'] != (u['admin'] == true) || jsonEncode(e['perms']) != jsonEncode({...((u['perms'] as Map?) ?? const {})}));
     final pw = _pw.putIfAbsent(email, () => TextEditingController());
-    return Container(
+    return _card(
       key: Key('ua-$email'),
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(color: u['active'] == false ? C.slateSoft : Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: dirty ? C.amber : C.line)),
-      child: Theme(
+      bg: u['active'] == false ? C.slateSoft : Colors.white,
+      line: dirty ? C.amber : C.line,
+      Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           key: PageStorageKey('ua-x-$email'),
@@ -1100,15 +1102,17 @@ class _ReadMeScreenState extends State<ReadMeScreen> {
           ]);
         } else if (n.has('rm-step')) {
           final nb = n.kids.where((k) => k.has('rm-n')).firstOrNull, body = n.kids.where((k) => k.has('rm-sb')).firstOrNull;
-          w = Container(
+          w = _card(
             margin: const EdgeInsets.only(bottom: 10),
+            radius: 14,
+            Padding(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: C.line)),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               CircleAvatar(radius: 14, backgroundColor: C.green, child: Text(nb?.plain.trim() ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13))),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body == null ? const [] : _blocks(body))),
             ]),
+            ),
           );
         } else if (n.has('rm-code')) {
           w = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final k in n.kids.where((k) => k.tag == 'pre')) _block(k)]);
