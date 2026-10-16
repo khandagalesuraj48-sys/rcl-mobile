@@ -14,6 +14,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.11.0 (16-10-2026, part 10 of the whole web in the app):** the rest of the **diesel pages** (Entries → Diesel Issue /
+Diesel Inward / Transfer → ⋮) in the app's own screens: **All dates & Export** (the web's list with its filters – dates, Today /
+Yesterday / Last 7 days / This month, and the page's own filters under "More filters"; the server's totals; on Diesel Issue each
+entry's % of the total and "% by machinery"; Export to Excel – the web's file), **Import from Excel** (an .xlsx or .csv from the
+phone, read as the web's library reads it; every row checked ✓ / ✗ – "Fix the file first" or "Import N rows"; all rows saved or
+none, by the server), **Download template** (the web's file) and **Multiple entries** (Transfer: rows → saveTransferBulk;
+Diesel Issue: one date – many machinery → saveDieselBulk with its "Please check these rows" / Save all anyway, and one machinery –
+many dates → importDiesel, with the running stock as on the web). An old .xls is not read: "save it as .xlsx".
+
 **Version 3.10.0 (16-10-2026, part 9 of the whole web in the app):** **Store** (Home → Store) in the app's own screens – its own
 sign-in through the Portal (a ticket for the Store, used once), by the pages the Portal gave: the **Dashboard** (items, active,
 inactive, categories, added this month; recently added; items by category) and the **Item Master** of this site (search,
