@@ -14,6 +14,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
 import 'label_scan.dart';
+import 'search.dart';
 import 'admin.dart';
 import 'billing.dart';
 import 'breakdown.dart';
@@ -245,6 +246,9 @@ class _HomeTabState extends State<HomeTab> {
                       const MrLine('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: Color(0xCCFFFFFF))),
                     ]),
                   ),
+                  // (3.14.0) the search of the whole app (the web's Ctrl + K)
+                  _RoundBtn(key: const Key('home-search'), icon: Icons.search_rounded, tip: 'Search', onTap: () => openSearch(context, entries: widget.onOpenEntries, reports: widget.onOpenReports)),
+                  const SizedBox(width: 8),
                   // (3.14.0) a machinery's QR label: Diesel Issue / Log Book entry / its diesel ledger for it
                   _RoundBtn(key: const Key('home-scan'), icon: Icons.qr_code_scanner_rounded, tip: 'Scan a machinery label', onTap: () => scanMachineLabel(context, onSaved: () => _load())),
                   const SizedBox(width: 8),

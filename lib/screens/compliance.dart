@@ -55,7 +55,10 @@ RDoc complianceExportDoc(Map<String, dynamic> d, List<Map<String, dynamic>> rows
 }
 
 class ComplianceScreen extends StatefulWidget {
-  const ComplianceScreen({super.key});
+  const ComplianceScreen({super.key, this.find = ''});
+
+  /// (3.14.0) opened by the search with this machinery in the search box (the web's gsOpenPaper)
+  final String find;
   @override
   State<ComplianceScreen> createState() => _ComplianceScreenState();
 }
@@ -64,10 +67,18 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
   Map<String, dynamic>? d;
   bool loading = true;
   String err = '', chip = 'attention', own = '', q = '';
+  late final qc = TextEditingController(text: widget.find);
+
+  @override
+  void dispose() {
+    qc.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    q = widget.find;
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -165,7 +176,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
               Expanded(child: PickField(key: const Key('cp-own'), label: 'Ownership', value: own, items: [for (final o in kCmpOwn.skip(1)) o.$1], blank: kCmpOwn.first.$2, onChanged: (v) => setState(() => own = v))),
             ]),
             const SizedBox(height: 8),
-            TextField(key: const Key('cp-q'), onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Search machinery / owner…'), prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 12))),
+            TextField(key: const Key('cp-q'), controller: qc, onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Search machinery / owner…'), prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 12))),
             if ((asNum(dd['noPapers']) ?? 0) > 0)
               Padding(padding: const EdgeInsets.only(top: 8), child: Text('${dd['noPapers']} machinery need no papers (DG, pumps, compressors …) and are not listed. Which papers each type needs: Papers per type.', style: const TextStyle(fontSize: 12.5, color: C.muted))),
             const SizedBox(height: 10),

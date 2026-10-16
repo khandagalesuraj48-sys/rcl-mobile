@@ -200,7 +200,10 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
 //  MACHINERY PAYMENTS
 // =====================================================================================================================
 class PaymentsScreen extends StatefulWidget {
-  const PaymentsScreen({super.key});
+  const PaymentsScreen({super.key, this.vendor = '', this.date = ''});
+
+  /// (3.14.0) opened by the search: this vendor's payments of this date (the web's gsOpenPay)
+  final String vendor, date;
   @override
   State<PaymentsScreen> createState() => _PaymentsScreenState();
 }
@@ -219,6 +222,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     if (started) return;
     started = true;
     date = _today(SessionScope.read(context));
+    fVendor = widget.vendor;
+    if (widget.date.isNotEmpty) fFrom = fTo = widget.date;
     WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 

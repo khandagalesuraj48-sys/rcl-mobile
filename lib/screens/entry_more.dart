@@ -226,8 +226,11 @@ class _ImportCheckScreenState extends State<ImportCheckScreen> {
 //  ALL DATES & EXPORT – the web's list of the page
 // =====================================================================================================================
 class EntryFindScreen extends StatefulWidget {
-  const EntryFindScreen({super.key, required this.kind});
+  const EntryFindScreen({super.key, required this.kind, this.no = '', this.q = '', this.bill = ''});
   final Kind kind;
+
+  /// (3.14.0) opened by the search with these filters (the web's gsOpenIssues / gsOpenInward / gsOpenTransfer: all dates)
+  final String no, q, bill;
   @override
   State<EntryFindScreen> createState() => _EntryFindScreenState();
 }
@@ -243,6 +246,10 @@ class _EntryFindScreenState extends State<EntryFindScreen> {
   @override
   void initState() {
     super.initState();
+    no.text = widget.no;
+    q.text = widget.q;
+    bill.text = widget.bill;
+    moreF = widget.no.isNotEmpty || widget.q.isNotEmpty || widget.bill.isNotEmpty;
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 

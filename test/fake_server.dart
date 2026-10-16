@@ -787,6 +787,15 @@ class FakeServer {
         case 'reportError':
           extraCalls.add({'fn': action, 'x': a[0]});
           return _j({'result': {'ok': true}});
+        case 'globalSearch':
+          extraCalls.add({'fn': action, 'q': a[0]});
+          final gq = '${a[0]}'.toUpperCase();
+          return _j({'result': {
+            'issues': gq.contains('525') ? [{'id': 'DI-000525', 'date': '2026-10-14', 'shift': 'Day', 'no': 'Sany 210 (No.1)', 'qty': 60, 'driver': 'Gupta', 'source': 'VTR Store', 'why': 'Issue ID'}] : [],
+            'logs': [], 'inwards': [], 'transfers': [], 'tanks': [], 'breakdowns': [], 'bills': [], 'notes': [], 'payments': [], 'boqs': [], 'papers': [],
+            'vendors': gq.contains('ENTERPRI') ? [{'name': 'I E Enterprises', 'gst': '', 'ownership': 'Rental', 'machines': 1, 'why': 'Vendor'}] : [],
+            'counts': {'issues': gq.contains('525') ? 3 : 0}, 'fixes': gq.contains('ENTERPRIZE') ? [{'w': 'ENTERPRIZE', 'to': 'ENTERPRISES'}] : [],
+          }});
         case 'backupNow':
           extraCalls.add({'fn': action});
           return _j({'result': {'ok': true, 'lines': [['diesel_issue', '3 rows'], ['log_book', '5 rows']], 'pending': 0, 'info': {'ok': true, 'lastCheck': '2026-10-14T05:10:00Z', 'url': 'https://docs.google.com/spreadsheets/d/x'}}});

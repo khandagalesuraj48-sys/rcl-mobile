@@ -21,7 +21,9 @@ machinery"); **the photos of a saved fill** (large, when, where – the map); a 
 litres; **Settings**: Log Book list shows (2 / 7 / 30 days), the page to open after sign-in (it opens by itself), my last
 sign-ins, back to the usual settings; **the notice of the site** on Home; **Administration**: the faults of the app (listed,
 emptied – the app's own faults are reported there too) and the backup to Google Sheet; **a machinery label scanned in the app**
-(Home → the QR button): Diesel Issue with the machinery in it, Log Book entry, its diesel ledger.
+(Home → the QR button): Diesel Issue with the machinery in it, Log Book entry, its diesel ledger; **Search** (Home → 🔍, the web's
+Ctrl + K): pages, quick actions, machinery, owners, the server's entries and the Store's items – the web's own matcher (a spelling
+mistake allowed only when nothing is found, "Did you mean …"), each result opening the app's screen with the web's filter.
 
 **Version 3.13.0 (16-10-2026, part 12 of the whole web in the app):** the other **Excel imports** and the **QR labels**, as the web
 does them: **Asset Master → ⋮ Import from Excel** (for Edit: the tab "Master", the columns by their names, N/A and Lifetime papers,

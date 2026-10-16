@@ -20,7 +20,10 @@ import 'bill_print.dart';
 const kNoteNames = ['Rachana Construction Limited', 'Sketchline Industries'];
 
 class DriveScreen extends StatefulWidget {
-  const DriveScreen({super.key});
+  const DriveScreen({super.key, this.vendor = '', this.from = '', this.to = ''});
+
+  /// (3.14.0) opened by the search: this vendor's bills and notes of this period (the web's gsOpenBills)
+  final String vendor, from, to;
   @override
   State<DriveScreen> createState() => _DriveScreenState();
 }
@@ -37,6 +40,9 @@ class _DriveScreenState extends State<DriveScreen> {
     super.didChangeDependencies();
     if (started) return;
     started = true;
+    vendor = widget.vendor;
+    from = widget.from;
+    to = widget.to;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _vendors();
       _load();

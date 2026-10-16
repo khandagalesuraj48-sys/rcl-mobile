@@ -77,7 +77,11 @@ RDoc storeItemsDoc(List<Map> items, String day) => RDoc(
     );
 
 class StoreScreen extends StatefulWidget {
-  const StoreScreen({super.key});
+  const StoreScreen({super.key, this.find = '', this.items = false});
+
+  /// (3.14.0) opened by the search on the Item Master ([items]), with this item code in the search box (the Store's rclModule.open)
+  final String find;
+  final bool items;
   @override
   State<StoreScreen> createState() => _StoreScreenState();
 }
@@ -88,6 +92,19 @@ class _StoreScreenState extends State<StoreScreen> {
   List<String> units = [], cats = [];
   String err = '', q = '', fCat = '', fSt = '';
   bool loading = true, started = false;
+  late final qc = TextEditingController(text: widget.find);
+
+  @override
+  void initState() {
+    super.initState();
+    q = widget.find;
+  }
+
+  @override
+  void dispose() {
+    qc.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -208,6 +225,7 @@ class _StoreScreenState extends State<StoreScreen> {
     final tabs = [if (pg['dashboard'] != 'None') 'dashboard', if (pg['items'] != 'None') 'items'];
     return DefaultTabController(
       length: tabs.isEmpty ? 1 : tabs.length,
+      initialIndex: (widget.find.isNotEmpty || widget.items) && tabs.contains('items') ? tabs.indexOf('items') : 0,
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Store', 'स्टोअर', size: 20, weight: FontWeight.w700),
@@ -308,7 +326,7 @@ class _StoreScreenState extends State<StoreScreen> {
       child: ListView(key: const Key('st-items'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 90), children: [
         Text('The items of this site. A name is there once: a name that is nearly the same as one already there is asked about first.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 8),
-        TextField(key: const Key('st-q'), onChanged: (v) => setState(() => q = v.trim()), decoration: InputDecoration(hintText: tr('Item name, code, category, HSN'), prefixIcon: const Icon(Icons.search_rounded), isDense: true)),
+        TextField(key: const Key('st-q'), controller: qc, onChanged: (v) => setState(() => q = v.trim()), decoration: InputDecoration(hintText: tr('Item name, code, category, HSN'), prefixIcon: const Icon(Icons.search_rounded), isDense: true)),
         const SizedBox(height: 6),
         Row(children: [
           Expanded(child: PickField(key: const Key('st-cat'), label: 'Category', value: fCat, items: cats, blank: 'All', onChanged: (v) => setState(() => fCat = v))),

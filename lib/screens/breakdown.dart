@@ -18,7 +18,10 @@ import 'forms.dart' show MachinePicker;
 Future<void> openBreakdown(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BreakdownScreen()));
 
 class BreakdownScreen extends StatefulWidget {
-  const BreakdownScreen({super.key});
+  const BreakdownScreen({super.key, this.date = ''});
+
+  /// (3.14.0) opened by the search on the day a breakdown began (the web's gsOpenBreakdown)
+  final String date;
   @override
   State<BreakdownScreen> createState() => _BreakdownScreenState();
 }
@@ -42,6 +45,7 @@ class _BreakdownScreenState extends State<BreakdownScreen> {
     date = s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
     pFrom = '${date.substring(0, 8)}01';
     pTo = date;
+    if (widget.date.isNotEmpty) date = widget.date;
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 

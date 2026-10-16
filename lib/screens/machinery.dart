@@ -43,7 +43,10 @@ Future<List<String>> vendorNames(Session s) async {
 List<String> uniqOf(Iterable<Machine> ms, String key) => {for (final m in ms) '${m.m[key] ?? ''}'.trim()}.where((x) => x.isNotEmpty).toList()..sort();
 
 class AssetMasterScreen extends StatefulWidget {
-  const AssetMasterScreen({super.key});
+  const AssetMasterScreen({super.key, this.find = ''});
+
+  /// (3.14.0) opened by the search with this text in the search box (the web's gsMaster)
+  final String find;
   @override
   State<AssetMasterScreen> createState() => _AssetMasterScreenState();
 }
@@ -62,7 +65,13 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final s = SessionScope.read(context);
       _ls = s..dataTick.addListener(_live);
-      setState(() => f.from = f.to = s.today); // (update-115, as the web) at first: the machinery on site today
+      setState(() {
+        f.from = f.to = s.today; // (update-115, as the web) at first: the machinery on site today
+        if (widget.find.isNotEmpty) {
+          q.text = widget.find;
+          f.q = widget.find;
+        }
+      });
       final v = await vendorNames(s);
       if (mounted) setState(() => vendors = v);
     });

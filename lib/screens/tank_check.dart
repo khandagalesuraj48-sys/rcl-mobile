@@ -39,7 +39,10 @@ num? tankFound(String method, num? cap, String phys, String fill) {
 }
 
 class TankCheckScreen extends StatefulWidget {
-  const TankCheckScreen({super.key});
+  const TankCheckScreen({super.key, this.no = '', this.date = ''});
+
+  /// (3.14.0) opened by the search: the list of this machinery on this date (the web's gsOpenTank)
+  final String no, date;
   @override
   State<TankCheckScreen> createState() => _TankCheckScreenState();
 }
@@ -63,6 +66,8 @@ class _TankCheckScreenState extends State<TankCheckScreen> {
       setState(() {
         date = s.today;
         by.text = s.name;
+        if (widget.no.isNotEmpty) fNo = widget.no;
+        if (widget.date.isNotEmpty) fFrom = fTo = widget.date;
       });
       _list();
     });

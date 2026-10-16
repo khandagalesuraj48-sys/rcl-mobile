@@ -19,7 +19,10 @@ import 'machinery.dart' show toneOf, softOf;
 Future<void> openVendors(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VendorMasterScreen()));
 
 class VendorMasterScreen extends StatefulWidget {
-  const VendorMasterScreen({super.key});
+  const VendorMasterScreen({super.key, this.find = ''});
+
+  /// (3.14.0) opened by the search with this name in the search box (the web's gsOpenVendor)
+  final String find;
   @override
   State<VendorMasterScreen> createState() => _VendorMasterScreenState();
 }
@@ -28,10 +31,18 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
   List<Map<String, dynamic>> all = [];
   bool loading = true;
   String err = '', q = '', st = '', busy = '';
+  late final qc = TextEditingController(text: widget.find);
+
+  @override
+  void dispose() {
+    qc.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    q = widget.find;
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -78,7 +89,7 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
           Text('Every owner of an asset is a vendor (Own = Rachana Construction Limited). Fill the details once; assets are linked by the Vendor name.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
           const SizedBox(height: 10),
-          TextField(key: const Key('v-search'), onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Vendor, GST, PAN'), prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 12))),
+          TextField(key: const Key('v-search'), controller: qc, onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Vendor, GST, PAN'), prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 12))),
           const SizedBox(height: 8),
           Wrap(spacing: 8, children: [
             for (final x in const [('', 'All'), ('missing', 'Not filled / incomplete'), ('done', 'Complete')]) ChoiceChip(key: Key('vf-${x.$1.isEmpty ? 'all' : x.$1}'), selected: st == x.$1, onSelected: (_) => setState(() => st = x.$1), label: Text(x.$2)),

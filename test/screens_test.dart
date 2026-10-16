@@ -2070,4 +2070,39 @@ void main() {
     expect(find.text('diesel_issue: 3 rows'), findsOneWidget);
     expect(find.text('Open the backup Google Sheet'), findsOneWidget);
   });
+
+  testWidgets('(3.14.0) Search: a spelling mistake – "Did you mean"; the owner who is also a vendor once; an issue ID – Edit; a machinery – its Log Book', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('home-search')));
+    await net(t);
+    expect(find.text('Pages'), findsOneWidget, reason: 'nothing typed: the pages and the quick actions');
+    expect(find.text('New diesel issue'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('gs-in')), 'enterprize');
+    await net(t, 1500);
+    expect(srv.extraCalls.lastWhere((c) => c['fn'] == 'globalSearch')['q'], 'enterprize');
+    expect(find.text('enterprises'), findsOneWidget, reason: 'did you mean');
+    expect(find.text('I E Enterprises'), findsOneWidget, reason: 'the owner and the vendor: one result');
+    expect(find.byKey(const Key('gs-chip-I E Enterprises-Vendor')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/43_search.png'));
+    await t.enterText(find.byKey(const Key('gs-in')), '525');
+    await net(t, 1500);
+    expect(find.text('Diesel issues  (3 found – the best 1)'), findsOneWidget);
+    await t.tap(find.byKey(const Key('gs-chip-DI-000525  –  Sany 210 (No.1)-Edit')));
+    await net(t);
+    expect(find.text('Change DI-000525'), findsOneWidget);
+    await t.tap(find.byIcon(Icons.arrow_back_rounded).first);
+    await net(t);
+    await t.enterText(find.byKey(const Key('gs-in')), 'sany');
+    await net(t, 1500);
+    expect(find.byKey(const Key('gs-mach-Sany 210 (No.1)')), findsOneWidget);
+    await t.tap(find.byKey(const Key('gs-chip-Sany 210 (No.1)-Log Book')));
+    await net(t);
+    expect(srv.listAsked.last['no'], 'Sany 210 (No.1)');
+    expect([srv.listAsked.last['from'], srv.listAsked.last['to']], ['', ''], reason: 'all dates, as the web\'s gsOpenLog');
+  }, tags: ['golden']);
 }

@@ -48,7 +48,11 @@ Future<void> logTemplate(BuildContext context, String kind) async {
 //  ALL DATES & EXPORT
 // =====================================================================================================================
 class LogFindScreen extends StatefulWidget {
-  const LogFindScreen({super.key});
+  const LogFindScreen({super.key, this.no = '', this.date = '', this.found = false});
+
+  /// (3.14.0) opened by the search ([found]): this machinery, all dates or this date (the web's gsOpenLog)
+  final String no, date;
+  final bool found;
   @override
   State<LogFindScreen> createState() => _LogFindScreenState();
 }
@@ -65,7 +69,12 @@ class _LogFindScreenState extends State<LogFindScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _lastDays();
+      if (widget.found) {
+        no.text = widget.no;
+        from = to = widget.date;
+      } else {
+        _lastDays();
+      }
       _load();
     });
   }
