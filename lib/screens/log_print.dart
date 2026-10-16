@@ -155,5 +155,5 @@ Future<void> printLogBook(BuildContext context, Session s, {required List<Map<St
     portrait: opt.portrait,
   );
   if (!context.mounted) return;
-  await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: p.html, title: p.title)));
+  await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: p.html, title: p.title, fit: true)));
 }

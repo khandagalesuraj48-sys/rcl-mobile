@@ -13,6 +13,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'billing.dart';
 import 'breakdown.dart';
 import 'verify.dart';
 import 'logbook.dart';
@@ -31,6 +32,7 @@ class ModuleTile {
     if (native == 'diesel') return kKinds.any((k) => s.canSee(k.module));
     if (native == 'reports') return reportsOf(s).isNotEmpty;
     if (native == 'masters') return mastersOf(s).isNotEmpty;
+    if (native == 'billing') return seesBilling(s);
     return perm.isEmpty || s.canSee(perm);
   }
 }
@@ -40,7 +42,7 @@ const kModules = [
   ModuleTile('Logbook', 'लॉगबुक', 'notebook', C.blue, C.blueSoft, native: 'logbook', perm: 'Log Book'),
   ModuleTile('Diesel', 'डिझेल', 'fuel_pump', C.green, C.greenSoft, native: 'diesel'),
   ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, native: 'breakdown', perm: 'Breakdown'), // (3.7.0) the app's own Breakdown
-  ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, page: 'bill', perm: 'Machinery Billing'),
+  ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, native: 'billing'), // (3.8.0) the app's own Billing screens
   ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, page: 'store__dashboard', module: 'store'),
   ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', C.blue, C.blueSoft, native: 'reports'),
   ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, page: 'users', admin: true),
@@ -178,6 +180,10 @@ class _HomeTabState extends State<HomeTab> {
     }
     if (m.native == 'breakdown') {
       await openBreakdown(context);
+      return;
+    }
+    if (m.native == 'billing') {
+      await openBilling(context);
       return;
     }
     await openWeb(context, m.en, m.page, pic: m.pic);

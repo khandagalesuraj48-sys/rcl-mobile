@@ -14,6 +14,21 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.8.0 (16-10-2026, part 7 of the whole web in the app):** **Billing** (Home → Billing) in the app's own screens, each
+by its access as the web's tabs: **Machinery Billing** – the period, the bill date, the name on the bill, the vendors and their
+machinery (search, a vendor ticks all its machinery), one bill per vendor or per machinery; **Build bills** works every bill out
+on the phone with the web's own rules (the Log Book, the diesel and the BOQ of each date – per day / KM / trip / night trip /
+hour slabs / month / item-wise / no BOQ, diesel debited or above the standard, the last fill still in the tank, a final bill),
+the warnings to check, Idle days Paid / Not paid, the diesel rate of a bill, the other deduction and its reason, debit notes and
+corrections of earlier bills to tick, the RA bill number; **Papers** / **Preview** – the Abstract of Bill, Tax Invoice, GST
+declaration and Debit Note to the character of the web, with the Log Book after them, each bill fitted to one A4 page; **Verify &
+Submit** (the server's checks ✔ ⚠ ✖, already-submitted bills kept as a revision or a new number), then the bills as saved open to
+print; Company details; the Admin's Month close. **RCL Drive** – the saved bills (View / Print with the Log Book, the Log Book,
+Delete by Admin) and debit notes (View / Print, Cancel by Admin, the diesel note of each bill), **+ New Debit Note** from the
+Log Book entries charged to a party. **Bill Summary** (Net Payable month-wise / Detail), **Machinery Payments** (payment or
+opening balance, edit, delete, the vendor's balance), **Vendor Ledger** and **Vendor Outstanding** – Print and Excel on the phone.
+The Log Book print is now fitted to one page as on the web too. The same server actions as the web.
+
 **Version 3.7.0 (16-10-2026, part 6 of the whole web in the app):** **Breakdown** (Home → Maintenance) in the app's own screen:
 the daily machinery status – every machinery on site on a date (Own / Rental / Hired / Other, search), Working or Breakdown with
 its reason (a list to pick from) and a remark, since when and for how many days (the breakdowns carried from the last saved day);

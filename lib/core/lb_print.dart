@@ -252,7 +252,7 @@ Map<String, dynamic>? tankLeft(Map m, String u, List<Map> own, Map iss0, bool Fu
   final cap = _n(m['tankCap']);
   if (cap > 0 && left > cap) left = cap;
   final applied = r2(left < raw ? (left > 0 ? left : 0) : raw);
-  return {'date': d, 'qty': qty, 'km': k.$2 == 'reading' ? _n(fk) : '', 'hr': h.$2 == 'reading' ? _n(fh) : '', 'kmAfter': k.$1, 'hrAfter': h.$1, 'used': used, 'left': left, 'applied': applied};
+  return {'date': d, 'qty': qty, 'km': k.$2 == 'reading' ? _n(fk) : '', 'hr': h.$2 == 'reading' ? _n(fh) : '', 'kmAfter': k.$1, 'hrAfter': h.$1, 'by': k.$2 == 'reading' || h.$2 == 'reading' ? 'reading' : 'days', 'used': used, 'left': left, 'applied': applied};
 }
 
 String tankText(Map? t) {
@@ -262,13 +262,15 @@ String tankText(Map? t) {
       '${run.isNotEmpty ? 'run after it $run = ${fmt(t['used'])} L by standard' : 'no work after it'}; ${fmt(t['applied'])} L taken as still in the tank – not debited';
 }
 
-/// Item-wise BOQ, one day: each item on its own quantity and rate (→ the lines of the bill part).
-void itemDaySegs(Map b, String bk, String d, List<Map> dayRows, Map<String, num> itemHrs, Map<String, dynamic> Function(String, Map<String, dynamic>) seg) {
+/// Item-wise BOQ, one day: each item on its own quantity and rate (→ the lines of the bill part). → the quantity billed that day.
+num itemDaySegs(Map b, String bk, String d, List<Map> dayRows, Map<String, num> itemHrs, Map<String, dynamic> Function(String, Map<String, dynamic>) seg) {
   final items = (b['items'] as List? ?? const []).whereType<Map>().toList();
+  num any = 0;
   for (var j = 0; j < items.length; j++) {
     final it = items[j];
     final q = dayRows.fold<num>(0, (a, r) => a + (r['itemQty'] as List? ?? const []).whereType<Map>().where((x) => x['n'] == it['name']).fold<num>(0, (a2, x) => a2 + _n(x['q'])));
     if (!(q > 0)) continue;
+    any += q;
     final ik = '$bk|I$j', rate = _n(it['rate']), basis = _s(it['basis']);
     void add(Map<String, dynamic> s1, num qty, num amt) {
       s1['qty'] = _n(s1['qty']) + qty;
@@ -303,6 +305,7 @@ void itemDaySegs(Map b, String bk, String d, List<Map> dayRows, Map<String, num>
       }
     }
   }
+  return any;
 }
 
 /// The columns of each Log Book format (A = the standard sheet).
@@ -327,8 +330,10 @@ class _Col {
 }
 
 class LbPrint {
-  LbPrint(this.title, this.html);
+  LbPrint(this.title, this.html, [this.sheets = '']);
   final String title, html;
+  /// (3.8.0) the sheets alone (a bill's papers carry its Log Book after them)
+  final String sheets;
 }
 
 /// The Log Book print of [rows] (getLogBookList's rows) for [from] – [to]. [machine]: Asset Master of a machinery number.
@@ -815,8 +820,8 @@ LbPrint logBookPrint({
       : '@page { size: A4 landscape; margin: 9mm 8mm 12mm 8mm; } .sheet { width: 281mm; min-height: 189mm; } @media print { .sheet { width: auto; min-height: 0; } .lbsheet { min-height: 180mm; } } @media screen { body.rep-lb .sheet { box-sizing: content-box; width: 281mm; padding: 9mm 8mm 12mm; } }';
   final foot = '@page { @bottom-left { content: "${printName.replaceAll(RegExp(r'["\\]'), '')}  |  Fleet ERP"; } }';
   final html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${_e(title)}</title>'
-      '<style>$kLbCss $foot</style><style>$orient</style></head><body class="rep rep-lb"><div class="sheet">$sheets</div></body></html>';
-  return LbPrint(title, html);
+      '<style>$kLbCss $foot</style><style id="orient">$orient</style></head><body class="rep rep-lb"><div class="sheet">$sheets</div></body></html>';
+  return LbPrint(title, html, '$sheets');
 }
 
 /// "View format": the format with SAMPLE lines (as the web's Log Book Format page).

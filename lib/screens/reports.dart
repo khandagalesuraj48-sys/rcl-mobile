@@ -6,6 +6,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'billing.dart';
 import 'dashboard.dart';
 import 'home.dart';
 import 'report_screen.dart';
@@ -29,8 +30,11 @@ class ReportsTab extends StatelessWidget {
               child: Press(
                 onTap: () {
                   final def = reportOfPage(r.$3);
+                  const bill = {'breg': 'Bill Summary', 'vled': 'Vendor Ledger', 'vout': 'Vendor Outstanding'};
                   if (r.$3 == 'dash') {
                     openDashboard(context); // (3.5.0) the app's own Dashboard
+                  } else if (bill[r.$3] != null) {
+                    openBillPage(context, bill[r.$3]!); // (3.8.0) the app's own billing screens
                   } else if (def != null) {
                     openReport(context, def);
                   } else {

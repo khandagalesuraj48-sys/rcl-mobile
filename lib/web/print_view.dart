@@ -4,13 +4,17 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../config.dart';
+import '../core/print_fit.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
 
 class PrintView extends StatefulWidget {
-  const PrintView({super.key, required this.html, required this.title});
+  const PrintView({super.key, required this.html, required this.title, this.fit = false});
   final String html, title;
+  /// (3.8.0) the web's own fitting of the pages before printing: each bill on one A4 page, each Log Book sheet on one page with
+  /// the signatures at its foot (only for the app's own bill / Log Book pages – their data is escaped)
+  final bool fit;
   @override
   State<PrintView> createState() => _PrintViewState();
 }
@@ -52,12 +56,17 @@ class _PrintViewState extends State<PrintView> {
         body: Stack(children: [
           InAppWebView(
             initialData: InAppWebViewInitialData(data: widget.html, baseUrl: WebUri(kMainUrl), mimeType: 'text/html', encoding: 'utf8'),
-            initialSettings: InAppWebViewSettings(supportZoom: true, builtInZoomControls: true, displayZoomControls: false, javaScriptEnabled: false, useWideViewPort: true, loadWithOverviewMode: true),
+            initialSettings: InAppWebViewSettings(supportZoom: true, builtInZoomControls: true, displayZoomControls: false, javaScriptEnabled: widget.fit, useWideViewPort: true, loadWithOverviewMode: true),
             onWebViewCreated: (c) => _c = c,
             onLoadStop: (c, _) async {
               if (_printedOnce) return;
               _printedOnce = true;
               await Future<void>.delayed(const Duration(milliseconds: 700)); // the logo comes in
+              if (widget.fit) {
+                try {
+                  await c.evaluateJavascript(source: '$kPrintFit;try{fitBillPages(document)}catch(e){};try{fitWideTables(document)}catch(e){};try{fitLogPages(document)}catch(e){};');
+                } catch (_) {/* printed as it is */}
+              }
               if (!mounted) return;
               setState(() => _ready = true);
               await _print();
