@@ -1109,9 +1109,10 @@ String wtKey(String c) => c.trim().toUpperCase().replaceAll(RegExp(r'\s+'), '');
 
 /// Dispatch → unload in minutes of the day (a Night trip after midnight runs on).
 List<int>? wtSpan(String a, String b, String sh) {
-  var x = tMin(a), y = tMin(b);
-  if (x == null || y == null) return null;
-  if (sh == 'Night' && x < 720) x += 1440;
+  final x0 = tMin(a), y0 = tMin(b);
+  if (x0 == null || y0 == null) return null;
+  final int x = sh == 'Night' && x0 < 720 ? x0 + 1440 : x0;
+  int y = y0;
   while (y <= x) {
     y += 1440;
   }
