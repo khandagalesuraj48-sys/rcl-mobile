@@ -71,6 +71,10 @@ class FakeServer {
       'lines': [{'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'basis': 'Monthly', 'rate': 45000, 'slabs': [], 'slabOn': '', 'diesel': 'Company', 'remark': ''}]},
   ];
   Map<String, String> lbNames = {};
+  final dashAsked = <Map<String, dynamic>>[]; // (3.5.0)
+  final tankChecks = <Map<String, dynamic>>[
+    {'id': 'TC-0001', 'date': '2026-10-10', 'no': 'Sany 210 (No.1)', 'system': 200, 'physical': 150, 'diff': -50, 'pct': -25, 'method': 'Measured', 'toFill': '', 'reason': 'Leak at the hose', 'by': 'Tester', 'enteredBy': 'Tester'},
+  ];
   Map<String, dynamic> get _compliance => {
         'today': '2026-10-14', 'soonDays': 30, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'noPapers': 1,
         'machines': [
@@ -347,6 +351,24 @@ class FakeServer {
             master.firstWhere((x) => x['id'] == e.key)['lbFormat'] = e.value;
           }
           return _j({'result': {'ok': true, 'count': ch.length, 'master': _master}});
+        // (3.5.0) the Dashboard and Tank Check: the real answers of the test server (test/fixtures/dash)
+        case 'getDashboard' || 'logDashboard' || 'pendingLog' || 'getStockLedger' || 'getOwnershipDetail':
+          dashAsked.add({'fn': action, 'args': a});
+          return _j({'result': jsonDecode(File('test/fixtures/dash/$action.json').readAsStringSync())});
+        case 'saveTankSettings':
+          masterCalls.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'caps': (a[0] as Map)['caps'], 'low': (a[0] as Map)['low']}});
+        case 'getTankSystem':
+          return _j({'result': {'machine': master.firstWhere((m) => m['id'] == a[0], orElse: () => master.first), 'date': a[1], 'system': 120, 'fromLog': {'date': '2026-10-13', 'shift': 'Day', 'stock': 120}, 'fromCheck': null, 'addedAfter': 60, 'cap': 400}});
+        case 'getTankChecks':
+          return _j({'result': {'rows': tankChecks}});
+        case 'saveTankCheck':
+          masterCalls.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'ok': true, 'id': 'TC-0002'}});
+        case 'deleteTankCheck':
+          masterCalls.add({'fn': action, 'id': a[0]});
+          tankChecks.removeWhere((x) => x['id'] == a[0]);
+          return _j({'result': {'ok': true}});
         case 'getDieselIssues':
           return _j({'result': {'count': issues.length, 'totalQty': 240, 'rows': issues}});
         case 'getInwards':

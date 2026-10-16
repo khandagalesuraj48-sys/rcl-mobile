@@ -6,6 +6,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'dashboard.dart';
 import 'home.dart';
 import 'report_screen.dart';
 import '../ui/t.dart';
@@ -28,7 +29,13 @@ class ReportsTab extends StatelessWidget {
               child: Press(
                 onTap: () {
                   final def = reportOfPage(r.$3);
-                  def != null ? openReport(context, def) : openWeb(context, r.$1, r.$3, pic: r.$4);
+                  if (r.$3 == 'dash') {
+                    openDashboard(context); // (3.5.0) the app's own Dashboard
+                  } else if (def != null) {
+                    openReport(context, def);
+                  } else {
+                    openWeb(context, r.$1, r.$3, pic: r.$4);
+                  }
                 },
                 padding: const EdgeInsets.all(14),
                 child: Row(children: [

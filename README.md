@@ -14,6 +14,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.5.0 (16-10-2026, part 4 of the whole web in the app):** the **Dashboard** (Reports → Dashboard) and **Tank Check**
+(Log Book → ⋮) in the app's own screens. Dashboard – Diesel: the dates (Today … All dates, From – To), the **Daily report** (one day on
+one page to print / PDF), opening / received / issued / closing / stock now, the tanks (live or the closing of the last date) and
+**Tank size**, issued by ownership (tap: machine-wise with Print), Own vehicle compliance, the stock of each place and combined, in &
+out by day, top machines, the day-wise stock (a place or all). Dashboard – Log Book: the four figures, machine-wise work (chips),
+pending Log Book by machinery – a date opens its new entry. Tank Check: what the system says, measured or filled to full, the
+difference, saved once; the checks, Delete. The same server actions as the web.
+
 **Version 3.4.0 (16-10-2026, part 3 of the whole web in the app):** **Machinery** (Home) – the web's Master pages in the app's own
 screens, by access: **Asset Master** (the list with its filters and "on site" dates, the vendor chips, papers; a machinery's details;
 Add / Edit – the changes shown first, a new Number moves everything, "did it come back?", earlier periods, papers with Lifetime /

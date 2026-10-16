@@ -20,6 +20,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
+import 'tank_check.dart';
 import 'verify.dart';
 import '../ui/t.dart';
 
@@ -274,6 +275,18 @@ class _LogBookScreenState extends State<LogBookScreen> {
                       }
                     },
                     icon: const Icon(Icons.calendar_month_rounded),
+                  ),
+                  // (3.5.0) the rest of the web's Log Book group, as the app's own screens
+                  PopupMenuButton<String>(
+                    key: const Key('lb-menu'),
+                    icon: const Icon(Icons.more_vert_rounded),
+                    padding: EdgeInsets.zero,
+                    onSelected: (k) {
+                      if (k == 'tank') openTankCheck(context);
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'tank', child: Text('Tank Check')),
+                    ],
                   ),
                 ]),
               ),

@@ -1,0 +1,151 @@
+{
+ "location": "All",
+ "from": "2026-10-01",
+ "to": "2026-10-16",
+ "rows": [
+  {
+   "date": "2026-10-01",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-02",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-03",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-04",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-05",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-06",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-07",
+   "opening": 19895,
+   "inward": 44,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-08",
+   "opening": 19939,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-09",
+   "opening": 19939,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-10",
+   "opening": 19939,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-11",
+   "opening": 19939,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-12",
+   "opening": 19939,
+   "inward": 22,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19961
+  },
+  {
+   "date": "2026-10-13",
+   "opening": 19961,
+   "inward": 33,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19994
+  },
+  {
+   "date": "2026-10-14",
+   "opening": 19994,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19994
+  },
+  {
+   "date": "2026-10-15",
+   "opening": 19994,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issued": 0,
+   "closing": 19994
+  },
+  {
+   "date": "2026-10-16",
+   "opening": 19994,
+   "inward": 22,
+   "tin": 0,
+   "tout": 0,
+   "issued": 2,
+   "closing": 20014
+  }
+ ]
+}

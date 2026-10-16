@@ -30,10 +30,10 @@ class DateField extends StatelessWidget {
                 },
           radius: 16,
           shadow: false,
-          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+          padding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
           child: Row(children: [
             const Icon(Icons.event_rounded, color: C.blue, size: 18),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -41,7 +41,11 @@ class DateField extends StatelessWidget {
               ]),
             ),
             if (clear && value.isNotEmpty && enabled)
-              IconButton(visualDensity: VisualDensity.compact, tooltip: tr('Clear'), onPressed: () => onChanged(''), icon: const Icon(Icons.close_rounded, size: 18, color: C.muted))
+              InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => onChanged(''),
+                child: Padding(padding: const EdgeInsets.all(6), child: Icon(Icons.close_rounded, size: 16, color: C.muted, semanticLabel: tr('Clear'))),
+              )
             else
               const SizedBox(width: 8),
           ]),

@@ -1,0 +1,55 @@
+{
+ "machine": {
+  "id": "EX-200",
+  "no": "EX-200",
+  "name": "Excavator",
+  "type": "Excavator",
+  "make": "",
+  "lbFormat": "A",
+  "worksOn": [
+   "Hrs"
+  ],
+  "unit": "Hrs",
+  "modes": [
+   "Hrs",
+   "Time"
+  ],
+  "modesX": [
+   "Time"
+  ],
+  "meterKm": false,
+  "meterHr": true,
+  "kmStd": "",
+  "hrStd": 12,
+  "owner": "Item Vendor",
+  "ownership": "Rental",
+  "supply": "Company",
+  "status": "Active",
+  "activeFrom": "2026-09-01",
+  "inactiveFrom": "",
+  "earlier": [],
+  "tankCap": 300,
+  "monthlyRate": "",
+  "engineNo": "",
+  "chassisNo": "",
+  "engineMake": "",
+  "taxUpto": "",
+  "pucUpto": "",
+  "permitUpto": "",
+  "fitnessUpto": "",
+  "insuranceUpto": "",
+  "tdsRate": "",
+  "enteredBy": "Tester",
+  "updatedBy": ""
+ },
+ "date": "2026-10-16",
+ "system": -288,
+ "fromLog": {
+  "date": "2026-10-02",
+  "shift": "Full Day",
+  "stock": -288
+ },
+ "fromCheck": null,
+ "addedAfter": 0,
+ "cap": 300
+}
