@@ -14,6 +14,7 @@ import '../core/session.dart';
 import '../core/voice.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
+import '../ui/help.dart' show helpLangOf;
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'admin.dart' show ReadMeScreen;
@@ -46,11 +47,8 @@ List<(String, String)> assistantTabs(Session s) {
   return out;
 }
 
-/// His help language (the web's fixLang: Settings → language; Marathi when none is set).
-String helpLangOf(Session s) {
-  final l = s.pref('lang');
-  return l == 'en' || l == 'hi' ? l : 'mr';
-}
+/// (3.16.0) The Entries tab of the app (the shell sets it): a page button of an answer for a diesel page opens it.
+ValueChanged<String>? shellEntries;
 
 AiChat? _chat;
 String _chatOf = '';
@@ -87,14 +85,18 @@ void forgetChat() {
   _chatOf = '';
 }
 
-Future<void> openAssistant(BuildContext context, {required ValueChanged<String> entries}) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AssistantScreen(entries: entries)));
+/// The assistant; [question]: asked at once, of the AI service (a red message's "Ask the assistant about this").
+Future<void> openAssistant(BuildContext context, {ValueChanged<String>? entries, String question = ''}) => Navigator.of(context)
+    .push(MaterialPageRoute<void>(builder: (_) => AssistantScreen(entries: entries ?? shellEntries ?? (_) {}, question: question)));
 
 class AssistantScreen extends StatefulWidget {
-  const AssistantScreen({super.key, required this.entries});
+  const AssistantScreen({super.key, required this.entries, this.question = ''});
 
   /// Opens the Entries tab of a diesel page (issue / inward / transfer) – the assistant closes first.
   final ValueChanged<String> entries;
+
+  /// Asked at once, of the AI service (the web's "Ask the assistant about this" of a help card).
+  final String question;
   @override
   State<AssistantScreen> createState() => _AssistantScreenState();
 }
@@ -123,8 +125,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
     };
     c.addListener(_changed);
     if (c.msgs.isEmpty) c.reset();
-    // the daily summary that waits on Ask (once a day) – after this first picture (the dot on Home goes then)
-    if (s.briefDue.value) {
+    if (widget.question.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) c.ask(widget.question, onlyAi: true);
+      });
+    } else if (s.briefDue.value) {
+      // the daily summary that waits on Ask (once a day) – after this first picture (the dot on Home goes then)
       WidgetsBinding.instance.addPostFrameCallback((_) {
         s.briefDue.value = false;
         Future.delayed(const Duration(milliseconds: 200), () {

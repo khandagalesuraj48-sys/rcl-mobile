@@ -15,6 +15,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
+import '../ui/help.dart' show GuideButton;
 
 Future<void> openReport(BuildContext context, ReportDef def, {String no = '', String owner = '', bool run = false}) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportScreen(def: def, no: no, owner: owner, run: run)));
@@ -379,7 +380,7 @@ class _ReportScreenState extends State<ReportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: TwoLang(def.label, def.mr, size: 18, weight: FontWeight.w700),
-        actions: [
+        actions: [GuideButton(const ['rdaily', 'rmonthly', 'ravg'].contains(def.key) ? def.key : 'rp-${def.key}'), 
           if (d != null) IconButton(key: const Key('rep-xlsx'), tooltip: tr('Export to Excel'), onPressed: out.isEmpty ? _excel : null, icon: out == 'x' ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4)) : const Icon(Icons.grid_on_rounded)),
           if (d != null) IconButton(key: const Key('rep-pdf'), tooltip: tr('Print'), onPressed: out.isEmpty ? _pdf : null, icon: out == 'p' ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4)) : const Icon(Icons.print_rounded)),
         ],

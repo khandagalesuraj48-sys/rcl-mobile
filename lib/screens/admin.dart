@@ -22,6 +22,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'approvals.dart' show openApprovals;
+import '../ui/help.dart' show GuideButton;
 
 Future<void> openAdmin(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminHub()));
 
@@ -320,7 +321,7 @@ class _UsersScreenState extends State<UsersScreen> {
   Widget build(BuildContext context) {
     final users = _users.where((u) => q.isEmpty || '${u['name']} ${u['email']}'.toLowerCase().contains(q.toLowerCase())).toList();
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Users & Access', 'युजर व access', size: 20, weight: FontWeight.w700), actions: [IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Users & Access', 'युजर व access', size: 20, weight: FontWeight.w700), actions: [const GuideButton('users'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
       body: d == null
           ? (err.isEmpty ? const Center(child: CircularProgressIndicator()) : ListView(padding: const EdgeInsets.all(16), children: [InfoLine(err, bad: true)]))
           : RefreshIndicator(
@@ -503,7 +504,7 @@ class _OrgScreenState extends State<OrgScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const TwoLang('Company & site', 'कंपनी व साइट', size: 20, weight: FontWeight.w700)),
+        appBar: AppBar(title: const TwoLang('Company & site', 'कंपनी व साइट', size: 20, weight: FontWeight.w700), actions: [const GuideButton('users')]),
         body: ListView(padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
           _note('This copy of Fleet ERP is for one company and one site. Every user belongs to this site; another site has its own users and its own data.'),
           const SizedBox(height: 10),
@@ -589,7 +590,7 @@ class _RulesScreenState extends State<RulesScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const TwoLang('Rules of this site', 'साइटचे नियम', size: 20, weight: FontWeight.w700)),
+        appBar: AppBar(title: const TwoLang('Rules of this site', 'साइटचे नियम', size: 20, weight: FontWeight.w700), actions: [const GuideButton('settings')]),
         body: ListView(padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
           _note('Admin only – these apply to every user of this site.'),
           const SizedBox(height: 10),
@@ -697,7 +698,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   Widget build(BuildContext context) {
     final rows = [for (final r in (d?['rows'] as List? ?? const []).whereType<Map>()) r], count = d?['count'] ?? 0;
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Activity Log', 'ॲक्टिव्हिटी लॉग', size: 20, weight: FontWeight.w700), actions: [IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Activity Log', 'ॲक्टिव्हिटी लॉग', size: 20, weight: FontWeight.w700), actions: [const GuideButton('activity'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('act-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
@@ -871,7 +872,7 @@ class _RtcScreenState extends State<RtcScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const TwoLang('Screen share', 'स्क्रीन शेअर', size: 20, weight: FontWeight.w700)),
+        appBar: AppBar(title: const TwoLang('Screen share', 'स्क्रीन शेअर', size: 20, weight: FontWeight.w700), actions: [const GuideButton('users')]),
         bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('rr-save'), onPressed: busy || users.isEmpty ? null : _save, child: Text('Save screen share access')))),
         body: loading
             ? const Center(child: CircularProgressIndicator())
@@ -1010,7 +1011,7 @@ class _ReadMeScreenState extends State<ReadMeScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const TwoLang('Read Me', 'रीड मी', size: 20, weight: FontWeight.w700), actions: [IconButton(key: const Key('rm-reload'), tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+        appBar: AppBar(title: const TwoLang('Read Me', 'रीड मी', size: 20, weight: FontWeight.w700), actions: [const GuideButton('readme'), IconButton(key: const Key('rm-reload'), tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
         body: loading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
@@ -1341,7 +1342,7 @@ class _FaultsScreenState extends State<FaultsScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text('Faults of the app – ${list.length} kept, ${(s.faults['day'] == s.today ? s.faults['n'] : 0) ?? 0} today', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700))),
+      appBar: AppBar(title: Text('Faults of the app – ${list.length} kept, ${(s.faults['day'] == s.today ? s.faults['n'] : 0) ?? 0} today', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700)), actions: [const GuideButton('settings')]),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

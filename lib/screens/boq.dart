@@ -22,6 +22,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/help.dart' show GuideButton;
 
 Future<void> openBoq(BuildContext context, {String vendor = '', bool newIfNone = false}) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => BoqScreen(vendor: vendor, newIfNone: newIfNone)));
@@ -104,7 +105,7 @@ class _BoqScreenState extends State<BoqScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Vendor BOQ', 'व्हेंडर BOQ', size: 20, weight: FontWeight.w700),
-        actions: [
+        actions: [const GuideButton('boq'), 
           if (can) IconButton(key: const Key('b-new'), tooltip: tr('+ New BOQ'), onPressed: () => _form('new'), icon: const Icon(Icons.post_add_rounded)),
           IconButton(tooltip: tr('Refresh'), onPressed: loading ? null : _load, icon: const Icon(Icons.refresh_rounded)),
         ],
@@ -576,7 +577,7 @@ class _BoqFormScreenState extends State<BoqFormScreen> {
     final have = lines.map((l) => l.no).toSet();
     Widget gap() => const SizedBox(height: 10);
     return Scaffold(
-      appBar: AppBar(title: Text(_title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+      appBar: AppBar(title: Text(_title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)), actions: [const GuideButton('boq')]),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (mode == 'amend')
           Text('Change the rates / rent type below, and set "Valid From" = the date the new rates start (inside ${showDate('${b!['from']}')} – ${'${b!['to'] ?? ''}'.isEmpty ? 'open' : showDate('${b!['to']}')}). Before that date BOQ ${b!['no']} stays in force.',

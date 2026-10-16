@@ -14,6 +14,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.16.0 (17-10-2026, part 15 of the whole web in the app):** the web's **help** on every screen of the app, in its own
+words (`assets/help/web_help.json`): every red message – a toast, a red box, a "Nothing saved / Fix the file first" message, a
+question that says "anyway" – has **Help**: what is wrong and what to do (the web's first three rules that know the message, else
+its general one), in English / मराठी / हिंदी, and **Ask the assistant about this** when the AI service is set up; every page has its
+**?** (About this page – what it is for, what the app checks / how its figures come; on Entries and the Log Book: ⋮ → About this
+page).
+
 **Version 3.15.0 (17-10-2026, part 14 of the whole web in the app):** the web's **assistant ("Ask")** in the app's own screen
 (Home → **Ask**, next to the site), its working the web's own: the **⚡ questions** the app answers itself (the daily summary, the Log Book
 entries still pending, yesterday's / today's diesel and to whom, the stock, those over the standard); a **typed question** the app

@@ -16,6 +16,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'machinery.dart' show uniqOf, vendorNames;
+import '../ui/help.dart' show GuideButton;
 
 class MachineFormScreen extends StatefulWidget {
   const MachineFormScreen({super.key, this.edit, this.vendors = const []});
@@ -205,7 +206,7 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
     final debit = ownership == 'Debit';
     Widget gap([double h = 10]) => SizedBox(height: h);
     return Scaffold(
-      appBar: AppBar(title: Text(widget.edit == null ? 'Add machinery' : 'Edit $editId')),
+      appBar: AppBar(title: Text(widget.edit == null ? 'Add machinery' : 'Edit $editId'), actions: [const GuideButton('master')]),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Focus(
           onFocusChange: (f) {
@@ -388,7 +389,7 @@ class _BulkMachineryScreenState extends State<BulkMachineryScreen> {
     final s = SessionScope.of(context);
     final types = uniqOf(s.machines, 'type'), makes = uniqOf(s.machines, 'make'), owners = {...uniqOf(s.machines, 'owner'), ...widget.vendors}.toList()..sort();
     return Scaffold(
-      appBar: AppBar(title: Text('Add multiple machinery')),
+      appBar: AppBar(title: Text('Add multiple machinery'), actions: [const GuideButton('master')]),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('For Debit machinery only Number or Name is needed.', style: const TextStyle(fontSize: 13.5, color: C.muted)),
         if (err.isNotEmpty) InfoLine(err, bad: true),

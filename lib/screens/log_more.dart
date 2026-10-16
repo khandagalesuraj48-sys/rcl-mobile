@@ -27,6 +27,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'log_print.dart';
 import 'logbook.dart' show LogCard, tripsOfRow;
+import '../ui/help.dart' show GuideButton;
 
 final _sm = OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12));
 String _today(Session s) => s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
@@ -229,7 +230,7 @@ class _LogFindScreenState extends State<LogFindScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Log Book – all dates', 'लॉग बुक – सर्व तारखा', size: 19, weight: FontWeight.w700),
-        actions: [IconButton(key: const Key('lf-reload'), tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
+        actions: [const GuideButton('log'), IconButton(key: const Key('lf-reload'), tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -517,7 +518,7 @@ class _LogImportScreenState extends State<LogImportScreen> {
     final bad = probs.where((p) => p.isNotEmpty).length;
     final stop = bad > 0 || d.tkBad.isNotEmpty;
     return Scaffold(
-      appBar: AppBar(title: Text(stop ? 'Fix the file first' : 'Import into the Log Book', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+      appBar: AppBar(title: Text(stop ? 'Fix the file first' : 'Import into the Log Book', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)), actions: [const GuideButton('log')]),
       body: ListView(key: const Key('li-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 120), children: [
         Text(widget.file, style: const TextStyle(color: C.muted, fontSize: 13)),
         const SizedBox(height: 6),

@@ -17,6 +17,7 @@ import 'package:rcl_mobile/core/qr_scan.dart' show scanLabel;
 import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
+import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
 import 'package:rcl_mobile/web/web_host.dart';
@@ -2288,4 +2289,55 @@ void main() {
     expect(said.last[1], 'mr');
     expect(said.last[0], startsWith('Save झाले ✔'));
   });
+
+  testWidgets('(3.16.0) Help for a red message – what is wrong and what to do (मराठी, English); "Ask the assistant about this"; the "?" of a page', (t) async {
+    phone(t);
+    forgetChat();
+    addTearDown(() => helpPicked = null);
+    final srv = FakeServer()..aiOn = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.scrollUntilVisible(find.text('Machinery Diesel Ledger'), 300, scrollable: find.ancestor(of: find.text('Daily Inward & Issue'), matching: find.byType(Scrollable)).first);
+    await settle(t, 300);
+    await t.tap(find.text('Machinery Diesel Ledger'));
+    await net(t);
+    await tapK(t, 'rep-go');
+    await net(t);
+    expect(find.text('Pick a machinery from Master.'), findsOneWidget);
+    await tapK(t, 'fix-help');
+    await net(t);
+    expect(find.byKey(const Key('fix-sheet')), findsOneWidget);
+    expect(find.text('मदत'), findsOneWidget, reason: 'his help language: Marathi');
+    expect(find.textContaining('काय चुकले: '), findsWidgets);
+    expect(find.textContaining('काय करायचे: '), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/46_fix_help.png'));
+    await t.tap(find.byKey(const Key('help-lang-en')));
+    await settle(t, 400);
+    expect(find.textContaining('What is wrong: This machinery number / name is not in the Asset Master'), findsOneWidget);
+    // Ask the assistant about this: the message and the page go to the AI service
+    srv.aiScript.add({'parts': [{'text': 'Pick the machinery from the list – type part of its number.'}], 'model': 'gemini-test-flash'});
+    await tapK(t, 'fix-ai');
+    await net(t);
+    await net(t);
+    expect(find.byType(AssistantScreen), findsOneWidget);
+    final asked = ((srv.aiAsked.single['contents'] as List).single as Map)['parts'] as List;
+    expect((asked.single as Map)['text'], 'On the page "Machinery Diesel Ledger" I got this message: "Pick a machinery from Master.". What went wrong, and what should I do?');
+    expect(find.textContaining('Pick the machinery from the list'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // the "?" of the page: what it is, and how its figures come
+    await tapK(t, 'guide-rp-ledger');
+    await net(t);
+    expect(find.byKey(const Key('guide-sheet')), findsOneWidget);
+    expect(find.text('About this page'), findsOneWidget);
+    expect(find.textContaining('What it is: The diesel account of one machinery, fill by fill.'), findsOneWidget);
+    await t.tap(find.byKey(const Key('help-lang-mr')));
+    await settle(t, 400);
+    expect(find.text('या page बद्दल'), findsOneWidget);
+  }, tags: ['golden']);
 }

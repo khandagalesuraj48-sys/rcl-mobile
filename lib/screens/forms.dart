@@ -23,6 +23,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
 import 'verify.dart';
+import '../ui/help.dart' show GuideButton;
 
 class EntryForm extends StatefulWidget {
   const EntryForm({super.key, required this.kind, this.edit, this.no = '', this.preset = const {}});
@@ -901,7 +902,7 @@ class _EntryFormState extends State<EntryForm> {
             Pic(k.pic, size: 30),
             const SizedBox(width: 10),
             Expanded(child: TwoLang(ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700)),
-          ]),
+          ]), actions: [GuideButton(k.key == 'issue' ? 'diesel' : k.key)],
         ),
         // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away
         body: SingleChildScrollView(

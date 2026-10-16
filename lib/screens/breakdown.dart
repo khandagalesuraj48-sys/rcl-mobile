@@ -14,6 +14,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
+import '../ui/help.dart' show GuideButton;
 
 Future<void> openBreakdown(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BreakdownScreen()));
 
@@ -144,7 +145,7 @@ class _BreakdownScreenState extends State<BreakdownScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Breakdown', 'ब्रेकडाउन', size: 20, weight: FontWeight.w700),
-          actions: [IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
+          actions: [const GuideButton('brk'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
           bottom: TabBar(
             labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
             tabs: [

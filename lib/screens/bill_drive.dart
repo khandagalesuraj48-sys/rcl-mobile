@@ -16,6 +16,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'bill_print.dart';
+import '../ui/help.dart' show GuideButton;
 
 const kNoteNames = ['Rachana Construction Limited', 'Sketchline Industries'];
 
@@ -139,7 +140,7 @@ class _DriveScreenState extends State<DriveScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('RCL Drive', 'RCL ड्राइव्ह', size: 20, weight: FontWeight.w700),
-          actions: [IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
+          actions: [const GuideButton('bills'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
           bottom: TabBar(labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5), tabs: [
             Tab(key: const Key('drv-bills'), child: Text('Saved Bills')),
             Tab(key: const Key('drv-dn'), child: Text('Saved Debit Notes')),
@@ -472,7 +473,7 @@ class _DebitNoteScreenState extends State<DebitNoteScreen> {
   Widget build(BuildContext context) {
     final t = dnTotals(lines, gst.text, tds.text);
     return Scaffold(
-      appBar: AppBar(title: Text('New Debit Note')),
+      appBar: AppBar(title: Text('New Debit Note'), actions: [const GuideButton('bills')]),
       bottomNavigationBar: SafeArea(
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),

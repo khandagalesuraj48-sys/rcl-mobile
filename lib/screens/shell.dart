@@ -14,6 +14,7 @@ import 'entries.dart';
 import 'home.dart';
 import 'me.dart';
 import 'reports.dart';
+import 'assistant.dart' show shellEntries;
 import 'start_page.dart';
 import '../web/web_host.dart';
 import '../ui/t.dart' show tr;
@@ -33,9 +34,21 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   final hostKey = GlobalKey<WebHostState>();
   Timer? warmUp;
 
+  /// The Entries tab of a diesel page (issue / inward / transfer).
+  void _entries(String k) {
+    final s = _s ?? SessionScope.read(context);
+    final diesel = kKinds.any((x) => s.canSee(x.module)) || s.canSee('Log Book');
+    setState(() {
+      entriesKind = k;
+      entriesOpen++;
+      if (diesel) tab = 1;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    shellEntries = _entries; // (3.16.0) the assistant opened from a help card can open the Entries tab too
     webHost.reset();
     webHost.addListener(_hostChanged);
     // (3.1.7) live: while the app is on the screen it hears what changed (Session.liveTick) and sends what is kept on the phone
@@ -55,6 +68,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    if (shellEntries == _entries) shellEntries = null;
     warmUp?.cancel();
     webHost.removeListener(_hostChanged);
     WidgetsBinding.instance.removeObserver(this);

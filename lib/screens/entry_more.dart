@@ -29,6 +29,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'entries.dart' show EntryCard;
 import 'forms.dart' show MachinePicker, DieselHistoryCard, dieselHistoryOf;
+import '../ui/help.dart' show GuideButton;
 
 final _sm = OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12));
 String _today(Session s) => s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
@@ -175,7 +176,7 @@ class _ImportCheckScreenState extends State<ImportCheckScreen> {
             ? '${fmt(qty)} Ltr, amount ₹${fmt(amt)}. All rows are saved together, or none if any row has a problem.'
             : 'Total ${fmt(qty)} Ltr. Stock is checked with all rows together; all are saved, or none.';
     return Scaffold(
-      appBar: AppBar(title: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+      appBar: AppBar(title: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)), actions: [GuideButton(widget.kind.key == 'issue' ? 'diesel' : widget.kind.key)]),
       body: ListView(key: const Key('imp-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 120), children: [
         if (widget.file.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(widget.file, style: const TextStyle(color: C.muted, fontSize: 13))),
         InfoLine(note, bad: bad > 0, icon: bad > 0 ? Icons.error_outline_rounded : Icons.fact_check_outlined),
@@ -395,7 +396,7 @@ class _EntryFindScreenState extends State<EntryFindScreen> {
     return Scaffold(
       appBar: AppBar(
         title: TwoLang('${k.en} – all dates', '${k.mr} – सर्व तारखा', size: 19, weight: FontWeight.w700),
-        actions: [IconButton(key: const Key('ef-reload'), tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
+        actions: [GuideButton(k.key == 'issue' ? 'diesel' : k.key), IconButton(key: const Key('ef-reload'), tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -608,7 +609,7 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
     final filled = vals.where((r) => r['qty'] != '').toList();
     final tot = r2(filled.fold<num>(0, (a, r) => a + (r['qty'] is num && !(r['qty'] as num).isNaN ? r['qty'] as num : 0)));
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Multiple entries', 'ट्रान्स्फर – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700)),
+      appBar: AppBar(title: const TwoLang('Multiple entries', 'ट्रान्स्फर – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700), actions: [const GuideButton('transfer')]),
       body: ListView(key: const Key('tm-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 140), children: [
         if (errors.isNotEmpty) ...[InfoLine('Nothing saved:\n${errors.join('\n')}', bad: true), const SizedBox(height: 8)],
         for (final (i, r) in rows.indexed) _row(i, r, vals[i], today, locs),
@@ -1027,7 +1028,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), today = _today(s), locs = s.locations;
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Multiple entries', 'डिझेल देणे – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700)),
+      appBar: AppBar(title: const TwoLang('Multiple entries', 'डिझेल देणे – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700), actions: [const GuideButton('diesel')]),
       body: ListView(key: const Key('im-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 150), children: [
         SegmentedButton<String>(
           key: const Key('im-type'),

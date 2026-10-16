@@ -24,6 +24,7 @@ import 'forms.dart' show MachinePicker;
 import 'log_print.dart';
 import 'logbook.dart' show needsOf, kLogShifts;
 import '../core/dash.dart' show kDayStatus;
+import '../ui/help.dart' show GuideButton;
 
 Future<void> openLogEdit(BuildContext context, {String no = ''}) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => LogEditScreen(no: no)));
 
@@ -477,7 +478,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
         appBar: AppBar(
           titleSpacing: 0,
           title: const TwoLang('Edit Log Book', 'लॉग बुक दुरुस्ती', size: 19, weight: FontWeight.w700),
-          actions: [
+          actions: [const GuideButton('logedit'), 
             if (e != null || l != null)
               PopupMenuButton<String>(
                 key: const Key('lx-menu'),

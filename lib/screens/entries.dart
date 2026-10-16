@@ -15,6 +15,7 @@ import 'entry_more.dart';
 import 'forms.dart';
 import 'logbook.dart';
 import '../ui/t.dart';
+import '../ui/help.dart' show showGuide;
 
 class EntriesTab extends StatefulWidget {
   const EntriesTab({super.key, this.kind = '', this.open = 0});
@@ -197,6 +198,9 @@ class _EntriesTabState extends State<EntriesTab> {
       case 'template':
         await downloadTemplate(context, k);
         return;
+      case 'guide':
+        await showGuide(context, k.key == 'issue' ? 'diesel' : k.key); // (3.16.0) the web's "?" of the page
+        return;
     }
     if (mounted) _load();
   }
@@ -251,6 +255,7 @@ class _EntriesTabState extends State<EntriesTab> {
                     icon: const Icon(Icons.more_vert_rounded),
                     onSelected: _more,
                     itemBuilder: (_) => [
+                      PopupMenuItem(key: const Key('en-guide'), value: 'guide', child: Text('About this page')),
                       PopupMenuItem(key: const Key('en-find'), value: 'find', child: Text('All dates & Export')),
                       if (s.canEdit(k.module) && k.key != 'inward') PopupMenuItem(key: const Key('en-many'), value: 'many', child: Text('Multiple entries')),
                       if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-import'), value: 'import', child: Text('Import from Excel')),

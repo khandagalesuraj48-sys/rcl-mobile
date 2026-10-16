@@ -18,6 +18,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'bill_print.dart';
 import 'billing.dart' show openBillPage;
+import '../ui/help.dart' show GuideButton;
 
 String _today(Session s) => s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
 
@@ -105,7 +106,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
     final rows = all.where((r) => vendor.isEmpty || r['vendor'] == vendor).toList(), months = brMonths(fromM, toM);
     final RDoc? doc = rows.isEmpty || months.isEmpty ? null : brDoc(rows, months, view, company: co, vendor: vendor);
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Bill Summary', 'बिल सारांश', size: 20, weight: FontWeight.w700), actions: [IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Bill Summary', 'बिल सारांश', size: 20, weight: FontWeight.w700), actions: [const GuideButton('breg'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('br-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
@@ -369,7 +370,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), can = s.canEdit('Machinery Payments'), open = type == 'Opening';
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Machinery Payments', 'यंत्र पेमेंट', size: 20, weight: FontWeight.w700), actions: [IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Machinery Payments', 'यंत्र पेमेंट', size: 20, weight: FontWeight.w700), actions: [const GuideButton('pay'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('py-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
@@ -560,7 +561,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
     final s = SessionScope.of(context), x = d, names = [...vendors, if (vendor.isNotEmpty && !vendors.contains(vendor)) vendor];
     final doc = x == null ? null : vlDoc(x, _today(s));
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Vendor Ledger', 'vendor खाते', size: 20, weight: FontWeight.w700), actions: [IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Vendor Ledger', 'vendor खाते', size: 20, weight: FontWeight.w700), actions: [const GuideButton('vled'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('vl-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
@@ -682,7 +683,7 @@ class _OutstandingScreenState extends State<OutstandingScreen> {
     final s = SessionScope.of(context), t = _today(s), x = d, rows = x == null ? const <Map<String, dynamic>>[] : maps(x['rows']);
     final doc = x == null || rows.isEmpty ? null : voDoc(x);
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Vendor Outstanding', 'vendor बाकी', size: 20, weight: FontWeight.w700), actions: [IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Vendor Outstanding', 'vendor बाकी', size: 20, weight: FontWeight.w700), actions: [const GuideButton('vout'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('vo-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [

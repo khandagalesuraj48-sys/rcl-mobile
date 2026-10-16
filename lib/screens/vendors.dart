@@ -15,6 +15,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'boq.dart';
 import 'machinery.dart' show toneOf, softOf;
+import '../ui/help.dart' show GuideButton;
 
 Future<void> openVendors(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VendorMasterScreen()));
 
@@ -79,7 +80,7 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Vendor Master', 'व्हेंडर मास्टर', size: 20, weight: FontWeight.w700),
-        actions: [
+        actions: [const GuideButton('vendors'), 
           if (can) IconButton(key: const Key('v-new'), tooltip: tr('+ New vendor'), onPressed: () => _open(null), icon: const Icon(Icons.person_add_alt_1_rounded)),
           IconButton(tooltip: tr('Refresh'), onPressed: loading ? null : _load, icon: const Icon(Icons.refresh_rounded)),
         ],
@@ -371,7 +372,7 @@ class _VendorFormScreenState extends State<VendorFormScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: Text(isNew ? 'New vendor' : '${saved ? 'Vendor details – ' : 'Fill vendor details – '}${v!['name']}', maxLines: 1, overflow: TextOverflow.ellipsis)),
+      appBar: AppBar(title: Text(isNew ? 'New vendor' : '${saved ? 'Vendor details – ' : 'Fill vendor details – '}${v!['name']}', maxLines: 1, overflow: TextOverflow.ellipsis), actions: [const GuideButton('vendors')]),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(ms.isNotEmpty ? '${ms.length} asset(s): ${ms.map((m) => '${m['id']} (${m['ownership']})').join(', ')}' : 'No assets yet – in Asset Master pick this vendor for its machinery.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
         const SizedBox(height: 12),

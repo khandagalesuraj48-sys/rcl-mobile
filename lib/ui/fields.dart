@@ -1,6 +1,7 @@
 /* THE BOXES OF A FORM (3.4.0) – one look for every master form of the app: a date box (tap → calendar, × clears it), a pick-list,
  * a text box with a list of earlier values to pick from, ticks as chips, and a label / value line of a details sheet. */
 import 'package:flutter/material.dart' hide Text;
+import 'help.dart' show FixHelpLink;
 
 import '../core/format.dart';
 import 't.dart';
@@ -221,6 +222,7 @@ Future<void> tellLines(BuildContext context, String title, List<String> lines) =
         scrollable: true,
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $l', style: const TextStyle(fontSize: 14.5, height: 1.35))),
+          FixHelpLink(lines.join('\n'), color: C.green), // (3.16.0) the web's help in every box that reports something refused
         ]),
         actions: [FilledButton(key: const Key('tell-ok'), style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(c), child: const Text('OK'))],
       ),

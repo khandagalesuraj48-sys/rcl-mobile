@@ -20,6 +20,7 @@ import 'bill_drive.dart';
 import 'bill_money.dart';
 import 'bill_print.dart';
 import 'log_print.dart';
+import '../ui/help.dart' show GuideButton;
 
 /// The billing pages and their access (as the web's tabs).
 const kBillPages = [
@@ -577,7 +578,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), can = s.canEdit('Machinery Billing');
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Machinery Billing', 'यंत्र बिलिंग', size: 20, weight: FontWeight.w700), actions: [IconButton(tooltip: tr('Refresh'), onPressed: _loadInit, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Machinery Billing', 'यंत्र बिलिंग', size: 20, weight: FontWeight.w700), actions: [const GuideButton('bill'), IconButton(tooltip: tr('Refresh'), onPressed: _loadInit, icon: const Icon(Icons.refresh_rounded))]),
       bottomNavigationBar: bills.isEmpty
           ? null
           : SafeArea(

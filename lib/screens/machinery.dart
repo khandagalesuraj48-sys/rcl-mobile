@@ -27,6 +27,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
 import 'machine_form.dart';
+import '../ui/help.dart' show GuideButton;
 
 Future<void> openAssetMaster(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AssetMasterScreen()));
 
@@ -115,7 +116,7 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Asset Master', 'ॲसेट मास्टर', size: 20, weight: FontWeight.w700),
-        actions: [
+        actions: [const GuideButton('master'), 
           if (can) IconButton(key: const Key('m-add'), tooltip: tr('Add machinery'), onPressed: () => _form(null), icon: const Icon(Icons.add_circle_outline_rounded)),
           PopupMenuButton<String>(
             key: const Key('m-menu'),
@@ -752,7 +753,7 @@ class _AssignScreenState extends State<_AssignScreen> {
   String all = '';
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text('Assign vendor – ${widget.list.length} asset${widget.list.length == 1 ? '' : 's'}')),
+        appBar: AppBar(title: Text('Assign vendor – ${widget.list.length} asset${widget.list.length == 1 ? '' : 's'}'), actions: [const GuideButton('master')]),
         body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Expanded(child: PickField(key: const Key('as-all'), label: 'Set all rows to', value: all, items: widget.vendors, blank: '– pick –', onChanged: (v) => setState(() => all = v))),
@@ -838,7 +839,7 @@ class _EditManyScreenState extends State<EditManyScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(one ? 'Edit ${widget.list.first['id']}' : 'Edit ${widget.list.length} machinery')),
+      appBar: AppBar(title: Text(one ? 'Edit ${widget.list.first['id']}' : 'Edit ${widget.list.length} machinery'), actions: [const GuideButton('master')]),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(
           one ? 'Change what you need for ${widget.list.first['id']}.' : 'The ${widget.list.length} selected machinery: a value they all share is filled in – change it for all. Boxes marked "different" keep each machinery\'s own value unless you type a new one.',
