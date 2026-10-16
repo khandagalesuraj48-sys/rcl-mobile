@@ -189,11 +189,10 @@ class _ImportCheckScreenState extends State<ImportCheckScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Text('Line ${r['line']}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                  const Spacer(),
-                  Flexible(
-                    child: Text(probs[i].isEmpty ? '✓' : '✗ ${probs[i].join(', ')}',
-                        textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w700, color: probs[i].isEmpty ? C.greenDark : C.red)),
-                  ),
+                  const SizedBox(width: 10),
+                  Icon(probs[i].isEmpty ? Icons.check_circle_rounded : Icons.cancel_rounded, size: 20, color: probs[i].isEmpty ? C.greenDark : C.red),
+                  const SizedBox(width: 6),
+                  if (probs[i].isNotEmpty) Expanded(child: Text(probs[i].join(', '), style: const TextStyle(fontWeight: FontWeight.w700, color: C.red))),
                 ]),
                 const SizedBox(height: 4),
                 Wrap(spacing: 12, runSpacing: 2, children: [
@@ -236,7 +235,7 @@ class _EntryFindScreenState extends State<EntryFindScreen> {
   String from = '', to = '', shift = '', place = '', err = '';
   final no = TextEditingController(), owner = TextEditingController(), driver = TextEditingController(), q = TextEditingController(), pump = TextEditingController(), bill = TextEditingController();
   Map<String, dynamic>? res;
-  bool loading = true, share = false;
+  bool loading = true, share = false, moreF = false;
   int _seq = 0;
   Timer? _t;
 
@@ -261,6 +260,9 @@ class _EntryFindScreenState extends State<EntryFindScreen> {
         'transfer' => {'from': from, 'to': to, 'location': place, 'q': q.text.trim()},
         _ => {'from': from, 'to': to, 'no': no.text.trim(), 'shift': shift, 'source': place, 'owner': owner.text.trim(), 'driver': driver.text.trim(), 'q': q.text.trim()},
       };
+
+  /// The page's own filters that are set (shown on the "More filters" button when they are folded away).
+  int get _setCount => [shift, place, for (final c in [no, owner, driver, q, pump, bill]) c.text.trim()].where((x) => x.isNotEmpty).length;
 
   void _set(VoidCallback f) {
     setState(f);
@@ -396,7 +398,16 @@ class _EntryFindScreenState extends State<EntryFindScreen> {
             Expanded(child: DateField(key: const Key('ef-to'), label: 'To (blank = till today)', value: to, last: last, onChanged: (v) => _set(() => to = v))),
           ]),
           const SizedBox(height: 8),
-          if (k.key == 'issue') ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('ef-more'),
+              onPressed: () => setState(() => moreF = !moreF),
+              icon: Icon(moreF ? Icons.expand_less_rounded : Icons.tune_rounded),
+              label: Text(moreF ? 'Fewer filters' : (_setCount == 0 ? 'More filters' : 'More filters ($_setCount set)')),
+            ),
+          ),
+          if (moreF && k.key == 'issue') ...[
             box('Machinery Number / Name', no, 'ef-no', options: [for (final m in s.machines) m.id]),
             const SizedBox(height: 8),
             Row(children: [
@@ -411,14 +422,14 @@ class _EntryFindScreenState extends State<EntryFindScreen> {
             const SizedBox(height: 8),
             box('Issue ID / Remark', q, 'ef-q'),
           ],
-          if (k.key == 'inward') ...[
+          if (moreF && k.key == 'inward') ...[
             box('Pump Name', pump, 'ef-pump', options: s.pumps),
             const SizedBox(height: 8),
             PickField(key: const Key('ef-place'), label: 'Received at', value: place, items: s.locations, blank: 'All', onChanged: (v) => _set(() => place = v)),
             const SizedBox(height: 8),
             box('Bill Number / Inward ID', bill, 'ef-bill'),
           ],
-          if (k.key == 'transfer') ...[
+          if (moreF && k.key == 'transfer') ...[
             PickField(key: const Key('ef-place'), label: 'Stock point', value: place, items: s.locations, blank: 'All', onChanged: (v) => _set(() => place = v)),
             const SizedBox(height: 8),
             box('Transfer ID / Remark', q, 'ef-q'),
@@ -589,13 +600,13 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
     final filled = vals.where((r) => r['qty'] != '').toList();
     final tot = r2(filled.fold<num>(0, (a, r) => a + (r['qty'] is num && !(r['qty'] as num).isNaN ? r['qty'] as num : 0)));
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Transfer – multiple entries', 'एकाच वेळी अनेक', size: 19, weight: FontWeight.w700)),
+      appBar: AppBar(title: const TwoLang('Multiple entries', 'ट्रान्स्फर – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700)),
       body: ListView(key: const Key('tm-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 140), children: [
         if (errors.isNotEmpty) ...[InfoLine('Nothing saved:\n${errors.join('\n')}', bad: true), const SizedBox(height: 8)],
         for (final (i, r) in rows.indexed) _row(i, r, vals[i], today, locs),
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(key: const Key('tm-add'), style: _sm, onPressed: () => setState(_add), icon: const Icon(Icons.add_rounded), label: const Text('+ Add row')),
+          child: OutlinedButton(key: const Key('tm-add'), style: _sm, onPressed: () => setState(_add), child: const Text('+ Add row')),
         ),
       ]),
       bottomNavigationBar: SafeArea(
@@ -626,7 +637,11 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
         Row(children: [
           Text('Row ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w800)),
           const Spacer(),
-          if (p.isNotEmpty) Flexible(child: Text('✗ ${p.join(', ')}', textAlign: TextAlign.right, style: const TextStyle(color: C.red, fontWeight: FontWeight.w700))),
+          if (p.isNotEmpty) ...[
+            const Icon(Icons.cancel_rounded, size: 18, color: C.red),
+            const SizedBox(width: 4),
+            Flexible(child: Text(p.join(', '), textAlign: TextAlign.right, style: const TextStyle(color: C.red, fontWeight: FontWeight.w700))),
+          ],
           IconButton(
             key: Key('tm-del-$i'),
             tooltip: tr('Remove row'),
@@ -982,7 +997,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), today = _today(s), locs = s.locations;
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Diesel Issue – multiple entries', 'एकाच वेळी अनेक', size: 19, weight: FontWeight.w700)),
+      appBar: AppBar(title: const TwoLang('Multiple entries', 'डिझेल देणे – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700)),
       body: ListView(key: const Key('im-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 150), children: [
         SegmentedButton<String>(
           key: const Key('im-type'),
@@ -1018,7 +1033,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
         ..._dateRows(),
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(key: const Key('im-add'), style: _sm, onPressed: () => setState(() => dRows.add(_DRow())), icon: const Icon(Icons.add_rounded), label: const Text('+ Add row')),
+          child: OutlinedButton(key: const Key('im-add'), style: _sm, onPressed: () => setState(() => dRows.add(_DRow())), child: const Text('+ Add row')),
         ),
       ];
 
@@ -1127,7 +1142,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
             key: 'im-mrow-$i',
             head: 'Row ${i + 1}',
             bad: p.isNotEmpty,
-            note: p.isEmpty ? '' : '✗ ${p.join(', ')}',
+            note: p.join(', '),
             balance: bals[i].$2 == null ? '–' : '${fmt(bals[i].$2)} Ltr after',
             dateBox: true,
             today: today,
@@ -1138,7 +1153,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
             }),
           );
         }(),
-      Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(key: const Key('im-madd'), style: _sm, onPressed: _mAdd, icon: const Icon(Icons.add_rounded), label: const Text('+ Add row'))),
+      Align(alignment: Alignment.centerLeft, child: OutlinedButton(key: const Key('im-madd'), style: _sm, onPressed: _mAdd, child: const Text('+ Add row'))),
     ];
   }
 
@@ -1296,7 +1311,15 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
         ],
         const SizedBox(height: 8),
         TextBox(key: Key('$key-remark'), label: 'Remark', controller: r.remark),
-        if (note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(note, style: TextStyle(color: bad ? C.red : C.amber, fontWeight: FontWeight.w700, fontSize: 13))),
+        if (note.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(bad ? Icons.cancel_rounded : Icons.error_outline_rounded, size: 17, color: bad ? C.red : C.amber),
+              const SizedBox(width: 5),
+              Expanded(child: Text(note, style: TextStyle(color: bad ? C.red : C.amber, fontWeight: FontWeight.w700, fontSize: 13))),
+            ]),
+          ),
       ]),
     );
   }

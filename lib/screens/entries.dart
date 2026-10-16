@@ -390,7 +390,13 @@ class EntryCard extends StatelessWidget {
   Widget build(BuildContext context) => Press(
         onTap: () => _details(context),
         padding: const EdgeInsets.all(12),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        child: note.isEmpty ? _main() : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _main(),
+          Padding(padding: const EdgeInsets.only(top: 6, left: 4), child: Text(note, style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w600))),
+        ]),
+      );
+
+  Widget _main() => Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Container(width: 74, height: 74, decoration: BoxDecoration(color: kind.soft.withValues(alpha: .6), borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(_pic, size: 56)),
           const SizedBox(width: 12),
           Expanded(
@@ -414,10 +420,8 @@ class EntryCard extends StatelessWidget {
             const SizedBox(height: 8),
             if ('${r['shift'] ?? ''}'.isNotEmpty) Text('${r['shift']} shift', style: const TextStyle(fontSize: 12.5, color: C.muted)),
             if (kind.key == 'inward' && asNum(r['amount']) != null) Text('₹ ${fmtNum(asNum(r['amount']))}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-            if (note.isNotEmpty) Text(note, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
           ]),
-        ]),
-      );
+        ]);
 
   void _details(BuildContext context) {
     final rowsOf = <(String, String)>[
