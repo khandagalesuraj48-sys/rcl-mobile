@@ -115,6 +115,59 @@ class FakeServer {
           {'date': '2026-10-13', 'at': '13-10-2026 18:00', 'by': 'Tester', 'total': 2, 'count': 1},
         ],
       };
+  // (3.8.0) Billing: the vendors to bill, September's Log Book / diesel / BOQ of MH-25-AJ-2169 (a Monthly BOQ, an Idle day,
+  // diesel above the standard), the saved bills, notes, payments, ledger; what was sent
+  bool billing = false;
+  final billSent = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> get _billRows => [
+        for (var d = 1; d <= 6; d++)
+          {'no': 'MH-25-AJ-2169', 'date': '2026-09-0$d', 'shift': 'Full Day', 'mode': d == 6 ? 'Idle' : 'KM', 'unit': 'KM', 'okm': d == 6 ? '' : 900 + 100 * d, 'ckm': d == 6 ? '' : 1000 + 100 * d, 'wkm': d == 6 ? '' : 100,
+            'whr': '', 'trip': '', 'half': false, 'owner': 'I E Enterprises', 'type': 'Tipper', 'key': 'MH-25-AJ-2169|2026-09-0$d|Full Day', 'work': 'Earth carting', 'itemQty': []},
+      ];
+  Map<String, dynamic> get _billExtra => {
+        'debit': {},
+        'boq': {
+          'MH25AJ2169': {
+            for (var d = 1; d <= 30; d++)
+              '2026-09-${d.toString().padLeft(2, '0')}': {'boq': '1', 'amendNo': 0, 'basis': 'Monthly', 'rate': 45000, 'nightRate': '', 'slabs': [], 'slabOn': '', 'items': [], 'diesel': 'Company', 'gstPct': '', 'tdsPct': 2, 'woNo': 'WO-12', 'woDate': ''}
+          }
+        },
+        'issues': {
+          'MH25AJ2169': {
+            '2026-09-01': {'qty': 120, 'km': 1000, 'hr': '', 'lastQty': 120, 'lastKm': 1000, 'lastHr': ''},
+            '2026-09-03': {'qty': 60, 'km': 1200, 'hr': '', 'lastQty': 60, 'lastKm': 1200, 'lastHr': ''},
+          }
+        },
+        'avgRate': 92.5, 'lastRate': 93.1,
+      };
+  Map<String, dynamic> get _billInit => {
+        'vendors': [
+          {...vendors[0]},
+          {...vendors[2]},
+        ],
+        'lastNo': {'I E ENTERPRISES|Sketchline Industries': 7},
+        'settings': {
+          'project': 'Test Project', 'siteAddress': 'SITE OFFICE, TEST VILLAGE',
+          'companies': {
+            'Sketchline Industries': {'address': 'TEST ADDRESS 1, PUNE', 'gstin': '27AAAAA0000A1Z0', 'pan': 'AAAAA0000A', 'invPrefix': 'SLI/TST/RA-', 'dnPrefix': 'SLI/TST/DN-'},
+            'Rachana Construction Limited': {'address': '', 'gstin': '27BBBBB0000B1Z0', 'pan': 'BBBBB0000B', 'invPrefix': 'RCL/TST/RA-', 'dnPrefix': 'RCL/TST/DN-'},
+          },
+        },
+        'pendingDn': [{'id': 'DN-0003', 'no': 'SLI/TST/DN-3', 'date': '2026-09-20', 'vendor': 'I E Enterprises', 'company': 'Sketchline Industries', 'total': 1500}],
+      };
+  static const _savedBills = [
+    {'id': 'BILL-00001', 'vendor': 'I E Enterprises', 'company': 'Sketchline Industries', 'billNo': '7', 'rev': 0, 'from': '2026-08-01', 'to': '2026-08-31', 'billDate': '2026-09-05', 'net': 41250.5, 'status': 'Active', 'enteredBy': 'Tester', 'dnNo': 'SLI/TST/DN-2', 'dnAmt': 3200},
+    {'id': 'BILL-00002', 'vendor': 'Chalke Enterprises', 'company': 'Rachana Construction Limited', 'billNo': '3', 'rev': 1, 'from': '2026-08-01', 'to': '2026-08-31', 'billDate': '2026-09-06', 'net': 18000, 'status': 'Superseded', 'enteredBy': 'Tester', 'dnNo': '', 'dnAmt': 0},
+  ];
+  static const _ledger = {
+    'vendor': 'I E Enterprises', 'from': '', 'to': '', 'opening': 5000, 'openEntry': {'date': '2026-08-01', 'side': 'Payable', 'amount': 5000},
+    'rows': [
+      {'date': '2026-09-05', 'kind': 'bill', 'id': 'BILL-00001', 'bill': 41250.5, 'paid': 0, 'company': 'Sketchline Industries', 'billNo': '7', 'rev': 0, 'from': '2026-08-01', 'to': '2026-08-31', 'basic': 45000, 'diesel': 3200, 'other': 0, 'gst': 0, 'tds': 549.5, 'balance': 46250.5},
+      {'date': '2026-09-25', 'kind': 'payment', 'id': 'PAY-00001', 'bill': 0, 'paid': 40000, 'company': '', 'mode': 'NEFT', 'ref': 'UTR123', 'against': 'RA 7 (01-08-2026 – 31-08-2026)', 'remark': '', 'balance': 6250.5},
+      {'date': '2026-09-28', 'kind': 'dn', 'id': 'DN-0003', 'bill': -1500, 'paid': 0, 'company': 'Sketchline Industries', 'dnNo': 'SLI/TST/DN-3', 'remark': 'Work for the party', 'balance': 4750.5},
+    ],
+    'totalBill': 39750.5, 'totalPaid': 40000, 'closing': 4750.5,
+  };
   Map<String, dynamic> get _compliance => {
         'today': '2026-10-14', 'soonDays': 30, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'noPapers': 1,
         'machines': [
@@ -438,6 +491,62 @@ class FakeServer {
           return _j({'result': {'ok': true, 'id': a[0], 'stock': stock}});
         case 'getTransfers':
           return _j({'result': {'count': 0, 'qty': 0, 'rows': []}});
+        // (3.8.0) Billing
+        case 'getLogBookList' when billing && ((a.isNotEmpty ? a[0] : null) as Map?)?['all'] == true:
+          billSent.add({'fn': action, 'args': a});
+          return _j({'result': {'count': 6, 'rows': _billRows, 'summary': []}});
+        case 'logPrintExtra' when billing:
+          billSent.add({'fn': action, 'args': a});
+          return _j({'result': _billExtra});
+        case 'billInit':
+          return _j({'result': _billInit});
+        case 'billCorrections':
+          billSent.add({'fn': action, 'args': a});
+          return _j({'result': {'items': []}});
+        case 'verifyBills':
+          final bs = ((a[0] as Map)['bills'] as List).cast<Map>();
+          billSent.add({'fn': action, 'bills': bs});
+          return _j({'result': {'bills': [
+            for (final b in bs) {'vendor': (b['vendor'] as Map)['name'], 'billNo': b['billNo'], 'net': b['I'], 'bad': 0, 'warn': 1, 'checks': [{'s': 'ok', 't': 'Log Book, diesel and BOQ match the bill'}, {'s': 'warn', 't': 'Idle days paid in this bill'}]}
+          ]}});
+        case 'submitBills':
+          billSent.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'ok': true, 'saved': [for (var i = 0; i < ((a[0] as Map)['bills'] as List).length; i++) {'id': 'BILL-0000${9 + i}', 'rev': 0}]}});
+        case 'getBills' when ((a.isNotEmpty ? a[0] : null) as Map?)?['id'] != null:
+          return _j({'result': {'bills': []}}); // (a test does not open the print view)
+        case 'getBills':
+          billSent.add({'fn': action, 'args': a});
+          return _j({'result': {'bills': _savedBills}});
+        case 'getDebitNotes':
+          return _j({'result': {'notes': [
+            {'id': 'DN-0003', 'no': 'SLI/TST/DN-3', 'date': '2026-09-28', 'vendor': 'I E Enterprises', 'company': 'Sketchline Industries', 'kind': 'Work', 'billNo': '', 'from': '2026-09-20', 'to': '2026-09-21', 'total': 1500, 'status': 'Active'},
+          ]}});
+        case 'getLookups':
+          return _j({'result': {'vendors': ['I E Enterprises', 'Chalke Enterprises']}});
+        case 'getDebitPending':
+          billSent.add({'fn': action, 'args': a});
+          return _j({'result': {'vendor': 'I E Enterprises', 'already': 0, 'rows': [{'logId': 'MH-25-AJ-2169|2026-10-02|Day', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'date': '2026-10-02', 'shift': 'Day', 'work': 'Carting for the party', 'qty': 6, 'unit': 'Hrs', 'rate': 1100}]}});
+        case 'saveDebitNote':
+          billSent.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'ok': true, 'no': 'SLI/TST/DN-4', 'vendor': (a[0] as Map)['vendor'], 'total': 6600}});
+        case 'vendorLedger':
+          billSent.add({'fn': action, 'args': a});
+          return _j({'result': _ledger});
+        case 'billSummary':
+          return _j({'result': {'rows': [
+            {'id': 'BILL-00001', 'vendor': 'I E Enterprises', 'company': 'Sketchline Industries', 'billNo': '7', 'rev': 0, 'from': '2026-08-01', 'to': '2026-08-31', 'billDate': '2026-09-05', 'month': '2026-08', 'basic': 45000, 'diesel': 3200, 'other': 0, 'gst': 0, 'gstPct': 0, 'tds': 549.5, 'tdsPct': 1.32, 'net': 41250.5},
+          ]}});
+        case 'getPayments':
+          return _j({'result': {'payments': [
+            {'id': 'PAY-00001', 'type': 'Payment', 'date': '2026-09-25', 'vendor': 'I E Enterprises', 'amount': 40000, 'side': 'Payable', 'mode': 'NEFT', 'ref': 'UTR123', 'bill': 'RA 7 (01-08-2026 – 31-08-2026)', 'remark': '', 'enteredBy': 'Tester', 'updatedBy': ''},
+          ], 'modes': ['NEFT', 'RTGS', 'IMPS', 'UPI', 'Cheque', 'Cash', 'Adjustment']}});
+        case 'savePayment':
+          billSent.add({'fn': action, 'x': a[0], 'how': a[1]});
+          return _j({'result': {'ok': true, 'id': 'PAY-00002', 'amount': num.tryParse('${(a[0] as Map)['amount']}') ?? 0}});
+        case 'vendorOutstanding':
+          return _j({'result': {'months': ['2026-08', '2026-09', '2026-10'], 'rows': [
+            {'vendor': 'I E Enterprises', 'opening': 5000, 'bills': 39750.5, 'paid': 40000, 'closing': 4750.5, 'monthEnd': [5000, 4750.5, 4750.5], 'lastPay': '2026-09-25'},
+          ]}});
         case 'getLogBookList' when ((a.isNotEmpty ? a[0] : null) as Map?)?['no'] == 'MH-25-AJ-2169':
           return _j({'result': {'count': 3, 'rows': _editRows, 'summary': []}});
         // (3.6.0) Edit Log Book
