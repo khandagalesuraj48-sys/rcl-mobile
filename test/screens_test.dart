@@ -1239,13 +1239,13 @@ void main() {
     expect(find.textContaining('1 Idle day(s) – choose Paid / Not paid'), findsOneWidget);
     expect(find.text('5,431.42'), findsOneWidget, reason: 'A 9,000.00 − B 3,457.73 (37.14 L above the standard × ₹93.10) − TDS 2 % 110.85');
     await t.scrollUntilVisible(find.byKey(const Key('mb-idle-0')), 300, scrollable: list);
-    await t.tap(find.byKey(const Key('mb-idle-0')));
+    await tapK(t, 'mb-idle-0');
     await settle(t, 600);
     await t.tap(find.text('Paid').last);
     await settle(t, 600);
     expect(find.byKey(const Key('mb-warn-0')), findsNothing, reason: 'nothing to check once Idle is chosen');
     await t.scrollUntilVisible(find.byKey(const Key('mb-dn-0-DN-0003')), -300, scrollable: list);
-    await t.tap(find.byKey(const Key('mb-dn-0-DN-0003')));
+    await tapK(t, 'mb-dn-0-DN-0003');
     await settle(t, 600);
     await t.scrollUntilVisible(find.byKey(const Key('mb-no-0')), 300, scrollable: list);
     expect(find.text('3,931.42'), findsOneWidget, reason: 'the debit note of 1,500.00 off the net payable');
