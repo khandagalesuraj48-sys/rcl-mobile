@@ -1,3 +1,5 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -45,6 +47,15 @@ void main() {
   }();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
   final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep())..askApproval = askApprovalBox)..start();
+  // (3.14.0) a fault of the app's own code goes to the Admin's "Faults of the app" (as the web's page reports its faults)
+  FlutterError.onError = (d) {
+    FlutterError.presentError(d);
+    session.reportFault(d.exceptionAsString(), '${d.stack ?? ''}');
+  };
+  PlatformDispatcher.instance.onError = (e, st) {
+    session.reportFault('$e', '$st');
+    return false;
+  };
   runApp(RclApp(session: session));
 }
 

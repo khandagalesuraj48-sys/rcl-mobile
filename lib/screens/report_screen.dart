@@ -16,7 +16,8 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
 
-Future<void> openReport(BuildContext context, ReportDef def) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportScreen(def: def)));
+Future<void> openReport(BuildContext context, ReportDef def, {String no = '', String owner = '', bool run = false}) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportScreen(def: def, no: no, owner: owner, run: run)));
 
 /// The report of the web's page key ('rdaily', 'rp-ledger' …), null when it has no app screen yet.
 ReportDef? reportOfPage(String page) {
@@ -92,8 +93,12 @@ class ReportPick {
 }
 
 class ReportScreen extends StatefulWidget {
-  const ReportScreen({super.key, required this.def});
+  const ReportScreen({super.key, required this.def, this.no = '', this.owner = '', this.run = false});
   final ReportDef def;
+
+  /// (3.14.0) opened for one machinery / owner and made at once (a scanned label's "Its diesel ledger", the search) – the web's gsLedger
+  final String no, owner;
+  final bool run;
   @override
   State<ReportScreen> createState() => _ReportScreenState();
 }
@@ -113,7 +118,12 @@ class _ReportScreenState extends State<ReportScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final s = SessionScope.read(context);
-      setState(() => p.start(s.today, s.locations, def));
+      setState(() {
+        p.start(s.today, s.locations, def);
+        if (widget.no.isNotEmpty) p.no = widget.no;
+        if (widget.owner.isNotEmpty) owner.text = widget.owner;
+      });
+      if (widget.run) _go();
     });
   }
 

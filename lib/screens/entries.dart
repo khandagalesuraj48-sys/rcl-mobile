@@ -10,6 +10,7 @@ import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'diesel_photos.dart';
 import 'entry_more.dart';
 import 'forms.dart';
 import 'logbook.dart';
@@ -470,6 +471,12 @@ class EntryCard extends StatelessWidget {
                   SizedBox(width: 120, child: Text(x.$1, style: const TextStyle(color: C.muted, fontSize: 14))),
                   Expanded(child: Text(x.$2, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5))),
                 ]),
+              ),
+            // (3.14.0) the photos of a fill – the web's 📷 in its list (phView)
+            if (kind.key == 'issue' && (asNum(r['ph']) ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: OutlinedButton.icon(key: const Key('ed-photos'), onPressed: () => openDieselPhotos(context, '${r['id']}'), icon: const Icon(Icons.photo_library_outlined), label: Text('See the photos (${fmtNum(asNum(r['ph']))})')),
               ),
             // (14-10-2026) an entry of a submitted bill: the Super Admin changes it; anybody else sends the change for his approval
             if (r['lk'] != null) InfoLine(SessionScope.read(context).superAdmin ? 'This entry is in a saved bill – you are the Super Admin: your change is saved; the difference comes in the next bill.' : bi('This entry is in a saved bill – a change goes to the Super Admin for approval.', 'बिलमध्ये आहे – बदल Super Admin च्या मंजुरीने.'), icon: Icons.lock_outline_rounded),

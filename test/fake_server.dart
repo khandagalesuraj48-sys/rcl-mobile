@@ -121,6 +121,12 @@ class FakeServer {
   static Object? _arg(List a, String k) => a.isNotEmpty && a[0] is Map ? (a[0] as Map)[k] : null;
   // (3.11.0) the imports and the multiple entries of the diesel pages: what was sent, the lists' filters asked
   final importSent = <Map<String, dynamic>>[];
+  // (3.14.0) the other calls of part 13 (diesel history, photos, transfer stock, faults, backup) and the site's notice
+  final extraCalls = <Map<String, dynamic>>[];
+  String notice = '';
+  final faults = <Map<String, dynamic>>[
+    {'at': '2026-10-14T05:00:00Z', 'by': 'clerk@rcl.test', 'kind': 'server', 'where': 'getStock', 'msg': 'x is undefined', 'detail': 'TypeError: x is undefined'},
+  ];
   final listAsked = <Map<String, dynamic>>[];
   final billSent = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get _billRows => [
@@ -755,7 +761,35 @@ class FakeServer {
                 'itemWork': {'_trips': [for (final t in _tTrips) {'c': t['c'], 'a': t['a'], 'b': t['b'], if ('${t['ch']}'.isNotEmpty) 'ch': t['ch'], if ('${t['u']}'.isNotEmpty) 'u': t['u']}]}},
           ]}});
         case 'getMyPrefs':
-          return _j({'result': {'prefs': prefs}});
+          return _j({'result': {'prefs': prefs, 'logins': ['2026-10-14T03:35:00Z', '2026-10-13T12:10:00Z'], 'rules': {'backDays': '', 'announce': notice, 'dayFrom': '08:00', 'nightFrom': '20:00'}}});
+        // (3.14.0) the diesel history of a machinery, the photos of a fill, a transfer's stock, the Admin's faults and backup
+        case 'dieselHistory':
+          extraCalls.add({'fn': action, 'x': a[0]});
+          final no = '${(a[0] as Map)['no']}';
+          return _j({'result': no == 'MH-25-AJ-2169'
+              ? {'no': no, 'unit': 'KM', 'date': (a[0] as Map)['date'], 'rows': [{'id': 'DI-000520', 'date': '2026-10-13', 'shift': 'Day', 'qty': 80, 'km': 15100, 'hr': '', 'source': 'Dispenser', 'driver': 'Ramesh'}], 'total': 7, 'lastKm': {'value': 15100, 'date': '2026-10-13'}, 'lastHr': null, 'month': {'qty': 520, 'count': 7}}
+              : {'no': no, 'unit': '', 'date': (a[0] as Map)['date'], 'rows': [], 'total': 0, 'lastKm': null, 'lastHr': null, 'month': {'qty': 0, 'count': 0}}});
+        case 'getDieselPhotos':
+          extraCalls.add({'fn': action, 'id': a[0]});
+          return _j({'result': {'id': a[0], 'no': 'Sany 210 (No.1)', 'date': '2026-10-14', 'shift': 'Day', 'qty': 60, 'photos': [
+            {'k': 'dash', 'label': 'Dashboard (reading)', 'at': '2026-10-14T03:30:00Z', 'lat': 18.52, 'lng': 73.85, 'acc': 12, 'url': ''},
+            {'k': 'pump', 'label': 'Dispenser (litres)', 'at': '2026-10-14T03:31:00Z', 'lat': '', 'lng': '', 'acc': '', 'url': ''},
+          ]}});
+        case 'getTransferBalance':
+          extraCalls.add({'fn': action, 'args': a});
+          return _j({'result': {'from': {'balance': 900, 'available': 850}, 'to': {'balance': 300, 'available': 300}}});
+        case 'getErrors':
+          return _j({'result': {'stamp': {'day': '2026-10-14', 'n': 1, 'at': '2026-10-14T05:00:00Z', 'last': 'getStock: x is undefined'}, 'errors': faults}});
+        case 'clearErrors':
+          extraCalls.add({'fn': action});
+          faults.clear();
+          return _j({'result': {'ok': true}});
+        case 'reportError':
+          extraCalls.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'ok': true}});
+        case 'backupNow':
+          extraCalls.add({'fn': action});
+          return _j({'result': {'ok': true, 'lines': [['diesel_issue', '3 rows'], ['log_book', '5 rows']], 'pending': 0, 'info': {'ok': true, 'lastCheck': '2026-10-14T05:10:00Z', 'url': 'https://docs.google.com/spreadsheets/d/x'}}});
         case 'saveMyPrefs':
           prefs = {...prefs, ...(a[0] as Map).cast<String, dynamic>()};
           return _j({'result': {'ok': true, 'prefs': prefs}});

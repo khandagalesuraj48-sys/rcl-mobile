@@ -13,6 +13,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'label_scan.dart';
 import 'admin.dart';
 import 'billing.dart';
 import 'breakdown.dart';
@@ -244,6 +245,9 @@ class _HomeTabState extends State<HomeTab> {
                       const MrLine('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: Color(0xCCFFFFFF))),
                     ]),
                   ),
+                  // (3.14.0) a machinery's QR label: Diesel Issue / Log Book entry / its diesel ledger for it
+                  _RoundBtn(key: const Key('home-scan'), icon: Icons.qr_code_scanner_rounded, tip: 'Scan a machinery label', onTap: () => scanMachineLabel(context, onSaved: () => _load())),
+                  const SizedBox(width: 8),
                   _RoundBtn(icon: Icons.refresh_rounded, tip: 'Refresh', onTap: () => _load(init: true)),
                 ]),
                 const SizedBox(height: 16),
@@ -323,6 +327,19 @@ class _HomeTabState extends State<HomeTab> {
                 ]),
               ),
             ),
+          // (3.14.0) the notice of the site (Admin → Rules of this site), shown to everybody – as the web's line at the top
+          if ('${s.siteRules['announce'] ?? ''}'.trim().isNotEmpty)
+            Container(
+              key: const Key('home-notice'),
+              margin: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.amber.withValues(alpha: .35))),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.campaign_rounded, color: C.amber),
+                const SizedBox(width: 10),
+                Expanded(child: Text('${s.siteRules['announce']}'.trim(), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, height: 1.35))),
+              ]),
+            ),
           // (3.1.11, update-118) his entries in verification: waiting / sent back / approved – tap: each, with "Remind"
           const VerifyStrip(days: 1, margin: EdgeInsets.fromLTRB(14, 0, 14, 16)),
           // ---------- the modules ----------
@@ -367,7 +384,7 @@ class _HomeTabState extends State<HomeTab> {
 }
 
 class _RoundBtn extends StatelessWidget {
-  const _RoundBtn({required this.icon, required this.tip, required this.onTap});
+  const _RoundBtn({super.key, required this.icon, required this.tip, required this.onTap});
   final IconData icon;
   final String tip;
   final VoidCallback onTap;

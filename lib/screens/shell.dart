@@ -14,6 +14,7 @@ import 'entries.dart';
 import 'home.dart';
 import 'me.dart';
 import 'reports.dart';
+import 'start_page.dart';
 import '../web/web_host.dart';
 import '../ui/t.dart' show tr;
 
@@ -44,6 +45,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       _s = SessionScope.read(context)
         ..keptNote.addListener(_note)
         ..startLive();
+      _start();
     });
     // the web (for the modules not yet made for the phone) loads quietly in the background once Home is up
     warmUp = Timer(const Duration(seconds: 4), () {
@@ -75,6 +77,22 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     if (m.isEmpty || !mounted) return;
     toast(context, m, bad: m.contains('not saved'));
     _s!.keptNote.value = '';
+  }
+
+  /// (3.14.0) His start page (Settings → "Page to open after sign-in"), once his settings have come.
+  Future<void> _start() async {
+    final s = _s;
+    if (s == null) return;
+    await s.prefsReady;
+    if (!mounted) return;
+    await openStartPage(context, s, s.pref('start'), entries: (k) {
+      final diesel = kKinds.any((x) => s.canSee(x.module)) || s.canSee('Log Book');
+      setState(() {
+        entriesKind = k;
+        entriesOpen++;
+        if (diesel) tab = 1;
+      });
+    });
   }
 
   void _hostChanged() {

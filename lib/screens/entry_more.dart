@@ -12,6 +12,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
 
+import '../core/diesel_hist.dart' show dhLine;
 import '../core/format.dart';
 import '../core/imports.dart';
 import '../core/kinds.dart';
@@ -27,7 +28,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'entries.dart' show EntryCard;
-import 'forms.dart' show MachinePicker;
+import 'forms.dart' show MachinePicker, DieselHistoryCard, dieselHistoryOf;
 
 final _sm = OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12));
 String _today(Session s) => s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
@@ -703,6 +704,8 @@ class _DRow {
   Machine? m;
   String date, shift, source;
   bool meterOff = false;
+  Map? hist; // (3.14.0) its machinery's diesel history (the web's "last fill" line)
+  int histSeq = 0;
   final qty = TextEditingController(), km = TextEditingController(), hr = TextEditingController(), driver = TextEditingController(), remark = TextEditingController();
 
   /// The way of this fill: the machinery's own (Asset Master), "No reading" when its meter is not working, '' for no meter.
@@ -776,6 +779,26 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       if (!hasKm(r.wayFor(m))) r.km.clear();
       if (!hasHr(r.wayFor(m))) r.hr.clear();
     });
+    _rowHist(r);
+  }
+
+  /// (3.14.0) The last fill of a row's machinery up to the batch date (the web's dhRowLine).
+  Future<void> _rowHist(_DRow r) async {
+    final m = r.m, my = ++r.histSeq;
+    if (m == null) return;
+    final h = await dieselHistoryOf(SessionScope.read(context), m.id, date);
+    if (my == r.histSeq && mounted && r.m?.id == m.id) setState(() => r.hist = h);
+  }
+
+  /// (3.14.0) The machinery of "one machinery – many dates": its history up to today (the web's bm_hist).
+  Map? bmHist;
+  int _bmSeq = 0;
+  Future<void> _bmHist() async {
+    final m = bm, my = ++_bmSeq;
+    if (m == null) return;
+    final s = SessionScope.read(context);
+    final h = await dieselHistoryOf(s, m.id, _today(s));
+    if (my == _bmSeq && mounted && bm?.id == m.id) setState(() => bmHist = h);
   }
 
   Future<void> _saveDate({bool force = false}) async {
@@ -1021,7 +1044,21 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
 
   List<Widget> _dateMode(Session s, String today, List<String> locs) => [
         Row(children: [
-          Expanded(child: DateField(key: const Key('im-date'), label: 'Issue Date', value: date, clear: false, last: parseKey(today), onChanged: (v) => _setBal(() => date = v))),
+          Expanded(
+            child: DateField(
+              key: const Key('im-date'),
+              label: 'Issue Date',
+              value: date,
+              clear: false,
+              last: parseKey(today),
+              onChanged: (v) {
+                _setBal(() => date = v);
+                for (final r in dRows) {
+                  _rowHist(r);
+                }
+              },
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(child: PickField(key: const Key('im-shift'), label: 'Shift', value: shift, items: const ['Day', 'Night'], onChanged: (v) => _setBal(() => shift = v))),
         ]),
@@ -1038,6 +1075,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       ];
 
   List<Widget> _dateRows() {
+    final today = _today(SessionScope.read(context));
     final start = asNum(bal?['balance']);
     var run = start ?? 0;
     final out = <Widget>[];
@@ -1057,6 +1095,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
         warn: notes.any((x) => x.$3),
         note: [if (prob.isNotEmpty) prob, for (final x in notes) x.$2].join('\n'),
         balance: used ? (start == null ? '…' : '${fmt(run)} Ltr') : '',
+        last: r.m == null ? '' : (dhLine(r.hist, today) ?? ''),
         onPick: () => _pickMachine(r),
         onRemove: () => setState(() {
           dRows.removeAt(i);
@@ -1106,12 +1145,14 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           if (x == null) return;
           setState(() {
             bm = x;
+            bmHist = null;
             for (final r in mRows) {
               r.meterOff = false;
               if (!hasKm(r.wayFor(x))) r.km.clear();
               if (!hasHr(r.wayFor(x))) r.hr.clear();
             }
           });
+          _bmHist();
         },
         radius: 16,
         shadow: false,
@@ -1128,6 +1169,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           const Icon(Icons.expand_more_rounded),
         ]),
       ),
+      if (m != null && bmHist != null) Padding(padding: const EdgeInsets.only(top: 8), child: DieselHistoryCard(bmHist!, today: today)),
       const SizedBox(height: 8),
       PickField(key: const Key('im-msrc'), label: 'Diesel Source (new rows)', value: bmSrc, items: locs, onChanged: (v) => setState(() => bmSrc = v)),
       const SizedBox(height: 8),
@@ -1194,6 +1236,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     bool warn = false,
     String note = '',
     String balance = '',
+    String last = '',
     bool dateBox = false,
     String today = '',
     List<String> locs = const [],
@@ -1232,6 +1275,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           if (balance.isNotEmpty) Text(balance, style: const TextStyle(fontWeight: FontWeight.w700, color: C.muted, fontSize: 13)),
           IconButton(key: Key('$key-del'), tooltip: tr('Remove row'), onPressed: onRemove, icon: const Icon(Icons.close_rounded)),
         ]),
+        if (last.isNotEmpty) Padding(padding: const EdgeInsets.only(left: 20, bottom: 4), child: Text(last, key: Key('$key-last'), style: const TextStyle(fontSize: 12, color: Color(0xFF9A3412)))),
         if (dateBox) ...[
           Row(children: [
             Expanded(

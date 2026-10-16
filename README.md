@@ -14,6 +14,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.14.0 (16-10-2026, part 13 of the whole web in the app):** the web's remaining pieces of the diesel pages, Settings and
+Administration: the **diesel history of a machinery** while a Diesel Issue is filled (its last fills, last reading – the hint of
+the reading box –, this month; the last fill's driver in an empty Driver box; the "last fill" line of each row of "one date – many
+machinery"); **the photos of a saved fill** (large, when, where – the map); a **transfer's stock** of From and To, after the
+litres; **Settings**: Log Book list shows (2 / 7 / 30 days), the page to open after sign-in (it opens by itself), my last
+sign-ins, back to the usual settings; **the notice of the site** on Home; **Administration**: the faults of the app (listed,
+emptied – the app's own faults are reported there too) and the backup to Google Sheet; **a machinery label scanned in the app**
+(Home → the QR button): Diesel Issue with the machinery in it, Log Book entry, its diesel ledger.
+
 **Version 3.13.0 (16-10-2026, part 12 of the whole web in the app):** the other **Excel imports** and the **QR labels**, as the web
 does them: **Asset Master → ⋮ Import from Excel** (for Edit: the tab "Master", the columns by their names, N/A and Lifetime papers,
 the dates; checked by the server – the rows with a mistake listed – "Import this file?", then saved) and **QR labels** (all the

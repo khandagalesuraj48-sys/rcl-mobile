@@ -10,6 +10,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import '../core/session.dart';
+import 'start_page.dart' show startPagesFor;
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -102,6 +103,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _save('photo', () => s.savePrefs({'photo': 'data:image/jpeg;base64,${base64Encode(jpg)}'}), 'Photo saved');
   }
 
+  /// (3.14.0) The web's "Back to the usual settings": every setting as the app comes – his photo and mobile number stay.
+  static const kPrefDefault = <String, dynamic>{
+    'theme': 'light', 'text': 'normal', 'density': 'normal', 'lang': 'mr', 'appLang': '', 'lbMode': '', 'lbDays': '2', 'shift': '', 'menu': 'open', //
+    'enterNext': false, 'sound': false, 'lessMotion': false, 'intro': true, 'brief': true, 'voiceOut': true, 'start': '', 'loc': '', 'fav': <String>[],
+  };
+
+  Future<void> _reset() async {
+    final s = SessionScope.read(context);
+    if (!await ask(context, 'Back to the usual settings?', 'Theme, text size, language, first page, usual shift / location and favourites go back to how the app comes. Your photo and mobile number stay.', yes: 'Reset')) return;
+    await _save('reset', () => s.savePrefs({...kPrefDefault, 'photo': s.pref('photo'), 'mobile': s.pref('mobile')}));
+  }
+
+  /// A sign-in time as the web shows it: "16 Oct 2026, 09:05" on the phone's clock.
+  static String loginText(String at) {
+    final t = DateTime.tryParse(at)?.toLocal();
+    if (t == null) return '';
+    const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(t.day)} ${mon[t.month - 1]} ${t.year}, ${two(t.hour)}:${two(t.minute)}';
+  }
+
   Future<void> _mobile() async {
     final s = SessionScope.read(context);
     final c = TextEditingController(text: s.pref('mobile'));
@@ -142,6 +164,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String nameOf(String code) => code.isEmpty ? 'Ask me / last one' : s.sites.firstWhere((x) => x.code == code, orElse: () => SiteChoice(code, code, '', [])).name;
     const ways = [('', 'Ask me each time'), ('date', 'One date – many machinery'), ('mach', 'One machinery – many dates')];
     const sizes = [('normal', 'Normal'), ('large', 'Large'), ('xlarge', 'Larger')];
+    const days = [('2', 'Last 2 days'), ('7', 'Last 7 days'), ('30', 'Last 30 days')];
+    final lbDays = s.pref('lbDays').isEmpty ? '2' : s.pref('lbDays'), start = s.pref('start');
+    final starts = [('', 'Dashboard (as usual)'), for (final p in startPagesFor(s)) (p.$1, p.$2)];
     final shift = s.pref('shift'), loc = s.pref('loc'), lb = s.pref('lbMode'), text = s.pref('text').isEmpty ? 'normal' : s.pref('text');
     return Scaffold(
       appBar: AppBar(title: const TwoLang('My settings', 'माझ्या सेटिंग्ज', size: 20, weight: FontWeight.w700)),
@@ -213,6 +238,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           },
         ),
         _row(
+          id: 'lbdays',
+          icon: Icons.date_range_rounded,
+          color: C.blue,
+          en: 'Log Book list shows',
+          mr: 'लॉगबुक यादी दाखवते',
+          value: days.firstWhere((w) => w.$1 == lbDays, orElse: () => days.first).$2,
+          onTap: () async {
+            final v = await _pick('Log Book list shows', days, lbDays);
+            if (v != null && v != lbDays) await _save('lbdays', () => s.savePrefs({'lbDays': v}));
+          },
+        ),
+        _row(
+          id: 'start',
+          icon: Icons.flag_rounded,
+          color: C.green,
+          en: 'Page to open after sign-in',
+          mr: 'sign-in नंतर उघडणारे पान',
+          value: starts.firstWhere((w) => w.$1 == start, orElse: () => starts.first).$2,
+          onTap: () async {
+            final v = await _pick('Page to open after sign-in', starts, start);
+            if (v != null && v != start) await _save('start', () => s.savePrefs({'start': v}));
+          },
+        ),
+        _row(
           id: 'text',
           icon: Icons.format_size_rounded,
           color: C.purple,
@@ -241,6 +290,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _row(id: 'mobile', icon: Icons.phone_iphone_rounded, color: C.slate, en: 'Mobile number', mr: 'मोबाईल नंबर', value: s.pref('mobile').isEmpty ? 'Not set' : s.pref('mobile'), onTap: _mobile),
         _row(id: 'photo', icon: Icons.account_circle_rounded, color: C.orange, en: 'My photo', mr: 'माझा फोटो', value: s.pref('photo').isEmpty ? 'Not set' : 'Set', onTap: _photo),
         _row(id: 'pw', icon: Icons.password_rounded, color: C.red, en: 'Change password', mr: 'पासवर्ड बदला', value: '', onTap: _password),
+        // (3.14.0) his last sign-ins (the web's "My last sign-ins")
+        Container(
+          key: const Key('set-logins'),
+          margin: const EdgeInsets.only(top: 4, bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.line)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('My last sign-ins', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            if (s.logins.isEmpty) Text('–', style: const TextStyle(color: C.muted)),
+            for (final x in s.logins) if (loginText(x).isNotEmpty) Text(loginText(x), style: const TextStyle(fontSize: 13.5, color: C.muted)),
+            const SizedBox(height: 6),
+            Text('A sign-in that was not yours? Change your password at once – that signs every other device out.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          ]),
+        ),
+        OutlinedButton.icon(key: const Key('set-reset'), onPressed: busy.isEmpty ? _reset : null, icon: const Icon(Icons.restart_alt_rounded), label: Text('Back to the usual settings')),
         const Padding(padding: EdgeInsets.fromLTRB(4, 8, 4, 0), child: Text('These settings are kept with your account – the web ERP uses the same ones.', style: TextStyle(fontSize: 12.5, color: C.muted))),
       ]),
     );

@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as mt show Text;
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/admin.dart';
 import '../core/format.dart';
@@ -82,6 +83,47 @@ class AdminHub extends StatelessWidget {
                 Container(width: 58, height: 58, decoration: BoxDecoration(color: C.greenSoft, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic('oil_drum', size: 40)),
                 const SizedBox(width: 14),
                 const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [TwoLang('Database check', 'डेटाबेस तपासणी', size: 17, weight: FontWeight.w700), SizedBox(height: 2), Text('Every SQL step against the live database', style: TextStyle(fontSize: 12.5, color: C.muted))])),
+                const Icon(Icons.chevron_right_rounded, color: C.faint),
+              ]),
+            ),
+          ),
+          // (3.14.0) the faults of the app (the web's "Faults: N" pill) and the Google Sheet backup (the web's backup pill)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Press(
+              key: const Key('ad-faults'),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FaultsScreen())),
+              padding: const EdgeInsets.all(14),
+              child: Row(children: [
+                Container(width: 58, height: 58, decoration: BoxDecoration(color: C.redSoft, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: const Icon(Icons.report_gmailerrorred_rounded, color: C.red, size: 34)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const TwoLang('Faults of the app', 'ॲपमधील चुका', size: 17, weight: FontWeight.w700),
+                    const SizedBox(height: 2),
+                    Text(faultsLine(s.faults, s.today), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                  ]),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: C.faint),
+              ]),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Press(
+              key: const Key('ad-backup'),
+              onTap: () => runBackup(context, s),
+              padding: const EdgeInsets.all(14),
+              child: Row(children: [
+                Container(width: 58, height: 58, decoration: BoxDecoration(color: s.backup['ok'] == false ? C.redSoft : C.blueSoft, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Icon(Icons.cloud_sync_rounded, color: s.backup['ok'] == false ? C.red : C.blue, size: 34)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const TwoLang('Backup to Google Sheet', 'Google Sheet बॅकअप', size: 17, weight: FontWeight.w700),
+                    const SizedBox(height: 2),
+                    Text(backupLine(s.backup), style: TextStyle(fontSize: 12.5, color: s.backup['ok'] == false ? C.red : C.muted)),
+                  ]),
+                ),
                 const Icon(Icons.chevron_right_rounded, color: C.faint),
               ]),
             ),
@@ -1155,5 +1197,184 @@ class _ReadMeScreenState extends State<ReadMeScreen> {
         st = n.has('rm-ok') ? const TextStyle(color: C.greenDark, fontWeight: FontWeight.w700) : n.has('rm-bad') ? const TextStyle(color: C.red, fontWeight: FontWeight.w700) : n.has('rm-new') ? const TextStyle(color: C.amber, fontWeight: FontWeight.w700) : null;
     }
     return TextSpan(style: st, children: kids);
+  }
+}
+
+// =====================================================================================================================
+//  (3.14.0) FAULTS OF THE APP and THE GOOGLE SHEET BACKUP – the web's two pills at the top (Admin)
+// =====================================================================================================================
+
+/// The web's dtFull: "16/10/2026, 09:05:03 am" on the phone's clock ('–' = no time).
+String dtFull(Object? iso) {
+  final t = DateTime.tryParse('${iso ?? ''}')?.toLocal();
+  if (t == null) return '–';
+  String two(int v) => v.toString().padLeft(2, '0');
+  final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+  return '${two(t.day)}/${two(t.month)}/${t.year}, ${two(h)}:${two(t.minute)}:${two(t.second)} ${t.hour < 12 ? 'am' : 'pm'}';
+}
+
+/// "Faults today: N – last: …" (the web's pill and its title).
+String faultsLine(Map f, String today) {
+  final n = (f['day'] == today ? (f['n'] as num?) : 0) ?? 0;
+  if (n == 0) return 'No fault reported today';
+  return 'Faults today: $n${'${f['last'] ?? ''}'.isNotEmpty ? ' – last: ${f['last']}' : ''}';
+}
+
+/// The backup's state as the web's pill says it.
+String backupLine(Map b) {
+  if (b.isEmpty) return 'Runs by itself – press to check now';
+  if (b['ok'] == false) return 'Backup problem: ${b['error'] ?? ''} – press to try now';
+  final t = b['lastCheck'] ?? b['lastRun'];
+  return 'Checked ${dtFull(t)}.${(b['pending'] ?? 0) is num && (b['pending'] as num) > 0 ? ' ${b['pending']} table(s) are still being copied.' : ''}';
+}
+
+/// The web's Backup button (Admin): backupNow, then what it did.
+Future<void> runBackup(BuildContext context, Session s) async {
+  Map r;
+  try {
+    r = (await s.api.call('backupNow', const [], true)) as Map;
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e), bad: true);
+    return;
+  }
+  final info = r['info'] is Map ? (r['info'] as Map).cast<String, dynamic>() : s.backup;
+  s.backup = info;
+  final lines = <String>[
+    if (r['off'] == true)
+      'Backup is not set up in this app.'
+    else if (r['busy'] == true)
+      'The automatic backup is running right now. Try again in a minute.'
+    else if (r['upToDate'] == true) ...[
+      'Backup is up to date. Everything saved in Supabase is already in the Google Sheet.',
+      'Newest change copied: ${dtFull(info['lastChangeCopied'])}',
+    ] else if (r['full'] == true)
+      'Full backup done. Every table was copied to the Google Sheet.'
+    else ...[
+      'New data copied to the Google Sheet now.',
+      for (final x in (r['lines'] as List? ?? const [])) if (x is List && x.length > 1) '${x[0]}: ${x[1]}',
+      if ((r['pending'] ?? 0) is num && (r['pending'] as num) > 0)
+        '${r['pending']} table(s) are still to be copied – one run may take about half a minute; the rest goes on by itself in a few minutes (or press Backup again).',
+    ],
+  ];
+  if (!context.mounted) return;
+  await showDialog<void>(
+    context: context,
+    builder: (c) => AlertDialog(
+      title: Text('Backup to Google Sheet'),
+      scrollable: true,
+      content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(l, style: const TextStyle(fontSize: 14.5, height: 1.35))),
+        if ('${info['url'] ?? ''}'.isNotEmpty)
+          TextButton.icon(key: const Key('bk-open'), onPressed: () => launchUrl(Uri.parse('${info['url']}'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new_rounded), label: Text('Open the backup Google Sheet')),
+      ]),
+      actions: [FilledButton(key: const Key('tell-ok'), onPressed: () => Navigator.pop(c), child: const mt.Text('OK'))],
+    ),
+  );
+}
+
+class FaultsScreen extends StatefulWidget {
+  const FaultsScreen({super.key});
+  @override
+  State<FaultsScreen> createState() => _FaultsScreenState();
+}
+
+class _FaultsScreenState extends State<FaultsScreen> {
+  List<Map> list = [];
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    final s = SessionScope.read(context);
+    try {
+      final d = (await s.api.call('getErrors')) as Map;
+      if (d['stamp'] is Map) s.faults = (d['stamp'] as Map).cast<String, dynamic>();
+      if (mounted) {
+        setState(() {
+          list = [for (final x in (d['errors'] as List? ?? const [])) if (x is Map) x];
+          loading = false;
+          err = '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _empty() async {
+    final s = SessionScope.read(context);
+    if (!await ask(context, 'Empty the list of faults?', 'The ${list.length} faults are removed from the list.', yes: 'Empty', danger: true)) return;
+    try {
+      await s.api.call('clearErrors', const [], true);
+      s.faults = {'day': s.today, 'n': 0, 'at': '', 'last': ''};
+      if (!mounted) return;
+      toast(context, 'The list of faults is empty.');
+      setState(() => list = []);
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    }
+  }
+
+  static String _when(Object? at) {
+    final t = DateTime.tryParse('${at ?? ''}')?.toLocal();
+    if (t == null) return '';
+    const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(t.day)} ${mon[t.month - 1]}, ${two(t.hour)}:${two(t.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text('Faults of the app – ${list.length} kept, ${(s.faults['day'] == s.today ? s.faults['n'] : 0) ?? 0} today', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700))),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('flt-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true),
+                if (list.isEmpty && err.isEmpty) const EmptyState('No fault has been reported.', '', pic: 'shield'),
+                if (list.isNotEmpty) ...[
+                  _note('Written down by the app itself. "on the page" = in a user\'s browser or phone; "on the server" = while the server did the action named under Where; "database" = the database did not answer. The same fault is written once in 10 minutes.'),
+                  const SizedBox(height: 10),
+                  for (final x in list.take(60))
+                    _card(
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('${x['msg'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 3),
+                          Text([_when(x['at']), '${x['by'] ?? ''}', x['kind'] == 'page' ? 'on the page' : x['kind'] == 'database' ? 'database' : 'on the server', '${x['where'] ?? ''}'].where((v) => v.isNotEmpty).join(' · '),
+                              style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                          if ('${x['detail'] ?? ''}'.isNotEmpty)
+                            Theme(
+                              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                              child: ExpansionTile(
+                                tilePadding: EdgeInsets.zero,
+                                title: Text('details', style: const TextStyle(fontSize: 13)),
+                                children: [SelectableText('${x['detail']}', style: const TextStyle(fontSize: 11.5))],
+                              ),
+                            ),
+                        ]),
+                      ),
+                    ),
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(key: const Key('flt-empty'), style: _small, onPressed: _empty, icon: const Icon(Icons.delete_sweep_outlined), label: Text('Empty the list')),
+                  _note('– after the faults have been looked at'),
+                ],
+              ]),
+            ),
+    );
   }
 }

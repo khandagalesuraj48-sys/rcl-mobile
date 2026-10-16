@@ -337,7 +337,7 @@ class Session extends ChangeNotifier {
       await loadInit();
       versions = {};
       _go(Stage.ready);
-      loadPrefs(); // his settings – the screens use them as soon as they come
+      prefsReady = loadPrefs(); // his settings – the screens use them as soon as they come
       await loadKept();
     } on ApiError catch (e) {
       if (e.needsSignIn) {
@@ -379,7 +379,30 @@ class Session extends ChangeNotifier {
     pumps = (d['pumps'] as List? ?? []).map((e) => e.toString()).toList();
     locations = (d['locations'] as List? ?? []).map((e) => e.toString()).toList();
     _flow(d['flow']);
+    _admin(d);
     setStock(d['stock']);
+  }
+
+  /// (3.14.0) A fault of the app's own code (an exception) is sent to the server – the Admin's "Faults of the app" lists it, as the
+  /// web reports a fault of its page (reportError). The same fault once in 10 minutes, at most 12 in a run; only when signed in.
+  final _faultSeen = <String, DateTime>{};
+  int _faultSent = 0;
+  void reportFault(String msg, String detail) {
+    final m = msg.length > 300 ? msg.substring(0, 300) : msg;
+    if (m.trim().isEmpty || stage != Stage.ready || (api.token ?? '').isEmpty) return;
+    if (RegExp(r'SESSION_EXPIRED|No connection|SocketException|ClientException|HandshakeException|TimeoutException').hasMatch(m)) return;
+    final now = DateTime.now(), was = _faultSeen[m];
+    if (was != null && now.difference(was).inMinutes < 10) return;
+    _faultSeen[m] = now;
+    if (++_faultSent > 12) return;
+    api.call('reportError', [{'where': 'phone app', 'msg': m, 'detail': detail.length > 1500 ? detail.substring(0, 1500) : detail}]).catchError((_) => null);
+  }
+
+  /// (3.14.0) For the Admin: the Google Sheet backup's state and today's faults of the app (getInit / the live sync).
+  Map<String, dynamic> backup = {}, faults = {};
+  void _admin(Map d) {
+    if (d['backup'] is Map) backup = (d['backup'] as Map).cast<String, dynamic>();
+    if (d['faults'] is Map) faults = (d['faults'] as Map).cast<String, dynamic>();
   }
 
   /// (3.4.0) The machinery list the server sent back after a change in Asset Master (saveMaster … : "master") – every screen
@@ -401,10 +424,16 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// (3.14.0) His settings have come (the start page waits for them); his last sign-ins (Settings shows them).
+  Future<void>? prefsReady;
+  List<String> logins = [];
+
   Future<void> loadPrefs() async {
     try {
       final r = (await api.call('getMyPrefs') as Map).cast<String, dynamic>();
       prefs = ((r['prefs'] as Map?) ?? {}).cast<String, dynamic>();
+      logins = [for (final x in (r['logins'] as List? ?? const [])) '$x'];
+      if (r['rules'] is Map) siteRules = (r['rules'] as Map).cast<String, dynamic>(); // the notice of the site on Home
       if (prefs.containsKey('appLang')) await _lang('${prefs['appLang']}');
       notifyListeners();
     } catch (_) {/* the app works with the usual settings */}
@@ -480,6 +509,7 @@ class Session extends ChangeNotifier {
     _ticking = true;
     try {
       final r = await api.call('sync', [<String, dynamic>{}]);
+      if (r is Map) _admin(r);
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
       final first = versions.isEmpty;
       final changed = first ? <String>{} : v.keys.where((k) => versions[k] != v[k]).toSet();
