@@ -25,8 +25,11 @@ import '../ui/t.dart';
 import 'verify.dart';
 
 class EntryForm extends StatefulWidget {
-  const EntryForm({super.key, required this.kind, this.edit, this.no = ''});
+  const EntryForm({super.key, required this.kind, this.edit, this.no = '', this.preset = const {}});
   final Kind kind;
+
+  /// (3.15.0) a new Diesel Issue the assistant prepared ("Open in the form"): its date, shift and litres (the web fills the same).
+  final Map<String, Object?> preset;
 
   /// (3.14.0) a new Diesel Issue for this machinery (a scanned label – the web's qrArrive puts it in the Machinery box)
   final String no;
@@ -106,6 +109,13 @@ class _EntryFormState extends State<EntryForm> {
           machine = m;
           way = m.debit ? '' : m.dieselWay;
         }
+      }
+      final pre = widget.preset;
+      if (e == null && issue && pre.isNotEmpty) {
+        if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch('${pre['date'] ?? ''}')) date = '${pre['date']}';
+        if (pre['shift'] == 'Day' || pre['shift'] == 'Night') shift = '${pre['shift']}';
+        final q = pre['qty'];
+        if (q is num && q > 0) qty.text = q == q.roundToDouble() ? '${q.toInt()}' : '$q';
       }
       if (issue) WidgetsBinding.instance.addPostFrameCallback((_) {
         _balance();
@@ -1132,7 +1142,8 @@ String deleteOf(String kind) => switch (kind) { 'issue' => 'deleteDieselIssue', 
 Future<bool> changeEntry(BuildContext context, Kind k, Map<String, dynamic> row) async => await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k, edit: row))) ?? false;
 
 /// Opens a new entry of [k] ([no]: a Diesel Issue for this machinery); true when something was saved.
-Future<bool> newEntry(BuildContext context, Kind k, {String no = ''}) async => await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k, no: no))) ?? false;
+Future<bool> newEntry(BuildContext context, Kind k, {String no = '', Map<String, Object?> preset = const {}}) async =>
+    await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k, no: no, preset: preset))) ?? false;
 
 /// (3.14.0) The diesel history of a machinery up to [date] – its last 5 fills (null = could not be read; nothing is shown).
 Future<Map?> dieselHistoryOf(Session s, String no, String date) async {

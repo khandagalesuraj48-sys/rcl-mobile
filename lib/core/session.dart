@@ -378,6 +378,7 @@ class Session extends ChangeNotifier {
     drivers = (d['drivers'] as List? ?? []).map((e) => e.toString()).toList();
     pumps = (d['pumps'] as List? ?? []).map((e) => e.toString()).toList();
     locations = (d['locations'] as List? ?? []).map((e) => e.toString()).toList();
+    aiOn = d['ai'] is Map && (d['ai'] as Map)['on'] == true;
     _flow(d['flow']);
     _admin(d);
     setStock(d['stock']);
@@ -427,6 +428,25 @@ class Session extends ChangeNotifier {
   /// (3.14.0) His settings have come (the start page waits for them); his last sign-ins (Settings shows them).
   Future<void>? prefsReady;
   List<String> logins = [];
+
+  /// (3.15.0) The AI service is set up on the server (getInit → ai.on): a typed question can go to it.
+  bool aiOn = false;
+
+  /// (3.15.0) The daily summary waits on the Ask button (a red dot) – once a day, as the web's aiBriefAuto on a phone.
+  final ValueNotifier<bool> briefDue = ValueNotifier<bool>(false);
+
+  /// Once a day (kept on this phone for him), unless his settings say no ("brief": false): the summary waits on the Ask button.
+  Future<void> checkBrief() async {
+    if (prefs['brief'] == false || email.isEmpty || today.isEmpty) return;
+    final k = 'oc_brief_${email.toLowerCase()}';
+    try {
+      if (await api.keep.read(k) == today) return;
+      await api.keep.write(k, today);
+    } catch (_) {
+      return;
+    }
+    briefDue.value = true;
+  }
 
   Future<void> loadPrefs() async {
     try {

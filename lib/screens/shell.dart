@@ -85,6 +85,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     if (s == null) return;
     await s.prefsReady;
     if (!mounted) return;
+    await s.checkBrief(); // (3.15.0) the daily summary, once a day – a red dot on the Ask button of Home
+    if (!mounted) return;
     await openStartPage(context, s, s.pref('start'), entries: (k) {
       final diesel = kKinds.any((x) => s.canSee(x.module)) || s.canSee('Log Book');
       setState(() {

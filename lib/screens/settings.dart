@@ -261,6 +261,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (v != null && v != start) await _save('start', () => s.savePrefs({'start': v}));
           },
         ),
+        // (3.15.0) the assistant's daily summary (the web's Settings: "Show me the daily summary when I open the app (once a day)")
+        _row(
+          id: 'brief',
+          icon: Icons.wb_sunny_rounded,
+          color: C.amber,
+          en: 'Daily summary when I open the app',
+          mr: 'ॲप उघडल्यावर रोजचा सारांश',
+          value: s.prefs['brief'] == false ? 'No' : 'Yes – once a day',
+          onTap: () async {
+            final cur = s.prefs['brief'] == false ? 'off' : 'on';
+            final v = await _pick('Show me the daily summary when I open the app (once a day)', const [('on', 'Yes – once a day'), ('off', 'No')], cur);
+            if (v != null && v != cur) await _save('brief', () => s.savePrefs({'brief': v == 'on'}));
+          },
+        ),
         _row(
           id: 'text',
           icon: Icons.format_size_rounded,

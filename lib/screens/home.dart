@@ -13,6 +13,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'assistant.dart';
 import 'label_scan.dart';
 import 'search.dart';
 import 'admin.dart';
@@ -311,6 +312,32 @@ class _HomeTabState extends State<HomeTab> {
                     Row(children: [for (final (i, t) in tiles.indexed) ...[if (i > 0) const SizedBox(width: 8), Expanded(child: t)]])
                   else
                     SizedBox(height: 132, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: tiles.length, separatorBuilder: (_, __) => const SizedBox(width: 8), itemBuilder: (_, i) => SizedBox(width: 92, child: tiles[i]))),
+                ]),
+              ),
+            ),
+          ),
+          // (3.15.0) the assistant – the web's "Ask": a red dot when the daily summary waits (once a day)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: s.briefDue,
+              builder: (_, due, __) => Press(
+                key: const Key('home-ask'),
+                onTap: () => openAssistant(context, entries: widget.onOpenEntries),
+                color: C.greenDeep,
+                border: C.greenDeep,
+                padding: const EdgeInsets.fromLTRB(16, 13, 14, 13),
+                child: Row(children: [
+                  Badge(isLabelVisible: due, smallSize: 12, backgroundColor: C.brandRed, child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD54F), size: 26)),
+                  const SizedBox(width: 12),
+                  const Expanded(child: TwoLang('Ask the app', 'ॲपला विचारा', color: Colors.white, size: 16.5, weight: FontWeight.w700)),
+                  if (due)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
+                      child: const Text('Today\'s summary', style: TextStyle(fontSize: 12.5, color: Colors.white, fontWeight: FontWeight.w600)),
+                    ),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white),
                 ]),
               ),
             ),

@@ -37,6 +37,19 @@ class FakeServer {
   ];
   Map<String, dynamic> get _tankerDay => {'machine': {'id': 'MH-04-J-9844', 'owner': 'Chalke Enterprises', 'type': 'Water Tanker'}, 'date': '2026-10-14', 'trips': _tTrips, 'problem': '', 'other': ''};
   Map<String, dynamic> prefs = {'shift': '', 'loc': '', 'lbMode': '', 'text': 'normal', 'mobile': '', 'photo': ''};
+  // (3.15.0) the assistant: the AI service set up or not, what it was sent, its next steps (scripted), the daily summary
+  bool aiOn = false;
+  final aiAsked = <Map<String, dynamic>>[];
+  final aiScript = <Map<String, dynamic>>[];
+  Map<String, dynamic> brief = {
+    'name': 'Sujit Mule', 'day': '2026-10-13',
+    'sections': {
+      'diesel': {'entries': 4, 'litres': 240, 'top': [{'name': 'Kobelco Sk 220', 'litres': 80}, {'name': 'MH-25-AJ-2169', 'litres': 80}, {'name': 'Sany 210 (No.1)', 'litres': 60}]},
+      'stock': {'litres': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}},
+      'logbook': {'entries': 6, 'pending': 1, 'names': ['MH-25-AJ-2169']},
+      'papers': {'expired': 1, 'due': 1, 'soonDays': 30, 'first': ['MH-25-AJ-2169 PUC']},
+    },
+  };
   String start = '';
 
   static final issues = [
@@ -427,7 +440,7 @@ class FakeServer {
         case 'getInit':
           return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': ['Dispenser', 'VTR Store'], 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
             'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms},
-            'master': _master}});
+            'master': _master, 'ai': {'on': aiOn}}});
         // (3.4.0) the masters
         case 'getVendors':
           return _j({'result': vendors});
@@ -760,6 +773,14 @@ class FakeServer {
               {'no': 'MH-04-J-9844', 'type': 'Water Tanker', 'owner': 'Chalke Enterprises', 'date': '2026-10-14', 'shift': 'Day', 'unit': 'Trip', 'mode': 'Trip', 'trip': 2, 'challan': '123, 18522', 'key': 'MH-04-J-9844|2026-10-14|Day',
                 'itemWork': {'_trips': [for (final t in _tTrips) {'c': t['c'], 'a': t['a'], 'b': t['b'], if ('${t['ch']}'.isNotEmpty) 'ch': t['ch'], if ('${t['u']}'.isNotEmpty) 'u': t['u']}]}},
           ]}});
+        case 'getAiReply':
+          aiAsked.add((a[0] as Map).cast<String, dynamic>());
+          if (!aiOn) return _j({'error': 'The assistant is not set up yet: the Admin has to put the AI key (GEMINI_API_KEY) in the server\'s settings.'}, 500);
+          return _j({'result': aiScript.isNotEmpty ? aiScript.removeAt(0) : {'parts': [{'text': 'Nothing more to say.'}], 'model': 'gemini-test-flash'}});
+        case 'getBrief':
+          return _j({'result': brief});
+        case 'getAiCheck':
+          return _j({'result': {'key': aiOn, 'fixedModel': '', 'listError': '', 'tests': [{'model': 'gemini-3.8-flash', 'ok': true, 'ms': 1240}, {'model': 'gemini-3.7-flash', 'ok': false, 'code': 503, 'said': 'The model is overloaded.'}]}});
         case 'getMyPrefs':
           return _j({'result': {'prefs': prefs, 'logins': ['2026-10-14T03:35:00Z', '2026-10-13T12:10:00Z'], 'rules': {'backDays': '', 'announce': notice, 'dayFrom': '08:00', 'nightFrom': '20:00'}}});
         // (3.14.0) the diesel history of a machinery, the photos of a fill, a transfer's stock, the Admin's faults and backup

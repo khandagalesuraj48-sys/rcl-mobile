@@ -14,6 +14,7 @@ import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
 import 'package:rcl_mobile/core/qr_scan.dart' show scanLabel;
+import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
@@ -2104,5 +2105,140 @@ void main() {
     await net(t);
     expect(srv.listAsked.last['no'], 'Sany 210 (No.1)');
     expect([srv.listAsked.last['from'], srv.listAsked.last['to']], ['', ''], reason: 'all dates, as the web\'s gsOpenLog');
+  }, tags: ['golden']);
+
+  testWidgets('(3.15.0) Ask the app: the daily summary waits (a red dot) and comes by itself; a ⚡ question; an entry from words – shown, Open in the form, saved only by "हो"; the Log Book needs Edit', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    expect(s.briefDue.value, true, reason: 'once a day: the summary waits on Home');
+    expect(find.text("Today's summary"), findsOneWidget);
+    await tapK(t, 'home-ask');
+    await net(t);
+    await net(t);
+    expect(find.textContaining('सुप्रभात, Sujit Mule. काल (13-10-2026):'), findsOneWidget, reason: 'the summary came by itself, in his help language');
+    expect(find.textContaining('गाड्यांचे कागद: 1 संपलेले, 1 30 दिवसांत संपणारे – MH-25-AJ-2169 PUC.'), findsOneWidget);
+    expect(s.briefDue.value, false);
+    expect(srv.calls.where((c) => c == 'mech:getBrief').length, 1);
+    await tapK(t, 'ai-ready-pending');
+    await net(t);
+    expect(find.textContaining('14-10-2026 साठी 2 गाड्यांची Log Book entry बाकी आहे:'), findsOneWidget, reason: 'answered by the app itself');
+    expect(find.text('⚡ app कडून थेट, आत्ता'), findsWidgets);
+    // an entry from words: shown – nothing saved
+    await t.enterText(find.byKey(const Key('ai-in')), 'MH-25-AJ-2169 la 50 litre diesel de km 15300');
+    await tapK(t, 'ai-send');
+    await net(t);
+    expect(find.text('MH-25-AJ-2169 · Tipper · I E Enterprises'), findsOneWidget);
+    expect(find.text('14-10-2026 · Day'), findsOneWidget);
+    expect(find.text('50 L  ←  Dispenser'), findsOneWidget);
+    expect(find.text('15,300 km'), findsOneWidget);
+    expect(srv.saved, isEmpty, reason: 'nothing is saved by itself');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/44_ask_entry.png'));
+    // Open in the form: the app's own form, the machinery, date, shift and litres in it
+    await tapK(t, 'ai-form');
+    await net(t);
+    expect(find.text('New Diesel Issue'), findsOneWidget);
+    expect(find.text('Diesel history – MH-25-AJ-2169'), findsOneWidget);
+    expect(find.text('50'), findsOneWidget, reason: 'the litres in the box');
+    await t.tap(find.byIcon(Icons.arrow_back_rounded).first);
+    await net(t);
+    expect(srv.saved, isEmpty);
+    // again, then "हो": saved through the app's save
+    await t.enterText(find.byKey(const Key('ai-in')), 'MH-25-AJ-2169 la 50 litre diesel de km 15300');
+    await tapK(t, 'ai-send');
+    await net(t);
+    await t.enterText(find.byKey(const Key('ai-in')), 'हो');
+    await tapK(t, 'ai-send');
+    await net(t);
+    expect(srv.saved.single['no'], 'MH-25-AJ-2169');
+    expect(srv.saved.single['qty'], 50);
+    expect(srv.saved.single['kmReading'], 15300);
+    expect(srv.saved.single['source'], 'Dispenser');
+    expect(find.textContaining('Save झाले ✔ Diesel Issue DI-000526 – MH-25-AJ-2169'), findsOneWidget);
+    expect(s.stockTotal, 1083, reason: 'the stock the server sent back');
+    // the Log Book is View only here: the same access as the form
+    await t.enterText(find.byKey(const Key('ai-in')), 'Sany 210 आज idle');
+    await tapK(t, 'ai-send');
+    await net(t);
+    expect(find.text('Log Book entry करण्याची परवानगी तुम्हाला नाही.'), findsOneWidget);
+    expect(srv.logSaved, isEmpty);
+    // My settings: the daily summary – No
+    t.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await net(t);
+    await t.tap(find.text('Me'));
+    await net(t);
+    await t.tap(find.text('My settings'));
+    await net(t);
+    await t.scrollUntilVisible(find.text('Daily summary when I open the app'), 200, scrollable: find.byType(Scrollable).last);
+    await t.tap(find.text('Daily summary when I open the app'));
+    await settle(t, 600);
+    await t.tap(find.text('No').last);
+    await net(t);
+    expect(srv.prefs['brief'], false);
+  }, tags: ['golden']);
+
+  testWidgets('(3.15.0) Ask the app – the AI service: the snapshot goes with the question, its look-up runs with his sign-in, "Looked up", a page button; the service fails → the app\'s own answer; Admin: Test the AI service', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = FakeServer()
+      ..superAdmin = true
+      ..aiOn = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    expect(s.briefDue.value, false, reason: 'his settings: no daily summary');
+    await tapK(t, 'home-ask');
+    await net(t);
+    expect(find.textContaining('AI key'), findsNothing, reason: 'the AI service is set up');
+    srv.aiScript.addAll([
+      {'parts': [{'functionCall': {'name': 'diesel_issues', 'args': {'from': '2026-10-14', 'to': '2026-10-14'}}}], 'model': 'gemini-test-flash'},
+      {'parts': [{'text': 'Kobelco Sk 220 and MH-25-AJ-2169 took the most today: **80 L** each. [[open:diesel|Diesel Issue]]'}], 'model': 'gemini-test-flash'},
+    ]);
+    await t.enterText(find.byKey(const Key('ai-in')), 'who took the most diesel today and why');
+    await tapK(t, 'ai-send');
+    await net(t);
+    await net(t);
+    expect(srv.aiAsked.length, 2);
+    final ctx = srv.aiAsked.first['context'] as Map;
+    expect((ctx['dieselIssuedToday'] as Map)['entries'], 4, reason: 'the snapshot of the day goes with the question');
+    expect((ctx['page'] as Map)['tab'], 'dash');
+    expect((srv.aiAsked.first['contents'] as List).single, {'role': 'user', 'parts': [{'text': 'who took the most diesel today and why'}]});
+    final back = (srv.aiAsked.last['contents'] as List).last as Map;
+    final resp = ((back['parts'] as List).single as Map)['functionResponse'] as Map;
+    expect([back['role'], resp['name'], (resp['response'] as Map)['entries'], (resp['response'] as Map)['totalLitres']], ['user', 'diesel_issues', 4, 240]);
+    expect(find.text('Looked up:'), findsOneWidget);
+    expect(find.text('Diesel issues 14-10-2026'), findsOneWidget);
+    expect(find.textContaining('took the most today: 80 L each.'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/45_ask_ai.png'));
+    // the page button: the app's own Diesel Issue entries
+    await tapK(t, 'ai-go-diesel');
+    await net(t);
+    expect(find.byType(AssistantScreen), findsNothing);
+    await t.tap(find.text('Home'));
+    await net(t);
+    await tapK(t, 'home-ask');
+    await net(t);
+    expect(find.text('Looked up:'), findsOneWidget, reason: 'the conversation is kept');
+    // the AI service fails: the app answers as well as it can, and says so
+    srv.aiOn = false;
+    await t.enterText(find.byKey(const Key('ai-in')), 'why so much diesel today');
+    await tapK(t, 'ai-send');
+    await net(t);
+    expect(find.text('⚡ The AI service is not set up – from the app itself, now'), findsOneWidget);
+    expect(find.textContaining('14-10-2026: 240 L in 4 entries.'), findsOneWidget);
+    // Admin: which model answers
+    srv.aiOn = true;
+    await tapK(t, 'ai-test');
+    await net(t);
+    expect(find.textContaining('✓ gemini-3.8-flash – answered in 1.2 s'), findsOneWidget);
+    expect(find.textContaining('✗ gemini-3.7-flash – 503: The model is overloaded.'), findsOneWidget);
   }, tags: ['golden']);
 }

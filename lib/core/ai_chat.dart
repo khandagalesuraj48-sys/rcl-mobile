@@ -49,7 +49,7 @@ class AiChat extends ChangeNotifier {
 
   /// The AI service is set up on the server (getInit → ai.on).
   bool aiOn;
-  final bool admin;
+  bool admin;
 
   /// "Open in the form": the screen opens the app's own form with the entry in it.
   void Function(AiDraft d)? onForm;
