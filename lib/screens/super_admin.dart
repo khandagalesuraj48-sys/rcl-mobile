@@ -251,12 +251,11 @@ class SuperAdminState extends State<SuperAdminScreen> {
         const SizedBox(height: 10),
         Row(children: [
           Expanded(child: Text('${people.length} users · ${people.where((u) => u['active'] == true).length} active', style: const TextStyle(fontSize: 13.5, color: C.muted, fontWeight: FontWeight.w600))),
-          FilledButton.icon(
+          FilledButton(
             key: const Key('sa-u-new'),
             style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
             onPressed: () => _user(null),
-            icon: const Icon(Icons.person_add_alt_1_rounded),
-            label: const Text('+ Add user'),
+            child: const Text('+ Add user'),
           ),
         ]),
         const SizedBox(height: 10),
@@ -300,12 +299,11 @@ class SuperAdminState extends State<SuperAdminScreen> {
         _note('Every site of every module. Closed = switched off: nobody can open it. A closed site can be deleted – its data stays in its own database.'),
         Align(
           alignment: Alignment.centerLeft,
-          child: FilledButton.icon(
+          child: FilledButton(
             key: const Key('sa-st-new'),
             style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
             onPressed: () => _newSite(),
-            icon: const Icon(Icons.add_location_alt_rounded),
-            label: const Text('+ New site'),
+            child: const Text('+ New site'),
           ),
         ),
         const SizedBox(height: 12),
@@ -394,12 +392,11 @@ class SuperAdminState extends State<SuperAdminScreen> {
         _note('A module shows on the dashboard only when it is Live and has its link. A module that is Off can be deleted (not Mechanical).'),
         Align(
           alignment: Alignment.centerLeft,
-          child: FilledButton.icon(
+          child: FilledButton(
             key: const Key('sa-m-new'),
             style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
             onPressed: () => _module(null),
-            icon: const Icon(Icons.add_box_rounded),
-            label: const Text('+ Add module'),
+            child: const Text('+ Add module'),
           ),
         ),
         const SizedBox(height: 12),
@@ -915,14 +912,13 @@ class PlacesEditor extends StatelessWidget {
           ),
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
+          child: TextButton(
             key: const Key('pl-add'),
             onPressed: () {
               rows.add(SaPlace());
               changed();
             },
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('+ Add place'),
+            child: const Text('+ Add place'),
           ),
         ),
       ]);
