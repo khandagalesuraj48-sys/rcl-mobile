@@ -1,7 +1,9 @@
 /* NEW ENTRY – Diesel Issue, Diesel Inward, Diesel Transfer: the same fields and the same server checks as the web pages. The
  * server decides everything (stock, closed month, bill lock, an active machinery, readings); the app shows its answer. A
  * reading that looks wrong comes back as a question – "Save anyway?" – as on the web. Diesel Issue also takes the 4 photos
- * (camera + location), as on the web. */
+ * (camera + location), as on the web. Diesel Inward (3.1.13, Mechanical update-120) takes the bill copies – several, from the
+ * camera or the gallery – as on the web. */
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart' hide Text;
@@ -36,6 +38,15 @@ class _Shot {
   bool busy = false;
 }
 
+/// (3.1.13) a bill copy of an inward: just taken / picked (jpg, being sent until it has its path), or one the inward has (url).
+class _Bill {
+  _Bill({this.jpg, this.url = '', this.path = ''});
+  final Uint8List? jpg;
+  final String url;
+  String path;
+  bool get busy => path.isEmpty;
+}
+
 class _EntryFormState extends State<EntryForm> {
   String date = '', shift = 'Day', source = '', from = '', to = '', way = '';
   Machine? machine;
@@ -52,6 +63,12 @@ class _EntryFormState extends State<EntryForm> {
   final ai = <String, Map<String, dynamic>>{}; // dash / pump → its answer ({wait: true} while reading)
   final aiPut = <TextEditingController>{}; // boxes the AI filled (typing over one makes it the person's)
   int aiTok = 0;
+
+  // (3.1.13, update-120) the bill copies of an inward – mode: new · loading · edit · fail (they could not be read: nothing changes them)
+  final bills = <_Bill>[];
+  String billMode = 'new';
+  bool billChanged = false, billPicking = false;
+  int billTok = 0;
 
   Kind get k => widget.kind;
   /// (3.1.8, update-116) this save goes to verification (the Super Admin's rule for him): the button says so
@@ -75,6 +92,7 @@ class _EntryFormState extends State<EntryForm> {
       final e = ed;
       if (e != null) _fillFrom(s, e);
       if (issue) WidgetsBinding.instance.addPostFrameCallback((_) => _balance());
+      if (k.key == 'inward' && e != null) WidgetsBinding.instance.addPostFrameCallback((_) => _loadBills());
     }
   }
 
@@ -269,6 +287,166 @@ class _EntryFormState extends State<EntryForm> {
     });
   }
 
+  // ---------- the bill copies of an inward (3.1.13, update-120) ----------
+  bool get _billsHere => k.key == 'inward' && ed?['open'] != true && ed?['extra'] != true;
+  List<String> get _billPaths => [for (final b in bills) b.path];
+
+  /// An edit: the copies the inward has.
+  Future<void> _loadBills() async {
+    final e = ed;
+    if (e == null || !mounted) return;
+    if ((asNum(e['ph']) ?? 0) <= 0) {
+      setState(() => billMode = 'edit');
+      return;
+    }
+    final s = SessionScope.read(context), tok = ++billTok;
+    setState(() => billMode = 'loading');
+    try {
+      final r = (await s.api.call('getInwardPhotos', [editId]) as Map).cast<String, dynamic>();
+      if (!mounted || tok != billTok) return;
+      setState(() {
+        bills
+          ..clear()
+          ..addAll([for (final x in (r['photos'] as List? ?? [])) if (x is Map && '${x['p'] ?? ''}'.isNotEmpty) _Bill(url: '${x['url'] ?? ''}', path: '${x['p']}')]);
+        billMode = 'edit';
+      });
+    } catch (x) {
+      if (!mounted || tok != billTok) return;
+      setState(() => billMode = 'fail');
+      toast(context, tr(errText(x)), bad: true);
+    }
+  }
+
+  /// The camera (one) or the gallery (several at once) → each sent at once, one after another; one that cannot be sent is
+  /// taken out again (and said why).
+  Future<void> _addBills(bool camera) async {
+    if (billPicking || !(billMode == 'new' || billMode == 'edit')) return;
+    final s = SessionScope.read(context), room = kBillMax - bills.length;
+    if (room < 1) return;
+    setState(() => billPicking = true);
+    var jpgs = <Uint8List>[];
+    try {
+      jpgs = await pickBills(camera: camera, room: room);
+    } catch (x) {
+      if (mounted) toast(context, x is PhotoProblem ? tr(x.message) : tr(errText(x)), bad: true);
+    } finally {
+      if (mounted) setState(() => billPicking = false);
+    }
+    if (!mounted || jpgs.isEmpty) return;
+    final tok = billTok, items = [for (final j in jpgs) _Bill(jpg: j)];
+    setState(() => bills.addAll(items));
+    for (final b in items) {
+      if (!mounted || tok != billTok) return;
+      try {
+        final r = (await s.api.call('inwardPhoto', [{'data': 'data:image/jpeg;base64,${base64Encode(b.jpg!)}'}], true) as Map);
+        if (!mounted || tok != billTok || !bills.contains(b)) continue;
+        final path = '${r['path'] ?? ''}';
+        setState(() {
+          if (path.isEmpty) {
+            bills.remove(b);
+          } else {
+            b.path = path;
+            billChanged = true;
+          }
+        });
+      } catch (x) {
+        if (!mounted || tok != billTok) return;
+        setState(() => bills.remove(b));
+        toast(context, tr(errText(x)), bad: true);
+      }
+    }
+  }
+
+  void _billsReset() {
+    billTok++;
+    bills.clear();
+    billChanged = false;
+    billMode = 'new';
+  }
+
+  void _billBig(_Bill b) => showDialog<void>(
+        context: context,
+        builder: (c) => Dialog(
+          insetPadding: const EdgeInsets.all(12),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(children: [
+            InteractiveViewer(maxScale: 5, child: b.jpg != null ? Image.memory(b.jpg!) : Image.network(b.url, errorBuilder: (_, __, ___) => const Padding(padding: EdgeInsets.all(40), child: Icon(Icons.receipt_long_rounded, size: 60, color: C.faint)))),
+            Positioned(right: 4, top: 4, child: IconButton.filled(onPressed: () => Navigator.pop(c), icon: const Icon(Icons.close_rounded))),
+          ]),
+        ),
+      );
+
+  Widget _billTile(int i, _Bill b) => Container(
+        key: Key('bill-$i'),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: b.busy ? C.line : C.green, width: 1.5)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14.5),
+          child: Stack(fit: StackFit.expand, children: [
+            GestureDetector(
+              onTap: () => _billBig(b),
+              child: b.jpg != null
+                  ? Image.memory(b.jpg!, fit: BoxFit.cover, gaplessPlayback: true)
+                  : Image.network(b.url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: C.bg, child: Center(child: Icon(Icons.receipt_long_rounded, size: 34, color: C.faint)))),
+            ),
+            Positioned(left: 0, right: 0, bottom: 0, child: Container(color: const Color(0xAA000000), padding: const EdgeInsets.symmetric(vertical: 3), child: Text('Bill copy ${i + 1}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600)))),
+            if (b.busy) const ColoredBox(color: Color(0x66FFFFFF), child: Center(child: SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 3)))),
+            if (!b.busy) const Positioned(right: 6, top: 6, child: CircleAvatar(radius: 11, backgroundColor: C.green, child: Icon(Icons.check_rounded, size: 15, color: Colors.white))),
+            if (!b.busy)
+              Positioned(
+                left: 2,
+                top: 2,
+                child: IconButton(
+                  key: Key('bill-x-$i'),
+                  tooltip: tr('Take this copy out'),
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(backgroundColor: const Color(0xC80F172A), foregroundColor: Colors.white, minimumSize: const Size(30, 30), padding: EdgeInsets.zero),
+                  onPressed: () => setState(() {
+                    bills.remove(b);
+                    billChanged = true;
+                  }),
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                ),
+              ),
+          ]),
+        ),
+      );
+
+  Widget _billAdd(bool camera) => Press(
+        key: Key(camera ? 'bill-camera' : 'bill-gallery'),
+        onTap: billPicking ? null : () => _addBills(camera),
+        radius: 16,
+        shadow: false,
+        border: C.blue.withValues(alpha: .45),
+        padding: const EdgeInsets.all(8),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(camera ? Icons.photo_camera_rounded : Icons.photo_library_rounded, size: 30, color: C.blue),
+          const SizedBox(height: 6),
+          Text(camera ? 'Take photo' : 'Choose photos', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          Text(camera ? 'camera' : 'several at once', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+        ]),
+      );
+
+  Widget _bills() {
+    final add = (billMode == 'new' || billMode == 'edit') && bills.length < kBillMax;
+    Widget note(String t) => Container(alignment: Alignment.center, padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: C.bg, borderRadius: BorderRadius.circular(16)), child: Text(t, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: C.muted)));
+    return GridView.count(
+      key: const Key('bills'),
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: .82,
+      children: [
+        for (var i = 0; i < bills.length; i++) _billTile(i, bills[i]),
+        if (billMode == 'loading') note('Loading the bill copies'),
+        if (billMode == 'fail') note('The bill copies could not be loaded – they stay as they are. Press Edit again to change them.'),
+        if (add) _billAdd(true),
+        if (add) _billAdd(false),
+      ],
+    );
+  }
+
   /// The line under the photos: what the AI read, what to check, what it is still reading (as the web).
   String get _aiNote {
     final d = ai['dash'], p = ai['pump'], put = <String>[], warn = <String>[], waiting = <String>[];
@@ -312,7 +490,10 @@ class _EntryFormState extends State<EntryForm> {
             'driver': driver.text.trim(), 'remark': remark.text.trim(), 'source': source, 'force': false, 'mode': way,
             if (_photoList.isNotEmpty && ed == null) 'photos': _photoList,
           },
-        'inward' => {'date': date, 'location': source, 'pump': pump.text.trim(), 'qty': asNum(qty.text) ?? '', 'rate': asNum(rate.text) ?? '', 'billNo': billNo.text.trim(), 'billDate': billDate},
+        'inward' => {
+            'date': date, 'location': source, 'pump': pump.text.trim(), 'qty': asNum(qty.text) ?? '', 'rate': asNum(rate.text) ?? '', 'billNo': billNo.text.trim(), 'billDate': billDate,
+            if (_billsHere && billsForSave(isEdit: ed != null, mode: billMode, changed: billChanged, paths: _billPaths) != null) 'photos': billsForSave(isEdit: ed != null, mode: billMode, changed: billChanged, paths: _billPaths),
+          },
         _ => {'date': date, 'shift': shift, 'from': from, 'to': to, 'qty': asNum(qty.text) ?? '', 'remark': remark.text.trim()},
       };
 
@@ -338,6 +519,10 @@ class _EntryFormState extends State<EntryForm> {
     }
     if (_photoSending) {
       toast(context, 'A photo is still being sent – wait a moment, then save.', bad: true);
+      return;
+    }
+    if (bills.any((b) => b.busy)) {
+      toast(context, tr('Wait until every bill copy shows ✓, then save.'), bad: true);      // (3.1.13)
       return;
     }
     FocusScope.of(context).unfocus();
@@ -377,6 +562,7 @@ class _EntryFormState extends State<EntryForm> {
         shots.clear();
         ai.clear();
         aiPut.clear();
+        _billsReset();
         for (final c in [qty, km, hr, remark, rate, billNo]) {
           c.clear();
         }
@@ -396,6 +582,7 @@ class _EntryFormState extends State<EntryForm> {
           shots.clear();
           ai.clear();
           aiPut.clear();
+          _billsReset();
           for (final c in [qty, km, hr, remark, rate, billNo]) {
             c.clear();
           }
@@ -418,6 +605,7 @@ class _EntryFormState extends State<EntryForm> {
           shots.clear();
           ai.clear();
           aiPut.clear();
+          _billsReset();
           for (final c in [qty, km, hr, remark, rate, billNo]) {
             c.clear();
           }
@@ -450,7 +638,8 @@ class _EntryFormState extends State<EntryForm> {
             TwoLang('${k.en} saved', 'नोंद झाली', size: 21, weight: FontWeight.w700, align: CrossAxisAlignment.center),
             const SizedBox(height: 10),
             Text([id, if ((d['no'] ?? '').toString().isNotEmpty) d['no'].toString(), '${fmtNum(asNum(d['qty']))} L', showDate(d['date']?.toString())].where((e) => e.isNotEmpty).join('  ·  '), textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w500, color: C.muted)),
-            if ((d['photos'] as List?)?.isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Photos: ${(d['photos'] as List).length} of 4', style: const TextStyle(color: C.muted))),
+            if ((d['photos'] as List?)?.isNotEmpty == true)
+              Padding(padding: const EdgeInsets.only(top: 6), child: Text(issue ? 'Photos: ${(d['photos'] as List).length} of 4' : '${tr('Bill copy')}: ${(d['photos'] as List).length}', style: const TextStyle(color: C.muted))),
             const SizedBox(height: 22),
             Row(children: [
               Expanded(
@@ -733,6 +922,11 @@ class _EntryFormState extends State<EntryForm> {
                   Text(billDate.isEmpty ? 'Optional' : showDate(billDate), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: billDate.isEmpty ? C.faint : C.ink)),
                 ]),
               ),
+              if (_billsHere) ...[
+                _label('Bill copy', 'बिल कॉपी'),
+                _bills(),
+                const Padding(padding: EdgeInsets.only(top: 6, left: 2), child: Text('Photos of the bill – take them one after another with the camera, or pick several at once from the gallery (up to 10).', style: TextStyle(fontSize: 12.5, color: C.muted))),
+              ],
             ],
             // ---------- Diesel Transfer ----------
             if (k.key == 'transfer') ...[

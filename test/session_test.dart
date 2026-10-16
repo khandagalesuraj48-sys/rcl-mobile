@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/alerts.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/photo.dart';
 import 'package:rcl_mobile/core/plate.dart';
 import 'package:rcl_mobile/core/kinds.dart';
 import 'package:rcl_mobile/core/session.dart';
@@ -492,5 +493,16 @@ void main() {
     expect(alertsFrom(d(w), seen, t1 + 7 * 60000).single.$2, startsWith('Reminder from Mahesh'), reason: 'pressed again');
     final fresh = <String, int>{};
     expect(alertsFrom(d(w), fresh, t1 + 7 * 60000).single.$2, startsWith('Waiting for your approval'), reason: 'first seen with a reminder: one notification, not two');
+  });
+
+  test('(3.1.13, update-120) what a save sends for the bill copies – as the web', () {
+    const a = 'inward/2026-10/a.jpg', b = 'inward/2026-10/b.jpg';
+    expect(billsForSave(isEdit: false, mode: 'new', changed: false, paths: []), null, reason: 'a new inward without copies: nothing (as before)');
+    expect(billsForSave(isEdit: false, mode: 'new', changed: true, paths: [a, b]), [{'p': a}, {'p': b}]);
+    expect(billsForSave(isEdit: true, mode: 'edit', changed: false, paths: [a]), null, reason: 'not changed: the inward keeps its own');
+    expect(billsForSave(isEdit: true, mode: 'edit', changed: true, paths: []), <Map<String, String>>[], reason: 'all taken out');
+    expect(billsForSave(isEdit: true, mode: 'fail', changed: true, paths: [b]), null, reason: 'they could not be read: nothing changes them');
+    expect(billsForSave(isEdit: true, mode: 'loading', changed: true, paths: [b]), null);
+    expect(kBillMax, 10, reason: 'as the server (BILL_MAX_)');
   });
 }

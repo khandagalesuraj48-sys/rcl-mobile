@@ -227,6 +227,69 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/8_issue_saved.png'));
   }, tags: ['golden']);
 
+  testWidgets('(3.1.13, update-120) Diesel Inward: the bill copies – "Take photo" / "Choose photos"; an edit shows its copies, one taken out is saved', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms['Diesel Inward'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Inward')));
+    await net(t);
+    // the details: how many copies
+    await t.tap(find.text('IOC Bunk').first);
+    await settle(t, 800);
+    expect(find.text('Bill copy'), findsOneWidget);
+    expect(find.text('2 photos'), findsOneWidget);
+    await t.tap(find.text('Change'));
+    await net(t);
+    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, -900));
+    await settle(t, 600);
+    expect(find.byKey(const Key('bills')), findsOneWidget);
+    expect(find.byKey(const Key('bill-0')), findsOneWidget, reason: 'its 2 copies, read from the server');
+    expect(find.byKey(const Key('bill-1')), findsOneWidget);
+    expect(find.byKey(const Key('bill-camera')), findsOneWidget);
+    expect(find.byKey(const Key('bill-gallery')), findsOneWidget);
+    expect(srv.calls.where((c) => c == 'mech:getInwardPhotos').length, 1);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/12_inward_bills.png'));
+    await t.tap(find.byKey(const Key('bill-x-1')));
+    await settle(t, 400);
+    expect(find.byKey(const Key('bill-1')), findsNothing, reason: 'taken out');
+    await t.tap(find.text('Save the change'));
+    await net(t);
+    expect(srv.saved.last['update'], 'IN-000050');
+    expect(srv.saved.last['photos'], [{'p': 'inward/2026-10/00000000-0000-0000-0000-000000000001.jpg'}], reason: 'the list as it is now');
+  }, tags: ['golden']);
+
+  testWidgets('(3.1.13) a new Diesel Inward: the bill copy box; saved without copies – nothing about them sent (as before)', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms['Diesel Inward'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Inward')));
+    await net(t);
+    await t.tap(find.text('New Entry'));
+    await net(t);
+    await t.enterText(find.byType(TextField).at(0), 'IOC Bunk');
+    await t.enterText(find.byType(TextField).at(1), '500');
+    await t.enterText(find.byType(TextField).at(2), '90');
+    await settle(t, 300);
+    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, -900));
+    await settle(t, 600);
+    expect(find.byKey(const Key('bill-camera')), findsOneWidget);
+    expect(find.byKey(const Key('bill-gallery')), findsOneWidget);
+    expect(find.byKey(const Key('bill-0')), findsNothing);
+    await t.tap(find.text('Save Diesel Inward'));
+    await net(t);
+    expect(srv.saved.single['pump'], 'IOC Bunk');
+    expect(srv.saved.single.containsKey('photos'), false);
+  });
+
   testWidgets('Me: name, role, site, version, sign out', (t) async {
     phone(t);
     final srv = FakeServer();

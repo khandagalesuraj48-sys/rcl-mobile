@@ -23,6 +23,7 @@ class FakeServer {
   Map<String, dynamic> flowMine = {}; // (update-116) his works under verification (getInit "flow")
   final flowReqs = <Map<String, dynamic>>[]; // (3.1.11, update-118) the Approvals list (his entries in verification)
   final reminded = <List<String>>[];
+  int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
   bool down = false; // no network to Mechanical
   final rids = <String>[]; // the save numbers that came
   final tankerCalls = <Map<String, dynamic>>[];
@@ -151,7 +152,18 @@ class FakeServer {
         case 'getDieselIssues':
           return _j({'result': {'count': issues.length, 'totalQty': 240, 'rows': issues}});
         case 'getInwards':
-          return _j({'result': {'count': 1, 'qty': 500, 'stock': stock, 'rows': [{'id': 'IN-000050', 'date': '2026-10-14', 'qty': 500, 'pump': 'IOC Bunk', 'rate': 90, 'amount': 45000, 'billNo': 'B-1', 'billDate': '2026-10-14', 'location': 'VTR Store'}]}});
+          return _j({'result': {'count': 1, 'qty': 500, 'stock': stock, 'rows': [{'id': 'IN-000050', 'date': '2026-10-14', 'qty': 500, 'pump': 'IOC Bunk', 'rate': 90, 'amount': 45000, 'billNo': 'B-1', 'billDate': '2026-10-14', 'location': 'VTR Store', 'ph': 2}]}});
+        case 'getInwardPhotos': // (3.1.13, update-120) the bill copies of an inward
+          return _j({'result': {'id': a[0], 'photos': [for (final n in [1, 2]) {'p': 'inward/2026-10/00000000-0000-0000-0000-00000000000$n.jpg', 'at': '2026-10-14T05:00:00.000Z', 'url': 'https://erp.test/storage/v1/object/sign/diesel-photos/inward/$n.jpg?token=t'}]}});
+        case 'inwardPhoto':
+          billsSent++;
+          return _j({'result': {'ok': true, 'path': 'inward/2026-10/00000000-0000-0000-0000-0000000001${billsSent.toString().padLeft(2, '0')}.jpg'}});
+        case 'saveInward':
+          saved.add((a[0] as Map).cast<String, dynamic>());
+          return _j({'result': {'ok': true, 'id': 'IN-000051', 'stock': stock}});
+        case 'updateInward':
+          saved.add({'update': a[0], ...(a[1] as Map).cast<String, dynamic>()});
+          return _j({'result': {'ok': true, 'id': a[0], 'stock': stock}});
         case 'getTransfers':
           return _j({'result': {'count': 0, 'qty': 0, 'rows': []}});
         case 'getLogBookList':
