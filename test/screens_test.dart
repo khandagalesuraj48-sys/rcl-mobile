@@ -1841,8 +1841,8 @@ void main() {
     await net(t);
     final chk = srv.logBulk.firstWhere((c) => c['fn'] == 'checkTankerImport')['x'] as Map;
     expect(chk['rows'], [
-      {'line': 'Sheet1 – 2', 'no': 'MH-04-J-9844', 'date': '2026-10-13', 'shift': 'Night', 'c': 'WT-9', 'a': '21:00', 'b': '21:30', 'ch': '', 'u': 'Curing'},
-      {'line': 'Sheet1 – 3', 'no': 'MH-04-J-0001', 'date': '2026-10-13', 'shift': 'Day', 'c': 'WT-10', 'a': '08:00', 'b': '08:20', 'ch': '', 'u': ''},
+      {'line': '2', 'no': 'MH-04-J-9844', 'date': '2026-10-13', 'shift': 'Night', 'c': 'WT-9', 'a': '21:00', 'b': '21:30', 'ch': '', 'u': 'Curing'},
+      {'line': '3', 'no': 'MH-04-J-0001', 'date': '2026-10-13', 'shift': 'Day', 'c': 'WT-10', 'a': '08:00', 'b': '08:20', 'ch': '', 'u': ''},
     ]);
     expect(srv.logBulk.where((c) => c['fn'] == 'importTankerTrips').length, 1);
     expect(find.text('Water tanker: 2 trips added, 1 already saved.'), findsOneWidget);

@@ -93,7 +93,8 @@ void main() {
   test('Water tanker – Import Excel: every tab, the times, a line without its tanker is the open tanker\'s (or none)', () {
     expect(differ(run(() => tankerImportRows(readSheets(bytes('tanker.xlsx')), 'MH-04-J-9844')), web['tanker']), '');
     expect(differ(run(() => tankerImportRows(readSheets(bytes('tanker.xlsx')), '')), web['tanker_nome']), '');
-    expect(run(() => tankerImportRows(readSheets(bytes('store.xlsx')), 'X')), {'error': 'No trips in the file.'});
+    expect(run(() => tankerImportRows(readSheets(bytes('store.xlsx')), 'X')), {'error': 'Could not find the heading row – use "Download template".'}, reason: 'as the web\'s readExcelRows');
+    expect(run(() => tankerImportRows(readSheets(Uint8List.fromList(utf8.encode('DATE,CHALLAN NO,DISPATCH TIME\n14-10-2026,,\n'))), 'X')), {'error': 'No trips in the file.'});
   });
 
   test('Water tanker – Export Excel: the web\'s file (name, said, every cell, widths, heading row, the Shift drop-down)', () {
