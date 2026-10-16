@@ -80,7 +80,7 @@ double partsGap(Object? ps) {
 }
 
 /// A water tanker's entry as its trips (the web's tripsOfRow) – null when it is not one.
-List<Map<String, String>>? tripsOfRow(Map r, Iterable<Map<String, dynamic>> master) {
+List<Map<String, String>>? lbTripsOf(Map r, Iterable<Map<String, dynamic>> master) {
   final m = findMachine(master, r['no']);
   if (m == null || m['lbFormat'] != 'I' || r['unit'] != 'Trip') return null;
   final iw = r['itemWork'];
@@ -164,7 +164,6 @@ class _Col {
   final String Function(String Function(String) L, int n, Map? r)? f;
 }
 
-Object? _g(Map r, String k) => r[k];
 bool _used(List<Map> rows, String k) => rows.any((r) => r['blank'] != true && r[k] != '' && r.containsKey(k) && r[k] != null);
 
 List<_Col> _colsFor(List<Map<String, dynamic>> ms, List<Map> rows, Map itemBoq, Iterable<Map<String, dynamic>> master) {
@@ -335,7 +334,7 @@ void _validate(XSheet sh, int col, Object list, String title, String prompt, boo
   // a water tanker's entry: one line per trip (the entry's diesel on its first line only)
   final rows = <Map<String, dynamic>>[];
   for (final r in rows0) {
-    final ts = tripsOfRow(r, master);
+    final ts = lbTripsOf(r, master);
     if (ts == null || ts.isEmpty) {
       rows.add(r);
       continue;

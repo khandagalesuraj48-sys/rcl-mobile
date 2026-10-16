@@ -21,6 +21,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
 import 'log_edit.dart';
+import 'log_more.dart';
 import 'log_print.dart';
 import 'tank_check.dart';
 import 'verify.dart';
@@ -283,15 +284,26 @@ class _LogBookScreenState extends State<LogBookScreen> {
                     key: const Key('lb-menu'),
                     icon: const Icon(Icons.more_vert_rounded),
                     padding: EdgeInsets.zero,
-                    onSelected: (k) {
+                    onSelected: (k) async {
                       if (k == 'edit') openLogEdit(context);
                       if (k == 'print') printLogBook(context, SessionScope.read(context), rows: rows, from: day, to: day);      // (3.6.0) the entries shown
                       if (k == 'tank') openTankCheck(context);
+                      // (3.12.0) the rest of the web's Log Book page: its list of all dates with the exports, Import from Excel, the templates
+                      if (k == 'find') await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogFindScreen()));
+                      if (k == 'import') await importLog(context);
+                      if (k == 'tpl-date' || k == 'tpl-mach') await logTemplate(context, k == 'tpl-date' ? 'date' : 'mach');
+                      if ((k == 'find' || k == 'import') && mounted) _load();
                     },
                     itemBuilder: (_) => [
+                      PopupMenuItem(key: const Key('lb-find'), value: 'find', child: Text('All dates & Export')),
                       PopupMenuItem(key: const Key('lb-edit'), value: 'edit', child: Text('Edit Log Book')),
                       PopupMenuItem(key: const Key('lb-print'), value: 'print', child: Text('Print Log Book')),
                       PopupMenuItem(value: 'tank', child: Text('Tank Check')),
+                      if (SessionScope.read(context).canEdit('Log Book')) ...[
+                        PopupMenuItem(key: const Key('lb-import'), value: 'import', child: Text('Import from Excel')),
+                        PopupMenuItem(key: const Key('lb-tpl-date'), value: 'tpl-date', child: Text('Template: one date – many machinery')),
+                        PopupMenuItem(key: const Key('lb-tpl-mach'), value: 'tpl-mach', child: Text('Template: one machinery – many dates')),
+                      ],
                     ],
                   ),
                 ]),
