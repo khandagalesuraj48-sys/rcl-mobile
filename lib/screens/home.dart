@@ -13,6 +13,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/web_host.dart';
+import 'verify.dart';
 import 'logbook.dart';
 import '../ui/t.dart';
 
@@ -295,6 +296,8 @@ class _HomeTabState extends State<HomeTab> {
                 ]),
               ),
             ),
+          // (3.1.11, update-118) his entries in verification: waiting / sent back / approved – tap: each, with "Remind"
+          const VerifyStrip(days: 1, margin: EdgeInsets.fromLTRB(14, 0, 14, 16)),
           // ---------- the modules ----------
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),

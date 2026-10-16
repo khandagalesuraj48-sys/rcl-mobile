@@ -21,6 +21,8 @@ class FakeServer {
   Map<String, String> versions = {'master': '1', 'stock': '1', 'log': '1', 'users': '1', 'activity': '1', 'flow': '1'};
   int crPending = 0, crForMe = 0;
   Map<String, dynamic> flowMine = {}; // (update-116) his works under verification (getInit "flow")
+  final flowReqs = <Map<String, dynamic>>[]; // (3.1.11, update-118) the Approvals list (his entries in verification)
+  final reminded = <List<String>>[];
   bool down = false; // no network to Mechanical
   final rids = <String>[]; // the save numbers that came
   final tankerCalls = <Map<String, dynamic>>[];
@@ -125,7 +127,16 @@ class FakeServer {
         case 'sync':
           return _j({'result': {'versions': versions}});
         case 'getChangeRequests':
-          return _j({'result': {'requests': [], 'pending': crPending, 'forMe': crForMe}});
+          return _j({'result': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}});
+        case 'remindFlow':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          final ids = x['all'] == true ? flowReqs.where((r) => r['canRemind'] == true).map((r) => '${r['id']}').toList() : (x['ids'] as List).map((e) => '$e').toList();
+          reminded.add(ids);
+          for (final r in flowReqs.where((r) => ids.contains(r['id']))) {
+            r['reminds'] = ((r['reminds'] as num?) ?? 0) + 1;
+            r['remindedAt'] = DateTime.now().toUtc().toIso8601String();
+          }
+          return _j({'result': {'ok': true, 'reminded': ids, 'later': [], 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
         case 'getStock':
           return _j({'result': stock});
         case 'getInit':

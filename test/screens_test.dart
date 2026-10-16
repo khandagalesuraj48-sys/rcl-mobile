@@ -130,6 +130,33 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/4_home_activity.png'));
   }, tags: ['golden']);
 
+  testWidgets('(3.1.11) Home: his entries in verification – Waiting / Approved; the list; "Remind" tells the approver', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final now = DateTime.now().toUtc().toIso8601String();
+    srv.flowReqs.addAll([
+      {'kind': 'Flow', 'mine': true, 'id': 'VF-00009', 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': 'Pending', 'at': now, 'waitSince': now, 'waitingFor': ['Shubham'], 'level': 1, 'levels': 1, 'canRemind': true, 'reminds': 0, 'summary': ['Diesel issue MH-25-AJ-2169 · 60 L']},
+      {'kind': 'Flow', 'mine': true, 'id': 'VF-00008', 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': 'Approved', 'at': now, 'decidedAt': now, 'decidedBy': 'Shubham', 'summary': ['Diesel issue MH-12-SY-6216 · 20 L']},
+    ]);
+    final s = await ready(t, srv);
+    await t.runAsync(() => s.loadApprovals());
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('verify-strip')), findsOneWidget);
+    expect(find.text('Waiting 1'), findsOneWidget);
+    expect(find.text('Approved 1'), findsOneWidget);
+    await t.tap(find.byKey(const Key('verify-strip')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('verify-VF-00009')), findsOneWidget);
+    expect(find.text('Approved – saved'), findsOneWidget);
+    expect(find.textContaining('at Shubham'), findsOneWidget);
+    await t.tap(find.byKey(const Key('verify-remind-VF-00009')));
+    await net(t);
+    expect(srv.reminded, [['VF-00009']]);
+    expect(find.text('Reminder sent: VF-00009.'), findsOneWidget);
+    expect(find.textContaining('reminded 1×'), findsOneWidget);
+  });
+
   testWidgets('Entries: the day\'s diesel issues as cards; Transfer (no access) is not a tab', (t) async {
     phone(t);
     final srv = FakeServer();
