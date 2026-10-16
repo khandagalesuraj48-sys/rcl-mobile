@@ -328,7 +328,7 @@ class _LogFindScreenState extends State<LogFindScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('${x['no']}${jsTrue(x['type']) ? ' · ${x['type']}' : ''}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Text('${fmt(x['days'])} days', style: const TextStyle(color: C.muted, fontWeight: FontWeight.w700)),
+          Text('${fmt(x['days'])} ${asNum(x['days']) == 1 ? 'day' : 'days'}', style: const TextStyle(color: C.muted, fontWeight: FontWeight.w700)),
         ]),
         Text(works.isNotEmpty ? works : unit, style: const TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 4),
