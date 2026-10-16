@@ -19,6 +19,18 @@ const kKinds = [
 
 Kind kindOf(String key) => kKinds.firstWhere((k) => k.key == key, orElse: () => kKinds.first);
 
+/// (3.1.10, with Mechanical update-117: every site its own diesel places, set by the Super Admin in the Portal) the Marathi word
+/// under a diesel place on Home. The first site's Dispenser / VTR Store keep their words; 18B's Camp Pump is the pump and its two
+/// dispensers, named by their numbers (MH12ZE1739, MH12WJ1381), are dispensers – before, every other place said "store".
+String placeMr(String name) {
+  final n = name.toLowerCase(), k = n.replaceAll(RegExp(r'[^a-z0-9]'), '');
+  if (n.contains('dispenser')) return 'डिस्पेन्सर';
+  if (n.contains('store')) return 'स्टोअर';
+  if (n.contains('pump')) return 'पंप';
+  if (RegExp(r'^[a-z]{2}\d{1,2}[a-z]{0,3}\d{3,4}$').hasMatch(k)) return 'डिस्पेन्सर';      // a vehicle number: a dispenser on a vehicle
+  return 'डिझेल जागा';
+}
+
 /// The 3D picture for a machinery, from its type (an excavator, a tipper, a car …).
 String picOfType(String type) {
   final t = type.toLowerCase();

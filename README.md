@@ -14,6 +14,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.10 (16-10-2026, with Mechanical update-117 – every site its own diesel places, set by the Super Admin in the
+Portal: 18B's Camp Pump and the dispensers MH12ZE1739 / MH12WJ1381):** the app already takes the site's places from Mechanical
+(every place list, the stock tiles on Home); now the Marathi word under each place on Home is its own (pump / dispenser / store –
+`placeMr`, lib/core/kinds.dart) – before, every place other than the Dispenser said "store".
+
 **Version 3.1.9 (16-10-2026: "vehicle select kel ki auto tyach km km+hrs trip je kay asel te auto select … perfect kam karyla haw"):**
 the Log Book entry picks "Measured by" by itself, as the web does: the way of the machinery's last entry, else its Asset Master
 unit, else its first way (`Machine.logWay`). It can still be changed (Idle, Holiday, Breakdown, a day on Time). Diesel Issue: by
