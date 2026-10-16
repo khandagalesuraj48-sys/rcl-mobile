@@ -15,7 +15,7 @@ import '../web/print_view.dart';
 import 'log_print.dart';
 
 /// A button in a row of buttons (the theme's buttons are as wide as the screen).
-final kSmallBtn = OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14), textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600));
+final kSmallBtn = OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14));
 
 String _logo = '';
 
