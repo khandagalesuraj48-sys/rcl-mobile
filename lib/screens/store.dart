@@ -179,7 +179,16 @@ class _StoreScreenState extends State<StoreScreen> {
                   for (final t in tabs) Tab(key: Key('st-tab-$t'), child: Text(t == 'dashboard' ? 'Dashboard' : 'Item Master')),
                 ]),
         ),
-        floatingActionButton: me != null && pg['items'] == 'Edit' ? FloatingActionButton.extended(key: const Key('st-new'), onPressed: () => _form(), icon: const Icon(Icons.add_rounded), label: Text('Add item')) : null,
+        floatingActionButton: me != null && pg['items'] == 'Edit' ? FloatingActionButton.extended(
+                key: const Key('st-new'),
+                onPressed: () => _form(),
+                backgroundColor: C.green,
+                foregroundColor: Colors.white,
+                elevation: 3,
+                shape: const StadiumBorder(),
+                icon: const Icon(Icons.add_rounded, size: 26),
+                label: const Text('Add item', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              ) : null,
         body: loading
             ? const Center(child: CircularProgressIndicator())
             : me == null || tabs.isEmpty
@@ -243,7 +252,7 @@ class _StoreScreenState extends State<StoreScreen> {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(children: [
               Expanded(child: Text(c.$1, style: const TextStyle(fontWeight: FontWeight.w600))),
-              Pill('${c.$2} items', color: C.slate, bg: C.slateSoft),
+              Pill('${c.$2} ${c.$2 == 1 ? 'item' : 'items'}', color: C.slate, bg: C.slateSoft),
               const SizedBox(width: 6),
               Pill('${c.$3} active', color: C.greenDark, bg: C.greenSoft),
             ]),
