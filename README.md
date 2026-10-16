@@ -23,7 +23,9 @@ letters; the machinery and the dates found in the words); an **entry from words*
 checks (his access; "check the reading – Save anyway"); half said → it asks, and the next words complete it; otherwise the **AI
 service** (getAiReply) with the day's figures, its look-ups run with his own sign-in, "Looked up …" under the answer, the page
 buttons of an answer opening the app's screens; when the service fails, the app's own best answer or the guide of the page that
-fits; **the daily summary once a day** (a red dot on Ask; Settings → Daily summary); the Admin's **Test the AI service**.
+fits; **the daily summary once a day** (a red dot on Ask; Settings → Daily summary); the Admin's **Test the AI service**; the
+**voice** – 🔊 on an answer says it aloud, the microphone starts a talk (he speaks in मराठी / हिंदी / English, it answers aloud and
+listens again; "थांब", Stop or three silences end it; Settings → Speak the answer aloud).
 The web's **help** – what every page is for and the help for every error message, in three languages – is in the app as the
 web's own words (`assets/help/web_help.json`, made by `tool/web_help.js` from the web page).
 

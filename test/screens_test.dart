@@ -2175,6 +2175,8 @@ void main() {
     await t.tap(find.text('My settings'));
     await net(t);
     await t.scrollUntilVisible(find.text('Daily summary when I open the app'), 200, scrollable: find.byType(Scrollable).last);
+    await t.ensureVisible(find.text('Daily summary when I open the app'));
+    await settle(t, 600);
     await t.tap(find.text('Daily summary when I open the app'));
     await settle(t, 600);
     await t.tap(find.text('No').last);
