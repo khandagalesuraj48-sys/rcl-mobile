@@ -1,0 +1,2811 @@
+{
+ "dist": [
+  [
+   "ANAND",
+   "ANAD",
+   1,
+   1
+  ],
+  [
+   "PUMP",
+   "PMUP",
+   1,
+   1
+  ],
+  [
+   "EXCAVATOR",
+   "EXCAVATER",
+   2,
+   1
+  ],
+  [
+   "ABC",
+   "XYZ",
+   1,
+   2
+  ],
+  [
+   "KOBELCO",
+   "KOBLECO",
+   2,
+   1
+  ],
+  [
+   "A",
+   "",
+   1,
+   1
+  ]
+ ],
+ "words": [
+  [
+   "mh25",
+   [
+    "MH25"
+   ]
+  ],
+  [
+   "MH-25",
+   [
+    "MH-25"
+   ]
+  ],
+  [
+   "tipper anand",
+   [
+    "TIPPER",
+    "ANAND"
+   ]
+  ],
+  [
+   "anad",
+   [
+    "ANAD"
+   ]
+  ],
+  [
+   "aanand earth",
+   [
+    "AANAND",
+    "EARTH"
+   ]
+  ],
+  [
+   "excavater",
+   [
+    "EXCAVATER"
+   ]
+  ],
+  [
+   "sany 210",
+   [
+    "SANY",
+    "210"
+   ]
+  ],
+  [
+   "3714.50",
+   [
+    "3714.50"
+   ]
+  ],
+  [
+   "3714",
+   [
+    "3714"
+   ]
+  ],
+  [
+   "371",
+   [
+    "371"
+   ]
+  ],
+  [
+   "000525",
+   [
+    "000525"
+   ]
+  ],
+  [
+   "di-525",
+   [
+    "DI-525"
+   ]
+  ],
+  [
+   "kobelco 220",
+   [
+    "KOBELCO",
+    "220"
+   ]
+  ],
+  [
+   "enterprize",
+   [
+    "ENTERPRIZE"
+   ]
+  ],
+  [
+   "27aaaaa",
+   [
+    "27AAAAA"
+   ]
+  ],
+  [
+   "डिझेल",
+   [
+    "डिझेल"
+   ]
+  ],
+  [
+   "babu bag",
+   [
+    "BABU",
+    "BAG"
+   ]
+  ],
+  [
+   "issue diesel",
+   [
+    "ISSUE",
+    "DIESEL"
+   ]
+  ],
+  [
+   "xyz",
+   [
+    "XYZ"
+   ]
+  ],
+  [
+   "  ",
+   []
+  ],
+  [
+   "no.1",
+   [
+    "NO.1"
+   ]
+  ],
+  [
+   "e-37145",
+   [
+    "E-37145"
+   ]
+  ],
+  [
+   "37145",
+   [
+    "37145"
+   ]
+  ],
+  [
+   "15230",
+   [
+    "15230"
+   ]
+  ],
+  [
+   "15,230",
+   [
+    "15,230"
+   ]
+  ],
+  [
+   "pmup",
+   [
+    "PMUP"
+   ]
+  ],
+  [
+   "exavator",
+   [
+    "EXAVATOR"
+   ]
+  ],
+  [
+   "rcl active",
+   [
+    "RCL",
+    "ACTIVE"
+   ]
+  ],
+  [
+   "machinery",
+   [
+    "MACHINERY"
+   ]
+  ],
+  [
+   "earthmover",
+   [
+    "EARTHMOVER"
+   ]
+  ]
+ ],
+ "hits": [
+  {
+   "q": "mh25",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "mh25",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "mh25",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "mh25",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "MH-25",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "MH-25",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "MH-25",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "tipper anand",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "tipper anand",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "tipper anand",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 1.5,
+    "fixes": [
+     [
+      "ANAD",
+      "ANAND"
+     ]
+    ]
+   }
+  },
+  {
+   "q": "anad",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "anad",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 5.5,
+    "fixes": [
+     [
+      "AANAND",
+      "ANAND"
+     ]
+    ]
+   }
+  },
+  {
+   "q": "aanand earth",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "aanand earth",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 1,
+   "fuzzy": true,
+   "m": {
+    "score": 1.5,
+    "fixes": [
+     [
+      "EXCAVATER",
+      "EXCAVATOR"
+     ]
+    ]
+   }
+  },
+  {
+   "q": "excavater",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "excavater",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 1,
+   "fuzzy": false,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "sany 210",
+   "rec": 1,
+   "fuzzy": true,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "sany 210",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "sany 210",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "3714.50",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "3714.50",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714.50",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "3714",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "3714",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "3714",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "3714",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "3714",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "3714",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "371",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "371",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "371",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "371",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "371",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "371",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "371",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "371",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "371",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "371",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "371",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "371",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "000525",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "000525",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "000525",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "di-525",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "kobelco 220",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 3,
+   "fuzzy": true,
+   "m": {
+    "score": 1,
+    "fixes": [
+     [
+      "ENTERPRIZE",
+      "ENTERPRISES"
+     ]
+    ]
+   }
+  },
+  {
+   "q": "enterprize",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "enterprize",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 3,
+   "fuzzy": false,
+   "m": {
+    "score": 4,
+    "fixes": []
+   }
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 3,
+   "fuzzy": true,
+   "m": {
+    "score": 4,
+    "fixes": []
+   }
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "27aaaaa",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 3,
+   "fuzzy": false,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "डिझेल",
+   "rec": 3,
+   "fuzzy": true,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "डिझेल",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "डिझेल",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "babu bag",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "babu bag",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "babu bag",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 4,
+   "fuzzy": false,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "issue diesel",
+   "rec": 4,
+   "fuzzy": true,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "issue diesel",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "issue diesel",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "xyz",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "  ",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 1,
+   "fuzzy": false,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 1,
+   "fuzzy": true,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 3,
+   "fuzzy": false,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 3,
+   "fuzzy": true,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 4,
+   "fuzzy": false,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 4,
+   "fuzzy": true,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 5,
+   "fuzzy": false,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "  ",
+   "rec": 5,
+   "fuzzy": true,
+   "m": {
+    "score": 0,
+    "fixes": []
+   }
+  },
+  {
+   "q": "no.1",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 1,
+   "fuzzy": false,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "no.1",
+   "rec": 1,
+   "fuzzy": true,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "no.1",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "no.1",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "e-37145",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "e-37145",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "e-37145",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "37145",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "37145",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "37145",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "37145",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "37145",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 2,
+    "fixes": []
+   }
+  },
+  {
+   "q": "37145",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 2,
+    "fixes": []
+   }
+  },
+  {
+   "q": "37145",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "37145",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "37145",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "37145",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "37145",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "37145",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "15230",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 5,
+    "fixes": []
+   }
+  },
+  {
+   "q": "15230",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15230",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 2,
+   "fuzzy": false,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "15,230",
+   "rec": 2,
+   "fuzzy": true,
+   "m": {
+    "score": 3,
+    "fixes": []
+   }
+  },
+  {
+   "q": "15,230",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "15,230",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "pmup",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 1,
+   "fuzzy": true,
+   "m": {
+    "score": 1.5,
+    "fixes": [
+     [
+      "EXAVATOR",
+      "EXCAVATOR"
+     ]
+    ]
+   }
+  },
+  {
+   "q": "exavator",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "exavator",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 1,
+   "fuzzy": false,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "rcl active",
+   "rec": 1,
+   "fuzzy": true,
+   "m": {
+    "score": 10,
+    "fixes": []
+   }
+  },
+  {
+   "q": "rcl active",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "rcl active",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 0,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 0,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "machinery",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 0,
+   "fuzzy": false,
+   "m": {
+    "score": 4,
+    "fixes": []
+   }
+  },
+  {
+   "q": "earthmover",
+   "rec": 0,
+   "fuzzy": true,
+   "m": {
+    "score": 4,
+    "fixes": []
+   }
+  },
+  {
+   "q": "earthmover",
+   "rec": 1,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 1,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 2,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 2,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 3,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 3,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 4,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 4,
+   "fuzzy": true,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 5,
+   "fuzzy": false,
+   "m": null
+  },
+  {
+   "q": "earthmover",
+   "rec": 5,
+   "fuzzy": true,
+   "m": null
+  }
+ ],
+ "store": [
+  [
+   "hose",
+   [
+    "ITM-0001"
+   ]
+  ],
+  [
+   "hydrolic",
+   [
+    "ITM-0001",
+    "ITM-0004"
+   ]
+  ],
+  [
+   "itm-0002",
+   [
+    "ITM-0002"
+   ]
+  ],
+  [
+   "sugar",
+   [
+    "ITM-0002",
+    "ITM-0005"
+   ]
+  ],
+  [
+   "spare",
+   [
+    "ITM-0001",
+    "ITM-0003"
+   ]
+  ],
+  [
+   "oil",
+   [
+    "ITM-0003",
+    "ITM-0004"
+   ]
+  ],
+  [
+   "filtre",
+   [
+    "ITM-0003"
+   ]
+  ],
+  [
+   "kg canteen",
+   [
+    "ITM-0002",
+    "ITM-0005"
+   ]
+  ],
+  [
+   "8421",
+   [
+    "ITM-0003"
+   ]
+  ],
+  [
+   "xyz",
+   []
+  ],
+  [
+   "",
+   []
+  ]
+ ],
+ "items": [
+  {
+   "code": "ITM-0001",
+   "name": "Hydraulic Hose 1/2 inch",
+   "unit": "Mtr",
+   "category": "Spare Parts",
+   "hsn": "40092100",
+   "status": "Active"
+  },
+  {
+   "code": "ITM-0002",
+   "name": "Sugar",
+   "unit": "Kg",
+   "category": "Canteen",
+   "hsn": "",
+   "status": "Active"
+  },
+  {
+   "code": "ITM-0003",
+   "name": "Oil Filter",
+   "unit": "Nos",
+   "category": "Spare Parts",
+   "hsn": "8421",
+   "status": "Inactive"
+  },
+  {
+   "code": "ITM-0004",
+   "name": "Hydraulic Oil 68",
+   "unit": "Ltr",
+   "category": "Oils",
+   "hsn": null,
+   "status": "Active"
+  },
+  {
+   "code": "ITM-0005",
+   "name": "Sugar cubes",
+   "unit": "Kg",
+   "category": "Canteen",
+   "status": "Active"
+  }
+ ],
+ "recs": [
+  [
+   [
+    "Machinery",
+    "MH-25-AJ-2169"
+   ],
+   [
+    "Name",
+    ""
+   ],
+   [
+    "Type",
+    "Tipper"
+   ],
+   [
+    "Owner",
+    "Anand Earthmovers"
+   ],
+   [
+    "Engine",
+    "E-37145"
+   ]
+  ],
+  [
+   [
+    "Machinery",
+    "Sany 210 (No.1)"
+   ],
+   [
+    "Type",
+    "Excavator"
+   ],
+   [
+    "Owner",
+    "RCL"
+   ],
+   [
+    "Status",
+    "Active"
+   ]
+  ],
+  [
+   [
+    "Issue ID",
+    "DI-000525"
+   ],
+   [
+    "Machinery",
+    "Kobelco SK 220"
+   ],
+   [
+    "Driver",
+    "Babu Bag"
+   ],
+   [
+    "Qty (L)",
+    3714.5
+   ],
+   [
+    "KM reading",
+    15230
+   ]
+  ],
+  [
+   [
+    "Vendor",
+    "I E Enterprises"
+   ],
+   [
+    "GST",
+    "27AAAAA0000A1Z5"
+   ],
+   [
+    "Remark",
+    "डिझेल पुरवठा"
+   ]
+  ],
+  [
+   [
+    "Page",
+    "Diesel Issue"
+   ],
+   [
+    "Group",
+    "Diesel"
+   ]
+  ],
+  [
+   [
+    "Owner",
+    ""
+   ],
+   [
+    "Note",
+    null
+   ]
+  ]
+ ]
+}

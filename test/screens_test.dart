@@ -1939,7 +1939,7 @@ void main() {
     await net(t);
     await t.tap(find.text('Entries'));
     await net(t);
-    await t.tap(find.byKey(const Key('entries-Diesel Transfer')));
+    await t.tap(find.byKey(const Key('entries-Transfer')));
     await net(t);
     await t.tap(find.text('New Entry'));
     await net(t);
@@ -2002,7 +2002,7 @@ void main() {
     await net(t);
     await net(t);
     expect(find.byType(LogBookScreen), findsOneWidget);
-    await t.pageBack();
+    t.state<NavigatorState>(find.byType(Navigator).first).pop();
     await net(t);
     expect(find.text('Diesel inward only till 6 PM today.'), findsOneWidget);
   });
@@ -2050,7 +2050,7 @@ void main() {
     await settle(t, 400);
     await t.tap(find.text('Administration'));
     await net(t);
-    await t.ensureVisible(find.byKey(const Key('ad-faults')));
+    await t.scrollUntilVisible(find.byKey(const Key('ad-faults')), 200, scrollable: find.byType(Scrollable).last);
     await tapK(t, 'ad-faults');
     await net(t);
     expect(find.text('x is undefined'), findsOneWidget);
@@ -2063,7 +2063,7 @@ void main() {
     expect(find.text('No fault has been reported.'), findsOneWidget);
     await t.pageBack();
     await net(t);
-    await t.ensureVisible(find.byKey(const Key('ad-backup')));
+    await t.scrollUntilVisible(find.byKey(const Key('ad-backup')), 200, scrollable: find.byType(Scrollable).last);
     await tapK(t, 'ad-backup');
     await net(t);
     expect(find.text('New data copied to the Google Sheet now.'), findsOneWidget);
