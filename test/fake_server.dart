@@ -75,6 +75,25 @@ class FakeServer {
   final tankChecks = <Map<String, dynamic>>[
     {'id': 'TC-0001', 'date': '2026-10-10', 'no': 'Sany 210 (No.1)', 'system': 200, 'physical': 150, 'diff': -50, 'pct': -25, 'method': 'Measured', 'toFill': '', 'reason': 'Leak at the hose', 'by': 'Tester', 'enteredBy': 'Tester'},
   ];
+  // (3.6.0) Edit Log Book: a KM machinery's entries (MH-25-AJ-2169), and a water tanker's trips; what was sent
+  final logBulk = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> get _editRows => [
+        for (final x in const [('2026-10-12', 15000, 15040), ('2026-10-13', 15040, 15100), ('2026-10-14', 15100, 15230)])
+          {'key': 'MH-25-AJ-2169|${x.$1}|Full Day', 'date': x.$1, 'shift': 'Full Day', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'unit': 'KM', 'mode': 'KM',
+            'okm': x.$2, 'ckm': x.$3, 'wkm': x.$3 - x.$2, 'ohr': '', 'chr': '', 'whr': '', 'tStart': '', 'tEnd': '', 'tBrk': '', 'tSlots': '', 'trip': '', 'challan': '', 'remark': '',
+            'chFrom': '12+000', 'chTo': '12+800', 'work': 'Earth carting', 'odsl': '', 'odSet': '', 'itemWork': {}, 'half': false, 'meter': '', 'debitTo': '', 'debitRate': '', 'itemQty': [], 'boqItems': []},
+      ];
+  Map<String, dynamic> _editData(String from, String to) => {
+        'machine': master[1], 'from': from, 'to': to, 'boqItems': {},
+        'rows': _editRows.where((r) => '${r['date']}'.compareTo(from) >= 0 && '${r['date']}'.compareTo(to) <= 0).toList(),
+        'prev': {'key': 'MH-25-AJ-2169|2026-10-11|Full Day', 'date': '2026-10-11', 'shift': 'Full Day', 'okm': 14950, 'ckm': 15000, 'ohr': '', 'chr': '', 'stock': 120},
+        'next': null, 'diesel': {'2026-10-14': {'Day': 0, 'Night': 80}}, 'prevKm': 15000, 'prevHr': '', 'locks': [], 'nextHr': null, 'hrsOnly': false,
+      };
+  Map<String, dynamic> _tankerRange(String from, String to, List trips) => {
+        'machine': {'id': 'MH-04-J-9844', 'owner': 'Chalke Enterprises', 'type': 'Water Tanker'}, 'from': from, 'to': to,
+        'trips': [for (final t in trips) {'date': t['date'] ?? '2026-10-14', 'shift': t['shift'], 'c': t['c'], 'a': t['a'], 'b': t['b'], 'ch': t['ch'], 'u': t['u'], 'old': 0}],
+        'days': [], 'locks': [],
+      };
   Map<String, dynamic> get _compliance => {
         'today': '2026-10-14', 'soonDays': 30, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'noPapers': 1,
         'machines': [
@@ -386,6 +405,24 @@ class FakeServer {
           return _j({'result': {'ok': true, 'id': a[0], 'stock': stock}});
         case 'getTransfers':
           return _j({'result': {'count': 0, 'qty': 0, 'rows': []}});
+        case 'getLogBookList' when ((a.isNotEmpty ? a[0] : null) as Map?)?['no'] == 'MH-25-AJ-2169':
+          return _j({'result': {'count': 3, 'rows': _editRows, 'summary': []}});
+        // (3.6.0) Edit Log Book
+        case 'getLogEditData':
+          logBulk.add({'fn': action, 'args': a});
+          return _j({'result': _editData('${a[1]}', '${a[2]}')});
+        case 'saveLogBulk':
+          logBulk.add({'fn': action, 'x': a[0]});
+          final rs = ((a[0] as Map)['rows'] as List).cast<Map>();
+          return _j({'result': {'ok': true, 'no': (a[0] as Map)['no'], 'changed': rs.where((r) => r['same'] != true && '${r['key']}'.isNotEmpty).length, 'added': rs.where((r) => '${r['key']}'.isEmpty).length, 'deleted': ((a[0] as Map)['deleted'] as List).length, 'shifted': 0}});
+        case 'getTankerRange':
+          logBulk.add({'fn': action, 'args': a});
+          return _j({'result': _tankerRange('${a[1]}', '${a[2]}', _tTrips)});
+        case 'saveTankerRange':
+          logBulk.add({'fn': action, 'x': a[0]});
+          return _j({'result': {..._tankerRange('${(a[0] as Map)['from']}', '${(a[0] as Map)['to']}', (a[0] as Map)['trips'] as List), 'ok': true, 'changed': 1, 'added': 1, 'removed': 0}});
+        case 'logPrintExtra':
+          return _j({'result': {'debit': {}, 'boq': {}, 'issues': {}, 'avgRate': 90, 'lastRate': 92}});
         case 'getLogBookList':
           return _j({'result': {'count': 6, 'rows': [
             {'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'owner': 'RCL', 'shift': 'Full Day', 'mode': 'Hrs', 'ohr': 4692, 'chr': 4700, 'whr': 8, 'qty': 60, 'work': 'Excavation', 'chFrom': '12+000', 'chTo': '12+300', 'key': 'Sany 210 (No.1)|2026-10-14|Full Day'},

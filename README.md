@@ -14,6 +14,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.6.0 (16-10-2026, part 5 of the whole web in the app):** **Edit Log Book** (Log Book → ⋮) in the app's own screen: a
+machinery and dates (Yesterday / This month / Last month) – all its entries as cards, worked out live (total, opening / issued /
+consumed / closing diesel); a changed Close moves the next Start; red cards say what is wrong ("Use it"); + Add row (the first free
+date, or the Night / Day of the ticked dates), Add all missing dates, + work in this shift (Bucket, then Breaker), ½ day, the way,
+the Item-wise BOQ box, the opening diesel of the 1st, dates of a submitted RA Bill shown and not changed, Delete; **Save changes**
+sends the whole lot once (saveLogBulk). A **water tanker** opens as its trips, one card each (saveTankerRange), with Export Excel.
+**Print Log Book** – the site's monthly Log Book + bill in each machinery's format (A–I), the same sheets as the web prints (the
+diesel rate of the print can be typed; portrait / landscape) – from Edit Log Book and from the Log Book of a day; **View format** on
+Log Book Format prints a format with SAMPLE lines. Still to come: Import Excel (trips, entries) – with the other imports.
+
 **Version 3.5.0 (16-10-2026, part 4 of the whole web in the app):** the **Dashboard** (Reports → Dashboard) and **Tank Check**
 (Log Book → ⋮) in the app's own screens. Dashboard – Diesel: the dates (Today … All dates, From – To), the **Daily report** (one day on
 one page to print / PDF), opening / received / issued / closing / stock now, the tanks (live or the closing of the last date) and

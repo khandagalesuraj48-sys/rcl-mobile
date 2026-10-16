@@ -1,11 +1,12 @@
 /* LOG BOOK FORMAT – the app's own screen (3.4.0), the same as the web's page: the Log Book of a machinery prints in the format
  * set here (A … I). The formats with their names (a name can be changed) and how many machinery have each; the machinery
  * (search, ownership, owner, type, format) each with its format; tick several and "Set selected to …"; Save sends the changes.
- * ("View format" – a sample Log Book in that format – comes with the Log Book print in the app.)
+ * "View format" (3.6.0): that format printed with SAMPLE lines (the Log Book print of the app).
  * Server: getLbFormatNames, saveLbFormatName, saveLbFormats. */
 import 'package:flutter/material.dart' hide Text;
 
 import '../core/assets.dart' show worksOf;
+import '../core/format.dart' show dateKey;
 import '../core/masters.dart';
 import '../core/session.dart';
 import '../ui/fields.dart';
@@ -13,6 +14,8 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../core/lb_print.dart' show lbSampleRows;
+import 'log_print.dart';
 import 'machinery.dart' show uniqOf;
 
 Future<void> openLbFormats(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LbFormatScreen()));
@@ -116,6 +119,12 @@ class _LbFormatScreenState extends State<LbFormatScreen> {
     }
   }
 
+  /// "View format": that format with SAMPLE lines (asks the name on top like every print).
+  Future<void> _view(LbFormat f) {
+    final s = SessionScope.read(context), today = s.today.isNotEmpty ? s.today : dateKey(DateTime.now()), d0 = today.substring(0, 8);
+    return printLogBook(context, s, rows: lbSampleRows(f.id, today), from: '${d0}01', to: '${d0}06', fmt: f.id, sample: lbName(f, names));
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
@@ -129,7 +138,7 @@ class _LbFormatScreenState extends State<LbFormatScreen> {
         Text('The Log Book of a machinery prints in the format set here. The top (Rachana / Sketchline, site, owner, machinery) is the same in every format.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
         const SizedBox(height: 10),
         SizedBox(
-          height: 150,
+          height: 178,
           child: ListView(key: const Key('lbf-strip'), scrollDirection: Axis.horizontal, children: [
             for (final f in kLbFormats)
               Container(
@@ -142,9 +151,10 @@ class _LbFormatScreenState extends State<LbFormatScreen> {
                   Text(lbName(f, names), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                   const SizedBox(height: 4),
                   Expanded(child: Text(f.about, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.muted, height: 1.3))),
+                  Text('${s.machines.where((m) => _of(m) == f.id).length} machinery', style: const TextStyle(fontWeight: FontWeight.w700, color: C.greenDark, fontSize: 13)),
                   Row(children: [
-                    Expanded(child: Text('${s.machines.where((m) => _of(m) == f.id).length} machinery', style: const TextStyle(fontWeight: FontWeight.w700, color: C.greenDark, fontSize: 13))),
-                    if (can) TextButton(key: Key('lbf-ren-${f.id}'), onPressed: () => _rename(f), child: Text('Edit name')),
+                    TextButton(key: Key('lbf-view-${f.id}'), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6)), onPressed: () => _view(f), child: Text('View format')),
+                    if (can) TextButton(key: Key('lbf-ren-${f.id}'), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6)), onPressed: () => _rename(f), child: Text('Edit name')),
                   ]),
                 ]),
               ),

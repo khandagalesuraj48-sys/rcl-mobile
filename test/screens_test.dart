@@ -1075,4 +1075,88 @@ void main() {
     await net(t);
     expect(srv.masterCalls.last, {'fn': 'deleteTankCheck', 'id': 'TC-0001'});
   }, tags: ['golden']);
+
+  testWidgets('(3.6.0) Edit Log Book: a machinery and dates – the entries as cards; a Close moves the next Start; Save sends the whole lot once', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook'));
+    await net(t);
+    await t.tap(find.byKey(const Key('lb-menu')));
+    await settle(t, 500);
+    await t.tap(find.text('Edit Log Book').last);
+    await net(t);
+    await tapK(t, 'lx-no');
+    await net(t);
+    await t.tap(find.text('MH-25-AJ-2169').last);
+    await net(t);
+    await tapK(t, 'lx-q-this');
+    await settle(t, 300);
+    await tapK(t, 'lx-load');
+    await net(t);
+    expect(srv.logBulk.first, {'fn': 'getLogEditData', 'args': ['MH-25-AJ-2169', '2026-10-01', '2026-10-14']});
+    expect(find.text('MH-25-AJ-2169 – Tipper'), findsOneWidget);
+    expect(find.text('No changes yet'), findsOneWidget);
+    final list = find.descendant(of: find.byKey(const Key('lx-list')), matching: find.byType(Scrollable)).first;
+    await t.scrollUntilVisible(find.byKey(const Key('lx-ckm-0')), 300, scrollable: list);
+    await t.enterText(find.byKey(const Key('lx-ckm-0')), '15050');
+    await settle(t, 500);
+    expect(find.text('2 changed / new, 0 deleted'), findsOneWidget, reason: 'the next row\'s Start followed the Close');
+    await t.scrollUntilVisible(find.byKey(const Key('lx-okm-1')), 300, scrollable: list);
+    expect(t.widget<TextField>(find.byKey(const Key('lx-okm-1'))).controller!.text, '15050');
+    await t.scrollUntilVisible(find.byKey(const Key('lxr-0')), -300, scrollable: list);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/27_log_edit.png'));
+    await t.tap(find.byKey(const Key('lx-save')));
+    await settle(t, 600);
+    expect(find.text('Save Log Book of MH-25-AJ-2169?'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    final x = srv.logBulk.firstWhere((c) => c['fn'] == 'saveLogBulk')['x'] as Map;
+    final rows = (x['rows'] as List).cast<Map>();
+    expect((x['no'], x['from'], x['to'], x['deleted']), ('MH-25-AJ-2169', '2026-10-01', '2026-10-14', []));
+    expect([for (final r in rows) '${r['date']} ${r['openingKm']}-${r['closingKm']} ${r['same']}'], ['2026-10-12 15000-15050 false', '2026-10-13 15050-15100 false', '2026-10-14 15100-15230 true']);
+    expect(srv.rids.any((r) => r.startsWith('saveLogBulk:')), true, reason: 'saved once, with its own number');
+    expect(srv.logBulk.where((c) => c['fn'] == 'getLogEditData').length, 2, reason: 'opened again after the save');
+  }, tags: ['golden']);
+
+  testWidgets('(3.6.0) Edit Log Book of a water tanker: its trips, one card each; a challan changed – saveTankerRange', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms['Log Book'] = 'Edit'
+      ..tanker = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook'));
+    await net(t);
+    await t.tap(find.byKey(const Key('lb-menu')));
+    await settle(t, 500);
+    await t.tap(find.text('Edit Log Book').last);
+    await net(t);
+    await tapK(t, 'lx-no');
+    await net(t);
+    await t.tap(find.text('MH-04-J-9844').last);
+    await net(t);
+    await tapK(t, 'lx-q-this');
+    await settle(t, 300);
+    await tapK(t, 'lx-load');
+    await net(t);
+    expect(srv.logBulk.first, {'fn': 'getTankerRange', 'args': ['MH-04-J-9844', '2026-10-01', '2026-10-14']});
+    await t.scrollUntilVisible(find.byKey(const Key('lt-c-1')), 300, scrollable: find.descendant(of: find.byKey(const Key('lx-list')), matching: find.byType(Scrollable)).first);
+    expect(find.byKey(const Key('ltr-1')), findsOneWidget);
+    expect(find.text('No changes yet'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('lt-c-1')), '18523');
+    await settle(t, 400);
+    expect(find.text('Not saved yet'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/28_log_edit_tanker.png'));
+    await t.tap(find.byKey(const Key('lt-save')));
+    await net(t);
+    final x = srv.logBulk.firstWhere((c) => c['fn'] == 'saveTankerRange')['x'] as Map;
+    expect([for (final tr in (x['trips'] as List).cast<Map>()) '${tr['date']} ${tr['shift']} ${tr['c']} ${tr['a']}-${tr['b']}'], ['2026-10-14 Day 123 07:35-07:50', '2026-10-14 Day 18523 10:30-10:36']);
+    expect(find.text('No changes yet'), findsOneWidget, reason: 'opened again from what was saved');
+  }, tags: ['golden']);
 }
