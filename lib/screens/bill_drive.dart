@@ -246,9 +246,10 @@ class _DriveScreenState extends State<DriveScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(key: const Key('dn-list'), padding: const EdgeInsets.fromLTRB(14, 6, 14, 30), children: [
-        Row(children: [
-          FilledButton.icon(key: const Key('dn-open'), onPressed: s.canEdit('Machinery Billing') ? _newNote : null, icon: const Icon(Icons.add_rounded), label: Text('New Debit Note')),
-        ]),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.icon(key: const Key('dn-open'), style: FilledButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: s.canEdit('Machinery Billing') ? _newNote : null, icon: const Icon(Icons.add_rounded), label: Text('New Debit Note')),
+        ),
         const SizedBox(height: 4),
         Text('For work charged to a party: pick the party in "Debit to" of the Log Book entry (with the rate), then make the note here.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 8),
@@ -473,7 +474,7 @@ class _DebitNoteScreenState extends State<DebitNoteScreen> {
           child: Row(children: [
             Expanded(child: Text(dnSumText(t), key: const Key('dn-sum'), maxLines: 2, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
             const SizedBox(width: 8),
-            FilledButton(key: const Key('dn-save'), onPressed: busy ? null : _save, child: Text('Save Debit Note')),
+            FilledButton(key: const Key('dn-save'), style: FilledButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: busy ? null : _save, child: Text('Save Debit Note')),
           ]),
         ),
       ),

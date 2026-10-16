@@ -475,7 +475,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
           ]),
           actions: [
             TextButton(onPressed: () => Navigator.pop(dc), child: Text('Cancel')),
-            FilledButton(key: const Key('dup-ok'), onPressed: () => Navigator.pop(dc, keep), child: Text('Submit')),
+            FilledButton(key: const Key('dup-ok'), style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(dc, keep), child: Text('Submit')),
           ],
         ),
       ),
@@ -496,7 +496,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
           ]),
           actions: [
             if (!alert) TextButton(onPressed: () => Navigator.pop(dc, false), child: Text('Cancel')),
-            FilledButton(key: const Key('vf-ok'), onPressed: () => Navigator.pop(dc, !alert), child: Text(yes)),
+            FilledButton(key: const Key('vf-ok'), style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(dc, !alert), child: Text(yes)),
           ],
         ),
       ) ??

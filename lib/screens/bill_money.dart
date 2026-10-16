@@ -35,6 +35,9 @@ class MonthField extends StatelessWidget {
   }
 }
 
+/// (a button in a row: its own width – the theme's buttons are as wide as the screen)
+final _sm = OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12));
+
 Widget _bar(List<Widget> kids) => SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [for (final k in kids) Padding(padding: const EdgeInsets.only(right: 6), child: k)]));
 
 // =====================================================================================================================
@@ -156,9 +159,9 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
           const SizedBox(height: 6),
           Row(children: [
             Expanded(child: Text('${rows.length} bill${rows.length == 1 ? '' : 's'}${months.isEmpty ? '' : ' · ${brMonthName(months.first)}${months.length > 1 ? ' – ${brMonthName(months.last)}' : ''}'}', key: const Key('br-note'), style: const TextStyle(fontSize: 13, color: C.muted))),
-            OutlinedButton.icon(key: const Key('br-print'), onPressed: doc == null ? () => toast(context, 'Nothing to print.', bad: true) : () => printDoc(context, s, doc), icon: const Icon(Icons.print_rounded), label: Text('Print')),
+            OutlinedButton.icon(key: const Key('br-print'), style: _sm, onPressed: doc == null ? () => toast(context, 'Nothing to print.', bad: true) : () => printDoc(context, s, doc), icon: const Icon(Icons.print_rounded), label: Text('Print')),
             const SizedBox(width: 6),
-            OutlinedButton.icon(key: const Key('br-xls'), onPressed: doc == null ? () => toast(context, 'Nothing to export.', bad: true) : () => shareDocXlsx(s, doc), icon: const Icon(Icons.table_view_rounded), label: Text('Excel')),
+            OutlinedButton.icon(key: const Key('br-xls'), style: _sm, onPressed: doc == null ? () => toast(context, 'Nothing to export.', bad: true) : () => shareDocXlsx(s, doc), icon: const Icon(Icons.table_view_rounded), label: Text('Excel')),
           ]),
           if (err.isNotEmpty) InfoLine(err, bad: true),
           const SizedBox(height: 8),
@@ -591,8 +594,8 @@ class _LedgerScreenState extends State<LedgerScreen> {
                   vendor = from = to = '';
                   d = null;
                 })),
-            OutlinedButton.icon(key: const Key('vl-print'), onPressed: doc == null ? () => toast(context, 'Pick a vendor.', bad: true) : () => printDoc(context, s, doc), icon: const Icon(Icons.print_rounded), label: Text('Print')),
-            OutlinedButton.icon(key: const Key('vl-xls'), onPressed: doc == null ? () => toast(context, 'Pick a vendor.', bad: true) : () => shareDocXlsx(s, doc), icon: const Icon(Icons.table_view_rounded), label: Text('Excel')),
+            OutlinedButton.icon(key: const Key('vl-print'), style: _sm, onPressed: doc == null ? () => toast(context, 'Pick a vendor.', bad: true) : () => printDoc(context, s, doc), icon: const Icon(Icons.print_rounded), label: Text('Print')),
+            OutlinedButton.icon(key: const Key('vl-xls'), style: _sm, onPressed: doc == null ? () => toast(context, 'Pick a vendor.', bad: true) : () => shareDocXlsx(s, doc), icon: const Icon(Icons.table_view_rounded), label: Text('Excel')),
           ]),
           if (err.isNotEmpty) InfoLine(err, bad: true),
           const SizedBox(height: 8),
@@ -697,8 +700,8 @@ class _OutstandingScreenState extends State<OutstandingScreen> {
             ActionChip(key: const Key('vo-3'), label: Text('Last 3 months'), onPressed: () => _range('3')),
             ActionChip(key: const Key('vo-fy'), label: Text('This FY'), onPressed: () => _range('fy')),
             ActionChip(key: const Key('vo-clear'), label: Text('Clear filters'), onPressed: () => _range('3')),
-            OutlinedButton.icon(key: const Key('vo-print'), onPressed: doc == null ? () => toast(context, 'Nothing to print.', bad: true) : () => printDoc(context, s, doc), icon: const Icon(Icons.print_rounded), label: Text('Print')),
-            OutlinedButton.icon(key: const Key('vo-xls'), onPressed: doc == null ? () => toast(context, 'Nothing to export.', bad: true) : () => shareDocXlsx(s, doc), icon: const Icon(Icons.table_view_rounded), label: Text('Excel')),
+            OutlinedButton.icon(key: const Key('vo-print'), style: _sm, onPressed: doc == null ? () => toast(context, 'Nothing to print.', bad: true) : () => printDoc(context, s, doc), icon: const Icon(Icons.print_rounded), label: Text('Print')),
+            OutlinedButton.icon(key: const Key('vo-xls'), style: _sm, onPressed: doc == null ? () => toast(context, 'Nothing to export.', bad: true) : () => shareDocXlsx(s, doc), icon: const Icon(Icons.table_view_rounded), label: Text('Excel')),
           ]),
           if (err.isNotEmpty) InfoLine(err, bad: true),
           const SizedBox(height: 8),
