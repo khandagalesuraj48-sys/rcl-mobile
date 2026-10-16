@@ -297,6 +297,38 @@ class FakeServer {
         case 'remove':
           storeItems.removeWhere((i) => i['code'] == b['code']);
           return _j({'ok': true});
+        // (3.13.0) Import from Excel: the report of every row (a name already there left out, "Sugaar" near "Sugar" – confirm)
+        case 'import':
+          final rows = [for (final r in b['rows'] as List) (r as Map).cast<String, dynamic>()];
+          final conf = ((b['confirm'] as Map?) ?? const {}).cast<String, dynamic>();
+          final out = [
+            for (final r in rows)
+              if ('${r['name']}'.isEmpty)
+                {'line': r['line'], 'name': r['name'], 'status': 'error', 'msg': 'Item Name is required.'}
+              else if (storeItems.any((i) => '${i['name']}'.toLowerCase() == '${r['name']}'.toLowerCase()))
+                {'line': r['line'], 'name': r['name'], 'status': 'exists', 'msg': 'Already there.'}
+              else if ('${r['name']}'.toLowerCase() == 'sugaar')
+                {'line': r['line'], 'name': r['name'], 'status': 'similar', 'similar': [{'code': 'ITM-0002', 'name': 'Sugar'}], 'confirmed': conf.containsKey('${r['line']}')}
+              else
+                {'line': r['line'], 'name': r['name'], 'status': 'new', 'catNote': ''},
+          ];
+          final rep = {
+            'fresh': out.where((x) => x['status'] == 'new').length,
+            'exists': out.where((x) => x['status'] == 'exists').length,
+            'similar': out.where((x) => x['status'] == 'similar').length,
+            'errors': out.where((x) => x['status'] == 'error').length,
+            'rows': out,
+          };
+          if (b['check'] == true) return _j(rep);
+          if (out.any((x) => x['status'] == 'similar' && x['confirmed'] != true)) return _j({'error': 'Confirm the near names first.', 'code': 'similar', 'report': rep}, 409);
+          var added = 0;
+          for (final x in out) {
+            if (x['status'] == 'new' || x['status'] == 'similar') {
+              added++;
+              storeItems.add({'code': 'ITM-00${10 + added}', 'name': x['name'], 'unit': 'Nos', 'category': 'Spare Parts', 'hsn': '', 'gst_pct': null, 'min_stock': null, 'status': 'Active', 'created_by': 'sujit@rcl.test', 'created_at': '2026-10-14T05:00:00Z'});
+            }
+          }
+          return _j({'ok': true, 'added': added, 'exists': rep['exists']});
       }
       return _j({'error': 'Unknown action.'}, 404);
     }
@@ -447,6 +479,14 @@ class FakeServer {
         case 'vendorsFromOwners':
           masterCalls.add({'fn': action, 'names': a[0]});
           return _j({'result': {'ok': true, 'count': (a[0] as List).length, 'names': a[0], 'vendors': vendors}});
+        // (3.13.0) Asset Master – Import from Excel: checked (save false), then saved; a row named "BAD" is a mistake
+        case 'importMaster':
+          final rows = [for (final r in a[0] as List) (r as Map).cast<String, dynamic>()];
+          masterCalls.add({'fn': action, 'rows': rows, 'save': a[1]});
+          final bad = [for (final r in rows) if (r['name'] == 'BAD') {'row': r['line'], 'msg': 'Type of Machinery is required.'}];
+          if (bad.isNotEmpty) return _j({'result': {'errors': bad, 'adds': 0, 'updates': 0, 'same': 0}});
+          if (a[1] == true) master.add({'id': 'NEW-1', 'no': '', 'name': 'NEW-1', 'type': 'Roller', 'unit': 'Hrs', 'status': 'Active', 'activeFrom': '2026-10-01', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company'});
+          return _j({'result': {'errors': [], 'adds': 1, 'updates': rows.length - 1, 'same': 0, if (a[1] == true) 'master': _master}});
         case 'exportMaster':
           return _j({'result': {'headers': ['Machinery Number', 'Machinery Name', 'Type of Machinery', 'Standard Average (KM/Ltr)'], 'rows': [for (final m in master) [m['no'] ?? '', m['name'] ?? '', m['type'] ?? '', m['kmStd'] ?? '']]}});
         case 'getBreakdowns' when bdRich:
@@ -492,6 +532,10 @@ class FakeServer {
           return _j({'result': {'no': x['no'], 'date': x['date'], 'vendor': 'I E Enterprises', 'hit': {'line': boqs.first['lines'][0], 'boqNo': '1', 'amendNo': 0, 'from': '2026-09-01', 'to': ''}}});
         case 'getCompliance':
           return _j({'result': _compliance});
+        // (3.13.0) Vehicle Compliance – Import Excel: checked (save false), then saved
+        case 'importCompliance':
+          masterCalls.add({'fn': action, 'rows': a[0], 'save': a[1]});
+          return _j({'result': {'errors': [], 'changes': 2, 'machines': 1, 'preview': ['MH-25-AJ-2169 – PUC: 01-10-2026 → 30-09-2027', 'MH-25-AJ-2169 – Permit: – → N/A']}});
         case 'renewDoc':
           masterCalls.add({'fn': action, 'x': a[0]});
           return _j({'result': {'ok': true}});
@@ -669,6 +713,13 @@ class FakeServer {
         case 'saveTankerRange':
           logBulk.add({'fn': action, 'x': a[0]});
           return _j({'result': {..._tankerRange('${(a[0] as Map)['from']}', '${(a[0] as Map)['to']}', (a[0] as Map)['trips'] as List), 'ok': true, 'changed': 1, 'added': 1, 'removed': 0}});
+        // (3.13.0) a water tanker's trips from a file
+        case 'checkTankerImport':
+          logBulk.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'ok': true, 'errors': [], 'added': 2, 'same': 1, 'tankers': 1}});
+        case 'importTankerTrips':
+          logBulk.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'ok': true, 'added': 2, 'same': 1}});
         case 'logPrintExtra':
           return _j({'result': {'debit': {}, 'boq': {}, 'issues': {}, 'avgRate': 90, 'lastRate': 92}});
         // (3.12.0) Log Book – all dates (the web's list filter has "ownership"), the import

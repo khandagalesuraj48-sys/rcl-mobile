@@ -1729,4 +1729,166 @@ void main() {
     expect([for (final r in imp['rows'] as List) (r as Map)['no']], ['MH-25-AJ-2169', 'Sany 210 (No.1)']);
     expect(find.text('Log Book: 1 added, 1 overwritten, 0 skipped.'), findsOneWidget);
   }, tags: ['golden']);
+
+  testWidgets('(3.13.0) Asset Master ⋮: QR labels – all on site or one; Import from Excel – a mistake listed, then checked, asked and saved (importMaster)', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Asset Master');
+    await t.tap(find.byKey(const Key('m-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('m-qr')));
+    await settle(t, 800);
+    expect(find.text('All 2 active machinery'), findsOneWidget, reason: 'the machinery on site today (OLD-9 left)');
+    expect(find.byKey(const Key('qr-one')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/39_qr_labels.png'));
+    await t.tapAt(const Offset(200, 80));
+    await settle(t, 600);
+    // a mistake in the file: nothing imported, the rows listed
+    pickThis('master.csv', utf8.encode('Machinery Number,Machinery Name,Type of Machinery\n,BAD,\n'));
+    await t.tap(find.byKey(const Key('m-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('m-import')));
+    await net(t);
+    expect(find.text('Nothing imported'), findsOneWidget);
+    expect(find.text('• Excel row 2: Type of Machinery is required.'), findsOneWidget);
+    await t.tap(find.byKey(const Key('tell-ok')));
+    await settle(t, 400);
+    pickThis('master.csv', utf8.encode('Notes\nMachinery Number,Machinery Name,Type of Machinery,Standard Average (KM/Ltr),PUC Valid Upto\nMH-25-AJ-2169,,Tipper,3.6,n/a\n,Roller 1,Roller,,30-09-2027\n'));
+    await t.tap(find.byKey(const Key('m-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('m-import')));
+    await net(t);
+    expect(find.text('Import this file?'), findsOneWidget);
+    expect(find.text('• New machinery: 1'), findsOneWidget);
+    expect(find.text('• Existing machinery that will be updated: 1'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    final calls = srv.masterCalls.where((c) => c['fn'] == 'importMaster').toList();
+    expect([for (final c in calls) c['save']], [false, false, true]);
+    expect(calls.last['rows'], [
+      {'line': 3, 'no': 'MH-25-AJ-2169', 'name': '', 'type': 'Tipper', 'kmStd': 3.6, 'pucUpto': 'NA'},
+      {'line': 4, 'no': '', 'name': 'Roller 1', 'type': 'Roller', 'kmStd': '', 'pucUpto': '2027-09-30'},
+    ]);
+    expect(find.text('Imported: 1 new, 1 updated.'), findsOneWidget);
+    expect(find.byKey(const Key('m-NEW-1')), findsOneWidget, reason: 'the Master the server sent back');
+  }, tags: ['golden']);
+
+  testWidgets('(3.13.0) Vehicle Compliance ⋮: Import Excel – the papers read, the dates it changes asked, saved (importCompliance)', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vehicle Compliance');
+    pickThis('papers.csv', utf8.encode('Machinery No,Type,PUC Valid Upto,Permit,Status (not imported)\nMH-25-AJ-2169,Tipper,30-09-2027,NA,Expired\n,,,,\n'));
+    await t.tap(find.byKey(const Key('cp-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('cp-import')));
+    await net(t);
+    expect(find.text('Import 2 dates?'), findsOneWidget);
+    expect(find.text('• MH-25-AJ-2169 – PUC: 01-10-2026 → 30-09-2027'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    final calls = srv.masterCalls.where((c) => c['fn'] == 'importCompliance').toList();
+    expect([for (final c in calls) c['save']], [false, true]);
+    expect(calls.first['rows'], [
+      {'line': 2, 'no': 'MH-25-AJ-2169', 'docs': {'PUC': '2027-09-30', 'Permit': 'NA'}, 'raw': {'PUC': '30-09-2027', 'Permit': 'NA'}},
+    ]);
+    expect(find.text('Imported: 2 date(s) on 1 machinery.'), findsOneWidget);
+  });
+
+  testWidgets('(3.13.0) Edit Log Book of a water tanker: Export Excel – the web\'s file; Import Excel – checked, asked, imported, the tanker read again', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms['Log Book'] = 'Edit'
+      ..tanker = true;
+    final s = await ready(t, srv);
+    final files = catchFiles();
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook'));
+    await net(t);
+    await t.tap(find.byKey(const Key('lb-menu')));
+    await settle(t, 500);
+    await t.tap(find.text('Edit Log Book').last);
+    await net(t);
+    await tapK(t, 'lx-no');
+    await net(t);
+    await t.tap(find.text('MH-04-J-9844').last);
+    await net(t);
+    await tapK(t, 'lx-q-this');
+    await settle(t, 300);
+    await tapK(t, 'lx-load');
+    await net(t);
+    await reach(t, 'lt-export-b', 'lx-list');
+    await tapK(t, 'lt-export-b');
+    await net(t);
+    expect(files.last.$1, 'Water tanker MH-04-J-9844 01-10-2026 to 14-10-2026.xlsx');
+    final tab = readSheets(files.last.$2).single;
+    expect(tab.name, 'Trips');
+    expect(tab.rows[2].first, 'WATER TANKER REPORT – MH-04-J-9844 – 01-10-2026 to 14-10-2026');
+    expect(tab.rows[4], ['SR. NO.', 'DATE', 'SHIFT', 'NAME OF AGENCY', 'VEHICLE NO', 'CHALLAN NO', 'DISPATCH TIME', 'UNLOAD TIME', 'TRIP', 'CHAINAGE NO', 'USE FOR']);
+    expect(tab.rows[5].take(5), [1, '14-10-2026', 'Day', 'Chalke Enterprises', 'MH-04-J-9844']);
+    expect(tab.rows.length, 5 + 2 + 100, reason: 'the 2 trips and 100 empty lines to fill');
+    expect(find.textContaining('2 trips and 100 empty lines.'), findsOneWidget);
+    pickThis('trips.csv', utf8.encode('DATE,SHIFT,VEHICLE NO,CHALLAN NO,DISPATCH TIME,UNLOAD TIME,USE FOR\n13-10-2026,night,,WT-9,21:00,21:30,Curing\n13-10-2026,,MH-04-J-0001,WT-10,08:00,08:20,\n'));
+    await reach(t, 'lt-import-b', 'lx-list');
+    await tapK(t, 'lt-import-b');
+    await net(t);
+    expect(find.text('Import the trips?'), findsOneWidget);
+    expect(find.text('• 2 trips will be added (1 tanker)'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    final chk = srv.logBulk.firstWhere((c) => c['fn'] == 'checkTankerImport')['x'] as Map;
+    expect(chk['rows'], [
+      {'line': 'Sheet1 – 2', 'no': 'MH-04-J-9844', 'date': '2026-10-13', 'shift': 'Night', 'c': 'WT-9', 'a': '21:00', 'b': '21:30', 'ch': '', 'u': 'Curing'},
+      {'line': 'Sheet1 – 3', 'no': 'MH-04-J-0001', 'date': '2026-10-13', 'shift': 'Day', 'c': 'WT-10', 'a': '08:00', 'b': '08:20', 'ch': '', 'u': ''},
+    ]);
+    expect(srv.logBulk.where((c) => c['fn'] == 'importTankerTrips').length, 1);
+    expect(find.text('Water tanker: 2 trips added, 1 already saved.'), findsOneWidget);
+    expect(srv.logBulk.where((c) => c['fn'] == 'getTankerRange').length, 2, reason: 'the tanker read again');
+  });
+
+  testWidgets('(3.13.0) Store – Import from Excel: every row checked (new / already there / near name); a near name added only when ticked; the template', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    final files = catchFiles();
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.ensureVisible(find.text('Store'));
+    await settle(t, 400);
+    await t.tap(find.text('Store'));
+    await net(t);
+    await t.tap(find.byKey(const Key('st-tab-items')));
+    await settle(t, 800);
+    await tapK(t, 'st-tpl');
+    await net(t);
+    expect(files.last.$1, 'Items_template.xlsx');
+    final tpl = readSheets(files.last.$2).single;
+    expect(tpl.name, 'Items');
+    expect(tpl.rows, [
+      ['Item Code', 'Item Name', 'Unit', 'Category', 'HSN Code', 'GST %', 'Min Stock', 'Status'],
+      ['', 'Hydraulic Hose 1/2 inch', 'Mtr', 'Spare Parts', '40092100', 18, 10, ''],
+    ]);
+    pickThis('items.csv', utf8.encode('Item Name,Unit,Category,GST %\nSugar,Kg,Canteen,5\nSugaar,Kg,Canteen,"1,000"\nGrease,Kg,Spare Parts,18\n\n'));
+    await tapK(t, 'st-import');
+    await net(t);
+    expect(find.text('Import from Excel – check'), findsOneWidget);
+    expect(find.text('3 rows: 1 new, 1 already there (left out), 1 near names to confirm, 0 with a mistake.'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/38_store_import.png'));
+    await tapK(t, 'si-go');
+    await net(t);
+    expect(find.text('Confirm the near names first.'), findsWidgets, reason: 'not ticked: the server refuses, the check is read again');
+    await tapK(t, 'si-ok-3');
+    await settle(t, 300);
+    await tapK(t, 'si-go');
+    await net(t);
+    final imps = srv.storeSent.where((x) => x['action'] == 'import').toList();
+    expect([for (final x in imps) jsonEncode([x['check'], x['confirm']])], ['[true,{}]', '[null,{}]', '[true,{}]', '[null,{"3":["ITM-0002"]}]']);
+    expect((imps.first['rows'] as List)[1], {'line': 3, 'name': 'Sugaar', 'unit': 'Kg', 'category': 'Canteen', 'hsn': '', 'gst': '1,000', 'minStock': ''});
+    expect(find.text('2 items imported, 1 already there (left out).'), findsOneWidget);
+    expect(find.text('5 of 5 items'), findsOneWidget);
+  }, tags: ['golden']);
 }

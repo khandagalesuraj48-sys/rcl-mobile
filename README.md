@@ -14,6 +14,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.13.0 (16-10-2026, part 12 of the whole web in the app):** the other **Excel imports** and the **QR labels**, as the web
+does them: **Asset Master → ⋮ Import from Excel** (for Edit: the tab "Master", the columns by their names, N/A and Lifetime papers,
+the dates; checked by the server – the rows with a mistake listed – "Import this file?", then saved) and **QR labels** (all the
+machinery on site today, or one; the web's QR code of the Mechanical link, 12 labels on an A4 page, printed); **Vehicle
+Compliance → ⋮ Import Excel** (the paper dates checked, the changes asked, saved); a **water tanker's Edit Log Book → Export
+Excel** (now the web's own file: its 100 empty lines and the Shift drop-down) and **Import Excel** (checkTankerImport,
+importTankerTrips); the **Store's Item Master → Import from Excel** (the Store Admin: every row checked – new, already there, a
+near name to confirm with "Different item – add it", a mistake – then imported) and **Import template**.
+
 **Version 3.12.0 (16-10-2026, part 11 of the whole web in the app):** the rest of the **Log Book** (Log Book → ⋮) in the app's own
 screens: **Log Book – all dates** (the web's list with its filters – dates, the "Last N days" button, machinery, shift, and the
 rest under "More filters"; the period's totals; **Print** of the list), the two **Exports** (one date – many machinery, one
