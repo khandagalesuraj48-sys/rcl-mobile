@@ -1941,7 +1941,7 @@ void main() {
     await net(t);
     await t.tap(find.byKey(const Key('entries-Transfer')));
     await net(t);
-    await t.tap(find.text('New Entry'));
+    await t.tap(find.text('New Entry').last);
     await net(t);
     final a = srv.extraCalls.firstWhere((c) => c['fn'] == 'getTransferBalance')['args'] as List;
     expect([a[0], a[4]], ['2026-10-14', '']);
