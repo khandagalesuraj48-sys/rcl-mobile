@@ -688,14 +688,17 @@ class _StoreImportScreenState extends State<StoreImportScreen> {
         ]),
         if (x['status'] == 'similar') ...[
           Padding(padding: const EdgeInsets.only(top: 4), child: Text('Near: ${[for (final y in near) '${y['code']} ${y['name']}'].join(', ')}', style: const TextStyle(fontSize: 13, color: C.muted))),
-          CheckboxListTile(
-            key: Key('si-ok-$line'),
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            controlAffinity: ListTileControlAffinity.leading,
-            value: confirm.containsKey(line),
-            onChanged: (v) => setState(() => v == true ? confirm[line] = codes : confirm.remove(line)),
-            title: Text('Different item – add it', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          Material(
+            type: MaterialType.transparency,
+            child: CheckboxListTile(
+              key: Key('si-ok-$line'),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: confirm.containsKey(line),
+              onChanged: (v) => setState(() => v == true ? confirm[line] = codes : confirm.remove(line)),
+              title: Text('Different item – add it', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            ),
           ),
         ] else if (note.isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 4), child: Text(note, style: TextStyle(fontSize: 13, color: x['status'] == 'error' ? C.red : C.muted))),
