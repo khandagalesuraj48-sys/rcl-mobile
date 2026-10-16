@@ -118,6 +118,7 @@ class FakeServer {
   // (3.8.0) Billing: the vendors to bill, September's Log Book / diesel / BOQ of MH-25-AJ-2169 (a Monthly BOQ, an Idle day,
   // diesel above the standard), the saved bills, notes, payments, ledger; what was sent
   bool billing = false;
+  static Object? _arg(List a, String k) => a.isNotEmpty && a[0] is Map ? (a[0] as Map)[k] : null;
   final billSent = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get _billRows => [
         for (var d = 1; d <= 6; d++)
@@ -492,7 +493,7 @@ class FakeServer {
         case 'getTransfers':
           return _j({'result': {'count': 0, 'qty': 0, 'rows': []}});
         // (3.8.0) Billing
-        case 'getLogBookList' when billing && ((a.isNotEmpty ? a[0] : null) as Map?)?['all'] == true:
+        case 'getLogBookList' when billing && _arg(a, 'all') == true:
           billSent.add({'fn': action, 'args': a});
           return _j({'result': {'count': 6, 'rows': _billRows, 'summary': []}});
         case 'logPrintExtra' when billing:
@@ -512,7 +513,7 @@ class FakeServer {
         case 'submitBills':
           billSent.add({'fn': action, 'x': a[0]});
           return _j({'result': {'ok': true, 'saved': [for (var i = 0; i < ((a[0] as Map)['bills'] as List).length; i++) {'id': 'BILL-0000${9 + i}', 'rev': 0}]}});
-        case 'getBills' when ((a.isNotEmpty ? a[0] : null) as Map?)?['id'] != null:
+        case 'getBills' when _arg(a, 'id') != null:
           return _j({'result': {'bills': []}}); // (a test does not open the print view)
         case 'getBills':
           billSent.add({'fn': action, 'args': a});
