@@ -47,6 +47,10 @@ def manifest(s):
                       '        <receiver android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver" android:enabled="false" android:exported="false">\n'
                       '            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>\n'
                       '        </receiver>\n    </application>', 1)
+    if 'android.speech.RecognitionService' not in s:      # (3.15.0) the assistant: the phone's listening and speaking services
+        q = ('        <intent>\n            <action android:name="android.speech.RecognitionService"/>\n        </intent>\n'
+             '        <intent>\n            <action android:name="android.intent.action.TTS_SERVICE"/>\n        </intent>\n')
+        s = s.replace('    </queries>', q + '    </queries>', 1) if '</queries>' in s else s.replace('</manifest>', '    <queries>\n' + q + '    </queries>\n</manifest>', 1)
     if 'android.media.action.IMAGE_CAPTURE' not in s:
         q = ('        <intent>\n            <action android:name="android.media.action.IMAGE_CAPTURE"/>\n        </intent>\n'
              '        <intent>\n            <action android:name="android.intent.action.VIEW"/>\n            <data android:scheme="https"/>\n        </intent>\n')
@@ -73,17 +77,20 @@ def gradle(s):
         s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
     return s
 
-ROOT_KT = ('\n// (3.11.0) file_picker 11 leaves its Kotlin code to AGP 9\'s built-in Kotlin, which this project keeps off (android.builtInKotlin=false):\n'
-           '// its Kotlin is compiled with the Kotlin plugin, as the other plugins do.\n'
-           'subprojects {\n    if (name == "file_picker") {\n        pluginManager.withPlugin("com.android.library") {\n'
+ROOT_KT = ('\n// (3.11.0) file_picker 11 (and 3.15.0 speech_to_text 7.5) leave their Kotlin code to AGP 9\'s built-in Kotlin, which this project\n'
+           '// keeps off (android.builtInKotlin=false): their Kotlin is compiled with the Kotlin plugin, as the other plugins do.\n'
+           'subprojects {\n    if (name == "file_picker" || name == "speech_to_text") {\n        pluginManager.withPlugin("com.android.library") {\n'
            '            if (!pluginManager.hasPlugin("org.jetbrains.kotlin.android")) pluginManager.apply("org.jetbrains.kotlin.android")\n        }\n    }\n}\n')
 def root_gradle(s):
+    if 'name == "file_picker")' in s:      # (3.15.0) an older patch: speech_to_text added to it
+        return s.replace('name == "file_picker")', 'name == "file_picker" || name == "speech_to_text")')
     return s if 'name == "file_picker"' in s else s + ROOT_KT
 
 USES = [('NSCameraUsageDescription', 'RCL ERP uses the camera for the photos of an entry (Diesel Issue and others).'),
         ('NSLocationWhenInUseUsageDescription', 'RCL ERP saves the place of every entry, as the web ERP does.'),
-        ('NSMicrophoneUsageDescription', 'RCL ERP uses the microphone for a screen-share help call.'),
-        ('NSPhotoLibraryUsageDescription', 'RCL ERP lets you choose a photo for an entry.')]
+        ('NSMicrophoneUsageDescription', 'RCL ERP uses the microphone when you talk with the assistant and for a screen-share help call.'),
+        ('NSPhotoLibraryUsageDescription', 'RCL ERP lets you choose a photo for an entry.'),
+        ('NSSpeechRecognitionUsageDescription', 'RCL ERP turns what you say to the assistant into words (a question or an entry).')]
 def plist(s):
     if '<key>CFBundleDisplayName</key>' in s:
         s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1RCL ERP\2', s, count=1)
@@ -91,6 +98,7 @@ def plist(s):
         s = s.replace('<dict>', '<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>RCL ERP</string>', 1)
     for k, v in USES:
         if '<key>%s</key>' % k not in s: s = s.replace('<dict>', '<dict>\n\t<key>%s</key>\n\t<string>%s</string>' % (k, v), 1)
+    s = s.replace('RCL ERP uses the microphone for a screen-share help call.', dict(USES)['NSMicrophoneUsageDescription'])
     return s
 
 edit(MAN, manifest)

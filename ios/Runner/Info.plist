@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>RCL ERP turns what you say to the assistant into words (a question or an entry).</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -13,7 +15,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>RCL ERP saves the place of every entry, as the web ERP does.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>RCL ERP uses the microphone for a screen-share help call.</string>
+	<string>RCL ERP uses the microphone when you talk with the assistant and for a screen-share help call.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>RCL ERP lets you choose a photo for an entry.</string>
 	<key>CFBundleExecutable</key>

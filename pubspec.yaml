@@ -28,6 +28,8 @@ dependencies:
   archive: ">=3.6.0 <5.0.0" # (3.2.0) the reports as Excel files (an .xlsx is a zip)
   qr: ^3.0.2 # (3.13.0) the QR labels of the Asset Master – the same QR maker as the web's (qrcode-generator, ported)
   file_picker: ^11.0.3 # (3.11.0) (13.x needs another win32 than share_plus 12) an Excel / CSV file to import, from the phone's files
+  flutter_tts: ^4.2.5 # (3.15.0) the assistant's answer said aloud (the web's speechSynthesis)
+  speech_to_text: ">=7.5.0 <8.0.0" # (3.15.0) a question heard – the talk with the assistant (the web's SpeechRecognition)
 
 dev_dependencies:
   flutter_test:

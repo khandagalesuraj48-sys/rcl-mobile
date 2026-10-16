@@ -411,6 +411,9 @@ class AiChat extends ChangeNotifier {
     }
   }
 
+  /// A message of the screen itself (the microphone not allowed …) – shown as an error.
+  void note(String t) => _add(AiMsg(AiKind.err, t));
+
   /// "Ask again" of an error: the error goes, the words are asked again.
   Future<void> retry(AiMsg m) async {
     if (busy) return;

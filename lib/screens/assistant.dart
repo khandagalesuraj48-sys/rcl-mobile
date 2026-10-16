@@ -11,6 +11,7 @@ import '../core/ai_chat.dart';
 import '../core/assistant.dart';
 import '../core/kinds.dart';
 import '../core/session.dart';
+import '../core/voice.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
@@ -104,6 +105,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
   final input = TextEditingController();
   final scroll = ScrollController();
 
+  // the talk (the web's aiLiveStart / aiListen): he speaks, it answers aloud, it listens again – until Stop, "थांब" or 3 silences
+  bool live = false, saying = false;
+  String liveState = ''; // hear · think · say
+  int silent = 0, sayingMsg = -1;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -117,11 +123,13 @@ class _AssistantScreenState extends State<AssistantScreen> {
     };
     c.addListener(_changed);
     if (c.msgs.isEmpty) c.reset();
-    // the daily summary that waits on the Ask button (once a day)
+    // the daily summary that waits on Ask (once a day) – after this first picture (the dot on Home goes then)
     if (s.briefDue.value) {
-      s.briefDue.value = false;
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted) c.ready('brief');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        s.briefDue.value = false;
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted) c.ready('brief');
+        });
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _bottom());
@@ -129,6 +137,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   @override
   void dispose() {
+    if (live || saying) {
+      live = false;
+      stopListening();
+      stopSaying();
+    }
     _c?.removeListener(_changed);
     if (_c?.onForm == _form) _c!.onForm = null;
     input.dispose();
@@ -152,6 +165,96 @@ class _AssistantScreenState extends State<AssistantScreen> {
     input.clear();
     HapticFeedback.selectionClick();
     await chat.ask(t);
+  }
+
+  String get _help => chat.a.helpLang;
+
+  /// 🔊 of an answer: said aloud in its language (Devanagari: Marathi – Hindi when his help is Hindi); pressed again: stops.
+  Future<void> _sayMsg(int i) async {
+    if (saying) {
+      await stopSaying();
+      if (mounted) setState(() => saying = false);
+      if (sayingMsg == i) return;
+    }
+    final t = chat.plain(chat.msgs[i].text);
+    setState(() {
+      saying = true;
+      sayingMsg = i;
+    });
+    await sayAloud(t, RegExp(r'[\u0900-\u097F]').hasMatch(t) ? (_help == 'hi' ? 'hi' : 'mr') : 'en');
+    if (mounted && sayingMsg == i) setState(() => saying = false);
+  }
+
+  void _liveShow(String st) {
+    if (mounted) setState(() => liveState = st);
+  }
+
+  Future<void> _liveStart() async {
+    if (live) return _liveStop();
+    if (chat.busy) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      live = true;
+      silent = 0;
+    });
+    await _listen();
+  }
+
+  Future<void> _liveStop([String msg = '']) async {
+    final was = live || saying;
+    setState(() {
+      live = false;
+      saying = false;
+      liveState = '';
+    });
+    if (was) {
+      await stopListening();
+      await stopSaying();
+    }
+    if (msg.isNotEmpty) chat.note(msg);
+  }
+
+  Future<void> _listen() async {
+    if (!mounted || !live || chat.busy || saying) return;
+    _liveShow('hear');
+    String said;
+    try {
+      said = (await listenOnce(_help, (w) => input.text = w)).trim();
+    } on VoiceError catch (e) {
+      final a = chat.a;
+      await _liveStop(e.code == 'mic'
+          ? a.aiL(const {
+              'en': 'The microphone is not allowed for this app. Allow it in the phone\'s Settings → Apps → RCL ERP → Permissions, and press the microphone again.',
+              'mr': 'या app ला microphone ची परवानगी नाही. फोनच्या Settings → Apps → RCL ERP → Permissions मध्ये microphone ला परवानगी द्या आणि mic बटण पुन्हा दाबा.',
+              'hi': 'इस app को microphone की अनुमति नहीं है। फ़ोन की Settings → Apps → RCL ERP → Permissions में microphone की अनुमति दें और mic बटन फिर दबाएँ।',
+            })
+          : a.aiL(const {'en': 'This phone cannot listen (it has no speech recognition).', 'mr': 'हा फोन ऐकू शकत नाही (त्यावर speech recognition नाही).', 'hi': 'यह फ़ोन सुन नहीं सकता (उस पर speech recognition नहीं है)।'}));
+      return;
+    }
+    input.clear();
+    if (!mounted || !live) return;
+    if (said.isEmpty) {
+      silent++;
+      if (silent >= 3) return _liveStop();
+      await Future.delayed(const Duration(milliseconds: 250));
+      return _listen();
+    }
+    silent = 0;
+    if (kAiStopWords.hasMatch(said)) return _liveStop();
+    _liveShow('think');
+    await chat.ask(said);
+    if (!mounted || !live) return;
+    final s = SessionScope.read(context);
+    if (s.prefs['voiceOut'] != false) {
+      _liveShow('say');
+      saying = true;
+      await sayAloud(chat.lastAnswer, chat.lastLang.isNotEmpty ? chat.lastLang : _help);
+      saying = false;
+    }
+    if (!mounted || !live) return;
+    _liveShow('hear');
+    await Future.delayed(const Duration(milliseconds: 300));
+    return _listen();
   }
 
   /// "Open in the form": the app's own form with the entry in it (the web puts the date, shift, machinery and litres in the form).
@@ -260,7 +363,25 @@ class _AssistantScreenState extends State<AssistantScreen> {
       case AiKind.me:
         return _bubble(mt.Text(m.text, style: const TextStyle(fontSize: 15.5, color: Colors.white, height: 1.35)), color: C.green, right: true, key: Key('ai-me-$i'));
       case AiKind.bot:
-        return _bubble(_rich(m.text), border: C.line, key: Key('ai-bot-$i'));
+        return _bubble(
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: _rich(m.text)),
+            SizedBox(
+              width: 34,
+              height: 30,
+              child: IconButton(
+                key: Key('ai-say-$i'),
+                padding: EdgeInsets.zero,
+                iconSize: 20,
+                tooltip: tr('Listen'),
+                onPressed: () => _sayMsg(i),
+                icon: Icon(saying && sayingMsg == i ? Icons.stop_circle_outlined : Icons.volume_up_rounded, color: C.faint),
+              ),
+            ),
+          ]),
+          border: C.line,
+          key: Key('ai-bot-$i'),
+        );
       case AiKind.src:
         return Padding(
           key: Key('ai-src-$i'),
@@ -408,11 +529,41 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 ),
               ),
             ),
+          if (live)
+            Container(
+              key: const Key('ai-live'),
+              margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+              padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+              decoration: BoxDecoration(color: liveState == 'say' ? C.blueSoft : C.greenSoft, borderRadius: BorderRadius.circular(16)),
+              child: Row(children: [
+                Icon(liveState == 'say' ? Icons.volume_up_rounded : liveState == 'think' ? Icons.hourglass_top_rounded : Icons.mic_rounded, color: liveState == 'say' ? C.blue : C.green, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: mt.Text(
+                      c.a.aiL(liveState == 'say'
+                          ? const {'en': 'Speaking… (press Stop to end)', 'mr': 'बोलतो आहे… (थांबवायला Stop दाबा)', 'hi': 'बोल रहा हूँ… (रोकने के लिए Stop दबाएँ)'}
+                          : liveState == 'think'
+                              ? const {'en': 'Finding the answer…', 'mr': 'उत्तर शोधतो आहे…', 'hi': 'जवाब ढूँढ रहा हूँ…'}
+                              : const {'en': 'Listening… speak now', 'mr': 'ऐकतो आहे… बोला', 'hi': 'सुन रहा हूँ… बोलिए'}),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                ),
+                TextButton(key: const Key('ai-live-stop'), onPressed: () => _liveStop(), child: const Text('Stop')),
+              ]),
+            ),
           Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
             decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .05), blurRadius: 10, offset: const Offset(0, -3))]),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                // the talk: he speaks, it answers aloud (the web's microphone button)
+                IconButton.filledTonal(
+                  key: const Key('ai-mic'),
+                  tooltip: tr('Talk'),
+                  style: IconButton.styleFrom(backgroundColor: live ? C.green : C.greenSoft, foregroundColor: live ? Colors.white : C.green, minimumSize: const Size(48, 48)),
+                  onPressed: c.busy && !live ? null : _liveStart,
+                  icon: Icon(live ? Icons.mic_rounded : Icons.mic_none_rounded),
+                ),
+                const SizedBox(width: 6),
                 Expanded(
                   child: TextField(
                     key: const Key('ai-in'),

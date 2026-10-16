@@ -276,6 +276,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           },
         ),
         _row(
+          id: 'voice',
+          icon: Icons.record_voice_over_rounded,
+          color: C.blue,
+          en: 'Speak the answer aloud when I ask by voice',
+          mr: 'मी आवाजाने विचारल्यावर उत्तर मोठ्याने बोला',
+          value: s.prefs['voiceOut'] == false ? 'No' : 'Yes',
+          onTap: () async {
+            final cur = s.prefs['voiceOut'] == false ? 'off' : 'on';
+            final v = await _pick('Speak the answer aloud when I ask by voice', const [('on', 'Yes'), ('off', 'No')], cur);
+            if (v != null && v != cur) await _save('voice', () => s.savePrefs({'voiceOut': v == 'on'}));
+          },
+        ),
+        _row(
           id: 'text',
           icon: Icons.format_size_rounded,
           color: C.purple,

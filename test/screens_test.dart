@@ -14,6 +14,7 @@ import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
 import 'package:rcl_mobile/core/qr_scan.dart' show scanLabel;
+import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
@@ -2143,7 +2144,7 @@ void main() {
     await net(t);
     expect(find.text('New Diesel Issue'), findsOneWidget);
     expect(find.text('Diesel history – MH-25-AJ-2169'), findsOneWidget);
-    expect(find.text('50'), findsOneWidget, reason: 'the litres in the box');
+    expect(find.text('50'), findsWidgets, reason: 'the litres in the box');
     await t.tap(find.byIcon(Icons.arrow_back_rounded).first);
     await net(t);
     expect(srv.saved, isEmpty);
@@ -2240,4 +2241,49 @@ void main() {
     expect(find.textContaining('✓ gemini-3.8-flash – answered in 1.2 s'), findsOneWidget);
     expect(find.textContaining('✗ gemini-3.7-flash – 503: The model is overloaded.'), findsOneWidget);
   }, tags: ['golden']);
+
+  testWidgets('(3.15.0) Ask the app by voice: he speaks, it answers aloud, it listens again; "हो" saves the entry heard; 3 silences end the talk; 🔊 of an answer', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = FakeServer();
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    final heard = <String>['MH-25-AJ-2169 la 40 litre diesel de km 15280', 'हो', '', '', ''];
+    final said = <List<String>>[];
+    final oL = voice.listenOnce, oS = voice.sayAloud, oSL = voice.stopListening, oSS = voice.stopSaying;
+    addTearDown(() {
+      voice.listenOnce = oL;
+      voice.sayAloud = oS;
+      voice.stopListening = oSL;
+      voice.stopSaying = oSS;
+    });
+    voice.listenOnce = (lang, h) async {
+      expect(lang, 'mr', reason: 'he is heard in his help language');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final w = heard.isEmpty ? '' : heard.removeAt(0);
+      h(w);
+      return w;
+    };
+    voice.sayAloud = (text, lang) async => said.add([text, lang]);
+    voice.stopListening = () async {};
+    voice.stopSaying = () async {};
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await tapK(t, 'home-ask');
+    await net(t);
+    await tapK(t, 'ai-mic');
+    for (var i = 0; i < 5; i++) {
+      await net(t);
+    }
+    expect(srv.saved.single['qty'], 40, reason: '"हो" said: saved through the app\'s save');
+    expect(srv.saved.single['kmReading'], 15280);
+    expect(said.first, ['MH-25-AJ-2169 ला 40 लिटर diesel, Dispenser मधून, 14-10-2026 Day. Save करू का?', 'mr'], reason: 'the entry said aloud, asking for the yes');
+    expect(said[1][0], startsWith('Save झाले ✔ Diesel Issue DI-000526 – MH-25-AJ-2169'));
+    expect(heard, isEmpty);
+    expect(find.byKey(const Key('ai-live')), findsNothing, reason: '3 silences: the talk ends');
+    await t.tap(find.byIcon(Icons.volume_up_rounded).last);
+    await net(t);
+    expect(said.last[1], 'mr');
+    expect(said.last[0], startsWith('Save झाले ✔'));
+  });
 }

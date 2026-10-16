@@ -19,11 +19,11 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// (3.11.0) file_picker 11 leaves its Kotlin code to AGP 9's built-in Kotlin, which this project keeps off (the Flutter template's
-// android.builtInKotlin=false – the other plugins bring the Kotlin plugin themselves): without it FilePickerPlugin is not compiled
-// and the app does not build. Its Kotlin is compiled with the Kotlin plugin, as the other plugins do.
+// (3.11.0) file_picker 11 – and (3.15.0) speech_to_text 7.5 – leave their Kotlin code to AGP 9's built-in Kotlin, which this
+// project keeps off (the Flutter template's android.builtInKotlin=false – the other plugins bring the Kotlin plugin themselves):
+// without it their plugin classes are not compiled and the app does not build. Their Kotlin is compiled with the Kotlin plugin.
 subprojects {
-    if (name == "file_picker") {
+    if (name == "file_picker" || name == "speech_to_text") {
         pluginManager.withPlugin("com.android.library") {
             if (!pluginManager.hasPlugin("org.jetbrains.kotlin.android")) pluginManager.apply("org.jetbrains.kotlin.android")
         }
