@@ -18,6 +18,7 @@ import 'billing.dart';
 import 'breakdown.dart';
 import 'verify.dart';
 import 'logbook.dart';
+import 'store.dart';
 import 'masters.dart';
 import '../ui/t.dart';
 
@@ -44,7 +45,7 @@ const kModules = [
   ModuleTile('Diesel', 'डिझेल', 'fuel_pump', C.green, C.greenSoft, native: 'diesel'),
   ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, native: 'breakdown', perm: 'Breakdown'), // (3.7.0) the app's own Breakdown
   ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, native: 'billing'), // (3.8.0) the app's own Billing screens
-  ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, page: 'store__dashboard', module: 'store'),
+  ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, native: 'store', module: 'store'), // (3.10.0) the app's own Store screens
   ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', C.blue, C.blueSoft, native: 'reports'),
   ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, native: 'admin', admin: true), // (3.9.0) the app's own Admin screens
 ];
@@ -189,6 +190,10 @@ class _HomeTabState extends State<HomeTab> {
     }
     if (m.native == 'admin') {
       await openAdmin(context);
+      return;
+    }
+    if (m.native == 'store') {
+      await openStore(context);
       return;
     }
     await openWeb(context, m.en, m.page, pic: m.pic);

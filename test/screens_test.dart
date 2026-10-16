@@ -1356,6 +1356,7 @@ void main() {
     await t.tap(find.text('Edit').last);
     await settle(t, 600);
     await t.enterText(find.byKey(const Key('ua-new-pw')), 'Once#2026');
+    await settle(t, 600);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/32_admin_users.png'));
     await tapK(t, 'ua-add');
@@ -1392,5 +1393,50 @@ void main() {
     await t.enterText(find.byKey(const Key('rm-in-rm_ad_email')), 'boss@site.com');
     await settle(t, 400);
     expect(find.textContaining("values ('boss@site.com', 'boss@site.com', 'Admin'"), findsOneWidget, reason: 'the SQL follows what is typed');
+  }, tags: ['golden']);
+
+  testWidgets('(3.10.0) Store: its own sign-in (a Portal ticket); the Dashboard; the Item Master – a near name asked, saved as a different item', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.ensureVisible(find.text('Store'));
+    await settle(t, 400);
+    await t.tap(find.text('Store'));
+    await net(t);
+    expect(srv.calls, contains('portal:go:store:S1'));
+    expect(srv.storeSent.first, {'fn': 'sso', 'ticket': 'tk2'});
+    expect(srv.storeSent[1]['cookie'], startsWith('rcl_store=S1.store1-'), reason: 'the Store\'s own sign-in, kept for its calls');
+    expect(find.text('Added this month'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/33_store.png'));
+    await t.tap(find.byKey(const Key('st-tab-items')));
+    await settle(t, 800);
+    expect(find.text('3 of 3 items'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('st-q')), 'filter');
+    await settle(t, 400);
+    expect(find.text('1 of 3 items'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('st-q')), '');
+    await settle(t, 400);
+    await t.tap(find.byKey(const Key('st-new')));
+    await net(t);
+    await t.enterText(box('it-name'), 'Sugaar');
+    await net(t, 800);
+    expect(find.text('Near: ITM-0002 Sugar'), findsOneWidget, reason: 'said while typing');
+    await t.tap(find.byKey(const Key('it-unit')));
+    await settle(t, 600);
+    await t.tap(find.text('Kg').last);
+    await settle(t, 400);
+    await t.enterText(box('it-cat'), 'Canteen');
+    await tapK(t, 'it-save');
+    await net(t);
+    expect(find.text('Is it the same item?'), findsOneWidget);
+    await t.tap(find.byKey(const Key('itc-diff')));
+    await net(t);
+    final saves = srv.storeSent.where((x) => x['action'] == 'save').toList();
+    expect([for (final x in saves) x['confirm']], [[], ['ITM-0002']]);
+    expect((saves.last['item'] as Map)['name'], 'Sugaar');
+    expect(find.text('4 of 4 items'), findsOneWidget, reason: 'the list read again');
   }, tags: ['golden']);
 }

@@ -14,6 +14,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.10.0 (16-10-2026, part 9 of the whole web in the app):** **Store** (Home → Store) in the app's own screens – its own
+sign-in through the Portal (a ticket for the Store, used once), by the pages the Portal gave: the **Dashboard** (items, active,
+inactive, categories, added this month; recently added; items by category) and the **Item Master** of this site (search,
+category, status; + Add item – the name checked while typing, a proper name suggested, the same name refused, a near name asked
+"is it the same item?", a near category asked; Edit / Delete by the Store Admin; Export to Excel).
+
 **Version 3.9.0 (16-10-2026, part 8 of the whole web in the app):** **Administration** (Home → Administration, Admin only) in
 the app's own screens: **Users & Access** (every user and his access per page – Edit / View / No access; read only once the
 Super Admin gives users and access, else add a user, change one, a one-time password, set a whole column; the Access report and

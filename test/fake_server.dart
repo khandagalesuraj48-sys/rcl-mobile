@@ -180,6 +180,14 @@ class FakeServer {
       '<table class="rm-t"><tr><th>भाग</th><th>काम</th></tr><tr><td><b>Supabase</b></td><td>data</td></tr></table><ol><li>पहिले</li><li>दुसरे <span class="rm-ok">✔ ok</span></li></ol>'
       '<div class="rm-step"><div class="rm-n">1</div><div class="rm-sb"><h4>Supabase project</h4><p>New project.</p></div></div>'
       '<div class="rm-adm"><label>Email <input id="rm_ad_email" type="email" placeholder="admin@company.com"></label></div><div class="rm-code"><button class="btn ghost small rm-copy" data-copy="rm_sql_admin">Copy</button><pre id="rm_sql_admin"></pre></div>';
+  // (3.10.0) the Store: its sign-in (a ticket), the Item Master of the site; what was sent
+  final storeSent = <Map<String, dynamic>>[];
+  int storeSessions = 0;
+  final storeItems = <Map<String, dynamic>>[
+    {'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'category': 'Spare Parts', 'hsn': '40092100', 'gst_pct': 18, 'min_stock': 10, 'status': 'Active', 'similar_note': null, 'created_by': 'sujit@rcl.test', 'created_at': '2026-10-02T06:00:00Z'},
+    {'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'category': 'Canteen', 'hsn': '', 'gst_pct': 5, 'min_stock': null, 'status': 'Active', 'similar_note': null, 'created_by': 'sujit@rcl.test', 'created_at': '2026-10-10T06:00:00Z'},
+    {'code': 'ITM-0003', 'name': 'Oil Filter', 'unit': 'Nos', 'category': 'Spare Parts', 'hsn': '8421', 'gst_pct': 18, 'min_stock': 4, 'status': 'Inactive', 'similar_note': null, 'created_by': 'clerk@rcl.test', 'created_at': '2026-09-20T06:00:00Z'},
+  ];
   Map<String, dynamic> get _compliance => {
         'today': '2026-10-14', 'soonDays': 30, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'noPapers': 1,
         'machines': [
@@ -255,6 +263,39 @@ class FakeServer {
     if (r.url.host == 'ifsc.razorpay.com') {
       calls.add('ifsc:${r.url.path}');
       return r.url.path == '/SBIN0001234' ? _j({'BANK': 'State Bank of India', 'BRANCH': 'Nashik Road', 'CITY': 'Nashik', 'STATE': 'Maharashtra'}) : _j('Not Found', 404);
+    }
+    if (path.endsWith('/store/api/sso')) {
+      final b = jsonDecode(r.body) as Map;
+      storeSent.add({'fn': 'sso', 'ticket': b['ticket']});
+      if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the Store page.'}, 403);
+      storeSessions++;
+      return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': true}, 'pages': {'dashboard': 'View', 'items': 'Edit'}, 'site': 'S1', 'siteName': 'VTR Site – NH 848'}, 200,
+          {'set-cookie': 'rcl_store=S1.store$storeSessions-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Path=/; HttpOnly; SameSite=Lax'});
+    }
+    if (path.endsWith('/store/api/items')) {
+      final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      storeSent.add({'cookie': r.headers['Cookie'], ...b});
+      if (!'${r.headers['Cookie']}'.startsWith('rcl_store=S1.store')) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      switch (b['action']) {
+        case 'list':
+          return _j({'items': storeItems, 'units': ['Nos', 'Kg', 'Ltr', 'Mtr'], 'categories': ['Canteen', 'Spare Parts'], 'admin': true, 'site': 'S1'});
+        case 'check':
+          final n = '${b['name']}'.trim();
+          final near = n.toLowerCase() == 'sugaar' ? [{'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'category': 'Canteen', 'why': 'spelling'}] : [];
+          return _j({'proper': {'name': n == 'hydrolic pump' ? 'Hydraulic Pump' : n, 'fixes': n == 'hydrolic pump' ? ['hydrolic → hydraulic'] : []}, 'exact': null, 'similar': near, 'cat': {'category': b['category'], 'near': []}});
+        case 'save':
+          final it = (b['item'] as Map).cast<String, dynamic>();
+          if ('${it['name']}'.toLowerCase() == 'sugaar' && !((b['confirm'] as List?) ?? const []).contains('ITM-0002')) {
+            return _j({'error': 'Please confirm: "Sugar" (ITM-0002) is already there – is "Sugaar" a different item?', 'code': 'similar', 'similar': [{'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'category': 'Canteen', 'why': 'spelling'}]}, 409);
+          }
+          final out = {'code': 'ITM-000${storeItems.length + 1}', 'name': it['name'], 'unit': it['unit'], 'category': it['category'], 'hsn': it['hsn'], 'gst_pct': num.tryParse('${it['gst']}'), 'min_stock': num.tryParse('${it['minStock']}'), 'status': 'Active', 'created_by': 'sujit@rcl.test', 'created_at': '2026-10-14T05:00:00Z'};
+          storeItems.add(out);
+          return _j({'ok': true, 'item': out});
+        case 'remove':
+          storeItems.removeWhere((i) => i['code'] == b['code']);
+          return _j({'ok': true});
+      }
+      return _j({'error': 'Unknown action.'}, 404);
     }
     if (path.endsWith('/api/rpc')) {
       final b = jsonDecode(r.body) as Map;
