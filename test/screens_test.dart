@@ -1668,7 +1668,7 @@ void main() {
 
   testWidgets('(3.12.0) Log Book ⋮: All dates – the web\'s filter, the totals, the period total; Export date-wise read back; Import from Excel – a changed entry overwritten', (t) async {
     phone(t);
-    final srv = FakeServer();
+    final srv = FakeServer()..perms['Log Book'] = 'Edit'; // Import from Excel and the templates: Edit only, as on the web
     final s = await ready(t, srv);
     final files = catchFiles();
     await t.pumpWidget(RclApp(session: s));
