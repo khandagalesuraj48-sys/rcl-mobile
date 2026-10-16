@@ -1458,6 +1458,20 @@ void main() {
     addTearDown(() => pickSheetFile = orig);
   }
 
+  /// A widget of a long list brought into the list first (a list builds only what is near the screen).
+  Future<void> reach(WidgetTester t, String key, String list) async {
+    final f = find.byKey(Key(key));
+    final sc = find.descendant(of: find.byKey(Key(list)), matching: find.byType(Scrollable)).first;
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 200);
+    if (f.evaluate().isEmpty) {
+      await t.drag(sc, const Offset(0, 3000));
+      await settle(t, 400);
+      if (f.evaluate().isEmpty) await t.scrollUntilVisible(f, 250, scrollable: sc);
+    }
+    await settle(t, 300);
+  }
+
   Future<void> more(WidgetTester t, String item) async {
     await t.tap(find.byKey(const Key('en-more')));
     await settle(t, 600);
@@ -1521,10 +1535,13 @@ void main() {
     expect(find.textContaining('25% of total'), findsOneWidget, reason: '60 of 240');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/35_entry_find.png'));
+    await reach(t, 'ef-share', 'ef-list');
     await tapK(t, 'ef-share');
     await settle(t, 500);
+    await reach(t, 'ef-sh-3', 'ef-list');
     expect(find.text('Sany 210 (No.1)'), findsWidgets);
     expect(find.text('80 Ltr · 33.33%'), findsWidgets);
+    await reach(t, 'ef-export', 'ef-list');
     await tapK(t, 'ef-export');
     await net(t);
     expect(srv.listAsked.last['all'], true);
@@ -1604,26 +1621,35 @@ void main() {
     expect([bulk.first['date'], bulk.first['shift'], bulk.first['source']], ['2026-10-14', 'Day', 'Dispenser']);
     expect(find.text('1 diesel issues saved (DI-000527 to DI-000527).'), findsOneWidget);
     // one machinery, many dates: the next row is the next day; the KM its meter gives
+    await reach(t, 'im-t-mach', 'im-list');
     await tapK(t, 'im-t-mach');
     await settle(t, 500);
+    await reach(t, 'im-mach', 'im-list');
     await tapK(t, 'im-mach');
     await settle(t, 800);
     await t.tap(find.text('MH-25-AJ-2169').last);
     await settle(t, 600);
+    await reach(t, 'im-mrow-0-date', 'im-list');
     await tapK(t, 'im-mrow-0-date');
     await settle(t, 600);
     await t.tap(find.text('13').last);
     await settle(t, 300);
     await t.tap(find.text('OK'));
     await settle(t, 600);
+    await reach(t, 'im-mrow-0-qty', 'im-list');
     await t.enterText(box('im-mrow-0-qty'), '50');
+    await reach(t, 'im-mrow-0-km', 'im-list');
     await t.enterText(box('im-mrow-0-km'), '15130');
+    await reach(t, 'im-madd', 'im-list');
     await tapK(t, 'im-madd');
     await net(t);
+    await reach(t, 'im-mrow-1-qty', 'im-list');
     await t.enterText(box('im-mrow-1-qty'), '40');
+    await reach(t, 'im-mrow-1-km', 'im-list');
     await t.enterText(box('im-mrow-1-km'), '15200');
     await settle(t, 300);
     expect(find.text('Rows: 2  Diesel: 90 Ltr'), findsOneWidget);
+    await reach(t, 'im-madd', 'im-list');
     await tapK(t, 'im-madd');
     await settle(t, 400);
     expect(find.text('Diesel can be entered only up to today (14-10-2026).'), findsOneWidget);
