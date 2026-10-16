@@ -21,6 +21,116 @@
    ]
   }
  ],
+ "diesel_issue.xlsx": [
+  {
+   "name": "Diesel Issue",
+   "rows": [
+    [
+     "Date",
+     "Shift",
+     "Diesel Source",
+     "Machinery Number / Name",
+     "Diesel Qty (Ltr)",
+     "KM Reading",
+     "Hrs Reading",
+     "Driver Name",
+     "Remark"
+    ],
+    [
+     46310,
+     "night",
+     "dispenser",
+     "mh25aj3232",
+     60,
+     15230.5,
+     "",
+     "Ramesh",
+     ""
+    ],
+    [
+     "15-10-2026",
+     "Day",
+     "VTR Store",
+     "400 KVA DG",
+     "1,250.5",
+     "",
+     812,
+     "",
+     "night shift"
+    ],
+    [
+     "16/10/26",
+     "",
+     "",
+     "MH-12-XX-0001",
+     20,
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     46300,
+     "D",
+     "Pump",
+     "MH-25-AJ-3232",
+     0,
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     46200,
+     "Day",
+     "Dispenser",
+     "JCB 3DX",
+     35,
+     "",
+     1200,
+     "",
+     ""
+    ],
+    [
+     46320,
+     "Day",
+     "Dispenser",
+     "JCB 3DX",
+     35,
+     "",
+     1210,
+     "",
+     ""
+    ],
+    [
+     "Total",
+     "",
+     "",
+     "",
+     1400.5,
+     "",
+     "",
+     "",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "Notes",
+   "rows": [
+    [
+     "Date",
+     "Qty",
+     "Machinery"
+    ],
+    [
+     46311,
+     5,
+     "X"
+    ]
+   ]
+  }
+ ],
  "dimension_ranges.xlsx": [
   {
    "name": "Smaller",
