@@ -231,7 +231,7 @@ class FakeServer {
   http.Response _j(Object o, [int code = 200, Map<String, String> h = const {}]) => http.Response(jsonEncode(o), code, headers: {'content-type': 'application/json', ...h});
 
   /* ---- (3.17.0) the Portal's Super Admin console (api/admin): its data and its checks, as the Portal's (the same words) ---- */
-  final adminSent = <Map<String, dynamic>>[];
+  final portalAdminSent = <Map<String, dynamic>>[];
   final saUsers = <Map<String, dynamic>>[
     {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'active': true, 'super': true, 'mustChange': false, 'noPassword': false},
     {'email': 'amol@rcl.test', 'name': 'Amol Patil', 'active': true, 'super': false, 'mustChange': false, 'noPassword': false},
@@ -510,7 +510,7 @@ class FakeServer {
     // (3.17.0) the Portal's Super Admin console: only the Super Admin, signed in (his own password set)
     if (path.endsWith('/portal/api/admin')) {
       final x = (jsonDecode(r.body) as Map).cast<String, dynamic>();
-      adminSent.add(x);
+      portalAdminSent.add(x);
       calls.add('admin:${x['action']}');
       if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused'}, 403);
       if (!portalSignedIn || r.headers['Cookie'] != 'rcl_portal=abc123') return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
