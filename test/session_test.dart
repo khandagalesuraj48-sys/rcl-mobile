@@ -439,5 +439,15 @@ void main() {
     alertsFrom(d([]), seen, 200000000);
     expect(seen, isEmpty, reason: 'decided: forgotten');
   });
+
+  test('(3.1.9) Log Book: the way picked by itself – its last entry\'s way, else the Asset Master unit, else its first', () {
+    final m = Machine({'id': 'TM-1', 'unit': 'KM + Hrs', 'worksOn': ['KM', 'Hrs', 'Trip']});
+    expect(m.wayAuto, '', reason: 'several ways: before 3.1.9 nothing was picked');
+    expect(m.logWay(), 'KM + Hrs', reason: 'the Asset Master unit');
+    expect(m.logWay('Trip'), 'Trip', reason: 'the way of its last entry');
+    expect(m.logWay('Holiday'), 'KM + Hrs', reason: 'a day status of the last entry is not carried over');
+    expect(Machine({'modes': ['Hrs', 'Time'], 'modesX': ['Time']}).logWay('Time'), 'Hrs', reason: 'a Time day is only for a day the meter gave no reading');
+    expect(Machine({'lbFormat': 'H'}).logWay(), 'Trip');
+  });
 }
 

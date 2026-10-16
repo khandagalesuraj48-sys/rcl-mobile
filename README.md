@@ -14,6 +14,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.9 (16-10-2026: "vehicle select kel ki auto tyach km km+hrs trip je kay asel te auto select … perfect kam karyla haw"):**
+the Log Book entry picks "Measured by" by itself, as the web does: the way of the machinery's last entry, else its Asset Master
+unit, else its first way (`Machine.logWay`). It can still be changed (Idle, Holiday, Breakdown, a day on Time). Diesel Issue: by
+itself since 3.1.8.
+
 **Version 3.1.8 (15-10-2026: "number plate cha photo … auto number detect hoil manual pn krta yeil"; "km aahe hrs aahe ki km+hrs aahe he pn auto select asaw"; "eka khali ek ashi list … jyala jo access aahe tyala tech disel"; "jr revert zal tr mahesh la continue push notification jatil"):**
 * Diesel Issue: **"Photo of the number plate"** – the phone reads it (Google ML Kit, on the phone: no internet, nothing paid) and
   picks the machinery of the Asset Master on site that day (`lib/core/plate.dart`: two lines, letters the camera mixes up, one
