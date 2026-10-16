@@ -14,6 +14,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.1.12 (16-10-2026, with Mechanical update-119 – a machinery on a site several times: "vehicle ali … inactive hote …
+part ali … period wise active inactive haway"):** `Machine.onSite` counts its earlier periods on site too (Mechanical's `earlier`),
+so a machinery that came back is offered again from the day it came back, and not on the days it was away.
+
 **Version 3.1.11 (16-10-2026, with Mechanical update-118: "jewa t entry sent verification krel tyala pn samajayla haw konti entry
 verification madhe aahe ani konte approval zale aahet … tyach reminder pn to pathau shakel"):**
 * **My entries in verification** (`lib/screens/verify.dart`): on Home (all pages – waiting, sent back, approved today) and on the

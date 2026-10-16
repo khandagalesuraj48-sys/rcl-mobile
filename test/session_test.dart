@@ -309,6 +309,9 @@ void main() {
     expect(Machine({'status': 'Inactive', 'inactiveFrom': '2026-10-20'}).onSite('2026-10-15'), true, reason: 'leaving next week: still on site today');
     expect(Machine({'status': 'Active'}).onSite('2026-10-15'), true);
     expect(Machine({'status': 'Inactive'}).onSite(''), false, reason: 'no date: as before (Active only)');
+    // (3.1.12, update-119) on site several times: 01-01 … 30-06, then again from 01-09
+    final back = Machine({'status': 'Active', 'activeFrom': '2026-09-01', 'earlier': [{'from': '2026-01-01', 'until': '2026-07-01'}]});
+    expect(['2025-12-31', '2026-01-01', '2026-06-30', '2026-07-01', '2026-08-31', '2026-09-01', '2026-10-15'].map(back.onSite).toList(), [false, true, true, false, false, true, true]);
   });
 
   test('(update-114) a work under verification: "Sent for verification …" is a sent entry (code sent), asked once – never sent again', () async {
