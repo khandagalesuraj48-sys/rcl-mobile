@@ -869,7 +869,7 @@ class _EntryFormState extends State<EntryForm> {
                         const Spacer(),
                         Text(pk.en, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: sh?.jpg != null ? Colors.white : C.ink)),
                         Row(children: [
-                          Icon(sh?.busy == true ? Icons.cloud_upload_outlined : done ? Icons.check_circle_rounded : Icons.photo_camera_rounded, size: 14, color: sh?.jpg != null ? Colors.white70 : C.green),
+                          Icon(sh?.busy == true ? Icons.cloud_upload_outlined : done ? Icons.check_circle_rounded : onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 14, color: sh?.jpg != null ? Colors.white70 : C.green),
                           const SizedBox(width: 4),
                           Text(sh?.busy == true ? 'Sending…' : done ? 'Sent' : onComputer ? 'Choose photo' : 'Take photo', style: TextStyle(fontSize: 12, color: sh?.jpg != null ? Colors.white70 : C.muted)),
                         ]),
