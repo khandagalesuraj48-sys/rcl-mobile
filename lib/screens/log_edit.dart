@@ -12,7 +12,7 @@ import '../core/log_edit.dart';
 import '../core/session.dart';
 import '../core/xlsx.dart';
 import '../ui/fields.dart';
-import '../core/more_imports.dart' show tankerExport, tankerImportRows;
+import '../core/more_imports.dart' show tankerExport, tankerImportRows, tankerNoVehicle;
 import '../core/sheet_read.dart' show readSheets, SheetError, jsTrue;
 import '../ui/outputs.dart' show shareXlsx;
 import '../ui/pick_file.dart';
@@ -388,39 +388,50 @@ class _LogEditScreenState extends State<LogEditScreen> {
     }
   }
 
-  /// Export: the Water Tanker Report layout with 100 empty lines to fill and the Shift drop-down – the web's file (3.13.0).
+  /// Export: the Water Tanker Report layout – (3.18.1, update-121) of EVERY water tanker of every agency in these dates, with 100
+  /// empty lines whose VEHICLE NO is picked from the list of tankers (the agency by itself) and the Shift drop-down – the web's file.
   Future<void> _ltExport() async {
     final l = lt!, s = SessionScope.read(context);
-    final x = tankerExport(
-      machine: {...l.machine, 'id': l.no},
-      trips: (l.d['trips'] as List? ?? const []).whereType<Map>().toList(),
-      from: l.from,
-      to: l.to,
-      company: s.printNames.isEmpty ? 'Rachana Construction Limited' : s.printNames.first,
-      site: s.siteLabel,
-    );
+    setState(() => busy = true);
     try {
-      await shareXlsx(sheetsXlsx([x.sheet]), x.file);
+      final d = (await s.api.call('getLogBookList', [{'from': l.from, 'to': l.to, 'all': true}]) as Map).cast<String, dynamic>();
+      final x = tankerExport(
+        master: [for (final m in s.machines) m.m],
+        rows: (d['rows'] as List? ?? const []).whereType<Map>().toList(),
+        from: l.from,
+        to: l.to,
+        company: s.printNames.isEmpty ? 'Rachana Construction Limited' : s.printNames.first,
+        site: s.siteLabel,
+      );
+      await shareXlsx(sheetsXlsx(x.sheets), x.file);
       if (mounted) toast(context, x.said);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
     }
   }
 
   /// (3.13.0) Import Excel: the trips of a file (this layout, any tanker, any date) – the web's lt_file: checked by the server
   /// (checkTankerImport), the ones already saved left out, then imported (importTankerTrips); the tanker open here read again.
+  /// (3.18.1) Each line its own VEHICLE NO: a line without one is not given to the tanker open – "Fix the file first".
   Future<void> _ltImport() async {
-    final s = SessionScope.read(context), me = lt?.no ?? '';
+    final s = SessionScope.read(context);
     final f = await pickSheetFile();
     if (f == null || !mounted) return;
     List<Map<String, Object?>> rows;
     try {
-      rows = tankerImportRows(readSheets(f.bytes), me);
+      rows = tankerImportRows(readSheets(f.bytes));
     } on SheetError catch (e) {
       toast(context, e.message, bad: true);
       return;
     } catch (_) {
       toast(context, 'Could not read the file.', bad: true);
+      return;
+    }
+    final noVeh = tankerNoVehicle(rows);
+    if (noVeh.isNotEmpty) {
+      await tellLines(context, 'Fix the file first', ['Nothing was imported.', ...noVeh]);
       return;
     }
     List<Map> errs(Object? v) => [for (final x in (v as List? ?? const []).whereType<Map>()) x];
@@ -1093,7 +1104,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
         ),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (can) OutlinedButton(key: const Key('lt-add'), onPressed: () => setState(() => l.add()), child: Text('+ Add row')),
-          OutlinedButton.icon(key: const Key('lt-export-b'), onPressed: _ltExport, icon: const Icon(Icons.table_view_rounded), label: Text('Export Excel')),
+          OutlinedButton.icon(key: const Key('lt-export-b'), onPressed: busy ? null : _ltExport, icon: const Icon(Icons.table_view_rounded), label: Text('Export Excel')),
           if (can) OutlinedButton.icon(key: const Key('lt-import-b'), onPressed: _ltImport, icon: const Icon(Icons.upload_file_rounded), label: Text('Import Excel')),
           OutlinedButton.icon(key: const Key('lx-print-b'), onPressed: _print, icon: const Icon(Icons.print_rounded), label: Text('Print Log Book')),
         ]),

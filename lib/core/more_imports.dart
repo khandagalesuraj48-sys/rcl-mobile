@@ -3,7 +3,9 @@
  *     paper's N/A and Lifetime; dates) → importMaster (check, then save);
  *   – Vehicle Compliance "Import Excel" (cp_file: the tab "Compliance"; Machinery No and the paper columns) → importCompliance;
  *   – a water tanker's trips (Edit Log Book → tanker → Import Excel, lt_file: the Water Tanker Report layout, every tab; times) →
- *     checkTankerImport / importTankerTrips, and its Export (the web's file, with the Shift drop-down);
+ *     checkTankerImport / importTankerTrips, and its Export (the web's file, with the Shift drop-down); (3.18.1, update-121) the
+ *     file is of EVERY water tanker of every agency – VEHICLE NO picked from the list of tankers, the agency by itself – and
+ *     each imported line goes to its own VEHICLE NO (none is filled in for it);
  *   – the Store's Item Master "Import from Excel" (rcl-store f_file: the cells as the sheet SHOWS them – raw: false);
  *   – the QR labels of the Asset Master: the web's QR code (qrcode-generator 1.4.4, type auto, level M) of the app's link with
  *     the machinery, drawn as the web's SVG.
@@ -13,8 +15,9 @@ import 'dart:math' as math;
 
 import 'package:qr/qr.dart';
 
-import 'imports.dart' show readExcelRows, xlDate, Cols;
-import 'lb_io.dart' show XSheet, XList;
+import 'imports.dart' show readExcelRows, xlDate, Cols, findMachine;
+import 'lb_io.dart' show XSheet, XList, XFormula, lbTripsOf, localeCmp;
+import 'log_edit.dart' show wtSpan;
 import 'print_css.dart' show kPrintCss, kOrientP;
 import 'sheet_read.dart';
 
@@ -127,8 +130,9 @@ String _tm(Object? v) {
   return jsS(v).trim();
 }
 
-/// The trips of a file (every tab); a line without its tanker is [me]'s (the tanker open on the screen).
-List<Map<String, Object?>> tankerImportRows(List<SheetTab> tabs, String me) {
+/// The trips of a file (every tab). (3.18.1, update-121) Each line keeps its own VEHICLE NO – a line without one is not given to
+/// the tanker open on the screen ([tankerNoVehicle] says which).
+List<Map<String, Object?>> tankerImportRows(List<SheetTab> tabs) {
   final raw = readExcelRows(tabs, kTankerCols, const ['date', 'c'], allSheets: true);
   String s(Object? v) => (jsTrue(v) ? jsS(v) : '').trim();
   final rows = [
@@ -136,7 +140,7 @@ List<Map<String, Object?>> tankerImportRows(List<SheetTab> tabs, String me) {
       if (jsS(x['c']).trim().isNotEmpty || jsS(x['a']).trim().isNotEmpty || jsS(x['b']).trim().isNotEmpty)
         <String, Object?>{
           'line': x['line'],
-          'no': s(x['no']).isNotEmpty ? s(x['no']) : me,
+          'no': s(x['no']),
           'date': xlDate(x['date']),
           'shift': RegExp(r'^n', caseSensitive: false).hasMatch(jsTrue(x['shift']) ? jsS(x['shift']) : '') ? 'Night' : 'Day',
           'c': s(x['c']),
@@ -150,32 +154,83 @@ List<Map<String, Object?>> tankerImportRows(List<SheetTab> tabs, String me) {
   return rows;
 }
 
-/// The web's Export of a tanker's trips: the Water Tanker Report with 100 empty lines to fill and the Shift drop-down.
-({String file, XSheet sheet, String said}) tankerExport({required Map machine, required List<Map> trips, required String from, required String to, required String company, required String site}) {
+/// (3.18.1) The web's "Fix the file first" for the lines without their VEHICLE NO (the first 50) – empty when every line has one.
+List<String> tankerNoVehicle(List<Map<String, Object?>> rows) =>
+    [for (final x in rows) if (jsS(x['no']).isEmpty) 'Line ${jsS(x['line'])}: pick the VEHICLE NO – the water tanker of this trip.'].take(50).toList();
+
+/// The web's Export Excel of the water tankers (update-121): the trips of EVERY water tanker (Log Book Format I) of every agency in
+/// the dates – [rows]: getLogBookList's rows for them – in the order date, shift, agency, vehicle, dispatch time; 100 empty lines
+/// whose VEHICLE NO is picked from the list of tankers (the hidden tab "Lists") and whose NAME OF AGENCY comes by itself (a formula);
+/// the Shift drop-down on every line.
+({String file, List<XSheet> sheets, String said}) tankerExport({required List<Map<String, dynamic>> master, required List<Map> rows, required String from, required String to, required String company, required String site}) {
   String sd(String d) {
     final p = d.split('-');
     return p.length >= 3 ? '${p[2]}-${p[1]}-${p[0]}' : d;
   }
 
-  final owner = jsTrue(machine['owner']) ? '${machine['owner']}' : '', id = '${machine['id']}';
+  String s(Object? v) => jsTrue(v) ? jsS(v) : '';
+  // (JavaScript's sort keeps the order of equals: so does this, by the place in the list)
+  List<T> stable<T>(List<T> l, int Function(T, T) cmp) {
+    final ix = [for (var i = 0; i < l.length; i++) i]..sort((a, b) {
+        final c = cmp(l[a], l[b]);
+        return c != 0 ? c : a - b;
+      });
+    return [for (final i in ix) l[i]];
+  }
+
+  final tks = stable([for (final m in master) if (m['lbFormat'] == 'I') m], (a, b) {
+    final c = localeCmp(s(a['owner']), s(b['owner']));
+    return c != 0 ? c : localeCmp(jsS(a['id']), jsS(b['id']), numeric: true);
+  });
+  const ord = {'Full Day': 0, 'Day': 1, 'Night': 2};
+  final all = <Map<String, String>>[];
+  for (final r in rows) {
+    final m = findMachine(master, r['no']);
+    final ts = m != null && m['lbFormat'] == 'I' ? lbTripsOf(r, master) : null;
+    if (ts == null) continue;
+    for (final t in ts) {
+      all.add({'date': jsS(r['date']), 'shift': jsTrue(r['shift']) ? jsS(r['shift']) : 'Full Day', 'no': jsS(m!['id']), 'owner': s(m['owner']), ...t});
+    }
+  }
+  num at(Map<String, String> t) => wtSpan(t['a'] ?? '', t['b'] ?? '', t['shift'] ?? '')?.first ?? 1e9;
+  final trips = stable(all, (x, y) {
+    final d = x['date']!.compareTo(y['date']!);
+    if (d != 0) return d < 0 ? -1 : 1;
+    final o = (ord[x['shift']] ?? 0) - (ord[y['shift']] ?? 0);
+    if (o != 0) return o;
+    final a = localeCmp(x['owner']!, y['owner']!);
+    if (a != 0) return a;
+    final n = localeCmp(x['no']!, y['no']!, numeric: true);
+    if (n != 0) return n;
+    return (at(x) - at(y)).sign.toInt();
+  });
+  final head = <List<Object>>[[company], [site], ['WATER TANKER REPORT – all water tankers – ${sd(from)} to ${sd(to)}'], []];
   final body = <List<Object>>[
     kTankerHead,
-    for (final (i, t) in trips.indexed) [i + 1, sd('${t['date']}'), '${t['shift'] ?? ''}', owner, id, '${t['c'] ?? ''}', '${t['a'] ?? ''}', '${t['b'] ?? ''}', 1, '${t['ch'] ?? ''}', '${t['u'] ?? ''}'],
-    for (var k = 0; k < 100; k++) ['', '', '', owner, id],
+    for (final (i, t) in trips.indexed) [i + 1, sd(t['date']!), t['shift']!, t['owner']!, t['no']!, t['c'] ?? '', t['a'] ?? '', t['b'] ?? '', 1, t['ch'] ?? '', t['u'] ?? ''],
   ];
-  final head = <List<Object>>[[company], [site], ['WATER TANKER REPORT – $id – ${sd(from)} to ${sd(to)}'], []];
-  final sh = XSheet('Trips', [...head, ...body], widths: const [8, 12, 10, 24, 16, 16, 13, 13, 7, 14, 22], head: head.length + 1);
-  const xl = XList('"Day,Night"', 'Shift', 'Day or Night', 'Pick one of: Day, Night');
-  for (var r = sh.head + 1; r <= sh.aoa.length; r++) {
-    final row = sh.aoa[r - 1];
-    if (row.isEmpty || (row.length > 4 ? jsS(row[4]) : '').trim().isEmpty) continue;
-    final cell = row.length > 2 ? row[2] : '';
-    sh.validations.add((r, 3, xl, cell == ''));
+  final last = tks.length > 1 ? tks.length : 1;
+  for (var k = 0; k < 100; k++) {
+    final n = head.length + body.length + 1; // an empty line to fill: its agency follows the VEHICLE NO picked
+    body.add(['', '', '', XFormula('IF(E$n="","",IFERROR(VLOOKUP(E$n,Lists!\$A\$1:\$B\$$last,2,FALSE),""))')]);
   }
+  final sh = XSheet('Trips', [...head, ...body], widths: const [8, 12, 10, 24, 16, 16, 13, 13, 7, 14, 22], head: head.length + 1);
+  const shift = XList('"Day,Night"', 'Shift', 'Day or Night', 'Pick one of: Day, Night');
+  final vehicle = XList('Lists!\$A\$1:\$A\$$last', 'Vehicle No', 'Pick the water tanker – its agency comes by itself.', 'Pick from the list.');
+  for (final (col, xl) in [(3, shift), (5, vehicle)]) {
+    for (var r = sh.head + 1; r <= sh.aoa.length; r++) {
+      final row = sh.aoa[r - 1];
+      if (row.isEmpty) continue;
+      final cell = row.length >= col ? row[col - 1] : '';
+      sh.validations.add((r, col, xl, cell == ''));
+    }
+  }
+  final lists = XSheet('Lists', [for (final m in tks) <Object>[jsS(m['id']), s(m['owner'])]], hidden: true);
+  final nt = {for (final t in trips) t['no']}.length;
   return (
-    file: 'Water tanker $id ${sd(from)} to ${sd(to)}.xlsx',
-    sheet: sh,
-    said: '${trips.length} trip${trips.length == 1 ? '' : 's'} and 100 empty lines. Fill the lines (date, shift, challan, dispatch, unload…) and bring the file back with "Import Excel".',
+    file: 'Water tankers ${sd(from)} to ${sd(to)}.xlsx',
+    sheets: [sh, lists],
+    said: '${trips.length} trip${trips.length == 1 ? '' : 's'} of $nt water tanker${nt == 1 ? '' : 's'} and 100 empty lines. Pick the VEHICLE NO of a line (its agency comes by itself), fill the date, shift, challan, dispatch, unload… and bring the file back with "Import Excel".',
   );
 }
 
