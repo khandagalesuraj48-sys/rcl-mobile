@@ -1833,10 +1833,10 @@ void main() {
     expect(tab.name, 'Trips');
     expect(tab.rows[2].first, 'WATER TANKER REPORT – all water tankers – 01-10-2026 to 14-10-2026');
     expect(tab.rows[4], ['SR. NO.', 'DATE', 'SHIFT', 'NAME OF AGENCY', 'VEHICLE NO', 'CHALLAN NO', 'DISPATCH TIME', 'UNLOAD TIME', 'TRIP', 'CHAINAGE NO', 'USE FOR']);
-    expect([for (final r in tab.rows.sublist(5, 8)) [for (final c in r.take(6)) '$c']], [
-      ['1', '13-10-2026', 'Night', 'Patil Water Supply', 'MH-12-AB-1001', 'P-7'],
-      ['2', '14-10-2026', 'Day', 'Chalke Enterprises', 'MH-04-J-9844', '123'],
-      ['3', '14-10-2026', 'Day', 'Chalke Enterprises', 'MH-04-J-9844', '18522'],
+    expect([for (final r in tab.rows.sublist(5, 8)) [(r[0] as num).toInt(), for (final c in r.skip(1).take(5)) '$c']], [
+      [1, '13-10-2026', 'Night', 'Patil Water Supply', 'MH-12-AB-1001', 'P-7'],
+      [2, '14-10-2026', 'Day', 'Chalke Enterprises', 'MH-04-J-9844', '123'],
+      [3, '14-10-2026', 'Day', 'Chalke Enterprises', 'MH-04-J-9844', '18522'],
     ], reason: 'both agencies\' tankers, date by date');
     expect(tab.rows.skip(8).every((r) => r.take(5).every((c) => c == '')), true, reason: 'no tanker fixed in the empty lines (the agency is a formula; the 100 lines and their cells: the unit test)');
     expect(tabs[1].name, 'Lists');
