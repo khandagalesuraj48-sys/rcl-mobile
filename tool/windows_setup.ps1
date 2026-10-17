@@ -2,11 +2,16 @@
 #   -Step crt    the Visual C++ files (msvcp140, vcruntime140, vcruntime140_1) put next to rcl_erp.exe - a computer without
 #                the Visual C++ package still opens the app
 #   -Step setup  the setup made with Inno Setup (windows/installer.iss) -> build/installer/RCL-ERP-Setup-<version>-<build>.exe
+#   -Step smoke  (the build only, on GitHub's Windows computer) the setup installed as a person would, the app opened by it and
+#                still open after 25 seconds (a picture of the screen in -Out); then the app's own update - the same setup run
+#                with the app's arguments while the app is open: the open app closed, the new one put in its place and opened
+#                again (a second picture). Nothing is signed in: the app shows its sign-in, nothing reaches the live servers.
 #   -Ver / -Build  the version and build number (the release's); left out: from pubspec.yaml
 param(
-  [Parameter(Mandatory = $true)][ValidateSet('crt', 'setup')][string]$Step,
+  [Parameter(Mandatory = $true)][ValidateSet('crt', 'setup', 'smoke')][string]$Step,
   [string]$Ver = '',
-  [string]$Build = ''
+  [string]$Build = '',
+  [string]$Out = 'shots'
 )
 $ErrorActionPreference = 'Stop'
 $app = 'build\windows\x64\runner\Release'
@@ -30,6 +35,51 @@ if ($Step -eq 'crt') {
   if ($vi.ProductVersion -notmatch '^\d+\.\d+\.\d+\+\d+$') { throw "rcl_erp.exe has no build number in its version ($($vi.ProductVersion)) - the update could not tell it is up to date." }
   if ($vi.ProductName -ne 'RCL ERP' -or $vi.CompanyName -ne 'Rachana Construction Limited') { throw 'rcl_erp.exe: the product or company name is not RCL ERP / Rachana Construction Limited.' }
   Get-ChildItem $app -File | Select-Object Name, Length | Format-Table | Out-Host
+  exit 0
+}
+
+if ($Step -eq 'smoke') {
+  Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+  function Shot([string]$path) {
+    $b = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.CopyFromScreen($b.Left, $b.Top, 0, 0, $bmp.Size)
+    $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+    $g.Dispose(); $bmp.Dispose()
+    Write-Host "picture: $path"
+  }
+  function RunSetup([string[]]$a) {
+    $p = Start-Process $setup -ArgumentList $a -PassThru
+    if (-not $p.WaitForExit(240000)) { throw 'The setup did not finish in 4 minutes.' }
+    if ($p.ExitCode -ne 0) { throw "The setup stopped with $($p.ExitCode)." }
+  }
+  New-Item -ItemType Directory -Force $Out | Out-Null
+  $setup = (Get-ChildItem build\installer\*.exe | Select-Object -First 1).FullName
+  if (-not $setup) { throw 'No setup to try.' }
+  # 1. installed (silently here - a person sees the usual pages); the setup opens the app at the end
+  RunSetup @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART')
+  $dir = "$env:LOCALAPPDATA\Programs\RCL ERP"
+  foreach ($f in 'rcl_erp.exe', 'flutter_windows.dll', 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'data\app.so', 'data\icudtl.dat') {
+    if (-not (Test-Path "$dir\$f")) { throw "Not installed: $f" }
+  }
+  if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\RCL ERP.lnk")) { throw 'No RCL ERP in the Start menu.' }
+  if (-not (Test-Path ([Environment]::GetFolderPath('Desktop') + '\RCL ERP.lnk'))) { throw 'No RCL ERP on the Desktop.' }
+  Write-Host "installed in $dir (Start menu and Desktop)"
+  Start-Sleep -Seconds 25
+  $first = @(Get-Process rcl_erp -ErrorAction SilentlyContinue)
+  Shot "$Out\win_1_installed.png"
+  if ($first.Count -ne 1) { throw "The app is not open after the install ($($first.Count) open)." }
+  Write-Host "open after the install: process $($first[0].Id)"
+  # 2. the app's own update (lib/core/update.dart runs the setup with these arguments)
+  RunSetup @('/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CLOSEAPPLICATIONS')
+  Start-Sleep -Seconds 25
+  $now = @(Get-Process rcl_erp -ErrorAction SilentlyContinue)
+  Shot "$Out\win_2_updated.png"
+  if ($now | Where-Object { $_.Id -eq $first[0].Id }) { throw 'The update did not close the open app.' }
+  if ($now.Count -ne 1) { throw "The app is not open again after the update ($($now.Count) open)." }
+  Write-Host "the update closed process $($first[0].Id) and opened process $($now[0].Id)"
+  $now | Stop-Process -Force
   exit 0
 }
 

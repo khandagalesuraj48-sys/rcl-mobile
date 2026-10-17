@@ -8,7 +8,7 @@
 name: build
 on:
   push:
-    branches-ignore: ['screens/**']
+    branches-ignore: ['screens/**', 'screens-win/**']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -160,6 +160,19 @@ jobs:
       - name: The setup (Inno Setup)
         shell: pwsh
         run: ./tool/windows_setup.ps1 -Step setup
+      - name: The setup tried on Windows - installed, the app open, then the app's own update (pictures in screens-win/<branch>)
+        shell: pwsh
+        run: ./tool/windows_setup.ps1 -Step smoke -Out "$env:RUNNER_TEMP\shots"
+      - name: Save the pictures in screens-win/<branch>
+        if: always() && github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$RUNNER_TEMP/shots" 2>/dev/null && ls *.png >/dev/null 2>&1 || exit 0
+          git init -q && git config user.name "rcl-build" && git config user.email "rcl-build@users.noreply.github.com"
+          git add . && git commit -qm "Windows pictures of ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/screens-win/${GITHUB_REF_NAME}"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-setup
