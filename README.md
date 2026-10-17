@@ -14,6 +14,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.18.1 (17-10-2026, with Mechanical update-121):** the water tanker Excel (Edit Log Book → a tanker → Export / Import
+Excel) is of **every water tanker of every agency**, not of the one open: Export – the trips of all of them in the dates, 100 empty
+lines whose VEHICLE NO is picked from the list of tankers (a new tanker set to Format I is in it) and whose agency comes by itself,
+Shift on every line; Import – each line its own VEHICLE NO (a line without one: "Fix the file first", nothing imported).
+
 **Version 3.18.0 (17-10-2026, the last part of the whole web in the app):** **no web page anywhere in the app** – every page of
 the web is the app's own screen. Gone: Me → "Full web ERP", the web view that loaded in the background at the start, and the web
 page a module or a report fell back to (every module and every report has its own screen now). The only web view left prints

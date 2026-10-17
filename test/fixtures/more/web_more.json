@@ -162,120 +162,72 @@
  "compliance_none": {
   "error": "The file needs a \"Machinery No\" column. Use Export Excel to get the right format."
  },
- "tanker": [
-  {
-   "line": "Trips – 6",
-   "no": "MH-04-J-9844",
-   "date": "2026-10-14",
-   "shift": "Day",
-   "c": "WT-101",
-   "a": "08:10",
-   "b": "08:40",
-   "ch": "12+000",
-   "u": "Curing"
-  },
-  {
-   "line": "Trips – 7",
-   "no": "MH-04-J-9844",
-   "date": "2026-10-14",
-   "shift": "Night",
-   "c": "WT-102",
-   "a": "21:15",
-   "b": "21:55",
-   "ch": "",
-   "u": ""
-  },
-  {
-   "line": "Trips – 9",
-   "no": "MH-04-J-0001",
-   "date": "2026-10-15",
-   "shift": "Day",
-   "c": "",
-   "a": "9.30",
-   "b": "",
-   "ch": "",
-   "u": "Dust"
-  },
-  {
-   "line": "Trips – 10",
-   "no": "MH-04-J-9844",
-   "date": "2026-10-15",
-   "shift": "Day",
-   "c": "WT-104",
-   "a": "00:00",
-   "b": "",
-   "ch": "",
-   "u": ""
-  },
-  {
-   "line": "Other – 2",
-   "no": "T-2",
-   "date": "2026-10-16",
-   "shift": "Day",
-   "c": "X-1",
-   "a": "",
-   "b": "",
-   "ch": "",
-   "u": ""
+ "tanker": {
+  "rows": [
+   {
+    "line": "Trips – 6",
+    "no": "MH-04-J-9844",
+    "date": "2026-10-14",
+    "shift": "Day",
+    "c": "WT-101",
+    "a": "08:10",
+    "b": "08:40",
+    "ch": "12+000",
+    "u": "Curing"
+   },
+   {
+    "line": "Trips – 7",
+    "no": "",
+    "date": "2026-10-14",
+    "shift": "Night",
+    "c": "WT-102",
+    "a": "21:15",
+    "b": "21:55",
+    "ch": "",
+    "u": ""
+   },
+   {
+    "line": "Trips – 9",
+    "no": "MH-04-J-0001",
+    "date": "2026-10-15",
+    "shift": "Day",
+    "c": "",
+    "a": "9.30",
+    "b": "",
+    "ch": "",
+    "u": "Dust"
+   },
+   {
+    "line": "Trips – 10",
+    "no": "MH-04-J-9844",
+    "date": "2026-10-15",
+    "shift": "Day",
+    "c": "WT-104",
+    "a": "00:00",
+    "b": "",
+    "ch": "",
+    "u": ""
+   },
+   {
+    "line": "Other – 2",
+    "no": "T-2",
+    "date": "2026-10-16",
+    "shift": "Day",
+    "c": "X-1",
+    "a": "",
+    "b": "",
+    "ch": "",
+    "u": ""
+   }
+  ],
+  "box": {
+   "title": "Fix the file first",
+   "ok": "OK",
+   "alertOnly": true,
+   "wide": true,
+   "html": "<p>Nothing was imported.</p><ul><li>Line Trips – 7: pick the VEHICLE NO – the water tanker of this trip.</li></ul>"
   }
- ],
- "tanker_nome": [
-  {
-   "line": "Trips – 6",
-   "no": "MH-04-J-9844",
-   "date": "2026-10-14",
-   "shift": "Day",
-   "c": "WT-101",
-   "a": "08:10",
-   "b": "08:40",
-   "ch": "12+000",
-   "u": "Curing"
-  },
-  {
-   "line": "Trips – 7",
-   "no": "",
-   "date": "2026-10-14",
-   "shift": "Night",
-   "c": "WT-102",
-   "a": "21:15",
-   "b": "21:55",
-   "ch": "",
-   "u": ""
-  },
-  {
-   "line": "Trips – 9",
-   "no": "MH-04-J-0001",
-   "date": "2026-10-15",
-   "shift": "Day",
-   "c": "",
-   "a": "9.30",
-   "b": "",
-   "ch": "",
-   "u": "Dust"
-  },
-  {
-   "line": "Trips – 10",
-   "no": "MH-04-J-9844",
-   "date": "2026-10-15",
-   "shift": "Day",
-   "c": "WT-104",
-   "a": "00:00",
-   "b": "",
-   "ch": "",
-   "u": ""
-  },
-  {
-   "line": "Other – 2",
-   "no": "T-2",
-   "date": "2026-10-16",
-   "shift": "Day",
-   "c": "X-1",
-   "a": "",
-   "b": "",
-   "ch": "",
-   "u": ""
-  }
- ],
+ },
  "store": [
   {
    "line": 2,

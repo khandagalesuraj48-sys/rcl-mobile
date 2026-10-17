@@ -17,6 +17,7 @@ class FakeServer {
   bool billLock = false; // (14-10-2026) the entries are in a submitted bill: Mechanical refuses a change (not the Super Admin's)
   final requests = <Map<String, dynamic>>[];
   bool tanker = false; // a water tanker (Log Book Format I) on the site, with an entry of 2 trips today
+  bool tanker2 = false; // (3.18.1) a second water tanker of another agency, with a trip on 13-10-2026
   // (3.1.7) verification (update-114), the live sync, no network
   String flowFor = ''; // an action the Super Admin put under verification: answered "Sent for verification …" (nothing saved)
   Map<String, String> versions = {'master': '1', 'stock': '1', 'log': '1', 'users': '1', 'activity': '1', 'flow': '1'};
@@ -72,6 +73,7 @@ class FakeServer {
   List<Map<String, dynamic>> get _master => [
         ...master,
         if (tanker) {'id': 'MH-04-J-9844', 'name': '', 'type': 'Water Tanker', 'owner': 'Chalke Enterprises', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['Trip'], 'modesX': [], 'lbFormat': 'I'},
+        if (tanker2) {'id': 'MH-12-AB-1001', 'name': '', 'type': 'Water Tanker', 'owner': 'Patil Water Supply', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['Trip'], 'modesX': [], 'lbFormat': 'I'},
       ];
   final vendors = <Map<String, dynamic>>[
     {'name': 'I E Enterprises', 'saved': true, 'complete': false, 'gstReg': 'No', 'pan': 'ABCDE1234F', 'bank': 'State Bank of India', 'account': '000000004321', 'ifsc': 'SBIN0001234', 'phone': '9000000000', 'boqs': 1,
@@ -1015,6 +1017,9 @@ class FakeServer {
             if (tanker)
               {'no': 'MH-04-J-9844', 'type': 'Water Tanker', 'owner': 'Chalke Enterprises', 'date': '2026-10-14', 'shift': 'Day', 'unit': 'Trip', 'mode': 'Trip', 'trip': 2, 'challan': '123, 18522', 'key': 'MH-04-J-9844|2026-10-14|Day',
                 'itemWork': {'_trips': [for (final t in _tTrips) {'c': t['c'], 'a': t['a'], 'b': t['b'], if ('${t['ch']}'.isNotEmpty) 'ch': t['ch'], if ('${t['u']}'.isNotEmpty) 'u': t['u']}]}},
+            if (tanker2)
+              {'no': 'MH-12-AB-1001', 'type': 'Water Tanker', 'owner': 'Patil Water Supply', 'date': '2026-10-13', 'shift': 'Night', 'unit': 'Trip', 'mode': 'Trip', 'trip': 1, 'challan': 'P-7', 'key': 'MH-12-AB-1001|2026-10-13|Night',
+                'itemWork': {'_trips': [{'c': 'P-7', 'a': '21:10', 'b': '21:40', 'u': 'Curing'}]}},
           ]}});
         case 'getAiReply':
           aiAsked.add((a[0] as Map).cast<String, dynamic>());

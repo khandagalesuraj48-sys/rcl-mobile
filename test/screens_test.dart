@@ -1800,11 +1800,12 @@ void main() {
     expect(find.text('Imported: 2 date(s) on 1 machinery.'), findsOneWidget);
   });
 
-  testWidgets('(3.13.0) Edit Log Book of a water tanker: Export Excel – the web\'s file; Import Excel – checked, asked, imported, the tanker read again', (t) async {
+  testWidgets('(3.13.0 / 3.18.1) Edit Log Book of a water tanker: Export Excel – every water tanker of every agency, VEHICLE NO picked from the list; Import Excel – each line its own tanker (none: "Fix the file first"), checked, asked, imported, the tanker read again', (t) async {
     phone(t);
     final srv = FakeServer()
       ..perms['Log Book'] = 'Edit'
-      ..tanker = true;
+      ..tanker = true
+      ..tanker2 = true;
     final s = await ready(t, srv);
     final files = catchFiles();
     await t.pumpWidget(RclApp(session: s));
@@ -1826,15 +1827,32 @@ void main() {
     await reach(t, 'lt-export-b', 'lx-list');
     await tapK(t, 'lt-export-b');
     await net(t);
-    expect(files.last.$1, 'Water tanker MH-04-J-9844 01-10-2026 to 14-10-2026.xlsx');
-    final tab = readSheets(files.last.$2).single;
+    expect(files.last.$1, 'Water tankers 01-10-2026 to 14-10-2026.xlsx');
+    expect(srv.calls, contains('mech:getLogBookList'), reason: 'every tanker\'s trips of these dates');
+    final tabs = readSheets(files.last.$2), tab = tabs.first;
     expect(tab.name, 'Trips');
-    expect(tab.rows[2].first, 'WATER TANKER REPORT – MH-04-J-9844 – 01-10-2026 to 14-10-2026');
+    expect(tab.rows[2].first, 'WATER TANKER REPORT – all water tankers – 01-10-2026 to 14-10-2026');
     expect(tab.rows[4], ['SR. NO.', 'DATE', 'SHIFT', 'NAME OF AGENCY', 'VEHICLE NO', 'CHALLAN NO', 'DISPATCH TIME', 'UNLOAD TIME', 'TRIP', 'CHAINAGE NO', 'USE FOR']);
-    expect(tab.rows[5].take(5), [1, '14-10-2026', 'Day', 'Chalke Enterprises', 'MH-04-J-9844']);
-    expect(tab.rows.length, 5 + 2 + 100, reason: 'the 2 trips and 100 empty lines to fill');
-    expect(find.textContaining('2 trips and 100 empty lines.'), findsOneWidget);
+    expect([for (final r in tab.rows.sublist(5, 8)) [for (final c in r.take(6)) '$c']], [
+      ['1', '13-10-2026', 'Night', 'Patil Water Supply', 'MH-12-AB-1001', 'P-7'],
+      ['2', '14-10-2026', 'Day', 'Chalke Enterprises', 'MH-04-J-9844', '123'],
+      ['3', '14-10-2026', 'Day', 'Chalke Enterprises', 'MH-04-J-9844', '18522'],
+    ], reason: 'both agencies\' tankers, date by date');
+    expect(tab.rows.skip(8).every((r) => r.take(5).every((c) => c == '')), true, reason: 'no tanker fixed in the empty lines (the agency is a formula; the 100 lines and their cells: the unit test)');
+    expect(tabs[1].name, 'Lists');
+    expect(tabs[1].rows, [['MH-04-J-9844', 'Chalke Enterprises'], ['MH-12-AB-1001', 'Patil Water Supply']], reason: 'the VEHICLE NO drop-down: every water tanker');
+    expect(find.textContaining('3 trips of 2 water tankers and 100 empty lines.'), findsOneWidget);
+    // a line without its VEHICLE NO: not given to the tanker open – nothing sent
     pickThis('trips.csv', utf8.encode('DATE,SHIFT,VEHICLE NO,CHALLAN NO,DISPATCH TIME,UNLOAD TIME,USE FOR\n13-10-2026,night,,WT-9,21:00,21:30,Curing\n13-10-2026,,MH-04-J-0001,WT-10,08:00,08:20,\n'));
+    await reach(t, 'lt-import-b', 'lx-list');
+    await tapK(t, 'lt-import-b');
+    await net(t);
+    expect(find.text('Fix the file first'), findsOneWidget);
+    expect(find.text('• Line 2: pick the VEHICLE NO – the water tanker of this trip.'), findsOneWidget);
+    expect(srv.logBulk.where((c) => c['fn'] == 'checkTankerImport'), isEmpty);
+    await t.tap(find.byKey(const Key('tell-ok')));
+    await net(t);
+    pickThis('trips.csv', utf8.encode('DATE,SHIFT,VEHICLE NO,CHALLAN NO,DISPATCH TIME,UNLOAD TIME,USE FOR\n13-10-2026,night,MH-04-J-9844,WT-9,21:00,21:30,Curing\n13-10-2026,,MH-04-J-0001,WT-10,08:00,08:20,\n'));
     await reach(t, 'lt-import-b', 'lx-list');
     await tapK(t, 'lt-import-b');
     await net(t);

@@ -1,8 +1,9 @@
 /* (3.13.0) The other Excel imports, the water tanker's Export and the QR labels – proven against the web's own code:
  *   – fixtures/more/web_more.json: App.html's own lines that read an Asset Master file (m_file), a Vehicle Compliance file
- *     (cp_file), a water tanker's trips (lt_file – with the tanker open and with none) and the Store's item file (rcl-store
+ *     (cp_file), a water tanker's trips (lt_file – each line its own VEHICLE NO, update-121) and the Store's item file (rcl-store
  *     f_file, an .xlsx and a .csv) run in node on the same test files (the scratchpad's more/gen.js);
- *   – fixtures/more/web_tanker_export.json: the web's Export Excel of a water tanker (lt_export, more/tk_export.js);
+ *   – fixtures/more/web_tanker_export.json: the web's Export Excel of the water tankers (lt_export – every tanker, update-121;
+ *     more/tk_export.js);
  *   – fixtures/qr/web_qr.json: the web's QR code (qrcode-generator 1.4.4 in App.html) of the label links (qr/qr.js). */
 import 'dart:convert';
 import 'dart:io';
@@ -90,36 +91,50 @@ void main() {
     expect(run(() => complianceImportRows(readSheets(bytes('store.xlsx')))), web['compliance_none']);
   });
 
-  test('Water tanker – Import Excel: every tab, the times, a line without its tanker is the open tanker\'s (or none)', () {
-    expect(differ(run(() => tankerImportRows(readSheets(bytes('tanker.xlsx')), 'MH-04-J-9844')), web['tanker']), '');
-    expect(differ(run(() => tankerImportRows(readSheets(bytes('tanker.xlsx')), '')), web['tanker_nome']), '');
-    expect(run(() => tankerImportRows(readSheets(bytes('store.xlsx')), 'X')), {'error': 'Could not find the heading row – use "Download template".'}, reason: 'as the web\'s readExcelRows');
-    expect(run(() => tankerImportRows(readSheets(Uint8List.fromList(utf8.encode('DATE,CHALLAN NO,DISPATCH TIME\n14-10-2026,,\n'))), 'X')), {'error': 'No trips in the file.'});
+  test('Water tanker – Import Excel: every tab, the times; (3.18.1) each line its own VEHICLE NO – a line without one: the web\'s "Fix the file first"', () {
+    final w = web['tanker'] as Map;
+    final rows = tankerImportRows(readSheets(bytes('tanker.xlsx')));
+    expect(differ(rows, w['rows']), '');
+    final box = w['box'] as Map;
+    expect(box['title'], 'Fix the file first');
+    final lis = [for (final m in RegExp(r'<li>(.*?)</li>').allMatches('${box['html']}')) m[1]!.replaceAll('&amp;', '&')];
+    expect(tankerNoVehicle(rows), lis, reason: 'the same lines as the web\'s box');
+    expect(lis, ['Line Trips – 7: pick the VEHICLE NO – the water tanker of this trip.']);
+    expect(run(() => tankerImportRows(readSheets(bytes('store.xlsx')))), {'error': 'Could not find the heading row – use "Download template".'}, reason: 'as the web\'s readExcelRows');
+    expect(run(() => tankerImportRows(readSheets(Uint8List.fromList(utf8.encode('DATE,CHALLAN NO,DISPATCH TIME\n14-10-2026,,\n'))))), {'error': 'No trips in the file.'});
   });
 
-  test('Water tanker – Export Excel: the web\'s file (name, said, every cell, widths, heading row, the Shift drop-down)', () {
+  test('Water tanker – Export Excel (3.18.1, update-121): the web\'s file of EVERY water tanker of every agency – name, said, every cell, the agency formula, the drop-downs, the hidden list', () {
     final cases = jsonDecode(File('$dir/web_tanker_export.json').readAsStringSync()) as List;
     for (final c0 in cases) {
       final c = (c0 as Map).cast<String, dynamic>();
       final x = tankerExport(
-        machine: c['machine'] as Map,
-        trips: [for (final t in c['trips'] as List) t as Map],
+        master: [for (final m in c['master'] as List) (m as Map).cast<String, dynamic>()],
+        rows: [for (final r in c['rows'] as List) r as Map],
         from: '${c['from']}',
         to: '${c['to']}',
         company: '${c['company']}'.isEmpty ? 'Rachana Construction Limited' : '${c['company']}',
         site: '${c['site']}',
       );
+      expect(c['asked'], [['getLogBookList', {'from': c['from'], 'to': c['to'], 'all': true}]], reason: 'what the web asked the server – the app asks the same');
       expect(x.file, c['file'], reason: c['name']);
       expect(x.said, c['toast'], reason: c['name']);
-      expect(differ([sheetJson(x.sheet)], c['sheets']), '', reason: c['name']);
+      expect(differ([for (final sh in x.sheets) sheetJson(sh)], c['sheets']), '', reason: c['name']);
     }
-    // the file itself, read back: the trips come in again as the web reads them
+    // the file itself, read back: the trips come in again as the web reads them, each with its own tanker
     final c = (cases.first as Map).cast<String, dynamic>();
-    final x = tankerExport(machine: c['machine'] as Map, trips: [for (final t in c['trips'] as List) t as Map], from: '${c['from']}', to: '${c['to']}', company: 'Rachana Construction Limited', site: '${c['site']}');
-    final back = tankerImportRows(readSheets(sheetsXlsx([x.sheet])), '');
-    expect([for (final r in back) [r['date'], r['shift'], r['no'], r['c'], r['a'], r['b'], r['ch'], r['u']]], [
-      ['2026-10-14', 'Day', 'MH-04-J-9844', 'WT-101', '08:10', '08:40', '12+000', 'Curing'],
-      ['2026-10-15', 'Night', 'MH-04-J-9844', 'WT-102', '21:15', '21:55', '', ''],
+    final x = tankerExport(master: [for (final m in c['master'] as List) (m as Map).cast<String, dynamic>()], rows: [for (final r in c['rows'] as List) r as Map], from: '${c['from']}', to: '${c['to']}', company: 'Rachana Construction Limited', site: '${c['site']}');
+    final back = tankerImportRows(readSheets(sheetsXlsx(x.sheets)));
+    expect(tankerNoVehicle(back), isEmpty);
+    expect([for (final r in back) [r['date'], r['shift'], r['no'], r['c'], r['a'], r['b']]], [
+      ['2026-10-13', 'Day', 'MH-12-ZZ-7777', 'L-1', '', ''],
+      ['2026-10-13', 'Day', 'MH-12-ZZ-7777', 'L-2', '', ''],
+      ['2026-10-14', 'Day', 'MH-04-J-10', 'C-1', '09:00', '09:30'],
+      ['2026-10-14', 'Day', 'MH-04-J-9844', 'C-7', '07:35', '07:50'],
+      ['2026-10-14', 'Day', 'MH-12-AB-1001', 'P-1', '08:00', '08:15'],
+      ['2026-10-14', 'Day', 'MH-12-AB-1001', 'P-2', '10:00', '10:20'],
+      ['2026-10-14', 'Night', 'MH-04-J-9844', 'C-8', '21:00', '21:30'],
+      ['2026-10-14', 'Night', 'MH-04-J-9844', 'C-9', '00:30', '01:00'],
     ]);
   });
 
