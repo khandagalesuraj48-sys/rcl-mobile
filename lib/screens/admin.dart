@@ -458,8 +458,12 @@ class OrgScreen extends StatefulWidget {
 }
 
 class _OrgScreenState extends State<OrgScreen> {
-  final cust = TextEditingController(), site = TextEditingController(), logo = TextEditingController(), names = TextEditingController(), video = TextEditingController();
-  bool intro = true, busy = false, started = false;
+  final cust = TextEditingController(), site = TextEditingController(), logo = TextEditingController(), names = TextEditingController();
+  bool busy = false, started = false;
+  // (3.19.1, Mechanical update-123: the web's opening film is gone) the film's link and tick are not asked any more – what the
+  // server keeps for them is sent back as it is
+  String keptVideo = '';
+  bool keptIntro = true;
 
   @override
   void didChangeDependencies() {
@@ -471,13 +475,13 @@ class _OrgScreenState extends State<OrgScreen> {
     site.text = '${o['site'] ?? ''}';
     logo.text = '${o['logo'] ?? ''}';
     names.text = [for (final n in (o['billNames'] as List? ?? const [])) '$n'].join('\n');
-    video.text = '${o['video'] ?? ''}';
-    intro = o['intro'] != false;
+    keptVideo = '${o['video'] ?? ''}';
+    keptIntro = o['intro'] != false;
   }
 
   @override
   void dispose() {
-    for (final c in [cust, site, logo, names, video]) {
+    for (final c in [cust, site, logo, names]) {
       c.dispose();
     }
     super.dispose();
@@ -488,7 +492,7 @@ class _OrgScreenState extends State<OrgScreen> {
     setState(() => busy = true);
     try {
       final r = (await s.api.call('saveOrgSettings', [
-        {'customer': cust.text.trim(), 'site': site.text.trim(), 'logo': logo.text.trim(), 'billNames': names.text.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList(), 'video': video.text.trim(), 'intro': intro}
+        {'customer': cust.text.trim(), 'site': site.text.trim(), 'logo': logo.text.trim(), 'billNames': names.text.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList(), 'video': keptVideo, 'intro': keptIntro}
       ], true)) as Map;
       if (r['org'] is Map) s.org = (r['org'] as Map).cast<String, dynamic>();
       if ('${s.org['customer'] ?? ''}'.isNotEmpty) s.company = '${s.org['customer']}';
@@ -515,10 +519,7 @@ class _OrgScreenState extends State<OrgScreen> {
           TextBox(key: const Key('org-logo'), label: 'Logo (https link, optional)', controller: logo, hint: 'https://…'),
           const SizedBox(height: 8),
           TextBox(key: const Key('org-names'), label: 'Names bills are made in (one per line, 1 to 4)', controller: names, maxLines: 4),
-          const SizedBox(height: 8),
-          TextBox(key: const Key('org-video'), label: 'Opening film (https link to an .mp4, optional)', controller: video, hint: 'empty = the built-in opening'),
-          SwitchListTile(key: const Key('org-intro'), contentPadding: EdgeInsets.zero, title: Text('Play the opening when the app is opened'), value: intro, onChanged: (v) => setState(() => intro = v)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           FilledButton(key: const Key('org-save'), onPressed: busy ? null : _save, child: Text('Save company & site')),
         ]),
       );

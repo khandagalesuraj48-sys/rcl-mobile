@@ -4,6 +4,10 @@
 # (3.19.0) The same release also carries the Windows setup (RCL-ERP-Setup-<version>-<build>.exe – job "windows") and its
 # fingerprint ("win"): the computer app's own update. If only the Windows part fails, the Android app is still released
 # (without the setup – the computers keep their version and are told nothing).
+# (3.19.1, asked 17-10-2026: "android warti app updet krtana khup slow hote te speed up kr") The release also carries one APK per
+# processor – rcl-erp-<version>-<build>.arm64-v8a.apk / .armeabi-v7a.apk, the same version code, their fingerprints in "apk": a
+# phone's update downloads only its own (about half). The file for every phone stays (the first install, and the apps before
+# 3.19.1, which take the first ".apk" and "sha256"): it is uploaded first and its name sorts first.
 # The signing key is made ONCE and kept only in the private bucket "app-keys" of the Portal's Supabase (Android installs an
 # update only when it carries the same key – it must never change). Needs two GitHub secrets (never in a file, never in chat):
 #   PORTAL_SUPABASE_URL – the Portal's Supabase address      PORTAL_SUPABASE_KEY – a secret key of that project
@@ -81,17 +85,32 @@ jobs:
         run: |
           flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform android-arm,android-arm64 --split-debug-info=build/symbols
           SZ=$(stat -c %s build/app/outputs/flutter-apk/app-release.apk); echo "::notice::App file: $((SZ / 1048576)) MB"
-      - name: Check the signature (never the debug key)
+      - name: The file for every phone
+        run: cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.apk"
+      - name: One file per processor (3.19.1 – a phone's update downloads only its own)
         run: |
-          AS=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
-          "$AS" verify --print-certs build/app/outputs/flutter-apk/app-release.apk > certs.txt
-          if grep -q "CN=Android Debug" certs.txt; then echo "::error::The app is signed with the debug key – not released."; exit 1; fi
-          echo "::notice::Signed by: $(grep -m1 'certificate SHA-256 digest' certs.txt)"
+          set -e
+          for a in arm64-v8a:android-arm64 armeabi-v7a:android-arm; do
+            abi=${a%%:*}; tp=${a##*:}
+            RCL_ABIS=$abi flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform $tp --split-debug-info=build/symbols
+            cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.$abi.apk"
+            other=$(unzip -l "rcl-erp-$VER-$BN.$abi.apk" | awk '{print $4}' | grep '^lib/' | cut -d/ -f2 | sort -u | grep -vx "$abi" || true)
+            [ -z "$other" ] || { echo "::error::rcl-erp-$VER-$BN.$abi.apk also has the parts of: $other"; exit 1; }
+          done
+          for f in rcl-erp-$VER-$BN*.apk; do echo "::notice::$f: $(( $(stat -c %s "$f") / 1048576 )) MB"; done
+      - name: Check the signatures (never the debug key) and the version code (the same in every file)
+        run: |
+          AS=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          for f in rcl-erp-$VER-$BN*.apk; do
+            "${AS}apksigner" verify --print-certs "$f" > certs.txt
+            if grep -q "CN=Android Debug" certs.txt; then echo "::error::$f is signed with the debug key – not released."; exit 1; fi
+            vc=$("${AS}aapt2" dump badging "$f" 2>/dev/null | grep -o "versionCode='[0-9]*'" | head -1)
+            [ "$vc" = "versionCode='$BN'" ] || { echo "::error::$f has $vc, not $BN."; exit 1; }
+            echo "::notice::$f signed by: $(grep -m1 'certificate SHA-256 digest' certs.txt | sed 's/.*: //') – $vc"
+          done
       - name: One place for the app – the Portal's store entry of before (14-10-2026, build 102) is taken out
         run: |
           curl -sS -o /dev/null -w "old store entry: %{http_code}\n" -X DELETE "$SB_URL/storage/v1/object/app-releases" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -d '{"prefixes":["android/latest.json"]}' || true
-      - name: The app file for the release
-        run: cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.apk"
       - uses: actions/upload-artifact@v4
         with:
           name: apk
@@ -158,17 +177,25 @@ jobs:
         run: |
           set -e
           F="out/rcl-erp-$VER-$BN.apk"; W="out/RCL-ERP-Setup-$VER-$BN.exe"
-          [ -f "$F" ] || { echo "::error::The Android app file is missing."; exit 1; }
-          export SHA=$(sha256sum "$F" | cut -d' ' -f1) WSHA=""
+          A64="out/rcl-erp-$VER-$BN.arm64-v8a.apk"; A32="out/rcl-erp-$VER-$BN.armeabi-v7a.apk"
+          for x in "$F" "$A64" "$A32"; do [ -f "$x" ] || { echo "::error::$x is missing."; exit 1; }; done
+          export SHA=$(sha256sum "$F" | cut -d' ' -f1) WSHA="" S64=$(sha256sum "$A64" | cut -d' ' -f1) S32=$(sha256sum "$A32" | cut -d' ' -f1)
           FILES=("$F"); WHAT="Android"
           if [ "$WIN_OK" = "success" ] && [ -f "$W" ]; then
             export WSHA=$(sha256sum "$W" | cut -d' ' -f1); FILES+=("$W"); WHAT="Android and Windows"
           else
             echo "::warning::The Windows setup was not made – this release is for Android only (the computers keep their version)."
           fi
-          META=$(python3 -c "import json,os;m={'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':os.environ['SHA']};w=os.environ.get('WSHA','');m.update({'win':w} if w else {});print(json.dumps(m))")
-          { printf "%s\n\nRCL ERP %s (%s) – %s.\nAndroid SHA-256: %s\n" "${NOTES:-RCL ERP $VER}" "$VER" "$BN" "$WHAT" "$SHA"
+          META=$(python3 -c "import json,os;m={'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':os.environ['SHA']};w=os.environ.get('WSHA','');m.update({'win':w} if w else {});m['apk']={'arm64-v8a':os.environ['S64'],'armeabi-v7a':os.environ['S32']};print(json.dumps(m))")
+          MB() { echo $(( $(stat -c %s "$1") / 1048576 )); }
+          { printf "%s\n\nRCL ERP %s (%s) – %s.\n" "${NOTES:-RCL ERP $VER}" "$VER" "$BN" "$WHAT"
+            printf "Android, the first install (every phone, %s MB): rcl-erp-%s-%s.apk – SHA-256 %s\n" "$(MB "$F")" "$VER" "$BN" "$SHA"
+            printf "Android, the update inside the app (only the phone's own, by itself): 64-bit %s MB (SHA-256 %s), 32-bit %s MB (SHA-256 %s)\n" "$(MB "$A64")" "$S64" "$(MB "$A32")" "$S32"
             [ -n "$WSHA" ] && printf "Windows SHA-256: %s\n" "$WSHA"
             printf "\n<!-- rcl:%s -->\n" "$META"; } > notes.md
+          # the file for every phone (and the setup) first – the apps before 3.19.1 take the first ".apk"
           gh release create "v$VER-$BN" "${FILES[@]}" --title "RCL ERP $VER ($BN)" --notes-file notes.md --target "$GITHUB_SHA" --latest
+          gh release upload "v$VER-$BN" "$A64"
+          gh release upload "v$VER-$BN" "$A32"
+          gh release view "v$VER-$BN" --json assets --jq '.assets[] | .name' | sed 's/^/::notice::in the release: /'
           echo "::notice::Released $VER ($BN) – $WHAT – https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VER-$BN"

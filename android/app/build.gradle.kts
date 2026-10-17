@@ -33,6 +33,10 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // (3.19.1, asked 17-10-2026: "android warti app updet krtana khup slow hote te speed up kr") only the phones' processors:
+        // the emulators' part (x86_64 – 18 MB of ML Kit) is left out. The release also makes one file per processor (RCL_ABIS,
+        // the same version code): a phone's update downloads only its own (lib/core/update.dart)
+        ndk { abiFilters += (System.getenv("RCL_ABIS") ?: "armeabi-v7a,arm64-v8a").split(",").map { it.trim() } }
     }
 
     signingConfigs {

@@ -73,6 +73,10 @@ def gradle(s):
         s2 = s.replace('    buildTypes {', sc, 1); need(s2 != s, 'no buildTypes block'); s = s2
         s2 = re.sub(r'signingConfig = signingConfigs\.getByName\("debug"\)', 'signingConfig = if (keyProps.isNotEmpty()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")', s, count=1)
         need(s2 != s, 'no debug signingConfig line in release'); s = s2
+    if 'abiFilters' not in s:      # (3.19.1) only the phones' processors; RCL_ABIS: one processor's file (the release)
+        s2 = s.replace('        versionName = flutter.versionName\n', '        versionName = flutter.versionName\n'
+                       '        ndk { abiFilters += (System.getenv("RCL_ABIS") ?: "armeabi-v7a,arm64-v8a").split(",").map { it.trim() } }\n', 1)
+        need(s2 != s, 'no versionName line in defaultConfig'); s = s2
     if 'desugar_jdk_libs' not in s:
         s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
     return s

@@ -1393,6 +1393,21 @@ void main() {
     expect(s.siteRules['backDays'], 3);
     await t.pageBack();
     await net(t);
+    // (3.19.1, Mechanical update-123: the opening film is gone) Company & site: nothing about a film to set; what the server
+    // keeps for it goes back unchanged
+    s.org = {'customer': 'Rachana Construction Limited', 'site': 'VTR Site – NH 848', 'billNames': ['Rachana Construction Limited'], 'video': 'https://film.test/f.mp4', 'intro': false};
+    await tapK(t, 'ad-Company & site');
+    await net(t);
+    expect(find.byKey(const Key('org-customer')), findsOneWidget);
+    expect(find.byKey(const Key('org-video')), findsNothing);
+    expect(find.byKey(const Key('org-intro')), findsNothing);
+    expect(find.text('Play the opening when the app is opened'), findsNothing);
+    await tapK(t, 'org-save');
+    await net(t);
+    final org = srv.adminSent.last['x'] as Map;
+    expect([srv.adminSent.last['fn'], org['customer'], org['billNames'], org['video'], org['intro']], ['saveOrgSettings', 'Rachana Construction Limited', ['Rachana Construction Limited'], 'https://film.test/f.mp4', false]);
+    await t.pageBack();
+    await net(t);
     await tapK(t, 'ad-Read Me');
     await net(t);
     expect(find.text('1. हे app काय आहे'), findsWidgets);

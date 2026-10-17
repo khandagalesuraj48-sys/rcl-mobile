@@ -3,10 +3,14 @@
  *   <!-- rcl:{"build":102,"version":"1.0.1","sha256":"…"} -->
  *   Android – the app downloads the APK, checks the fingerprint and hands it to Android's installer – which installs it only
  *             if it is signed with the SAME key as the app on the phone (the key never leaves the private store).
+ *             (3.19.1, asked 17-10-2026: "android warti app updet krtana khup slow hote te speed up kr") the release also has
+ *             one APK per processor ("rcl-erp-<v>-<b>.arm64-v8a.apk", its fingerprint in "apk"): a phone downloads only its
+ *             own – about half of the file for every phone; a release without it: that file, as before.
  *   Windows – (3.19.0) the app downloads the setup (RCL-ERP-Setup-….exe), checks its fingerprint ("win") and runs it: the
  *             setup closes the app, puts the new version in its place and opens it again (windows/installer.iss).
  *   iPhone  – Apple lets an app be updated only through the App Store / TestFlight (not yet set up). */
 import 'dart:convert';
+import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
@@ -38,6 +42,12 @@ Future<String> appVersion() async {
   }
 }
 
+/// (3.19.1) The processor this app runs on – its own file of the release; '' = not known (the file for every phone).
+String Function() appAbi = () => switch (Abi.current()) { Abi.androidArm64 => 'arm64-v8a', Abi.androidArm => 'armeabi-v7a', _ => '' };
+
+/// The ends of the one-processor files – never taken as the file for every phone.
+const kAbiFiles = ['.arm64-v8a.apk', '.armeabi-v7a.apk', '.x86_64.apk'];
+
 /// The update in a GitHub Release (its JSON from the GitHub API), when it is newer than [currentBuild] – else null.
 /// [computer]: the Windows setup (.exe, fingerprint "win") instead of the Android app (.apk, fingerprint "sha256").
 AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer = false}) {
@@ -51,11 +61,22 @@ AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer
   }
   final b = meta['build'], sha = (meta[computer ? 'win' : 'sha256'] ?? '').toString();
   if (b is! num || b <= currentBuild || !RegExp(r'^[0-9a-f]{64}$').hasMatch(sha)) return null;
+  final assets = (j['assets'] as List? ?? []).whereType<Map>().toList();
+  String name(Map a) => (a['name'] ?? '').toString().toLowerCase();
+  String link(Map a) => (a['browser_download_url'] ?? '').toString();
+  final build = b.toInt();
+  AppUpdate made(String url, String fingerprint) => AppUpdate(build: build, version: (meta['version'] ?? '').toString(), notes: (j['name'] ?? '').toString(), url: url, sha256: fingerprint);
+  // (3.19.1) a phone: its own processor's file, when the release has it
+  final abi = computer ? '' : appAbi(), own = meta['apk'];
+  if (abi.isNotEmpty && own is Map) {
+    final osha = (own[abi] ?? '').toString(), f = assets.firstWhere((a) => name(a).endsWith('.$abi.apk'), orElse: () => {});
+    if (RegExp(r'^[0-9a-f]{64}$').hasMatch(osha) && link(f).startsWith('https://github.com/')) return made(link(f), osha);
+  }
   final ext = computer ? '.exe' : '.apk';
-  final file = (j['assets'] as List? ?? []).whereType<Map>().firstWhere((a) => (a['name'] ?? '').toString().toLowerCase().endsWith(ext), orElse: () => {});
-  final url = (file['browser_download_url'] ?? '').toString();
+  final file = assets.firstWhere((a) => name(a).endsWith(ext) && !kAbiFiles.any(name(a).endsWith), orElse: () => {});
+  final url = link(file);
   if (!url.startsWith('https://github.com/')) return null;
-  return AppUpdate(build: b.toInt(), version: (meta['version'] ?? '').toString(), notes: (j['name'] ?? '').toString(), url: url, sha256: sha);
+  return made(url, sha);
 }
 
 /// A newer version than the one on this phone, or null (also when it cannot be asked – the app works on).
