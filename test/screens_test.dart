@@ -1842,6 +1842,7 @@ void main() {
     expect(tabs[1].name, 'Lists');
     expect(tabs[1].rows, [['MH-04-J-9844', 'Chalke Enterprises'], ['MH-12-AB-1001', 'Patil Water Supply']], reason: 'the VEHICLE NO drop-down: every water tanker');
     expect(find.textContaining('3 trips of 2 water tankers and 100 empty lines.'), findsOneWidget);
+    await settle(t, 4500); // (the message – three lines now – gone from over the buttons)
     // a line without its VEHICLE NO: not given to the tanker open – nothing sent
     pickThis('trips.csv', utf8.encode('DATE,SHIFT,VEHICLE NO,CHALLAN NO,DISPATCH TIME,UNLOAD TIME,USE FOR\n13-10-2026,night,,WT-9,21:00,21:30,Curing\n13-10-2026,,MH-04-J-0001,WT-10,08:00,08:20,\n'));
     await reach(t, 'lt-import-b', 'lx-list');
