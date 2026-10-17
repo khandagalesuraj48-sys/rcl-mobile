@@ -107,9 +107,15 @@ def plist(s):
 # small phone's screen) and its title.
 WIN_RC = [('CompanyName', 'Rachana Construction Limited'), ('FileDescription', 'RCL ERP'), ('InternalName', 'rcl_erp'),
           ('LegalCopyright', 'Copyright (C) 2026 Rachana Construction Limited'), ('OriginalFilename', 'rcl_erp.exe'), ('ProductName', 'RCL ERP')]
+WIN_CORO = ('# (3.19.0) a plugin (flutter_inappwebview_windows) still uses <experimental/coroutine>: Visual Studio 2026 stops on it\n'
+            '# unless it is told to go on (the plugin works as before)\n'
+            'add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)\n')
 def win_cmake(s):
     t = re.sub(r'set\(BINARY_NAME "[^"]*"\)', 'set(BINARY_NAME "rcl_erp")', s, count=1)
     need('set(BINARY_NAME "rcl_erp")' in t, 'windows/CMakeLists.txt: no BINARY_NAME line')
+    if '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS' not in t:
+        t2 = t.replace('add_definitions(-DUNICODE -D_UNICODE)\n', 'add_definitions(-DUNICODE -D_UNICODE)\n' + WIN_CORO, 1)
+        need(t2 != t, 'windows/CMakeLists.txt: no "add_definitions(-DUNICODE -D_UNICODE)" line'); t = t2
     return t
 def win_rc(s):
     for k, v in WIN_RC:
