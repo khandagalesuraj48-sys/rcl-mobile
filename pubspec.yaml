@@ -1,7 +1,7 @@
 name: rcl_mobile
 description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.18.1+1
+version: 3.18.2+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -22,7 +22,7 @@ dependencies:
   geolocator: ^14.0.0
   image: ^4.2.0
   google_mlkit_text_recognition: ^0.15.0 # (3.1.8) the number plate read on the phone
-  google_mlkit_barcode_scanning: ">=0.14.1 <0.15.0" # (3.14.0) a machinery label (QR) read on the phone – the same ML Kit as above (commons 0.11)
+  mobile_scanner: ">=7.4.2 <8.0.0" # (3.18.2) the QR scanner of a machinery label: the live camera, a code read at once (ML Kit, on the phone)
   flutter_local_notifications: ^19.4.0 # (3.1.8) waiting for approval / sent back
   android_alarm_manager_plus: ">=4.0.0 <6.0.0" # (3.1.8) those notifications also with the app closed (Android)
   archive: ">=3.6.0 <5.0.0" # (3.2.0) the reports as Excel files (an .xlsx is a zip)
