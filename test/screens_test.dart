@@ -13,7 +13,7 @@ import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
-import 'package:rcl_mobile/core/qr_scan.dart' show scanLabel;
+import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
 import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
@@ -2028,27 +2028,47 @@ void main() {
     expect(find.text('Diesel inward only till 6 PM today.'), findsOneWidget);
   });
 
-  testWidgets('(3.14.0) A machinery label scanned: Diesel Issue with the machinery in it; not a label; not in the Master', (t) async {
+  testWidgets('(3.14.0 / 3.18.2) A machinery label scanned: the app\'s own scanner opens (live camera, the square, nothing to press); Diesel Issue with the machinery in it; not a label; not in the Master', (t) async {
     phone(t);
     final srv = FakeServer();
     final s = await ready(t, srv);
-    final orig = scanLabel;
-    addTearDown(() => scanLabel = orig);
+    // the camera's place: a picture that "sees" the code put in [code] when it is touched
+    var code = '';
+    QrScanScreen.cameraForTest = (found) => GestureDetector(key: const Key('qr-cam'), onTap: () => found(code), child: const ColoredBox(color: Color(0xFF3B4A40)));
+    addTearDown(() => QrScanScreen.cameraForTest = null);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    scanLabel = () async => 'https://www.google.com/';
+    Future<void> scan(String c) async {
+      code = c;
+      await t.tap(find.byKey(const Key('home-scan')));
+      await net(t);
+      expect(find.byType(QrScanScreen), findsOneWidget, reason: 'the scanner opens – not the camera app');
+      await t.tap(find.byKey(const Key('qr-cam')));
+      await net(t);
+      expect(find.byType(QrScanScreen), findsNothing, reason: 'a code seen: the scanner closes by itself');
+    }
+
+    // the scanner itself: its square and its words
+    code = '';
     await t.tap(find.byKey(const Key('home-scan')));
     await net(t);
+    expect(find.text('Scan the machinery label'), findsOneWidget);
+    expect(find.text('Hold the QR label inside the square – it is read by itself.'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/49_qr_scanner.png'));
+    await t.tap(find.byKey(const Key('qr-cam')));
+    await net(t);
+    expect(find.byType(QrScanScreen), findsOneWidget, reason: 'an empty code is not taken');
+    await t.pageBack();
+    await net(t);
+    expect(find.byType(QrScanScreen), findsNothing, reason: 'Back closes it – nothing happens');
+    await scan('https://www.google.com/');
     expect(find.text('This QR code is not a machinery label of the ERP.'), findsOneWidget);
     await settle(t, 4000);
-    scanLabel = () async => 'https://rcl-erp.example.app/?m=XX-99';
-    await t.tap(find.byKey(const Key('home-scan')));
-    await net(t);
+    await scan('https://rcl-erp.example.app/?m=XX-99');
     expect(find.text('The machinery of this label (XX-99) is not in the Master.'), findsOneWidget);
     await settle(t, 4000);
-    scanLabel = () async => 'https://rcl-erp.example.app/?m=mh25aj2169';
-    await t.tap(find.byKey(const Key('home-scan')));
-    await net(t);
+    await scan('https://rcl-erp.example.app/?m=mh25aj2169');
     expect(find.descendant(of: find.byKey(const Key('ql-no')), matching: find.text('MH-25-AJ-2169')), findsOneWidget, reason: 'found as the web\'s findMachine finds it');
     expect(find.byKey(const Key('ql-diesel')), findsOneWidget);
     expect(find.byKey(const Key('ql-log')), findsNothing, reason: 'Log Book is View only here');
