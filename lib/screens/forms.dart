@@ -10,6 +10,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/api.dart';
+import '../core/device.dart';
 import '../core/diesel_hist.dart';
 import '../core/format.dart';
 import '../core/rdoc.dart' show fmt;
@@ -539,7 +540,7 @@ class _EntryFormState extends State<EntryForm> {
         for (var i = 0; i < bills.length; i++) _billTile(i, bills[i]),
         if (billMode == 'loading') note('Loading the bill copies'),
         if (billMode == 'fail') note('The bill copies could not be loaded – they stay as they are. Press Edit again to change them.'),
-        if (add) _billAdd(true),
+        if (add && !onComputer) _billAdd(true), // (3.19.0) a computer: the files only
         if (add) _billAdd(false),
       ],
     );
@@ -870,7 +871,7 @@ class _EntryFormState extends State<EntryForm> {
                         Row(children: [
                           Icon(sh?.busy == true ? Icons.cloud_upload_outlined : done ? Icons.check_circle_rounded : Icons.photo_camera_rounded, size: 14, color: sh?.jpg != null ? Colors.white70 : C.green),
                           const SizedBox(width: 4),
-                          Text(sh?.busy == true ? 'Sending…' : done ? 'Sent' : 'Take photo', style: TextStyle(fontSize: 12, color: sh?.jpg != null ? Colors.white70 : C.muted)),
+                          Text(sh?.busy == true ? 'Sending…' : done ? 'Sent' : onComputer ? 'Choose photo' : 'Take photo', style: TextStyle(fontSize: 12, color: sh?.jpg != null ? Colors.white70 : C.muted)),
                         ]),
                       ]),
                     ),
@@ -931,7 +932,7 @@ class _EntryFormState extends State<EntryForm> {
               ],
               _label('Machinery', 'यंत्र'),
               _machineBox(),
-              if (ed == null)
+              if (ed == null && !onComputer) // (3.19.0) the phone's camera reads the plate – not on a computer
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: OutlinedButton.icon(
@@ -1007,7 +1008,10 @@ class _EntryFormState extends State<EntryForm> {
                       Expanded(child: Text(_aiNote, style: const TextStyle(fontSize: 13.5, color: C.blue, height: 1.35, fontWeight: FontWeight.w500))),
                     ]),
                   ),
-                const Padding(padding: EdgeInsets.only(top: 6, left: 2), child: Text('Taken with the camera now – date, time and place are printed on each photo.', style: TextStyle(fontSize: 12.5, color: C.muted))),
+                Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 2),
+                    child: Text(onComputer ? 'Chosen from a file of this computer – date, time and place are printed on each photo.' : 'Taken with the camera now – date, time and place are printed on each photo.',
+                        style: const TextStyle(fontSize: 12.5, color: C.muted))),
               ],
             ],
             // ---------- Diesel Inward ----------
@@ -1038,7 +1042,10 @@ class _EntryFormState extends State<EntryForm> {
               if (_billsHere) ...[
                 _label('Bill copy', 'बिल कॉपी'),
                 _bills(),
-                const Padding(padding: EdgeInsets.only(top: 6, left: 2), child: Text('Photos of the bill – take them one after another with the camera, or pick several at once from the gallery (up to 10).', style: TextStyle(fontSize: 12.5, color: C.muted))),
+                Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 2),
+                    child: Text(onComputer ? 'Photos of the bill – pick several at once from the files of this computer (up to 10).' : 'Photos of the bill – take them one after another with the camera, or pick several at once from the gallery (up to 10).',
+                        style: const TextStyle(fontSize: 12.5, color: C.muted))),
               ],
             ],
             // ---------- Diesel Transfer ----------

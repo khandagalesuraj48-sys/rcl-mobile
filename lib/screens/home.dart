@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../core/device.dart';
 import '../core/format.dart';
 import '../core/kinds.dart';
 import '../core/session.dart';
@@ -249,8 +250,11 @@ class _HomeTabState extends State<HomeTab> {
                   _RoundBtn(key: const Key('home-search'), icon: Icons.search_rounded, tip: 'Search', onTap: () => openSearch(context, entries: widget.onOpenEntries, reports: widget.onOpenReports)),
                   const SizedBox(width: 8),
                   // (3.14.0) a machinery's QR label: Diesel Issue / Log Book entry / its diesel ledger for it
-                  _RoundBtn(key: const Key('home-scan'), icon: Icons.qr_code_scanner_rounded, tip: 'Scan a machinery label', onTap: () => scanMachineLabel(context, onSaved: () => _load())),
-                  const SizedBox(width: 8),
+                  // (3.19.0) the phone's live camera – not on a computer
+                  if (!onComputer) ...[
+                    _RoundBtn(key: const Key('home-scan'), icon: Icons.qr_code_scanner_rounded, tip: 'Scan a machinery label', onTap: () => scanMachineLabel(context, onSaved: () => _load())),
+                    const SizedBox(width: 8),
+                  ],
                   _RoundBtn(icon: Icons.refresh_rounded, tip: 'Refresh', onTap: () => _load(init: true)),
                 ]),
                 const SizedBox(height: 16),

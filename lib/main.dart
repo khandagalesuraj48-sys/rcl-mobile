@@ -1,4 +1,5 @@
-import 'dart:ui' show PlatformDispatcher;
+import 'dart:io' show Platform;
+import 'dart:ui' show PlatformDispatcher, PointerDeviceKind;
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'config.dart';
 import 'core/alerts.dart';
 import 'core/api.dart';
+import 'core/device.dart';
 import 'core/session.dart';
 import 'screens/login.dart';
 import 'screens/shell.dart';
@@ -39,10 +41,12 @@ Future<void> alertsInBackground() async {
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   () async {
-    try {
-      await AndroidAlarmManager.initialize();
-      await AndroidAlarmManager.periodic(const Duration(minutes: 15), 3108, alertsInBackground, allowWhileIdle: true, rescheduleOnReboot: true);
-    } catch (_) {/* no background work on this phone: the notifications come while the app is open */}
+    if (Platform.isAndroid) {
+      try {
+        await AndroidAlarmManager.initialize();
+        await AndroidAlarmManager.periodic(const Duration(minutes: 15), 3108, alertsInBackground, allowWhileIdle: true, rescheduleOnReboot: true);
+      } catch (_) {/* no background work on this phone: the notifications come while the app is open */}
+    }
     await Alerts.init(ask: true);
   }();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
@@ -99,6 +103,8 @@ class RclApp extends StatelessWidget {
           title: 'RCL ERP',
           debugShowCheckedModeBanner: false,
           theme: appTheme(),
+          // (3.19.0) on a computer a list is also dragged with the mouse (and pulled down to refresh), as with a finger
+          scrollBehavior: onComputer ? const _AnyPointerDrags() : null,
           // his "Size of the text" (Settings) – on every screen of the app
           builder: (context, child) {
             final m = MediaQuery.of(context), k = SessionScope.of(context).textScale;
@@ -107,6 +113,12 @@ class RclApp extends StatelessWidget {
           home: const Gate(),
         )),
       );
+}
+
+class _AnyPointerDrags extends MaterialScrollBehavior {
+  const _AnyPointerDrags();
+  @override
+  Set<PointerDeviceKind> get dragDevices => PointerDeviceKind.values.toSet();
 }
 
 /// Which screen: opening · sign-in · pick a site · opening a site · the app.

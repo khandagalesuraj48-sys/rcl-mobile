@@ -1,9 +1,11 @@
 /* PRINT: the page the web asked to print (a Log Book, a bill, a report) shown as it will be on paper, and Android's printing
- * opened for it – a printer, or "Save as PDF" to send it on. "Print" at the top opens it again. */
+ * opened for it – a printer, or "Save as PDF" to send it on. "Print" at the top opens it again.
+ * (3.19.0) On a computer (Windows): the page's own printing (the printers of the computer, or "Save as PDF"). */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../config.dart';
+import '../core/device.dart';
 import '../core/print_fit.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -27,7 +29,11 @@ class _PrintViewState extends State<PrintView> {
     final c = _c;
     if (c == null) return;
     try {
-      await c.printCurrentPage(settings: PrintJobSettings(jobName: widget.title.isEmpty ? 'RCL ERP' : widget.title));
+      if (onComputer) {
+        await c.evaluateJavascript(source: 'window.print()');
+      } else {
+        await c.printCurrentPage(settings: PrintJobSettings(jobName: widget.title.isEmpty ? 'RCL ERP' : widget.title));
+      }
     } catch (_) {
       if (mounted) toast(context, 'Printing could not be opened on this phone.', bad: true);
     }
@@ -56,7 +62,7 @@ class _PrintViewState extends State<PrintView> {
         body: Stack(children: [
           InAppWebView(
             initialData: InAppWebViewInitialData(data: widget.html, baseUrl: WebUri(kMainUrl), mimeType: 'text/html', encoding: 'utf8'),
-            initialSettings: InAppWebViewSettings(supportZoom: true, builtInZoomControls: true, displayZoomControls: false, javaScriptEnabled: widget.fit, useWideViewPort: true, loadWithOverviewMode: true),
+            initialSettings: InAppWebViewSettings(supportZoom: true, builtInZoomControls: true, displayZoomControls: false, javaScriptEnabled: widget.fit || onComputer, useWideViewPort: true, loadWithOverviewMode: true),
             onWebViewCreated: (c) => _c = c,
             onLoadStop: (c, _) async {
               if (_printedOnce) return;
