@@ -126,6 +126,16 @@ jobs:
         with:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+      - name: The sizes – the file for every phone, and one processor's file (3.19.1 – what a 64-bit phone's update downloads)
+        run: |
+          set -e
+          cp build/app/outputs/flutter-apk/app-release.apk all.apk
+          RCL_ABIS=arm64-v8a flutter build apk --release --target-platform android-arm64 > a64.txt 2>&1 || { tail -40 a64.txt; exit 1; }
+          cp build/app/outputs/flutter-apk/app-release.apk a64.apk
+          abis() { unzip -l "$1" | awk '{print $4}' | grep '^lib/' | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//'; }
+          for f in all.apk a64.apk; do echo "::notice::$f: $(( $(stat -c %s $f) / 1048576 )) MB – processors: $(abis $f)"; done
+          [ "$(abis all.apk)" = "arm64-v8a armeabi-v7a" ] || { echo "::error::the file for every phone has: $(abis all.apk)"; exit 1; }
+          [ "$(abis a64.apk)" = "arm64-v8a" ] || { echo "::error::the 64-bit file has: $(abis a64.apk)"; exit 1; }
 
   # (3.19.0) THE WINDOWS APP: built on Windows, the Visual C++ files put next to it, its setup made (windows/installer.iss)
   windows:

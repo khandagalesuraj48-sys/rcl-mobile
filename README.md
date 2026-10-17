@@ -14,6 +14,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.19.1 (17-10-2026: "android warti app updet krtana khup slow hote te speed up kr"; with Mechanical update-123):**
+* **A smaller Android update.** The APK was 95 MB:
+  * 18 MB were the emulators' part (x86_64) of ML Kit – of no use on a phone;
+  * every phone also downloaded both the 32-bit and the 64-bit parts.
+* Now the build keeps only the phones' processors (`ndk.abiFilters`), and the release also carries **one APK per processor**
+  (`rcl-erp-<v>-<b>.arm64-v8a.apk` / `.armeabi-v7a.apk`, the same version code, their fingerprints in "apk").
+* The app's update downloads **only its own** file (`appAbi`, `parseRelease`). The file for every phone stays for the first install
+  and for the apps before 3.19.1: it is uploaded first and its name sorts first, so they take it as before.
+* **Company & site** (Admin) no longer has the opening film's link and tick, as the web (Mechanical update-123: the film is gone).
+  The values the server keeps go back unchanged.
+
 **Version 3.19.0 (17-10-2026: "windows and ios app banaw direct app ya windows war chaltil browser open krnechi garaj nahi updet pn
 in app ch yeil"):** **the Windows app** – the same app on a computer (Windows 10 / 11, 64-bit), no browser: the same sign-in,
 screens, server actions, checks and access.
@@ -288,6 +299,8 @@ site's modules as Admin (the Portal lists them all for him); before, the app sen
   repository.
   * The release carries the APK, and its notes carry the build number and the SHA-256.
   * The app downloads the APK and checks the fingerprint. Android then installs it only if it carries the same signature.
+  * (3.19.1) A phone takes its own processor's APK (`.arm64-v8a.apk` / `.armeabi-v7a.apk`, fingerprint in "apk") – about
+    half the size; a release without them: the APK for every phone.
   * Windows (3.19.0): the release's setup (.exe) and its own fingerprint ("win"); the setup closes the app and opens the new one.
   * iPhone: App Store / TestFlight, later (the Apple Developer account).
 

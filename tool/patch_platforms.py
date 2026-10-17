@@ -73,6 +73,11 @@ def gradle(s):
         s2 = s.replace('    buildTypes {', sc, 1); need(s2 != s, 'no buildTypes block'); s = s2
         s2 = re.sub(r'signingConfig = signingConfigs\.getByName\("debug"\)', 'signingConfig = if (keyProps.isNotEmpty()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")', s, count=1)
         need(s2 != s, 'no debug signingConfig line in release'); s = s2
+    if 'keepAbis' not in s:      # (3.19.1) only the phones' processors packed; RCL_ABIS: one processor's file (the release)
+        s2 = s.replace('    signingConfigs {', '    val keepAbis = (System.getenv("RCL_ABIS") ?: "armeabi-v7a,arm64-v8a").split(",").map { it.trim() }\n'
+                       '    packaging {\n        jniLibs {\n            excludes += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64").filter { it !in keepAbis }.map { "**/$it/**" }\n'
+                       '        }\n    }\n\n    signingConfigs {', 1)
+        need(s2 != s, 'no signingConfigs block'); s = s2
     if 'desugar_jdk_libs' not in s:
         s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
     return s

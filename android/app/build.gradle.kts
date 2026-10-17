@@ -35,6 +35,17 @@ android {
         versionName = flutter.versionName
     }
 
+    // (3.19.1, asked 17-10-2026: "android warti app updet krtana khup slow hote te speed up kr") only the phones' processors are
+    // packed: the emulators' parts (x86_64 – 18 MB of ML Kit) are left out. The release also makes one file per processor
+    // (RCL_ABIS, the same version code): a phone's update downloads only its own (lib/core/update.dart). (ndk.abiFilters is not
+    // used: the build check showed it left every processor in – the native libraries are left out when packed.)
+    val keepAbis = (System.getenv("RCL_ABIS") ?: "armeabi-v7a,arm64-v8a").split(",").map { it.trim() }
+    packaging {
+        jniLibs {
+            excludes += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64").filter { it !in keepAbis }.map { "**/$it/**" }
+        }
+    }
+
     signingConfigs {
         create("release") {
             if (keyProps.isNotEmpty()) {
