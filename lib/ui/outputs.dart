@@ -2,20 +2,17 @@
  * handed to the phone's sharing (Excel, Sheets, WhatsApp, Drive …), and the A4 page as the web prints it (the company picked on
  * top, the site, the signatures) handed to the phone's printing (a printer, or "Save as PDF"). */
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../core/format.dart';
 import '../core/rdoc.dart';
 import '../core/rprint.dart';
 import '../core/session.dart';
 import '../core/xlsx.dart';
-import '../web/files.dart' show safeFileName;
+import '../web/files.dart' show handOver;
 import '../web/print_view.dart';
 import 't.dart';
 import 'theme.dart';
@@ -29,23 +26,13 @@ Future<void> Function(Uint8List bytes, String name, String mime)? fileSink;
 /// An .xlsx to the phone's sharing.
 Future<void> shareXlsx(Uint8List bytes, String fileName) async {
   if (fileSink != null) return fileSink!(bytes, fileName.endsWith('.xlsx') ? fileName : '$fileName.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  final dir = Directory('${(await getTemporaryDirectory()).path}/rcl_files');
-  await dir.create(recursive: true);
-  final name = safeFileName(fileName.endsWith('.xlsx') ? fileName : '$fileName.xlsx');
-  final f = File('${dir.path}/$name');
-  await f.writeAsBytes(bytes, flush: true);
-  await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', name: name)], title: name));
+  await handOver(bytes, fileName.endsWith('.xlsx') ? fileName : '$fileName.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
 
 /// (3.9.0) Any file to the phone's sharing (a .csv list …).
 Future<void> shareFile(Uint8List bytes, String fileName, String mime) async {
   if (fileSink != null) return fileSink!(bytes, fileName, mime);
-  final dir = Directory('${(await getTemporaryDirectory()).path}/rcl_files');
-  await dir.create(recursive: true);
-  final name = safeFileName(fileName);
-  final f = File('${dir.path}/$name');
-  await f.writeAsBytes(bytes, flush: true);
-  await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: mime, name: name)], title: name));
+  await handOver(bytes, fileName, mime);
 }
 
 /// The report / list as Excel (every table a sheet; [bare]: the heading line first – an export to be imported back).

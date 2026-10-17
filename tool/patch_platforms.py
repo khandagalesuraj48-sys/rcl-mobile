@@ -101,15 +101,83 @@ def plist(s):
     s = s.replace('RCL ERP uses the microphone for a screen-share help call.', dict(USES)['NSMicrophoneUsageDescription'])
     return s
 
-edit(MAN, manifest)
-os.makedirs('android/app/src/main/res/xml', exist_ok=True)
-with open('android/app/src/main/res/xml/filepaths.xml', 'w') as f:
-    f.write('<?xml version="1.0" encoding="utf-8"?>\n<paths>\n    <files-path name="internal_apk_storage" path="ota_update/"/>\n</paths>\n')
-need(os.path.exists('android/app/build.gradle.kts'), 'android/app/build.gradle.kts is missing (an older Groovy template?)')
-edit('android/app/build.gradle.kts', gradle)
-if os.path.exists('android/build.gradle.kts'): edit('android/build.gradle.kts', root_gradle)
-if os.path.exists('ios/Runner/Info.plist'): edit('ios/Runner/Info.plist', plist)
-# flutter create adds a sample test for its counter app – not this app
-w = 'test/widget_test.dart'
-if os.path.exists(w) and 'MyApp' in open(w).read(): os.remove(w)
-print('patched')
+# ---------- (3.19.0) WINDOWS – run with --windows right after `flutter create --platforms=windows` made windows/ ----------
+# The program's name (rcl_erp.exe) and its details (company, product – also where Windows keeps the app's own files:
+# %APPDATA%\Rachana Construction Limited\RCL ERP), the window (a tall one in the middle of the screen, never smaller than a
+# small phone's screen) and its title.
+WIN_RC = [('CompanyName', 'Rachana Construction Limited'), ('FileDescription', 'RCL ERP'), ('InternalName', 'rcl_erp'),
+          ('LegalCopyright', 'Copyright (C) 2026 Rachana Construction Limited'), ('OriginalFilename', 'rcl_erp.exe'), ('ProductName', 'RCL ERP')]
+WIN_CORO = ('# (3.19.0) a plugin (flutter_inappwebview_windows) still uses <experimental/coroutine>: Visual Studio 2026 stops on it\n'
+            '# unless it is told to go on (the plugin works as before)\n'
+            'add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)\n')
+def win_cmake(s):
+    t = re.sub(r'set\(BINARY_NAME "[^"]*"\)', 'set(BINARY_NAME "rcl_erp")', s, count=1)
+    need('set(BINARY_NAME "rcl_erp")' in t, 'windows/CMakeLists.txt: no BINARY_NAME line')
+    if '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS' not in t:
+        t2 = t.replace('add_definitions(-DUNICODE -D_UNICODE)\n', 'add_definitions(-DUNICODE -D_UNICODE)\n' + WIN_CORO, 1)
+        need(t2 != t, 'windows/CMakeLists.txt: no "add_definitions(-DUNICODE -D_UNICODE)" line'); t = t2
+    return t
+def win_rc(s):
+    for k, v in WIN_RC:
+        s = re.sub(r'(VALUE "%s", )"[^"]*"' % k, lambda m: m.group(1) + '"%s"' % v, s, count=1)
+        need('VALUE "%s", "%s"' % (k, v) in s, 'windows/runner/Runner.rc: no %s' % k)
+    return s
+WIN_SIZE = ('''  // (3.19.0) RCL ERP on a computer: a tall window like the phone's screen, in the middle of the screen (it can be made bigger)
+  RECT work{};
+  ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
+  const POINT mid{(work.left + work.right) / 2, (work.top + work.bottom) / 2};
+  const double scale = FlutterDesktopGetDpiForMonitor(::MonitorFromPoint(mid, MONITOR_DEFAULTTONEAREST)) / 96.0;
+  const int work_w = static_cast<int>((work.right - work.left) / scale);
+  const int work_h = static_cast<int>((work.bottom - work.top) / scale);
+  const int win_w = work_w - 40 < 560 ? work_w - 40 : 560;
+  const int win_h = work_h - 40 < 940 ? work_h - 40 : 940;
+  Win32Window::Point origin(static_cast<unsigned int>(static_cast<int>(work.left / scale) + (work_w - win_w) / 2),
+                            static_cast<unsigned int>(static_cast<int>(work.top / scale) + (work_h - win_h) / 2));
+  Win32Window::Size size(static_cast<unsigned int>(win_w), static_cast<unsigned int>(win_h));
+  if (!window.Create(L"RCL ERP", origin, size)) {''')
+def win_main(s):
+    if '(3.19.0) RCL ERP on a computer' in s: return s
+    t = re.sub(r'  Win32Window::Point origin\(\d+, \d+\);\n  Win32Window::Size size\(\d+, \d+\);\n  if \(!window\.Create\(L"[^"]*", origin, size\)\) \{', lambda m: WIN_SIZE, s, count=1)
+    need(t != s, 'windows/runner/main.cpp: the window lines look different')
+    if '#include <flutter_windows.h>' not in t:
+        t2 = t.replace('#include <windows.h>\n', '#include <windows.h>\n#include <flutter_windows.h>\n', 1); need(t2 != t, 'main.cpp: no #include <windows.h>'); t = t2
+    return t
+WIN_MIN = ('''    case WM_GETMINMAXINFO: {  // (3.19.0) never smaller than a small phone's screen: the screens stay whole
+      const double scale = FlutterDesktopGetDpiForMonitor(::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)) / 96.0;
+      auto info = reinterpret_cast<MINMAXINFO*>(lparam);
+      info->ptMinTrackSize.x = static_cast<LONG>(380 * scale);
+      info->ptMinTrackSize.y = static_cast<LONG>(600 * scale);
+      return 0;
+    }
+''')
+def win_window(s):
+    if 'WM_GETMINMAXINFO' in s: return s
+    t = s.replace('    case WM_FONTCHANGE:\n', WIN_MIN + '    case WM_FONTCHANGE:\n', 1)
+    need(t != s, 'windows/runner/flutter_window.cpp: no "case WM_FONTCHANGE:"')
+    if '#include <flutter_windows.h>' not in t:
+        t2 = t.replace('#include "flutter_window.h"\n', '#include "flutter_window.h"\n\n#include <flutter_windows.h>\n', 1); need(t2 != t, 'flutter_window.cpp: no #include "flutter_window.h"'); t = t2
+    return t
+
+def computer():
+    edit('windows/CMakeLists.txt', win_cmake)
+    edit('windows/runner/Runner.rc', win_rc)
+    edit('windows/runner/main.cpp', win_main)
+    edit('windows/runner/flutter_window.cpp', win_window)
+    print('patched (windows)')
+
+def phone():
+    edit(MAN, manifest)
+    os.makedirs('android/app/src/main/res/xml', exist_ok=True)
+    with open('android/app/src/main/res/xml/filepaths.xml', 'w') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>\n<paths>\n    <files-path name="internal_apk_storage" path="ota_update/"/>\n</paths>\n')
+    need(os.path.exists('android/app/build.gradle.kts'), 'android/app/build.gradle.kts is missing (an older Groovy template?)')
+    edit('android/app/build.gradle.kts', gradle)
+    if os.path.exists('android/build.gradle.kts'): edit('android/build.gradle.kts', root_gradle)
+    if os.path.exists('ios/Runner/Info.plist'): edit('ios/Runner/Info.plist', plist)
+    # flutter create adds a sample test for its counter app – not this app
+    w = 'test/widget_test.dart'
+    if os.path.exists(w) and 'MyApp' in open(w).read(): os.remove(w)
+    print('patched')
+
+if '--windows' in sys.argv: computer()
+else: phone()

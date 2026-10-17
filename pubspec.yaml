@@ -1,7 +1,7 @@
 name: rcl_mobile
-description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
+description: RCL ERP – the mobile app (Android and iPhone) and the computer app (Windows). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.18.2+1
+version: 3.19.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.0
+  crypto: ^3.0.3 # (3.19.0) the fingerprint (SHA-256) of the Windows update, checked before it is run
   flutter_secure_storage: ^9.2.0
   package_info_plus: ^8.0.0
   ota_update: ^7.1.0

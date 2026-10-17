@@ -1,6 +1,6 @@
 # RCL ERP – mobile app
 
-Android and iPhone app for the people at the sites.
+Android and iPhone app for the people at the sites – and (3.19.0) the same app on a Windows computer.
 
 **Version 3 (14-10-2026: "mobile UI purn wegla hawa … fkt app che all logics functions mobile madhe … premium"):** the app
 has its **own phone screens** (the desktop web stays as it is), on the same servers and with the same access:
@@ -13,6 +13,29 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   after it, driver, remark and the **4 photos** (camera now, the place printed on each, sent at once – as on the web);
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
+
+**Version 3.19.0 (17-10-2026: "windows and ios app banaw direct app ya windows war chaltil browser open krnechi garaj nahi updet pn
+in app ch yeil"):** **the Windows app** – the same app on a computer (Windows 10 / 11, 64-bit), no browser: the same sign-in,
+screens, server actions, checks and access.
+* **Install:** the file **RCL-ERP-Setup-<version>-<build>.exe** of the newest GitHub Release (next to the APK) – installed for the
+  person signed in to Windows (no administrator), RCL ERP in the Start menu and on the Desktop. The setup is not signed with a
+  code-signing certificate (none bought): the first time Windows says "Windows protected your PC" → **More info → Run anyway**.
+* **Update from inside the app** (Me → Check Update, or the green bar on Home): the setup of the newest release is downloaded, its
+  fingerprint (SHA-256, "win" in the release's data line) checked, then run – it closes the app, puts the new version in its
+  place and opens it again; the sign-in and settings stay.
+* **What a computer does differently:** no QR scanner and no number plate photo (the phone's live camera and ML Kit); a photo
+  (the 4 of a Diesel Issue, a bill copy) is **chosen from a file** – as the web does on a computer – and gets the same band (date,
+  time, place: the computer's location must be on, as for the web); a made file (Excel, CSV) is **saved in Downloads** and opened
+  (as the web's download, "name (2).xlsx" when one is there); printing is the page's own (the computer's printers or "Save as
+  PDF"); a list is also dragged with the mouse (and pulled down to refresh). The window opens tall like the phone's screen, in the
+  middle of the screen; it can be made bigger, never smaller than a small phone.
+* Built by GitHub Actions on Windows (job **windows** of build.yml: `flutter build windows`, the Visual C++ files next to the app,
+  Inno Setup – `windows/installer.iss`, `tool/windows_setup.ps1`); the release builds it with the Android app and publishes both
+  in the same release (if only the Windows part fails, Android is still released). `windows/` was made by `flutter create` and
+  `tool/patch_platforms.py --windows` (name rcl_erp.exe, company and product, the window); the icon is the app's.
+* **iPhone:** built on every push without signing (job **ios** – the check that it builds). Apple lets an iPhone app be installed
+  and updated only through TestFlight / the App Store: that needs the company's (or the owner's) **Apple Developer account**
+  (99 USD a year); then the build signs it and sends it to TestFlight, and the update comes through TestFlight by itself.
 
 **Version 3.18.2 (17-10-2026):** the **QR scanner** of a machinery label (Home → the scan button) is the app's own live scanner –
 the camera's picture with a square; a QR code in it is read at once, nothing to press (before, the phone's camera opened to take a
@@ -265,13 +288,16 @@ site's modules as Admin (the Portal lists them all for him); before, the app sen
   repository.
   * The release carries the APK, and its notes carry the build number and the SHA-256.
   * The app downloads the APK and checks the fingerprint. Android then installs it only if it carries the same signature.
-  * iPhone: App Store / TestFlight, later.
+  * Windows (3.19.0): the release's setup (.exe) and its own fingerprint ("win"); the setup closes the app and opens the new one.
+  * iPhone: App Store / TestFlight, later (the Apple Developer account).
 
 ## Build
 GitHub Actions (`.github/workflows/build.yml`) runs on every push:
 * `flutter analyze` and the tests;
 * pictures of the screens (saved in the branch `screens/<branch>`);
-* an Android file for checking (artifact **android-apk**, debug-signed).
+* an Android file for checking (artifact **android-apk**, debug-signed);
+* (3.19.0) the Windows app and its setup (job **windows**, artifact **windows-setup**) and the iPhone app without signing (job
+  **ios**).
 
 The first run makes the `android/` and `ios/` folders and saves them in the branch.
 

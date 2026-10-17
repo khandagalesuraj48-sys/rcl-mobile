@@ -67,17 +67,32 @@ void _finish() {
 Future<String> _listen(String lang, void Function(String words) heard) async {
   final s = _stt ??= SpeechToText();
   if (!_sttReady) {
-    _sttReady = await s.initialize(
-      onStatus: (st) {
-        if (st == 'done') _finish();
-        if (st == 'notListening') Future.delayed(const Duration(milliseconds: 700), _finish); // (the last words may still come)
-      },
-      onError: (SpeechRecognitionError e) {
-        if (e.errorMsg.contains('permission')) _why = 'mic';
-        if (e.permanent) _finish();
-      },
-    );
-    if (!_sttReady) throw VoiceError(await s.hasPermission ? 'none' : 'mic');
+    // (3.19.0) a computer without the listening of the phone: said as "this device cannot listen", never left hanging
+    Future<bool> init() async {
+      try {
+        return await s.initialize(
+          onStatus: (st) {
+            if (st == 'done') _finish();
+            if (st == 'notListening') Future.delayed(const Duration(milliseconds: 700), _finish); // (the last words may still come)
+          },
+          onError: (SpeechRecognitionError e) {
+            if (e.errorMsg.contains('permission')) _why = 'mic';
+            if (e.permanent) _finish();
+          },
+        );
+      } catch (_) {
+        return false;
+      }
+    }
+
+    _sttReady = await init();
+    if (!_sttReady) {
+      var allowed = true;
+      try {
+        allowed = await s.hasPermission;
+      } catch (_) {}
+      throw VoiceError(allowed ? 'none' : 'mic');
+    }
   }
   final c = _cur = Completer<String>();
   _heard = '';

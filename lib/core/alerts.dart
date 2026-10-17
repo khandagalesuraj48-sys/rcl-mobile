@@ -59,7 +59,12 @@ class Alerts {
   static Future<void> init({bool ask = false}) async {
     try {
       if (!_ready) {
-        await _n.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher'), iOS: DarwinInitializationSettings()));
+        await _n.initialize(const InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          iOS: DarwinInitializationSettings(),
+          // (3.19.0) the computer app: Windows' own notifications (while the app is open)
+          windows: WindowsInitializationSettings(appName: 'RCL ERP', appUserModelId: 'Rachana.RCLERP', guid: '50cd3324-31ea-41a6-8f01-f79497e4d3f0'),
+        ));
         _ready = true;
       }
       if (ask) await _n.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
@@ -70,7 +75,7 @@ class Alerts {
     try {
       await init();
       await _n.show(id, title, body,
-          const NotificationDetails(android: AndroidNotificationDetails('rcl_approvals', 'Approvals', channelDescription: 'Entries waiting for your approval, and entries sent back to you', importance: Importance.high, priority: Priority.high), iOS: DarwinNotificationDetails()));
+          const NotificationDetails(android: AndroidNotificationDetails('rcl_approvals', 'Approvals', channelDescription: 'Entries waiting for your approval, and entries sent back to you', importance: Importance.high, priority: Priority.high), iOS: DarwinNotificationDetails(), windows: WindowsNotificationDetails()));
     } catch (_) {/* see init */}
   }
 }

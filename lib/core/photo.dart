@@ -2,7 +2,9 @@
  * litres · Register. Each is taken with the camera there and then (never from the gallery), made smaller (1600 px, a JPG of a
  * few hundred KB – the digits stay clear), and the date, time, kind, machinery and the place (latitude, longitude) are printed
  * on a band under it, exactly like the web. It is sent at once (dieselPhoto); the server keeps who sent it, when and where, and
- * the entry takes it when it is saved. */
+ * the entry takes it when it is saved.
+ * (3.19.0) On a computer (Windows): the photo is chosen from a file – as the web does on a computer – and gets the same band;
+ * the computer's location (Windows: Settings → Privacy & security → Location) is needed, as for the web. */
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
@@ -15,6 +17,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+import 'device.dart';
 
 class PhotoKind {
   const PhotoKind(this.key, this.en, this.mr, this.pic);
@@ -43,11 +47,15 @@ class Spot {
 
 /// Where the phone is now (the photo and the entry carry it).
 Future<Spot> whereNow() async {
-  if (!await Geolocator.isLocationServiceEnabled()) throw PhotoProblem('Turn on the location of the phone (GPS), then take the photo again.');
+  if (!await Geolocator.isLocationServiceEnabled()) {
+    throw PhotoProblem(onComputer ? 'Turn on the location of this computer (Windows Settings › Privacy & security › Location), then choose the photo again.' : 'Turn on the location of the phone (GPS), then take the photo again.');
+  }
   var p = await Geolocator.checkPermission();
   if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
   if (p == LocationPermission.denied || p == LocationPermission.deniedForever) {
-    throw PhotoProblem('Allow the location for RCL ERP (Settings › Apps › RCL ERP › Permissions), then take the photo again.');
+    throw PhotoProblem(onComputer
+        ? 'Allow the location for desktop apps (Windows Settings › Privacy & security › Location), then choose the photo again.'
+        : 'Allow the location for RCL ERP (Settings › Apps › RCL ERP › Permissions), then take the photo again.');
   }
   try {
     final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 25)));
@@ -70,13 +78,14 @@ class TakenPhoto {
 String two(int n) => n.toString().padLeft(2, '0');
 String stampOf(DateTime d) => '${two(d.day)}-${two(d.month)}-${d.year} ${two(d.hour)}:${two(d.minute)}:${two(d.second)}';
 
-/// Opens the camera; returns the stamped JPG, or null when the person went back without a photo.
+/// Opens the camera (on a computer: the choice of a photo file); returns the stamped JPG, or null when the person went back
+/// without a photo.
 Future<TakenPhoto?> takePhoto(String label, String machineId) async {
   if (Platform.isAndroid) {
     final st = await Permission.camera.request();
     if (!st.isGranted) throw PhotoProblem('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');
   }
-  final x = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 92, preferredCameraDevice: CameraDevice.rear);
+  final x = await ImagePicker().pickImage(source: onComputer ? ImageSource.gallery : ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 92, preferredCameraDevice: CameraDevice.rear);
   if (x == null) return null;
   final spot = await whereNow();
   final at = DateTime.now();
@@ -147,6 +156,7 @@ const kBillMax = 10;
 /// The camera (one photo) or the gallery (up to [room] at once) → the JPGs, ready to send ([] when the person went back).
 Future<List<Uint8List>> pickBills({required bool camera, int room = kBillMax}) async {
   if (room < 1) return [];
+  if (onComputer) camera = false; // (3.19.0) a computer: the files
   if (camera && Platform.isAndroid) {
     final st = await Permission.camera.request();
     if (!st.isGranted) throw PhotoProblem('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');

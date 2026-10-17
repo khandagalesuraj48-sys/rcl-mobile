@@ -1,11 +1,14 @@
-# Every push: the app is checked (analyze, tests), the screens are drawn and an Android app file is built.
-# The first run also makes the android/ and ios/ folders (flutter create + tool/patch_platforms.py) and saves them in the branch.
+# Every push: the app is checked (analyze, tests), the screens are drawn and an Android app file is built; (3.19.0) the Windows
+# app and its setup are built (job "windows", file "windows-setup") and the iPhone app is built without signing (job "ios" – the
+# check that it builds; signing and TestFlight need the Apple Developer account).
+# The first run also makes the android/ and ios/ folders (flutter create + tool/patch_platforms.py) and saves them in the branch;
+# (3.19.0) the windows/ folder the same way (flutter create --platforms=windows + tool/patch_platforms.py --windows).
 # What went wrong is written as annotations (readable through the GitHub API); the screen pictures are saved in the branch
 # "screens/<branch>". No secret is needed here; the signed release is release.yml.
 name: build
 on:
   push:
-    branches-ignore: ['screens/**']
+    branches-ignore: ['screens/**', 'screens-win/**']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -42,6 +45,18 @@ jobs:
               git config user.name "rcl-build"; git config user.email "rcl-build@users.noreply.github.com"
               git add android ios .metadata pubspec.lock
               git commit -m "Platform folders made by the build (flutter create + tool/patch_platforms.py + icons)" && git push
+            fi
+          fi
+      - name: Windows folder (first run only – flutter create + tool/patch_platforms.py --windows; the app's icon and setup are in git)
+        run: |
+          if [ ! -f windows/runner/main.cpp ]; then
+            rm -rf /tmp/wgen && flutter create --org in.rachana.rcl --project-name rcl_mobile --platforms=windows --no-pub /tmp/wgen
+            mkdir -p windows && cp -rn /tmp/wgen/windows/. windows/
+            python3 tool/patch_platforms.py --windows
+            flutter pub get
+            if [ "${{ github.event_name }}" = "push" ]; then
+              git config user.name "rcl-build"; git config user.email "rcl-build@users.noreply.github.com"
+              git add windows && git commit -m "Windows folder made by the build (flutter create + tool/patch_platforms.py --windows)" && git push
             fi
           fi
       - name: Company logo (first run only – the same picture the web ERP shows)
@@ -111,3 +126,73 @@ jobs:
         with:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+  # (3.19.0) THE WINDOWS APP: built on Windows, the Visual C++ files put next to it, its setup made (windows/installer.iss)
+  windows:
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Windows folder (until the build has saved it in the branch)
+        shell: bash
+        run: |
+          if [ ! -f windows/runner/main.cpp ]; then
+            flutter create --org in.rachana.rcl --project-name rcl_mobile --platforms=windows --no-pub "$RUNNER_TEMP/wgen"
+            mkdir -p windows && cp -rn "$RUNNER_TEMP/wgen/windows/." windows/
+            python tool/patch_platforms.py --windows
+          fi
+      - run: flutter pub get
+      - name: Windows app
+        shell: bash
+        run: |
+          set +e
+          flutter build windows --release 2>&1 | tee win.txt; st=${PIPESTATUS[0]}
+          if [ $st -ne 0 ]; then msg=$(grep -iE -B4 -A8 "error|failed" win.txt | head -90 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}'); echo "::error title=windows::$msg"; fi
+          exit $st
+      - name: The Visual C++ files next to the app (a computer without them still opens it)
+        shell: pwsh
+        run: ./tool/windows_setup.ps1 -Step crt
+      - name: The setup (Inno Setup)
+        shell: pwsh
+        run: ./tool/windows_setup.ps1 -Step setup
+      - name: The setup tried on Windows - installed, the app open, then the app's own update (pictures in screens-win/<branch>)
+        shell: pwsh
+        run: ./tool/windows_setup.ps1 -Step smoke -Out "$env:RUNNER_TEMP\shots"
+      - name: Save the pictures in screens-win/<branch>
+        if: always() && github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$RUNNER_TEMP/shots" 2>/dev/null && ls *.png >/dev/null 2>&1 || exit 0
+          git init -q && git config user.name "rcl-build" && git config user.email "rcl-build@users.noreply.github.com"
+          git add . && git commit -qm "Windows pictures of ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/screens-win/${GITHUB_REF_NAME}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-setup
+          path: build/installer/*.exe
+
+  # (3.19.0) THE IPHONE APP: built without signing – the check that it builds (signing and TestFlight: the Apple account)
+  ios:
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: iPhone app (not signed)
+        run: |
+          set +e
+          flutter build ios --release --no-codesign 2>&1 | tee ios.txt; st=${PIPESTATUS[0]}
+          if [ $st -ne 0 ]; then msg=$(grep -iE -B4 -A10 "error|failed" ios.txt | head -90 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}'); echo "::error title=ios::$msg"; fi
+          exit $st
