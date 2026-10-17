@@ -1,5 +1,5 @@
-/* ME (picture 3, 14-10-2026): who is signed in and his role, the site (change it), the app's version and its update, the full
- * web ERP, sign out (of the Portal and every module). */
+/* ME (picture 3, 14-10-2026): who is signed in and his role, the site (change it), the app's version and its update, sign out
+ * (of the Portal and every module). (3.18.0) No web page in the app any more: every page of the web is the app's own screen. */
 import 'dart:convert';
 
 import 'package:flutter/material.dart' hide Text;
@@ -10,8 +10,9 @@ import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_host.dart';
+import 'approvals.dart';
 import 'settings.dart';
+import 'super_admin.dart';
 import '../ui/t.dart';
 
 class MeTab extends StatefulWidget {
@@ -118,6 +119,16 @@ class _MeTabState extends State<MeTab> {
                 onTap: s.sites.length > 1 ? () => s.pickAnotherSite() : null,
                 trailing: s.sites.length > 1 ? null : const SizedBox.shrink(),
               ),
+              // (3.17.0) the Super Admin's console of the whole system (the Portal's "Super Admin"), in the app's own screens
+              if (s.superAdmin)
+                _row(
+                  pic: 'shield',
+                  en: 'Super Admin',
+                  mr: 'सुपर ॲडमिन',
+                  sub: 'Users & access, sites, companies, modules, activity',
+                  color: C.purpleSoft,
+                  onTap: () => openSuperAdmin(context),
+                ),
               const Padding(padding: EdgeInsets.fromLTRB(6, 8, 6, 10), child: Text('App', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.muted))),
               _row(
                 pic: 'mobile_phone',
@@ -133,7 +144,7 @@ class _MeTabState extends State<MeTab> {
               ),
               _row(pic: 'gear', en: 'My settings', mr: 'माझ्या सेटिंग्ज', sub: 'Default site, shift, diesel place, text size, password', color: C.slateSoft, onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()))),
               // (update-114) Approvals – for everybody: what waits for him to approve (one or several at once), what he sent (waiting,
-              // approved, rejected); the Super Admin also sets the verification rules there. The web page, live.
+              // approved, rejected); the Super Admin also sets the verification rules there. (3.2.0) The app's own screens, live.
               _row(
                 pic: 'bell',
                 en: 'Approvals',
@@ -146,7 +157,7 @@ class _MeTabState extends State<MeTab> {
                 color: s.crForMe > 0 ? C.amberSoft : C.blueSoft,
                 trailing: s.crForMe > 0 ? Badge(label: Text('${s.crForMe}'), child: const Icon(Icons.chevron_right_rounded, color: C.faint)) : null,
                 onTap: () async {
-                  await openWeb(context, 'Approvals', 'approvals', pic: 'bell');
+                  await openApprovals(context);      // (3.2.0) the app's own screen
                   s.loadApprovals();
                 },
               ),
@@ -160,7 +171,6 @@ class _MeTabState extends State<MeTab> {
                   color: s.keptBad > 0 ? C.redSoft : C.amberSoft,
                   onTap: () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet()),
                 ),
-              _row(pic: 'office_building', en: 'Full web ERP', mr: 'पूर्ण web ERP', sub: 'Every page of the web, inside the app', color: C.amberSoft, onTap: () => openWeb(context, 'Web ERP', 'dash', pic: 'office_building')),
               const SizedBox(height: 6),
               _row(pic: 'locked_with_key', en: 'Sign out', mr: 'साईन आउट करा', sub: 'Signs out of the Portal and every module', color: C.redSoft, text: C.red, onTap: _signOut),
               const SizedBox(height: 18),

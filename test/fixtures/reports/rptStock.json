@@ -1,0 +1,189 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Diesel Stock Register – Dispenser",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 16:16",
+ "location": "Dispenser",
+ "opening": 0,
+ "rows": [
+  {
+   "date": "2026-09-01",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000002",
+   "part": "Inward – Seed Pump (Bill SEED-1)",
+   "inQ": 20000,
+   "outQ": 0,
+   "bal": 20000
+  },
+  {
+   "date": "2026-09-20",
+   "shift": "Day",
+   "kind": "issue",
+   "ref": "DI-002506",
+   "part": "Issued – MV-1",
+   "inQ": 0,
+   "outQ": 15,
+   "bal": 19985
+  },
+  {
+   "date": "2026-09-28",
+   "shift": "Day",
+   "kind": "issue",
+   "ref": "DI-002513",
+   "part": "Issued – TKX-1",
+   "inQ": 0,
+   "outQ": 60,
+   "bal": 19925
+  },
+  {
+   "date": "2026-09-30",
+   "shift": "Day",
+   "kind": "issue",
+   "ref": "DI-002514",
+   "part": "Issued – TKX-1",
+   "inQ": 0,
+   "outQ": 30,
+   "bal": 19895
+  },
+  {
+   "date": "2026-10-07",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000010",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19906
+  },
+  {
+   "date": "2026-10-07",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000014",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19917
+  },
+  {
+   "date": "2026-10-07",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000018",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19928
+  },
+  {
+   "date": "2026-10-07",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000021",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19939
+  },
+  {
+   "date": "2026-10-12",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000038",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19950
+  },
+  {
+   "date": "2026-10-12",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000041",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19961
+  },
+  {
+   "date": "2026-10-13",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000044",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19972
+  },
+  {
+   "date": "2026-10-13",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000047",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19983
+  },
+  {
+   "date": "2026-10-13",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000050",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 19994
+  },
+  {
+   "date": "2026-10-16",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000073",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 20005
+  },
+  {
+   "date": "2026-10-16",
+   "shift": "",
+   "kind": "inward",
+   "ref": "IN-000074",
+   "part": "Inward – Stale Pump (Bill ST-1)",
+   "inQ": 11,
+   "outQ": 0,
+   "bal": 20016
+  },
+  {
+   "date": "2026-10-16",
+   "shift": "Day",
+   "kind": "issue",
+   "ref": "DI-002658",
+   "part": "Issued – MH-15-AB-0002 (P85 driver)",
+   "inQ": 0,
+   "outQ": 1,
+   "bal": 20015
+  },
+  {
+   "date": "2026-10-16",
+   "shift": "Day",
+   "kind": "issue",
+   "ref": "DI-002659",
+   "part": "Issued – MH-15-AB-0002 (P85 driver)",
+   "inQ": 0,
+   "outQ": 1,
+   "bal": 20014
+  }
+ ],
+ "total": {
+  "inQ": 20121,
+  "outQ": 107,
+  "closing": 20014,
+  "tin": 0,
+  "tout": 0,
+  "entries": 17
+ }
+}

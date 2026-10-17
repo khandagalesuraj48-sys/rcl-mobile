@@ -1,0 +1,176 @@
+{
+ "today": "2026-10-16",
+ "cases": [
+  {
+   "h": {
+    "no": "MH-25-AJ-2169",
+    "rows": [
+     {
+      "id": "DI-0912",
+      "date": "2026-10-15",
+      "shift": "Day",
+      "qty": 80,
+      "km": 15230,
+      "hr": "",
+      "source": "Dispenser",
+      "driver": "Ramesh"
+     },
+     {
+      "id": "DI-0901",
+      "date": "2026-10-12",
+      "shift": "Night",
+      "qty": 75.5,
+      "km": 14970,
+      "hr": "",
+      "source": "VTR Store",
+      "driver": ""
+     }
+    ],
+    "total": 9,
+    "lastKm": {
+     "value": 15230,
+     "date": "2026-10-15"
+    },
+    "lastHr": null,
+    "month": {
+     "qty": 1234.5,
+     "count": 6
+    }
+   },
+   "line": "Last: 15-10-2026 (yesterday) · 80 L · 15,230 km",
+   "head": "Last fill 15-10-2026 (yesterday) · 80 L · Last reading KM 15,230 (15-10-2026) · This month 1,234.5 L in 6 fills"
+  },
+  {
+   "h": {
+    "no": "Sany 210 (No.1)",
+    "rows": [
+     {
+      "id": "DI-0913",
+      "date": "2026-10-16",
+      "shift": "Day",
+      "qty": 120,
+      "km": "",
+      "hr": 4700.5,
+      "source": "Dispenser",
+      "driver": "Suresh"
+     }
+    ],
+    "total": 1,
+    "lastKm": null,
+    "lastHr": {
+     "value": 4700.5,
+     "date": "2026-10-16"
+    },
+    "month": {
+     "qty": 120,
+     "count": 1
+    }
+   },
+   "line": "Last: 16-10-2026 (today) · 120 L · 4,700.5 hr",
+   "head": "Last fill 16-10-2026 (today) · 120 L · Last reading Hrs 4,700.5 (16-10-2026) · This month 120 L in 1 fill"
+  },
+  {
+   "h": {
+    "no": "JCB-3DX",
+    "rows": [
+     {
+      "id": "DI-0800",
+      "date": "2026-09-01",
+      "shift": "Day",
+      "qty": 40,
+      "km": "",
+      "hr": "",
+      "source": "Dispenser",
+      "driver": ""
+     }
+    ],
+    "total": 1,
+    "lastKm": {
+     "value": 12000,
+     "date": "2026-08-30"
+    },
+    "lastHr": {
+     "value": 2500,
+     "date": "2026-08-30"
+    },
+    "month": {
+     "qty": 0,
+     "count": 0
+    }
+   },
+   "line": "Last: 01-09-2026 (45 days ago) · 40 L · –",
+   "head": "Last fill 01-09-2026 (45 days ago) · 40 L · Last reading KM 12,000 (30-08-2026) · Hrs 2,500 (30-08-2026) · This month 0 L in 0 fills"
+  },
+  {
+   "h": {
+    "no": "NEW-1",
+    "rows": [],
+    "total": 0,
+    "lastKm": null,
+    "lastHr": null,
+    "month": {
+     "qty": 0,
+     "count": 0
+    }
+   },
+   "line": "No diesel given before",
+   "head": "No diesel given before · This month 0 L in 0 fills"
+  }
+ ],
+ "agos": [
+  [
+   "2026-10-16",
+   "today"
+  ],
+  [
+   "2026-10-15",
+   "yesterday"
+  ],
+  [
+   "2026-10-14",
+   "2 days ago"
+  ],
+  [
+   "2026-09-16",
+   "30 days ago"
+  ],
+  [
+   "2026-10-17",
+   "today"
+  ]
+ ],
+ "labels": [
+  [
+   "https://rcl-erp.example.app/?m=MH-25-AJ-8511",
+   "MH-25-AJ-8511"
+  ],
+  [
+   "https://rcl-erp.example.app/?m=Sany%20210%20(No.1)",
+   "Sany 210 (No.1)"
+  ],
+  [
+   "https://x.app/index.html?a=1&m=JCB-3DX%E2%80%93B",
+   "JCB-3DX–B"
+  ],
+  [
+   "https://x.app/?m=",
+   ""
+  ],
+  [
+   "https://x.app/",
+   ""
+  ],
+  [
+   "MH-25-AJ-8511",
+   ""
+  ],
+  [
+   "https://x.app/?m=A+B%2BC",
+   "A B+C"
+  ],
+  [
+   " https://x.app/?m=%20X%20 ",
+   "X"
+  ]
+ ]
+}

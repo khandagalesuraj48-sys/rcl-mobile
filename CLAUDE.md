@@ -21,6 +21,12 @@ Store; the short version:
    store key live only in the private Supabase bucket / GitHub secrets.
 8. Work arrives as a branch + pull request; he merges.
 
+## The app's own screens – never the web's (asked 16-10-2026)
+* "app madhe mala kuthunch web ui dista kama naye … ethun pudhe jewa jewa web war new kahi yeil app madhe pn te app version app
+  ui pramane rahil": every page of the web is in the app as the app's OWN screens (same server actions, same checks, same
+  access – the web UI and the server are not changed for it). **Whatever is added to the web from now on gets its app screen
+  in the same piece of work.** No web view of an ERP page is shown in the app.
+
 ## How it is built
 * No server of its own: the Portal (sign-in, sites, a ticket for Mechanical) and Mechanical's `/api/rpc` (the same actions,
   checks and access as the web page). See `lib/core/api.dart`.

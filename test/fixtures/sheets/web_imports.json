@@ -1,0 +1,478 @@
+{
+ "S": {
+  "today": "2026-10-16",
+  "locations": [
+   "Dispenser",
+   "VTR Store"
+  ],
+  "master": [
+   {
+    "id": "MH-25-AJ-3232",
+    "status": "Active",
+    "activeFrom": "2026-09-01"
+   },
+   {
+    "id": "400 KVA DG",
+    "status": "Active",
+    "activeFrom": ""
+   },
+   {
+    "id": "JCB 3DX",
+    "status": "Inactive",
+    "activeFrom": "2026-05-01",
+    "inactiveFrom": "2026-08-01",
+    "earlier": []
+   }
+  ]
+ },
+ "inward": {
+  "excel_inward.xlsx": [
+   {
+    "row": {
+     "line": 3,
+     "date": "2026-10-16",
+     "location": "Dispenser",
+     "pump": "HP Petrol Pump",
+     "qty": 2000,
+     "rate": 92.5,
+     "billNo": "B-101",
+     "billDate": "2026-10-16"
+    },
+    "problems": []
+   },
+   {
+    "row": {
+     "line": 5,
+     "date": "2026-10-16",
+     "location": "VTR Store",
+     "pump": "IOCL & Co",
+     "qty": 500,
+     "rate": 93,
+     "billNo": "true",
+     "billDate": ""
+    },
+    "problems": []
+   },
+   {
+    "row": {
+     "line": 6,
+     "date": "2026-10-16",
+     "location": "Dispenser",
+     "pump": "",
+     "qty": 0.0015,
+     "rate": 0.1,
+     "billNo": "B-103",
+     "billDate": ""
+    },
+    "problems": [
+     "pump"
+    ]
+   },
+   {
+    "row": {
+     "line": 7,
+     "date": "Date",
+     "location": "Dispenser",
+     "pump": "-3",
+     "qty": 12345678901234568,
+     "rate": "",
+     "billNo": "",
+     "billDate": ""
+    },
+    "problems": [
+     "date",
+     "rate"
+    ]
+   }
+  ],
+  "web_template.xlsx": [
+   {
+    "row": {
+     "line": 2,
+     "date": "2026-10-16",
+     "location": "Dispenser",
+     "pump": "HP Petrol Pump",
+     "qty": 2000,
+     "rate": 92.5,
+     "billNo": "B-101",
+     "billDate": "2026-10-16"
+    },
+    "problems": []
+   },
+   {
+    "row": {
+     "line": 3,
+     "date": "2026-10-16",
+     "location": "VTR Store",
+     "pump": "IOCL Vasai",
+     "qty": 500,
+     "rate": 93,
+     "billNo": "B-102",
+     "billDate": ""
+    },
+    "problems": []
+   }
+  ],
+  "transfer.csv": [
+   {
+    "row": {
+     "line": 2,
+     "date": "",
+     "location": "Dispenser",
+     "pump": "",
+     "qty": 2000,
+     "rate": "",
+     "billNo": "",
+     "billDate": ""
+    },
+    "problems": [
+     "date",
+     "pump",
+     "rate"
+    ]
+   },
+   {
+    "row": {
+     "line": 4,
+     "date": "Total",
+     "location": "Dispenser",
+     "pump": "",
+     "qty": 2000,
+     "rate": "",
+     "billNo": "",
+     "billDate": ""
+    },
+    "problems": [
+     "date",
+     "pump",
+     "rate"
+    ]
+   }
+  ],
+  "csv_dates.csv": [
+   {
+    "row": {
+     "line": 2,
+     "date": "2026-10-16",
+     "location": "Dispenser",
+     "pump": "",
+     "qty": 10,
+     "rate": "",
+     "billNo": "",
+     "billDate": "2026-05-10"
+    },
+    "problems": [
+     "pump",
+     "rate"
+    ]
+   },
+   {
+    "row": {
+     "line": 3,
+     "date": "2026-10-05",
+     "location": "Dispenser",
+     "pump": "",
+     "qty": 20,
+     "rate": "",
+     "billNo": "",
+     "billDate": "2026-10-11"
+    },
+    "problems": [
+     "pump",
+     "rate"
+    ]
+   }
+  ]
+ },
+ "transfer": {
+  "two_tabs.xlsx": [
+   {
+    "row": {
+     "line": "2",
+     "date": "2026-10-15",
+     "shift": "Night",
+     "from": "Dispenser",
+     "to": "VTR Store",
+     "qty": 300,
+     "remark": ""
+    },
+    "problems": []
+   },
+   {
+    "row": {
+     "line": "4",
+     "date": "2026-10-16",
+     "shift": "Day",
+     "from": "Dispenser",
+     "to": "VTR Store",
+     "qty": 250.25,
+     "remark": "For night"
+    },
+    "problems": []
+   }
+  ],
+  "transfer.csv": [
+   {
+    "row": {
+     "line": "2",
+     "date": "",
+     "shift": "Day",
+     "from": "Dispenser",
+     "to": "VTR Store",
+     "qty": 2000,
+     "remark": "For \"night\" work"
+    },
+    "problems": [
+     "date"
+    ]
+   }
+  ],
+  "excel_inward.xlsx": [
+   {
+    "row": {
+     "line": "3",
+     "date": "2026-10-16",
+     "shift": "Day",
+     "from": "",
+     "to": "",
+     "qty": 2000,
+     "remark": ""
+    },
+    "problems": [
+     "From",
+     "To"
+    ]
+   },
+   {
+    "row": {
+     "line": "5",
+     "date": "2026-10-16",
+     "shift": "Day",
+     "from": "",
+     "to": "",
+     "qty": 500,
+     "remark": ""
+    },
+    "problems": [
+     "From",
+     "To"
+    ]
+   },
+   {
+    "row": {
+     "line": "6",
+     "date": "2026-10-16",
+     "shift": "Day",
+     "from": "",
+     "to": "",
+     "qty": 0.0015,
+     "remark": ""
+    },
+    "problems": [
+     "From",
+     "To"
+    ]
+   },
+   {
+    "row": {
+     "line": "7",
+     "date": "Date",
+     "shift": "Day",
+     "from": "",
+     "to": "",
+     "qty": 12345678901234568,
+     "remark": ""
+    },
+    "problems": [
+     "date",
+     "From",
+     "To"
+    ]
+   }
+  ]
+ },
+ "diesel": {
+  "diesel_issue.xlsx": [
+   {
+    "row": {
+     "line": "2",
+     "date": "2026-10-15",
+     "shift": "Night",
+     "source": "Dispenser",
+     "no": "MH-25-AJ-3232",
+     "qty": 60,
+     "kmReading": 15230.5,
+     "hrReading": "",
+     "driver": "Ramesh",
+     "remark": ""
+    },
+    "problems": []
+   },
+   {
+    "row": {
+     "line": "3",
+     "date": "2026-10-15",
+     "shift": "Day",
+     "source": "VTR Store",
+     "no": "400 KVA DG",
+     "qty": 1250.5,
+     "kmReading": "",
+     "hrReading": 812,
+     "driver": "",
+     "remark": "night shift"
+    },
+    "problems": []
+   },
+   {
+    "row": {
+     "line": "4",
+     "date": "2026-10-16",
+     "shift": "Day",
+     "source": "Dispenser",
+     "no": "MH-12-XX-0001",
+     "qty": 20,
+     "kmReading": "",
+     "hrReading": "",
+     "driver": "",
+     "remark": ""
+    },
+    "problems": [
+     "machinery not in Master"
+    ]
+   },
+   {
+    "row": {
+     "line": "5",
+     "date": "2026-10-05",
+     "shift": "Day",
+     "source": "Pump",
+     "no": "MH-25-AJ-3232",
+     "qty": 0,
+     "kmReading": "",
+     "hrReading": "",
+     "driver": "",
+     "remark": ""
+    },
+    "problems": [
+     "Diesel Source",
+     "qty"
+    ]
+   },
+   {
+    "row": {
+     "line": "6",
+     "date": "2026-06-27",
+     "shift": "Day",
+     "source": "Dispenser",
+     "no": "JCB 3DX",
+     "qty": 35,
+     "kmReading": "",
+     "hrReading": 1200,
+     "driver": "",
+     "remark": ""
+    },
+    "problems": []
+   },
+   {
+    "row": {
+     "line": "7",
+     "date": "2026-10-25",
+     "shift": "Day",
+     "source": "Dispenser",
+     "no": "JCB 3DX",
+     "qty": 35,
+     "kmReading": "",
+     "hrReading": 1210,
+     "driver": "",
+     "remark": ""
+    },
+    "problems": [
+     "date after today",
+     "machinery not active on that date"
+    ]
+   }
+  ],
+  "no_dimension.xlsx": [
+   {
+    "row": {
+     "line": "2",
+     "date": "2026-10-05",
+     "shift": "Day",
+     "source": "Dispenser",
+     "no": "MH-25-AJ-3232",
+     "qty": 1250.5,
+     "kmReading": "",
+     "hrReading": "",
+     "driver": "",
+     "remark": ""
+    },
+    "problems": []
+   },
+   {
+    "row": {
+     "line": "4",
+     "date": "2026-10-05",
+     "shift": "Day",
+     "source": "Dispenser",
+     "no": "400 KVA DG",
+     "qty": 40,
+     "kmReading": "",
+     "hrReading": "",
+     "driver": "",
+     "remark": ""
+    },
+    "problems": []
+   }
+  ],
+  "two_tabs.xlsx": {
+   "error": "Could not find the heading row – use \"Download template\"."
+  }
+ },
+ "active": [
+  [
+   "MH-25-AJ-3232",
+   "2026-08-31",
+   "MH-25-AJ-3232 is active only from 01-09-2026. Entry date 31-08-2026 is before that."
+  ],
+  [
+   "400 KVA DG",
+   "2026-08-31",
+   ""
+  ],
+  [
+   "JCB 3DX",
+   "2026-08-31",
+   "JCB 3DX is inactive from 01-08-2026. Activate it in Master to make entries."
+  ],
+  [
+   "MH-25-AJ-3232",
+   "2026-09-01",
+   ""
+  ],
+  [
+   "400 KVA DG",
+   "2026-09-01",
+   ""
+  ],
+  [
+   "JCB 3DX",
+   "2026-09-01",
+   "JCB 3DX is inactive from 01-08-2026. Activate it in Master to make entries."
+  ],
+  [
+   "MH-25-AJ-3232",
+   "2026-10-16",
+   ""
+  ],
+  [
+   "400 KVA DG",
+   "2026-10-16",
+   ""
+  ],
+  [
+   "JCB 3DX",
+   "2026-10-16",
+   "JCB 3DX is inactive from 01-08-2026. Activate it in Master to make entries."
+  ]
+ ]
+}

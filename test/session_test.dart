@@ -10,7 +10,6 @@ import 'package:rcl_mobile/core/kinds.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/screens/verify.dart';
 import 'package:rcl_mobile/web/files.dart';
-import 'package:rcl_mobile/web/web_host.dart';
 
 import 'fake_server.dart';
 
@@ -245,28 +244,17 @@ void main() {
     expect(picOfType('400 KVA DG'), 'oil_drum');
   });
 
-  test('where a link goes in a web page: the ERP stays in the app; other sites outside; the web\'s Logout = the app\'s sign-out', () async {
-    final s = make();
-    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
-    await s.chooseSite('S1');
-    Go go(String u, [bool main = true]) => whereTo(Uri.parse(u), main, s);
-    expect(go('https://erp.test/#sso=tk9'), Go.stay);
-    expect(go('https://erp.test/portal/?signout=1'), Go.signOut);
-    expect(go('https://www.google.com/maps?q=17.6,74.0'), Go.outside);
-    expect(go('tel:+919800000000'), Go.outside);
-    expect(go('blob:https://erp.test/1234'), Go.stay);
-  });
-
   test('a file from the web: a safe name and its type', () {
     expect(safeFileName('Diesel Issue 2026/10.xlsx'), 'Diesel Issue 2026_10.xlsx');
     expect(safeFileName('   '), 'RCL_file');
     expect(mimeOf('RCL_Master.xlsx', 'application/octet-stream'), contains('spreadsheetml'));
   });
 
-  test('the script for the web pages: answers the app, and hides the One Click film', () {
-    final js = File('assets/web_bridge.js').readAsStringSync();
-    for (final h in ["'saveFile'", "'print'", "'openUrl'", '__rclAppBack', '__rclAppReady', '#oc_intro{display:none!important}']) {
-      expect(js, contains(h), reason: h);
+  test('(3.18.0) no web page in the app: no web view host, no script for web pages; the app\'s own pictures are there', () {
+    expect(File('lib/web/web_host.dart').existsSync(), false);
+    expect(File('assets/web_bridge.js').existsSync(), false);
+    for (final f in Directory('lib').listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'))) {
+      expect(f.readAsStringSync(), isNot(contains('openWeb(')), reason: f.path);
     }
     final pub = File('pubspec.yaml').readAsStringSync();
     expect(pub, contains('- assets/icons3d/'));

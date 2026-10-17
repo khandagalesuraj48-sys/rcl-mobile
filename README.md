@@ -14,6 +14,158 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.18.0 (17-10-2026, the last part of the whole web in the app):** **no web page anywhere in the app** – every page of
+the web is the app's own screen. Gone: Me → "Full web ERP", the web view that loaded in the background at the start, and the web
+page a module or a report fell back to (every module and every report has its own screen now). The only web view left prints
+what the app made (a report, a bill, a Log Book page → PDF).
+
+**Version 3.17.0 (17-10-2026, part 16 of the whole web in the app):** the Portal's **Super Admin** console in the app's own
+screens (Me → **Super Admin**, for the Super Admin only) – the same Portal actions (`/api/admin`), checks and words:
+**Users & Access** (one site at a time: every user with No access / User / Admin for each module; a user added with a one-time
+password, switched off, given a new one-time password; his **pages** in Mechanical – Edit / View / No access, kept in Mechanical –
+and in the Store), **Sites** (name, company, Active / Closed; **Diesel places** with the tank size and the stock now; **New site** –
+the checklist the system works through until Ready: the key in Vercel, Mechanical's SQL copied, the Supabase links; a Closed site
+deleted with its code typed again – its data stays in its own database), **Companies** (one no site belongs to can be deleted),
+**Modules** (Live / Off and the link; one that is Off deleted with its key typed again – never Mechanical), **Activity** (the last
+200). A Portal sign-in that ended goes back to the sign-in. His own password: My settings → Change password (as the Portal's "My
+account").
+
+**Version 3.16.0 (17-10-2026, part 15 of the whole web in the app):** the web's **help** on every screen of the app, in its own
+words (`assets/help/web_help.json`): every red message – a toast, a red box, a "Nothing saved / Fix the file first" message, a
+question that says "anyway" – has **Help**: what is wrong and what to do (the web's first three rules that know the message, else
+its general one), in English / मराठी / हिंदी, and **Ask the assistant about this** when the AI service is set up; every page has its
+**?** (About this page – what it is for, what the app checks / how its figures come; on Entries and the Log Book: ⋮ → About this
+page).
+
+**Version 3.15.0 (17-10-2026, part 14 of the whole web in the app):** the web's **assistant ("Ask")** in the app's own screen
+(Home → **Ask**, next to the site), its working the web's own: the **⚡ questions** the app answers itself (the daily summary, the Log Book
+entries still pending, yesterday's / today's diesel and to whom, the stock, those over the standard); a **typed question** the app
+understands by itself (diesel, pending, stock, average, work, the last reading – in English, मराठी, हिंदी, also Marathi in English
+letters; the machinery and the dates found in the words); an **entry from words** ("8511 ला 60 लिटर diesel दे, km 148200",
+"EX-200 आज idle") – shown with Save / Open in the form / Cancel, saved **only** by his Save or "हो", through the app's own save and
+checks (his access; "check the reading – Save anyway"); half said → it asks, and the next words complete it; otherwise the **AI
+service** (getAiReply) with the day's figures, its look-ups run with his own sign-in, "Looked up …" under the answer, the page
+buttons of an answer opening the app's screens; when the service fails, the app's own best answer or the guide of the page that
+fits; **the daily summary once a day** (a red dot on Ask; Settings → Daily summary); the Admin's **Test the AI service**; the
+**voice** – 🔊 on an answer says it aloud, the microphone starts a talk (he speaks in मराठी / हिंदी / English, it answers aloud and
+listens again; "थांब", Stop or three silences end it; Settings → Speak the answer aloud).
+The web's **help** – what every page is for and the help for every error message, in three languages – is in the app as the
+web's own words (`assets/help/web_help.json`, made by `tool/web_help.js` from the web page).
+
+**Version 3.14.0 (16-10-2026, part 13 of the whole web in the app):** the web's remaining pieces of the diesel pages, Settings and
+Administration: the **diesel history of a machinery** while a Diesel Issue is filled (its last fills, last reading – the hint of
+the reading box –, this month; the last fill's driver in an empty Driver box; the "last fill" line of each row of "one date – many
+machinery"); **the photos of a saved fill** (large, when, where – the map); a **transfer's stock** of From and To, after the
+litres; **Settings**: Log Book list shows (2 / 7 / 30 days), the page to open after sign-in (it opens by itself), my last
+sign-ins, back to the usual settings; **the notice of the site** on Home; **Administration**: the faults of the app (listed,
+emptied – the app's own faults are reported there too) and the backup to Google Sheet; **a machinery label scanned in the app**
+(Home → the QR button): Diesel Issue with the machinery in it, Log Book entry, its diesel ledger; **Search** (Home → 🔍, the web's
+Ctrl + K): pages, quick actions, machinery, owners, the server's entries and the Store's items – the web's own matcher (a spelling
+mistake allowed only when nothing is found, "Did you mean …"), each result opening the app's screen with the web's filter.
+
+**Version 3.13.0 (16-10-2026, part 12 of the whole web in the app):** the other **Excel imports** and the **QR labels**, as the web
+does them: **Asset Master → ⋮ Import from Excel** (for Edit: the tab "Master", the columns by their names, N/A and Lifetime papers,
+the dates; checked by the server – the rows with a mistake listed – "Import this file?", then saved) and **QR labels** (all the
+machinery on site today, or one; the web's QR code of the Mechanical link, 12 labels on an A4 page, printed); **Vehicle
+Compliance → ⋮ Import Excel** (the paper dates checked, the changes asked, saved); a **water tanker's Edit Log Book → Export
+Excel** (now the web's own file: its 100 empty lines and the Shift drop-down) and **Import Excel** (checkTankerImport,
+importTankerTrips); the **Store's Item Master → Import from Excel** (the Store Admin: every row checked – new, already there, a
+near name to confirm with "Different item – add it", a mistake – then imported) and **Import template**.
+
+**Version 3.12.0 (16-10-2026, part 11 of the whole web in the app):** the rest of the **Log Book** (Log Book → ⋮) in the app's own
+screens: **Log Book – all dates** (the web's list with its filters – dates, the "Last N days" button, machinery, shift, and the
+rest under "More filters"; the period's totals; **Print** of the list), the two **Exports** (one date – many machinery, one
+machinery – many dates: the web's files cell by cell, with the Total formulas and the drop-downs), **Import from Excel** (for
+Edit: the file read as the web reads it, every row checked by the server – checkLogImport / checkTankerImport, the rows already in
+the Log Book shown with "overwrite or keep" – then importLogBook / importTankerTrips) and the two **templates** (the web's
+200-line files with the machinery of the site on a hidden tab).
+
+**Version 3.11.0 (16-10-2026, part 10 of the whole web in the app):** the rest of the **diesel pages** (Entries → Diesel Issue /
+Diesel Inward / Transfer → ⋮) in the app's own screens: **All dates & Export** (the web's list with its filters – dates, Today /
+Yesterday / Last 7 days / This month, and the page's own filters under "More filters"; the server's totals; on Diesel Issue each
+entry's % of the total and "% by machinery"; Export to Excel – the web's file), **Import from Excel** (an .xlsx or .csv from the
+phone, read as the web's library reads it; every row checked ✓ / ✗ – "Fix the file first" or "Import N rows"; all rows saved or
+none, by the server), **Download template** (the web's file) and **Multiple entries** (Transfer: rows → saveTransferBulk;
+Diesel Issue: one date – many machinery → saveDieselBulk with its "Please check these rows" / Save all anyway, and one machinery –
+many dates → importDiesel, with the running stock as on the web). An old .xls is not read: "save it as .xlsx".
+
+**Version 3.10.0 (16-10-2026, part 9 of the whole web in the app):** **Store** (Home → Store) in the app's own screens – its own
+sign-in through the Portal (a ticket for the Store, used once), by the pages the Portal gave: the **Dashboard** (items, active,
+inactive, categories, added this month; recently added; items by category) and the **Item Master** of this site (search,
+category, status; + Add item – the name checked while typing, a proper name suggested, the same name refused, a near name asked
+"is it the same item?", a near category asked; Edit / Delete by the Store Admin; Export to Excel).
+
+**Version 3.9.0 (16-10-2026, part 8 of the whole web in the app):** **Administration** (Home → Administration, Admin only) in
+the app's own screens: **Users & Access** (every user and his access per page – Edit / View / No access; read only once the
+Super Admin gives users and access, else add a user, change one, a one-time password, set a whole column; the Access report and
+its full list as a file), **Company & site**, the **Rules of this site** (days back, the notice, the shift hours), **Screen share
+– who may use it**, the **Activity Log** (dates, user, module, action, record / text; what changed, field by field), the
+**Database check** and **Read Me** (drawn with the app's own widgets – headings, lists, tables, the SQL to copy, the first
+Admin's SQL as it is typed); Approvals from here too. The same server actions as the web.
+
+**Version 3.8.0 (16-10-2026, part 7 of the whole web in the app):** **Billing** (Home → Billing) in the app's own screens, each
+by its access as the web's tabs: **Machinery Billing** – the period, the bill date, the name on the bill, the vendors and their
+machinery (search, a vendor ticks all its machinery), one bill per vendor or per machinery; **Build bills** works every bill out
+on the phone with the web's own rules (the Log Book, the diesel and the BOQ of each date – per day / KM / trip / night trip /
+hour slabs / month / item-wise / no BOQ, diesel debited or above the standard, the last fill still in the tank, a final bill),
+the warnings to check, Idle days Paid / Not paid, the diesel rate of a bill, the other deduction and its reason, debit notes and
+corrections of earlier bills to tick, the RA bill number; **Papers** / **Preview** – the Abstract of Bill, Tax Invoice, GST
+declaration and Debit Note to the character of the web, with the Log Book after them, each bill fitted to one A4 page; **Verify &
+Submit** (the server's checks ✔ ⚠ ✖, already-submitted bills kept as a revision or a new number), then the bills as saved open to
+print; Company details; the Admin's Month close. **RCL Drive** – the saved bills (View / Print with the Log Book, the Log Book,
+Delete by Admin) and debit notes (View / Print, Cancel by Admin, the diesel note of each bill), **+ New Debit Note** from the
+Log Book entries charged to a party. **Bill Summary** (Net Payable month-wise / Detail), **Machinery Payments** (payment or
+opening balance, edit, delete, the vendor's balance), **Vendor Ledger** and **Vendor Outstanding** – Print and Excel on the phone.
+The Log Book print is now fitted to one page as on the web too. The same server actions as the web.
+
+**Version 3.7.0 (16-10-2026, part 6 of the whole web in the app):** **Breakdown** (Home → Maintenance) in the app's own screen:
+the daily machinery status – every machinery on site on a date (Own / Rental / Hired / Other, search), Working or Breakdown with
+its reason (a list to pick from) and a remark, since when and for how many days (the breakdowns carried from the last saved day);
+Submit / Save changes, Delete this day, Print; the saved days (tap one to open it); the period report – breakdown days per
+machinery, per owner or owner → machinery, with when and why, Print and Excel. The same server actions as the web.
+
+**Version 3.6.0 (16-10-2026, part 5 of the whole web in the app):** **Edit Log Book** (Log Book → ⋮) in the app's own screen: a
+machinery and dates (Yesterday / This month / Last month) – all its entries as cards, worked out live (total, opening / issued /
+consumed / closing diesel); a changed Close moves the next Start; red cards say what is wrong ("Use it"); + Add row (the first free
+date, or the Night / Day of the ticked dates), Add all missing dates, + work in this shift (Bucket, then Breaker), ½ day, the way,
+the Item-wise BOQ box, the opening diesel of the 1st, dates of a submitted RA Bill shown and not changed, Delete; **Save changes**
+sends the whole lot once (saveLogBulk). A **water tanker** opens as its trips, one card each (saveTankerRange), with Export Excel.
+**Print Log Book** – the site's monthly Log Book + bill in each machinery's format (A–I), the same sheets as the web prints (the
+diesel rate of the print can be typed; portrait / landscape) – from Edit Log Book and from the Log Book of a day; **View format** on
+Log Book Format prints a format with SAMPLE lines. Still to come: Import Excel (trips, entries) – with the other imports.
+
+**Version 3.5.0 (16-10-2026, part 4 of the whole web in the app):** the **Dashboard** (Reports → Dashboard) and **Tank Check**
+(Log Book → ⋮) in the app's own screens. Dashboard – Diesel: the dates (Today … All dates, From – To), the **Daily report** (one day on
+one page to print / PDF), opening / received / issued / closing / stock now, the tanks (live or the closing of the last date) and
+**Tank size**, issued by ownership (tap: machine-wise with Print), Own vehicle compliance, the stock of each place and combined, in &
+out by day, top machines, the day-wise stock (a place or all). Dashboard – Log Book: the four figures, machine-wise work (chips),
+pending Log Book by machinery – a date opens its new entry. Tank Check: what the system says, measured or filled to full, the
+difference, saved once; the checks, Delete. The same server actions as the web.
+
+**Version 3.4.0 (16-10-2026, part 3 of the whole web in the app):** **Machinery** (Home) – the web's Master pages in the app's own
+screens, by access: **Asset Master** (the list with its filters and "on site" dates, the vendor chips, papers; a machinery's details;
+Add / Edit – the changes shown first, a new Number moves everything, "did it come back?", earlier periods, papers with Lifetime /
+N/A –; Add multiple; several ticked: Assign vendor, Edit selected, Delete selected; Export to Excel, Print list, Asset list by date /
+month / period), **Vendor Master** (the list, a vendor's form – the GST number's State and PAN, the IFSC's bank and branch –, a
+rename, save all owners as vendors), **Vendor BOQ** (BOQs and amendments, the form with every rent type – hour slabs, Night trip,
+Item-wise –, the vendor's machinery ticked, same terms for others, machinery without a BOQ, Rate check, Print), **Vehicle
+Compliance** (the counts and chips, renew a paper, papers per type, Export Excel, the history) and **Log Book Format** (each
+machinery's format, set several, a format's name). The same server actions and checks as the web. Still to come with later parts:
+the Excel imports, QR labels, a Log Book format's sample print.
+
+**Version 3.3.0 (16-10-2026, part 2 of the whole web in the app):** **Reports** in the app's own screens – Daily Inward & Issue,
+Monthly Diesel Issue, Monthly Diesel & Average and the 12 diesel reports (Debit Recovery – its rates can be changed, Machinery Cost,
+Diesel Cost, Purchase Register, Machinery Diesel Ledger, Diesel Watch, Owner / Vendor-wise, Type-wise, Stock Register, Month vs
+Month, Tank Check, Actual vs Standard): the same filters and the same server report as the web, the figures as tiles, the
+tables as the web draws them (sideways on the phone), **Excel** (every table a sheet, made on the phone) and **Print** (A4 as the
+web, the company chosen on top, the signatures; a printer or "Save as PDF").
+
+**Version 3.2.0 (16-10-2026, "purn web application completely app ui madhe … app madhe mala kuthunch web ui dista kama naye"):**
+the first part of the whole web in the app's own screens – **Approvals**: the counts (waiting for you, sent back, waiting in all,
+yours, the oldest), every request (when, who, which work, what it changes, its steps, waiting at whom / sent back / decided),
+Approve / Send back / Reject one or several ticked at once, Answer and send again / Take back, Remind; the Super Admin's
+**Verification rules** (works, levels of people, "only when", remind after). The same actions and checks as the web.
+
 **Version 3.1.13 (16-10-2026, with Mechanical update-120 – "inward bill copy pn add krayche aahet … inward copy eka weli multiple
 click krun save kru shakel user"):** New / Change Diesel Inward has **Bill copy**: "Take photo" (the camera, one after another) and
 "Choose photos" (several at once from the gallery), up to 10; each made a JPG of at most 2000 px and sent at once (`inwardPhoto`),
@@ -95,11 +247,9 @@ site's modules as Admin (the Portal lists them all for him); before, the app sen
   the web); an entry can be changed or deleted from its details.
 * **My settings** (`lib/screens/settings.dart`): default site (the Portal's start), usual shift, usual diesel place, Log Book
   usual way, size of the text, mobile number, photo, password – the same settings as the web.
-* Modules still on the web: ONE web view (`lib/web/web_host.dart`) loaded in the background and kept alive – a module opens
-  at once (the web switches its page, `__rclAppGo`); its "page stopped" box and the opening film are not shown.
-* Modules not yet made for the phone (Machinery, Logbook, Maintenance, Billing, Store, Administration, the reports) open their
-  **web page inside the app** (`lib/web/web_page.dart` + `assets/web_bridge.js`: camera, location, Excel / CSV to the share
-  sheet, print / PDF, Back, Logout). The One Click opening film is not shown in the app.
+* **No web page in the app** (3.18.0, asked 16-10-2026: "app madhe mala kuthunch web ui dista kama naye"): every page of the
+  web is the app's own screen, with the same server actions, checks and access. The only web view left prints a page the app
+  made itself (`lib/web/print_view.dart` – a report, a bill, a Log Book page to PDF).
 * 3D pictures: Microsoft Fluent Emoji (MIT, `assets/icons3d/LICENSE-fluentui-emoji.txt`). The Rachana logo is the picture the
   web ERP shows (fetched once by the build, `assets/brand/`).
 * **Update from inside the app** (asked 14-10-2026: "git release madhe apk theun de"): the newest **GitHub Release** of this
@@ -123,10 +273,9 @@ The first run makes the `android/` and `ios/` folders and saves them in the bran
 | Person, sites, access, the site's lists | `lib/core/session.dart` |
 | The 4 photos (camera, location, the printed band) | `lib/core/photo.dart` |
 | Screens | `lib/screens/` (login, site_pick, shell, home, entries, forms, reports, me), `lib/main.dart` (opening) |
-| The web pages still in the app | `lib/web/web_host.dart`, `assets/web_bridge.js`, `lib/web/print_view.dart`, `lib/web/files.dart` |
+| Printing and the files the app makes (no web page) | `lib/web/print_view.dart`, `lib/web/files.dart` |
 | Design | `lib/ui/theme.dart`, `lib/ui/brand.dart` (backgrounds, Rachana mark and logo), `lib/ui/widgets.dart` |
 | Tests | `test/`, with pretend servers in `test/fake_server.dart` |
-| The web bridge in a real browser | `test_web/bridge.test.js` (a page built like the ERP), `test_web/real_erp.js` (the real ERP on the local test copy) – run by hand with Node + Chromium; a web view cannot run in Flutter's tests |
 
 Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-*.txt`).
 

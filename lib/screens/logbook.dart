@@ -20,8 +20,13 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
+import 'log_edit.dart';
+import 'log_more.dart';
+import 'log_print.dart';
+import 'tank_check.dart';
 import 'verify.dart';
 import '../ui/t.dart';
+import '../ui/help.dart' show GuideButton, showGuide;
 
 const kDayStatus = ['Idle', 'Holiday', 'Breakdown'];
 const kLogShifts = ['Full Day', 'Day', 'Night'];
@@ -274,6 +279,35 @@ class _LogBookScreenState extends State<LogBookScreen> {
                       }
                     },
                     icon: const Icon(Icons.calendar_month_rounded),
+                  ),
+                  // (3.5.0) the rest of the web's Log Book group, as the app's own screens
+                  PopupMenuButton<String>(
+                    key: const Key('lb-menu'),
+                    icon: const Icon(Icons.more_vert_rounded),
+                    padding: EdgeInsets.zero,
+                    onSelected: (k) async {
+                      if (k == 'edit') openLogEdit(context);
+                      if (k == 'print') printLogBook(context, SessionScope.read(context), rows: rows, from: day, to: day);      // (3.6.0) the entries shown
+                      if (k == 'tank') openTankCheck(context);
+                      if (k == 'guide') showGuide(context, 'log'); // (3.16.0) the web's "?" of the page
+                      // (3.12.0) the rest of the web's Log Book page: its list of all dates with the exports, Import from Excel, the templates
+                      if (k == 'find') await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogFindScreen()));
+                      if (k == 'import') await importLog(context);
+                      if (k == 'tpl-date' || k == 'tpl-mach') await logTemplate(context, k == 'tpl-date' ? 'date' : 'mach');
+                      if ((k == 'find' || k == 'import') && mounted) _load();
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(key: const Key('lb-guide'), value: 'guide', child: Text('About this page')),
+                      PopupMenuItem(key: const Key('lb-find'), value: 'find', child: Text('All dates & Export')),
+                      PopupMenuItem(key: const Key('lb-edit'), value: 'edit', child: Text('Edit Log Book')),
+                      PopupMenuItem(key: const Key('lb-print'), value: 'print', child: Text('Print Log Book')),
+                      PopupMenuItem(value: 'tank', child: Text('Tank Check')),
+                      if (SessionScope.read(context).canEdit('Log Book')) ...[
+                        PopupMenuItem(key: const Key('lb-import'), value: 'import', child: Text('Import from Excel')),
+                        PopupMenuItem(key: const Key('lb-tpl-date'), value: 'tpl-date', child: Text('Template: one date – many machinery')),
+                        PopupMenuItem(key: const Key('lb-tpl-mach'), value: 'tpl-mach', child: Text('Template: one machinery – many dates')),
+                      ],
+                    ],
                   ),
                 ]),
               ),
@@ -1681,7 +1715,7 @@ class _TankerScreenState extends State<TankerScreen> {
     final saved = (got?['trips'] as List? ?? []).whereType<Map>().toList();
     final canEdit = s.canEdit('Log Book');
     return Scaffold(
-      appBar: AppBar(titleSpacing: 0, title: const Row(children: [Pic('delivery_truck', size: 30), SizedBox(width: 10), Expanded(child: TwoLang('Water tanker – trips', 'टँकर – फेऱ्या', size: 19, weight: FontWeight.w700))])),
+      appBar: AppBar(titleSpacing: 0, title: const Row(children: [Pic('delivery_truck', size: 30), SizedBox(width: 10), Expanded(child: TwoLang('Water tanker – trips', 'टँकर – फेऱ्या', size: 19, weight: FontWeight.w700))]), actions: [const GuideButton('log')]),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 120), children: [
         const SizedBox(height: 8),
         const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(bottom: 8)),      // (3.1.11, update-118)

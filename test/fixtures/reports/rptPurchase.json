@@ -1,0 +1,164 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Diesel Purchase Register",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 16:16",
+ "location": "All locations",
+ "rows": [
+  {
+   "date": "2026-09-01",
+   "id": "IN-000002",
+   "pump": "Seed Pump",
+   "billNo": "SEED-1",
+   "billDate": "2026-09-01",
+   "location": "Dispenser",
+   "qty": 20000,
+   "rate": 92.5,
+   "amount": 1850000
+  },
+  {
+   "date": "2026-10-07",
+   "id": "IN-000010",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-07",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-07",
+   "id": "IN-000014",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-07",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-07",
+   "id": "IN-000018",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-07",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-07",
+   "id": "IN-000021",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-07",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-12",
+   "id": "IN-000038",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-12",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-12",
+   "id": "IN-000041",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-12",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-13",
+   "id": "IN-000044",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-13",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-13",
+   "id": "IN-000047",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-13",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-13",
+   "id": "IN-000050",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-13",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-16",
+   "id": "IN-000073",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-16",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  },
+  {
+   "date": "2026-10-16",
+   "id": "IN-000074",
+   "pump": "Stale Pump",
+   "billNo": "ST-1",
+   "billDate": "2026-10-16",
+   "location": "Dispenser",
+   "qty": 11,
+   "rate": 90,
+   "amount": 990
+  }
+ ],
+ "pumps": [
+  {
+   "pump": "Seed Pump",
+   "bills": 1,
+   "qty": 20000,
+   "amount": 1850000,
+   "rate": 92.5
+  },
+  {
+   "pump": "Stale Pump",
+   "bills": 11,
+   "qty": 121,
+   "amount": 10890,
+   "rate": 90
+  }
+ ],
+ "total": {
+  "bills": 12,
+  "qty": 20121,
+  "amount": 1860890,
+  "rate": 92.48
+ }
+}

@@ -1,0 +1,523 @@
+{
+ "debit": {},
+ "boq": {
+  "EX200": {
+   "2026-10-01": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-02": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-03": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-04": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-05": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-06": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-07": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-08": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-09": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-10": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-11": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-12": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-13": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-14": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-15": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   },
+   "2026-10-16": {
+    "boq": "1",
+    "amendNo": 0,
+    "basis": "Item-wise",
+    "rate": 0,
+    "nightRate": "",
+    "slabs": [],
+    "slabOn": "",
+    "items": [
+     {
+      "name": "Bucket",
+      "basis": "Per Hour",
+      "rate": 1200,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "rest"
+     },
+     {
+      "name": "Breaker",
+      "basis": "Per Hour",
+      "rate": 1500,
+      "slabs": [],
+      "slabOn": "",
+      "qty": "typed"
+     }
+    ],
+    "diesel": "Company",
+    "gstPct": "",
+    "tdsPct": 2,
+    "woNo": "WO-ITEM",
+    "woDate": ""
+   }
+  }
+ },
+ "issues": {},
+ "avgRate": 90,
+ "lastRate": 90,
+ "lastDate": "2026-10-16"
+}

@@ -1,0 +1,204 @@
+{
+ "summary": [
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "unit": "Hrs",
+   "entries": 2,
+   "days": 2,
+   "firstDate": "2026-10-01",
+   "lastDate": "2026-10-02",
+   "okm": "",
+   "ohr": 1008,
+   "ckm": "",
+   "chr": 1024,
+   "km": 0,
+   "hr": 16,
+   "issued": 0,
+   "consumed": 192,
+   "kmStd": "",
+   "hrStd": 12,
+   "ownership": "Rental",
+   "average": "",
+   "diff": -192
+  }
+ ],
+ "count": 2,
+ "totals": {
+  "km": 0,
+  "hr": 16,
+  "issued": 0,
+  "consumed": 192,
+  "machines": 1
+ },
+ "rows": [
+  {
+   "date": "2026-10-02",
+   "owner": "Item Vendor",
+   "shift": "Full Day",
+   "no": "EX-200",
+   "type": "Excavator",
+   "unit": "Hrs",
+   "qty": 0,
+   "wkm": "",
+   "whr": 8,
+   "tot": 96,
+   "stock": -288,
+   "trip": "",
+   "chainage": "",
+   "work": "",
+   "driver": "",
+   "okm": "",
+   "ckm": "",
+   "ohr": 1016,
+   "chr": 1024,
+   "chFrom": "",
+   "chTo": "",
+   "remark": "",
+   "avg": "No diesel filled yet",
+   "extra": "",
+   "dread": "",
+   "kmStd": "",
+   "hrStd": 12,
+   "stdUse": 96,
+   "cycle": "",
+   "odsl": -192,
+   "odSet": "",
+   "kmr": "",
+   "hrr": "",
+   "enteredBy": "Tester",
+   "updatedBy": "",
+   "mode": "Hrs",
+   "tStart": "",
+   "tEnd": "",
+   "tBrk": "",
+   "tHrs": "",
+   "challan": "",
+   "tSlots": "",
+   "itemWork": {
+    "Breaker": 3
+   },
+   "half": false,
+   "meter": "",
+   "debitTo": "",
+   "debitRate": "",
+   "key": "EX-200|2026-10-02|Full Day",
+   "ownership": "Rental",
+   "itemQty": [
+    {
+     "n": "Breaker",
+     "q": 3,
+     "k": "hr"
+    },
+    {
+     "n": "Bucket",
+     "q": 5,
+     "k": "hr"
+    }
+   ],
+   "itemOver": [],
+   "itemUnknown": [],
+   "itemLeft": {},
+   "boqItems": [
+    {
+     "name": "Bucket",
+     "basis": "Per Hour",
+     "qty": "rest"
+    },
+    {
+     "name": "Breaker",
+     "basis": "Per Hour",
+     "qty": "typed"
+    }
+   ]
+  },
+  {
+   "date": "2026-10-01",
+   "owner": "Item Vendor",
+   "shift": "Full Day",
+   "no": "EX-200",
+   "type": "Excavator",
+   "unit": "Hrs",
+   "qty": 0,
+   "wkm": "",
+   "whr": 8,
+   "tot": 96,
+   "stock": -192,
+   "trip": "",
+   "chainage": "",
+   "work": "",
+   "driver": "",
+   "okm": "",
+   "ckm": "",
+   "ohr": 1008,
+   "chr": 1016,
+   "chFrom": "",
+   "chTo": "",
+   "remark": "",
+   "avg": "No diesel filled yet",
+   "extra": "",
+   "dread": "",
+   "kmStd": "",
+   "hrStd": 12,
+   "stdUse": 96,
+   "cycle": "",
+   "odsl": -96,
+   "odSet": "",
+   "kmr": "",
+   "hrr": "",
+   "enteredBy": "Tester",
+   "updatedBy": "",
+   "mode": "Hrs",
+   "tStart": "",
+   "tEnd": "",
+   "tBrk": "",
+   "tHrs": "",
+   "challan": "",
+   "tSlots": "",
+   "itemWork": {},
+   "half": false,
+   "meter": "",
+   "debitTo": "",
+   "debitRate": "",
+   "key": "EX-200|2026-10-01|Full Day",
+   "ownership": "Rental",
+   "itemQty": [
+    {
+     "n": "Bucket",
+     "q": 8,
+     "k": "hr"
+    }
+   ],
+   "itemOver": [],
+   "itemUnknown": [],
+   "itemLeft": {},
+   "boqItems": [
+    {
+     "name": "Bucket",
+     "basis": "Per Hour",
+     "qty": "rest"
+    },
+    {
+     "name": "Breaker",
+     "basis": "Per Hour",
+     "qty": "typed"
+    }
+   ]
+  }
+ ],
+ "itemBoq": {
+  "EX-200": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ]
+ },
+ "locks": {}
+}

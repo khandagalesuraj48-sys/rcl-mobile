@@ -13,10 +13,13 @@ import 'package:http/http.dart' as http;
 
 /// What the server answered instead of a result – its own words (English, as the web app shows them).
 class ApiError implements Exception {
-  ApiError(this.message, {this.status = 0, this.code = '', this.rid = ''});
+  ApiError(this.message, {this.status = 0, this.code = '', this.rid = '', this.data = const {}});
   final String message;
   final int status;
   final String code;
+
+  /// (3.10.0) what else the server said with it (the Store: the near names, the categories, an import's report)
+  final Map<String, dynamic> data;
 
   /// (3.1.7) The number of a save that got no answer: kept with it on the phone, it is sent again with the SAME number – the
   /// server saves it once, also when the first try did reach it.
@@ -90,8 +93,24 @@ class Api {
     _cookie = null;
     token = null;
     site = null;
+    _storeCookie = '';
+    _storeKey = '';
     for (final k in [kCookie, kToken, kSite, 'mech_url', 'alerts_seen']) {
       await keep.write(k, null);
+    }
+  }
+
+  /// (3.4.0) Vendor Master: the bank and branch of an IFSC, from the public IFSC list of Razorpay (ifsc.razorpay.com – free, no
+  /// key; only the code is sent), as the web. {'missing': true} = not a branch; null = no answer (no internet).
+  Future<Map<String, dynamic>?> ifsc(String code) async {
+    try {
+      final r = await _c.get(Uri.parse('https://ifsc.razorpay.com/${Uri.encodeComponent(code)}')).timeout(const Duration(seconds: 7));
+      if (r.statusCode == 404) return {'missing': true};
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(utf8.decode(r.bodyBytes));
+      return j is Map<String, dynamic> ? j : null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -132,6 +151,17 @@ class Api {
   /// POST <portal>/api/auth { action, … }
   Future<Map<String, dynamic>> auth(Map<String, dynamic> body) async {
     final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/auth'), headers: _portalHeaders, body: jsonEncode(body)));
+    await _keepCookie(r);
+    final j = _json(r, 'The Portal');
+    if (r.statusCode >= 400 || j['error'] != null) {
+      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? (r.statusCode == 401 ? 'signin' : '')).toString());
+    }
+    return j;
+  }
+
+  /// (3.17.0) POST <portal>/api/admin { action, … } – the Super Admin's console (users, access, sites, companies, modules, activity).
+  Future<Map<String, dynamic>> admin(Map<String, dynamic> body) async {
+    final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/admin'), headers: _portalHeaders, body: jsonEncode(body)));
     await _keepCookie(r);
     final j = _json(r, 'The Portal');
     if (r.statusCode >= 400 || j['error'] != null) {
@@ -233,6 +263,38 @@ class Api {
         if (e.noConnection && rid != null) throw ApiError(e.message, status: e.status, code: e.code, rid: rid);
         rethrow;
       }
+    }
+  }
+
+  // ---------------- the Store (3.10.0) ----------------
+  String _storeCookie = '', _storeKey = '';
+
+  /// The Store's sign-in on [siteCode] (a ticket of the Portal, used once): who, Admin or User, the pages he may open.
+  Future<Map<String, dynamic>> storeOpen(String siteCode, String storeUrl) async {
+    final t = await ticket(siteCode, 'store');
+    final r = await _send(() => _c.post(Uri.parse('$storeUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
+    final j = _json(r, 'The Store');
+    if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
+    final m = RegExp(r'rcl_store=([^;]*)').firstMatch(r.headers['set-cookie'] ?? '');
+    _storeCookie = m == null ? '' : 'rcl_store=${m.group(1)}';
+    _storeKey = '$siteCode|$storeUrl';
+    return j;
+  }
+
+  /// POST <store>/api/items { action, … } – a new Store sign-in when it has ended (once).
+  Future<Map<String, dynamic>> store(String siteCode, String storeUrl, Map<String, dynamic> body) async {
+    for (var tryNo = 1;; tryNo++) {
+      if (_storeCookie.isEmpty || _storeKey != '$siteCode|$storeUrl') await storeOpen(siteCode, storeUrl);
+      final r = await _send(() => _c.post(Uri.parse('$storeUrl/api/items'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _storeCookie}, body: jsonEncode(body)));
+      final j = _json(r, 'The Store');
+      if (r.statusCode == 401 && j['code'] == 'session' && tryNo == 1) {
+        _storeCookie = '';
+        continue;
+      }
+      if (r.statusCode >= 400 || j['error'] != null) {
+        throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString(), data: {...j}..remove('error'));
+      }
+      return j;
     }
   }
 

@@ -10,9 +10,12 @@ import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'diesel_photos.dart';
+import 'entry_more.dart';
 import 'forms.dart';
 import 'logbook.dart';
 import '../ui/t.dart';
+import '../ui/help.dart' show showGuide;
 
 class EntriesTab extends StatefulWidget {
   const EntriesTab({super.key, this.kind = '', this.open = 0});
@@ -182,6 +185,26 @@ class _EntriesTabState extends State<EntriesTab> {
     if (await newEntry(context, kindOf(kind))) _load();
   }
 
+  /// (3.11.0) The rest of the web's page: all dates & Export, multiple entries, Import from Excel, Download template.
+  Future<void> _more(String v) async {
+    final k = kindOf(kind);
+    switch (v) {
+      case 'find':
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EntryFindScreen(kind: k)));
+      case 'many':
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => k.key == 'issue' ? const IssueManyScreen() : const TransferManyScreen()));
+      case 'import':
+        await importEntries(context, k);
+      case 'template':
+        await downloadTemplate(context, k);
+        return;
+      case 'guide':
+        await showGuide(context, k.key == 'issue' ? 'diesel' : k.key); // (3.16.0) the web's "?" of the page
+        return;
+    }
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
@@ -225,6 +248,19 @@ class _EntriesTabState extends State<EntriesTab> {
                     style: IconButton.styleFrom(backgroundColor: C.greenSoft, foregroundColor: C.greenDark, fixedSize: const Size(50, 50)),
                     onPressed: _pickDate,
                     icon: const Icon(Icons.calendar_month_rounded),
+                  ),
+                  PopupMenuButton<String>(
+                    key: const Key('en-more'),
+                    tooltip: tr('More'),
+                    icon: const Icon(Icons.more_vert_rounded),
+                    onSelected: _more,
+                    itemBuilder: (_) => [
+                      PopupMenuItem(key: const Key('en-guide'), value: 'guide', child: Text('About this page')),
+                      PopupMenuItem(key: const Key('en-find'), value: 'find', child: Text('All dates & Export')),
+                      if (s.canEdit(k.module) && k.key != 'inward') PopupMenuItem(key: const Key('en-many'), value: 'many', child: Text('Multiple entries')),
+                      if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-import'), value: 'import', child: Text('Import from Excel')),
+                      if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-template'), value: 'template', child: Text('Download template')),
+                    ],
                   ),
                 ]),
               ),
@@ -321,9 +357,12 @@ class _EntriesTabState extends State<EntriesTab> {
 
 /// One entry as a card (picture 2).
 class EntryCard extends StatelessWidget {
-  const EntryCard({super.key, required this.kind, required this.r, this.onChanged});
+  const EntryCard({super.key, required this.kind, required this.r, this.onChanged, this.note = ''});
   final Kind kind;
   final Map<String, dynamic> r;
+
+  /// (3.11.0) a small line under the litres (the list of all dates: the date, its % of the total)
+  final String note;
 
   /// After a change or a delete (the list loads again).
   final VoidCallback? onChanged;
@@ -357,7 +396,13 @@ class EntryCard extends StatelessWidget {
   Widget build(BuildContext context) => Press(
         onTap: () => _details(context),
         padding: const EdgeInsets.all(12),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        child: note.isEmpty ? _main() : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _main(),
+          Padding(padding: const EdgeInsets.only(top: 6, left: 4), child: Text(note, style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w600))),
+        ]),
+      );
+
+  Widget _main() => Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Container(width: 74, height: 74, decoration: BoxDecoration(color: kind.soft.withValues(alpha: .6), borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(_pic, size: 56)),
           const SizedBox(width: 12),
           Expanded(
@@ -382,8 +427,7 @@ class EntryCard extends StatelessWidget {
             if ('${r['shift'] ?? ''}'.isNotEmpty) Text('${r['shift']} shift', style: const TextStyle(fontSize: 12.5, color: C.muted)),
             if (kind.key == 'inward' && asNum(r['amount']) != null) Text('₹ ${fmtNum(asNum(r['amount']))}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           ]),
-        ]),
-      );
+        ]);
 
   void _details(BuildContext context) {
     final rowsOf = <(String, String)>[
@@ -432,6 +476,12 @@ class EntryCard extends StatelessWidget {
                   SizedBox(width: 120, child: Text(x.$1, style: const TextStyle(color: C.muted, fontSize: 14))),
                   Expanded(child: Text(x.$2, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5))),
                 ]),
+              ),
+            // (3.14.0) the photos of a fill – the web's 📷 in its list (phView)
+            if (kind.key == 'issue' && (asNum(r['ph']) ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: OutlinedButton.icon(key: const Key('ed-photos'), onPressed: () => openDieselPhotos(context, '${r['id']}'), icon: const Icon(Icons.photo_library_outlined), label: Text('See the photos (${fmtNum(asNum(r['ph']))})')),
               ),
             // (14-10-2026) an entry of a submitted bill: the Super Admin changes it; anybody else sends the change for his approval
             if (r['lk'] != null) InfoLine(SessionScope.read(context).superAdmin ? 'This entry is in a saved bill – you are the Super Admin: your change is saved; the difference comes in the next bill.' : bi('This entry is in a saved bill – a change goes to the Super Admin for approval.', 'बिलमध्ये आहे – बदल Super Admin च्या मंजुरीने.'), icon: Icons.lock_outline_rounded),

@@ -1,0 +1,362 @@
+{
+ "machine": {
+  "id": "EX-200",
+  "no": "EX-200",
+  "name": "Excavator",
+  "type": "Excavator",
+  "make": "",
+  "lbFormat": "A",
+  "worksOn": [
+   "Hrs"
+  ],
+  "unit": "Hrs",
+  "modes": [
+   "Hrs",
+   "Time"
+  ],
+  "modesX": [
+   "Time"
+  ],
+  "meterKm": false,
+  "meterHr": true,
+  "kmStd": "",
+  "hrStd": 12,
+  "owner": "Item Vendor",
+  "ownership": "Rental",
+  "supply": "Company",
+  "status": "Active",
+  "activeFrom": "2026-09-01",
+  "inactiveFrom": "",
+  "earlier": [],
+  "tankCap": 300,
+  "monthlyRate": "",
+  "engineNo": "",
+  "chassisNo": "",
+  "engineMake": "",
+  "taxUpto": "",
+  "pucUpto": "",
+  "permitUpto": "",
+  "fitnessUpto": "",
+  "insuranceUpto": "",
+  "tdsRate": "",
+  "enteredBy": "Tester",
+  "updatedBy": ""
+ },
+ "from": "2026-10-01",
+ "to": "2026-10-16",
+ "boqItems": {
+  "2026-10-01": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-02": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-03": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-04": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-05": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-06": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-07": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-08": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-09": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-10": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-11": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-12": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-13": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-14": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-15": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ],
+  "2026-10-16": [
+   {
+    "name": "Bucket",
+    "basis": "Per Hour",
+    "qty": "rest"
+   },
+   {
+    "name": "Breaker",
+    "basis": "Per Hour",
+    "qty": "typed"
+   }
+  ]
+ },
+ "rows": [
+  {
+   "date": "2026-10-01",
+   "owner": "Item Vendor",
+   "shift": "Full Day",
+   "no": "EX-200",
+   "type": "Excavator",
+   "unit": "Hrs",
+   "qty": 0,
+   "wkm": "",
+   "whr": 8,
+   "tot": 96,
+   "stock": -192,
+   "trip": "",
+   "chainage": "",
+   "work": "",
+   "driver": "",
+   "okm": "",
+   "ckm": "",
+   "ohr": 1008,
+   "chr": 1016,
+   "chFrom": "",
+   "chTo": "",
+   "remark": "",
+   "avg": "No diesel filled yet",
+   "extra": "",
+   "dread": "",
+   "kmStd": "",
+   "hrStd": 12,
+   "stdUse": 96,
+   "cycle": "",
+   "odsl": -96,
+   "odSet": "",
+   "kmr": "",
+   "hrr": "",
+   "enteredBy": "Tester",
+   "updatedBy": "",
+   "mode": "Hrs",
+   "tStart": "",
+   "tEnd": "",
+   "tBrk": "",
+   "tHrs": "",
+   "challan": "",
+   "tSlots": "",
+   "itemWork": {},
+   "half": false,
+   "meter": "",
+   "debitTo": "",
+   "debitRate": "",
+   "key": "EX-200|2026-10-01|Full Day"
+  },
+  {
+   "date": "2026-10-02",
+   "owner": "Item Vendor",
+   "shift": "Full Day",
+   "no": "EX-200",
+   "type": "Excavator",
+   "unit": "Hrs",
+   "qty": 0,
+   "wkm": "",
+   "whr": 8,
+   "tot": 96,
+   "stock": -288,
+   "trip": "",
+   "chainage": "",
+   "work": "",
+   "driver": "",
+   "okm": "",
+   "ckm": "",
+   "ohr": 1016,
+   "chr": 1024,
+   "chFrom": "",
+   "chTo": "",
+   "remark": "",
+   "avg": "No diesel filled yet",
+   "extra": "",
+   "dread": "",
+   "kmStd": "",
+   "hrStd": 12,
+   "stdUse": 96,
+   "cycle": "",
+   "odsl": -192,
+   "odSet": "",
+   "kmr": "",
+   "hrr": "",
+   "enteredBy": "Tester",
+   "updatedBy": "",
+   "mode": "Hrs",
+   "tStart": "",
+   "tEnd": "",
+   "tBrk": "",
+   "tHrs": "",
+   "challan": "",
+   "tSlots": "",
+   "itemWork": {
+    "Breaker": 3
+   },
+   "half": false,
+   "meter": "",
+   "debitTo": "",
+   "debitRate": "",
+   "key": "EX-200|2026-10-02|Full Day"
+  }
+ ],
+ "prev": {
+  "key": "EX-200|2026-09-30|Full Day",
+  "date": "2026-09-30",
+  "shift": "Full Day",
+  "okm": "",
+  "ckm": "",
+  "ohr": 1000,
+  "chr": 1008,
+  "stock": -96
+ },
+ "next": null,
+ "diesel": {},
+ "prevKm": "",
+ "prevHr": 1008,
+ "locks": [],
+ "nextHr": null,
+ "hrsOnly": true
+}

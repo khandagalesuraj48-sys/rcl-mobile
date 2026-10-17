@@ -42,3 +42,20 @@ DateTime parseKey(String key) {
 }
 
 const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/// (3.2.0) A time of the server (ISO) as the people read it: 16-10-2026 13:54 ('' when there is none).
+String whenText(String? iso) {
+  final t = DateTime.tryParse(iso ?? '')?.toLocal();
+  if (t == null) return '';
+  String p(int n) => n.toString().padLeft(2, '0');
+  return '${p(t.day)}-${p(t.month)}-${t.year} ${p(t.hour)}:${p(t.minute)}';
+}
+
+/// (3.2.0) How long ago: 12 min · 3 h 5 min · 2 day(s) ('' when there is no time).
+String agoText(String? iso, [DateTime? now]) {
+  final t = DateTime.tryParse(iso ?? '');
+  if (t == null) return '';
+  final m = (now ?? DateTime.now()).difference(t).inMinutes;
+  if (m < 0) return '';
+  return m < 60 ? '$m min' : m < 1440 ? '${m ~/ 60} h ${m % 60} min' : '${m ~/ 1440} day(s)';
+}

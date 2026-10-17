@@ -12,9 +12,16 @@ import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../web/web_host.dart';
+import 'assistant.dart';
+import 'label_scan.dart';
+import 'search.dart';
+import 'admin.dart';
+import 'billing.dart';
+import 'breakdown.dart';
 import 'verify.dart';
 import 'logbook.dart';
+import 'store.dart';
+import 'masters.dart';
 import '../ui/t.dart';
 
 /// A module tile of Home: where it goes and who may see it.
@@ -28,19 +35,21 @@ class ModuleTile {
     if (module.isNotEmpty) return s.hasModule(module);
     if (native == 'diesel') return kKinds.any((k) => s.canSee(k.module));
     if (native == 'reports') return reportsOf(s).isNotEmpty;
+    if (native == 'masters') return mastersOf(s).isNotEmpty;
+    if (native == 'billing') return seesBilling(s);
     return perm.isEmpty || s.canSee(perm);
   }
 }
 
 const kModules = [
-  ModuleTile('Machinery', 'यंत्रे', 'tractor', C.green, C.greenSoft, page: 'master', perm: 'Master'),
+  ModuleTile('Machinery', 'यंत्रे', 'tractor', C.green, C.greenSoft, native: 'masters'), // (3.4.0) the app's own Master screens
   ModuleTile('Logbook', 'लॉगबुक', 'notebook', C.blue, C.blueSoft, native: 'logbook', perm: 'Log Book'),
   ModuleTile('Diesel', 'डिझेल', 'fuel_pump', C.green, C.greenSoft, native: 'diesel'),
-  ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, page: 'brk', perm: 'Breakdown'),
-  ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, page: 'bill', perm: 'Machinery Billing'),
-  ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, page: 'store__dashboard', module: 'store'),
+  ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, native: 'breakdown', perm: 'Breakdown'), // (3.7.0) the app's own Breakdown
+  ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, native: 'billing'), // (3.8.0) the app's own Billing screens
+  ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, native: 'store', module: 'store'), // (3.10.0) the app's own Store screens
   ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', C.blue, C.blueSoft, native: 'reports'),
-  ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, page: 'users', admin: true),
+  ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, native: 'admin', admin: true), // (3.9.0) the app's own Admin screens
 ];
 
 /// The reports of the web he may open – (3.1.8) every report of the web, one under the other, by his access.
@@ -169,7 +178,26 @@ class _HomeTabState extends State<HomeTab> {
       widget.onOpenReports();
       return;
     }
-    await openWeb(context, m.en, m.page, pic: m.pic);
+    if (m.native == 'masters') {
+      await openMasters(context);
+      return;
+    }
+    if (m.native == 'breakdown') {
+      await openBreakdown(context);
+      return;
+    }
+    if (m.native == 'billing') {
+      await openBilling(context);
+      return;
+    }
+    if (m.native == 'admin') {
+      await openAdmin(context);
+      return;
+    }
+    if (m.native == 'store') {
+      await openStore(context);
+    }
+    // (3.18.0) every module is the app's own screens – no web page in the app
   }
 
   Future<void> _site() async {
@@ -217,28 +245,68 @@ class _HomeTabState extends State<HomeTab> {
                       const MrLine('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: Color(0xCCFFFFFF))),
                     ]),
                   ),
+                  // (3.14.0) the search of the whole app (the web's Ctrl + K)
+                  _RoundBtn(key: const Key('home-search'), icon: Icons.search_rounded, tip: 'Search', onTap: () => openSearch(context, entries: widget.onOpenEntries, reports: widget.onOpenReports)),
+                  const SizedBox(width: 8),
+                  // (3.14.0) a machinery's QR label: Diesel Issue / Log Book entry / its diesel ledger for it
+                  _RoundBtn(key: const Key('home-scan'), icon: Icons.qr_code_scanner_rounded, tip: 'Scan a machinery label', onTap: () => scanMachineLabel(context, onSaved: () => _load())),
+                  const SizedBox(width: 8),
                   _RoundBtn(icon: Icons.refresh_rounded, tip: 'Refresh', onTap: () => _load(init: true)),
                 ]),
                 const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: _site,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(.18)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.location_on_rounded, color: C.green, size: 26),
-                      const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 190),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                          Text(s.sites.length > 1 ? bi('Tap to change', 'साइट बदला') : (s.site?.code ?? ''), style: const TextStyle(fontSize: 12, color: C.green, fontWeight: FontWeight.w500)),
+                Row(children: [
+                  Flexible(
+                    child: GestureDetector(
+                      onTap: _site,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(.18)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.location_on_rounded, color: C.green, size: 26),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 190),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                Text(s.sites.length > 1 ? bi('Tap to change', 'साइट बदला') : (s.site?.code ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.green, fontWeight: FontWeight.w500)),
+                              ]),
+                            ),
+                          ),
+                          if (s.sites.length > 1) const Icon(Icons.keyboard_arrow_down_rounded),
                         ]),
                       ),
-                      if (s.sites.length > 1) const Icon(Icons.keyboard_arrow_down_rounded),
-                    ]),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  // (3.15.0) the assistant – the web's "Ask"; a red dot when the daily summary waits (once a day)
+                  ValueListenableBuilder<bool>(
+                    valueListenable: s.briefDue,
+                    builder: (_, due, __) => Badge(
+                      isLabelVisible: due,
+                      smallSize: 13,
+                      backgroundColor: C.brandRed,
+                      child: Material(
+                        color: C.greenDeep,
+                        shape: const StadiumBorder(),
+                        elevation: 3,
+                        child: InkWell(
+                          key: const Key('home-ask'),
+                          customBorder: const StadiumBorder(),
+                          onTap: () => openAssistant(context, entries: widget.onOpenEntries),
+                          child: const Padding(
+                            padding: EdgeInsets.fromLTRB(12, 11, 16, 11),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD54F), size: 22),
+                              SizedBox(width: 6),
+                              Text('Ask', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ]),
               ]),
             ),
           ),
@@ -296,6 +364,19 @@ class _HomeTabState extends State<HomeTab> {
                 ]),
               ),
             ),
+          // (3.14.0) the notice of the site (Admin → Rules of this site), shown to everybody – as the web's line at the top
+          if ('${s.siteRules['announce'] ?? ''}'.trim().isNotEmpty)
+            Container(
+              key: const Key('home-notice'),
+              margin: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.amber.withValues(alpha: .35))),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.campaign_rounded, color: C.amber),
+                const SizedBox(width: 10),
+                Expanded(child: Text('${s.siteRules['announce']}'.trim(), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, height: 1.35))),
+              ]),
+            ),
           // (3.1.11, update-118) his entries in verification: waiting / sent back / approved – tap: each, with "Remind"
           const VerifyStrip(days: 1, margin: EdgeInsets.fromLTRB(14, 0, 14, 16)),
           // ---------- the modules ----------
@@ -340,7 +421,7 @@ class _HomeTabState extends State<HomeTab> {
 }
 
 class _RoundBtn extends StatelessWidget {
-  const _RoundBtn({required this.icon, required this.tip, required this.onTap});
+  const _RoundBtn({super.key, required this.icon, required this.tip, required this.onTap});
   final IconData icon;
   final String tip;
   final VoidCallback onTap;

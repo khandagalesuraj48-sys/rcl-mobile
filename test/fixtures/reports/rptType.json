@@ -1,0 +1,38 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Type-wise Diesel Summary",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 16:16",
+ "types": [
+  {
+   "type": "Tipper",
+   "qty": 92,
+   "entries": 4,
+   "machines": 2,
+   "perMachine": 46,
+   "perEntry": 23,
+   "share": 85.98,
+   "byOwn": {
+    "Rental": 90,
+    "Own": 2
+   }
+  },
+  {
+   "type": "Excavator",
+   "qty": 15,
+   "entries": 1,
+   "machines": 1,
+   "perMachine": 15,
+   "perEntry": 15,
+   "share": 14.02,
+   "byOwn": {
+    "Rental": 15
+   }
+  }
+ ],
+ "total": {
+  "qty": 107,
+  "types": 2
+ }
+}

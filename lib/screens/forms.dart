@@ -10,7 +10,9 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/api.dart';
+import '../core/diesel_hist.dart';
 import '../core/format.dart';
+import '../core/rdoc.dart' show fmt;
 import '../core/kinds.dart';
 import '../core/photo.dart';
 import '../core/plate.dart';
@@ -21,10 +23,17 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
 import 'verify.dart';
+import '../ui/help.dart' show GuideButton;
 
 class EntryForm extends StatefulWidget {
-  const EntryForm({super.key, required this.kind, this.edit});
+  const EntryForm({super.key, required this.kind, this.edit, this.no = '', this.preset = const {}});
   final Kind kind;
+
+  /// (3.15.0) a new Diesel Issue the assistant prepared ("Open in the form"): its date, shift and litres (the web fills the same).
+  final Map<String, Object?> preset;
+
+  /// (3.14.0) a new Diesel Issue for this machinery (a scanned label – the web's qrArrive puts it in the Machinery box)
+  final String no;
 
   /// An entry being changed (as in the list); null = a new one.
   final Map<String, dynamic>? edit;
@@ -54,6 +63,10 @@ class _EntryFormState extends State<EntryForm> {
   final pump = TextEditingController(), rate = TextEditingController(), billNo = TextEditingController();
   String billDate = '';
   Map<String, dynamic>? bal; // stock at the source for this date + shift (issue)
+  Map? tbal; // (3.14.0) a transfer: the opening stock of From and To at this date + shift (getTransferBalance)
+  Map? hist; // (3.14.0) the machinery's diesel history up to the date (dieselHistory)
+  int histSeq = 0, driverGen = 0;
+  bool driverAuto = false; // the Driver box holds the last fill's driver (put there by the app, not typed)
   final shots = <String, _Shot>{};
   bool busy = false, savedOne = false;
   String err = '';
@@ -91,8 +104,26 @@ class _EntryFormState extends State<EntryForm> {
       shift = s.myShift(const ['Day', 'Night']); // (14-10-2026) his usual shift, else Day / Night by the time
       final e = ed;
       if (e != null) _fillFrom(s, e);
-      if (issue) WidgetsBinding.instance.addPostFrameCallback((_) => _balance());
+      if (e == null && issue && widget.no.isNotEmpty) {
+        final m = s.machine(widget.no);
+        if (m != null) {
+          machine = m;
+          way = m.debit ? '' : m.dieselWay;
+        }
+      }
+      final pre = widget.preset;
+      if (e == null && issue && pre.isNotEmpty) {
+        if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch('${pre['date'] ?? ''}')) date = '${pre['date']}';
+        if (pre['shift'] == 'Day' || pre['shift'] == 'Night') shift = '${pre['shift']}';
+        final q = pre['qty'];
+        if (q is num && q > 0) qty.text = q == q.roundToDouble() ? '${q.toInt()}' : '$q';
+      }
+      if (issue) WidgetsBinding.instance.addPostFrameCallback((_) {
+        _balance();
+        _hist();
+      });
       if (k.key == 'inward' && e != null) WidgetsBinding.instance.addPostFrameCallback((_) => _loadBills());
+      if (k.key == 'transfer') WidgetsBinding.instance.addPostFrameCallback((_) => _balance());
     }
   }
 
@@ -136,6 +167,7 @@ class _EntryFormState extends State<EntryForm> {
   }
 
   Future<void> _balance() async {
+    if (k.key == 'transfer') return _tbal();
     if (!issue) return;
     final s = SessionScope.read(context), my = ++balSeq;
     setState(() => bal = null);
@@ -158,7 +190,71 @@ class _EntryFormState extends State<EntryForm> {
         date = dateKey(d);
       }
     });
-    if (!bill) _balance();
+    if (!bill) {
+      _balance();
+      _hist();
+    }
+  }
+
+  /// (3.14.0) A transfer's stock of both places – the web's refreshTransferBal / transferLive.
+  Future<void> _tbal() async {
+    final s = SessionScope.read(context), my = ++balSeq;
+    setState(() => tbal = null);
+    if (from == to) return;
+    try {
+      final r = await s.api.call('getTransferBalance', [date, shift, from, to, editId]);
+      if (my == balSeq && mounted && r is Map) setState(() => tbal = r);
+    } catch (_) {/* the server checks the stock at the save anyway */}
+  }
+
+  Widget _transferLive() {
+    final q = asNum(qty.text) ?? 0;
+    if (from == to) return const InfoLine('From and To cannot be the same.', bad: true);
+    final b = tbal;
+    if (b == null) return const InfoLine('Loading stock…');
+    final f = (b['from'] as Map?) ?? const {}, t = (b['to'] as Map?) ?? const {};
+    final short = q > (asNum(f['available']) ?? double.infinity);
+    Widget side(String key, String head, Object? open, num after, {String note = '', bool bad = false}) => Expanded(
+          child: Container(
+            key: Key(key),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: bad ? C.redSoft : Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: bad ? C.red.withValues(alpha: .4) : C.line)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(head, style: const TextStyle(fontSize: 12, color: C.muted)),
+              Text(fmt(open), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              Text('after ${fmt(after)} Ltr', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+              if (note.isNotEmpty) Text(note, style: const TextStyle(fontSize: 12, color: C.red, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        side('t-from', '$from – opening ${showDate(date)} $shift', f['balance'], r2n((asNum(f['balance']) ?? 0) - q), note: short ? 'Can transfer up to ${fmt(f['available'])} Ltr' : '', bad: short),
+        const Padding(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 22), child: Icon(Icons.arrow_forward_rounded, color: C.muted)),
+        side('t-to', '$to – opening', t['balance'], r2n((asNum(t['balance']) ?? 0) + q)),
+      ]),
+    );
+  }
+
+  /// (3.14.0) The machinery's diesel history (the web's dhShow): the card, the last reading as the hint, the last driver.
+  Future<void> _hist() async {
+    final m = machine, my = ++histSeq;
+    if (!issue || m == null) {
+      if (hist != null) setState(() => hist = null);
+      return;
+    }
+    final h = await dieselHistoryOf(SessionScope.read(context), m.id, date);
+    if (my != histSeq || !mounted) return;
+    setState(() {
+      hist = h;
+      // the Driver box: the driver of the last fill – only into an empty box or one the app filled (a typed name stays); not when changing
+      if (ed == null && (driver.text.trim().isEmpty || driverAuto)) {
+        driver.text = dhDriver(h);
+        driverAuto = driver.text.isNotEmpty;
+        driverGen++;
+      }
+    });
   }
 
   /* (3.1.8) THE NUMBER PLATE: a photo of the plate → the phone reads it → the machinery of the Asset Master (on site on the
@@ -206,6 +302,7 @@ class _EntryFormState extends State<EntryForm> {
       machine = m;
       way = m.debit ? '' : m.dieselWay;
     });
+    _hist();
   }
 
   Future<void> _pickMachine() async {
@@ -220,6 +317,7 @@ class _EntryFormState extends State<EntryForm> {
       machine = m;
       way = m.debit ? '' : m.dieselWay;      // (3.1.8) by itself, from the Asset Master
     });
+    _hist();
   }
 
   // ---------- photos ----------
@@ -804,7 +902,7 @@ class _EntryFormState extends State<EntryForm> {
             Pic(k.pic, size: 30),
             const SizedBox(width: 10),
             Expanded(child: TwoLang(ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700)),
-          ]),
+          ]), actions: [GuideButton(k.key == 'issue' ? 'diesel' : k.key)],
         ),
         // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away
         body: SingleChildScrollView(
@@ -843,6 +941,7 @@ class _EntryFormState extends State<EntryForm> {
                     label: Text(plateBusy ? 'Reading the number…' : 'Photo of the number plate'),
                   ),
                 ),
+              if (m != null && hist != null) Padding(padding: const EdgeInsets.only(top: 10), child: DieselHistoryCard(hist!, today: s.today)),
               // (3.1.8) KM / Hrs / KM + Hrs by itself from the Asset Master – nothing to pick; only "Meter not working"
               if (m != null && !m.debit && m.dieselWay.isNotEmpty) ...[
                 _label('Measured by', 'मोजणी'),
@@ -857,11 +956,11 @@ class _EntryFormState extends State<EntryForm> {
               ],
               if (m != null && hasKm(way)) ...[
                 _label('KM reading', 'KM रीडिंग'),
-                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read by the AI on the dashboard photo – check it') : null)),
+                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: dhHint(hist, 'lastKm').isNotEmpty ? dhHint(hist, 'lastKm') : tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read by the AI on the dashboard photo – check it') : null)),
               ],
               if (m != null && hasHr(way)) ...[
                 _label('Hour meter', 'तास मीटर'),
-                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read by the AI on the dashboard photo – check it') : null)),
+                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read by the AI on the dashboard photo – check it') : null)),
               ],
               _label('Litres', 'लिटर'),
               _qtyField(),
@@ -876,9 +975,23 @@ class _EntryFormState extends State<EntryForm> {
                 ),
               _label('Driver / Operator', 'चालक'),
               Autocomplete<String>(
+                key: ValueKey('drv-$driverGen'), // (3.14.0) made again with the last fill's driver in it
+                initialValue: TextEditingValue(text: driver.text),
                 optionsBuilder: (v) => v.text.isEmpty ? const Iterable<String>.empty() : s.drivers.where((d) => d.toLowerCase().contains(v.text.toLowerCase())).take(8),
-                onSelected: (v) => driver.text = v,
-                fieldViewBuilder: (c, ctl, f, sub) => TextField(controller: ctl, focusNode: f, onChanged: (v) => driver.text = v, textCapitalization: TextCapitalization.words, decoration: InputDecoration(hintText: tr('Name (optional)'), prefixIcon: Icon(Icons.person_outline_rounded))),
+                onSelected: (v) {
+                  driver.text = v;
+                  driverAuto = false;
+                },
+                fieldViewBuilder: (c, ctl, f, sub) => TextField(
+                    key: const Key('d-driver'),
+                    controller: ctl,
+                    focusNode: f,
+                    onChanged: (v) {
+                      driver.text = v;
+                      driverAuto = false;
+                    },
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(hintText: tr('Name (optional)'), prefixIcon: Icon(Icons.person_outline_rounded))),
               ),
               if (s.canEdit('Diesel Issue') && ed == null) ...[
                 _label('Photos', 'फोटो'),
@@ -931,11 +1044,18 @@ class _EntryFormState extends State<EntryForm> {
             // ---------- Diesel Transfer ----------
             if (k.key == 'transfer') ...[
               _label('From', 'कुठून'),
-              _chips<String>([for (final l in s.locations) (l, l)], from, (v) => setState(() => from = v)),
+              _chips<String>([for (final l in s.locations) (l, l)], from, (v) {
+                setState(() => from = v);
+                _balance();
+              }),
               _label('To', 'कुठे'),
-              _chips<String>([for (final l in s.locations) (l, l)], to, (v) => setState(() => to = v)),
+              _chips<String>([for (final l in s.locations) (l, l)], to, (v) {
+                setState(() => to = v);
+                _balance();
+              }),
               _label('Litres', 'लिटर'),
               _qtyField(),
+              _transferLive(),
             ],
             if (k.key != 'inward') ...[_label('Remark', 'शेरा'), TextField(controller: remark, decoration: InputDecoration(hintText: tr('Optional')))],
             if (err.isNotEmpty) InfoLine(err, bad: true),
@@ -1022,5 +1142,60 @@ String deleteOf(String kind) => switch (kind) { 'issue' => 'deleteDieselIssue', 
 /// Changes an entry of [k] (from the list); true when it was changed.
 Future<bool> changeEntry(BuildContext context, Kind k, Map<String, dynamic> row) async => await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k, edit: row))) ?? false;
 
-/// Opens a new entry of [k]; true when something was saved.
-Future<bool> newEntry(BuildContext context, Kind k) async => await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k))) ?? false;
+/// Opens a new entry of [k] ([no]: a Diesel Issue for this machinery); true when something was saved.
+Future<bool> newEntry(BuildContext context, Kind k, {String no = '', Map<String, Object?> preset = const {}}) async =>
+    await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EntryForm(kind: k, no: no, preset: preset))) ?? false;
+
+/// (3.14.0) The diesel history of a machinery up to [date] – its last 5 fills (null = could not be read; nothing is shown).
+Future<Map?> dieselHistoryOf(Session s, String no, String date) async {
+  try {
+    final r = await s.api.call('dieselHistory', [{'no': no, 'date': date, 'limit': 5}]);
+    return r is Map ? r : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// (3.14.0) The web's "Diesel history – <machinery>" card: last fill, last reading, this month, and the last fills.
+class DieselHistoryCard extends StatelessWidget {
+  const DieselHistoryCard(this.h, {super.key, required this.today});
+  final Map h;
+  final String today;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = dhRows(h), total = (h['total'] as num?)?.toInt() ?? rows.length;
+    String sd(Object? d) => showDate('${d ?? ''}');
+    return Container(
+      key: const Key('d-hist'),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(14)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Icon(Icons.history_rounded, size: 18, color: C.amber),
+          const SizedBox(width: 6),
+          Expanded(child: Text('Diesel history – ${h['no'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
+        ]),
+        const SizedBox(height: 4),
+        Text(dhHead(h, today), style: const TextStyle(fontSize: 12.5, height: 1.35)),
+        for (final x in rows)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${sd(x['date'])} · ${x['shift'] ?? ''} · ${dhRead(x)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text([x['source'], '${x['driver'] ?? ''}'.isEmpty ? '–' : x['driver'], x['id']].where((v) => '${v ?? ''}'.isNotEmpty).join(' · '), style: const TextStyle(fontSize: 12, color: C.muted)),
+                ]),
+              ),
+              Text('${fmt(x['qty'])} L', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+            ]),
+          ),
+        if (total > rows.length) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Last ${rows.length} of $total fills.', style: const TextStyle(fontSize: 12, color: C.muted))),
+      ]),
+    );
+  }
+}
+
+/// A figure to 2 decimals (the web's r2).
+num r2n(num v) => (v * 100).round() / 100;

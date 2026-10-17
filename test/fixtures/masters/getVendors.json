@@ -1,0 +1,566 @@
+[
+ {
+  "name": "Item Vendor",
+  "ownership": "Rental",
+  "gstReg": "No",
+  "gst": "",
+  "gstPct": "",
+  "pan": "",
+  "tds": "",
+  "bank": "",
+  "branch": "",
+  "account": "",
+  "ifsc": "",
+  "address": "",
+  "phone": "",
+  "remark": "",
+  "aadhaar": "",
+  "email": "",
+  "enteredBy": "Tester",
+  "updatedBy": "",
+  "saved": true,
+  "machines": [
+   {
+    "id": "EX-200",
+    "type": "Excavator",
+    "unit": "Hrs",
+    "ownership": "Rental",
+    "status": "Active"
+   }
+  ],
+  "complete": false,
+  "boqs": 1
+ },
+ {
+  "name": "Load test",
+  "saved": false,
+  "complete": false,
+  "machines": [
+   {
+    "id": "LD-00",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-01",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-02",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-03",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-04",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-05",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-06",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-07",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-08",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-09",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-10",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-11",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-12",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-13",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-14",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-15",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-16",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-17",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-18",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-19",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-20",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-21",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-22",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-23",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-24",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-25",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-26",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-27",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-28",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-29",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-30",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-31",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-32",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-33",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-34",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-35",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-36",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-37",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-38",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   },
+   {
+    "id": "LD-39",
+    "type": "Load test",
+    "unit": "KM",
+    "ownership": "Other",
+    "status": "Active"
+   }
+  ],
+  "ownership": "Other",
+  "gstReg": "No",
+  "boqs": 0
+ },
+ {
+  "name": "Multi Vendor",
+  "ownership": "Rental",
+  "gstReg": "No",
+  "gst": "",
+  "gstPct": "",
+  "pan": "",
+  "tds": "",
+  "bank": "",
+  "branch": "",
+  "account": "",
+  "ifsc": "",
+  "address": "",
+  "phone": "",
+  "remark": "",
+  "aadhaar": "",
+  "email": "",
+  "enteredBy": "Tester",
+  "updatedBy": "Tester",
+  "saved": true,
+  "machines": [
+   {
+    "id": "MV-1",
+    "type": "Excavator",
+    "unit": "Hrs",
+    "ownership": "Rental",
+    "status": "Active"
+   },
+   {
+    "id": "MV-2",
+    "type": "Excavator",
+    "unit": "Hrs",
+    "ownership": "Rental",
+    "status": "Active"
+   },
+   {
+    "id": "MV-3",
+    "type": "Excavator",
+    "unit": "Hrs",
+    "ownership": "Rental",
+    "status": "Active"
+   },
+   {
+    "id": "MV-4",
+    "type": "Excavator",
+    "unit": "Hrs",
+    "ownership": "Rental",
+    "status": "Active"
+   }
+  ],
+  "complete": false,
+  "boqs": 1
+ },
+ {
+  "name": "Night Debit Party",
+  "ownership": "",
+  "gstReg": "No",
+  "gst": "",
+  "gstPct": "",
+  "pan": "",
+  "tds": "",
+  "bank": "",
+  "branch": "",
+  "account": "",
+  "ifsc": "",
+  "address": "",
+  "phone": "",
+  "remark": "",
+  "aadhaar": "",
+  "email": "",
+  "enteredBy": "Tester",
+  "updatedBy": "",
+  "saved": true,
+  "machines": [],
+  "complete": false,
+  "boqs": 0
+ },
+ {
+  "name": "Night Vendor",
+  "ownership": "Rental",
+  "gstReg": "No",
+  "gst": "",
+  "gstPct": "",
+  "pan": "ABCDE1234N",
+  "tds": "",
+  "bank": "SBI",
+  "branch": "",
+  "account": "000000000000",
+  "ifsc": "SBIN0000001",
+  "address": "",
+  "phone": "",
+  "remark": "",
+  "aadhaar": "",
+  "email": "",
+  "enteredBy": "Tester",
+  "updatedBy": "",
+  "saved": true,
+  "machines": [
+   {
+    "id": "NRX-0",
+    "type": "Tipper",
+    "unit": "KM",
+    "ownership": "Rental",
+    "status": "Active"
+   },
+   {
+    "id": "NRX-1",
+    "type": "Tipper",
+    "unit": "KM",
+    "ownership": "Rental",
+    "status": "Active"
+   }
+  ],
+  "complete": true,
+  "boqs": 1
+ },
+ {
+  "name": "Rachana Construction Limited",
+  "saved": false,
+  "complete": false,
+  "machines": [
+   {
+    "id": "MH-15-AB-0001",
+    "type": "Tipper",
+    "unit": "KM",
+    "ownership": "Own",
+    "status": "Active"
+   },
+   {
+    "id": "MH-15-AB-0002",
+    "type": "Tipper",
+    "unit": "KM",
+    "ownership": "Own",
+    "status": "Active"
+   },
+   {
+    "id": "MH-15-AB-0003",
+    "type": "Tipper",
+    "unit": "KM",
+    "ownership": "Own",
+    "status": "Active"
+   },
+   {
+    "id": "MH-15-AB-0004",
+    "type": "Tipper",
+    "unit": "KM",
+    "ownership": "Own",
+    "status": "Active"
+   }
+  ],
+  "ownership": "Own",
+  "gstReg": "No",
+  "boqs": 0
+ },
+ {
+  "name": "Tank Vendor",
+  "ownership": "Rental",
+  "gstReg": "No",
+  "gst": "",
+  "gstPct": "",
+  "pan": "ABCDE1234T",
+  "tds": "",
+  "bank": "SBI",
+  "branch": "",
+  "account": "000000000000",
+  "ifsc": "SBIN0000001",
+  "address": "",
+  "phone": "",
+  "remark": "",
+  "aadhaar": "",
+  "email": "",
+  "enteredBy": "Tester",
+  "updatedBy": "",
+  "saved": true,
+  "machines": [
+   {
+    "id": "TKX-1",
+    "type": "Tipper",
+    "unit": "KM",
+    "ownership": "Rental",
+    "status": "Active"
+   }
+  ],
+  "complete": true,
+  "boqs": 1
+ },
+ {
+  "name": "Vendor 5",
+  "ownership": "Rental",
+  "gstReg": "No",
+  "gst": "",
+  "gstPct": "",
+  "pan": "ABCDE1235F",
+  "tds": "",
+  "bank": "SBI",
+  "branch": "",
+  "account": "000000000000",
+  "ifsc": "SBIN0000001",
+  "address": "",
+  "phone": "",
+  "remark": "",
+  "aadhaar": "",
+  "email": "",
+  "enteredBy": "Tester",
+  "updatedBy": "",
+  "saved": true,
+  "machines": [
+   {
+    "id": "GAPX-1",
+    "type": "Tipper",
+    "unit": "KM",
+    "ownership": "Rental",
+    "status": "Active"
+   }
+  ],
+  "complete": true,
+  "boqs": 0
+ },
+ {
+  "name": "Vendor 6",
+  "ownership": "",
+  "gstReg": "No",
+  "gst": "",
+  "gstPct": "",
+  "pan": "ABCDE1236F",
+  "tds": "",
+  "bank": "SBI",
+  "branch": "",
+  "account": "000000000000",
+  "ifsc": "SBIN0000001",
+  "address": "",
+  "phone": "",
+  "remark": "",
+  "aadhaar": "",
+  "email": "",
+  "enteredBy": "Tester",
+  "updatedBy": "",
+  "saved": true,
+  "machines": [],
+  "complete": true,
+  "boqs": 0
+ }
+]

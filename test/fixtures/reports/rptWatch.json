@@ -1,0 +1,42 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Diesel Watch – signs of diesel loss",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 16:16",
+ "pct": 15,
+ "findings": [
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "ownership": "Rental",
+   "kind": "More than the work needs",
+   "date": "2026-09-28",
+   "litres": 9.13,
+   "amount": 844.53,
+   "text": "60 L filled; the work until the next fill on 30-09-2026 (234 km) needs 50.87 L by the standard – 17.95% more"
+  }
+ ],
+ "machines": [
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "signs": 1,
+   "litres": 9.13,
+   "amount": 844.53
+  }
+ ],
+ "unchecked": [],
+ "total": {
+  "signs": 1,
+  "machines": 1,
+  "litres": 9.13,
+  "amount": 844.53,
+  "checkedQty": 92,
+  "uncheckedQty": 0,
+  "uncheckedAmount": 0,
+  "uncheckedMachines": 0
+ }
+}

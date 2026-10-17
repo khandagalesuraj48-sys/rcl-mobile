@@ -1,0 +1,4 @@
+﻿Machinery;Qty;KM
+ MH-25-AJ-3232 ;1e3;12,5
+400 KVA DG;50%;(100)
+=SUM(B2:B3);="0012";TRUE

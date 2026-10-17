@@ -181,8 +181,21 @@ class Session extends ChangeNotifier {
 
   // the site's lists (getInit)
   String today = '', company = '', closedUpto = '';
+  /// (3.2.0) the site's "Company & site" (web Settings): the customer, the site's name, the names bills are made in
+  Map<String, dynamic> org = {};
+  /// The name a report / Log Book print is headed with – the company first, then the other bill names (as the web).
+  List<String> get printNames {
+    final names = (org['billNames'] is List ? (org['billNames'] as List).map((e) => '$e').where((e) => e.isNotEmpty).toList() : <String>[]);
+    final cust = '${org['customer'] ?? company}';
+    final list = [if (names.contains(cust) || names.isEmpty) cust, ...names.where((n) => n != cust)];
+    return list.where((n) => n.isNotEmpty).toList().isEmpty ? ['Rachana Construction Limited'] : list.where((n) => n.isNotEmpty).toList();
+  }
+  /// The site as printed on every report (web: SITE_NAME).
+  String get siteLabel => '${org['site'] ?? ''}'.isNotEmpty ? '${org['site']}' : siteName;
   /// (14-10-2026) the site's shift hours (Settings → Rules of the site on the web): Day from [dayFrom] to [nightFrom], Night the rest.
   String dayFrom = '08:00', nightFrom = '20:00';
+  /// (3.9.0) the rules of the site as the server gave them (backDays, announce, dayFrom, nightFrom) – Administration shows them
+  Map<String, dynamic> siteRules = {};
   /// The clock (a test sets its own time).
   DateTime Function() clock = DateTime.now;
   List<Machine> machines = [];
@@ -324,7 +337,7 @@ class Session extends ChangeNotifier {
       await loadInit();
       versions = {};
       _go(Stage.ready);
-      loadPrefs(); // his settings – the screens use them as soon as they come
+      prefsReady = loadPrefs(); // his settings – the screens use them as soon as they come
       await loadKept();
     } on ApiError catch (e) {
       if (e.needsSignIn) {
@@ -353,9 +366,11 @@ class Session extends ChangeNotifier {
     if (u is Map) _user({'user': u});
     today = (d['today'] ?? '').toString();
     company = (d['company'] ?? '').toString();
+    org = (d['org'] is Map) ? (d['org'] as Map).cast<String, dynamic>() : <String, dynamic>{};
     closedUpto = (d['closedUpto'] ?? '').toString();
     final rules = d['rules'];
     if (rules is Map) {
+      siteRules = rules.cast<String, dynamic>();
       dayFrom = RegExp(r'^\d{2}:\d{2}$').hasMatch('${rules['dayFrom']}') ? '${rules['dayFrom']}' : '08:00';
       nightFrom = RegExp(r'^\d{2}:\d{2}$').hasMatch('${rules['nightFrom']}') ? '${rules['nightFrom']}' : '20:00';
     }
@@ -363,8 +378,42 @@ class Session extends ChangeNotifier {
     drivers = (d['drivers'] as List? ?? []).map((e) => e.toString()).toList();
     pumps = (d['pumps'] as List? ?? []).map((e) => e.toString()).toList();
     locations = (d['locations'] as List? ?? []).map((e) => e.toString()).toList();
+    aiOn = d['ai'] is Map && (d['ai'] as Map)['on'] == true;
     _flow(d['flow']);
+    _admin(d);
     setStock(d['stock']);
+  }
+
+  /// (3.14.0) A fault of the app's own code (an exception) is sent to the server – the Admin's "Faults of the app" lists it, as the
+  /// web reports a fault of its page (reportError). The same fault once in 10 minutes, at most 12 in a run; only when signed in.
+  final _faultSeen = <String, DateTime>{};
+  int _faultSent = 0;
+  void reportFault(String msg, String detail) {
+    final m = msg.length > 300 ? msg.substring(0, 300) : msg;
+    if (m.trim().isEmpty || stage != Stage.ready || (api.token ?? '').isEmpty) return;
+    if (RegExp(r'SESSION_EXPIRED|No connection|SocketException|ClientException|HandshakeException|TimeoutException').hasMatch(m)) return;
+    final now = DateTime.now(), was = _faultSeen[m];
+    if (was != null && now.difference(was).inMinutes < 10) return;
+    _faultSeen[m] = now;
+    if (++_faultSent > 12) return;
+    api.call('reportError', [{'where': 'phone app', 'msg': m, 'detail': detail.length > 1500 ? detail.substring(0, 1500) : detail}]).catchError((_) => null);
+  }
+
+  /// (3.14.0) For the Admin: the Google Sheet backup's state and today's faults of the app (getInit / the live sync).
+  Map<String, dynamic> backup = {}, faults = {};
+  void _admin(Map d) {
+    if (d['backup'] is Map) backup = (d['backup'] as Map).cast<String, dynamic>();
+    if (d['faults'] is Map) faults = (d['faults'] as Map).cast<String, dynamic>();
+  }
+
+  /// (3.4.0) The machinery list the server sent back after a change in Asset Master (saveMaster … : "master") – every screen
+  /// of the app has it at once, as the web's setMaster.
+  void setMaster(dynamic list) {
+    if (list is! List) return;
+    machines = list.whereType<Map>().map((m) => Machine(m.cast<String, dynamic>())).toList()..sort((a, b) => a.id.compareTo(b.id));
+    lastChanged = {'master'};
+    dataTick.value++;
+    notifyListeners();
   }
 
   void setStock(dynamic s) {
@@ -376,10 +425,35 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// (3.14.0) His settings have come (the start page waits for them); his last sign-ins (Settings shows them).
+  Future<void>? prefsReady;
+  List<String> logins = [];
+
+  /// (3.15.0) The AI service is set up on the server (getInit → ai.on): a typed question can go to it.
+  bool aiOn = false;
+
+  /// (3.15.0) The daily summary waits on the Ask button (a red dot) – once a day, as the web's aiBriefAuto on a phone.
+  final ValueNotifier<bool> briefDue = ValueNotifier<bool>(false);
+
+  /// Once a day (kept on this phone for him), unless his settings say no ("brief": false): the summary waits on the Ask button.
+  Future<void> checkBrief() async {
+    if (prefs['brief'] == false || email.isEmpty || today.isEmpty) return;
+    final k = 'oc_brief_${email.toLowerCase()}';
+    try {
+      if (await api.keep.read(k) == today) return;
+      await api.keep.write(k, today);
+    } catch (_) {
+      return;
+    }
+    briefDue.value = true;
+  }
+
   Future<void> loadPrefs() async {
     try {
       final r = (await api.call('getMyPrefs') as Map).cast<String, dynamic>();
       prefs = ((r['prefs'] as Map?) ?? {}).cast<String, dynamic>();
+      logins = [for (final x in (r['logins'] as List? ?? const [])) '$x'];
+      if (r['rules'] is Map) siteRules = (r['rules'] as Map).cast<String, dynamic>(); // the notice of the site on Home
       if (prefs.containsKey('appLang')) await _lang('${prefs['appLang']}');
       notifyListeners();
     } catch (_) {/* the app works with the usual settings */}
@@ -455,6 +529,7 @@ class Session extends ChangeNotifier {
     _ticking = true;
     try {
       final r = await api.call('sync', [<String, dynamic>{}]);
+      if (r is Map) _admin(r);
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
       final first = versions.isEmpty;
       final changed = first ? <String>{} : v.keys.where((k) => versions[k] != v[k]).toSet();
@@ -516,12 +591,14 @@ class Session extends ChangeNotifier {
     try {
       final d = await api.call('getChangeRequests', [<String, dynamic>{}]);
       if (d is! Map) return;
-      _takeApprovals(d);
+      takeApprovals(d);
       if (notify) await tellAlerts(d, api.keep);      // (3.1.8) waiting for him / sent back to him: a notification; (3.1.11) a reminder
     } catch (_) {/* the count only */}
   }
 
-  void _takeApprovals(Map d) {
+  /// (3.2.0) The Approvals answer [d] taken: the counts, his works under verification, his entries (the Approvals screen gives
+  /// every answer of a decision here too).
+  void takeApprovals(Map d) {
     crWaiting = (d['pending'] is num) ? (d['pending'] as num).toInt() : 0;
     crForMe = (d['forMe'] is num) ? (d['forMe'] as num).toInt() : 0;
     crBack = (d['backToMe'] is num) ? (d['backToMe'] as num).toInt() : 0;
@@ -564,7 +641,7 @@ class Session extends ChangeNotifier {
   Future<Map<String, dynamic>> remindFlow({List<String> ids = const [], bool all = false}) async {
     final r = await api.call('remindFlow', [all ? <String, dynamic>{'all': true} : <String, dynamic>{'ids': ids}]);
     final m = r is Map ? r.cast<String, dynamic>() : <String, dynamic>{};
-    if (m['list'] is Map) _takeApprovals(m['list'] as Map);
+    if (m['list'] is Map) takeApprovals(m['list'] as Map);
     return m;
   }
 

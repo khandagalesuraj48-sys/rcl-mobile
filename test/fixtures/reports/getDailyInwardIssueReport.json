@@ -1,0 +1,497 @@
+{
+ "company": "Rachana Construction Limited",
+ "from": "2026-09-01",
+ "to": "2026-10-16",
+ "location": "All locations",
+ "byLocation": false,
+ "otherLocations": [],
+ "groups": [
+  "Own",
+  "Rental",
+  "Debit"
+ ],
+ "rows": [
+  {
+   "date": "2026-09-01",
+   "opening": 0,
+   "inward": 20000,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-02",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-03",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-04",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-05",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-06",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-07",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-08",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-09",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-10",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-11",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-12",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-13",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-14",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-15",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-16",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-17",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-18",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-19",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 20000
+  },
+  {
+   "date": "2026-09-20",
+   "opening": 20000,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {
+    "Rental": 15
+   },
+   "issued": 15,
+   "closing": 19985
+  },
+  {
+   "date": "2026-09-21",
+   "opening": 19985,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19985
+  },
+  {
+   "date": "2026-09-22",
+   "opening": 19985,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19985
+  },
+  {
+   "date": "2026-09-23",
+   "opening": 19985,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19985
+  },
+  {
+   "date": "2026-09-24",
+   "opening": 19985,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19985
+  },
+  {
+   "date": "2026-09-25",
+   "opening": 19985,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19985
+  },
+  {
+   "date": "2026-09-26",
+   "opening": 19985,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19985
+  },
+  {
+   "date": "2026-09-27",
+   "opening": 19985,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19985
+  },
+  {
+   "date": "2026-09-28",
+   "opening": 19985,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {
+    "Rental": 60
+   },
+   "issued": 60,
+   "closing": 19925
+  },
+  {
+   "date": "2026-09-29",
+   "opening": 19925,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19925
+  },
+  {
+   "date": "2026-09-30",
+   "opening": 19925,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {
+    "Rental": 30
+   },
+   "issued": 30,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-01",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-02",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-03",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-04",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-05",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-06",
+   "opening": 19895,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19895
+  },
+  {
+   "date": "2026-10-07",
+   "opening": 19895,
+   "inward": 44,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-08",
+   "opening": 19939,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-09",
+   "opening": 19939,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-10",
+   "opening": 19939,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-11",
+   "opening": 19939,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19939
+  },
+  {
+   "date": "2026-10-12",
+   "opening": 19939,
+   "inward": 22,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19961
+  },
+  {
+   "date": "2026-10-13",
+   "opening": 19961,
+   "inward": 33,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19994
+  },
+  {
+   "date": "2026-10-14",
+   "opening": 19994,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19994
+  },
+  {
+   "date": "2026-10-15",
+   "opening": 19994,
+   "inward": 0,
+   "tin": 0,
+   "tout": 0,
+   "issue": {},
+   "issued": 0,
+   "closing": 19994
+  },
+  {
+   "date": "2026-10-16",
+   "opening": 19994,
+   "inward": 22,
+   "tin": 0,
+   "tout": 0,
+   "issue": {
+    "Own": 2
+   },
+   "issued": 2,
+   "closing": 20014
+  }
+ ],
+ "totals": {
+  "inward": 20121,
+  "tin": 0,
+  "tout": 0,
+  "issued": 107,
+  "issue": {
+   "Own": 2,
+   "Rental": 105,
+   "Debit": 0
+  },
+  "opening": 0,
+  "closing": 20014
+ },
+ "generated": "16-10-2026 16:16"
+}

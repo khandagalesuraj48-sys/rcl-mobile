@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart' hide Text;
 
 import '../core/api.dart';
+import 'help.dart';
 import 'theme.dart';
 import 't.dart';
 
@@ -133,22 +134,28 @@ class EmptyState extends StatelessWidget {
 
 /// A line on a coloured strip (stock after this issue, a server refusal).
 class InfoLine extends StatelessWidget {
-  const InfoLine(this.text, {super.key, this.bad = false, this.icon});
+  const InfoLine(this.text, {super.key, this.bad = false, this.icon, this.help = true});
   final String text;
   final bool bad;
   final IconData? icon;
+
+  /// (3.16.0) a red message has "Help": what is wrong and what to do (the web's help in every "Nothing saved" box).
+  final bool help;
   @override
   Widget build(BuildContext context) {
     final sent = this.bad && Api.isGood(text.split('\n').first);      // (update-114) sent for verification: green, not an error
     final bad = this.bad && !sent;
     return Container(
         margin: const EdgeInsets.only(top: 14),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.fromLTRB(14, 12, 14, bad && help ? 2 : 12),
         decoration: BoxDecoration(color: bad ? C.redSoft : C.greenSoft, borderRadius: BorderRadius.circular(16)),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(sent ? Icons.hourglass_top_rounded : icon ?? (bad ? Icons.error_outline_rounded : Icons.local_gas_station_outlined), size: 20, color: bad ? C.red : C.greenDark),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 14, height: 1.35, color: bad ? C.red : C.greenDark, fontWeight: FontWeight.w500))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(sent ? Icons.hourglass_top_rounded : icon ?? (bad ? Icons.error_outline_rounded : Icons.local_gas_station_outlined), size: 20, color: bad ? C.red : C.greenDark),
+            const SizedBox(width: 10),
+            Expanded(child: Text(text, style: TextStyle(fontSize: 14, height: 1.35, color: bad ? C.red : C.greenDark, fontWeight: FontWeight.w500))),
+          ]),
+          if (bad && help) FixHelpLink(text),
         ]),
       );
   }
@@ -212,9 +219,25 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
 /// A short message at the bottom of the screen.
 void toast(BuildContext context, String msg, {bool bad = false}) {
   if (Api.isGood(msg)) bad = false;      // (14-10-2026 / update-114) sent for approval / verification: not a fault
+  // (3.16.0) a red message has "Help" – what is wrong and what to do (the web's help card under every red message)
+  final nav = bad ? Navigator.maybeOf(context, rootNavigator: true) : null;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: bad ? C.red : C.ink, duration: Duration(seconds: bad ? 6 : 3)));
+    ..showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: bad ? C.red : C.ink,
+      duration: Duration(seconds: bad ? 6 : 3),
+      persist: false,
+      action: nav == null
+          ? null
+          : SnackBarAction(
+              label: tr('Help'),
+              textColor: Colors.white,
+              onPressed: () {
+                if (nav.mounted) showFixHelp(nav.context, msg);
+              },
+            ),
+    ));
 }
 
 String errText(Object e) => e is ApiError ? e.toString() : 'Something went wrong – please try again.';
@@ -225,10 +248,72 @@ Future<bool> ask(BuildContext context, String title, String body, {String yes = 
       context: context,
       builder: (c) => AlertDialog(
         title: Text(title),
-        content: Text(body, style: const TextStyle(fontSize: 15, height: 1.4)),
+        scrollable: true,
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(body, style: const TextStyle(fontSize: 15, height: 1.4)),
+          if (askNeedsHelp('$title $yes $body')) FixHelpLink(body, color: C.green), // (3.16.0) the web's help in such a question
+        ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: Text(no)),
           FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(110, 46), backgroundColor: danger ? C.red : C.green), onPressed: () => Navigator.pop(c, true), child: Text(yes)),
+        ],
+      ),
+    ) ??
+    false;
+
+/// (3.2.0) A question with a box to write in (a remark, a reason, an answer) – null when Cancel. [needed]: it must be written
+/// ([neededMsg] is said when it is empty). [body]: what the question is about, shown above the box.
+Future<String?> askNote(BuildContext context, String title, {List<Widget> body = const [], String label = '', String ok = 'OK', bool needed = true, String neededMsg = 'Write it first.', bool danger = false, int max = 300}) {
+  final c = TextEditingController();
+  String err = '';
+  return showDialog<String>(
+    context: context,
+    builder: (dc) => StatefulBuilder(
+      builder: (dc, set) => AlertDialog(
+        title: Text(title),
+        scrollable: true,
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ...body,
+          if (body.isNotEmpty) const SizedBox(height: 12),
+          if (label.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600))),
+          TextField(key: const Key('note-box'), controller: c, maxLines: 3, minLines: 2, maxLength: max, autofocus: true, decoration: InputDecoration(errorText: err.isEmpty ? null : tr(err))),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dc), child: const Text('Cancel')),
+          FilledButton(
+            key: const Key('note-ok'),
+            style: FilledButton.styleFrom(minimumSize: const Size(110, 46), backgroundColor: danger ? C.red : C.green),
+            onPressed: () {
+              final v = c.text.trim();
+              if (needed && v.isEmpty) {
+                set(() => err = neededMsg);
+                return;
+              }
+              Navigator.pop(dc, v);
+            },
+            child: Text(ok),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// (3.2.0) "Are you sure?" with what it is about as lines (Yes returns true).
+Future<bool> askLines(BuildContext context, String title, List<String> lines, {String note = '', String yes = 'Yes', bool danger = false}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(title),
+        scrollable: true,
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $l', style: const TextStyle(fontSize: 14.5, height: 1.35))),
+          if (note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(note, style: const TextStyle(fontSize: 14, color: C.muted, height: 1.4))),
+          if (askNeedsHelp('$title $yes ${lines.join(' ')} $note')) FixHelpLink([...lines, note].where((x) => x.isNotEmpty).join('\n'), color: C.green),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(key: const Key('ask-yes'), style: FilledButton.styleFrom(minimumSize: const Size(110, 46), backgroundColor: danger ? C.red : C.green), onPressed: () => Navigator.pop(c, true), child: Text(yes)),
         ],
       ),
     ) ??

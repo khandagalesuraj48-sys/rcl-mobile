@@ -1,0 +1,903 @@
+{
+ "today": [
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "shifts": "Full Day"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "shifts": "Full Day"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "shifts": "Full Day"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "shifts": "Full Day"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "shifts": "Full Day"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "shifts": "Full Day"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "shifts": "Full Day"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "shifts": "Full Day"
+  }
+ ],
+ "older": [
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "since": "2026-10-01",
+   "sinceShift": "Full Day",
+   "days": 15,
+   "entries": 15,
+   "latest": "2026-10-15"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "since": "2026-10-01",
+   "sinceShift": "Full Day",
+   "days": 15,
+   "entries": 15,
+   "latest": "2026-10-15"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "since": "2026-10-01",
+   "sinceShift": "Full Day",
+   "days": 15,
+   "entries": 15,
+   "latest": "2026-10-15"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "since": "2026-10-01",
+   "sinceShift": "Full Day",
+   "days": 15,
+   "entries": 15,
+   "latest": "2026-10-15"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "since": "2026-10-01",
+   "sinceShift": "Full Day",
+   "days": 15,
+   "entries": 15,
+   "latest": "2026-10-15"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "since": "2026-10-01",
+   "sinceShift": "Full Day",
+   "days": 15,
+   "entries": 15,
+   "latest": "2026-10-15"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "since": "2026-10-01",
+   "sinceShift": "Full Day",
+   "days": 15,
+   "entries": 15,
+   "latest": "2026-10-15"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "since": "2026-10-03",
+   "sinceShift": "Full Day",
+   "days": 13,
+   "entries": 13,
+   "latest": "2026-10-15"
+  }
+ ],
+ "age": {
+  "d0": 8,
+  "d1": 8,
+  "d2_3": 16,
+  "d4_7": 32,
+  "d8": 62
+ },
+ "items": [
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-03"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-04"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-05"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-06"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-07"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-08"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-09"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-10"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-11"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-12"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-13"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-14"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-15"
+  },
+  {
+   "no": "EX-200",
+   "type": "Excavator",
+   "owner": "Item Vendor",
+   "date": "2026-10-16"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-01"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-02"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-03"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-04"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-05"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-06"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-07"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-08"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-09"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-10"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-11"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-12"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-13"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-14"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-15"
+  },
+  {
+   "no": "MH-15-AB-0001",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-16"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-01"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-02"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-03"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-04"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-05"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-06"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-07"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-08"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-09"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-10"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-11"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-12"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-13"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-14"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-15"
+  },
+  {
+   "no": "MH-15-AB-0002",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-16"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-01"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-02"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-03"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-04"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-05"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-06"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-07"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-08"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-09"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-10"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-11"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-12"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-13"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-14"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-15"
+  },
+  {
+   "no": "MH-15-AB-0003",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-16"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-01"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-02"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-03"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-04"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-05"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-06"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-07"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-08"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-09"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-10"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-11"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-12"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-13"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-14"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-15"
+  },
+  {
+   "no": "MH-15-AB-0004",
+   "type": "Tipper",
+   "owner": "Rachana Construction Limited",
+   "date": "2026-10-16"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-01"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-02"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-03"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-04"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-05"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-06"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-07"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-08"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-09"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-10"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-11"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-12"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-13"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-14"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-15"
+  },
+  {
+   "no": "NRX-0",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-16"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-01"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-02"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-03"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-04"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-05"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-06"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-07"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-08"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-09"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-10"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-11"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-12"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-13"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-14"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-15"
+  },
+  {
+   "no": "NRX-1",
+   "type": "Tipper",
+   "owner": "Night Vendor",
+   "date": "2026-10-16"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-01"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-02"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-03"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-04"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-05"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-06"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-07"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-08"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-09"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-10"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-11"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-12"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-13"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-14"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-15"
+  },
+  {
+   "no": "TKX-1",
+   "type": "Tipper",
+   "owner": "Tank Vendor",
+   "date": "2026-10-16"
+  }
+ ],
+ "asOf": "2026-10-16",
+ "from": "2026-10-01",
+ "to": "2026-10-16",
+ "total": 126
+}
