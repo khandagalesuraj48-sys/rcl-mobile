@@ -480,8 +480,8 @@ void main() {
       ..portalDown = true;
     final keep = MemoryKeep()..data['portal_cookie'] = 'rcl_portal=abc123';
     final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: keep, client: srv.client))
-      ..clock = () => DateTime(2026, 10, 14, 10, 30)
-      ..retryEvery = const Duration(hours: 1);
+      ..retryEvery = const Duration(hours: 1)
+      ..clock = (() => DateTime(2026, 10, 14, 10, 30));
     await t.runAsync(s.start);
     await t.pumpWidget(RclApp(session: s));
     await settle(t);
