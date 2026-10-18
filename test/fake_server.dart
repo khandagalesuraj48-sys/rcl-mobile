@@ -30,6 +30,8 @@ class FakeServer {
   final rulesSaved = <Map<String, dynamic>>[];
   final reportAsked = <Map<String, dynamic>>[]; // (3.2.0) the reports asked, with their filters
   bool down = false; // no network to Mechanical
+  bool portalDown = false; // (3.20.1) no network to the Portal either
+  int portalStatus = 0; // (3.20.1) the Portal not reached: answers this code (e.g. 503) without its own words
   final rids = <String>[]; // the save numbers that came
   final tankerCalls = <Map<String, dynamic>>[];
   static const _tTrips = [
@@ -468,6 +470,8 @@ class FakeServer {
   late final client = MockClient((r) async {
     final path = r.url.path;
     if (down && path.endsWith('/api/rpc')) throw http.ClientException('no network');
+    if (portalDown && path.contains('/portal/')) throw http.ClientException('no network');
+    if (portalStatus > 0 && path.contains('/portal/')) return http.Response('<html>Service Unavailable</html>', portalStatus);
     if (path.endsWith('/portal/api/auth')) {
       final b = jsonDecode(r.body) as Map;
       calls.add('portal:${b['action']}');

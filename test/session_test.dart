@@ -174,6 +174,62 @@ void main() {
     expect(keep.data.containsKey('portal_cookie'), false);
   });
 
+  test('(3.20.1) no network when the app opens: STILL SIGNED IN – the waiting screen, never the sign-in; it opens by itself when the network is back', () async {
+    final s1 = make();
+    await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s1.chooseSite('S1');
+    srv.portalDown = true;
+    srv.down = true;
+    final s2 = make()..retryEvery = const Duration(milliseconds: 200);
+    await s2.start();
+    expect(s2.stage, Stage.waiting, reason: 'not Stage.signedOut – he did not sign out');
+    expect(s2.error, contains('No connection'));
+    expect(keep.data['portal_cookie'], 'rcl_portal=abc123', reason: 'the sign-in stays on the phone');
+    expect(keep.data['mech_token'], isNotNull);
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    expect(s2.stage, Stage.waiting, reason: 'tried again by itself – still no network: still waiting, still not the sign-in');
+    srv.portalDown = false;
+    srv.down = false;
+    srv.calls.clear();
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    expect(s2.stage, Stage.ready, reason: 'the network is back: the app opens by itself, nothing typed');
+    expect(s2.site!.code, 'S1');
+    expect(srv.calls, isNot(contains('portal:login')));
+    s2.dispose();
+  });
+
+  test('(3.20.1) "Try again" at once; the server not reached (503) is waited for too; only the Portal saying "not signed in" shows the sign-in', () async {
+    final s1 = make();
+    await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s1.chooseSite('T2');
+    srv.portalStatus = 503;
+    final s2 = make()..retryEvery = const Duration(hours: 1);
+    await s2.start();
+    expect(s2.stage, Stage.waiting);
+    await s2.tryAgain();
+    expect(s2.stage, Stage.waiting, reason: 'still not reached');
+    srv.portalStatus = 0;
+    await s2.tryAgain();
+    expect(s2.stage, Stage.ready);
+    expect(s2.site!.code, 'T2');
+    // a site opened with no network to Mechanical: waiting too, then the site
+    srv.down = true;
+    await s2.chooseSite('S1');
+    expect(s2.stage, Stage.waiting);
+    srv.down = false;
+    await s2.tryAgain();
+    expect(s2.stage, Stage.ready);
+    expect(s2.site!.code, 'S1');
+    // the Portal does not know him any more (Logout elsewhere, a new password from the Super Admin): the sign-in, as before
+    srv.portalSignedIn = false;
+    final s3 = make()..retryEvery = const Duration(hours: 1);
+    await s3.start();
+    expect(s3.stage, Stage.signedOut);
+    expect(keep.data.containsKey('portal_cookie'), false);
+    s2.dispose();
+    s3.dispose();
+  });
+
   test('the Super Admin opens his sites too (14-10-2026)', () async {
     srv.superAdmin = true;
     final s = make();

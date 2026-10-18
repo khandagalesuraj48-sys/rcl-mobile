@@ -11,7 +11,7 @@ import 'api.dart';
 import 'format.dart';
 import 'lang.dart';
 
-enum Stage { starting, signedOut, setPassword, pickSite, opening, ready }
+enum Stage { starting, signedOut, setPassword, pickSite, opening, ready, waiting }
 
 class Module {
   Module(this.key, this.name, this.url);
@@ -221,9 +221,51 @@ class Session extends ChangeNotifier {
   }
 
   void _go(Stage s, [String err = '']) {
+    if (s != Stage.waiting) _again?.cancel();
     stage = s;
     error = err;
     notifyListeners();
+  }
+
+  /* (3.20.1, asked 18-10-2026: "app madhun pn auto log out nko aahe") The sign-in kept on this phone could not be checked, or the
+   * site could not be opened, because there is NO NETWORK or the server did not answer: the person is NOT signed out. Before,
+   * he was shown the sign-in (his kept sign-in stayed, but it looked like a log-out). Now the app waits – Stage.waiting: "No
+   * connection – you are still signed in" – and tries again by itself every [retryEvery], or at once with "Try again". Only the
+   * Portal saying it does not know him any more (and his own Sign out) shows the sign-in. */
+  static bool notReached(ApiError e) => e.noConnection || e.status == 502 || e.status == 503 || e.status == 504; // no network / the server not reached now
+  Duration retryEvery = const Duration(seconds: 10);
+  Timer? _again;
+  Future<void> Function()? _retry;
+  bool retrying = false;
+  void _wait(String msg, Future<void> Function() again) {
+    _retry = again;
+    retrying = false;
+    _go(Stage.waiting, msg);
+    _again?.cancel();
+    _again = Timer(retryEvery, () {
+      if (stage == Stage.waiting) tryAgain();
+    });
+  }
+
+  /// "Try again" on the waiting screen (and the timer): the same step again – the kept sign-in, or opening the site.
+  Future<void> tryAgain() async {
+    final f = _retry;
+    if (f == null || stage != Stage.waiting || retrying) return;
+    _again?.cancel();
+    retrying = true;
+    notifyListeners();
+    try {
+      await f();
+    } finally {
+      retrying = false;
+      if (stage == Stage.waiting) notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _again?.cancel();
+    super.dispose();
   }
 
   /// The app opens: the sign-in kept on this phone is used – nothing to type while the Portal still knows the person.
@@ -247,6 +289,7 @@ class Session extends ChangeNotifier {
         await api.forget();
         return _go(Stage.signedOut);
       }
+      if (notReached(e)) return _wait(e.toString(), start); // (3.20.1) no network: still signed in – it tries again
       _go(Stage.signedOut, e.toString());
     }
   }
@@ -344,6 +387,7 @@ class Session extends ChangeNotifier {
         await api.forget();
         return _go(Stage.signedOut, 'Your sign-in has ended – please sign in again.');
       }
+      if (notReached(e)) return _wait(e.toString(), () => chooseSite(code)); // (3.20.1) no network: still signed in
       _go(sites.length > 1 ? Stage.pickSite : Stage.signedOut, e.toString());
     }
   }
