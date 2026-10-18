@@ -137,7 +137,54 @@ class Gate extends StatelessWidget {
         Stage.setPassword => const LoginScreen(key: ValueKey('setpw'), setPassword: true),
         Stage.pickSite => const SitePickScreen(key: ValueKey('site')),
         Stage.ready => Shell(key: ValueKey('app-${s.site?.code}')),
+        Stage.waiting => const Waiting(key: ValueKey('wait')),
       },
+    );
+  }
+}
+
+/// (3.20.1, asked 18-10-2026: "app madhun pn auto log out nko aahe") No network – or the server not reached – while the kept
+/// sign-in is checked or a site is opened: he is STILL SIGNED IN (never the sign-in screen for this). The app tries again by
+/// itself (Session.retryEvery); "Try again" tries at once.
+class Waiting extends StatelessWidget {
+  const Waiting({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: C.greenDark,
+        body: Backdrop(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Mark(size: 96),
+                const SizedBox(height: 22),
+                Text(bi('No connection', 'नेटवर्क नाही'), key: const Key('wait-title'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(height: 8),
+                Text(bi('You are still signed in. The app tries again by itself.', 'तुमचा login चालू आहे. App स्वतः पुन्हा प्रयत्न करेल.', '\n'),
+                    key: const Key('wait-kept'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.35, color: Color(0xE6FFFFFF))),
+                if (s.error.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(s.error, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Color(0xB3FFFFFF))),
+                ],
+                const SizedBox(height: 26),
+                if (s.retrying)
+                  const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+                else
+                  FilledButton(
+                    key: const Key('wait-again'),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: C.greenDark, minimumSize: const Size(190, 52)),
+                    onPressed: s.tryAgain,
+                    child: const Text('Try again', mr: 'पुन्हा प्रयत्न करा'),
+                  ),
+              ]),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

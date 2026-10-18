@@ -473,6 +473,30 @@ void main() {
     expect(find.text('Monthly Diesel Issue'), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('(3.20.1) no network when the app opens: "No connection – you are still signed in", Try again – never the sign-in', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..portalSignedIn = true
+      ..portalDown = true;
+    final keep = MemoryKeep()..data['portal_cookie'] = 'rcl_portal=abc123';
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: keep, client: srv.client))
+      ..clock = () => DateTime(2026, 10, 14, 10, 30)
+      ..retryEvery = const Duration(hours: 1);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await settle(t);
+    expect(s.stage, Stage.waiting);
+    expect(find.byKey(const Key('wait-title')), findsOneWidget);
+    expect(find.textContaining('You are still signed in'), findsOneWidget);
+    expect(find.text('Sign in'), findsNothing, reason: 'not the sign-in screen');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/0_no_network.png'));
+    srv.portalDown = false;
+    await t.tap(find.byKey(const Key('wait-again')));
+    await net(t);
+    expect(s.stage, Stage.pickSite, reason: 'the network is back: his sites, nothing typed');
+  }, tags: ['golden']);
+
   testWidgets('(15-10-2026) a new user: his own password set right here – the three boxes, the two new ones must match, then the app opens', (t) async {
     phone(t);
     final srv = FakeServer()..mustChange = true;

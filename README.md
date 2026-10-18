@@ -14,6 +14,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.20.1 (18-10-2026, with the Portal's "a sign-in stays until Sign out": "app madhun pn auto log out nko aahe"):**
+* **No sign-out by itself.** The Portal now keeps a sign-in until "Sign out" (no 6 hours, no 30 days). The app already renews
+  its Mechanical and Store sign-ins from it by itself.
+* **No network when the app opens, or while a site opens** (or the server is not reached – 502 / 503 / 504): before, the app
+  showed the sign-in (the kept sign-in stayed, but it looked like a log-out). Now it shows **"No connection – you are still
+  signed in"**. It tries again by itself every 10 seconds, and at once with **Try again** (`Stage.waiting`, `Session.tryAgain`,
+  the `Waiting` screen in `lib/main.dart`).
+* The sign-in screen shows only when the Portal says it does not know him any more: "Sign out", or the Super Admin switched him
+  off or gave him a new password. That is as before.
+
 **Version 3.20.0 (18-10-2026, with Mechanical update-124: "tax invoice war debit as nko … fkt month ani tya month chi
 amount"):**
 * **The party's Tax Invoice** of a bill made from now on (Make Bill marks it, `txNet`) shows:
