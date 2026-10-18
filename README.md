@@ -14,6 +14,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.20.0 (18-10-2026, with Mechanical update-124: "tax invoice war debit as nko … fkt month ani tya month chi
+amount"):**
+* **The party's Tax Invoice** of a bill made from now on (Make Bill marks it, `txNet`) shows:
+  * each vehicle "FOR THE MONTH OF SEPTEMBER 2026" (or "FOR THE PERIOD …" when the bill is not one whole month);
+  * its amount AFTER its own diesel debit;
+  * no hours, days, rate or diesel line;
+  * GST on that amount, and no TDS (that is on the Abstract).
+* The Abstract, the Debit Note and every figure are as before.
+* A bill made before (RCL Drive) keeps its papers exactly as they were.
+* The web's own code (`txPeriod`, `taxInvoiceHtml`) is ported in `lib/core/bill.dart` and checked against it to the character:
+  the new papers, and the papers of the same bills without the mark.
+
 **Version 3.19.1 (17-10-2026: "android warti app updet krtana khup slow hote te speed up kr"; with Mechanical update-123):**
 * **A smaller Android update.** The APK was 95 MB:
   * 18 MB were the emulators' part (x86_64) of ML Kit – of no use on a phone;

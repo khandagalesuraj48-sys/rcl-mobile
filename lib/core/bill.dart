@@ -219,6 +219,7 @@ Map<String, dynamic> mbFill(Map<String, dynamic> b, BillLogs l, Map<String, dyna
   ].where((x) => _n(x['days']) != 0 || _n(x['issued']) != 0 || _n(x['amount']) != 0 || _n(x['idleDays']) != 0).toList();
   final wo = machines.where((x) => _s(x['woNo']).isNotEmpty).firstOrNull ?? const {};
   b['machines'] = machines;
+  b['txNet'] = true; // (3.20.0, Mechanical update-124) a bill made from now on: its Tax Invoice is of the value after the diesel debit
   b['woNo'] = _s(wo['woNo']);
   b['woDate'] = _s(wo['woDate']);
   b['idleDays'] = machines.fold<num>(0, (a, x) => a + _n(x['idleDays']));
@@ -499,24 +500,43 @@ String rupeesWords(Object? n0) {
 
 String docDash(Object? v) => _blank(v) || _n(v) == 0 ? '-' : n2(v);
 
+/// (3.20.0, Mechanical update-124) The month of a bill ("FOR THE MONTH OF SEPTEMBER 2026") when it is one whole calendar month,
+/// else its dates ("FOR THE PERIOD 01.09.2026 TO 15.09.2026") – the web's txPeriod.
+String txPeriod(Map b) {
+  final f = _s(b['from']), t = _s(b['to']);
+  const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+  final y = int.tryParse(f.length >= 4 ? f.substring(0, 4) : '') ?? 0, mo = int.tryParse(f.length >= 7 ? f.substring(5, 7) : '') ?? 0;
+  final last = mo > 0 ? DateTime.utc(y, mo + 1, 0).day : 0;
+  if (RegExp(r'^\d{4}-\d{2}-01$').hasMatch(f) && mo <= 12 && t == '${f.substring(0, 8)}${'$last'.padLeft(2, '0')}') return 'FOR THE MONTH OF ${months[mo - 1]} $y';
+  return 'FOR THE PERIOD ${mbDot(f)} TO ${mbDot(t)}';
+}
+
 /// The party's Tax Invoice to the company – the same figures as the Abstract (no TDS on it).
+/// (3.20.0, Mechanical update-124: "tax invoice war debit as nko … fkt month ani tya month chi amount") a bill made from now on
+/// (txNet): each vehicle for the month and its amount AFTER its diesel debit – no hours / days / rate, no diesel line. A bill
+/// made before keeps its paper as it was.
 String taxInvoiceHtml(Map b) {
   final co = _s(b['company']), ci = (b['companyInfo'] as Map?) ?? const {}, v = (b['vendor'] as Map?) ?? const {}, gst = _n(b['gstPct']), half = gst / 2;
-  final less = _n(b['B']) + _n(b['C']), rowTax = gst > 0 && less == 0 && _n(b['D']) > 0;
+  final net = b['txNet'] == true;
+  num amt(Map m) => net ? r2(_n(m['amount']) - _n(m['excessAmt'])) : _n(m['amount']);
+  final Object? before = net ? r2(_n(b['A']) - _n(b['B'])) : b['A'];
+  final less = (net ? 0 : _n(b['B'])) + _n(b['C']), rowTax = gst > 0 && less == 0 && _n(b['D']) > 0;
   final machines = _maps(b['machines']);
   final rows = <String>[];
   for (var i = 0; i < machines.length; i++) {
     final m = machines[i], ls = _maps(m['lines']);
-    final lines = ls.where((l) => !(!_blank(l['monthly']) && l['monthly'] != 0 && ls.length == 1)).toList();
-    final detail = lines.map((l) => '${_s(l['item']).isNotEmpty ? '${_up(l['item'])}${_s(l['note']).isNotEmpty ? ' – ${l['note']}' : ''}: ' : (_s(l['note']).isNotEmpty ? '${l['note']}: ' : '')}${fmt(l['qty'])} ${_s(l['unit'])} × ${n2(l['rate'])} = ${n2(l['amount'])}').toList();
-    final tax = rowTax ? r2(_n(m['amount']) * half / 100) : 0;
+    final lines = net ? <Map>[] : ls.where((l) => !(!_blank(l['monthly']) && l['monthly'] != 0 && ls.length == 1)).toList();
+    final detail = net
+        ? [txPeriod(b)]
+        : lines.map((l) => '${_s(l['item']).isNotEmpty ? '${_up(l['item'])}${_s(l['note']).isNotEmpty ? ' – ${l['note']}' : ''}: ' : (_s(l['note']).isNotEmpty ? '${l['note']}: ' : '')}${fmt(l['qty'])} ${_s(l['unit'])} × ${n2(l['rate'])} = ${n2(l['amount'])}').toList();
+    final a = amt(m), tax = rowTax ? r2(a * half / 100) : 0;
     rows.add('<tr><td class="c">${i + 1}</td><td><b>RENT ON VEHICLE ${_e(_nodash(m['no']).toUpperCase())}</b>${_s(m['type']).isNotEmpty ? ' <span>(${_e(_up(m['type']))})</span>' : ''}'
-        '${detail.isNotEmpty ? '<small>${detail.map(_e).join('<br>')}</small>' : ''}</td><td class="n">${n2(m['amount'])}</td><td class="n">${rowTax ? n2(tax) : '-'}</td><td class="n">${rowTax ? n2(tax) : '-'}</td><td class="n">${n2(r2(_n(m['amount']) + 2 * tax))}</td></tr>');
+        '${detail.isNotEmpty ? '<small>${detail.map(_e).join('<br>')}</small>' : ''}</td><td class="n">${n2(net ? a : m['amount'])}</td><td class="n">${rowTax ? n2(tax) : '-'}</td><td class="n">${rowTax ? n2(tax) : '-'}</td><td class="n">${n2(r2(a + 2 * tax))}</td></tr>');
   }
   final pct = gst != 0 ? '${fmt(half)}%' : '';
   final sum = <(String, String)>[
-    ('Total Amount Before Tax', n2(b['A'])),
-    if (_n(b['B']) != 0) ('Less: Diesel deduction${_s(b['dnNo']).isNotEmpty ? ' (Debit Note ${_e(b['dnNo'])})' : ''}', '− ${n2(b['B'])}'),
+    ('Total Amount Before Tax', n2(before)),
+    if (_n(b['B']) != 0 && !net) ('Less: Diesel deduction${_s(b['dnNo']).isNotEmpty ? ' (Debit Note ${_e(b['dnNo'])})' : ''}', '− ${n2(b['B'])}'),
     if (_n(b['C']) != 0) ('Less: Other deduction${_s(b['cReason']).isNotEmpty ? ' (${_e(b['cReason'])})' : ''}', '− ${n2(b['C'])}'),
     ('Basic Value', n2(b['D'])),
     ('SGST $pct', docDash(b['F'])),
@@ -535,7 +555,7 @@ String taxInvoiceHtml(Map b) {
       '<tr><td>To,<br>$party${_s(ci['address']).isNotEmpty ? '<br>Address : ${_e(ci['address'])}' : ''}<br><b>GST : ${_e(_s(ci['gstin']).isNotEmpty ? ci['gstin'] : '–')}</b></td>'
       '<td>To,<br>$party${_s(b['siteAddress']).isNotEmpty ? '<br>Address : ${_e(b['siteAddress'])}' : ''}<br><b>GST : ${_e(_s(ci['gstin']).isNotEmpty ? ci['gstin'] : '–')}</b></td></tr></tbody></table>'
       '<table><colgroup><col style="width:7%"><col style="width:43%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th class="c">Sr.No</th><th class="c">Description of Work</th><th class="c">Amount</th><th class="c">Add CGST $pct</th><th class="c">Add SGST $pct</th><th class="c">Total Amount</th></tr></thead><tbody>'
-      '${rows.join()}<tr class="sum"><td colspan="2" class="c">Total Billing Amount</td><td class="n">${n2(b['A'])}</td><td class="n">-</td><td class="n">-</td><td class="n">${n2(b['A'])}</td></tr></tbody></table>'
+      '${rows.join()}<tr class="sum"><td colspan="2" class="c">Total Billing Amount</td><td class="n">${n2(before)}</td><td class="n">-</td><td class="n">-</td><td class="n">${n2(before)}</td></tr></tbody></table>'
       '<table class="foot"><colgroup><col style="width:50%"><col style="width:36%"><col style="width:14%"></colgroup><tbody>'
       '${[for (var i = 0; i < sum.length; i++) '<tr>${i == 0 ? '<td rowspan="${sum.length}"><b>In Word : ${_e(rupeesWords(b['G']))} /-</b></td>' : ''}<td class="k">${sum[i].$1}</td><td class="n"><b>${sum[i].$2}</b></td></tr>'].join()}'
       '<tr><td>${_e(v['name'] ?? '')}${_s(v['address']).isNotEmpty ? '<br>${_e(v['address'])}' : ''}${_s(v['account']).isNotEmpty ? '<br>AC.NO : - ${_e(v['account'])}' : ''}${_s(v['ifsc']).isNotEmpty ? '<br>IFSC CODE :${_e(v['ifsc'])}' : ''}${_s(v['bank']).isNotEmpty ? '<br>BANK : ${_e(v['bank'])}${_s(v['branch']).isNotEmpty ? ', ${_e(v['branch'])}' : ''}' : ''}'
