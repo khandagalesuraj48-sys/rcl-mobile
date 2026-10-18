@@ -76,7 +76,30 @@ void main() {
         expect(diffAt(h, sheets[i]), '', reason: 'papers of bill ${i + 1} (${want[i]['vendor']['name']})');
       }
     });
+    // (3.20.0, Mechanical update-124) a new bill is marked (its Tax Invoice: the month, the amount after the diesel debit); the
+    // same bill WITHOUT the mark – a bill made before, opened from RCL Drive – keeps its papers as they were (the web's, as they were)
+    test('Build bills ${n + 1}: a bill made before (no mark) – its papers as they were, the same as the web\'s', () {
+      final want = (c['bills'] as List).cast<Map<String, dynamic>>(), old = (c['old'] as List).cast<String>();
+      for (var i = 0; i < want.length; i++) {
+        expect(want[i]['txNet'], true, reason: 'the web marks a bill it builds');
+        final b = copy(want[i])..remove('txNet');
+        expect(diffAt(billSheets(b, ''), old[i]), '', reason: 'old papers of bill ${i + 1} (${want[i]['vendor']['name']})');
+      }
+    });
   }
+
+  test('(3.20.0) the month of a bill on its Tax Invoice – a whole month by its name, else the dates (the web\'s txPeriod)', () {
+    expect([
+      for (final p in [
+        ['2026-09-01', '2026-09-30'], ['2026-02-01', '2026-02-28'], ['2028-02-01', '2028-02-28'], ['2028-02-01', '2028-02-29'],
+        ['2026-09-01', '2026-09-15'], ['2026-09-20', '2026-10-10'], ['2026-12-01', '2026-12-31'],
+      ])
+        txPeriod({'from': p[0], 'to': p[1]})
+    ], [
+      'FOR THE MONTH OF SEPTEMBER 2026', 'FOR THE MONTH OF FEBRUARY 2026', 'FOR THE PERIOD 01.02.2028 TO 28.02.2028', 'FOR THE MONTH OF FEBRUARY 2028',
+      'FOR THE PERIOD 01.09.2026 TO 15.09.2026', 'FOR THE PERIOD 20.09.2026 TO 10.10.2026', 'FOR THE MONTH OF DECEMBER 2026',
+    ]);
+  });
 
   test('A built bill changed: Idle paid / not paid, a typed diesel rate, an other deduction, debit notes, corrections of earlier bills, a saved bill, a minus bill', () {
     final l = logsOf('2026-09-20', '2026-10-10');
