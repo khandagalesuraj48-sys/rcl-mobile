@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 
 import 'alerts.dart';
 import 'api.dart';
+import 'rtc.dart';
 import 'format.dart';
 import 'lang.dart';
 
@@ -560,7 +561,26 @@ class Session extends ChangeNotifier {
   void startLive() {
     _live?.cancel();
     _live = Timer.periodic(liveEvery, (_) => liveTick());
+    _rtcOn();
     liveTick();
+  }
+
+  /* (3.26.0) CALLS with the web (lib/core/rtc.dart): the phone's media come from [callKit] (main.dart gives flutter_webrtc on Android;
+   * the tests give a pretend one; none = no calls here). The notes of a call come with this same heartbeat ({r} – as the web's). */
+  static RtcKit Function()? callKit;
+  Rtc? rtc;
+  void _rtcOn() {
+    if (rtc != null || callKit == null || stage != Stage.ready) return;
+    rtc = Rtc((fn, args) => api.call(fn, args), callKit!(), onBeat: liveTick);
+    notifyListeners();
+  }
+
+  /// Another site / signed out: a call ends, nothing rings any more.
+  void rtcOff() {
+    final r = rtc;
+    if (r == null) return;
+    rtc = null;
+    r.close();
   }
 
   void stopLive() {
@@ -572,7 +592,8 @@ class Session extends ChangeNotifier {
     if (stage != Stage.ready || _ticking) return;
     _ticking = true;
     try {
-      final r = await api.call('sync', [<String, dynamic>{}]);
+      final r = await api.call('sync', [rtc?.beatArg() ?? <String, dynamic>{}]);
+      if (r is Map && r['rtc'] != null) rtc?.inbox(r['rtc']); // (3.26.0) the notes of a call
       if (r is Map) _admin(r);
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
       final first = versions.isEmpty;
@@ -803,6 +824,7 @@ class Session extends ChangeNotifier {
 
   Future<void> signOut([String msg = '']) async {
     stopLive();
+    rtcOff();
     await api.signOut();
     site = null;
     machines = [];

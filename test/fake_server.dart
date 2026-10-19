@@ -39,6 +39,15 @@ class FakeServer {
   final sdSaved = <Map<String, dynamic>>[], sdWaiting = <Map<String, dynamic>>[], sdDeleted = <Map<String, dynamic>>[];
   final sdRefuse = <String, String>{};
   final sdAsked = <Map<String, dynamic>>[];
+  // (3.26.0) calls with the web: the notes the app sent (rtcSend), the notes waiting for the app (given with the next sync), what the
+  // heartbeats said they had read (rtc {r}), the missed calls
+  final rtcSent = <Map<String, dynamic>>[], rtcIn = <Map<String, dynamic>>[], rtcBeats = <dynamic>[];
+  int rtcN = 40;
+  List<Map<String, dynamic>> rtcMissed = [];
+  List<Map<String, dynamic>> rtcPeople = [
+    {'uid': 'u-mahesh', 'name': 'Mahesh Jadhav', 'admin': false},
+    {'uid': 'u-office', 'name': 'Office Admin', 'admin': true},
+  ];
   int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
   final decided = <Map<String, dynamic>>[]; // (3.2.0) what the Approvals screen sent (decide, several, answer)
   final rulesSaved = <Map<String, dynamic>>[];
@@ -644,7 +653,23 @@ class FakeServer {
       if (flowFor == action) return _j({'error': 'Sent for verification to Checker One – VF-00007. It is saved when it is approved; nothing is saved until then.'}, 500);
       switch (action) {
         case 'sync':
-          return _j({'result': {'versions': versions}});
+          // (3.26.0) the call's part of the heartbeat (Mechanical's rtcBeat_): {r, top, m}
+          final beat = a.isNotEmpty && a[0] is Map ? a[0] as Map : const {};
+          rtcBeats.add(beat['r']);
+          final m = [...rtcIn];
+          rtcIn.clear();
+          return _j({'result': {'versions': versions, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m}}});
+        case 'rtcUsers':
+          return _j({'result': {'me': 'u-sujit', 'name': 'Sujit Mule', 'users': rtcPeople, 'ice': [{'urls': ['stun:stun.l.google.com:19302']}], 'relay': false, 'max': 3}});
+        case 'rtcSend':
+          rtcSent.add((a[0] as Map).cast<String, dynamic>());
+          return _j({'result': {'ok': true, 'n': ++rtcN}});
+        case 'rtcMissed':
+          final x = (a[0] as Map);
+          if (x['clear'] == true) rtcMissed = [];
+          return _j({'result': {'list': rtcMissed, 'unseen': 0}});
+        case 'rtcWa':
+          return _j({'result': {'none': true, 'name': 'Mahesh Jadhav'}});
         case 'getChangeRequests':
           return _j({'result': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}});
         case 'remindFlow':

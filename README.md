@@ -14,6 +14,21 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.26.0 (19-10-2026, with Mechanical update-137: "JR SAMAJ EK USER APP WAR AAHE ANI EK USER WEB WAR TRI SUDHA CONNECT HOYLA HAW
+TE PN PROPER" – "SAGLE KAHI KARTA YAW", Android first):** **calls between the app and the web** (the web's screen share, spoken by the
+app – the same server actions rtcUsers / rtcSend / rtcMissed / rtcWa and the heartbeat "sync" {r}; `lib/core/rtc.dart`):
+* **Home → the call button** (a number on it = missed calls): who is at the app now (as the web's list), missed calls with **Call
+  back**; **Voice call · Video call · My screen** → **Call** (one person; the web joins the app's call, the app joins a web call of up
+  to 3).
+* **A call comes in** (from the web or another phone, while the app is open): its own screen over the app, the phone's ringtone –
+  **Accept · Decline · Reply** (the web's three short replies). Answered on his other device → it stops here.
+* **The call:** the other's screen or back camera big (pinch to zoom), the faces in a row (his and mine – "You"), the time and the way
+  (direct / relay), the page he is on; **Mute · Camera** (front / back, light) **· Screen** (the phone's own screen – Android asks
+  "Start now") **· Chat** (text and photos) **· More** (speaker / earpiece, low data) **· End**. **Back keeps the call on** – a green bar
+  on top of the app goes back to it; the notification "Call is on" keeps the voice (and the screen) going while another app is open.
+* The pictures as on the web (update-136): a screen sharp, a camera smooth, the voice first; low data by itself on a poor network.
+* Not yet: the ring while the app is closed (Firebase – the next step); the iPhone and the computer app have no calls yet.
+
 **Version 3.25.0 (19-10-2026, with Mechanical update-134: "super admin user ni kelelI konti hi entry mg ti save aso approval
 madhe aso ki retuen aso ki reject aso konti hi entry delet kru shakel … single date or ya period wise"):**
 * **Diesel Issue ⋮ → Delete entries – Super Admin** (the Super Admin only): a date or From – To, who entered it, a machinery → the
