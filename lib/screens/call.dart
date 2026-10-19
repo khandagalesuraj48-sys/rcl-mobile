@@ -298,21 +298,28 @@ class _CallPickScreenState extends State<CallPickScreen> {
                           child: const Text('Clear')),
                     ]),
                     for (final m in missed.take(5))
-                      Card(
-                        elevation: 0,
-                        color: C.redSoft,
-                        child: ListTile(
-                          leading: const Icon(Icons.phone_missed_rounded, color: C.red),
-                          title: Text('${m['name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                          subtitle: Text(_when(m['at'])),
-                          trailing: m['can'] == true
-                              ? FilledButton.tonal(
-                                  key: Key('call-back-${m['from']}'),
-                                  onPressed: () => setState(() => sel = '${m['from']}'),
-                                  child: const Text('Call back'),
-                                )
-                              : null,
-                        ),
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+                        decoration: BoxDecoration(color: C.redSoft, borderRadius: BorderRadius.circular(16)),
+                        child: Row(children: [
+                          const Icon(Icons.phone_missed_rounded, color: C.red),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('${m['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                              Text(_when(m['at']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                            ]),
+                          ),
+                          if (m['can'] == true)
+                            FilledButton.tonal(
+                              key: Key('call-back-${m['from']}'),
+                              // (the app's buttons are as wide as the screen: this one only as wide as its words)
+                              style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 16), textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                              onPressed: () => setState(() => sel = '${m['from']}'),
+                              child: const Text('Call back'),
+                            ),
+                        ]),
                       ),
                     const SizedBox(height: 10),
                   ],
