@@ -30,14 +30,18 @@ class RTable {
 }
 
 class RNote {
-  const RNote(this.text, {this.heading = false});
+  const RNote(this.text, {this.heading = false, this.letter = false});
   final String text;
-  final bool heading;
+  /// (3.24.0, Mechanical update-133) [letter]: a line of a letter (the BOQ amendment) – the page's own size and colour, its line
+  /// breaks kept
+  final bool heading, letter;
 }
 
 class RDoc {
-  RDoc({required this.title, this.meta = '', this.kpis = const [], this.blocks = const [], this.portrait = true, this.period = '', this.file = 'RCL_report', this.signs = const []});
+  RDoc({required this.title, this.meta = '', this.kpis = const [], this.blocks = const [], this.portrait = true, this.period = '', this.file = 'RCL_report', this.signs = const [], this.onBehalf = false});
   final String title, meta, period, file;
+  /// (3.24.0, Mechanical update-133) "For and on behalf of <the name on top>." above the signatures (the BOQ amendment letter)
+  final bool onBehalf;
   final List<(String, String)> kpis;
   final List<Object> blocks; // RTable · RNote
   final bool portrait;

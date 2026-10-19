@@ -7,6 +7,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/assets.dart';
 import 'package:rcl_mobile/core/masters.dart';
+import 'package:rcl_mobile/core/rdoc.dart' show RNote;
 import 'package:rcl_mobile/core/rprint.dart';
 import 'package:rcl_mobile/core/xlsx.dart';
 import 'package:rcl_mobile/screens/boq.dart' show boqDoc;
@@ -240,6 +241,50 @@ void main() {
       final html = reportHtml(d, company: 'Rachana Construction Limited', site: 'VTR', printed: '16-10-2026 12:00');
       expect(html, contains('PROJECT MANAGER'));
       expect(html, isNot(contains('Checked by')));
+    });
+  });
+
+  group('BOQ print (3.24.0, Mechanical update-133)', () {
+    final vs = [
+      {'name': 'VP Vendor', 'address': 'At Post Lonad, Tal Bhiwandi', 'phone': '9800000133', 'pan': 'ABCDE1234J', 'gstReg': 'No', 'bank': 'HDFC Bank', 'account': '12345671', 'ifsc': 'HDFC0009218'},
+    ];
+    final l1 = {'no': 'VP-1', 'type': 'Water Tanker', 'basis': 'Per Trip', 'rate': 1000, 'diesel': 'Debit Basis'}, l2 = {'no': 'VP-2', 'type': 'Water Tanker', 'basis': 'Per Trip', 'rate': 500, 'diesel': 'Debit Basis'};
+    final n1 = {'no': 'VP-1', 'type': 'Water Tanker', 'basis': 'Per Trip', 'rate': 1200, 'diesel': 'Debit Basis'};
+    final b1 = <String, dynamic>{'id': 'BOQ-0038', 'no': '1', 'vendor': 'VP Vendor', 'from': '2026-08-01', 'to': '2026-08-31', 'amendOf': '', 'amendNo': 0, 'woNo': 'SLI/VTR-Office/WO/2024-2025/73', 'woDate': '2024-05-01', 'tdsPct': 2, 'lines': [l1, l2]};
+    final a1 = <String, dynamic>{'id': 'BOQ-0039', 'no': '2', 'vendor': 'VP Vendor', 'from': '2026-09-01', 'to': '', 'amendOf': 'BOQ-0038', 'amendNo': 1, 'woNo': '', 'woDate': '', 'tdsPct': 2, 'lines': [n1]};
+    final hist = [
+      {'vendor': 'VP Vendor', 'no': 'VP-1', 'periods': [
+        {'from': '2026-08-01', 'to': '2026-08-31', 'boq': 'BOQ-0038', 'boqNo': '1', 'amendNo': 0, 'of': '', 'line': l1},
+        {'from': '2026-09-01', 'to': '', 'boq': 'BOQ-0039', 'boqNo': '2', 'amendNo': 1, 'of': '1', 'line': n1},
+      ]},
+      {'vendor': 'VP Vendor', 'no': 'VP-2', 'periods': [{'from': '2026-08-01', 'to': '2026-08-31', 'boq': 'BOQ-0038', 'boqNo': '1', 'amendNo': 0, 'of': '', 'line': l2}]},
+    ];
+    test('the work order number and date on top of a BOQ', () {
+      final d = boqDoc(b1, vs, [b1, a1], hist: hist);
+      expect(d.title, 'BOQ / Rate Contract – BOQ 1');
+      expect(d.meta, 'BOQ ID: BOQ-0038 · Work Order No: SLI/VTR-Office/WO/2024-2025/73 · Work Order Date: 01-05-2024');
+      expect(d.signs.first, ('VENDOR', 'SIGN & STAMP'));
+      expect(d.onBehalf, false);
+    });
+    test('an amendment = an amendment letter: To, Subject, Reference (the work order of its BOQ), with effect from, the earlier and the new rate', () {
+      final d = boqDoc(a1, vs, [b1, a1], hist: hist);
+      expect(d.title, 'Amendment Letter – Amendment 1 of BOQ 1');
+      expect(d.meta, 'BOQ ID: BOQ-0039 (BOQ 2) · Work Order No: SLI/VTR-Office/WO/2024-2025/73 · Work Order Date: 01-05-2024 · With effect from: 01-09-2026');
+      expect(d.blocks.whereType<RNote>().where((x) => x.letter).map((x) => x.text).toList(), [
+        'To,\nVP Vendor\nAt Post Lonad, Tal Bhiwandi\nContact No. 9800000133',
+        'Subject: Amendment 1 of BOQ 1 – change of rate for 01 Nos Water Tanker.',
+        'Reference: Work Order No. SLI/VTR-Office/WO/2024-2025/73 dated 01-05-2024; BOQ 1 (BOQ-0038) from 01-08-2026 to 31-08-2026.',
+        'Dear Sir,\nWith reference to the above work order, we are changing the rate of the machinery given below (Annexure-I) with effect from 01-09-2026. The other machinery of BOQ 1 and all other terms and conditions remain the same.',
+      ]);
+      expect(d.tables.first.head[5], 'New rate from 01-09-2026');
+      expect(d.tables.first.rows.single.cells.map((c) => c.text).toList(), ['1', 'VP-1', 'Water Tanker', 'Per Trip', '₹1,000 per trip\ntill 31-08-2026', '₹1,200 per trip', 'Debit basis', '']);
+      expect(d.kpis, isEmpty, reason: 'the vendor\'s details go under the annexure');
+      expect(d.tables[1].head, ['GST Number', 'PAN', 'TDS % (this BOQ)', 'Bank', 'Account No', 'IFSC']);
+      expect(d.signs.first, ('ACCEPTED BY VENDOR', 'SIGN & STAMP'));
+      final html = reportHtml(d, company: 'Sketchline Industries', site: 'VTR', printed: '19-10-2026 19:30');
+      expect(html, contains('<p class="l">Subject: Amendment 1 of BOQ 1'));
+      expect(html, contains('For and on behalf of SKETCHLINE INDUSTRIES.'));
+      expect(boqDoc(a1, vs, [b1, a1]).tables.first.rows.single.cells[4].text, '–', reason: 'no rate history: no earlier rate said');
     });
   });
 

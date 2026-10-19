@@ -14,6 +14,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.24.0 (19-10-2026, with Mechanical update-133: "jewa app la update detos n tya madhe kay new ale he 3 language madhe
+dakhaw … next time update pasun", "je boq bantat je amendment bante tya warti work order number date he sagle yeu de … proper
+amendment watayla haw"):**
+* **The update question shows what is new** in the update in English, मराठी and हिंदी (the release's notes between
+  `<!-- rcl-new -->` and `<!-- /rcl-new -->`, written by the release; shown as written, whatever language is chosen). A phone still
+  on 3.23.0 shows only the name for the update to 3.24.0 – from 3.24.0 on, every update says what is new.
+* **Vendor BOQ → Print:** the work order number and date on top. **An amendment prints as an amendment letter**: To the vendor
+  (address, contact), Subject, Reference (the work order of the BOQ), "with effect from", Annexure-I with each machinery's earlier
+  rate (till the day before) and the new rate, the vendor's details, all versions, "For and on behalf of …", accepted by the vendor.
+
 **Version 3.23.0 (19-10-2026, with Mechanical update-132: "mala disayla haw old kay hot nantr amendment zali kadhi … boq period wise
 ani vehicle wise"):**
 * **Vendor BOQ → a vendor → "Rate history – machinery-wise":** for each machinery, period by period (from – to), the rate, which

@@ -1,6 +1,7 @@
 /* Small pieces every screen uses: the 3D pictures, a card that sinks a little when pressed, a section title, a pill, empty /
  * error states, the loading shimmer, toast and "Are you sure?". */
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/material.dart' as mat show Text;
 
 import '../core/api.dart';
 import 'help.dart';
@@ -243,13 +244,16 @@ void toast(BuildContext context, String msg, {bool bad = false}) {
 String errText(Object e) => e is ApiError ? e.toString() : 'Something went wrong – please try again.';
 
 /// "Are you sure?" – Yes returns true.
-Future<bool> ask(BuildContext context, String title, String body, {String yes = 'Yes', String no = 'Cancel', bool danger = false}) async =>
+/// [plain] (3.24.0): a text shown as it is above [body] – never turned into the chosen language (an update's "what is new", written
+/// in English, मराठी and हिंदी).
+Future<bool> ask(BuildContext context, String title, String body, {String yes = 'Yes', String no = 'Cancel', bool danger = false, String plain = ''}) async =>
     await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         title: Text(title),
         scrollable: true,
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (plain.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 14), child: mat.Text(plain, key: const Key('ask-plain'), style: const TextStyle(fontSize: 15, height: 1.45, color: C.ink))),
           Text(body, style: const TextStyle(fontSize: 15, height: 1.4)),
           if (askNeedsHelp('$title $yes $body')) FixHelpLink(body, color: C.green), // (3.16.0) the web's help in such a question
         ]),

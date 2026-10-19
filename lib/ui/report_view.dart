@@ -39,7 +39,7 @@ class ReportView extends StatelessWidget {
           if (b is RNote)
             Padding(
               padding: EdgeInsets.only(top: b.heading ? 18 : 8, bottom: b.heading ? 2 : 0),
-              child: Text(b.text, style: b.heading ? const TextStyle(fontSize: 16, fontWeight: FontWeight.w800) : const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
+              child: Text(b.text, style: b.heading ? const TextStyle(fontSize: 16, fontWeight: FontWeight.w800) : b.letter ? const TextStyle(fontSize: 14, color: C.ink, height: 1.4) : const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
             )
           else if (b is RTable)
             Padding(padding: const EdgeInsets.only(top: 12), child: RTableView(b)),

@@ -12,6 +12,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as mat show Text;
 import 'package:flutter/services.dart';
 
+import '../core/assets.dart' show dayBefore, noKey;
 import '../core/format.dart';
 import '../core/masters.dart';
 import '../core/rdoc.dart' show RDoc, RTable, RRow, RCell, RNote;
@@ -360,24 +361,33 @@ class _BoqScreenState extends State<BoqScreen> {
 
   Future<void> _print(Map<String, dynamic> b) async {
     final s = SessionScope.read(context);
-    await printDoc(context, s, boqDoc(b, vendors, boqs));
+    await printDoc(context, s, boqDoc(b, vendors, boqs, hist: hist));
   }
 }
 
 /// The BOQ as the web prints it: the vendor's facts, the rates, the remark, all versions; signed by the vendor, billing, PM.
-RDoc boqDoc(Map<String, dynamic> b, List<Map<String, dynamic>> vendors, List<Map<String, dynamic>> boqs) {
+/// (3.24.0, Mechanical update-133, asked 19-10-2026 with his "Amendment letter Of Intent" picture: "je boq bantat je amendment bante
+/// tya warti work order number date he sagle yeu de … proper amendment watayla haw") the work order number and date on top; an
+/// amendment prints as an amendment letter: To the vendor, Subject, Reference (the work order), with effect from, Annexure-I – each
+/// machinery's earlier rate ([hist]: the rate history, the bills' own rule) and its new rate –, the vendor's details, all versions,
+/// "For and on behalf of …", accepted by the vendor.
+RDoc boqDoc(Map<String, dynamic> b, List<Map<String, dynamic>> vendors, List<Map<String, dynamic>> boqs, {List<Map<String, dynamic>> hist = const []}) {
   final v = vendors.firstWhere((x) => x['name'] == b['vendor'], orElse: () => <String, dynamic>{});
   final amend = '${b['amendOf'] ?? ''}'.isNotEmpty;
   final root = amend ? boqs.firstWhere((x) => x['id'] == b['amendOf'], orElse: () => <String, dynamic>{}) : b;
   final rootId = '${root['id'] ?? b['id']}';
   final versions = boqs.where((x) => x['id'] == rootId || x['amendOf'] == rootId).toList()..sort((x, y) => ((asNum(x['amendNo']) ?? 0) - (asNum(y['amendNo']) ?? 0)).toInt());
-  final title = 'BOQ / Rate Contract – BOQ ${'${b['no'] ?? ''}'.isEmpty ? b['id'] : b['no']}${amend ? ' (Amendment ${b['amendNo']} of BOQ ${root['no'] ?? b['amendOf']})' : ''}';
   String p(dynamic x) => '${x ?? ''}';
+  final no = p(b['no']).isEmpty ? p(b['id']) : p(b['no']);
+  final rootNo = amend ? (p(root['no']).isNotEmpty ? p(root['no']) : p(b['amendOf'])) : no;
+  final wo = p(b['woNo']).isNotEmpty || p(b['woDate']).isNotEmpty ? b : root;      // an amendment without its own: the work order of its BOQ
+  final woNo = p(wo['woNo']), woDate = p(wo['woDate']);
+  final woBits = [if (woNo.isNotEmpty) 'Work Order No: $woNo', if (woDate.isNotEmpty) 'Work Order Date: ${showDate(woDate)}'];
   final facts = <(String, String)>[
     ('Vendor', p(v['name']).isNotEmpty ? p(v['name']) : p(b['vendor'])), ('GST Number', v['gstReg'] == 'Yes' ? p(v['gst']) : 'Not registered'), ('PAN', p(v['pan'])),
     ('GST % (this BOQ)', p(b['gstPct']).isNotEmpty ? '${fmtNum(asNum(b['gstPct']))}%' : ''), ('TDS % (this BOQ)', p(b['tdsPct']).isNotEmpty ? '${fmtNum(asNum(b['tdsPct']))}%' : ''),
     ('Bank', [v['bank'], v['branch']].where((x) => p(x).isNotEmpty).join(', ')), ('Account No', p(v['account'])), ('IFSC', p(v['ifsc'])), ('Address', p(v['address'])), ('Phone', p(v['phone'])),
-  ].where((x) => x.$2.isNotEmpty).toList();
+  ].where((x) => x.$2.isNotEmpty && !(amend && const ['Vendor', 'Address', 'Phone'].contains(x.$1))).toList();
   const per = {'Monthly': 'per month', 'Per Day': 'per day', 'Per Hour': 'per hour', 'Per KM': 'per km', 'Per Trip': 'per trip'};
   String rate(Map<String, dynamic> l) {
     final items = _maps(l['items']);
@@ -386,27 +396,89 @@ RDoc boqDoc(Map<String, dynamic> b, List<Map<String, dynamic>> vendors, List<Map
     return '${rupees(l['rate'])} ${per[l['basis']] ?? ''}${(asNum(l['nightRate']) ?? 0) > 0 ? ' (Night trip ${rupees(l['nightRate'])})' : ''}';
   }
 
+  String diesel(Map<String, dynamic> l) => l['diesel'] == 'Debit Basis' ? 'Debit basis' : 'Company paid';
+  final lines = _maps(b['lines']);
+  final versionsBlock = [
+    if (versions.length > 1) ...[
+      const RNote('All versions of this BOQ', heading: true),
+      RTable(sheet: 'Versions', head: const ['BOQ ID', 'Version', 'From', 'To', 'Rates'], rows: [
+        for (final x in versions)
+          RRow([RCell(p(x['id'])), RCell(p(x['amendOf']).isNotEmpty ? 'Amendment ${x['amendNo']}' : 'Original'), RCell(showDate(p(x['from']))), RCell(p(x['to']).isEmpty ? 'open' : showDate(p(x['to']))), RCell(_maps(x['lines']).map((l) => '${l['no']}: ${boqLineText(l)}').join('\n'))]),
+      ]),
+    ],
+  ];
+  if (!amend) {
+    return RDoc(
+      title: 'BOQ / Rate Contract – BOQ $no',
+      file: 'BOQ_${b['id']}',
+      period: '${showDate(p(b['from']))} to ${p(b['to']).isEmpty ? 'open' : showDate(p(b['to']))}',
+      meta: ['BOQ ID: ${b['id']}', ...woBits].join(' · '),
+      kpis: facts,
+      signs: const [('VENDOR', 'SIGN & STAMP'), ('PREPARED BY', 'BILLING DEPT'), ('APPROVED BY', 'PROJECT MANAGER')],
+      blocks: [
+        const RNote('Rates', heading: true),
+        RTable(sheet: 'Rates', head: const ['Sr', 'Machinery', 'Type', 'Rent type', 'Rate', 'Diesel', 'Remark'], numCols: const {0}, rows: [
+          for (final (i, l) in lines.indexed)
+            RRow([RCell('${i + 1}', n: true, value: i + 1), RCell(p(l['no']), bold: true), RCell(p(l['type'])), RCell(p(l['basis'])), RCell(rate(l)), RCell(diesel(l)), RCell(p(l['remark']))]),
+        ]),
+        if (p(b['remark']).isNotEmpty) RNote('Remark: ${b['remark']}'),
+        ...versionsBlock,
+      ],
+    );
+  }
+  // THE AMENDMENT LETTER
+  final from = p(b['from']), to = p(b['to']), many = lines.length > 1, s = many ? 's' : '';
+  final types = <String, int>{};
+  for (final l in lines) {
+    final t = p(l['type']).isEmpty ? 'machinery' : p(l['type']);
+    types[t] = (types[t] ?? 0) + 1;
+  }
+  final what = types.entries.map((e) => '${'${e.value}'.padLeft(2, '0')} Nos ${e.key}').join(', ');
+  // each machinery's earlier rate: its last period before this amendment in the rate history
+  final hv = hist.where((h) => h['vendor'] == b['vendor']).toList();
+  (Map<String, dynamic>, String)? earlier(Map<String, dynamic> l) {
+    final h = hv.firstWhere((x) => noKey(p(x['no'])) == noKey(p(l['no'])), orElse: () => <String, dynamic>{});
+    final ps = _maps(h['periods']).where((x) => x['none'] != true && p(x['from']).compareTo(from) < 0).toList();
+    if (ps.isEmpty || ps.last['line'] is! Map) return null;
+    final pt = p(ps.last['to']);
+    return ((ps.last['line'] as Map).cast<String, dynamic>(), pt.isNotEmpty && pt.compareTo(from) < 0 ? pt : dayBefore(from));
+  }
+
+  String earlierText(Map<String, dynamic> l) {
+    final e = earlier(l);
+    if (e == null) return '–';
+    return '${rate(e.$1)}${e.$1['diesel'] != l['diesel'] ? ' · ${diesel(e.$1)}' : ''}\ntill ${showDate(e.$2)}';
+  }
+
+  final woRef = woNo.isNotEmpty ? 'Work Order No. $woNo${woDate.isNotEmpty ? ' dated ${showDate(woDate)}' : ''}; ' : woDate.isNotEmpty ? 'Work Order dated ${showDate(woDate)}; ' : '';
+  final rootRef = 'BOQ $rootNo${p(root['id']).isNotEmpty ? ' (${root['id']}) from ${showDate(p(root['from']))}${p(root['to']).isNotEmpty ? ' to ${showDate(p(root['to']))}' : ''}' : ''}.';
   return RDoc(
-    title: title,
+    title: 'Amendment Letter – Amendment ${b['amendNo']} of BOQ $rootNo',
     file: 'BOQ_${b['id']}',
-    period: '${showDate(p(b['from']))} to ${p(b['to']).isEmpty ? 'open' : showDate(p(b['to']))}',
-    meta: 'BOQ ID: ${b['id']}',
-    kpis: facts,
-    signs: const [('VENDOR', 'SIGN & STAMP'), ('PREPARED BY', 'BILLING DEPT'), ('APPROVED BY', 'PROJECT MANAGER')],
+    meta: ['BOQ ID: ${b['id']} (BOQ $no)', ...woBits, 'With effect from: ${showDate(from)}${to.isNotEmpty ? ' to ${showDate(to)}' : ''}'].join(' · '),
+    signs: const [('ACCEPTED BY VENDOR', 'SIGN & STAMP'), ('PREPARED BY', 'BILLING DEPT'), ('APPROVED BY', 'PROJECT MANAGER')],
+    onBehalf: true,
     blocks: [
-      RNote('Rates${amend ? ' – from ${showDate(p(b['from']))} (amendment ${b['amendNo']} of ${b['amendOf']})' : ''}', heading: true),
-      RTable(sheet: 'Rates', head: const ['Sr', 'Machinery', 'Type', 'Rent type', 'Rate', 'Diesel', 'Remark'], numCols: const {0}, rows: [
-        for (final (i, l) in _maps(b['lines']).indexed)
-          RRow([RCell('${i + 1}', n: true, value: i + 1), RCell(p(l['no']), bold: true), RCell(p(l['type'])), RCell(p(l['basis'])), RCell(rate(l)), RCell(l['diesel'] == 'Debit Basis' ? 'Debit basis' : 'Company paid'), RCell(p(l['remark']))]),
+      RNote(['To,', p(v['name']).isNotEmpty ? p(v['name']) : p(b['vendor']), if (p(v['address']).isNotEmpty) p(v['address']), if (p(v['phone']).isNotEmpty) 'Contact No. ${v['phone']}'].join('\n'), letter: true),
+      RNote('Subject: Amendment ${b['amendNo']} of BOQ $rootNo – change of rate$s for $what.', letter: true),
+      RNote('Reference: $woRef$rootRef', letter: true),
+      RNote('Dear Sir,\nWith reference to the above ${woNo.isNotEmpty || woDate.isNotEmpty ? 'work order' : 'BOQ'}, we are changing the rate$s of the machinery given below (Annexure-I) with effect from ${showDate(from)}${to.isNotEmpty ? ' to ${showDate(to)}' : ''}. '
+          'The other machinery of BOQ $rootNo and all other terms and conditions remain the same.', letter: true),
+      RNote('Annexure-I – BOQ (amended rate$s)', heading: true),
+      RTable(sheet: 'Annexure-I', head: ['Sr', 'Machinery', 'Type', 'Rent type', 'Earlier rate', 'New rate from ${showDate(from)}', 'Diesel', 'Remark'], numCols: const {0}, rows: [
+        for (final (i, l) in lines.indexed)
+          RRow([
+            RCell('${i + 1}', n: true, value: i + 1), RCell(p(l['no']), bold: true), RCell(p(l['type'])), RCell(p(l['basis'])),
+            RCell(earlierText(l)),
+            RCell(rate(l), bold: true), RCell(diesel(l)), RCell(p(l['remark'])),
+          ]),
       ]),
       if (p(b['remark']).isNotEmpty) RNote('Remark: ${b['remark']}'),
-      if (versions.length > 1) ...[
-        const RNote('All versions of this BOQ', heading: true),
-        RTable(sheet: 'Versions', head: const ['BOQ ID', 'Version', 'From', 'To', 'Rates'], rows: [
-          for (final x in versions)
-            RRow([RCell(p(x['id'])), RCell(p(x['amendOf']).isNotEmpty ? 'Amendment ${x['amendNo']}' : 'Original'), RCell(showDate(p(x['from']))), RCell(p(x['to']).isEmpty ? 'open' : showDate(p(x['to']))), RCell(_maps(x['lines']).map((l) => '${l['no']}: ${boqLineText(l)}').join('\n'))]),
-        ]),
+      if (facts.isNotEmpty) ...[
+        const RNote('Vendor details', heading: true),
+        RTable(sheet: 'Vendor', head: [for (final f in facts) f.$1], rows: [RRow([for (final f in facts) RCell(f.$2, bold: true)])]),
       ],
+      ...versionsBlock,
     ],
   );
 }
