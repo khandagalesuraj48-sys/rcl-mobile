@@ -3,7 +3,10 @@
  * konte entry pending aahet … tyach reminder pn to pathau shakel … entry wise or all send reminder").
  *   – VerifyStrip: on Home (all his entries) and on the entry forms (that page's): Waiting / Sent back / Approved, tap → the sheet;
  *   – VerifySheet: each entry – waiting at whom and since when, sent back (with the question), approved, not saved – with
- *     "Remind" for one that waits and "Remind all waiting". The approver is told at once (Mechanical: web and phone). */
+ *     "Remind" for one that waits and "Remind all waiting". The approver is told at once (Mechanical: web and phone).
+ *   – (3.21.1, Mechanical update-128, asked 19-10-2026: "ata user prt tya entry krt basnar nahi … jyana return zaley tith tyana
+ *     option asel send to approval or verification data loss nko") a rejected or returned entry shows why, and "Send again" (one
+ *     or all): it goes to verification again exactly as it was sent, with his remark – nothing typed again. */
 import 'package:flutter/material.dart' hide Text;
 
 import '../core/session.dart';
@@ -39,6 +42,45 @@ String remindWords(Map<String, dynamic> r) {
   final done = (r['reminded'] as List? ?? []).map((e) => '$e').toList();
   final later = (r['later'] as List? ?? []).whereType<Map>().map((l) => '${l['id']} was reminded at ${l['at']} – again after ${l['next']}').toList();
   return [if (done.isNotEmpty) 'Reminder sent: ${done.join(', ')}.', ...later].join(' ');
+}
+
+/// Why an entry was not saved: the save's reason (Returned) or the approver's (Rejected).
+String notSavedWhy(Map<String, dynamic> r) => r['status'] == 'Returned'
+    ? '${r['result'] ?? 'Not saved'}'
+    : 'Rejected by ${r['decidedBy'] ?? '–'}${'${r['note'] ?? ''}'.isEmpty ? '' : ': ${r['note']}'}';
+
+/// The answer of "Send again" in words.
+String againWords(Map<String, dynamic> res) {
+  final done = (res['done'] as List? ?? []).whereType<Map>().toList(), failed = (res['failed'] as List? ?? []).whereType<Map>().toList();
+  final lv = done.isEmpty ? 0 : (done.first['levels'] is num ? (done.first['levels'] as num).toInt() : 0);
+  return [
+    if (done.isNotEmpty) '${done.map((d) => '${d['id']}').join(', ')} sent again for verification (level 1${lv > 1 ? ' of $lv' : ''}) – saved when approved.',
+    if (failed.isNotEmpty) 'Not sent: ${failed.map((f) => '${f['id']} – ${f['error']}').join('; ')}',
+  ].join(' ');
+}
+
+/// "Send again" (one or several): the entries, why each was not saved, a remark – then Mechanical sends them again. null = not sent.
+Future<Map<String, dynamic>?> askSendAgain(BuildContext context, Session s, List<Map<String, dynamic>> rs) async {
+  if (rs.isEmpty) return null;
+  final note = await askNote(context, rs.length > 1 ? 'Send ${rs.length} entries again?' : 'Send ${rs.first['id']} again?',
+      body: [
+        for (final r in rs) ...[
+          Text('${r['id']} · ${r['task'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+          for (final l in (r['summary'] as List? ?? []).take(3)) Text('• $l', style: const TextStyle(fontSize: 13.5)),
+          Text(notSavedWhy(r), style: const TextStyle(fontSize: 13.5, color: C.red, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+        ],
+        Text(
+            rs.length > 1
+                ? 'They go to verification again exactly as they were sent – the same lines and photos – starting at level 1. Nothing is typed again. Each is checked as a save first: one that would be refused again is said now and nothing of it changes.'
+                : 'It goes to verification again exactly as it was sent – the same lines and photos – starting at level 1. Nothing is typed again. It is checked as a save first: if it would be refused again, that is said now and nothing changes.',
+            style: const TextStyle(fontSize: 13, color: C.muted)),
+      ],
+      label: 'Why is it sent again? (your remark goes with the entry to the people who approve it)',
+      ok: 'Send again',
+      neededMsg: 'Write why it is sent again.');
+  if (note == null) return null;
+  return s.resendFlow([for (final r in rs) '${r['id']}'], note);
 }
 
 class VerifyStrip extends StatelessWidget {
@@ -106,11 +148,24 @@ class _VerifySheetState extends State<VerifySheet> {
     }
   }
 
+  Future<void> _again(Session s, List<Map<String, dynamic>> rs, String key) async {
+    setState(() => busy = key);
+    try {
+      final r = await askSendAgain(context, s, rs);
+      if (r != null && mounted) toast(context, tr(againWords(r)), bad: (r['done'] as List? ?? []).isEmpty || (r['failed'] as List? ?? []).isNotEmpty);
+    } catch (e) {
+      if (mounted) toast(context, tr(errText(e)), bad: true);
+    } finally {
+      if (mounted) setState(() => busy = '');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     final list = s.mineFor(widget.module, days: widget.days);
     final (wait, _, _, _) = verifyCounts(list);
+    final again = list.where((r) => r['canResend'] == true).toList();
     return SizedBox(
       height: MediaQuery.of(context).size.height * .85,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -120,6 +175,16 @@ class _VerifySheetState extends State<VerifySheet> {
           child: Text(bi('Not saved until approved. "Remind" tells the person it waits for at once (once in 5 minutes for the same entry).', 'मंजूर होईपर्यंत सेव्ह होत नाही. "Remind" दाबले की ज्याच्याकडे एन्ट्री थांबली आहे त्याला लगेच कळते (एकाच एन्ट्रीसाठी ५ मिनिटांत एकदा).'),
               style: const TextStyle(color: C.muted, fontSize: 13.5)),
         ),
+        if (again.length > 1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: FilledButton.icon(
+              key: const Key('verify-again-all'),
+              onPressed: busy.isNotEmpty ? null : () => _again(s, again, '**'),
+              icon: busy == '**' ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : const Icon(Icons.replay_rounded),
+              label: Text(tr('Send all again ({0})').replaceFirst('{0}', '${again.length}')),
+            ),
+          ),
         Expanded(
           child: list.isEmpty
               ? const EmptyState('Nothing in verification', 'Your entries are saved.', pic: 'clipboard')
@@ -185,6 +250,8 @@ class _VerifySheetState extends State<VerifySheet> {
             const SizedBox(height: 2),
             Text(line, style: const TextStyle(fontSize: 12.5, color: C.muted)),
             if (reminds > 0) Text('reminded $reminds× · ${_when('${r['remindedAt'] ?? ''}')}', style: const TextStyle(fontSize: 12, color: C.amber)),
+            if (st == 'Returned' && '${r['result'] ?? ''}'.isNotEmpty) Text('${r['result']}', key: Key('verify-why-$id'), style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600)),
+            if ((r['resent'] is num) && (r['resent'] as num) > 0) Text('sent again ${r['resent']}× before', style: const TextStyle(fontSize: 12, color: C.muted)),
           ]),
         ),
         if (r['canRemind'] == true)
@@ -198,7 +265,14 @@ class _VerifySheetState extends State<VerifySheet> {
           OutlinedButton(
               style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
               onPressed: () => openApprovals(context),
-              child: Text(tr('Answer'))),
+              child: Text(tr('Answer')))
+        else if (r['canResend'] == true)
+          FilledButton.tonal(
+            key: Key('verify-again-$id'),
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
+            onPressed: busy.isNotEmpty ? null : () => _again(s, [r], id),
+            child: busy == id ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)) : Text(tr('Send again')),
+          ),
       ]),
     );
   }

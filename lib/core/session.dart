@@ -689,6 +689,16 @@ class Session extends ChangeNotifier {
     return m;
   }
 
+  /// (3.21.1, Mechanical update-128) "Send again": his rejected / returned entries go to verification again exactly as they were sent
+  /// (the same lines and photos), with his remark – nothing typed again. Mechanical checks each as a save first; one that would be
+  /// refused again is told and stays as it is. Returns Mechanical's answer (done: [{id, level, levels}], failed: [{id, error}]).
+  Future<Map<String, dynamic>> resendFlow(List<String> ids, String note) async {
+    final r = await api.call('resendFlow', [ids.length == 1 ? <String, dynamic>{'id': ids.first, 'note': note} : <String, dynamic>{'ids': ids, 'note': note}], true);
+    final m = r is Map ? r.cast<String, dynamic>() : <String, dynamic>{};
+    if (m['list'] is Map) takeApprovals(m['list'] as Map);
+    return m;
+  }
+
   /* ---------------- KEPT ON THIS PHONE (3.1.7): an entry saved with no network ----------------
    * The person may keep it on the phone; it is sent by itself when the network is back (every live tick, and when the app comes
    * back), with the SAME save number – the server saves it once, also when the first try had reached it. What the server then

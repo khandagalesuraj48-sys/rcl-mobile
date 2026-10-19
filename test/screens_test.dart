@@ -178,6 +178,58 @@ void main() {
     expect(find.textContaining('reminded 1×'), findsOneWidget);
   });
 
+  testWidgets('(3.21.1, Mechanical update-128) his rejected / returned entries: why, "Send again" one or all – with a remark, nothing typed again', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final now = DateTime.now().toUtc().toIso8601String();
+    Map<String, dynamic> no(String id, String st, Map<String, dynamic> x) => {'kind': 'Flow', 'mine': true, 'id': id, 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': st, 'at': now, 'decidedAt': now, 'decidedBy': 'suraj khandagale', 'levels': 1, 'canResend': true, 'summary': ['Add: MH-25-AJ-5091 · 05-10-2026 – Litres 100'], ...x};
+    srv.flowReqs.addAll([
+      no('VF-00011', 'Returned', {'note': 'approved', 'result': 'Not saved: KM reading 48409.3 is less than the last one (48500)'}),
+      no('VF-00010', 'Rejected', {'note': 'wrong litres'}),
+      no('VF-00009', 'Rejected', {'note': 'later'}),
+    ]);
+    final s = await ready(t, srv);
+    await t.runAsync(() => s.loadApprovals());
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.text('Not saved 3'), findsOneWidget);
+    await t.tap(find.byKey(const Key('verify-strip')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('verify-why-VF-00011')), findsOneWidget, reason: 'why the save refused it');
+    expect(find.text('Not saved: KM reading 48409.3 is less than the last one (48500)'), findsOneWidget);
+    expect(find.text('suraj khandagale: wrong litres'), findsOneWidget, reason: 'the approver\'s reason');
+    expect(find.text('Send all again (3)'), findsOneWidget);
+    expect(find.byKey(const Key('verify-again-VF-00010')), findsOneWidget);
+    // one: the box says why and asks a remark; without one: asked again
+    await t.tap(find.byKey(const Key('verify-again-VF-00011')));
+    await settle(t, 600);
+    expect(find.text('Send VF-00011 again?'), findsOneWidget);
+    expect(find.textContaining('exactly as it was sent'), findsOneWidget);
+    await t.tap(find.byKey(const Key('note-ok')));
+    await settle(t, 300);
+    expect(find.text('Write why it is sent again.'), findsOneWidget);
+    expect(srv.resent, isEmpty);
+    await t.enterText(find.byKey(const Key('note-box')), 'Reading checked on the meter');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(srv.resent, [{'id': 'VF-00011', 'note': 'Reading checked on the meter'}]);
+    expect(find.text('VF-00011 sent again for verification (level 1) – saved when approved.'), findsOneWidget);
+    expect(find.text('Send all again (2)'), findsOneWidget);
+    // all (one refused again by the save: told, it stays)
+    srv.resendRefuse['VF-00009'] = 'MH-25-AJ-5091 is inactive from 01-10-2026';
+    await t.tap(find.byKey(const Key('verify-again-all')));
+    await settle(t, 600);
+    expect(find.text('Send 2 entries again?'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('note-box')), 'Litres corrected by the pump man');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(srv.resent.last, {'ids': ['VF-00010', 'VF-00009'], 'note': 'Litres corrected by the pump man'});
+    expect(find.textContaining('VF-00010 sent again for verification (level 1)'), findsOneWidget);
+    expect(find.textContaining('Not sent: VF-00009 – Not sent again: MH-25-AJ-5091 is inactive'), findsOneWidget);
+    expect(find.byKey(const Key('verify-again-VF-00009')), findsOneWidget, reason: 'nothing lost: it can be sent again later');
+    expect(find.byKey(const Key('verify-again-VF-00010')), findsNothing);
+  });
+
   testWidgets('(3.2.0) Approvals – the app\'s own screen: the counts, the requests; Approve, Reject (a reason), several at once', (t) async {
     phone(t);
     final srv = FakeServer()..crForMe = 3;

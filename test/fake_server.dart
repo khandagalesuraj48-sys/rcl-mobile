@@ -25,6 +25,9 @@ class FakeServer {
   Map<String, dynamic> flowMine = {}; // (update-116) his works under verification (getInit "flow")
   final flowReqs = <Map<String, dynamic>>[]; // (3.1.11, update-118) the Approvals list (his entries in verification)
   final reminded = <List<String>>[];
+  /// (3.21.1) "Send again" asked: {id | ids, note}; an id in [resendRefuse] is refused by the save again (Mechanical's words)
+  final resent = <Map<String, dynamic>>[];
+  final resendRefuse = <String, String>{};
   int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
   final decided = <Map<String, dynamic>>[]; // (3.2.0) what the Approvals screen sent (decide, several, answer)
   final rulesSaved = <Map<String, dynamic>>[];
@@ -675,6 +678,27 @@ class FakeServer {
           r['status'] = x['withdraw'] == true ? 'Withdrawn' : 'Pending';
           r['canAnswer'] = false;
           return _j({'result': {'ok': true, 'id': x['id'], 'status': r['status'], 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
+        case 'resendFlow':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          resent.add(x);
+          final ids = x['ids'] is List ? (x['ids'] as List).map((e) => '$e').toList() : ['${x['id']}'];
+          final done = <Map<String, dynamic>>[], failed = <Map<String, dynamic>>[];
+          for (final id in ids) {
+            final r = flowReqs.firstWhere((r) => r['id'] == id, orElse: () => <String, dynamic>{});
+            if (resendRefuse.containsKey(id)) {
+              failed.add({'id': id, 'error': 'Not sent again: ${resendRefuse[id]} – entry $id stays as it is (nothing is lost); send it again when this is put right.'});
+            } else if (r['canResend'] == true) {
+              r['status'] = 'Pending';
+              r['canResend'] = false;
+              r['canRemind'] = true;
+              r['resent'] = ((r['resent'] as num?) ?? 0) + 1;
+              done.add({'id': id, 'level': 1, 'levels': r['levels'] ?? 1});
+            } else {
+              failed.add({'id': id, 'error': 'Entry $id was not found – refresh the list.'});
+            }
+          }
+          if (x['ids'] == null && failed.isNotEmpty) return _j({'error': failed.first['error']}, 500);
+          return _j({'result': {'ok': true, 'done': done, 'failed': failed, 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
         case 'getFlowRules':
           return _j({'result': {
             'tasks': [{'m': 'Diesel Issue', 'label': 'Diesel Issue', 'fns': ['saveDieselIssue'], 'diesel': true}, {'m': 'Log Book', 'label': 'Log Book', 'fns': ['saveLogRows'], 'diesel': false}],

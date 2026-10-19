@@ -14,6 +14,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.21.1 (19-10-2026, with Mechanical update-128: "ata user prt tya entry krt basnar nahi … jyana return zaley tith tyana
+option asel send to approval or verification data loss nko"):**
+* **Send again:** an entry of his that was Rejected, or Returned (approved, but the save refused it), shows why it was not saved
+  and a **Send again** button (in "My entries in verification" and in Approvals); **Send all again (n)** sends all of them. He
+  writes why; the entry goes to verification again exactly as it was sent (the same lines and photos), from level 1 – nothing is
+  typed again. Mechanical checks it as a save first: one that would be refused again is told and stays as it is (nothing lost).
+
 **Version 3.21.0 (19-10-2026, with Mechanical update-126: "dashbord war opening closing received je numbers … kuth hi click kel ki
 tyanchi entryies open hotil ek mast motha dialogbox … fkt show hotil"):**
 * **Every number of the Diesel dashboard can be tapped:** Opening stock, Received, Issued, Closing stock, Stock now, Issued
