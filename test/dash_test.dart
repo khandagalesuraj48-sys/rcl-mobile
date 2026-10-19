@@ -125,4 +125,77 @@ void main() {
     expect(tankDiff(204, 200).$3, false, reason: 'within 10% / 5 L');
     expect(tankDiff(200, 200).$2, 'Matches the system');
   });
+
+  test('(3.21.0, Mechanical update-126) a number of the Diesel dashboard → the entries behind it; the big number is the card\'s', () async {
+    final d = mfx('getDashboard');
+    final asked = <List<dynamic>>[];
+    final answers = <String, dynamic>{
+      'getInwards': {'rows': [
+        {'id': 'IN-3', 'date': '2026-10-12', 'qty': 500, 'rate': 92.5, 'amount': 46250, 'location': 'Dispenser', 'pump': 'HP Pump', 'billNo': 'B-7', 'billDate': '2026-10-12', 'enteredBy': 'Ravi'},
+        {'id': 'IN-2', 'date': '2026-10-05', 'qty': 200, 'rate': 92, 'amount': 18400, 'location': 'VTR Store', 'pump': 'HP Pump', 'billNo': 'B-6', 'billDate': '', 'enteredBy': 'Ravi'},
+        {'id': 'IN-1', 'date': '2026-10-01', 'qty': 1000, 'rate': '', 'amount': '', 'location': 'Dispenser', 'pump': 'Opening stock', 'open': true},
+      ]},
+      'getDieselIssues': {'count': 3, 'totalQty': 95.5, 'share': [
+        {'no': 'JCB-1', 'type': 'JCB', 'owner': 'A', 'qty': 60, 'entries': 2},
+        {'no': 'TP-2', 'type': 'Tipper', 'owner': 'B', 'qty': 35.5, 'entries': 1},
+      ], 'rows': [
+        {'id': 'DI-3', 'date': '2026-10-14', 'shift': 'Day', 'no': 'JCB-1', 'qty': 30, 'hrReading': 1200, 'kmReading': '', 'source': 'Dispenser'},
+        {'id': 'DI-2', 'date': '2026-10-13', 'shift': 'Night', 'no': 'TP-2', 'qty': 35.5, 'kmReading': 9800, 'hrReading': '', 'source': 'Dispenser'},
+        {'id': 'DI-1', 'date': '2026-10-12', 'shift': 'Day', 'no': 'JCB-1', 'qty': 30, 'hrReading': 1190, 'kmReading': '', 'source': 'VTR Store'},
+      ]},
+    };
+    Future<dynamic> call(String fn, List<dynamic> a) async {
+      asked.add([fn, ...a]);
+      return answers[fn];
+    }
+
+    const from = '2026-10-01', to = '2026-10-14', today = '2026-10-14';
+    // the places: the Dashboard's own figures (the fixture: Dispenser 19,895 → 20,014; VTR Store 0)
+    var x = await numDetail('open', d, from, to, today, call);
+    expect(x.big, '19,895 Ltr');
+    expect(x.rows.map((r) => r.title), ['Dispenser', 'VTR Store']);
+    expect(x.rows.first.lines.map((l) => l.$2), ['19,895', '121', '0', '0', '2', '20,014']);
+    expect(x.total!.value, '19,895 L');
+    expect(asked, isEmpty, reason: 'the places need no call');
+    x = await numDetail('close', d, from, to, today, call);
+    expect(x.big, '20,014 Ltr');
+    expect(x.bigSub, 'as on end of 14-10-2026');
+    x = await numDetail('now', d, from, to, today, call);
+    expect(x.big, '20,014 Ltr');
+    expect(x.rows.first.lines, [('Tank size (Ltr)', '10,000'), ('Full', '200%')]);
+    // received: the opening stock entered ON the start date is part of the opening (as getDashboard counts it)
+    x = await numDetail('in', d, from, to, today, call);
+    expect(asked.removeLast(), ['getInwards', {'from': from, 'to': to, 'all': true}]);
+    expect(x.big, '700 Ltr');
+    expect(x.bigSub, '₹64,650, 2 bills');
+    expect(x.rows.map((r) => r.title), ['1. HP Pump', '2. HP Pump']);
+    x = await numDetail('in', d, '2026-09-30', to, today, call);
+    asked.removeLast();
+    expect(x.big, '1,700 Ltr', reason: 'an opening stock AFTER the start date is received diesel');
+    // the Diesel Issue entries: the dates; today; the average; machine by machine
+    x = await numDetail('issued', d, from, to, today, call);
+    expect(asked.removeLast(), ['getDieselIssues', {'from': from, 'to': to}]);
+    expect((x.big, x.bigSub, x.total!.title, x.total!.value), ('95.5 Ltr', '3 entries', 'Total – 3 entries', '95.5 L'));
+    expect(x.rows.first.lines, contains(('KM / Hrs reading', 'Hrs 1,200')));
+    expect(x.rows[1].lines, contains(('KM / Hrs reading', 'KM 9,800')));
+    await numDetail('today', d, from, to, today, call);
+    expect(asked.removeLast(), ['getDieselIssues', {'from': today, 'to': today}]);
+    x = await numDetail('entries', d, from, to, today, call);
+    asked.removeLast();
+    expect(x.big, '3 entries');
+    x = await numDetail('avg', d, from, to, today, call);
+    asked.removeLast();
+    expect((x.big, x.bigSub), ('31.83 Ltr', '95.5 Ltr ÷ 3 entries'));
+    x = await numDetail('machines', d, from, to, today, call);
+    asked.removeLast();
+    expect((x.big, x.total!.title, x.total!.value), ('2 machines', 'Total – 2 machines', '95.5 L'));
+    expect(x.rows.map((r) => '${r.title} ${r.value}'), ['1. JCB-1 60 L', '2. TP-2 35.5 L']);
+    // more entries than the server lists: said so, the total is of all
+    answers['getDieselIssues'] = {...(answers['getDieselIssues'] as Map), 'count': 812};
+    x = await numDetail('issued', d, from, to, today, call);
+    expect(x.note, 'The latest 3 of the 812 entries are listed here; the total is of all 812.');
+    // the same access as the pages: the server's refusal comes through (the sheet shows it)
+    Future<dynamic> refuse(String fn, List<dynamic> a) async => throw Exception('You do not have access to Diesel Issue.');
+    await expectLater(numDetail('issued', d, from, to, today, refuse), throwsA(isA<Exception>()));
+  });
 }

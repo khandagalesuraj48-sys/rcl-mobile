@@ -1026,6 +1026,24 @@ void main() {
     expect(find.text('20,014 Ltr'), findsWidgets);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/24_dashboard.png'));
+    // (3.21.0, Mechanical update-126) a number → the entries behind it, in a big sheet – only shown
+    await t.tap(find.byKey(const Key('k-out')));
+    await net(t);
+    expect(find.byKey(const Key('num-sheet')), findsOneWidget);
+    expect(srv.listAsked.last, {'fn': 'getDieselIssues', 'from': '2026-10-14', 'to': '2026-10-14'}, reason: 'the Dashboard\'s dates');
+    expect(find.descendant(of: find.byKey(const Key('num-sheet')), matching: find.text('Issued to machinery')), findsOneWidget);
+    expect(find.byKey(const Key('num-big')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('num-sheet')), matching: find.byType(TextField)), findsNothing, reason: 'only shown');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/24b_dashboard_entries.png'));
+    await t.tap(find.descendant(of: find.byKey(const Key('num-sheet')), matching: find.byTooltip('Close')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('k-open')));
+    await net(t);
+    expect(find.descendant(of: find.byKey(const Key('num-sheet')), matching: find.text('Dispenser')), findsWidgets);
+    expect(find.descendant(of: find.byKey(const Key('num-sheet')), matching: find.text('19,895 Ltr')), findsOneWidget, reason: 'the sheet\'s number is the card\'s');
+    await t.tap(find.descendant(of: find.byKey(const Key('num-sheet')), matching: find.byTooltip('Close')));
+    await settle(t, 600);
     await t.scrollUntilVisible(find.byKey(const Key('tank-set')), 300, scrollable: find.descendant(of: find.byKey(const Key('dash-diesel')), matching: find.byType(Scrollable)).first);
     await tapK(t, 'tank-set');
     await settle(t, 500);
