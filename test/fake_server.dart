@@ -28,8 +28,6 @@ class FakeServer {
   /// (3.21.1) "Send again" asked: {id | ids, note}; an id in [resendRefuse] is refused by the save again (Mechanical's words)
   final resent = <Map<String, dynamic>>[];
   final resendRefuse = <String, String>{};
-  /// (Mechanical update-129) an id in [resendWarn] gets its save's warnings (lines) back unless sent with force (confirmed)
-  final resendWarn = <String, List<String>>{};
   /// (3.22.0, Mechanical update-130) "Open & correct": each entry's {fn, form, args, check}; the corrected entries that came; an id in
   /// [editRefuse] is answered as its save would (errors / warnings / warning – nothing sent) until it comes with force
   final fixOf = <String, Map<String, dynamic>>{};
@@ -693,9 +691,7 @@ class FakeServer {
           for (final id in ids) {
             final r = flowReqs.firstWhere((r) => r['id'] == id, orElse: () => <String, dynamic>{});
             if (resendRefuse.containsKey(id)) {
-              failed.add({'id': id, 'error': 'Not sent again: ${resendRefuse[id]} – entry $id stays as it is (nothing is lost); send it again when this is put right.', 'warn': false});
-            } else if (resendWarn.containsKey(id) && x['force'] != true) {
-              failed.add({'id': id, 'error': 'Not sent again: To check (warnings, not mistakes): ${resendWarn[id]!.join(' | ')} – entry $id stays as it is (nothing is lost); check them and press "Send again anyway" to confirm them.', 'warn': true});
+              failed.add({'id': id, 'error': 'Not sent again: ${resendRefuse[id]} – entry $id stays as it is (nothing is lost); send it again when this is put right.'});
             } else if (r['canResend'] == true) {
               r['status'] = 'Pending';
               r['canResend'] = false;
@@ -706,7 +702,7 @@ class FakeServer {
               failed.add({'id': id, 'error': 'Entry $id was not found – refresh the list.'});
             }
           }
-          if (x['ids'] == null && failed.isNotEmpty && failed.first['warn'] == null) return _j({'error': failed.first['error']}, 500);      // (update-129: a refusal comes back in failed)
+          if (x['ids'] == null && failed.isNotEmpty && !resendRefuse.containsKey(failed.first['id'])) return _j({'error': failed.first['error']}, 500);      // (update-129: a refusal comes back in failed)
           return _j({'result': {'ok': true, 'done': done, 'failed': failed, 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
         case 'openFlow':
           final x = (a[0] as Map).cast<String, dynamic>(), id = '${x['id']}';

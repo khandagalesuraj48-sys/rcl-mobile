@@ -14,6 +14,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.22.1 (19-10-2026, with Mechanical update-131: "send any way he option nko aahe chukicha data approval sathi gelach nahi
+pahije … user correct krel tya nantr … send hou shakel"):**
+* **No "Send again anyway":** an entry going for approval with a reading that does not fit is a mistake – said in full (the row,
+  the fill before or after it and its date); it is corrected first ("Open & correct"), then sent. Nothing wrong goes for approval.
+
 **Version 3.22.0 (19-10-2026, with Mechanical update-130: "jy entry pathwale hote te mala open krun edit pn krta yaw kay kuth
 chukley te pn samjayla haw"):**
 * **Open & correct:** his own Rejected or Returned **Diesel Issue** entry (One entry, Multiple entries by date or by machinery)

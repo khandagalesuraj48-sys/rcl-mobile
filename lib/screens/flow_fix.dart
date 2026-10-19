@@ -19,7 +19,7 @@ import 'entry_more.dart' show IssueManyScreen;
 import 'forms.dart' show EntryForm;
 
 /// An entry being corrected: Mechanical's openFlow answer ({id, fn, form, args, status, result, decidedBy, note, check}) and his
-/// remark (asked once, kept for "Send again anyway").
+/// remark (asked once – kept while he corrects what the save still refuses).
 class FlowFix {
   FlowFix(this.r);
   final Map<String, dynamic> r;
