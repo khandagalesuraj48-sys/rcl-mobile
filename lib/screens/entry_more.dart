@@ -28,6 +28,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'entries.dart' show EntryCard;
+import 'flow_fix.dart';
 import 'forms.dart' show MachinePicker, DieselHistoryCard, dieselHistoryOf;
 import '../ui/help.dart' show GuideButton;
 
@@ -710,6 +711,7 @@ Future<bool> confirmReadings(BuildContext context, List<({int i, Machine m, Stri
 class _DRow {
   _DRow({this.date = '', this.shift = 'Day', this.source = ''});
   Machine? m;
+  String typed = ''; // (3.22.0) a corrected entry's machinery that is not in the Master (as it was sent) – until one is picked
   String date, shift, source;
   bool meterOff = false;
   Map? hist; // (3.14.0) its machinery's diesel history (the web's "last fill" line)
@@ -721,7 +723,10 @@ class _DRow {
 }
 
 class IssueManyScreen extends StatefulWidget {
-  const IssueManyScreen({super.key});
+  const IssueManyScreen({super.key, this.fix});
+
+  /// (3.22.0, Mechanical update-130) his returned / rejected Multiple entries, opened to correct: its rows; sent again corrected
+  final FlowFix? fix;
   @override
   State<IssueManyScreen> createState() => _IssueManyScreenState();
 }
@@ -751,9 +756,59 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     if (date.isEmpty) {
       date = _today(s);
       source = bmSrc = s.locations.isNotEmpty ? s.locations.first : 'Dispenser';
+      final fx = widget.fix;
+      if (fx != null) {
+        _fillFix(s, fx);
+      } else {
+        dRows.addAll([_DRow(), _DRow()]);
+        mRows.add(_DRow(source: bmSrc));
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadBal();
+        if (fx != null && type == 'mach') {
+          _ptSoon();
+          _bmHist();
+        }
+        for (final r in dRows) {
+          _rowHist(r);
+        }
+      });
+    }
+  }
+
+  /// (3.22.0) an entry being corrected: its rows as they were sent, and what the save says of them now
+  void _fillFix(Session s, FlowFix fx) {
+    String v(Map x, String k) => x[k] == null ? '' : '${x[k]}';
+    _DRow row(Map x, {String date = '', String shift = 'Day', String source = ''}) {
+      final r = _DRow(date: date, shift: shift, source: source)
+        ..m = s.machine(v(x, 'no'))
+        ..typed = v(x, 'no');
+      r.meterOff = v(x, 'mode') == kNoReading;
+      r.qty.text = v(x, 'qty');
+      r.km.text = v(x, 'kmReading');
+      r.hr.text = v(x, 'hrReading');
+      r.driver.text = v(x, 'driver');
+      r.remark.text = v(x, 'remark');
+      return r;
+    }
+    final f0 = fx.first;
+    if (fx.form == 'mach') {
+      type = 'mach';
+      final rows = (f0 is List ? f0 : const []).whereType<Map>().toList();
+      bm = rows.isEmpty ? null : s.machine(v(rows.first, 'no'));
+      mRows.addAll([for (final x in rows) row(x, date: v(x, 'date'), shift: v(x, 'shift').isEmpty ? 'Day' : v(x, 'shift'), source: v(x, 'source').isEmpty ? bmSrc : v(x, 'source'))]);
+      if (mRows.isEmpty) mRows.add(_DRow(source: bmSrc));
+      mErrors = [for (final x in fx.rowNotes) '${x.$1 > 0 ? 'Row ${x.$1}: ' : ''}${x.$2}', if ('${fx.check['error'] ?? ''}'.isNotEmpty) '${fx.check['error']}'];
       dRows.addAll([_DRow(), _DRow()]);
+    } else {
+      final b = f0 is Map ? f0 : const {};
+      if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(v(b, 'date'))) date = v(b, 'date');
+      if (v(b, 'shift').isNotEmpty) shift = v(b, 'shift');
+      if (v(b, 'source').isNotEmpty) source = v(b, 'source');
+      dRows.addAll([for (final x in (b['rows'] as List? ?? const []).whereType<Map>()) row(x)]);
+      if (dRows.isEmpty) dRows.add(_DRow());
+      dNotes = fx.rowNotes;
       mRows.add(_DRow(source: bmSrc));
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadBal());
     }
   }
 
@@ -816,7 +871,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     final rows = [
       for (final r in dRows)
         {
-          'no': r.m?.id ?? '',
+          'no': r.m?.id ?? r.typed,      // (3.22.0: a corrected entry's machinery not in the Master stays as it was sent – the save says so)
           'qty': r.qty.text.trim(),
           'kmReading': hasKm(r.wayFor(r.m)) ? r.km.text.trim() : '',
           'hrReading': hasHr(r.wayFor(r.m)) ? r.hr.text.trim() : '',
@@ -844,9 +899,12 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       await tellLines(context, 'Not enough diesel in stock', ['At $source for ${showDate(date)} ($shift) you can issue up to ${fmt(avail)} Ltr, and these rows total ${fmt(total)} Ltr. Add a Diesel Inward entry first or reduce the quantities.']);
       return;
     }
+    final fx = widget.fix, note = fx == null ? '' : await askFixNote(context, fx);      // (3.22.0) correcting: what he corrected (asked once)
+    if (note == null || !mounted) return;
     setState(() => busy = true);
     try {
-      final res = (await s.api.call('saveDieselBulk', [{'date': date, 'shift': shift, 'source': source, 'rows': rows, 'force': force}], true) as Map).cast<String, dynamic>();
+      final b = {'date': date, 'shift': shift, 'source': source, 'rows': rows, 'force': force};
+      final res = fx != null ? await s.editFlow(fx.id, note, [b]) : (await s.api.call('saveDieselBulk', [b], true) as Map).cast<String, dynamic>();
       if (!mounted) return;
       List<(int, String, bool)> notes(Object? l, bool warn) => [for (final x in (l as List? ?? const []).whereType<Map>()) ((asNum(x['row']) ?? 0).toInt(), '${x['msg'] ?? ''}'.replaceFirst(RegExp(r'^Error:\s*'), ''), warn)];
       if (res['errors'] != null) {
@@ -858,7 +916,12 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
         final w = notes(res['warnings'], true);
         setState(() => dNotes = w);
         setState(() => busy = false);
-        if (await askLines(context, 'Please check these rows', [for (final x in w) 'Row ${x.$1}: ${x.$2}'], yes: 'Save all anyway')) await _saveDate(force: true);
+        if (await askLines(context, 'Please check these rows', [for (final x in w) 'Row ${x.$1}: ${x.$2}'], yes: fx != null ? 'Send again anyway' : 'Save all anyway')) await _saveDate(force: true);
+        return;
+      }
+      if (fx != null) {
+        toast(context, tr(fixDoneWords(res)));
+        Navigator.pop(context, res);
         return;
       }
       toast(context, '${res['count']} diesel issues saved (${res['firstId']} to ${res['lastId']}).');
@@ -976,7 +1039,9 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     }
     final tot = r2(list.fold<num>(0, (a, x) => a + (n(x.$2.qty) as num)));
     if (!mounted) return;
-    if (!await ask(context, 'Save ${list.length} diesel issues of ${m.id}?',
+    final fx = widget.fix, note = fx == null ? '' : await askFixNote(context, fx);      // (3.22.0) correcting: the remark is its question
+    if (note == null || !mounted) return;
+    if (fx == null && !await ask(context, 'Save ${list.length} diesel issues of ${m.id}?',
         'Total ${fmt(tot)} Ltr from ${showDate(list.first.$2.date)}${list.length > 1 ? ' to ${showDate(list.last.$2.date)}' : ''}. All rows are saved together, or none.',
         yes: 'Save ${list.length} entries')) {
       return;
@@ -986,8 +1051,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       mErrors = [];
     });
     try {
-      final res = (await s.api.call('importDiesel', [
-        [
+      final out = [
           for (final x in list)
             sendable({
               'line': x.$1,
@@ -1001,11 +1065,16 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
               'driver': x.$2.driver.text.trim(),
               'remark': x.$2.remark.text.trim(),
             }),
-        ],
-      ], true) as Map).cast<String, dynamic>();
+        ];
+      final res = fx != null ? await s.editFlow(fx.id, note, [out]) : (await s.api.call('importDiesel', [out], true) as Map).cast<String, dynamic>();
       if (!mounted) return;
       if (res['ok'] != true) {
         setState(() => mErrors = [for (final e in (res['errors'] as List? ?? const []).whereType<Map>()) '${jsTrue(e['row']) ? 'Row ${e['row']}: ' : ''}${e['msg'] ?? ''}']);
+        return;
+      }
+      if (fx != null) {
+        toast(context, tr(fixDoneWords(res)));
+        Navigator.pop(context, res);
         return;
       }
       if (res['stock'] != null) s.setStock(res['stock']);
@@ -1028,9 +1097,10 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), today = _today(s), locs = s.locations;
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Multiple entries', 'डिझेल देणे – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700), actions: [const GuideButton('diesel')]),
+      appBar: AppBar(title: widget.fix != null ? Text(tr('Correct {0}').replaceFirst('{0}', widget.fix!.id), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)) : const TwoLang('Multiple entries', 'डिझेल देणे – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700), actions: [const GuideButton('diesel')]),
       body: ListView(key: const Key('im-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 150), children: [
-        SegmentedButton<String>(
+        if (widget.fix != null) FixBar(widget.fix!)      // (3.22.0) correcting a returned entry: its own form only
+        else SegmentedButton<String>(
           key: const Key('im-type'),
           segments: [
             ButtonSegment(value: 'date', label: Text('One date – many machinery', key: const Key('im-t-date'), textAlign: TextAlign.center)),
@@ -1098,7 +1168,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
         r: r,
         m: r.m,
         key: 'im-row-$i',
-        head: r.m == null ? 'Pick machinery' : '${r.m!.id} · ${prob.isNotEmpty ? 'Inactive' : (r.m!.m['unit'] ?? '–')} · ${r.m!.owner.isEmpty ? '–' : r.m!.owner}',
+        head: r.m == null ? (r.typed.isNotEmpty ? '"${r.typed}" – not in Master: pick the machinery' : 'Pick machinery') : '${r.m!.id} · ${prob.isNotEmpty ? 'Inactive' : (r.m!.m['unit'] ?? '–')} · ${r.m!.owner.isEmpty ? '–' : r.m!.owner}',
         bad: prob.isNotEmpty || notes.any((x) => !x.$3),
         warn: notes.any((x) => x.$3),
         note: [if (prob.isNotEmpty) prob, for (final x in notes) x.$2].join('\n'),
@@ -1138,7 +1208,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           child: const Text('Clear'),
         ),
         const SizedBox(width: 10),
-        Expanded(child: FilledButton(key: const Key('im-save'), onPressed: busy ? null : () => _saveDate(), child: const Text('Save all diesel issues'))),
+        Expanded(child: FilledButton(key: const Key('im-save'), onPressed: busy ? null : () => _saveDate(), child: Text(widget.fix != null ? tr('Send again ({0})').replaceFirst('{0}', widget.fix!.id) : 'Save all diesel issues'))),
       ]),
     ]);
   }
@@ -1227,7 +1297,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           child: const Text('Clear'),
         ),
         const SizedBox(width: 10),
-        Expanded(child: FilledButton(key: const Key('im-msave'), onPressed: busy ? null : _saveMach, child: const Text('Save all diesel issues'))),
+        Expanded(child: FilledButton(key: const Key('im-msave'), onPressed: busy ? null : _saveMach, child: Text(widget.fix != null ? tr('Send again ({0})').replaceFirst('{0}', widget.fix!.id) : 'Save all diesel issues'))),
       ]),
     ]);
   }

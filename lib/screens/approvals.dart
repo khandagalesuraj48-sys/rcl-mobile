@@ -18,6 +18,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/help.dart' show GuideButton;
 import 'verify.dart' show askSendAgain, againWords;
+import 'flow_fix.dart' show openFix;
 
 Future<void> openApprovals(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ApprovalsScreen()));
 
@@ -201,6 +202,15 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     });
   }
 
+  /// (3.22.0, Mechanical update-130) his own returned / rejected Diesel Issue entry: opened in its form to correct
+  Future<void> _fix(Map<String, dynamic> r) async {
+    final s = SessionScope.read(context);
+    await _run('fix:${r['id']}', () async {
+      final res = await openFix(context, s, '${r['id']}');
+      if (res != null && res['list'] is Map && mounted) setState(() => _take(s, res['list']));
+    });
+  }
+
   Future<void> _remind(Map<String, dynamic> r) async {
     final s = SessionScope.read(context);
     await _run('rem:${r['id']}', () async {
@@ -359,6 +369,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       _ => [r['decidedBy'], whenText('${r['decidedAt'] ?? ''}')].where((x) => '${x ?? ''}'.isNotEmpty).join(' · '),
     };
     final ticks = r['canDecide'] == true;
+    // (3.22.0) corrected by the sender: what changed, in sight of the people who approve it
+    final lastSent = st == 'Pending' ? hist.lastWhere((h) => const ['Sent', 'Sent again', 'Corrected and sent again'].contains(h['step']), orElse: () => const {}) : const {};
+    final fixed = lastSent['step'] == 'Corrected and sent again' ? lastSent : null;
     return Container(
       key: Key('cr-$id'),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: ticked.contains(id) ? C.green : C.line.withValues(alpha: .7), width: ticked.contains(id) ? 2 : 1), boxShadow: softShadow(.04)),
@@ -383,6 +396,17 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
         for (final l in sum.take(8)) Padding(padding: const EdgeInsets.only(bottom: 2), child: Text(l, style: const TextStyle(fontSize: 14, height: 1.3))),
         if (sum.length > 8) Text('+ ${sum.length - 8} more', style: const TextStyle(fontSize: 13, color: C.muted)),
         if (!flow && '${r['reason'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Reason: ${r['reason']}', style: const TextStyle(fontSize: 13, color: C.muted))),
+        if (fixed != null)
+          Container(
+            key: Key('cr-fixed-$id'),
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+            decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(12), border: Border(left: BorderSide(color: C.amber, width: 3))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${tr('Corrected by {0}').replaceFirst('{0}', '${fixed['by'] ?? ''}')}${'${fixed['note'] ?? ''}'.isNotEmpty ? ': ${fixed['note']}' : ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+              for (final c in ((fixed['changes'] as List?) ?? const []).isEmpty ? const ['(nothing changed in the entry)'] : fixed['changes'] as List) Text('• $c', style: const TextStyle(fontSize: 13)),
+            ]),
+          ),
         if (line.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(line, style: TextStyle(fontSize: 13, color: fg, fontWeight: FontWeight.w600))),
         if (st == 'Reverted' && '${rv['note'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text('${rv['note']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
         if (st == 'Pending' && (asNum(r['reminds']) ?? 0) > 0) Padding(padding: const EdgeInsets.only(top: 2), child: Text('Reminded ${r['reminds']}× by ${r['by']} · ${whenText('${r['remindedAt'] ?? ''}')}', style: const TextStyle(fontSize: 12.5, color: C.amber))),
@@ -403,7 +427,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                     alignment: Alignment.centerLeft,
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 3),
-                      child: Text('${h['step'] ?? ''}${h['level'] != null ? ' L${h['level']}' : ''} – ${h['by'] ?? ''} · ${whenText('${h['at'] ?? ''}')}${'${h['note'] ?? ''}'.isNotEmpty ? ': ${h['note']}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                      child: Text('${h['step'] ?? ''}${h['level'] != null ? ' L${h['level']}' : ''} – ${h['by'] ?? ''} · ${whenText('${h['at'] ?? ''}')}${'${h['note'] ?? ''}'.isNotEmpty ? ': ${h['note']}' : ''}${[for (final c in (h['changes'] as List? ?? const [])) '\n   $c'].join()}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                     ),
                   ),
               ],
@@ -422,7 +446,8 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               _btn('Take back', 'wd:$id', () => _takeBack(r), danger: true),
             ],
             if (r['canRemind'] == true) _btn('Remind', 'rem:$id', () => _remind(r)),
-            if (r['canResend'] == true) _btn('Send again', 'again:$id', () => _sendAgain(r), filled: true),
+            if (r['canFix'] == true) _btn('Open & correct', 'fix:$id', () => _fix(r), filled: true),      // (3.22.0)
+            if (r['canResend'] == true) _btn('Send again', 'again:$id', () => _sendAgain(r), filled: r['canFix'] != true),
           ]),
         ],
       ]),

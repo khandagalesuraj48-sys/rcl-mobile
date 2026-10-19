@@ -15,6 +15,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'approvals.dart';
+import 'flow_fix.dart' show openFix;
 
 String _ago(String iso) {
   final t = DateTime.tryParse(iso);
@@ -168,6 +169,18 @@ class _VerifySheetState extends State<VerifySheet> {
     }
   }
 
+  /// (3.22.0, Mechanical update-130) his returned / rejected Diesel Issue entry in its form, to correct
+  Future<void> _fix(Session s, String id) async {
+    setState(() => busy = 'fix:$id');
+    try {
+      await openFix(context, s, id);
+    } catch (e) {
+      if (mounted) toast(context, tr(errText(e)), bad: true);
+    } finally {
+      if (mounted) setState(() => busy = '');
+    }
+  }
+
   Future<void> _again(Session s, List<Map<String, dynamic>> rs, String key) async {
     setState(() => busy = key);
     try {
@@ -287,12 +300,23 @@ class _VerifySheetState extends State<VerifySheet> {
               onPressed: () => openApprovals(context),
               child: Text(tr('Answer')))
         else if (r['canResend'] == true)
-          FilledButton.tonal(
-            key: Key('verify-again-$id'),
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
-            onPressed: busy.isNotEmpty ? null : () => _again(s, [r], id),
-            child: busy == id ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)) : Text(tr('Send again')),
-          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            if (r['canFix'] == true) ...[
+              FilledButton(
+                key: Key('verify-fix-$id'),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
+                onPressed: busy.isNotEmpty ? null : () => _fix(s, id),
+                child: busy == 'fix:$id' ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white)) : Text(tr('Open & correct')),
+              ),
+              const SizedBox(height: 6),
+            ],
+            FilledButton.tonal(
+              key: Key('verify-again-$id'),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
+              onPressed: busy.isNotEmpty ? null : () => _again(s, [r], id),
+              child: busy == id ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)) : Text(tr('Send again')),
+            ),
+          ]),
       ]),
     );
   }

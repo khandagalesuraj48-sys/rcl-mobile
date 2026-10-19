@@ -24,11 +24,15 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
 import 'verify.dart';
+import 'flow_fix.dart';
 import '../ui/help.dart' show GuideButton;
 
 class EntryForm extends StatefulWidget {
-  const EntryForm({super.key, required this.kind, this.edit, this.no = '', this.preset = const {}});
+  const EntryForm({super.key, required this.kind, this.edit, this.no = '', this.preset = const {}, this.fix});
   final Kind kind;
+
+  /// (3.22.0, Mechanical update-130) his returned / rejected entry, opened to correct: its values in the boxes; sent again corrected
+  final FlowFix? fix;
 
   /// (3.15.0) a new Diesel Issue the assistant prepared ("Open in the form"): its date, shift and litres (the web fills the same).
   final Map<String, Object?> preset;
@@ -105,6 +109,8 @@ class _EntryFormState extends State<EntryForm> {
       shift = s.myShift(const ['Day', 'Night']); // (14-10-2026) his usual shift, else Day / Night by the time
       final e = ed;
       if (e != null) _fillFrom(s, e);
+      final fx = widget.fix, f0 = fx?.first;      // (3.22.0) an entry being corrected: as it was sent
+      if (e == null && fx != null && f0 is Map) _fillFrom(s, f0.cast<String, dynamic>());
       if (e == null && issue && widget.no.isNotEmpty) {
         final m = s.machine(widget.no);
         if (m != null) {
@@ -630,15 +636,36 @@ class _EntryFormState extends State<EntryForm> {
       err = '';
     });
     Map<String, dynamic>? sentD;
+    final fx = widget.fix;
     try {
       final d = _data();
       if (force) d['force'] = true;
       sentD = d;
-      final r = (await (ed == null ? s.api.call(k.save, [d], true) : s.api.call(_updateOf(k.key), [editId, d], true)) as Map).cast<String, dynamic>();
+      // (3.22.0) correcting a returned entry: what he corrected (asked once), then Mechanical's editFlow
+      final note = fx == null ? '' : await askFixNote(context, fx);
+      if (!mounted) return;
+      if (note == null) {
+        setState(() => busy = false);
+        return;
+      }
+      final r = (fx != null ? await s.editFlow(fx.id, note, [d]) : await (ed == null ? s.api.call(k.save, [d], true) : s.api.call(_updateOf(k.key), [editId, d], true)) as Map).cast<String, dynamic>();
       if (!mounted) return;
       if (r['warning'] != null) {
         setState(() => busy = false);
-        if (await ask(context, 'Please check the reading', r['warning'].toString(), yes: 'Save anyway')) await _save(force: true);
+        if (await ask(context, 'Please check the reading', r['warning'].toString(), yes: fx != null ? 'Send again anyway' : 'Save anyway')) await _save(force: true);
+        return;
+      }
+      if (fx != null) {
+        if (r['ok'] != true) {
+          setState(() {
+            busy = false;
+            err = [for (final x in fixNotes(r['errors'], false)) '${x.$1 > 0 ? 'Row ${x.$1}: ' : ''}${x.$2}', if ('${r['error'] ?? ''}'.isNotEmpty) '${r['error']}'].join('\n');
+          });
+          return;
+        }
+        HapticFeedback.lightImpact();
+        toast(context, tr(fixDoneWords(r)));
+        Navigator.pop(context, r);
         return;
       }
       if (r['stock'] != null) s.setStock(r['stock']);
@@ -669,7 +696,7 @@ class _EntryFormState extends State<EntryForm> {
       _balance();
     } catch (e) {
       // (3.1.7) no network: a NEW entry may be kept on the phone and sent by itself later (with the same save number)
-      if (mounted && ed == null && sentD != null && e is ApiError && await offerKeep(context, e)) {
+      if (mounted && ed == null && fx == null && sentD != null && e is ApiError && await offerKeep(context, e)) {
         final m0 = machine;
         await s.keepEntry(k.save, [sentD], e.rid, '${tr(k.en)} · ${showDate(date)}${m0 != null ? ' · ${m0.id}' : ''} · ${qty.text.trim()} L');
         if (!mounted) return;
@@ -902,7 +929,7 @@ class _EntryFormState extends State<EntryForm> {
           title: Row(children: [
             Pic(k.pic, size: 30),
             const SizedBox(width: 10),
-            Expanded(child: TwoLang(ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700)),
+            Expanded(child: TwoLang(widget.fix != null ? tr('Correct {0}').replaceFirst('{0}', widget.fix!.id) : ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700)),
           ]), actions: [GuideButton(k.key == 'issue' ? 'diesel' : k.key)],
         ),
         // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away
@@ -911,7 +938,8 @@ class _EntryFormState extends State<EntryForm> {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             // (3.1.11, update-118) his entries of this page in verification – waiting / sent back / approved, "Remind"
-            if (ed == null) VerifyStrip(module: k.module, margin: const EdgeInsets.only(top: 12)),
+            if (widget.fix != null) Padding(padding: const EdgeInsets.only(top: 12), child: FixBar(widget.fix!))      // (3.22.0) correcting a returned entry
+            else if (ed == null) VerifyStrip(module: k.module, margin: const EdgeInsets.only(top: 12)),
             _label('Date', 'तारीख'),
             _dateBox(),
             if (k.key != 'inward') ...[
@@ -1076,7 +1104,7 @@ class _EntryFormState extends State<EntryForm> {
               style: FilledButton.styleFrom(backgroundColor: k.color),
               onPressed: busy ? null : _save,
               icon: busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : const Icon(Icons.check_circle_rounded),
-              label: Text(busy ? 'Saving…' : _sends ? 'Send to verification' : ed == null ? 'Save ${k.en}' : 'Save the change'),
+              label: Text(busy ? 'Saving…' : widget.fix != null ? tr('Send again ({0})').replaceFirst('{0}', widget.fix!.id) : _sends ? 'Send to verification' : ed == null ? 'Save ${k.en}' : 'Save the change'),
             ),
           ),
         ),
