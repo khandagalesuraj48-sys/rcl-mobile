@@ -315,7 +315,7 @@ class _CallPickScreenState extends State<CallPickScreen> {
                             FilledButton.tonal(
                               key: Key('call-back-${m['from']}'),
                               // (the app's buttons are as wide as the screen: this one only as wide as its words)
-                              style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 16), textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                              style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 16), textStyle: const TextStyle(fontFamily: 'Rubik', fontFamilyFallback: kFonts, fontSize: 14, fontWeight: FontWeight.w700)),
                               onPressed: () => setState(() => sel = '${m['from']}'),
                               child: const Text('Call back'),
                             ),
