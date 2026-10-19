@@ -18,6 +18,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 typedef RtcRpc = Future<dynamic> Function(String fn, List<dynamic> args);
@@ -265,7 +266,28 @@ class Rtc extends ChangeNotifier {
   void _say(String text, {String act = '', String url = '', bool bad = false}) => notice.value = RtcNotice(text, act: act, url: url, bad: bad);
   void _changed() {
     _pace();
-    if (!closed) notifyListeners();
+    if (closed) return;
+    // a change while the screens are being drawn (a screen closed – its list of people, a site closed): told right after
+    if (_drawing()) {
+      if (!_later) {
+        _later = true;
+        scheduleMicrotask(() {
+          _later = false;
+          if (!closed) notifyListeners();
+        });
+      }
+      return;
+    }
+    notifyListeners();
+  }
+
+  bool _later = false;
+  static bool _drawing() {
+    try {
+      return SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks;
+    } catch (_) {
+      return false; // (no screens: the tests of the call itself)
+    }
   }
 
   /// A call is set up / rings / is reconnecting: the heartbeat every 1.5 s (the web's rtcFast); a call is on: every 3 s.
