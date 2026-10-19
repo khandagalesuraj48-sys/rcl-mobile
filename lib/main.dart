@@ -10,7 +10,9 @@ import 'config.dart';
 import 'core/alerts.dart';
 import 'core/api.dart';
 import 'core/device.dart';
+import 'core/rtc_kit.dart';
 import 'core/session.dart';
+import 'screens/call.dart';
 import 'screens/login.dart';
 import 'screens/shell.dart';
 import 'screens/site_pick.dart';
@@ -50,6 +52,7 @@ void main() {
     await Alerts.init(ask: true);
   }();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
+  if (Platform.isAndroid) Session.callKit = () => WebrtcKit(); // (3.26.0) calls with the web – the Android phone first
   final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep())..askApproval = askApprovalBox)..start();
   // (3.14.0) a fault of the app's own code goes to the Admin's "Faults of the app" (as the web's page reports its faults)
   FlutterError.onError = (d) {
@@ -106,9 +109,11 @@ class RclApp extends StatelessWidget {
           // (3.19.0) on a computer a list is also dragged with the mouse (and pulled down to refresh), as with a finger
           scrollBehavior: onComputer ? const _AnyPointerDrags() : null,
           // his "Size of the text" (Settings) – on every screen of the app
+          // (3.26.0) a call: its ring, its screen and its green bar – over every screen of the app (screens/call.dart)
           builder: (context, child) {
             final m = MediaQuery.of(context), k = SessionScope.of(context).textScale;
-            return k == 1.0 ? child! : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: child!);
+            final app = CallLayer(nav: appNav, child: child!);
+            return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
           },
           home: const Gate(),
         )),

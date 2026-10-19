@@ -20,7 +20,10 @@ MAN = 'android/app/src/main/AndroidManifest.xml'
 def manifest(s):
     perms = ['android.permission.INTERNET', 'android.permission.REQUEST_INSTALL_PACKAGES', 'android.permission.CAMERA', 'android.permission.ACCESS_FINE_LOCATION',
              'android.permission.ACCESS_COARSE_LOCATION', 'android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS', 'android.permission.POST_NOTIFICATIONS',
-             'android.permission.RECEIVE_BOOT_COMPLETED', 'android.permission.WAKE_LOCK']
+             'android.permission.RECEIVE_BOOT_COMPLETED', 'android.permission.WAKE_LOCK',
+             # (3.26.0) calls with the web: the notification "Call is on" (CallService.kt), the network's state
+             'android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_MICROPHONE', 'android.permission.FOREGROUND_SERVICE_CAMERA',
+             'android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION', 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.CHANGE_NETWORK_STATE']
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
     s = re.sub(r'android:label="[^"]*"', 'android:label="RCL ERP"', s, count=1)
@@ -47,6 +50,8 @@ def manifest(s):
                       '        <receiver android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver" android:enabled="false" android:exported="false">\n'
                       '            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>\n'
                       '        </receiver>\n    </application>', 1)
+    if '.CallService' not in s:      # (3.26.0) a call with the web: "Call is on" (CallService.kt, kept in git with MainActivity.kt)
+        s = s.replace('</application>', '    <service android:name=".CallService" android:exported="false" android:foregroundServiceType="microphone|camera|mediaProjection"/>\n    </application>', 1)
     if 'android.speech.RecognitionService' not in s:      # (3.15.0) the assistant: the phone's listening and speaking services
         q = ('        <intent>\n            <action android:name="android.speech.RecognitionService"/>\n        </intent>\n'
              '        <intent>\n            <action android:name="android.intent.action.TTS_SERVICE"/>\n        </intent>\n')

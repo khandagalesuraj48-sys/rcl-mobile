@@ -19,6 +19,7 @@ import 'search.dart';
 import 'admin.dart';
 import 'billing.dart';
 import 'breakdown.dart';
+import 'call.dart';
 import 'verify.dart';
 import 'logbook.dart';
 import 'store.dart';
@@ -283,6 +284,21 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ),
                   const SizedBox(width: 10),
+                  // (3.26.0) a call with a web or app user (Android) – the number of missed calls on it
+                  if (s.rtc != null) ...[
+                    ListenableBuilder(
+                      listenable: s.rtc!,
+                      builder: (_, __) {
+                        final miss = s.rtc?.missN ?? 0;
+                        return Badge(
+                          isLabelVisible: miss > 0,
+                          label: Text('$miss'),
+                          child: _RoundBtn(key: const Key('home-call'), icon: Icons.video_call_rounded, tip: 'Call', onTap: () => openCallPick(context)),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                  ],
                   // (3.15.0) the assistant – the web's "Ask"; a red dot when the daily summary waits (once a day)
                   ValueListenableBuilder<bool>(
                     valueListenable: s.briefDue,

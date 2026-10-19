@@ -61,6 +61,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _s?.keptNote.removeListener(_note);
     _s?.stopLive();
+    _s?.rtcOff(); // (3.26.0) another site / signed out: the call ends
     super.dispose();
   }
 

@@ -22,6 +22,7 @@ import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
 
+import 'fake_rtc.dart';
 import 'fake_server.dart';
 
 Future<void> loadFonts() async {
@@ -3019,5 +3020,171 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('sa-users')), findsNothing);
     expect(find.textContaining('तुमचा login संपला आहे'), findsOneWidget);
+  });
+
+  // ---------------- (3.26.0) calls with the web ----------------
+  /// A note of the web (Mechanical's rtcBeat_ gives it with the heartbeat).
+  Map<String, dynamic> rtcNote(String id, String t, String from, String name, String call, Map<String, dynamic> d) =>
+      {'id': id, 'n': 50, 'from': from, 'name': name, 't': t, 'call': call, 'd': jsonEncode(d), 'age': 200};
+
+  testWidgets('(3.26.0) Calls with the web: Home → Call – who is at the app, missed calls; a video call to a web user rings, his web answers → his screen big, his face and mine at the side; chat; Back → the green bar; End', (t) async {
+    phone(t);
+    final kit = FakeKit();
+    Session.callKit = () => kit;
+    addTearDown(() => Session.callKit = null);
+    final srv = FakeServer()..rtcMissed = [{'call': 'c0', 'from': 'u-office', 'name': 'Office Admin', 'at': DateTime(2026, 10, 14, 9, 5).millisecondsSinceEpoch, 'can': true}];
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    final rtc = s.rtc!;
+    var clock = DateTime(2026, 10, 14, 10, 30).millisecondsSinceEpoch;
+    rtc.now = () => clock;
+    expect(srv.rtcBeats.first, isNull, reason: 'the first heartbeat: "just opened" – the rings still waiting come');
+    await t.tap(find.byKey(const Key('home-call')));
+    await net(t);
+    await settle(t, 1600);
+    expect(srv.rtcSent.where((m) => m['t'] == 'who'), isNotEmpty, reason: '"who is at the app?" – as the web asks');
+    expect(srv.rtcBeats, contains(40), reason: 'then the heartbeat says up to which note it has read');
+    rtc.inbox({'r': 41, 'top': 41, 'm': [rtcNote('h1', 'here', 'u-mahesh', 'Mahesh Jadhav', '', {'busy': false, 'share': true, 'dev': 'dM'})]});
+    clock += 6000;
+    await settle(t, 1200);
+    expect(t.widget<Text>(find.descendant(of: find.byKey(const Key('call-st-u-mahesh')), matching: find.byType(Text))).data, 'at the app now');
+    expect(t.widget<Text>(find.descendant(of: find.byKey(const Key('call-st-u-office')), matching: find.byType(Text))).data, 'not at the app now – the ring waits a minute');
+    expect(find.text('Missed calls'), findsOneWidget);
+    expect(find.byKey(const Key('call-back-u-office')), findsOneWidget);
+    await tapK(t, 'call-u-u-mahesh');
+    await tapK(t, 'call-mode-video');
+    await settle(t, 300);
+    expect(find.text('Call Mahesh Jadhav'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/55_call_pick.png'));
+
+    await t.tap(find.byKey(const Key('call-go')));
+    await net(t);
+    final ring = srv.rtcSent.lastWhere((m) => m['t'] == 'ring');
+    expect(ring['to'], ['u-mahesh']);
+    expect((ring['d'] as Map)['mode'], 'video');
+    expect((ring['d'] as Map)['sdp'], 'v=0 app-offer');
+    expect(find.byKey(const Key('call-status')), findsOneWidget, reason: 'the call\'s screen');
+    expect(t.widget<Text>(find.descendant(of: find.byKey(const Key('call-status')), matching: find.byType(Text))).data, 'Ringing…');
+    final pc = kit.pcs.single;
+    // his web page answers; connected; he shows his screen and his camera
+    rtc.inbox({'r': 42, 'top': 42, 'm': [rtcNote('a1', 'answer', 'u-mahesh', 'Mahesh Jadhav', rtc.call!.id, {'sdp': 'v=0 web-answer', 'todev': rtc.dev, 'dev': 'dM'})]});
+    await net(t, 400);
+    expect(pc.remotes.single, {'type': 'answer', 'sdp': 'v=0 web-answer'});
+    pc.connect();
+    pc.dc!.recv({'t': 'share', 'on': true, 'sid': 'S1', 'uid': 'u-mahesh', 'name': 'Mahesh Jadhav', 'ptr': false, 'kind': 'screen'});
+    pc.picture('S1');
+    pc.dc!.recv({'t': 'share', 'on': true, 'sid': 'face-1', 'uid': 'u-mahesh', 'name': 'Mahesh Jadhav', 'ptr': false, 'kind': 'cam', 'face': true});
+    pc.picture('face-1');
+    await settle(t, 600);
+    expect(find.byKey(const ValueKey('fake-view-S1')), findsOneWidget, reason: 'his screen big');
+    expect(find.byKey(const Key('call-face-face-1')), findsOneWidget, reason: 'his face at the side');
+    expect(find.byKey(const Key('call-face-me')), findsOneWidget, reason: 'mine ("You")');
+    expect(find.text('Screen of Mahesh Jadhav'), findsOneWidget);
+    expect(t.widget<Text>(find.descendant(of: find.byKey(const Key('call-status')), matching: find.byType(Text))).data, '00:00 · direct connection');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/57_call.png'));
+
+    // chat
+    await t.tap(find.byKey(const Key('call-chat')));
+    await settle(t, 600);
+    await t.enterText(find.byKey(const Key('chat-txt')), 'Can you see the dispenser?');
+    await t.tap(find.byKey(const Key('chat-send')));
+    await settle(t, 300);
+    expect(pc.dc!.of('chat').single['txt'], 'Can you see the dispenser?');
+    expect(find.text('Can you see the dispenser?'), findsOneWidget);
+    Navigator.of(t.element(find.byKey(const Key('chat-txt')))).pop();
+    await settle(t, 600);
+    // Back: the call goes on – the green bar over the app
+    await t.tap(find.byKey(const Key('call-min')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('call-bar')), findsOneWidget);
+    expect(find.byKey(const Key('call-status')), findsNothing);
+    await t.tap(find.byKey(const Key('call-bar')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('call-status')), findsOneWidget, reason: 'the bar goes back to the call');
+    await t.tap(find.byKey(const Key('call-end')));
+    await net(t);
+    expect(rtc.call, isNull);
+    expect(pc.dc!.of('bye').single, {'t': 'bye', 'end': true});
+    expect(srv.rtcSent.where((m) => m['t'] == 'end').single['to'], ['u-mahesh'], reason: 'one line for the Activity Log');
+    expect(find.byKey(const Key('call-status')), findsNothing);
+    expect(find.byKey(const Key('call-bar')), findsNothing);
+    expect(kit.keeps.last, 'off');
+  }, tags: ['golden']);
+
+  testWidgets('(3.26.0) A call of the web comes in: its own screen over the app (the ringtone) → Accept → the answer to the web page that rang → Back → the green bar; the web ends it', (t) async {
+    phone(t);
+    final kit = FakeKit();
+    Session.callKit = () => kit;
+    addTearDown(() => Session.callKit = null);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    final rtc = s.rtc!;
+    rtc.inbox({'r': 41, 'top': 41, 'm': [rtcNote('r1', 'ring', 'u-office', 'Office Admin', 'cW1', {'sdp': 'v=0 web-offer', 'people': ['Sujit Mule'], 'mode': 'screen', 'dev': 'dO'})]});
+    await settle(t, 900);
+    expect(kit.rings, [true]);
+    expect(t.widget<Text>(find.descendant(of: find.byKey(const Key('ring-name')), matching: find.byType(Text))).data, 'Office Admin');
+    expect(find.text('wants to show you a screen'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/56_ring.png'));
+    await t.tap(find.byKey(const Key('ring-accept')));
+    await net(t);
+    expect(kit.rings.last, false);
+    final ans = srv.rtcSent.lastWhere((m) => m['t'] == 'answer');
+    expect(ans['to'], ['u-office']);
+    expect((ans['d'] as Map)['todev'], 'dO');
+    expect((ans['d'] as Map)['sdp'], 'v=0 app-answer');
+    expect(find.byKey(const Key('ring-name')), findsNothing);
+    final pc = kit.pcs.single;
+    expect(pc.remotes.first, {'type': 'offer', 'sdp': 'v=0 web-offer'});
+    pc.connect(channelFromOther: true);
+    await settle(t, 400);
+    expect(find.text('Leave'), findsOneWidget, reason: 'a guest leaves; the host ends');
+    await t.tap(find.byKey(const Key('call-min')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('call-bar')), findsOneWidget);
+    await t.tap(find.byKey(const Key('call-bar-mic')));
+    await settle(t, 300);
+    expect(rtc.call!.micOn, false, reason: 'mute from the bar');
+    pc.dc!.recv({'t': 'bye', 'end': true});
+    await settle(t, 800);
+    expect(rtc.call, isNull);
+    expect(find.byKey(const Key('call-bar')), findsNothing);
+    expect(find.text('Office Admin ended the call.'), findsOneWidget);
+  });
+
+  testWidgets('(3.26.0) A call declined with a short reply; one the caller stopped is missed – the number on the call button', (t) async {
+    phone(t);
+    final kit = FakeKit();
+    Session.callKit = () => kit;
+    addTearDown(() => Session.callKit = null);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    final rtc = s.rtc!;
+    rtc.inbox({'r': 41, 'top': 41, 'm': [rtcNote('r1', 'ring', 'u-mahesh', 'Mahesh Jadhav', 'cW2', {'sdp': 'v=0', 'mode': 'voice', 'dev': 'dM'})]});
+    await settle(t, 900);
+    expect(find.text('Voice call'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ring-reply')));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('ring-reply-3')));
+    await net(t);
+    final dec = srv.rtcSent.lastWhere((m) => m['t'] == 'decline');
+    expect((dec['d'] as Map)['reply'], 3);
+    expect((dec['d'] as Map)['todev'], 'dM');
+    expect(find.text('Sent to Mahesh Jadhav: "Please call me on the phone."'), findsOneWidget);
+    expect(find.byKey(const Key('ring-name')), findsNothing);
+    rtc.inbox({'r': 42, 'top': 42, 'm': [rtcNote('r2', 'ring', 'u-mahesh', 'Mahesh Jadhav', 'cW3', {'sdp': 'v=0', 'mode': 'video', 'dev': 'dM'})]});
+    await settle(t, 600);
+    rtc.inbox({'r': 43, 'top': 43, 'm': [rtcNote('x2', 'cancel', 'u-mahesh', 'Mahesh Jadhav', 'cW3', {'dev': 'dM'})]});
+    await settle(t, 900);
+    expect(find.byKey(const Key('ring-name')), findsNothing);
+    expect(find.text('Missed call from Mahesh Jadhav.'), findsOneWidget);
+    expect(find.descendant(of: find.byType(Badge), matching: find.text('1')), findsWidgets);
   });
 }

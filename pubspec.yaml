@@ -1,7 +1,7 @@
 name: rcl_mobile
 description: RCL ERP – the mobile app (Android and iPhone) and the computer app (Windows). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.25.0+1
+version: 3.26.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -31,6 +31,7 @@ dependencies:
   file_picker: ^11.0.3 # (3.11.0) (13.x needs another win32 than share_plus 12) an Excel / CSV file to import, from the phone's files
   flutter_tts: ^4.2.5 # (3.15.0) the assistant's answer said aloud (the web's speechSynthesis)
   speech_to_text: ">=7.5.0 <8.0.0" # (3.15.0) a question heard – the talk with the assistant (the web's SpeechRecognition)
+  flutter_webrtc: ^1.6.2+hotfix.4 # (3.26.0) calls with the web: Google's WebRTC (the same as in Chrome) – voice, cameras, the phone's screen
 
 dev_dependencies:
   flutter_test:
