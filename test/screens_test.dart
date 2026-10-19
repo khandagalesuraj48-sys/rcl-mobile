@@ -317,11 +317,14 @@ void main() {
     expect(find.text('Correcting VF-00006 – Returned, not saved'), findsOneWidget);
     expect(find.text('Not saved: Line 2: "KDX-130B" is not in Master.'), findsOneWidget);
     expect(find.text('Now: the rows in red are wrong – correct them (the list is under the rows).'), findsOneWidget);
-    expect(find.text('"KDX-130B" – not in Master: pick the machinery'), findsOneWidget);
-    expect(find.text('"KDX-130B" is not in Master.'), findsOneWidget, reason: 'the row says why');
     expect(find.text('Send again (VF-00006)'), findsOneWidget);
     expect(find.byKey(const Key('im-type')), findsNothing, reason: 'its own form only');
-    expect([val('im-row-0-qty'), val('im-row-0-km'), val('im-row-0-driver'), val('im-row-1-qty')], ['10', '5100', 'Ravi', '6']);
+    expect([val('im-row-0-qty'), val('im-row-0-km'), val('im-row-0-driver')], ['10', '5100', 'Ravi']);
+    await t.scrollUntilVisible(find.byKey(const Key('im-row-1-del')), 200, scrollable: find.descendant(of: find.byKey(const Key('im-list')), matching: find.byType(Scrollable)).first);
+    await settle(t, 400);
+    expect(find.text('"KDX-130B" – not in Master: pick the machinery'), findsOneWidget);
+    expect(find.text('"KDX-130B" is not in Master.'), findsOneWidget, reason: 'the row says why');
+    expect(val('im-row-1-qty'), '6');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/52_fix_many.png'));
     // still wrong: the remark is asked once; the save's answer marks the row – nothing sent

@@ -265,11 +265,32 @@ class _VerifySheetState extends State<VerifySheet> {
       _ => (C.slate, C.slateSoft, st == 'Withdrawn' ? tr('Taken back') : tr('{0} – not saved').replaceFirst('{0}', tr(st)), '${r['decidedBy'] ?? ''}${'${r['note'] ?? ''}'.isEmpty ? '' : ': ${r['note']}'}'),
     };
     final reminds = (r['reminds'] is num) ? (r['reminds'] as num).toInt() : 0;
+    final againBtn = FilledButton.tonal(
+      key: Key('verify-again-$id'),
+      style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
+      onPressed: busy.isNotEmpty ? null : () => _again(s, [r], id),
+      child: busy == id ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)) : Text(tr('Send again')),
+    );
+    // (3.22.0) "Open & correct" with "Send again": both under the entry (a phone row has no room for two buttons beside it)
+    final fixRow = r['canResend'] == true && r['canFix'] == true
+        ? Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+              FilledButton(
+                key: Key('verify-fix-$id'),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
+                onPressed: busy.isNotEmpty ? null : () => _fix(s, id),
+                child: busy == 'fix:$id' ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white)) : Text(tr('Open & correct')),
+              ),
+              againBtn,
+            ]),
+          )
+        : null;
     return Container(
       key: Key('verify-$id'),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: C.bg, borderRadius: BorderRadius.circular(16)),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -299,25 +320,9 @@ class _VerifySheetState extends State<VerifySheet> {
               style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
               onPressed: () => openApprovals(context),
               child: Text(tr('Answer')))
-        else if (r['canResend'] == true)
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            if (r['canFix'] == true) ...[
-              FilledButton(
-                key: Key('verify-fix-$id'),
-                style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
-                onPressed: busy.isNotEmpty ? null : () => _fix(s, id),
-                child: busy == 'fix:$id' ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white)) : Text(tr('Open & correct')),
-              ),
-              const SizedBox(height: 6),
-            ],
-            FilledButton.tonal(
-              key: Key('verify-again-$id'),
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 42), padding: const EdgeInsets.symmetric(horizontal: 14)),
-              onPressed: busy.isNotEmpty ? null : () => _again(s, [r], id),
-              child: busy == id ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)) : Text(tr('Send again')),
-            ),
-          ]),
-      ]),
+        else if (r['canResend'] == true && r['canFix'] != true)
+          againBtn,
+      ]), if (fixRow != null) fixRow]),
     );
   }
 }
