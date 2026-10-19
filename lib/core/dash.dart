@@ -351,3 +351,146 @@ String itemQtyText(Map<String, dynamic> r) {
   final dayItems = mapsOf(r['boqItems']).where((it) => kind(_s(it['basis'])) == 'day').length;
   return mapsOf(r['itemQty']).where((x) => x['k'] != 'day' || dayItems > 1).map((x) => '${x['n']}${x['k'] == 'day' ? '' : ' ${fmtNum(_n(x['q']))} ${word[x['k']] ?? ''}'}').join(' · ');
 }
+
+/* (3.21.0, with Mechanical update-126 – asked 19-10-2026: "dashbord war opening closing received je numbers aahet n nantr khali bgh
+ * issued today … ya waril kuth hi click kel ki tyanchi entryies open hotil ek mast motha dialogbox open hoil … fkt show hotil")
+ * THE ENTRIES BEHIND A NUMBER of the Diesel dashboard – the same as the web's kdBuild. Only shown, nothing is changed; the big
+ * number is the number on the card.
+ *   open / close – each diesel place: opening + received + from another place − sent − issued = closing (getDashboard's own)
+ *   now          – each diesel place: its stock now, its tank, how full
+ *   in           – the Diesel Inward entries of the dates (getInwards); an opening stock on or before the start date is part of
+ *                  the opening, not "received" – as getDashboard counts it
+ *   issued / entries / avg – the Diesel Issue entries of the dates (getDieselIssues); today – today's; machines – machine by machine
+ * The entries come through the pages' own server actions: the same access as those pages (refused → the sheet says so). */
+const kNumTitles = {
+  'open': 'Opening stock', 'in': 'Received (inward)', 'issued': 'Issued to machinery', 'close': 'Closing stock', 'now': 'Stock now (live)',
+  'today': 'Issued today', 'machines': 'Machines fuelled', 'entries': 'Issue entries', 'avg': 'Average per entry',
+};
+
+/// One line of the sheet: a place, a bill, an entry or a machinery – [title] / [sub] on the left, [value] on the right, then its
+/// [lines] (name, value).
+class NumLine {
+  const NumLine(this.title, {this.sub = '', this.value = '', this.lines = const []});
+  final String title, sub, value;
+  final List<(String, String)> lines;
+}
+
+class NumDetail {
+  const NumDetail({required this.title, required this.when, required this.big, this.bigSub = '', this.note = '', this.rows = const [], this.total, this.none = ''});
+  final String title, when, big, bigSub, note, none;
+  final List<NumLine> rows;
+  final NumLine? total;
+}
+
+Future<NumDetail> numDetail(String kind, Map<String, dynamic> d, String from, String to, String today, Future<dynamic> Function(String fn, List<dynamic> args) call) async {
+  final title = kNumTitles[kind] ?? kind;
+  final when = kind == 'today' ? 'Today, ${showDate(today)}' : kind == 'now' ? 'Live – after every entry saved till now' : rangeText(from, to);
+  List<(String, String)> only(List<(String, String)> l) => [for (final x in l) if (x.$2.trim().isNotEmpty) x];
+  if (kind == 'open' || kind == 'close') {
+    final locs = mapsOf(d['locations']), hk = kind == 'open' ? 'opening' : 'closing';
+    num sum(String k) => r2n(locs.fold<num>(0, (a, x) => a + _n(x[k])));
+    final startTxt = from.isNotEmpty ? 'Opening stock on ${showDate(from)}' : 'Opening stock (at the very start)';
+    final endTxt = 'Closing stock on ${to.isNotEmpty ? showDate(to) : 'today'}';
+    List<(String, String)> moves(num Function(String k) v) => [
+          (startTxt, fmtNum(v('opening'))), ('+ Received from pump', fmtNum(v('inward'))), ('+ From another place', fmtNum(v('tin'))),
+          ('− Sent to another place', fmtNum(v('tout'))), ('− Issued to machinery', fmtNum(v('issued'))), ('= $endTxt', fmtNum(v('closing'))),
+        ];
+    return NumDetail(
+      title: title,
+      when: when,
+      big: '${fmtNum(sum(hk))} Ltr',
+      bigSub: kind == 'open' ? (from.isNotEmpty ? 'as on start of ${showDate(from)}' : 'at the very start') : 'as on end of ${to.isNotEmpty ? showDate(to) : 'today'}',
+      note: kind == 'open'
+          ? 'The diesel in each place when the period starts – what every entry before it left there.'
+          : 'The diesel left in each place at the end of the period: Opening + Received + From another place − Sent − Issued.',
+      rows: [for (final x in locs) NumLine(_s(x['loc']), value: '${fmtNum(_n(x[hk]))} L', lines: moves((k) => _n(x[k])))],
+      total: locs.isEmpty ? null : NumLine('All places', value: '${fmtNum(sum(hk))} L', lines: moves(sum)),
+      none: locs.isEmpty ? 'No diesel place yet.' : '',
+    );
+  }
+  if (kind == 'now') {
+    final st = (d['stock'] as Map?) ?? const {}, by = (st['byLoc'] as Map?) ?? const {}, caps = (((d['tanks'] as Map?) ?? const {})['caps'] as Map?) ?? const {};
+    return NumDetail(
+      title: title,
+      when: when,
+      big: '${fmtNum(_n(st['stock']))} Ltr',
+      bigSub: 'live',
+      note: 'The diesel in each place now – after every entry saved till now.',
+      rows: [
+        for (final e in by.entries)
+          NumLine('${e.key}', value: '${fmtNum(_n(e.value))} L', lines: [
+            ('Tank size (Ltr)', _n(caps[e.key]) > 0 ? fmtNum(_n(caps[e.key])) : '–'),
+            ('Full', _n(caps[e.key]) > 0 ? '${(_n(e.value) / _n(caps[e.key]) * 100).round()}%' : '–'),
+          ]),
+      ],
+      total: by.isEmpty ? null : NumLine('All places', value: '${fmtNum(_n(st['stock']))} L'),
+      none: by.isEmpty ? 'No diesel place yet.' : '',
+    );
+  }
+  if (kind == 'in') {
+    final r = (await call('getInwards', [{'from': from, 'to': to, 'all': true}]) as Map?) ?? const {};
+    // as getDashboard: an opening stock on or before the start date is part of the opening, not "received"
+    final list = mapsOf(r['rows']).where((x) => !(x['open'] == true && (from.isEmpty || _s(x['date']).compareTo(from) <= 0))).toList();
+    final qty = r2n(list.fold<num>(0, (a, x) => a + _n(x['qty']))), amt = r2n(list.fold<num>(0, (a, x) => a + _n(x['amount'])));
+    String what(Map x) => x['open'] == true ? 'Opening stock' : x['extra'] == true ? 'Extra diesel' : _s(x['pump']);
+    return NumDetail(
+      title: title,
+      when: when,
+      big: '${fmtNum(qty)} Ltr',
+      bigSub: '₹${fmtNum(amt)}, ${list.length} bills',
+      rows: [
+        for (final (i, x) in list.indexed)
+          NumLine('${i + 1}. ${what(x)}', sub: [showDate(_s(x['date'])), _s(x['location']), _s(x['id'])].where((y) => y.isNotEmpty).join(' · '), value: '${fmtNum(_n(x['qty']))} L', lines: only([
+            ('Bill No', _s(x['billNo'])),
+            ('Bill date', _s(x['billDate']).isEmpty ? '' : showDate(_s(x['billDate']))),
+            ('Rate', _s(x['rate']).isEmpty ? '' : fmtNum(_n(x['rate']))),
+            ('Amount (₹)', _s(x['amount']).isEmpty ? '' : fmtNum(_n(x['amount']))),
+            ('Entered by', _s(x['enteredBy'])),
+          ])),
+      ],
+      total: list.isEmpty ? null : NumLine('Total – ${list.length} bills', sub: '₹${fmtNum(amt)}', value: '${fmtNum(qty)} L'),
+      none: list.isEmpty ? 'No diesel received in this period.' : '',
+    );
+  }
+  // the Diesel Issue entries: of today, or of the Dashboard's dates
+  final r = (await call('getDieselIssues', [kind == 'today' ? {'from': today, 'to': today} : {'from': from, 'to': to}]) as Map?) ?? const {};
+  final n = _n(r['count']), tq = _n(r['totalQty']);
+  if (kind == 'machines') {
+    final sh = mapsOf(r['share']);
+    return NumDetail(
+      title: title,
+      when: when,
+      big: '${fmtNum(sh.length)} machines',
+      bigSub: '${fmtNum(tq)} Ltr, ${fmtNum(n)} entries',
+      rows: [
+        for (final (i, x) in sh.indexed)
+          NumLine('${i + 1}. ${_s(x['no'])}', sub: [_s(x['type']), _s(x['owner'])].where((y) => y.isNotEmpty).join(' · '), value: '${fmtNum(_n(x['qty']))} L', lines: [('Entries', fmtNum(_n(x['entries'])))]),
+      ],
+      total: sh.isEmpty ? null : NumLine('Total – ${sh.length} machines', sub: '${fmtNum(n)} entries', value: '${fmtNum(tq)} L'),
+      none: sh.isEmpty ? 'No machinery was given diesel in this period.' : '',
+    );
+  }
+  final list = mapsOf(r['rows']), avg = n > 0 ? r2n(tq / n) : 0;
+  String reading(Map x) => [if (_s(x['kmReading']).isNotEmpty) 'KM ${fmtNum(_n(x['kmReading']))}', if (_s(x['hrReading']).isNotEmpty) 'Hrs ${fmtNum(_n(x['hrReading']))}'].join(' · ');
+  return NumDetail(
+    title: title,
+    when: when,
+    big: kind == 'avg' ? (n > 0 ? '${fmtNum(avg)} Ltr' : '–') : kind == 'entries' ? '${fmtNum(n)} entries' : '${fmtNum(tq)} Ltr',
+    bigSub: kind == 'avg' ? (n > 0 ? '${fmtNum(tq)} Ltr ÷ ${fmtNum(n)} entries' : '') : kind == 'entries' ? '${fmtNum(tq)} Ltr' : '${fmtNum(n)} entries',
+    note: n > list.length ? 'The latest ${list.length} of the ${fmtNum(n)} entries are listed here; the total is of all ${fmtNum(n)}.' : '',
+    rows: [
+      for (final (i, x) in list.indexed)
+        NumLine('${i + 1}. ${_s(x['no'])}', sub: [showDate(_s(x['date'])), _s(x['shift']), _s(x['source'])].where((y) => y.isNotEmpty).join(' · '), value: '${fmtNum(_n(x['qty']))} L', lines: only([
+          ('Entry', _s(x['id'])),
+          ('Type', _s(x['type'])),
+          ('Owner', _s(x['owner'])),
+          ('KM / Hrs reading', reading(x)),
+          ('Driver / Operator', _s(x['driver'])),
+          ('Remark', _s(x['remark'])),
+          ('Entered by', _s(x['enteredBy'])),
+        ])),
+    ],
+    total: list.isEmpty ? null : NumLine('Total – ${fmtNum(n)} entries', sub: kind == 'avg' && n > 0 ? 'Average ${fmtNum(avg)} L' : '', value: '${fmtNum(tq)} L'),
+    none: list.isEmpty ? (kind == 'today' ? 'No diesel issued today.' : 'No diesel issued in this period.') : '',
+  );
+}

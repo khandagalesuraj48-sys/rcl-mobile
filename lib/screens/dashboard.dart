@@ -276,16 +276,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     num sumL(String k) => r2n(locs.fold<num>(0, (a, x) => a + (asNum(x[k]) ?? 0)));
     final total = (dd['total'] as Map?) ?? const {}, inward = (dd['inward'] as Map?) ?? const {}, stock = (dd['stock'] as Map?) ?? const {};
     final entries = asNum(total['entries']) ?? 0;
-    Widget card(String key, String label, String value, String sub, Color fg, Color bg) => Container(
-          key: Key(key),
+    // (3.21.0, Mechanical update-126) a tap on a number: the entries behind it, in a big sheet – only shown
+    Widget card(String key, String label, String value, String sub, Color fg, Color bg) => Material(
+          color: bg,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            key: Key(key),
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => _numSheet(_kdKind[key]!, dd, fg),
+            child: Padding(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(18)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: TextStyle(fontSize: 12.5, color: fg, fontWeight: FontWeight.w700)),
+            Row(children: [
+              Expanded(child: Text(label, style: TextStyle(fontSize: 12.5, color: fg, fontWeight: FontWeight.w700))),
+              Icon(Icons.chevron_right_rounded, size: 18, color: fg.withValues(alpha: .7)),
+            ]),
             const SizedBox(height: 2),
             FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: TextStyle(fontSize: 22, color: fg, fontWeight: FontWeight.w800))),
             if (sub.isNotEmpty) Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: fg.withValues(alpha: .85))),
           ]),
+            ),
+          ),
         );
     final byLoc = (stock['byLoc'] as Map?) ?? const {};
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -308,19 +319,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final x in [
-          ('Issued today', '${fmtNum(asNum(total['todayQty']))} Ltr'),
-          ('Machines fuelled', fmtNum(asNum(total['machines']))),
-          ('Issue entries', fmtNum(entries)),
-          ('Average per entry', entries > 0 ? '${fmtNum(r2n((asNum(total['qty']) ?? 0) / entries))} Ltr' : '–'),
+          ('today', 'Issued today', '${fmtNum(asNum(total['todayQty']))} Ltr'),
+          ('machines', 'Machines fuelled', fmtNum(asNum(total['machines']))),
+          ('entries', 'Issue entries', fmtNum(entries)),
+          ('avg', 'Average per entry', entries > 0 ? '${fmtNum(r2n((asNum(total['qty']) ?? 0) / entries))} Ltr' : '–'),
         ])
-          Container(
+          SizedBox(
             width: (MediaQuery.of(context).size.width - 32 - 8) / 2,
-            padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(x.$1, style: const TextStyle(fontSize: 12, color: C.muted, fontWeight: FontWeight.w600)),
-              Text(x.$2, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-            ]),
+            child: Material(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: C.line)),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                key: Key('k-${x.$1}'),
+                onTap: () => _numSheet(x.$1, dd, C.blue),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 9, 8, 9),
+                  child: Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(x.$2, style: const TextStyle(fontSize: 12, color: C.muted, fontWeight: FontWeight.w600)),
+                        Text(x.$3, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                      ]),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, size: 18, color: C.faint),
+                  ]),
+                ),
+              ),
+            ),
           ),
       ]),
     ]);
@@ -453,6 +479,111 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
     ]);
+  }
+
+  static const _kdKind = {'k-open': 'open', 'k-in': 'in', 'k-out': 'issued', 'k-close': 'close', 'k-now': 'now'};
+
+  /// (3.21.0, with Mechanical update-126, asked 19-10-2026: "… kuth hi click kel ki tyanchi entryies open hotil ek mast motha
+  /// dialogbox … fkt show hotil") A number of the Diesel dashboard → one big sheet with the entries behind it (numDetail in
+  /// core/dash.dart – the same as the web's box). Only shown: nothing in it can be changed. The big number is the card's.
+  Future<void> _numSheet(String kind, Map<String, dynamic> dd, Color tone) {
+    final s = SessionScope.read(context);
+    final fut = numDetail(kind, dd, from, to, s.today, (fn, args) => s.api.call(fn, args));
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (c) => SizedBox(
+        key: const Key('num-sheet'),
+        height: MediaQuery.of(c).size.height * .92,
+        child: FutureBuilder<NumDetail>(
+          future: fut,
+          builder: (c, snap) {
+            final x = snap.data;
+            Widget head(String title, String when, String big, String bigSub) => Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 8, 6),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                        Text(when, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                        if (big.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(big, key: const Key('num-big'), style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: tone)),
+                          if (bigSub.isNotEmpty) Text(bigSub, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                        ],
+                      ]),
+                    ),
+                    IconButton(tooltip: tr('Close'), onPressed: () => Navigator.pop(c), icon: const Icon(Icons.close_rounded)),
+                  ]),
+                );
+            if (x == null) {
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                head(kNumTitles[kind] ?? kind, '', '', ''),
+                Expanded(
+                  child: Center(
+                    child: snap.hasError
+                        ? Padding(padding: const EdgeInsets.all(24), child: Text('${snap.error}', key: const Key('num-err'), textAlign: TextAlign.center, style: const TextStyle(color: C.muted, fontSize: 15)))
+                        : const CircularProgressIndicator(),
+                  ),
+                ),
+              ]);
+            }
+            Widget lineCard(NumLine l, {bool total = false}) => Container(
+                  margin: EdgeInsets.only(bottom: total ? 0 : 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: total ? C.amberSoft : C.bg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: total ? Border.all(color: tone, width: 1.6) : null,
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Row(children: [
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(l.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                          if (l.sub.isNotEmpty) Text(l.sub, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                        ]),
+                      ),
+                      if (l.value.isNotEmpty) Text(l.value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: total ? tone : C.ink)),
+                    ]),
+                    for (final (k, v) in l.lines)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(k, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(v, textAlign: TextAlign.right, style: const TextStyle(fontSize: 12.5))),
+                        ]),
+                      ),
+                  ]),
+                );
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              head(x.title, x.when, x.big, x.bigSub),
+              Expanded(
+                child: x.rows.isEmpty
+                    ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(x.none, textAlign: TextAlign.center, style: const TextStyle(color: C.muted, fontSize: 15))))
+                    : ListView(key: const Key('num-list'), padding: const EdgeInsets.fromLTRB(16, 4, 16, 12), children: [
+                        if (x.note.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: C.slateSoft, borderRadius: BorderRadius.circular(12)),
+                            child: Text(x.note, style: const TextStyle(fontSize: 12.5, color: C.slate)),
+                          ),
+                        for (final l in x.rows) lineCard(l),
+                      ]),
+              ),
+              if (x.total != null) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: lineCard(x.total!, total: true)),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Text('Only shown here – nothing is changed. An entry is changed on its own page.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+              ),
+            ]);
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _ownDetail(String own) async {

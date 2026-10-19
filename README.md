@@ -14,6 +14,22 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.21.0 (19-10-2026, with Mechanical update-126: "dashbord war opening closing received je numbers … kuth hi click kel ki
+tyanchi entryies open hotil ek mast motha dialogbox … fkt show hotil"):**
+* **Every number of the Diesel dashboard can be tapped:** Opening stock, Received, Issued, Closing stock, Stock now, Issued
+  today, Machines fuelled, Issue entries, Average per entry. A tap opens a big sheet with the entries behind that number. It is
+  only shown; nothing can be changed there. The big number on the sheet is the number on the card.
+  * Opening / Closing stock: each diesel place, with Opening + Received + From another place − Sent − Issued = Closing.
+  * Stock now: each place, with its tank size and how full it is.
+  * Received: the Diesel Inward entries of the dates. An opening stock entered on or before the start date is part of the
+    opening, as the server counts it.
+  * Issued / Issue entries / Average: the Diesel Issue entries of the dates. Issued today: today's entries. Machines fuelled:
+    machine by machine.
+* The rules are in `numDetail` (`lib/core/dash.dart`), the same as the web's box (`kdBuild`). The sheet is `_numSheet` in
+  `lib/screens/dashboard.dart`.
+* The same server actions as the pages (getInwards, getDieselIssues), so the same access: a person without that page is told
+  so in the sheet.
+
 **Version 3.20.1 (18-10-2026, with the Portal's "a sign-in stays until Sign out": "app madhun pn auto log out nko aahe"):**
 * **No sign-out by itself.** The Portal now keeps a sign-in until "Sign out" (no 6 hours, no 30 days). The app already renews
   its Mechanical and Store sign-ins from it by itself.
