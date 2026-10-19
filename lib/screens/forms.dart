@@ -652,7 +652,11 @@ class _EntryFormState extends State<EntryForm> {
       if (!mounted) return;
       if (r['warning'] != null) {
         setState(() => busy = false);
-        if (await ask(context, 'Please check the reading', r['warning'].toString(), yes: fx != null ? 'Send again anyway' : 'Save anyway')) await _save(force: true);
+        if (fx != null) {      // (3.22.1, Mechanical update-131) for approval: corrected first – no "anyway"
+          setState(() => err = r['warning'].toString().replaceFirst(RegExp(r'\s*Save anyway\?\s*$'), ''));
+          return;
+        }
+        if (await ask(context, 'Please check the reading', r['warning'].toString(), yes: 'Save anyway')) await _save(force: true);
         return;
       }
       if (fx != null) {

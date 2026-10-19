@@ -916,7 +916,11 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
         final w = notes(res['warnings'], true);
         setState(() => dNotes = w);
         setState(() => busy = false);
-        if (await askLines(context, 'Please check these rows', [for (final x in w) 'Row ${x.$1}: ${x.$2}'], yes: fx != null ? 'Send again anyway' : 'Save all anyway')) await _saveDate(force: true);
+        if (fx != null) {      // (3.22.1, Mechanical update-131) for approval: corrected first – no "anyway"
+          toast(context, 'Not sent. Correct the rows marked.', bad: true);
+          return;
+        }
+        if (await askLines(context, 'Please check these rows', [for (final x in w) 'Row ${x.$1}: ${x.$2}'], yes: 'Save all anyway')) await _saveDate(force: true);
         return;
       }
       if (fx != null) {
