@@ -17,6 +17,7 @@ import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
 import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
+import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
@@ -1249,6 +1250,8 @@ void main() {
     expect(del['flows'], ['VF-00009']);
     expect(find.text('Saved entries (1)'), findsOneWidget);
     expect(find.text('Deleted entries (2)'), findsOneWidget);
+    ScaffoldMessenger.of(t.element(find.byType(SuperDeleteScreen))).hideCurrentSnackBar();      // (the "deleted" message would lie over the list)
+    await settle(t, 600);
     // brought back: one the server refuses → said, nothing back; then brought back
     srv.sdRefuse['DEL-00001'] = 'DI-000101 (MH-25-AJ-2169, 14-10-2026): that date is now in the submitted RA Bill RA-8 of I E Enterprises – it is not brought back into a submitted bill.';
     await tapK(t, 'sd-d-DEL-00001');
