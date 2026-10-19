@@ -3155,7 +3155,7 @@ void main() {
     expect(rtc.call, isNull);
     expect(find.byKey(const Key('call-bar')), findsNothing);
     expect(find.text('Office Admin ended the call.'), findsOneWidget);
-  });
+  }, tags: ['golden']);
 
   testWidgets('(3.26.0) A call declined with a short reply; one the caller stopped is missed – the number on the call button', (t) async {
     phone(t);
