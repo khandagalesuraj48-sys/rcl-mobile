@@ -1173,6 +1173,36 @@ void main() {
     expect((l['no'], l['basis'], l['rate'], l['nightRate'], l['diesel']), ('MH-04-J-9844', 'Per Trip', '900', '1100', 'Company'));
   }, tags: ['golden']);
 
+  testWidgets('(3.23.0, Mechanical update-132) Vendor BOQ: the rate history machinery-wise – which rate from which date, which amendment changed it', (t) async {
+    phone(t);
+    final srv = editor();
+    Map<String, dynamic> per(String from, String to, int amendNo, num rate) => {'from': from, 'to': to, 'boq': amendNo > 0 ? 'BOQ-0002' : 'BOQ-0001', 'boqNo': amendNo > 0 ? '2' : '1', 'amendNo': amendNo, 'of': amendNo > 0 ? '1' : '',
+          'line': {'no': 'MH-25-AJ-2169', 'basis': 'Monthly', 'rate': rate, 'diesel': 'Company'}, 'woNo': 'WO-12'};
+    srv.boqHist.add({'vendor': 'I E Enterprises', 'no': 'MH-25-AJ-2169', 'periods': [per('2026-09-01', '2026-09-30', 0, 45000), per('2026-10-01', '', 1, 50000)]});
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vendor BOQ');
+    final list = find.byType(Scrollable).first;
+    await t.scrollUntilVisible(find.byKey(const Key('bh-pick')), 200, scrollable: list);
+    expect(find.text('Pick a vendor to see the rate history of each machinery – which rate from which date, and which amendment changed it.'), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const Key('bf-vendor')), -200, scrollable: list);
+    await tapK(t, 'bf-vendor');
+    await settle(t, 400);
+    await t.tap(find.text('I E Enterprises').last);
+    await settle(t, 600);
+    await t.scrollUntilVisible(find.byKey(const Key('bh-MH-25-AJ-2169-1')), 200, scrollable: list);
+    await settle(t, 300);
+    expect(find.text('Rate history – machinery-wise'), findsOneWidget);
+    expect(find.text('01-09-2026 – 30-09-2026'), findsOneWidget);
+    expect(find.text('BOQ 1 – Original · WO WO-12'), findsOneWidget);
+    expect(find.text('First rate'), findsOneWidget);
+    expect(find.text('01-10-2026 – open'), findsOneWidget);
+    expect(find.text('Amendment 1 of BOQ 1 · WO WO-12'), findsOneWidget);
+    expect(find.textContaining('Changed – was Monthly ₹45,000'), findsOneWidget);
+    expect(find.textContaining('Monthly ₹50,000'), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/53_boq_history.png'));
+  }, tags: ['golden']);
+
   testWidgets('(3.4.0) Vehicle Compliance: the counts and chips; a paper renewed (N/A) – renewDoc; Papers per type', (t) async {
     phone(t);
     final srv = editor();
