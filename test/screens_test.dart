@@ -17,6 +17,7 @@ import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
 import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
+import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
@@ -1202,6 +1203,91 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/53_boq_history.png'));
   }, tags: ['golden']);
+
+  testWidgets('(3.25.0, Mechanical update-134) Diesel Issue ⋮ → Delete entries – Super Admin: a date → saved and waiting ticked → deleted (kept); one of a submitted bill cannot be ticked; Deleted entries → a refusal said, then brought back', (t) async {
+    phone(t);
+    final srv = FakeServer()..superAdmin = true;
+    srv.sdSaved.addAll([
+      {'id': 'DI-000101', 'date': '2026-10-14', 'shift': 'Day', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'qty': 10, 'kmReading': 5100, 'hrReading': '', 'source': 'Dispenser', 'by': 'Mahesh Jadhav', 'bill': '', 'closed': false},
+      {'id': 'DI-000102', 'date': '2026-10-14', 'shift': 'Day', 'no': 'SANY-210', 'type': 'Excavator', 'qty': 40, 'kmReading': '', 'hrReading': 1220, 'source': 'Dispenser', 'by': 'Sujit Mule', 'bill': 'RA-7', 'closed': false},
+    ]);
+    srv.sdWaiting.add({'id': 'VF-00009', 'status': 'Pending', 'label': 'Waiting for verification', 'what': 'Save Diesel Bulk', 'dates': ['2026-10-14'], 'nos': 'MH-25-AJ-2169', 'qty': 5, 'by': 'Mahesh Jadhav',
+      'at': '2026-10-14T04:30:00.000Z', 'lines': ['Add: MH-25-AJ-2169 · 14-10-2026, Day – Litres 5, KM reading 5150'], 'more': 0});
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await t.tap(find.byKey(const Key('en-more')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('en-sdel')));
+    await net(t);
+    expect(find.text('Delete entries – Super Admin'), findsOneWidget);
+    await tapK(t, 'sd-show');
+    await net(t);
+    expect(srv.sdAsked.last, {'fn': 'superDelList', 'from': '2026-10-14', 'to': '', 'by': '', 'no': ''});
+    expect(find.text('Saved entries (2)'), findsOneWidget);
+    expect(find.text('Waiting for verification, returned or rejected (1)'), findsOneWidget);
+    expect(find.text('In the submitted RA Bill RA-7 – delete that bill first'), findsOneWidget);
+    expect(t.widget<CheckboxListTile>(find.byKey(const Key('sd-s-DI-000102'))).onChanged, isNull, reason: 'an entry of a submitted bill cannot be ticked');
+    await tapK(t, 'sd-s-DI-000101');
+    await tapK(t, 'sd-f-VF-00009');
+    await settle(t, 300);
+    expect(find.text('Delete ticked (2)'), findsOneWidget);
+    await t.ensureVisible(find.byKey(const Key('sd-show')));
+    await settle(t, 300);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/54_super_delete.png'));
+    await tapK(t, 'sd-delete');
+    await settle(t, 600);
+    expect(find.text('Delete 2 entries?'), findsOneWidget);
+    await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await net(t);
+    final del = srv.sdAsked.firstWhere((x) => x['fn'] == 'superDelete');
+    expect(del['ids'], ['DI-000101']);
+    expect(del['flows'], ['VF-00009']);
+    expect(find.text('Saved entries (1)'), findsOneWidget);
+    expect(find.text('Deleted entries (2)'), findsOneWidget);
+    ScaffoldMessenger.of(t.element(find.byType(SuperDeleteScreen))).hideCurrentSnackBar();      // (the "deleted" message would lie over the list)
+    await settle(t, 600);
+    // brought back: one the server refuses → said, nothing back; then brought back
+    srv.sdRefuse['DEL-00001'] = 'DI-000101 (MH-25-AJ-2169, 14-10-2026): that date is now in the submitted RA Bill RA-8 of I E Enterprises – it is not brought back into a submitted bill.';
+    await tapK(t, 'sd-d-DEL-00001');
+    await tapK(t, 'sd-back');
+    await settle(t, 600);
+    expect(find.text('Bring back 1 entry?'), findsOneWidget);
+    await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await net(t);
+    expect(find.text('Nothing brought back'), findsOneWidget);
+    expect(find.textContaining('it is not brought back into a submitted bill'), findsOneWidget);
+    await t.tap(find.byKey(const Key('tell-ok')));
+    await settle(t, 400);
+    srv.sdRefuse.clear();
+    await tapK(t, 'sd-back');
+    await settle(t, 600);
+    await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await net(t);
+    expect(srv.sdAsked.where((x) => x['fn'] == 'superRestore').last['ids'], ['DEL-00001']);
+    expect(find.text('Deleted entries (1)'), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.25.0) Delete entries – Super Admin is not in the menu of anybody else', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await t.tap(find.byKey(const Key('en-more')));
+    await settle(t, 600);
+    expect(find.byKey(const Key('en-find')), findsOneWidget);
+    expect(find.byKey(const Key('en-sdel')), findsNothing);
+  });
 
   testWidgets('(3.4.0) Vehicle Compliance: the counts and chips; a paper renewed (N/A) – renewDoc; Papers per type', (t) async {
     phone(t);

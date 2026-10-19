@@ -14,6 +14,7 @@ import 'diesel_photos.dart';
 import 'entry_more.dart';
 import 'forms.dart';
 import 'logbook.dart';
+import 'super_delete.dart';
 import '../ui/t.dart';
 import '../ui/help.dart' show showGuide;
 
@@ -201,6 +202,8 @@ class _EntriesTabState extends State<EntriesTab> {
       case 'guide':
         await showGuide(context, k.key == 'issue' ? 'diesel' : k.key); // (3.16.0) the web's "?" of the page
         return;
+      case 'sdel':      // (3.25.0, Mechanical update-134) the Super Admin deletes entries and brings them back
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SuperDeleteScreen()));
     }
     if (mounted) _load();
   }
@@ -257,6 +260,7 @@ class _EntriesTabState extends State<EntriesTab> {
                     itemBuilder: (_) => [
                       PopupMenuItem(key: const Key('en-guide'), value: 'guide', child: Text('About this page')),
                       PopupMenuItem(key: const Key('en-find'), value: 'find', child: Text('All dates & Export')),
+                      if (s.superAdmin && k.key == 'issue') PopupMenuItem(key: const Key('en-sdel'), value: 'sdel', child: Text('Delete entries – Super Admin')),
                       if (s.canEdit(k.module) && k.key != 'inward') PopupMenuItem(key: const Key('en-many'), value: 'many', child: Text('Multiple entries')),
                       if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-import'), value: 'import', child: Text('Import from Excel')),
                       if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-template'), value: 'template', child: Text('Download template')),
