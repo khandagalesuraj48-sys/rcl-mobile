@@ -56,8 +56,17 @@ String againWords(Map<String, dynamic> res) {
   return [
     if (done.isNotEmpty) '${done.map((d) => '${d['id']}').join(', ')} sent again for verification (level 1${lv > 1 ? ' of $lv' : ''}) – saved when approved.',
     if (failed.isNotEmpty) 'Not sent: ${failed.map((f) => '${f['id']} – ${f['error']}').join('; ')}',
+    if ((res['kept'] as List? ?? []).isNotEmpty) 'Not sent again: ${(res['kept'] as List).join(', ')} – nothing changed.',
   ].join(' ');
 }
+
+/// (Mechanical update-129) the lines of a save's warnings in Mechanical's "Not sent again: To check (…): Line 2: … | … – entry VF-…
+/// stays as it is …".
+List<String> warnLines(String t) => t
+    .replaceFirst(RegExp(r'^Not sent again:\s*'), '')
+    .replaceFirst(RegExp(r'\s+–\s+entry \S+ stays as it is[\s\S]*$'), '')
+    .replaceFirst(RegExp(r'^To check \([^)]*\):\s*'), '')
+    .split(' | ');
 
 /// "Send again" (one or several): the entries, why each was not saved, a remark – then Mechanical sends them again. null = not sent.
 Future<Map<String, dynamic>?> askSendAgain(BuildContext context, Session s, List<Map<String, dynamic>> rs) async {
@@ -80,7 +89,18 @@ Future<Map<String, dynamic>?> askSendAgain(BuildContext context, Session s, List
       ok: 'Send again',
       neededMsg: 'Write why it is sent again.');
   if (note == null) return null;
-  return s.resendFlow([for (final r in rs) '${r['id']}'], note);
+  final res = await s.resendFlow([for (final r in rs) '${r['id']}'], note);
+  // (Mechanical update-129) a save's WARNINGS (not mistakes – e.g. a reading lower than the last one): shown to check; "Send again
+  // anyway" sends them confirmed, as "Save anyway" on the page – saved as they are when approved. Cancel: nothing changes.
+  final failed = (res['failed'] as List? ?? []).whereType<Map>().toList(), warn = failed.where((f) => f['warn'] == true).toList();
+  if (warn.isEmpty || !context.mounted) return res;
+  final rest = failed.where((f) => f['warn'] != true).toList();
+  final yes = await askLines(context, 'Please check – warnings, not mistakes', [for (final f in warn) for (final l in warnLines('${f['error']}')) '${f['id']} · $l'],
+      note: 'These are warnings, not mistakes (as "Save anyway" on the page). Check them: if they are right, press "Send again anyway" – sent to verification with the warnings confirmed, and saved as sent when approved. Otherwise press Cancel: nothing changes.',
+      yes: 'Send again anyway');
+  if (!yes) return {...res, 'failed': rest, 'kept': [for (final f in warn) '${f['id']}']};
+  final res2 = await s.resendFlow([for (final f in warn) '${f['id']}'], note, force: true);
+  return {...res2, 'done': [...(res['done'] as List? ?? []), ...(res2['done'] as List? ?? [])], 'failed': [...rest, ...(res2['failed'] as List? ?? [])]};
 }
 
 class VerifyStrip extends StatelessWidget {

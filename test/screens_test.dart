@@ -230,6 +230,49 @@ void main() {
     expect(find.byKey(const Key('verify-again-VF-00010')), findsNothing);
   });
 
+  testWidgets('(3.21.1, Mechanical update-129) Send again: the save\'s WARNINGS to check – Cancel: nothing changes; "Send again anyway": sent confirmed', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final now = DateTime.now().toUtc().toIso8601String();
+    const line = 'Line 1: MH-25-AJ-5091: KM Reading 48409.3 is less than the last KM Reading 48500.';
+    srv.flowReqs.add({'kind': 'Flow', 'mine': true, 'id': 'VF-00011', 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': 'Returned', 'at': now, 'decidedAt': now, 'decidedBy': 'suraj khandagale', 'levels': 1, 'canResend': true,
+        'summary': ['Add: MH-25-AJ-5091 · 05-10-2026 – Litres 100 (+58)'], 'note': 'approved', 'result': 'Not saved: To check (warnings, not mistakes): $line – the sender can send it again and confirm them'});
+    srv.resendWarn['VF-00011'] = [line];
+    final s = await ready(t, srv);
+    await t.runAsync(() => s.loadApprovals());
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('verify-strip')));
+    await settle(t, 800);
+    expect(find.textContaining('Not saved: To check (warnings, not mistakes): Line 1: MH-25-AJ-5091'), findsOneWidget, reason: 'why: the warning, not "refused"');
+    Future<void> again() async {
+      await t.tap(find.byKey(const Key('verify-again-VF-00011')));
+      await settle(t, 600);
+      await t.enterText(find.byKey(const Key('note-box')), 'Reading checked – a later day was saved first');
+      await t.tap(find.byKey(const Key('note-ok')));
+      await net(t);
+    }
+    // the warnings shown to check; Cancel → nothing changes
+    await again();
+    expect(srv.resent, [{'id': 'VF-00011', 'note': 'Reading checked – a later day was saved first'}]);
+    expect(find.text('Please check – warnings, not mistakes'), findsOneWidget);
+    expect(find.text('• VF-00011 · $line'), findsOneWidget);
+    expect(find.text('Send again anyway'), findsOneWidget);
+    await t.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await net(t);
+    expect(find.textContaining('Not sent again: VF-00011 – nothing changed.'), findsOneWidget);
+    expect(srv.resent.length, 1);
+    expect(find.byKey(const Key('verify-again-VF-00011')), findsOneWidget, reason: 'nothing lost: it can be sent again');
+    // "Send again anyway": sent with the warnings confirmed
+    await settle(t, 4500);
+    await again();
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    expect(srv.resent.last, {'ids': ['VF-00011'], 'note': 'Reading checked – a later day was saved first', 'force': true});
+    expect(find.text('VF-00011 sent again for verification (level 1) – saved when approved.'), findsOneWidget);
+    expect(find.byKey(const Key('verify-again-VF-00011')), findsNothing);
+  });
+
   testWidgets('(3.2.0) Approvals – the app\'s own screen: the counts, the requests; Approve, Reject (a reason), several at once', (t) async {
     phone(t);
     final srv = FakeServer()..crForMe = 3;

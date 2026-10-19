@@ -691,9 +691,12 @@ class Session extends ChangeNotifier {
 
   /// (3.21.1, Mechanical update-128) "Send again": his rejected / returned entries go to verification again exactly as they were sent
   /// (the same lines and photos), with his remark – nothing typed again. Mechanical checks each as a save first; one that would be
-  /// refused again is told and stays as it is. Returns Mechanical's answer (done: [{id, level, levels}], failed: [{id, error}]).
-  Future<Map<String, dynamic>> resendFlow(List<String> ids, String note) async {
-    final r = await api.call('resendFlow', [ids.length == 1 ? <String, dynamic>{'id': ids.first, 'note': note} : <String, dynamic>{'ids': ids, 'note': note}], true);
+  /// refused again is told and stays as it is. Returns Mechanical's answer (done: [{id, level, levels}], failed: [{id, error, warn}]).
+  /// (Mechanical update-129) [force]: he confirms the save's warnings ("Send again anyway"), as "Save anyway" on the page.
+  Future<Map<String, dynamic>> resendFlow(List<String> ids, String note, {bool force = false}) async {
+    final r = await api.call('resendFlow', [
+      force ? <String, dynamic>{'ids': ids, 'note': note, 'force': true} : ids.length == 1 ? <String, dynamic>{'id': ids.first, 'note': note} : <String, dynamic>{'ids': ids, 'note': note}
+    ], true);
     final m = r is Map ? r.cast<String, dynamic>() : <String, dynamic>{};
     if (m['list'] is Map) takeApprovals(m['list'] as Map);
     return m;

@@ -20,6 +20,9 @@ option asel send to approval or verification data loss nko"):**
   and a **Send again** button (in "My entries in verification" and in Approvals); **Send all again (n)** sends all of them. He
   writes why; the entry goes to verification again exactly as it was sent (the same lines and photos), from level 1 – nothing is
   typed again. Mechanical checks it as a save first: one that would be refused again is told and stays as it is (nothing lost).
+* **Warnings, not mistakes** (with Mechanical update-129): when the save only has warnings (e.g. a KM / Hrs reading lower than
+  the last one), they are listed – "Please check – warnings, not mistakes" – and **Send again anyway** sends the entry with them
+  confirmed (as "Save anyway" on the web); Cancel changes nothing. A mistake is said in full and is never passed.
 
 **Version 3.21.0 (19-10-2026, with Mechanical update-126: "dashbord war opening closing received je numbers … kuth hi click kel ki
 tyanchi entryies open hotil ek mast motha dialogbox … fkt show hotil"):**
