@@ -17,6 +17,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/help.dart' show GuideButton;
+import 'verify.dart' show askSendAgain, againWords;
 
 Future<void> openApprovals(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ApprovalsScreen()));
 
@@ -186,6 +187,17 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       if (!mounted) return;
       setState(() => _take(s, res['list']));
       toast(context, tr('${res['id']} taken back – nothing saved.'));
+    });
+  }
+
+  /// (3.21.1, Mechanical update-128) his own rejected / returned entry: sent again as it was, with his remark
+  Future<void> _sendAgain(Map<String, dynamic> r) async {
+    final s = SessionScope.read(context);
+    await _run('again:${r['id']}', () async {
+      final res = await askSendAgain(context, s, [r]);
+      if (res == null || !mounted) return;
+      if (res['list'] is Map) setState(() => _take(s, res['list']));
+      toast(context, tr(againWords(res)), bad: (res['done'] as List? ?? []).isEmpty || (res['failed'] as List? ?? []).isNotEmpty);
     });
   }
 
@@ -397,7 +409,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               ],
             )),
           ),
-        if (r['canDecide'] == true || r['canAnswer'] == true || r['canRemind'] == true) ...[
+        if (r['canDecide'] == true || r['canAnswer'] == true || r['canRemind'] == true || r['canResend'] == true) ...[
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             if (r['canDecide'] == true) ...[
@@ -410,6 +422,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               _btn('Take back', 'wd:$id', () => _takeBack(r), danger: true),
             ],
             if (r['canRemind'] == true) _btn('Remind', 'rem:$id', () => _remind(r)),
+            if (r['canResend'] == true) _btn('Send again', 'again:$id', () => _sendAgain(r), filled: true),
           ]),
         ],
       ]),
