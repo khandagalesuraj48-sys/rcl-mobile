@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/applock.dart';
 import 'package:rcl_mobile/core/lang.dart';
 import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
 import 'package:rcl_mobile/core/session.dart';
@@ -23,6 +24,7 @@ import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
 
 import 'fake_rtc.dart';
+import 'lock_test.dart' show FakeGate;
 import 'fake_server.dart';
 
 Future<void> loadFonts() async {
@@ -3186,5 +3188,63 @@ void main() {
     expect(find.byKey(const Key('ring-name')), findsNothing);
     expect(find.text('Missed call from Mahesh Jadhav.'), findsOneWidget);
     expect(find.descendant(of: find.byType(Badge), matching: find.text('1')), findsWidgets);
+  });
+
+  // ---------------- (3.27.0) the app lock ----------------
+  testWidgets('(3.27.0) The app lock: the app opens locked – the phone is asked by itself; not him → still locked; Unlock → the app; more than a minute away → locked again', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    final g = FakeGate()..answers.add(const LockAnswer(LockOutcome.no));
+    final lock = AppLock(g);
+    var now = DateTime(2026, 10, 14, 10, 30);
+    lock.clock = () => now;
+    await t.pumpWidget(RclApp(session: s, lock: lock));
+    await net(t);
+    expect(g.asked, 1, reason: 'the phone\'s box comes by itself');
+    expect(find.byKey(const Key('lock-screen')), findsOneWidget);
+    expect(find.text('RCL ERP is locked'), findsOneWidget);
+    expect(find.text('Not unlocked – press Unlock and try again.'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58_lock.png'));
+    await t.tap(find.byKey(const Key('lock-unlock')));
+    await settle(t, 600);
+    expect(g.asked, 2);
+    expect(find.byKey(const Key('lock-screen')), findsNothing);
+    expect(find.text('Home'), findsWidgets, reason: 'the app');
+    // 30 s away: still open; 2 minutes away: locked, asked again by itself
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    now = now.add(const Duration(seconds: 30));
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await settle(t, 600);
+    expect(find.byKey(const Key('lock-screen')), findsNothing);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    now = now.add(const Duration(minutes: 2));
+    g.answers.add(const LockAnswer(LockOutcome.no));
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await settle(t, 600);
+    expect(find.byKey(const Key('lock-screen')), findsOneWidget);
+    expect(g.asked, 3);
+    await t.tap(find.byKey(const Key('lock-unlock')));
+    await settle(t, 600);
+    expect(find.byKey(const Key('lock-screen')), findsNothing);
+  }, tags: ['golden']);
+
+  testWidgets('(3.27.0) A phone with no screen lock: the app opens, with a red line to set one; signed out: no lock screen', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    final g = FakeGate()..answers.add(const LockAnswer(LockOutcome.noLock));
+    await t.pumpWidget(RclApp(session: s, lock: AppLock(g)));
+    await net(t);
+    expect(find.byKey(const Key('lock-screen')), findsNothing);
+    expect(find.textContaining('This phone has no screen lock'), findsOneWidget);
+    final s2 = make(FakeServer());
+    await t.runAsync(s2.start);
+    final g2 = FakeGate();
+    await t.pumpWidget(RclApp(session: s2, lock: AppLock(g2)));
+    await net(t);
+    expect(find.byKey(const Key('lock-screen')), findsNothing, reason: 'nothing of the ERP is open before a sign-in');
+    expect(g2.asked, 0);
   });
 }

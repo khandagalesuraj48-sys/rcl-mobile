@@ -323,11 +323,15 @@ class Session extends ChangeNotifier {
       final r = await api.auth({'action': 'login', 'email': mail.trim(), 'password': password});
       // (15-10-2026) a new user, or a one-time password of the Super Admin: he sets his own password here in the app
       if (r['mustChange'] == true) return _go(Stage.setPassword);
+      freshSignIn?.call(); // (3.27.0) the password typed just now: the app lock does not ask again
       await _afterSignIn();
     } on ApiError catch (e) {
       _go(Stage.signedOut, e.toString());
     }
   }
+
+  /// (3.27.0) A sign-in typed just now (the app lock – applock.dart – then does not ask the fingerprint again).
+  void Function()? freshSignIn;
 
   Future<void> _afterSignIn() async {
     await _loadSites();
@@ -354,6 +358,7 @@ class Session extends ChangeNotifier {
       }
       return _go(Stage.setPassword, e.toString());
     }
+    freshSignIn?.call(); // (3.27.0) his own password set just now: not asked again
     try {
       await _afterSignIn();
     } on ApiError catch (e) {
