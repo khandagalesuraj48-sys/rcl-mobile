@@ -245,14 +245,14 @@ void main() {
   });
 
   group('BOQ print (3.24.0, Mechanical update-133)', () {
-    final vs = [
+    final vs = <Map<String, dynamic>>[
       {'name': 'VP Vendor', 'address': 'At Post Lonad, Tal Bhiwandi', 'phone': '9800000133', 'pan': 'ABCDE1234J', 'gstReg': 'No', 'bank': 'HDFC Bank', 'account': '12345671', 'ifsc': 'HDFC0009218'},
     ];
     final l1 = {'no': 'VP-1', 'type': 'Water Tanker', 'basis': 'Per Trip', 'rate': 1000, 'diesel': 'Debit Basis'}, l2 = {'no': 'VP-2', 'type': 'Water Tanker', 'basis': 'Per Trip', 'rate': 500, 'diesel': 'Debit Basis'};
     final n1 = {'no': 'VP-1', 'type': 'Water Tanker', 'basis': 'Per Trip', 'rate': 1200, 'diesel': 'Debit Basis'};
     final b1 = <String, dynamic>{'id': 'BOQ-0038', 'no': '1', 'vendor': 'VP Vendor', 'from': '2026-08-01', 'to': '2026-08-31', 'amendOf': '', 'amendNo': 0, 'woNo': 'SLI/VTR-Office/WO/2024-2025/73', 'woDate': '2024-05-01', 'tdsPct': 2, 'lines': [l1, l2]};
     final a1 = <String, dynamic>{'id': 'BOQ-0039', 'no': '2', 'vendor': 'VP Vendor', 'from': '2026-09-01', 'to': '', 'amendOf': 'BOQ-0038', 'amendNo': 1, 'woNo': '', 'woDate': '', 'tdsPct': 2, 'lines': [n1]};
-    final hist = [
+    final hist = <Map<String, dynamic>>[
       {'vendor': 'VP Vendor', 'no': 'VP-1', 'periods': [
         {'from': '2026-08-01', 'to': '2026-08-31', 'boq': 'BOQ-0038', 'boqNo': '1', 'amendNo': 0, 'of': '', 'line': l1},
         {'from': '2026-09-01', 'to': '', 'boq': 'BOQ-0039', 'boqNo': '2', 'amendNo': 1, 'of': '1', 'line': n1},
