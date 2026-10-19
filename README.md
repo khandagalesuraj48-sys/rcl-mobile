@@ -14,6 +14,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.25.0 (19-10-2026, with Mechanical update-134: "super admin user ni kelelI konti hi entry mg ti save aso approval
+madhe aso ki retuen aso ki reject aso konti hi entry delet kru shakel … single date or ya period wise"):**
+* **Diesel Issue ⋮ → Delete entries – Super Admin** (the Super Admin only): a date or From – To, who entered it, a machinery → the
+  saved entries and the ones waiting for verification / returned / rejected, each with a tick → **Delete ticked** (all together or
+  none; one of a submitted RA Bill or a closed month cannot be ticked – it says why). **Deleted entries** are kept whole → **Bring
+  back ticked** (the same entry, its ID; checked again). The same server actions as the web (superDelList / superDelete /
+  superRestore).
+
 **Version 3.24.0 (19-10-2026, with Mechanical update-133: "jewa app la update detos n tya madhe kay new ale he 3 language madhe
 dakhaw … next time update pasun", "je boq bantat je amendment bante tya warti work order number date he sagle yeu de … proper
 amendment watayla haw"):**

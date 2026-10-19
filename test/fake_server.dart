@@ -35,6 +35,10 @@ class FakeServer {
   /// (3.23.0, Mechanical update-132) the rate history machinery-wise that getBoqs gives
   final boqHist = <Map<String, dynamic>>[];
   final editRefuse = <String, Map<String, dynamic>>{};
+  // (3.25.0, Mechanical update-134) the Super Admin's delete: the entries of the dates, those deleted, the refusals (id → words)
+  final sdSaved = <Map<String, dynamic>>[], sdWaiting = <Map<String, dynamic>>[], sdDeleted = <Map<String, dynamic>>[];
+  final sdRefuse = <String, String>{};
+  final sdAsked = <Map<String, dynamic>>[];
   int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
   final decided = <Map<String, dynamic>>[]; // (3.2.0) what the Approvals screen sent (decide, several, answer)
   final rulesSaved = <Map<String, dynamic>>[];
@@ -706,6 +710,36 @@ class FakeServer {
           }
           if (x['ids'] == null && failed.isNotEmpty && !resendRefuse.containsKey(failed.first['id'])) return _j({'error': failed.first['error']}, 500);      // (update-129: a refusal comes back in failed)
           return _j({'result': {'ok': true, 'done': done, 'failed': failed, 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
+        case 'superDelList':      // (3.25.0)
+          sdAsked.add({'fn': action, ...(a[0] as Map).cast<String, dynamic>()});
+          if (!superAdmin) return _j({'error': 'Only the Super Admin deletes or brings back entries here (signed in through the Portal).'}, 500);
+          final x = (a[0] as Map).cast<String, dynamic>();
+          return _j({'result': {'from': x['from'], 'to': '${x['to'] ?? ''}'.isEmpty ? x['from'] : x['to'], 'closedUpto': '', 'saved': sdSaved, 'waiting': sdWaiting, 'deleted': sdDeleted, 'users': ['Mahesh Jadhav', 'Sujit Mule']}});
+        case 'superDelete':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          sdAsked.add({'fn': action, ...x});
+          final ids = [for (final i in x['ids'] as List? ?? const []) '$i'], flows = [for (final i in x['flows'] as List? ?? const []) '$i'];
+          final bad = [for (final i in [...ids, ...flows]) if (sdRefuse.containsKey(i)) sdRefuse[i]!];
+          if (bad.isNotEmpty) return _j({'result': {'ok': false, 'errors': bad}});
+          final kept = <Map<String, dynamic>>[];
+          for (final i in [...ids, ...flows]) {
+            final r = [...sdSaved, ...sdWaiting].firstWhere((r) => r['id'] == i);
+            final del = 'DEL-${(sdDeleted.length + kept.length + 1).toString().padLeft(5, '0')}';
+            kept.add({'del': del, 'entry': i});
+            sdDeleted.add({'id': del, 'entry': i, 'kind': ids.contains(i) ? 'saved' : 'request', 'was': ids.contains(i) ? 'Saved' : r['label'], 'dates': r['dates'] ?? [r['date']], 'nos': r['nos'] ?? r['no'], 'qty': r['qty'], 'by': r['by'], 'deletedBy': 'Sujit Mule', 'deletedAt': '2026-10-14T05:00:00.000Z', 'lines': r['lines'] ?? []});
+          }
+          sdSaved.removeWhere((r) => ids.contains(r['id']));
+          sdWaiting.removeWhere((r) => flows.contains(r['id']));
+          return _j({'result': {'ok': true, 'deleted': kept.length, 'saved': ids.length, 'requests': flows.length, 'kept': kept}});
+        case 'superRestore':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          sdAsked.add({'fn': action, ...x});
+          final ids = [for (final i in x['ids'] as List? ?? const []) '$i'];
+          final bad = [for (final i in ids) if (sdRefuse.containsKey(i)) sdRefuse[i]!];
+          if (bad.isNotEmpty) return _j({'result': {'ok': false, 'errors': bad}});
+          final back = [for (final r in sdDeleted.where((r) => ids.contains(r['id']))) '${r['entry']}'];
+          sdDeleted.removeWhere((r) => ids.contains(r['id']));
+          return _j({'result': {'ok': true, 'restored': back.length, 'ids': back}});
         case 'openFlow':
           final x = (a[0] as Map).cast<String, dynamic>(), id = '${x['id']}';
           final r = flowReqs.firstWhere((r) => r['id'] == id, orElse: () => <String, dynamic>{}), f = fixOf[id];
