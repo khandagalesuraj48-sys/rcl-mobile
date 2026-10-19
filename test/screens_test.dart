@@ -1245,7 +1245,8 @@ void main() {
     await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
     await net(t);
     final del = srv.sdAsked.firstWhere((x) => x['fn'] == 'superDelete');
-    expect((del['ids'], del['flows']), (['DI-000101'], ['VF-00009']));
+    expect(del['ids'], ['DI-000101']);
+    expect(del['flows'], ['VF-00009']);
     expect(find.text('Saved entries (1)'), findsOneWidget);
     expect(find.text('Deleted entries (2)'), findsOneWidget);
     // brought back: one the server refuses → said, nothing back; then brought back
