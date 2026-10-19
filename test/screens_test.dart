@@ -273,6 +273,115 @@ void main() {
     expect(find.byKey(const Key('verify-again-VF-00011')), findsNothing);
   });
 
+  testWidgets('(3.22.0, Mechanical update-130) Open & correct: his returned Multiple entries opens in its own form – why, the wrong row; corrected → sent again; one entry too; the approver sees what changed', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final now = DateTime.now().toUtc().toIso8601String();
+    Finder tf(String k) => find.descendant(of: find.byKey(Key(k)), matching: find.byType(TextField));
+    String val(String k) => t.widget<TextField>(tf(k)).controller!.text;
+    Map<String, dynamic> req(String id, String st, Map<String, dynamic> x) => {'kind': 'Flow', 'mine': true, 'id': id, 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': st, 'at': now, 'decidedAt': now, 'decidedBy': 'suraj khandagale', 'levels': 1, 'canResend': true, 'canFix': true, 'summary': ['Add: MH-25-AJ-2169 · 14-10-2026 – Litres 10'], ...x};
+    srv.flowReqs.addAll([
+      req('VF-00006', 'Returned', {'note': 'approved', 'result': 'Not saved: Line 2: "KDX-130B" is not in Master.'}),
+      req('VF-00007', 'Rejected', {'note': 'litres are 12'}),
+    ]);
+    srv.fixOf['VF-00006'] = {
+      'fn': 'saveDieselBulk',
+      'form': 'date',
+      'args': [
+        {'date': '2026-10-14', 'shift': 'Day', 'source': 'Dispenser', 'force': false, 'rows': [
+          {'no': 'MH-25-AJ-2169', 'qty': '10', 'kmReading': '5100', 'hrReading': '', 'driver': 'Ravi', 'remark': '', 'mode': 'KM'},
+          {'no': 'KDX-130B', 'qty': '6', 'kmReading': '', 'hrReading': '', 'driver': '', 'remark': '', 'mode': ''},
+        ]},
+      ],
+      'check': {'ok': false, 'errors': [{'row': 2, 'msg': '"KDX-130B" is not in Master.'}]},
+    };
+    srv.fixOf['VF-00007'] = {
+      'fn': 'saveDieselIssue',
+      'form': 'one',
+      'args': [{'date': '2026-10-14', 'shift': 'Day', 'source': 'Dispenser', 'no': 'MH-25-AJ-2169', 'qty': 10, 'kmReading': 5200, 'hrReading': '', 'driver': 'Ravi', 'remark': '', 'force': false, 'mode': 'KM', 'photos': [{'k': 'dash', 'p': 'x/dash.jpg'}]}],
+      'check': {'ok': true},
+    };
+    srv.editRefuse['VF-00006'] = {'errors': [{'row': 2, 'msg': '"KDX-130B" is not in Master.'}]};
+    final s = await ready(t, srv);
+    await t.runAsync(() => s.loadApprovals());
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('verify-strip')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('verify-fix-VF-00006')), findsOneWidget);
+    expect(find.byKey(const Key('verify-again-VF-00006')), findsOneWidget, reason: '"Send again" stays');
+    // Multiple entries: opens as it was sent – why, what is wrong now, the row marked
+    await t.tap(find.byKey(const Key('verify-fix-VF-00006')));
+    await net(t);
+    expect(find.byKey(const Key('fix-bar')), findsOneWidget);
+    expect(find.text('Correcting VF-00006 – Returned, not saved'), findsOneWidget);
+    expect(find.text('Not saved: Line 2: "KDX-130B" is not in Master.'), findsOneWidget);
+    expect(find.text('Now: the rows in red are wrong – correct them (the list is under the rows).'), findsOneWidget);
+    expect(find.text('Send again (VF-00006)'), findsOneWidget);
+    expect(find.byKey(const Key('im-type')), findsNothing, reason: 'its own form only');
+    expect([val('im-row-0-qty'), val('im-row-0-km'), val('im-row-0-driver')], ['10', '5100', 'Ravi']);
+    await t.scrollUntilVisible(find.byKey(const Key('im-row-1-del')), 200, scrollable: find.descendant(of: find.byKey(const Key('im-list')), matching: find.byType(Scrollable)).first);
+    await settle(t, 400);
+    expect(find.text('"KDX-130B" – not in Master: pick the machinery'), findsOneWidget);
+    expect(find.text('"KDX-130B" is not in Master.'), findsOneWidget, reason: 'the row says why');
+    expect(val('im-row-1-qty'), '6');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/52_fix_many.png'));
+    // still wrong: the remark is asked once; the save's answer marks the row – nothing sent
+    await tapK(t, 'im-save');
+    await settle(t, 600);
+    expect(find.text('Send VF-00006 again, corrected?'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('note-box')), 'KDX-130B was a typing mistake');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(srv.edited.length, 1);
+    expect(((srv.edited.single['args'] as List).single as Map)['rows'][1]['no'], 'KDX-130B', reason: 'as it was sent – the save says why');
+    expect(find.textContaining('Nothing saved. Fix the rows marked in red.'), findsOneWidget);
+    // corrected: row 2 → MH-25-AJ-2169, its reading → sent again (the remark kept)
+    srv.editRefuse.remove('VF-00006');
+    await tapK(t, 'im-row-1-pick');
+    await settle(t, 800);
+    await t.tap(find.text('MH-25-AJ-2169').last);
+    await settle(t, 600);
+    await t.enterText(tf('im-row-1-km'), '5150');
+    await settle(t, 300);
+    await tapK(t, 'im-save');
+    await net(t);
+    expect(srv.edited.length, 2);
+    expect(srv.edited.last['note'], 'KDX-130B was a typing mistake');
+    expect(((srv.edited.last['args'] as List).single as Map)['rows'], [
+      {'no': 'MH-25-AJ-2169', 'qty': '10', 'kmReading': '5100', 'hrReading': '', 'driver': 'Ravi', 'remark': '', 'mode': 'KM'},
+      {'no': 'MH-25-AJ-2169', 'qty': '6', 'kmReading': '5150', 'hrReading': '', 'driver': '', 'remark': '', 'mode': 'KM'},
+    ]);
+    expect(find.text('VF-00006 corrected and sent again for verification (level 1) – saved when approved.'), findsOneWidget);
+    expect(find.byKey(const Key('verify-fix-VF-00006')), findsNothing, reason: 'waiting again');
+    // one entry: opens in the one-entry form as it was sent; litres corrected → sent
+    await t.tap(find.byKey(const Key('verify-fix-VF-00007')));
+    await net(t);
+    expect(find.text('Correcting VF-00007 – Rejected, not saved'), findsOneWidget);
+    expect(find.text('Rejected by suraj khandagale: litres are 12'), findsOneWidget);
+    expect(find.text('Photos sent with it: 1 – they stay with it; a new photo of the same kind takes its place.'), findsOneWidget);
+    final litres = find.byWidgetPredicate((w) => w is TextField && w.controller?.text == '10');
+    expect(litres, findsOneWidget);
+    await t.enterText(litres, '12');
+    await settle(t, 300);
+    await t.ensureVisible(find.text('Send again (VF-00007)'));
+    await t.tap(find.text('Send again (VF-00007)'));
+    await settle(t, 600);
+    await t.enterText(find.byKey(const Key('note-box')), 'Litres 12');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    final one = (srv.edited.last['args'] as List).single as Map;
+    expect([srv.edited.last['id'], one['qty'], one['kmReading'], one['no'], one['mode'], one.containsKey('photos')], ['VF-00007', 12, 5200, 'MH-25-AJ-2169', 'KM', false], reason: 'the photos sent with it stay on the server');
+    expect(find.text('VF-00007 corrected and sent again for verification (level 1) – saved when approved.'), findsOneWidget);
+    // the approver's Approvals: what was corrected
+    await t.tap(find.text('Open Approvals'));
+    await net(t);
+    expect(find.byKey(const Key('cr-fixed-VF-00006')), findsOneWidget);
+    expect(find.text('Corrected by Mahesh Jadhav: KDX-130B was a typing mistake'), findsOneWidget);
+    expect(find.text('• Row 2 – Machinery: KDX-130B → KDX-130'), findsWidgets);
+  }, tags: ['golden']);
+
   testWidgets('(3.2.0) Approvals – the app\'s own screen: the counts, the requests; Approve, Reject (a reason), several at once', (t) async {
     phone(t);
     final srv = FakeServer()..crForMe = 3;

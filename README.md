@@ -14,6 +14,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.22.0 (19-10-2026, with Mechanical update-130: "jy entry pathwale hote te mala open krun edit pn krta yaw kay kuth
+chukley te pn samjayla haw"):**
+* **Open & correct:** his own Rejected or Returned **Diesel Issue** entry (One entry, Multiple entries by date or by machinery)
+  opens in the app's own form it was made in, as it was sent: on top why it came back and what is wrong now; the wrong rows
+  marked with the reason. He corrects it and presses **Send again (VF-…)**: he writes what he corrected; it goes to
+  verification again – the same request, from level 1 – and is saved when approved. Still wrong: marked again, nothing sent.
+  The photos sent with one entry stay with it. **Stop correcting** leaves it as it was. "Send again" (as it was) stays too.
+* **Approvals:** a corrected entry shows **Corrected by …** with what changed (before → after); its steps list the changes.
+
 **Version 3.21.1 (19-10-2026, with Mechanical update-128: "ata user prt tya entry krt basnar nahi … jyana return zaley tith tyana
 option asel send to approval or verification data loss nko"):**
 * **Send again:** an entry of his that was Rejected, or Returned (approved, but the save refused it), shows why it was not saved

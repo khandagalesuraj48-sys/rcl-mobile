@@ -702,6 +702,22 @@ class Session extends ChangeNotifier {
     return m;
   }
 
+  /// (3.22.0, Mechanical update-130) "Open & correct": his rejected / returned entry as it was sent, the form it opens in, and what
+  /// the save says of it now ({id, fn, form, args, status, result, decidedBy, note, check}).
+  Future<Map<String, dynamic>> openFlow(String id) async {
+    final r = await api.call('openFlow', [<String, dynamic>{'id': id}]);
+    return r is Map ? r.cast<String, dynamic>() : <String, dynamic>{};
+  }
+
+  /// …corrected: Mechanical checks it as a save – its own answer when it refuses (errors / warnings / warning: nothing sent), else
+  /// sent again, corrected ({ok, id, level, levels, changes, list}).
+  Future<Map<String, dynamic>> editFlow(String id, String note, List<Object?> args) async {
+    final r = await api.call('editFlow', [<String, dynamic>{'id': id, 'note': note, 'args': args}], true);
+    final m = r is Map ? r.cast<String, dynamic>() : <String, dynamic>{};
+    if (m['list'] is Map) takeApprovals(m['list'] as Map);
+    return m;
+  }
+
   /* ---------------- KEPT ON THIS PHONE (3.1.7): an entry saved with no network ----------------
    * The person may keep it on the phone; it is sent by itself when the network is back (every live tick, and when the app comes
    * back), with the SAME save number – the server saves it once, also when the first try had reached it. What the server then

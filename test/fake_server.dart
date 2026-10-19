@@ -30,6 +30,11 @@ class FakeServer {
   final resendRefuse = <String, String>{};
   /// (Mechanical update-129) an id in [resendWarn] gets its save's warnings (lines) back unless sent with force (confirmed)
   final resendWarn = <String, List<String>>{};
+  /// (3.22.0, Mechanical update-130) "Open & correct": each entry's {fn, form, args, check}; the corrected entries that came; an id in
+  /// [editRefuse] is answered as its save would (errors / warnings / warning – nothing sent) until it comes with force
+  final fixOf = <String, Map<String, dynamic>>{};
+  final edited = <Map<String, dynamic>>[];
+  final editRefuse = <String, Map<String, dynamic>>{};
   int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
   final decided = <Map<String, dynamic>>[]; // (3.2.0) what the Approvals screen sent (decide, several, answer)
   final rulesSaved = <Map<String, dynamic>>[];
@@ -703,6 +708,23 @@ class FakeServer {
           }
           if (x['ids'] == null && failed.isNotEmpty && failed.first['warn'] == null) return _j({'error': failed.first['error']}, 500);      // (update-129: a refusal comes back in failed)
           return _j({'result': {'ok': true, 'done': done, 'failed': failed, 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
+        case 'openFlow':
+          final x = (a[0] as Map).cast<String, dynamic>(), id = '${x['id']}';
+          final r = flowReqs.firstWhere((r) => r['id'] == id, orElse: () => <String, dynamic>{}), f = fixOf[id];
+          if (f == null || r['canFix'] != true) return _j({'error': 'Entry $id cannot be opened to correct here (Diesel Issue – one entry and Multiple entries – only, for now) – use "Send again", or enter it again.'}, 500);
+          return _j({'result': {'ok': true, 'id': id, 'fn': f['fn'], 'form': f['form'], 'args': f['args'], 'status': r['status'], 'result': r['result'] ?? '', 'decidedBy': r['decidedBy'] ?? '', 'note': r['note'] ?? '', 'check': f['check'] ?? {'ok': true}}});
+        case 'editFlow':
+          final x = (a[0] as Map).cast<String, dynamic>(), id = '${x['id']}';
+          edited.add(x);
+          final first = (x['args'] as List).first, forced = first is Map && first['force'] == true;
+          if (editRefuse.containsKey(id) && !forced) return _j({'result': {...editRefuse[id]!, 'ok': false, 'id': id, 'notSent': true}});
+          final r = flowReqs.firstWhere((r) => r['id'] == id);
+          r['status'] = 'Pending';
+          r['canFix'] = false;
+          r['canResend'] = false;
+          r['canRemind'] = true;
+          r['history'] = [...(r['history'] as List? ?? const []), {'step': 'Corrected and sent again', 'level': 1, 'by': 'Mahesh Jadhav', 'at': DateTime.now().toUtc().toIso8601String(), 'note': x['note'], 'changes': ['Row 2 – Machinery: KDX-130B → KDX-130']}];
+          return _j({'result': {'ok': true, 'id': id, 'status': 'Pending', 'level': 1, 'levels': 1, 'changes': ['Row 2 – Machinery: KDX-130B → KDX-130'], 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
         case 'getFlowRules':
           return _j({'result': {
             'tasks': [{'m': 'Diesel Issue', 'label': 'Diesel Issue', 'fns': ['saveDieselIssue'], 'diesel': true}, {'m': 'Log Book', 'label': 'Log Book', 'fns': ['saveLogRows'], 'diesel': false}],
