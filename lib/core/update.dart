@@ -8,7 +8,10 @@
  *             own – about half of the file for every phone; a release without it: that file, as before.
  *   Windows – (3.19.0) the app downloads the setup (RCL-ERP-Setup-….exe), checks its fingerprint ("win") and runs it: the
  *             setup closes the app, puts the new version in its place and opens it again (windows/installer.iss).
- *   iPhone  – Apple lets an app be updated only through the App Store / TestFlight (not yet set up). */
+ *   iPhone  – Apple lets an app be updated only through the App Store / TestFlight (not yet set up).
+ * (3.24.0, asked 19-10-2026: "jewa app la update detos n tya madhe kay new ale he 3 language madhe dakhaw … next time update pasun")
+ * The update's question shows what is new in it in English, मराठी and हिंदी – the release's notes between <!-- rcl-new --> and
+ * <!-- /rcl-new --> (.github/workflows/release.yml); a release without them: its name, as before. */
 import 'dart:convert';
 import 'dart:ffi' show Abi;
 import 'dart:io';
@@ -65,7 +68,7 @@ AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer
   String name(Map a) => (a['name'] ?? '').toString().toLowerCase();
   String link(Map a) => (a['browser_download_url'] ?? '').toString();
   final build = b.toInt();
-  AppUpdate made(String url, String fingerprint) => AppUpdate(build: build, version: (meta['version'] ?? '').toString(), notes: (j['name'] ?? '').toString(), url: url, sha256: fingerprint);
+  AppUpdate made(String url, String fingerprint) => AppUpdate(build: build, version: (meta['version'] ?? '').toString(), notes: releaseNotes(j), url: url, sha256: fingerprint);
   // (3.19.1) a phone: its own processor's file, when the release has it
   final abi = computer ? '' : appAbi(), own = meta['apk'];
   if (abi.isNotEmpty && own is Map) {
@@ -77,6 +80,13 @@ AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer
   final url = link(file);
   if (!url.startsWith('https://github.com/')) return null;
   return made(url, sha);
+}
+
+/// (3.24.0) What is new in the release (English, मराठी, हिंदी – as written); a release without it: its name.
+String releaseNotes(Map<String, dynamic> j) {
+  final m = RegExp(r'<!-- rcl-new -->([\s\S]*?)<!-- /rcl-new -->').firstMatch((j['body'] ?? '').toString());
+  final t = (m?.group(1) ?? '').replaceAll('\r', '').trim();
+  return t.isNotEmpty ? t : (j['name'] ?? '').toString();
 }
 
 /// A newer version than the one on this phone, or null (also when it cannot be asked – the app works on).
@@ -98,7 +108,7 @@ Future<void> runUpdate(BuildContext context, AppUpdate u) async {
     return;
   }
   if (onComputer) return _updateComputer(context, u);
-  final ok = await ask(context, 'Update to ${u.version}?', [if (u.notes.isNotEmpty) u.notes, bi('The app downloads the new version and Android asks you to install it.', 'नवीन version download होईल; Android install विचारेल.', '\n\n')].join('\n\n'), yes: 'Update');
+  final ok = await ask(context, 'Update to ${u.version}?', bi('The app downloads the new version and Android asks you to install it.', 'नवीन version download होईल; Android install विचारेल.', '\n\n'), plain: u.notes, yes: 'Update');
   if (!ok || !context.mounted) return;
   final progress = ValueNotifier<String>('Starting…');
   showDialog<void>(
@@ -224,8 +234,8 @@ Future<String> downloadSetup(AppUpdate u, Directory dir, void Function(int perce
 
 Future<void> _updateComputer(BuildContext context, AppUpdate u) async {
   final ok = await ask(context, 'Update to ${u.version}?',
-      [if (u.notes.isNotEmpty) u.notes, bi('The app downloads the new version, closes, installs it and opens again (about a minute).', 'नवीन version download होईल; app बंद होऊन install होईल आणि पुन्हा उघडेल (सुमारे 1 मिनिट).', '\n\n')].join('\n\n'),
-      yes: 'Update');
+      bi('The app downloads the new version, closes, installs it and opens again (about a minute).', 'नवीन version download होईल; app बंद होऊन install होईल आणि पुन्हा उघडेल (सुमारे 1 मिनिट).', '\n\n'),
+      plain: u.notes, yes: 'Update');
   if (!ok || !context.mounted) return;
   final progress = ValueNotifier<String>('Starting…');
   showDialog<void>(

@@ -24,6 +24,7 @@ String reportHtml(RDoc doc, {required String company, required String site, requ
       'h3{font-size:10pt;margin:10px 0 3px}p.n{color:#4B5563;font-size:7.5pt;margin:3px 0}'
       'table{border-collapse:collapse;width:100%;margin:4px 0 8px}th,td{border:1px solid #CBD5E1;padding:2px 3px;vertical-align:top;white-space:pre-line}th{background:#E5E7EB;text-align:left}'
       'td.n{text-align:right;white-space:nowrap}tr.g td{background:#E6F4E8;font-weight:700}tr.s td{background:#F3F4F6;font-weight:700}tr.t td{background:#E5E7EB;font-weight:700}tr.u td{background:#FFF7ED}thead{display:table-header-group}tr{page-break-inside:avoid}'
+      'p.l{font-size:9.5pt;line-height:1.45;margin:5px 0;white-space:pre-line}p.ob{font-size:9.5pt;font-weight:700;margin:14px 0 0}'
       '.sign{display:flex;gap:30px;margin-top:40px}.sign div{flex:1;border-top:1px solid #111827;text-align:center;padding-top:3px;font-size:8.5pt}.sign small{display:block;color:#6B7280}'
       '</style></head><body>');
   b.write('<div class="h">${logo.isNotEmpty ? '<img src="$logo" alt="">' : ''}<div class="t"><h1>${_e(name)}</h1>${site.isNotEmpty ? '<div class="s">${_e(site)}</div>' : ''}<h2>${_e(doc.title)}</h2></div>'
@@ -32,7 +33,7 @@ String reportHtml(RDoc doc, {required String company, required String site, requ
   if (doc.kpis.isNotEmpty) b.write('<div class="k">${doc.kpis.map((k) => '<div><span>${_e(k.$1)}</span><b>${_e(k.$2)}</b></div>').join()}</div>');
   for (final x in doc.blocks) {
     if (x is RNote) {
-      b.write(x.heading ? '<h3>${_e(x.text)}</h3>' : '<p class="n">${_e(x.text)}</p>');
+      b.write(x.heading ? '<h3>${_e(x.text)}</h3>' : '<p class="${x.letter ? 'l' : 'n'}">${_e(x.text)}</p>');
       continue;
     }
     if (x is! RTable) continue;
@@ -60,6 +61,7 @@ String reportHtml(RDoc doc, {required String company, required String site, requ
     b.write('</tbody></table>');
   }
   final signs = doc.signs.isNotEmpty ? doc.signs : const [('Prepared by', 'Name, Sign & Date'), ('Checked by', 'Name, Sign & Date'), ('Approved by', 'Name, Sign & Date')];
+  if (doc.onBehalf) b.write('<p class="ob">For and on behalf of ${_e(name.toUpperCase())}.</p>');
   b.write('<div class="sign">${signs.map((s) => '<div><b>${_e(s.$1)}</b><small>${_e(s.$2)}</small></div>').join()}</div></body></html>');
   return b.toString();
 }

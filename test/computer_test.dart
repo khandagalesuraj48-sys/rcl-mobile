@@ -113,6 +113,13 @@ void main() {
       expect(a.url, endsWith('/rcl-erp-3.19.0-122.apk'));
       expect(a.sha256, apkSha);
     });
+    test('(3.24.0) what is new: the notes between <!-- rcl-new --> and <!-- /rcl-new --> – English, मराठी, हिंदी as written; else the name', () {
+      const n = 'What is new in 3.19.0:\n• Vendor BOQ: the amendment letter\n\nनवीन काय (3.19.0):\n• Vendor BOQ: amendment पत्र\n\nनया क्या है (3.19.0):\n• Vendor BOQ: संशोधन पत्र';
+      final r = rel()..['body'] = '<!-- rcl-new -->\n$n\n<!-- /rcl-new -->\n\nRCL ERP 3.19.0 (122) – Android and Windows.\n\n<!-- rcl:{"build":122,"version":"3.19.0","sha256":"$apkSha","win":"$winSha"} -->';
+      expect(parseRelease(r, 121)!.notes, n);
+      expect(parseRelease(r, 121, computer: true)!.notes, n);
+      expect(parseRelease(rel(), 121)!.notes, 'RCL ERP 3.19.0 (122)', reason: 'a release without them: its name, as before');
+    });
     test('a computer takes nothing from a release without the setup or without its fingerprint (an Android-only release)', () {
       expect(parseRelease(rel(meta: '<!-- rcl:{"build":122,"version":"3.19.0","sha256":"$apkSha"} -->'), 121, computer: true), isNull);
       expect(parseRelease(rel(assets: [{'name': 'rcl-erp-3.19.0-122.apk', 'browser_download_url': 'https://github.com/x/rcl.apk'}]), 121, computer: true), isNull);
@@ -199,6 +206,20 @@ void main() {
     await t.runAsync(() async {
       if (dir.existsSync()) dir.deleteSync(recursive: true);
     });
+  });
+
+  testWidgets('(3.24.0) the update question shows what is new – English, मराठी, हिंदी – as written, also with Marathi chosen', (t) async {
+    const n = 'What is new in 3.24.0:\n• Vendor BOQ: the amendment letter\n\nनवीन काय (3.24.0):\n• Vendor BOQ: amendment पत्र\n\nनया क्या है (3.24.0):\n• Vendor BOQ: संशोधन पत्र';
+    await t.runAsync(() => Lang.i.set('mr', read: (p) async => jsonEncode(p.contains('web_') ? {'• Vendor BOQ: the amendment letter': 'बदललेले'} : <String, String>{})));
+    expect(tr('• Vendor BOQ: the amendment letter'), 'बदललेले', reason: 'the app would turn this line …');
+    final u = AppUpdate(build: 131, version: '3.24.0', notes: n, url: 'https://github.com/x/RCL-ERP-Setup-3.24.0-131.exe', sha256: 'c' * 64);
+    await t.pumpWidget(MaterialApp(home: Builder(builder: (c) => Scaffold(body: Center(child: TextButton(onPressed: () => runUpdate(c, u), child: const Text('go')))))));
+    await t.tap(find.text('go'));
+    await settle(t, 600);
+    expect(t.widget<Text>(find.byKey(const Key('ask-plain'))).data, n, reason: '… but what is new is shown as written');
+    await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextButton)).first);
+    await settle(t, 300);
+    expect(find.byKey(const Key('ask-plain')), findsNothing);
   });
 
   testWidgets('Home on a computer: no QR scanner (the phone\'s camera), the search and refresh are there; the mouse drags a list', (t) async {
