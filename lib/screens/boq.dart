@@ -38,7 +38,7 @@ class BoqScreen extends StatefulWidget {
 }
 
 class _BoqScreenState extends State<BoqScreen> {
-  List<Map<String, dynamic>> vendors = [], boqs = [];
+  List<Map<String, dynamic>> vendors = [], boqs = [], hist = []; // (3.23.0) hist: the rate history machinery-wise (Mechanical update-132)
   Map<String, dynamic>? missing;
   bool loading = true, showMissing = false;
   String err = '', vendor = '', asOn = '';
@@ -65,6 +65,7 @@ class _BoqScreenState extends State<BoqScreen> {
       setState(() {
         vendors = _maps(d['vendors']);
         boqs = _maps(d['boqs']);
+        hist = _maps(d['history']);
         loading = false;
         err = '';
         if (vendor.isNotEmpty && !vendors.any((v) => v['name'] == vendor)) vendor = '';
@@ -183,6 +184,7 @@ class _BoqScreenState extends State<BoqScreen> {
             EmptyState('No BOQ yet${vendor.isNotEmpty ? ' for $vendor' : ''} – press "+ New BOQ" (or "Make BOQ" in the vendor list).', '', pic: 'clipboard')
           else
             for (final b in list) Padding(padding: const EdgeInsets.only(bottom: 10), child: _card(b, can)),
+          if (!showMissing && !loading) ..._history(),
           const SizedBox(height: 14),
           _rateCheck(s),
         ]),
@@ -229,6 +231,63 @@ class _BoqScreenState extends State<BoqScreen> {
         ]),
       ]),
     );
+  }
+
+  /* (3.23.0, Mechanical update-132: "mala disayla haw old kay hot nantr amendment zali kadhi … boq period wise ani vehicle wise")
+   * THE RATE HISTORY of the vendor's machinery – period by period, as the bills take it (Mechanical boqHistory_): from – to, the rate,
+   * which BOQ / amendment gave it, and what changed. */
+  List<Widget> _history() {
+    if (vendor.isEmpty) {
+      return [Padding(padding: const EdgeInsets.only(top: 4), child: Text('Pick a vendor to see the rate history of each machinery – which rate from which date, and which amendment changed it.', key: const Key('bh-pick'), style: const TextStyle(fontSize: 13, color: C.muted)))];
+    }
+    final list = hist.where((h) => h['vendor'] == vendor).toList();
+    if (list.isEmpty) return const [];
+    String txt(Map<String, dynamic> l) => '${boqLineText(l)} · ${boqDieselText(l)}';
+    return [
+      const SizedBox(height: 8),
+      Text('Rate history – machinery-wise', key: const Key('bh-head'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 2),
+      Text(tr('Each machinery of {0}: which rate from which date to which date, and which BOQ or amendment gave it. The old rate ends the day before an amendment starts. Bills take exactly these rates.').replaceFirst('{0}', vendor),
+          style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
+      const SizedBox(height: 8),
+      for (final h in list)
+        Container(
+          key: Key('bh-${h['no']}'),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.line)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${h['no']}', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            for (final (i, p) in _maps(h['periods']).indexed)
+              () {
+                final none = p['none'] == true, amendNo = (asNum(p['amendNo']) ?? 0).toInt();
+                final prev = _maps(h['periods']).take(i).toList().reversed.firstWhere((x) => x['none'] != true, orElse: () => <String, dynamic>{});
+                final line = none ? <String, dynamic>{} : (p['line'] as Map).cast<String, dynamic>();
+                final prevLine = prev.isEmpty ? <String, dynamic>{} : (prev['line'] as Map).cast<String, dynamic>();
+                final changed = !none && prev.isNotEmpty && txt(prevLine) != txt(line);
+                final chg = none ? '' : prev.isEmpty ? 'First rate' : changed ? tr('Changed – was {0}').replaceFirst('{0}', boqLineText(prevLine)) : 'Same rate';
+                return Container(
+                  key: Key('bh-${h['no']}-$i'),
+                  margin: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                  decoration: BoxDecoration(color: none ? C.bg : amendNo > 0 ? C.amberSoft : C.greenSoft.withValues(alpha: .5), borderRadius: BorderRadius.circular(12)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${showDate('${p['from']}')} – ${'${p['to'] ?? ''}'.isEmpty ? tr('open') : showDate('${p['to']}')}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                    if (none)
+                      Text('No BOQ – no rate', style: const TextStyle(fontSize: 13.5, color: C.muted))
+                    else ...[
+                      Text(txt(line), style: const TextStyle(fontSize: 13.5)),
+                      Text('${amendNo > 0 ? tr('Amendment {0} of BOQ {1}').replaceFirst('{0}', '$amendNo').replaceFirst('{1}', '${p['of']}') : tr('BOQ {0} – Original').replaceFirst('{0}', '${p['boqNo']}')}${'${p['woNo'] ?? ''}'.isNotEmpty ? ' · WO ${p['woNo']}' : ''}',
+                          style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                      Text(chg, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: changed ? C.amber : C.greenDark)),
+                    ],
+                  ]),
+                );
+              }(),
+          ]),
+        ),
+    ];
   }
 
   Widget _rateCheck(Session s) {
@@ -388,10 +447,10 @@ class _BoqFormScreenState extends State<BoqFormScreen> {
       vendor = '${r['vendor']}';
       no.text = mode == 'amend' ? boqNextNo(widget.boqs, vendor) : '${r['no'] ?? ''}';
       remark.text = mode == 'amend' ? '' : '${r['remark'] ?? ''}';
-      if (mode == 'amend') {
+      if (mode == 'amend') {      // (3.23.0, Mechanical update-132) from any date on or after the BOQ start – also after its end
         final rf = '${r['from']}', rt = '${r['to'] ?? ''}';
-        from = t.compareTo(rf) > 0 && (rt.isEmpty || t.compareTo(rt) <= 0) ? t : rf;
-        to = rt;
+        from = t.compareTo(rf) > 0 ? t : rf;
+        to = rt.isNotEmpty && rt.compareTo(from) >= 0 ? rt : '';
       } else {
         from = '${r['from']}';
         to = '${r['to'] ?? ''}';
@@ -580,7 +639,7 @@ class _BoqFormScreenState extends State<BoqFormScreen> {
       appBar: AppBar(title: Text(_title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)), actions: [const GuideButton('boq')]),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (mode == 'amend')
-          Text('Change the rates / rent type below, and set "Valid From" = the date the new rates start (inside ${showDate('${b!['from']}')} – ${'${b!['to'] ?? ''}'.isEmpty ? 'open' : showDate('${b!['to']}')}). Before that date BOQ ${b!['no']} stays in force.',
+          Text(tr('Keep only the machinery whose rate changes, change its rate / rent type, and set "Valid From" = the date the new rate starts (on or after {0} – also after BOQ {1} ends: that machinery goes on at the new rate). Before that date the old rate stays; the other machinery of BOQ {2} stay as they are.').replaceFirst('{0}', showDate('${b!['from']}')).replaceFirst('{1}', '${b!['no']}').replaceFirst('{2}', '${b!['no']}'),
               style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
         if (mode == 'new' && widget.vendors.isEmpty) Text('Fill a vendor\'s details first (Vendors, above).', style: const TextStyle(color: C.red)),
         gap(),

@@ -14,6 +14,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.23.0 (19-10-2026, with Mechanical update-132: "mala disayla haw old kay hot nantr amendment zali kadhi … boq period wise
+ani vehicle wise"):**
+* **Vendor BOQ → a vendor → "Rate history – machinery-wise":** for each machinery, period by period (from – to), the rate, which
+  BOQ or amendment gave it (with the work order), and what changed ("Changed – was …"); the old rate ends the day before an
+  amendment starts – exactly the rates the bills take.
+* **Make amendment** from any date on or after the BOQ start – also after the BOQ ends (that machinery goes on at the new rate; the
+  others stay as they are). Keep only the machinery whose rate changes.
+
 **Version 3.22.1 (19-10-2026, with Mechanical update-131: "send any way he option nko aahe chukicha data approval sathi gelach nahi
 pahije … user correct krel tya nantr … send hou shakel"):**
 * **No "Send again anyway":** an entry going for approval with a reading that does not fit is a mistake – said in full (the row,

@@ -32,6 +32,8 @@ class FakeServer {
   /// [editRefuse] is answered as its save would (errors / warnings / warning – nothing sent) until it comes with force
   final fixOf = <String, Map<String, dynamic>>{};
   final edited = <Map<String, dynamic>>[];
+  /// (3.23.0, Mechanical update-132) the rate history machinery-wise that getBoqs gives
+  final boqHist = <Map<String, dynamic>>[];
   final editRefuse = <String, Map<String, dynamic>>{};
   int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
   final decided = <Map<String, dynamic>>[]; // (3.2.0) what the Approvals screen sent (decide, several, answer)
@@ -740,7 +742,7 @@ class FakeServer {
         case 'getVendors':
           return _j({'result': vendors});
         case 'getBoqs':
-          return _j({'result': {'vendors': vendors, 'boqs': boqs}});
+          return _j({'result': {'vendors': vendors, 'boqs': boqs, 'history': boqHist}});
         case 'saveMaster':
           final m = (a[0] as Map).cast<String, dynamic>();
           masterCalls.add({'fn': action, 'm': m, 'mode': a[1], 'id': a.length > 2 ? a[2] : null});
