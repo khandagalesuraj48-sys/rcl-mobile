@@ -14,6 +14,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.30.0 (20-10-2026, with his photo of a dashboard "7087.0" that 3.29.0 read as 70820: "HE BGH AS HOTE BARYA PAIKI FAST
+AAHE HE BUT AJUN PN PERFECT NAHI"):** **the seven-segment reader** (`lib/core/seven.dart`). An LED / LCD display's digits are read
+by their 7 segments and its decimal point. ML Kit only finds where the number is and counts its digits; it reads such digits badly
+(a "7." became a "2") and loses the point.
+* How the reader works:
+  * a few thresholds (also the one between a glowing LED's core and its glow) and a few slants (italic digits);
+  * a tilted picture is straightened;
+  * a digit counts only when its segments are clearly on or off – printed digits are not taken, ML Kit's reading stays;
+  * the reading most of those looks agree on, with ML Kit's count of digits, is the one taken.
+* Where it is used: in the live reading (in the background, every look) and on a photo read afterwards.
+* A clear segment reading counts as sure: 2 agreeing looks take the photo.
+* A reading with a point also fits a machinery whose records were always kept without it (7087.0 → 70870).
+
 **Version 3.29.0 (20-10-2026: "ocr kadhi kadhi kam krte tr kadhi kadhi krt nahi kadhi kahi chukich reading ghete … point nantrch
 number show nahi kt dispeser litre cha photo ghetla ki te pn auto ani perfect yet nahiye he sagle adchani fix kr ani ha jya gadich 2
 engine yet tith 2 reading takayla lahtat ek km ani ek hrs tr ase 2 photo weg wegle gheta yawet"):**

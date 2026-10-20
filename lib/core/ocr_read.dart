@@ -15,18 +15,22 @@ import 'dart:math' as math;
 
 /// One line of text the phone read, with where it is on the picture (pixels).
 class OcrLine {
-  const OcrLine(this.text, {this.left = 0, this.top = 0, this.width = 0, this.height = 0});
+  const OcrLine(this.text, {this.left = 0, this.top = 0, this.width = 0, this.height = 0, this.seven = false});
   final String text;
   final double left, top, width, height;
+  /// (3.30.0) its number read again by its segments (seven.dart) – a display's digits read clearly
+  final bool seven;
   double get cy => top + height / 2;
 }
 
 /// A number found on a line ([whole] = its digits before the point).
 class OcrNum {
-  const OcrNum(this.value, this.line, this.whole);
+  const OcrNum(this.value, this.line, this.whole, [this.frac = 0]);
   final double value;
   final int line;
   final int whole;
+  /// (3.30.0) its digits after the point
+  final int frac;
 }
 
 double _r2(double x) => (x * 100).roundToDouble() / 100;
@@ -63,7 +67,8 @@ List<OcrNum> numbersOf(List<OcrLine> lines) {
     for (final m in _num.allMatches(cleanLine(lines[i].text))) {
       final t = m.group(0)!, v = double.tryParse(t);
       if (v == null) continue;
-      out.add(OcrNum(v, i, t.split('.').first.length));
+      final pt = t.split('.');
+      out.add(OcrNum(v, i, pt.first.length, pt.length > 1 ? pt[1].length : 0));
     }
   }
   return out;
@@ -128,6 +133,8 @@ List<List<double>> meterCandidates(List<OcrLine> lines) {
     if (n.whole < 2) continue;
     plain.add(n.value);
     moved.addAll([_r2(n.value / 10), _r2(n.value / 100)]);
+    // (3.30.0) the point taken out (7087.0 → 70870): a machinery whose readings were always kept without the tenth digit's point
+    if (n.frac > 0 && n.frac <= 2) moved.add((n.value * math.pow(10, n.frac)).roundToDouble());
   }
   plain.removeAll(pairs);
   moved

@@ -497,7 +497,8 @@ class _EntryFormState extends State<EntryForm> {
     setState(() => ai[kind] = {'wait': true});
     Map<String, dynamic> r;
     try {
-      final lines = await ocrLines(path: p.raw, jpg: p.jpg);
+      // (3.30.0) a display's digits read again by their segments (the decimal point too)
+      final lines = await sevenOnPhoto(await ocrLines(path: p.raw, jpg: p.jpg), path: p.raw, jpg: p.jpg);
       if (kind == 'dash' || kind == 'hrs') {
         final h = hist ?? await dieselHistoryOf(s, m.id, date);
         final w = _want(kind, m);

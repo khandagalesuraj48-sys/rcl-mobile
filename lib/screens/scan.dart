@@ -15,6 +15,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -22,6 +23,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import '../core/format.dart';
 import '../core/ocr_read.dart';
 import '../core/scan_rules.dart';
+import '../core/seven.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 
@@ -118,7 +120,31 @@ class _ScanScreenState extends State<ScanScreen> {
       for (final b in r.blocks)
         for (final l in b.lines) OcrLine(l.text, left: l.boundingBox.left, top: l.boundingBox.top, width: l.boundingBox.width, height: l.boundingBox.height),
     ];
-    final got = widget.read(inGuide(lines, w, h, guide));
+    // (3.30.0) each number's line read again by its segments (an LED / LCD display: "7087.0", not ML Kit's "70820"), in the background
+    var guided = inGuide(lines, w, h, guide);
+    final at = _at(img), jobs = <List<Object>>[], idx = <int>[];
+    if (at != null) {
+      for (var i = 0; i < guided.length; i++) {
+        final l = guided[i], want = digitsIn(l.text);
+        if (want < 2 || l.height < 8) continue;
+        final b = roiOf(l), g = cropOf(w.toInt(), h.toInt(), at, b.left, b.top, b.width, b.height);
+        if (g == null) continue;
+        jobs.add([g.bytes, g.w, g.h, want]);
+        idx.add(i);
+      }
+    }
+    if (jobs.isNotEmpty) {
+      try {
+        final texts = await compute(sevenAll, jobs);
+        if (!mounted || done) return;
+        guided = [...guided];
+        for (var j = 0; j < idx.length; j++) {
+          guided[idx[j]] = withSeven(guided[idx[j]], texts[j]);
+        }
+      } catch (_) {/* ML Kit's reading stays */}
+    }
+    final read = widget.read(guided), seven = guided.any((l) => l.seven);
+    final got = ScanRead(read.value, sure: read.sure || (seven && read.value != null), check: read.check);
     final ok = votes.add(got);
     setState(() {
       if (got.value != null) seen = got.value;
@@ -126,6 +152,43 @@ class _ScanScreenState extends State<ScanScreen> {
     });
     if (ok != null) _take(ok, votes.check);
   }
+
+  /// (3.30.0) The brightness of the camera's picture at an UPRIGHT point (as ML Kit gives its lines): Android – the NV21's first
+  /// plane turned by the camera's own turn; iPhone – from BGRA. null = this picture cannot be read so.
+  int Function(int x, int y)? _at(CameraImage img) {
+    final sw = img.width, sh = img.height;
+    if (Platform.isIOS) {
+      if (img.planes.isEmpty) return null;
+      final p = img.planes.first, b = p.bytes, row = p.bytesPerRow;
+      return (x, y) {
+        final i = y * row + x * 4;
+        return i + 2 < b.length ? (299 * b[i + 2] + 587 * b[i + 1] + 114 * b[i]) ~/ 1000 : 0;
+      };
+    }
+    final y0 = _luma;
+    if (y0 == null || y0.length < sw * sh) return null;
+    final rot = (lens?.sensorOrientation ?? 90) % 360;
+    return (x, y) {
+      final int xs, ys;
+      switch (rot) {
+        case 90:
+          xs = y;
+          ys = sh - 1 - x;
+        case 270:
+          xs = sw - 1 - y;
+          ys = x;
+        case 180:
+          xs = sw - 1 - x;
+          ys = sh - 1 - y;
+        default:
+          xs = x;
+          ys = y;
+      }
+      return xs < 0 || ys < 0 || xs >= sw || ys >= sh ? 0 : y0[ys * sw + xs];
+    };
+  }
+
+  Uint8List? _luma; // (3.30.0) the frame's brightness, before it is softened
 
   /// The camera's picture for the reader: Android – NV21 (made from the three planes when the phone gives those; every other look
   /// softened); iPhone – BGRA as it comes.
@@ -147,6 +210,7 @@ class _ScanScreenState extends State<ScanScreen> {
     } else {
       return null;
     }
+    _luma = nv21;
     if (soft) nv21 = blurLuma(nv21, w, h);
     return InputImage.fromBytes(bytes: nv21, metadata: InputImageMetadata(size: Size(w.toDouble(), h.toDouble()), rotation: rot, format: InputImageFormat.nv21, bytesPerRow: w));
   }
