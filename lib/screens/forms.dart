@@ -18,6 +18,7 @@ import '../core/kinds.dart';
 import '../core/ocr.dart';
 import '../core/ocr_read.dart';
 import '../core/photo.dart';
+import '../core/scan_rules.dart';
 import '../core/plate.dart';
 import '../core/plate_read.dart';
 import '../core/session.dart';
@@ -25,6 +26,7 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
+import 'scan.dart';
 import 'verify.dart';
 import 'flow_fix.dart';
 import '../ui/help.dart' show GuideButton;
@@ -344,19 +346,39 @@ class _EntryFormState extends State<EntryForm> {
     if (sh.busy) return;
     setState(() => sh.busy = true);
     try {
-      final p = await takePhoto(pk.en, m.id);
-      if (p == null || !mounted || machine?.id != m.id) return;
-      setState(() => sh.jpg = p.jpg);
-      // the dashboard (its reading) and the dispenser (its litres) are read NOW, while the photo is being sent – (3.28.0) on the
-      // phone itself (no Gemini, a fraction of a second); a computer (the Windows app) as the web: the server's AI
-      if ((pk.key == 'dash' && !m.debit) || pk.key == 'pump') {
-        if (canOcr) {
-          _phoneRead(pk.key, m, p);
+      final reads = _reads(pk.key, m);
+      TakenPhoto? p;
+      Map<String, dynamic>? live; // (3.29.0) the number the live reading agreed on
+      if (reads && canOcr) {
+        // (3.29.0) the app's own camera reads the meter / the display live and takes the photo by itself (scan.dart)
+        final sc = await _scan(pk, m);
+        if (sc == null || !mounted || machine?.id != m.id) return;
+        if (sc.failed || sc.file == null) {
+          p = await takePhoto(pk.en, m.id); // this phone's camera cannot be opened in the app: the phone's camera app, as before
         } else {
-          _aiRead(pk.key, m.id, p.jpg);
+          p = await photoFrom(sc.file!, pk.en, m.id);
+          final v = sc.value;
+          if (v != null) live = pk.key == 'pump' ? {'litres': v, 'check': sc.check} : (_want(pk.key, m).km ? {'km': v, 'check': sc.check} : {'hr': v, 'check': sc.check});
+        }
+      } else {
+        p = await takePhoto(pk.en, m.id);
+      }
+      if (p == null || !mounted || machine?.id != m.id) return;
+      final shot = p;
+      setState(() => sh.jpg = shot.jpg);
+      // the dashboard / hour meter (its reading) and the dispenser (its litres): read live (3.29.0), else read NOW on the photo while
+      // it is being sent – (3.28.0) on the phone itself (no Gemini); a computer (the Windows app) as the web: the server's AI
+      if (reads) {
+        final got = live;
+        if (got != null) {
+          setState(() => _putRead(pk.key, got));
+        } else if (canOcr) {
+          _phoneRead(pk.key, m, shot);
+        } else {
+          _aiRead(pk.key, m.id, shot.jpg);
         }
       }
-      final r = (await s.api.call('dieselPhoto', [{'kind': pk.key, 'data': p.dataUrl, 'lat': p.spot.lat, 'lng': p.spot.lng, 'acc': p.spot.acc, 'at': p.at.toUtc().toIso8601String(), 'no': m.id}], true) as Map);
+      final r = (await s.api.call('dieselPhoto', [{'kind': pk.key, 'data': shot.dataUrl, 'lat': shot.spot.lat, 'lng': shot.spot.lng, 'acc': shot.spot.acc, 'at': shot.at.toUtc().toIso8601String(), 'no': m.id}], true) as Map);
       if (!mounted || machine?.id != m.id) return;
       setState(() => sh.path = (r['path'] ?? '').toString());
     } catch (e) {
@@ -369,6 +391,60 @@ class _EntryFormState extends State<EntryForm> {
     } finally {
       if (mounted) setState(() => sh.busy = false);
     }
+  }
+
+  /// (3.29.0) A machinery measured by KM and Hrs (not Debit Basis): its Hour meter photo is asked too (Mechanical update-139).
+  bool _both(Machine m) => !m.debit && hasKm(m.dieselWay) && hasHr(m.dieselWay);
+
+  /// What a photo of [kind] is read for: the dashboard – the KM (and the Hrs when the machinery has no Hour meter photo), the
+  /// Hour meter photo – the Hrs; "Meter not working" – nothing.
+  ({bool km, bool hr}) _want(String kind, Machine m) => switch (kind) {
+        'hrs' => (km: false, hr: hasHr(way)),
+        'dash' => (km: hasKm(way), hr: hasHr(way) && !_both(m)),
+        _ => (km: false, hr: false),
+      };
+
+  /// This photo fills a box: the dashboard and the Hour meter (a reading), the dispenser (the litres).
+  bool _reads(String kind, Machine m) {
+    if (kind == 'pump') return true;
+    if (m.debit || (kind != 'dash' && kind != 'hrs')) return false;
+    final w = _want(kind, m);
+    return w.km || w.hr;
+  }
+
+  LastReading? _last(Map? h, String key) {
+    final v = h?[key];
+    final n = v is Map ? asNum(v['value']) : null;
+    return n == null ? null : LastReading(n.toDouble(), '${v['date'] ?? ''}');
+  }
+
+  /// How one look of the live reading is understood (the rules of ocr_read.dart; sure = it fits the last reading / the three
+  /// numbers of the display agreed).
+  ScanRead Function(List<OcrLine>) _readerFor(String kind, Machine m, Map? h) {
+    if (kind == 'pump') {
+      return (lines) {
+        final r = pumpFrom(lines);
+        return ScanRead(r.litres, sure: r.sure, check: r.check);
+      };
+    }
+    final w = _want(kind, m), lk = _last(h, 'lastKm'), lh = _last(h, 'lastHr'), d = date;
+    return (lines) {
+      final r = meterFrom(lines, wantKm: w.km, wantHr: w.hr, lastKm: lk, lastHr: lh, today: d);
+      return ScanRead(w.km ? r.km : r.hr, sure: (w.km ? lk : lh) != null, check: r.check);
+    };
+  }
+
+  Future<ScanOutcome?> _scan(PhotoKind pk, Machine m) async {
+    final s = SessionScope.read(context);
+    final h = pk.key == 'pump' ? null : (hist ?? await dieselHistoryOf(s, m.id, date));
+    if (!mounted) return null;
+    final pump = pk.key == 'pump', w = _want(pk.key, m);
+    return scanPhoto(context,
+        title: '${tr(pk.en)} – ${m.id}',
+        hint: pump ? tr("Keep the dispenser's display – amount, litres, rate – inside the box.") : tr("Keep the meter's digits inside the box."),
+        unit: pump ? 'L' : (w.km ? 'km' : 'hr'),
+        read: _readerFor(pk.key, m, h),
+        wide: pump);
   }
 
   Future<void> _aiRead(String kind, String no, Uint8List jpg) async {
@@ -405,6 +481,8 @@ class _EntryFormState extends State<EntryForm> {
     if (kind == 'dash') {
       if (hasKm(way)) _fill(km, r['km']);
       if (hasHr(way)) _fill(hr, r['hr']);
+    } else if (kind == 'hrs') {
+      if (hasHr(way)) _fill(hr, r['hr']); // (3.29.0) the Hour meter photo
     } else {
       _fill(qty, r['litres']);
     }
@@ -414,21 +492,16 @@ class _EntryFormState extends State<EntryForm> {
    * asawi"): the camera's own picture (without the band) → its text (ocr.dart) → the reading that fits the machinery's last one,
    * or the litres of the fill (ocr_read.dart). Nothing goes to the internet for it. */
   Future<void> _phoneRead(String kind, Machine m, TakenPhoto p) async {
-    if (kind == 'dash' && !hasKm(way) && !hasHr(way)) return; // "Meter not working": nothing to read
+    if (kind != 'pump' && !_reads(kind, m)) return; // "Meter not working": nothing to read
     final s = SessionScope.read(context), tok = ++aiTok;
     setState(() => ai[kind] = {'wait': true});
     Map<String, dynamic> r;
     try {
       final lines = await ocrLines(path: p.raw, jpg: p.jpg);
-      if (kind == 'dash') {
+      if (kind == 'dash' || kind == 'hrs') {
         final h = hist ?? await dieselHistoryOf(s, m.id, date);
-        LastReading? last(String key) {
-          final v = h?[key];
-          final n = v is Map ? asNum(v['value']) : null;
-          return n == null ? null : LastReading(n.toDouble(), '${v['date'] ?? ''}');
-        }
-
-        final mr = meterFrom(lines, wantKm: hasKm(way), wantHr: hasHr(way), lastKm: last('lastKm'), lastHr: last('lastHr'), today: date);
+        final w = _want(kind, m);
+        final mr = meterFrom(lines, wantKm: w.km, wantHr: w.hr, lastKm: _last(h, 'lastKm'), lastHr: _last(h, 'lastHr'), today: date);
         r = {'km': mr.km, 'hr': mr.hr, 'check': mr.check};
       } else {
         final pr = pumpFrom(lines);
@@ -661,6 +734,18 @@ class _EntryFormState extends State<EntryForm> {
         if (asNum(d['hr']) != null) put.add('${fmtNum(asNum(d['hr']))} hr');
         if ('${d['check'] ?? ''}'.isNotEmpty) warn.add('reading ${d['check']}');
         if (asNum(d['km']) == null && asNum(d['hr']) == null) warn.add('the meter could not be read clearly – type the reading (or take the dashboard photo again, closer)');
+      }
+    }
+    final hm = ai['hrs']; // (3.29.0) the Hour meter photo
+    if (hm != null) {
+      if (hm['wait'] == true) {
+        waiting.add('the hour meter');
+      } else if (hm['error'] != null) {
+        warn.add('the hour meter could not be read now – type the hours');
+      } else {
+        if (asNum(hm['hr']) != null) put.add('${fmtNum(asNum(hm['hr']))} hr');
+        if ('${hm['check'] ?? ''}'.isNotEmpty) warn.add('reading ${hm['check']}');
+        if (asNum(hm['hr']) == null) warn.add('the hour meter could not be read clearly – type the hours (or take the hour meter photo again, closer)');
       }
     }
     if (p != null) {
@@ -976,10 +1061,12 @@ class _EntryFormState extends State<EntryForm> {
         childAspectRatio: 1.35,
         children: [
           for (final pk in kPhotoKinds)
+            if (pk.key != 'hrs' || (machine != null && _both(machine!)))
             Builder(builder: (_) {
               final sh = shots[pk.key];
               final done = sh != null && sh.path.isNotEmpty && sh.jpg != null;
               return Press(
+                key: Key('photo-${pk.key}'),
                 onTap: () => _shoot(pk),
                 radius: 18,
                 shadow: false,

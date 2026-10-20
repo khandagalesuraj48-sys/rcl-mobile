@@ -31,9 +31,10 @@ class OcrNum {
 
 double _r2(double x) => (x * 100).roundToDouble() / 100;
 
-// letters the reader often gives for digits – changed only inside a word that is a number already (it has a digit)
-const _like = {'O': '0', 'o': '0', 'I': '1', 'l': '1', '|': '1', 'S': '5', 's': '5', 'B': '8', 'Z': '2', 'z': '2'};
-final _digitish = RegExp(r'^[0-9OoIl|SsBZz.,]+$');
+// letters the reader often gives for digits (also the segments of an LED / LCD display: 0 → D / Q, 6 → G / b, 9 → g / q, 7 → T) –
+// changed only inside a word that is a number already (it has a digit)
+const _like = {'O': '0', 'o': '0', 'D': '0', 'Q': '0', 'I': '1', 'l': '1', '|': '1', 'S': '5', 's': '5', 'B': '8', 'b': '6', 'G': '6', 'g': '9', 'q': '9', 'Z': '2', 'z': '2', 'T': '7'};
+final _digitish = RegExp(r'^[0-9OoDQIl|SsBbGgqZzT.,]+$');
 final _dates = RegExp(r'\b\d{1,2}\s?[/.\-]\s?\d{1,2}\s?[/.\-]\s?\d{2,4}\b|\b\d{1,2}[\s\-/]?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s\-/,]*\d{2,4}\b', caseSensitive: false);
 final _times = RegExp(r'\b\d{1,2}:\d{2}(:\d{2})?\s*(am|pm)?\b', caseSensitive: false);
 final _percent = RegExp(r'\d+(\.\d+)?\s*%');
@@ -89,15 +90,38 @@ int _days(String from, String to) {
 }
 
 /// The readings a dashboard may show, in three rounds: two numbers side by side read as one ("45173 4" → 45173.4 and 451734 –
-/// a tenth digit in another colour); every number of 2 digits or more as it is; the same numbers with the point moved one or
-/// two places (the tenth digit read as one more digit).
+/// a tenth digit in another colour; also when the reader gave that digit as a line of its own just right of the number); every
+/// number of 2 digits or more as it is, and the pieces of a number read apart ("45 173" → 45173); the same numbers with the
+/// point moved one or two places (the tenth digit read as one more digit).
 List<List<double>> meterCandidates(List<OcrLine> lines) {
   final pairs = <double>{}, plain = <double>{}, moved = <double>{};
-  for (final l in lines) {
-    for (final m in RegExp(r'(\d{3,})\s+(\d)(?!\d)').allMatches(cleanLine(l.text))) {
-      final a = m.group(1)!, b = m.group(2)!;
-      pairs.add(double.parse('$a.$b'));
-      pairs.add(double.parse('$a$b'));
+  void pair(String a, String b) {
+    pairs.add(double.parse('$a.$b'));
+    pairs.add(double.parse('$a$b'));
+  }
+
+  final cleaned = [for (final l in lines) cleanLine(l.text)];
+  for (var i = 0; i < lines.length; i++) {
+    for (final m in RegExp(r'(\d{3,})\s+(\d)(?!\d)').allMatches(cleaned[i])) {
+      pair(m.group(1)!, m.group(2)!);
+    }
+    // the pieces of one number read apart, side by side on the line
+    final toks = cleaned[i].split(' ');
+    for (var a = 0; a < toks.length; a++) {
+      var joined = '';
+      for (var b = a; b < toks.length && b < a + 4 && RegExp(r'^\d+$').hasMatch(toks[b]); b++) {
+        joined += toks[b];
+        if (b > a && joined.length >= 3) plain.add(double.parse(joined));
+      }
+    }
+    // the tenth digit as a line of its own, just right of the number on the same row
+    final l = lines[i], last = RegExp(r'(\d{3,})$').firstMatch(cleaned[i]);
+    if (last == null || l.height <= 0) continue;
+    for (var j = 0; j < lines.length; j++) {
+      final d = lines[j];
+      if (j == i || !RegExp(r'^\d$').hasMatch(cleaned[j]) || (d.cy - l.cy).abs() > l.height * .6) continue;
+      final gap = d.left - (l.left + l.width);
+      if (d.left >= l.left + l.width * .8 && gap < l.height * 1.5) pair(last.group(1)!, cleaned[j]);
     }
   }
   for (final n in numbersOf(lines)) {
@@ -165,40 +189,60 @@ final _amountWord = RegExp(r'\b(amount|amt|sale|total|net|payable|value)\b', cas
 final _counterWord = RegExp(r'totali[sz]er|totaliser|cumulative', caseSensitive: false);
 
 class Triple {
-  const Triple(this.qty, this.rate, this.amount);
+  const Triple(this.qty, this.rate, this.amount, [this.moved = 0]);
   final double qty, rate, amount;
+  /// how many of the three had their point put back
+  final int moved;
 }
 
-/// Three numbers with qty × rate = amount (within half a percent): the surest way to know which is which.
+class _V {
+  const _V(this.n, this.value, this.moved, [this.places = 0]);
+  final OcrNum n;
+  final double value;
+  final int moved; // 1 = its point was put back (the reader did not see it)
+  final int places; // how many places it was put back (2 – paise and two decimals – is the usual on a display)
+}
+
+/// Three numbers with qty × rate = amount (within half a percent): the surest way to know which is which. A display's point is
+/// often not seen ("472500" for 4725.00): a whole number of 3 digits or more is also tried with its point put back 1, 2 or 3
+/// places – the product must still agree, so a wrong place does not pass.
 Triple? tripleOf(List<OcrLine> lines, List<OcrNum> ns, {required double rateMin, required double rateMax, required double qtyMax}) {
   Triple? best;
   var bestScore = -1e9;
-  bool word(OcrNum n, RegExp w) => w.hasMatch(lines[n.line].text);
+  // the words of each line, looked at once (the loops below are many)
+  final isCounter = [for (final l in lines) _counterWord.hasMatch(l.text)], isRate = [for (final l in lines) _rateWord.hasMatch(l.text)],
+      isLitre = [for (final l in lines) _litreWord.hasMatch(l.text)], isAmount = [for (final l in lines) _amountWord.hasMatch(l.text)];
+  bool word(OcrNum n, RegExp w) => (identical(w, _counterWord) ? isCounter : identical(w, _rateWord) ? isRate : identical(w, _litreWord) ? isLitre : isAmount)[n.line];
   // the numbers by the words Rate and Litre (also on the row beside them or the line under them)
   final rw = byWord(lines, ns, _rateWord, min: rateMin, max: rateMax), lw = byWord(lines, ns, _litreWord, min: .5, max: qtyMax, not: _counterWord);
-  for (var i = 0; i < ns.length; i++) {
-    final q = ns[i];
-    if (q.value < .5 || q.value > qtyMax || word(q, _counterWord)) continue;
-    for (var j = 0; j < ns.length; j++) {
-      final r = ns[j];
-      if (j == i || r.value < rateMin || r.value > rateMax) continue;
-      for (var k = 0; k < ns.length; k++) {
-        final a = ns[k];
-        if (k == i || k == j || a.value <= q.value || a.value <= r.value || word(a, _counterWord)) continue;
+  final vs = <_V>[
+    for (final n in ns.take(40)) ...[
+      _V(n, n.value, 0),
+      if (n.value == n.value.truncateToDouble() && n.whole >= 3)
+        for (var d = 1; d <= 3; d++) _V(n, n.value / math.pow(10, d), 1, d),
+    ],
+  ];
+  for (final q in vs) {
+    if (q.value < .5 || q.value > qtyMax || word(q.n, _counterWord)) continue;
+    for (final r in vs) {
+      if (identical(r.n, q.n) || r.value < rateMin || r.value > rateMax) continue;
+      for (final a in vs) {
+        if (identical(a.n, q.n) || identical(a.n, r.n) || a.value <= q.value || a.value <= r.value || word(a.n, _counterWord)) continue;
         final err = (q.value * r.value - a.value).abs();
         if (err > math.max(.6, a.value * .005)) continue;
         // which is which: the words by them first, then a usual diesel rate, then the smaller error, then the bigger amount
         var score = 0.0;
-        if (word(r, _rateWord) || r.value == rw) score += 4;
-        if (word(q, _litreWord) || q.value == lw) score += 4;
-        if (word(a, _amountWord)) score += 2;
-        if (word(q, _rateWord) || word(r, _litreWord)) score -= 4;
+        if (word(r.n, _rateWord) || (r.moved == 0 && r.value == rw)) score += 4;
+        if (word(q.n, _litreWord) || (q.moved == 0 && q.value == lw)) score += 4;
+        if (word(a.n, _amountWord)) score += 2;
+        if (word(q.n, _rateWord) || word(r.n, _litreWord)) score -= 4;
         if ((r.value >= 80 && r.value <= 115) || (r.value >= 80000 && r.value <= 115000)) score += 1;
+        score -= 1.5 * (q.moved + r.moved + a.moved) + .5 * [q, r, a].where((x) => x.moved > 0 && x.places != 2).length;
         score -= err / math.max(1, a.value) * 100;
         score += a.value / 1e9;
         if (score > bestScore) {
           bestScore = score;
-          best = Triple(q.value, r.value, a.value);
+          best = Triple(q.value, r.value, a.value, q.moved + r.moved + a.moved);
         }
       }
     }
@@ -235,16 +279,18 @@ double? byWord(List<OcrLine> lines, List<OcrNum> ns, RegExp w, {double min = 0, 
 }
 
 class PumpRead {
-  const PumpRead(this.litres, this.check);
+  const PumpRead(this.litres, this.check, {this.sure = false});
   final double? litres;
   final String check;
+  /// (3.29.0) litres × rate = amount agreed: the surest read
+  final bool sure;
 }
 
 /// The litres given in this fill, on the dispenser's display.
 PumpRead pumpFrom(List<OcrLine> lines) {
   final ns = numbersOf(lines);
   final t = tripleOf(lines, ns, rateMin: 50, rateMax: 200, qtyMax: 2000);
-  if (t != null) return PumpRead(_r2(t.qty), '');
+  if (t != null) return PumpRead(_r2(t.qty), '', sure: true);
   final l = byWord(lines, ns, _litreWord, min: .1, max: 2000, not: _counterWord);
   if (l != null) return PumpRead(_r2(l), '');
   final r = byWord(lines, ns, _rateWord, min: 50, max: 200), a = byWord(lines, ns, _amountWord, min: 1, not: _counterWord);
@@ -300,9 +346,10 @@ BillRead billFrom(List<OcrLine> lines) {
   final noParts = RegExp(r'\d{3,}').allMatches(no).map((m) => double.parse(m.group(0)!)).toSet();
   final ns = numbersOf(lines).where((n) => !noParts.contains(n.value)).toList();
   final t = tripleOf(lines, ns, rateMin: 50, rateMax: 200, qtyMax: 100000);
-  if (t != null) return BillRead(billNo: no, qty: _r2(t.qty), rate: _r2(t.rate), amount: _r2(t.amount));
   final k = tripleOf(lines, ns, rateMin: 50000, rateMax: 200000, qtyMax: 100); // a tanker's bill: KL and ₹ per KL
-  if (k != null) return BillRead(billNo: no, qty: _r2(k.qty * 1000), rate: _r2(k.rate / 1000), amount: _r2(k.amount));
+  // the one that needed fewer points put back (a KL bill read as it is beats litres made by moving its points)
+  if (k != null && (t == null || k.moved < t.moved)) return BillRead(billNo: no, qty: _r2(k.qty * 1000), rate: _r2(k.rate / 1000), amount: _r2(k.amount));
+  if (t != null) return BillRead(billNo: no, qty: _r2(t.qty), rate: _r2(t.rate), amount: _r2(t.amount));
   var q = byWord(lines, ns, _litreWord, min: .01, max: 100000);
   if (q != null && q <= 100 && lines.any((l) => RegExp(r'\bkl\b', caseSensitive: false).hasMatch(l.text))) q = q * 1000;
   var r = byWord(lines, ns, _rateWord, min: 50, max: 200);

@@ -27,6 +27,8 @@ class PhotoKind {
 
 const kPhotoKinds = [
   PhotoKind('dash', 'Dashboard', 'डॅशबोर्ड', 'mobile_phone'),
+  // (3.29.0, Mechanical update-139) only for a machinery measured by KM and Hrs: its hour meter, often not on the dashboard
+  PhotoKind('hrs', 'Hour meter', 'तास मीटर', 'gear'),
   PhotoKind('veh', 'Vehicle + driver', 'गाडी + चालक', 'articulated_lorry'),
   PhotoKind('pump', 'Dispenser litres', 'डिस्पेन्सर लिटर', 'fuel_pump'),
   PhotoKind('reg', 'Register', 'रजिस्टर', 'notebook'),
@@ -89,6 +91,11 @@ Future<TakenPhoto?> takePhoto(String label, String machineId) async {
   }
   final x = await ImagePicker().pickImage(source: onComputer ? ImageSource.gallery : ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 92, preferredCameraDevice: CameraDevice.rear);
   if (x == null) return null;
+  return photoFrom(x, label, machineId);
+}
+
+/// (3.29.0) A picture just taken (the phone's camera app, or the app's own live reading – scan.dart) → the photo with its band.
+Future<TakenPhoto> photoFrom(XFile x, String label, String machineId) async {
   final spot = await whereNow();
   final at = DateTime.now();
   final raw = await x.readAsBytes();

@@ -14,6 +14,26 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.29.0 (20-10-2026: "ocr kadhi kadhi kam krte tr kadhi kadhi krt nahi kadhi kahi chukich reading ghete … point nantrch
+number show nahi kt dispeser litre cha photo ghetla ki te pn auto ani perfect yet nahiye he sagle adchani fix kr ani ha jya gadich 2
+engine yet tith 2 reading takayla lahtat ek km ani ek hrs tr ase 2 photo weg wegle gheta yawet"):**
+* **The live reading** (`lib/screens/scan.dart`, its rules in `lib/core/scan_rules.dart`). The Dashboard, Hour meter and Dispenser
+  litres photos are taken with the app's own camera:
+  * a box on the screen – only the text inside it is read;
+  * the phone reads about three times a second; every other look is on a softer copy, so the segments of LED / LCD digits join;
+  * the reading is shown big as it is read;
+  * the photo is taken **by itself** when the same number was seen again and again – twice when it fits the last reading or
+    litres × rate = amount agreed, else three times. One wrong look is never taken;
+  * the round button takes the photo at any time; the light is for a dark cabin or the night;
+  * the phone's camera app is used as before when the camera cannot be opened in the app.
+* **The rules** (`lib/core/ocr_read.dart`):
+  * the digit after the point is kept, also when the reader gives it apart (45173.4, not 45173);
+  * digits read apart (45 173) or as letters (D, Q → 0; G, b → 6; g, q → 9; T → 7);
+  * a dispenser's points not seen (472500 / 5000 / 9450 → ₹ 4725.00 = 50.00 L × ₹ 94.50 – two decimals as a display shows);
+  * a tanker bill in KL read as it is.
+* **The Hour meter photo** (with Mechanical update-139): a machinery measured by **KM and Hrs** has a 5th photo. The Dashboard photo
+  gives the KM, the Hour meter photo gives the Hrs. A machinery with one reading keeps the 4 photos.
+
 **Version 3.28.0 (20-10-2026: "ata aplela app madhe ocr jodaych aahe mhanje google gemini api nahi ani te ocr khup fast asawi";
 his choices: the Diesel Issue photos and the Diesel Inward bill; the web keeps its Gemini):** **the phone reads the photos itself**
 (Google ML Kit text recognition, on the phone – no internet, nothing paid, no Gemini; `lib/core/ocr.dart`, the rules in

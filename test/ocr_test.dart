@@ -50,6 +50,27 @@ void main() {
     });
   });
 
+  group('(3.29.0) what went wrong on the phones', () {
+    const last = LastReading(45120, '2026-10-19');
+    test('the digits of a display read apart, or as letters (LED / LCD segments)', () {
+      expect(meterFrom(L(['45 173']), lastKm: last, today: '2026-10-20').km, 45173);
+      expect(meterFrom(L(['45I73']), lastKm: last, today: '2026-10-20').km, 45173);
+      expect(meterFrom(L(['4517D']), lastKm: last, today: '2026-10-20').km, 45170);
+      expect(meterFrom(L(['O1Gb.5']), wantKm: false, wantHr: true, lastHr: const LastReading(160, '2026-10-19'), today: '2026-10-20').hr, 166.5);
+    });
+    test('the digit after the point given by the reader as a line of its own, right of the number: kept (45173.4, not 45173)', () {
+      final lines = [const OcrLine('45173', left: 100, top: 100, width: 300, height: 60), const OcrLine('4', left: 410, top: 105, width: 40, height: 55)];
+      expect(meterFrom(lines, lastKm: last, today: '2026-10-20').km, 45173.4);
+    });
+    test('the dispenser\'s points not seen: 472500 / 5000 / 9450 → 4725.00 = 50.00 L × 94.50 (two decimals, as a display shows)', () {
+      expect(pumpFrom(L(['472500', '5000', '9450'])).litres, 50);
+      expect(pumpFrom(L(['472500', '5000', '9450'])).sure, true);
+      expect(pumpFrom(L(['4725.00', '5000', '94.50'])).litres, 50);
+      expect(pumpFrom(L(['1890000', '20000', '9450'])).litres, 200);
+      expect(pumpFrom(L(['Volume 45.20'])).sure, false, reason: 'by the word only: not as sure as the three numbers');
+    });
+  });
+
   group('the dispenser – the litres of this fill', () {
     test('litres × rate = amount tells which number is the litres', () {
       expect(pumpFrom(L(['SALE', '4725.00', 'LITRE', '50.00', 'PRICE', '94.50'])).litres, 50);
