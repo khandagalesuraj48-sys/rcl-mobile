@@ -192,25 +192,32 @@ class _ReportsTabState extends State<ReportsTab> {
             const SizedBox(height: 14),
             if (tabs.isEmpty) const EmptyState('No reports for you yet', 'Ask the Admin for access to Reports or Dashboard.', pic: 'bar_chart'),
             if (tabs.length > 1)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(children: [
-                  for (final (i, x) in tabs.indexed) ...[
-                    if (i > 0) const SizedBox(width: 8),
-                    ChoiceChip(
-                      key: Key('rt-${x.toLowerCase()}'),
-                      label: Text(x),
-                      selected: x == cur,
-                      showCheckmark: false,
-                      onSelected: (_) => setState(() => tab = x),
-                      selectedColor: C.green,
-                      labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: x == cur ? Colors.white : C.ink),
-                      side: BorderSide(color: x == cur ? C.green : C.line),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              Row(children: [
+                // every tab on the screen at once – none cut at the right (a long Marathi word grows smaller, not cut)
+                for (final (i, x) in tabs.indexed) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  Expanded(
+                    child: Material(
+                      color: x == cur ? C.green : Colors.white,
+                      shape: StadiumBorder(side: BorderSide(color: x == cur ? C.green : C.line)),
+                      child: InkWell(
+                        key: Key('rt-${x.toLowerCase()}'),
+                        customBorder: const StadiumBorder(),
+                        onTap: () => setState(() => tab = x),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(x, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: x == cur ? Colors.white : C.ink)),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ],
-                ]),
-              ),
+                  ),
+                ],
+              ]),
             if (tabs.length > 1) const SizedBox(height: 14),
             if (cur == 'Overview') ..._overview(s, list) else ...[
               for (final r in groups[cur] ?? const <(String, String, String, String)>[])
@@ -249,11 +256,11 @@ class _ReportsTabState extends State<ReportsTab> {
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.line)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(width: 38, height: 38, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(12)), alignment: Alignment.center, child: Pic(pic, size: 24)),
-          const SizedBox(width: 8),
+          Container(width: 32, height: 32, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(10)), alignment: Alignment.center, child: Pic(pic, size: 21)),
+          const SizedBox(width: 7),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: C.muted)),
+              FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(label, maxLines: 1, style: const TextStyle(fontSize: 11, color: C.muted))),
               FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(f == null ? (loading ? '…' : '–') : value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
               Row(children: [
                 if (pct != null) ...[
@@ -286,8 +293,10 @@ class _ReportsTabState extends State<ReportsTab> {
       const SizedBox(height: Sp.chips),
       Row(children: [
         Expanded(child: fig('ov-run', 'tractor', C.blueSoft, 'Machinery Running', fmtNum(running?.now), running)),
-        const SizedBox(width: Sp.chips),
-        Expanded(child: fig('ov-bd', 'wrench', C.redSoft, 'Breakdowns', fmtNum(breaks?.now), breaks, lessIsGood: true)),
+        if (s.canSee('Breakdown')) ...[
+          const SizedBox(width: Sp.chips),
+          Expanded(child: fig('ov-bd', 'wrench', C.redSoft, 'Breakdowns', fmtNum(breaks?.now), breaks, lessIsGood: true)),
+        ],
       ]),
       const SizedBox(height: Sp.block),
       Container(
