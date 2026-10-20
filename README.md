@@ -14,6 +14,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.1 (20-10-2026, "AIK N OK AHE SAGLE FKT COLOUR THODE DIM DISAT AAHE APP THODI ENHANCE KR"):** the same colours a
+little brighter and fuller (`lib/ui/theme.dart`): the greens and the gold stronger, the cream page lighter, the soft tiles
+fuller, the grey words darker; gold words (View All, Forgot password?) in a deeper gold that is easy to read; the green of the
+opening, lock and site screens the same family. Nothing else changes.
+
 **Version 3.31.0 (20-10-2026, with his picture of the five screens and his two photos: "HE BGH SAME AS IT IS HAW AAHE MALA SAME"
 – "TAS DARK EKDAM NKO"):** **the new look** of every screen.
 * Colours (`lib/ui/theme.dart`): a forest green that is not too dark, a warm cream page, gold for the + and the links; every chip the

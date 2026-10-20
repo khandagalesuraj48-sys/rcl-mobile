@@ -250,7 +250,7 @@ class _ReportsTabState extends State<ReportsTab> {
       final pct = (f != null && b != null && b > 0) ? (f.now - b) / b * 100 : null;
       final up = (pct ?? 0) >= 0;
       final good = lessIsGood ? !up : up;
-      final tone = pct == null ? C.muted : (good ? const Color(0xFF2F8A57) : C.red);
+      final tone = pct == null ? C.muted : (good ? const Color(0xFF249556) : C.red);
       return Container(
         key: Key(key),
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
@@ -308,8 +308,8 @@ class _ReportsTabState extends State<ReportsTab> {
             TextButton(
               key: const Key('ov-details'),
               onPressed: () => openDashboard(context),
-              style: TextButton.styleFrom(foregroundColor: C.gold, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 32)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [Text('View Details', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.gold)), const Icon(Icons.arrow_forward_rounded, size: 16)]),
+              style: TextButton.styleFrom(foregroundColor: C.goldInk, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 32)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [Text('View Details', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.goldInk)), const Icon(Icons.arrow_forward_rounded, size: 16)]),
             ),
           ]),
           const SizedBox(height: 6),
@@ -322,8 +322,8 @@ class _ReportsTabState extends State<ReportsTab> {
           const Expanded(child: Text('Quick Reports', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
           TextButton(
             onPressed: () => setState(() => tab = 'Diesel'),
-            style: TextButton.styleFrom(foregroundColor: C.gold, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 32)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [Text('View All', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.gold)), const Icon(Icons.arrow_forward_rounded, size: 16)]),
+            style: TextButton.styleFrom(foregroundColor: C.goldInk, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 32)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [Text('View All', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.goldInk)), const Icon(Icons.arrow_forward_rounded, size: 16)]),
           ),
         ]),
         const SizedBox(height: 6),
@@ -415,7 +415,7 @@ class _Bars extends CustomPainter {
       final v = m[i].$2.toDouble(), bh = maxV <= 0 ? 0.0 : h * v / maxV;
       final x = left + slot * i + (slot - bw) / 2, y = topPad + h - bh;
       final r = RRect.fromRectAndCorners(Rect.fromLTWH(x, y, bw, bh), topLeft: const Radius.circular(6), topRight: const Radius.circular(6));
-      canvas.drawRRect(r, Paint()..color = i == hi ? C.green : const Color(0xFF6FA88A));
+      canvas.drawRRect(r, Paint()..color = i == hi ? C.green : const Color(0xFF61B689));
       final l = tp(m[i].$1, 9.5, C.muted);
       l.paint(canvas, Offset(left + slot * i + (slot - l.width) / 2, size.height - bottom + 4));
       if (i == hi && v > 0) {

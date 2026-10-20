@@ -2,41 +2,48 @@
  * green for the main things, a soft colour for each kind of work (diesel green, store amber, machines blue, Log Book purple,
  * maintenance orange), 3D pictures, Rubik with Marathi under the English.
  * (3.31.0, asked 20-10-2026 with his picture: "HE BGH SAME AS IT IS HAW AAHE" – "TAS DARK EKDAM NKO") a forest green that is not
- * too dark, a warm cream page, gold for the + and the links; one spacing for every screen (Sp). */
+ * too dark, a warm cream page, gold for the + and the links; one spacing for every screen (Sp).
+ * (3.31.1, asked 20-10-2026: "COLOUR THODE DIM DISAT AAHE APP THODI ENHANCE KR") the same colours a little brighter and fuller: the
+ * greens and the gold stronger, the cream page lighter, the soft tiles fuller, the grey words darker (easier to read). */
 import 'package:flutter/material.dart';
 
 class C {
-  static const bg = Color(0xFFF8F5EE);
+  static const bg = Color(0xFFFAF8F2);
   static const card = Colors.white;
-  static const ink = Color(0xFF1F2A24);
-  static const muted = Color(0xFF6B756F);
-  static const faint = Color(0xFF9AA39D);
+  static const ink = Color(0xFF18221C);
+  static const muted = Color(0xFF5A675F);
+  static const faint = Color(0xFF8F9993);
   static const line = Color(0xFFECE6D9);
-  static const green = Color(0xFF2F6B4F);
-  static const greenDark = Color(0xFF244F3C);
-  static const greenDeep = Color(0xFF1E4232);
-  static const greenSoft = Color(0xFFE4F0E8);
-  static const greenChip = Color(0xFFD3E6DA);
+  static const green = Color(0xFF277E55);
+  static const greenDark = Color(0xFF1E5A40);
+  static const greenDeep = Color(0xFF184833);
+  static const greenSoft = Color(0xFFDCF2E4);
+  static const greenChip = Color(0xFFCAEAD6);
   static const blue = Color(0xFF1E63D6);
-  static const blueSoft = Color(0xFFE6EEFB);
+  static const blueSoft = Color(0xFFE1EBFB);
   static const purple = Color(0xFF7B3FD0);
-  static const purpleSoft = Color(0xFFEEE9F8);
+  static const purpleSoft = Color(0xFFEAE3F8);
   static const amber = Color(0xFFB66A00);
-  static const amberSoft = Color(0xFFFBF0DC);
+  static const amberSoft = Color(0xFFFDEFD5);
   static const orange = Color(0xFFE0592A);
-  static const orangeSoft = Color(0xFFFCEBE3);
+  static const orangeSoft = Color(0xFFFDE7DD);
   static const slate = Color(0xFF475467);
-  static const slateSoft = Color(0xFFEEF1F5);
+  static const slateSoft = Color(0xFFEAEEF4);
   static const red = Color(0xFFC62828);
-  static const redSoft = Color(0xFFFCE9E6);
+  static const redSoft = Color(0xFFFCE4E0);
   static const brandRed = Color(0xFFE30613); // the red of the Rachana mark
   // (3.31.0) his picture: the lighter green, gold and the green of the bar at the bottom
-  static const greenLight = Color(0xFF3F8A64);
-  static const gold = Color(0xFFC9963F);
-  static const goldLight = Color(0xFFE2B862);
-  static const goldSoft = Color(0xFFFBF0DC);
-  static const bar = Color(0xFF2E6249);
-  static const barDeep = Color(0xFF285843);
+  static const greenLight = Color(0xFF37A16B);
+  static const gold = Color(0xFFD99E39);
+  static const goldLight = Color(0xFFECBF62);
+  static const goldSoft = Color(0xFFFDEFD5);
+  static const bar = Color(0xFF26744F);
+  static const barDeep = Color(0xFF216447);
+  // (3.31.1) the green at the end of the green cards (Home's stock, Me's top) and of the Sign in button
+  static const greenEnd = Color(0xFF216F4C);
+  static const greenBright = Color(0xFF177C56);
+  // (3.31.1) gold for words (View All, Forgot password?, the count on Me): deeper than the + so it is easy to read on the cream page
+  static const goldInk = Color(0xFFB07A1E);
 }
 
 /// (3.31.0, asked 20-10-2026: "kuthe kuthe tabs button che pudhe maghe space aahe") one spacing for every screen: the page's edge,
