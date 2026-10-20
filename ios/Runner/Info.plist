@@ -14,6 +14,8 @@
 	<string>RCL ERP uses the camera for the photos of an entry (Diesel Issue and others).</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>RCL ERP saves the place of every entry, as the web ERP does.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>RCL ERP opens with your Face ID, so that nobody else can open it on this iPhone.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>RCL ERP uses the microphone when you talk with the assistant and for a screen-share help call.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

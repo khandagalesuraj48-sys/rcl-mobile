@@ -14,6 +14,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.27.0 (20-10-2026: "ॲप उघडायला Fingerprint / Face lock … KR PERFECT"; his choices: for everyone, on by itself, asked
+again after a minute away):** **the app lock** (`lib/core/applock.dart`, `lib/core/lock_gate.dart`, `lib/screens/lock.dart`):
+* The app opens with a kept sign-in → **"RCL ERP is locked"** and the phone's own box at once: **fingerprint / face – or the phone's
+  PIN / pattern** (Android BiometricPrompt; iPhone Face ID / Touch ID; the computer app Windows Hello). Nothing of the ERP is seen
+  before. Not him / cancelled → still locked, **Unlock** asks again.
+* **More than a minute away** (another app, the screen off) → locked again when the app comes back (also over a call's green bar;
+  the call itself goes on). A password typed just now is not asked again. It cannot be switched off.
+* A phone with **no screen lock** at all is not stopped (the work at the sites goes on): a red line asks to set a PIN / pattern /
+  fingerprint. The fingerprint / face never leaves the phone – nothing goes to the server.
+* Android 7 or newer (local_auth); the app's Android window is a FragmentActivity with the AppCompat themes.
+
 **Version 3.26.0 (19-10-2026, with Mechanical update-137: "JR SAMAJ EK USER APP WAR AAHE ANI EK USER WEB WAR TRI SUDHA CONNECT HOYLA HAW
 TE PN PROPER" – "SAGLE KAHI KARTA YAW", Android first):** **calls between the app and the web** (the web's screen share, spoken by the
 app – the same server actions rtcUsers / rtcSend / rtcMissed / rtcWa and the heartbeat "sync" {r}; `lib/core/rtc.dart`):

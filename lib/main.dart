@@ -9,10 +9,13 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'config.dart';
 import 'core/alerts.dart';
 import 'core/api.dart';
+import 'core/applock.dart';
 import 'core/device.dart';
+import 'core/lock_gate.dart';
 import 'core/rtc_kit.dart';
 import 'core/session.dart';
 import 'screens/call.dart';
+import 'screens/lock.dart';
 import 'screens/login.dart';
 import 'screens/shell.dart';
 import 'screens/site_pick.dart';
@@ -63,7 +66,10 @@ void main() {
     session.reportFault('$e', '$st');
     return false;
   };
-  runApp(RclApp(session: session));
+  // (3.27.0) the app lock: the phone's fingerprint / face / PIN – for everyone, asked again after a minute away (applock.dart)
+  final lock = AppLock(PhoneLockGate());
+  session.freshSignIn = lock.signedIn;
+  runApp(RclApp(session: session, lock: lock));
 }
 
 /// (14-10-2026) the app's navigator – the box "send it to the Super Admin?" opens over any screen (Api.askApproval).
@@ -96,8 +102,10 @@ Future<String?> askApprovalBox(String message) async {
 }
 
 class RclApp extends StatelessWidget {
-  const RclApp({super.key, required this.session});
+  const RclApp({super.key, required this.session, this.lock});
   final Session session;
+  /// (3.27.0) the app lock (none in the tests of the other screens)
+  final AppLock? lock;
   @override
   Widget build(BuildContext context) => SessionScope(
         session: session,
@@ -112,7 +120,8 @@ class RclApp extends StatelessWidget {
           // (3.26.0) a call: its ring, its screen and its green bar – over every screen of the app (screens/call.dart)
           builder: (context, child) {
             final m = MediaQuery.of(context), k = SessionScope.of(context).textScale;
-            final app = CallLayer(nav: appNav, child: child!);
+            // (3.27.0) the lock over everything – the call's bar too
+            final app = LockLayer(lock: lock, nav: appNav, child: CallLayer(nav: appNav, child: child!));
             return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
           },
           home: const Gate(),

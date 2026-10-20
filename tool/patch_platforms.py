@@ -23,7 +23,8 @@ def manifest(s):
              'android.permission.RECEIVE_BOOT_COMPLETED', 'android.permission.WAKE_LOCK',
              # (3.26.0) calls with the web: the notification "Call is on" (CallService.kt), the network's state
              'android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_MICROPHONE', 'android.permission.FOREGROUND_SERVICE_CAMERA',
-             'android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION', 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.CHANGE_NETWORK_STATE']
+             'android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION', 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.CHANGE_NETWORK_STATE',
+             'android.permission.USE_BIOMETRIC']      # (3.27.0) the app lock
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
     s = re.sub(r'android:label="[^"]*"', 'android:label="RCL ERP"', s, count=1)
@@ -85,6 +86,10 @@ def gradle(s):
         need(s2 != s, 'no signingConfigs block'); s = s2
     if 'desugar_jdk_libs' not in s:
         s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+    # (3.27.0) the app lock (local_auth): Android 7 or newer, the AppCompat themes (MainActivity.kt – a FlutterFragmentActivity – is in git)
+    s = s.replace('minSdk = flutter.minSdkVersion\n', 'minSdk = maxOf(24, flutter.minSdkVersion)\n', 1)
+    if 'androidx.appcompat:appcompat' not in s:
+        s = s.replace('    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")', '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n    implementation("androidx.appcompat:appcompat:1.7.1")', 1)
     return s
 
 ROOT_KT = ('\n// (3.11.0) file_picker 11 (and 3.15.0 speech_to_text 7.5) leave their Kotlin code to AGP 9\'s built-in Kotlin, which this project\n'
@@ -100,6 +105,7 @@ USES = [('NSCameraUsageDescription', 'RCL ERP uses the camera for the photos of 
         ('NSLocationWhenInUseUsageDescription', 'RCL ERP saves the place of every entry, as the web ERP does.'),
         ('NSMicrophoneUsageDescription', 'RCL ERP uses the microphone when you talk with the assistant and for a screen-share help call.'),
         ('NSPhotoLibraryUsageDescription', 'RCL ERP lets you choose a photo for an entry.'),
+        ('NSFaceIDUsageDescription', 'RCL ERP opens with your Face ID, so that nobody else can open it on this iPhone.'),      # (3.27.0) the app lock
         ('NSSpeechRecognitionUsageDescription', 'RCL ERP turns what you say to the assistant into words (a question or an entry).')]
 def plist(s):
     if '<key>CFBundleDisplayName</key>' in s:
@@ -184,6 +190,10 @@ def phone():
     edit('android/app/build.gradle.kts', gradle)
     if os.path.exists('android/build.gradle.kts'): edit('android/build.gradle.kts', root_gradle)
     if os.path.exists('ios/Runner/Info.plist'): edit('ios/Runner/Info.plist', plist)
+    # (3.27.0) the app lock: the AppCompat themes (the fingerprint box on Android 8 and below)
+    for st in ['android/app/src/main/res/values/styles.xml', 'android/app/src/main/res/values-night/styles.xml']:
+        if os.path.exists(st):
+            edit(st, lambda x: x.replace('parent="@android:style/Theme.Light.NoTitleBar"', 'parent="Theme.AppCompat.Light.NoActionBar"').replace('parent="@android:style/Theme.Black.NoTitleBar"', 'parent="Theme.AppCompat.NoActionBar"'))
     # flutter create adds a sample test for its counter app – not this app
     w = 'test/widget_test.dart'
     if os.path.exists(w) and 'MyApp' in open(w).read(): os.remove(w)

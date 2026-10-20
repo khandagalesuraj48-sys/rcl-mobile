@@ -5,7 +5,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -15,7 +15,8 @@ import io.flutter.plugin.common.MethodChannel
  *     the service is really in the foreground (Android 14: before the screen is taken), at most after 3 s;
  *   stop – the notification goes;
  *   awake {on} – the screen stays on while a call is on (it may sleep again after it). */
-class MainActivity : FlutterActivity() {
+// (3.27.0) a FragmentActivity: the app lock (local_auth – the phone's fingerprint / face box) needs it
+class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "rcl/call").setMethodCallHandler { call, result ->
