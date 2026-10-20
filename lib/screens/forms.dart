@@ -1556,7 +1556,7 @@ class DraftLine extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Half-filled entry brought back', mr: 'अर्धवट एंट्री परत आणली', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.blue)),
+              const Text('Half-filled entry brought back', mr: 'अर्धवट एन्ट्री परत आणली', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.blue)),
               Text(draftTime(at, SessionScope.read(context).clock()), style: const TextStyle(fontSize: 12.5, color: C.blue)),
             ]),
           ),

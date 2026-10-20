@@ -147,7 +147,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.edge),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const TwoLang('New entry', 'नवीन एंट्री', size: 20, weight: FontWeight.w700),
+            const TwoLang('New entry', 'नवीन एन्ट्री', size: 20, weight: FontWeight.w700),
             const SizedBox(height: 12),
             GridView.count(
               crossAxisCount: 3,
