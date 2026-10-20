@@ -14,6 +14,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.28.0 (20-10-2026: "ata aplela app madhe ocr jodaych aahe mhanje google gemini api nahi ani te ocr khup fast asawi";
+his choices: the Diesel Issue photos and the Diesel Inward bill; the web keeps its Gemini):** **the phone reads the photos itself**
+(Google ML Kit text recognition, on the phone – no internet, nothing paid, no Gemini; `lib/core/ocr.dart`, the rules in
+`lib/core/ocr_read.dart`):
+* **Diesel Issue – Dashboard photo → KM / Hrs:** the number that fits the machinery's last reading (not below it, not more than it
+  can run since then – the server's own rule); the tenth digit in another colour is understood. No last reading: one clear long
+  number only. **Dispenser photo → Litres:** litres × rate = amount picks the litres; else the number by Litre / Volume / Qty.
+* **Diesel Inward – bill copy (camera or gallery) → Bill No., Litres, Rate** (litres × rate = amount; a tanker's KL and ₹ per KL
+  become litres). A line under the copies says what was read.
+* Only empty boxes are filled (or ones the phone filled); a filled box is blue – "check it"; a number that does not fit is not
+  put. The computer app (Windows) has no such reader: there the Diesel Issue photos are read by the server's AI, as on the web.
+
 **Version 3.27.0 (20-10-2026: "ॲप उघडायला Fingerprint / Face lock … KR PERFECT"; his choices: for everyone, on by itself, asked
 again after a minute away):** **the app lock** (`lib/core/applock.dart`, `lib/core/lock_gate.dart`, `lib/screens/lock.dart`):
 * The app opens with a kept sign-in → **"RCL ERP is locked"** and the phone's own box at once: **fingerprint / face – or the phone's

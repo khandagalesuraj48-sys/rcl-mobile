@@ -15,6 +15,8 @@ import '../core/diesel_hist.dart';
 import '../core/format.dart';
 import '../core/rdoc.dart' show fmt;
 import '../core/kinds.dart';
+import '../core/ocr.dart';
+import '../core/ocr_read.dart';
 import '../core/photo.dart';
 import '../core/plate.dart';
 import '../core/plate_read.dart';
@@ -81,6 +83,10 @@ class _EntryFormState extends State<EntryForm> {
   final ai = <String, Map<String, dynamic>>{}; // dash / pump → its answer ({wait: true} while reading)
   final aiPut = <TextEditingController>{}; // boxes the AI filled (typing over one makes it the person's)
   int aiTok = 0;
+
+  // (3.28.0) what the phone read on the bill copies of an inward: {wait: true} while reading, else {no, qty, rate} or {none: true}
+  Map<String, dynamic>? billRead;
+  int billReadTok = 0;
 
   // (3.1.13, update-120) the bill copies of an inward – mode: new · loading · edit · fail (they could not be read: nothing changes them)
   final bills = <_Bill>[];
@@ -341,8 +347,15 @@ class _EntryFormState extends State<EntryForm> {
       final p = await takePhoto(pk.en, m.id);
       if (p == null || !mounted || machine?.id != m.id) return;
       setState(() => sh.jpg = p.jpg);
-      // the AI reads the dashboard (its reading) and the dispenser (its litres) NOW, while the photo is being sent
-      if ((pk.key == 'dash' && !m.debit) || pk.key == 'pump') _aiRead(pk.key, m.id, p.jpg);
+      // the dashboard (its reading) and the dispenser (its litres) are read NOW, while the photo is being sent – (3.28.0) on the
+      // phone itself (no Gemini, a fraction of a second); a computer (the Windows app) as the web: the server's AI
+      if ((pk.key == 'dash' && !m.debit) || pk.key == 'pump') {
+        if (canOcr) {
+          _phoneRead(pk.key, m, p);
+        } else {
+          _aiRead(pk.key, m.id, p.jpg);
+        }
+      }
       final r = (await s.api.call('dieselPhoto', [{'kind': pk.key, 'data': p.dataUrl, 'lat': p.spot.lat, 'lng': p.spot.lng, 'acc': p.spot.acc, 'at': p.at.toUtc().toIso8601String(), 'no': m.id}], true) as Map);
       if (!mounted || machine?.id != m.id) return;
       setState(() => sh.path = (r['path'] ?? '').toString());
@@ -373,23 +386,103 @@ class _EntryFormState extends State<EntryForm> {
         ai.remove(kind); // the AI is not set up on this site
         return;
       }
-      ai[kind] = r;
-      void fill(TextEditingController c, dynamic v) {
-        final n = asNum(v);
-        if (n == null) return;
-        if (c.text.isEmpty || aiPut.contains(c)) {
-          c.text = fmtNum(n).replaceAll(',', '');
-          aiPut.add(c);
-        }
-      }
-
-      if (kind == 'dash') {
-        if (hasKm(way)) fill(km, r['km']);
-        if (hasHr(way)) fill(hr, r['hr']);
-      } else {
-        fill(qty, r['litres']);
-      }
+      _putRead(kind, r);
     });
+  }
+
+  /// A number read on a photo into its box – only an empty box or one filled the same way before (a typed number stays).
+  void _fill(TextEditingController c, dynamic v) {
+    final n = asNum(v);
+    if (n == null) return;
+    if (c.text.trim().isEmpty || aiPut.contains(c)) {
+      c.text = fmtNum(n).replaceAll(',', '');
+      aiPut.add(c);
+    }
+  }
+
+  void _putRead(String kind, Map<String, dynamic> r) {
+    ai[kind] = r;
+    if (kind == 'dash') {
+      if (hasKm(way)) _fill(km, r['km']);
+      if (hasHr(way)) _fill(hr, r['hr']);
+    } else {
+      _fill(qty, r['litres']);
+    }
+  }
+
+  /* (3.28.0) THE PHONE READS THE PHOTO ITSELF (asked 20-10-2026: "app madhe ocr … google gemini api nahi ani te ocr khup fast
+   * asawi"): the camera's own picture (without the band) → its text (ocr.dart) → the reading that fits the machinery's last one,
+   * or the litres of the fill (ocr_read.dart). Nothing goes to the internet for it. */
+  Future<void> _phoneRead(String kind, Machine m, TakenPhoto p) async {
+    if (kind == 'dash' && !hasKm(way) && !hasHr(way)) return; // "Meter not working": nothing to read
+    final s = SessionScope.read(context), tok = ++aiTok;
+    setState(() => ai[kind] = {'wait': true});
+    Map<String, dynamic> r;
+    try {
+      final lines = await ocrLines(path: p.raw, jpg: p.jpg);
+      if (kind == 'dash') {
+        final h = hist ?? await dieselHistoryOf(s, m.id, date);
+        LastReading? last(String key) {
+          final v = h?[key];
+          final n = v is Map ? asNum(v['value']) : null;
+          return n == null ? null : LastReading(n.toDouble(), '${v['date'] ?? ''}');
+        }
+
+        final mr = meterFrom(lines, wantKm: hasKm(way), wantHr: hasHr(way), lastKm: last('lastKm'), lastHr: last('lastHr'), today: date);
+        r = {'km': mr.km, 'hr': mr.hr, 'check': mr.check};
+      } else {
+        final pr = pumpFrom(lines);
+        r = {'litres': pr.litres, 'check': pr.check};
+      }
+    } catch (e) {
+      r = {'error': errText(e)};
+    }
+    if (!mounted || machine?.id != m.id || tok < aiTok - 4) return;
+    setState(() => _putRead(kind, r));
+  }
+
+  /// (3.28.0) The bill copies just taken / chosen are read on the phone: Bill No., litres and rate into their boxes (only empty
+  /// ones, or ones the phone filled before); the first copy that gives something is enough for each box.
+  Future<void> _readBills(List<Uint8List> jpgs) async {
+    if (!canOcr || jpgs.isEmpty || k.key != 'inward') return;
+    final tok = ++billReadTok;
+    setState(() => billRead = {'wait': true});
+    var got = const BillRead();
+    try {
+      for (final j in jpgs) {
+        final b = billFrom(await ocrLines(jpg: j));
+        got = BillRead(billNo: got.billNo.isNotEmpty ? got.billNo : b.billNo, qty: got.qty ?? b.qty, rate: got.rate ?? b.rate, amount: got.amount ?? b.amount);
+        if (got.billNo.isNotEmpty && got.qty != null && got.rate != null) break;
+      }
+    } catch (_) {/* nothing read: the boxes stay as they are */}
+    if (!mounted || tok != billReadTok) return;
+    setState(() {
+      if (!got.any) {
+        billRead = {'none': true};
+        return;
+      }
+      billRead = {'no': got.billNo, 'qty': got.qty, 'rate': got.rate};
+      if (got.billNo.isNotEmpty && (billNo.text.trim().isEmpty || aiPut.contains(billNo))) {
+        billNo.text = got.billNo;
+        aiPut.add(billNo);
+      }
+      _fill(qty, got.qty);
+      _fill(rate, got.rate);
+    });
+  }
+
+  /// The line under the bill copies: what the phone read on them.
+  String get _billNote {
+    final b = billRead;
+    if (b == null) return '';
+    if (b['wait'] == true) return 'Reading the bill…';
+    if (b['none'] == true) return 'Nothing could be read on the bill photo – type the bill number, litres and rate.';
+    final parts = [
+      if ('${b['no'] ?? ''}'.isNotEmpty) 'Bill No. ${b['no']}',
+      if (asNum(b['qty']) != null) '${fmtNum(asNum(b['qty']))} L',
+      if (asNum(b['rate']) != null) '₹ ${fmtNum(asNum(b['rate']))} per litre',
+    ];
+    return 'Read on the bill: ${parts.join(' · ')} – check them; type over a box if it is wrong.';
   }
 
   // ---------- the bill copies of an inward (3.1.13, update-120) ----------
@@ -440,6 +533,7 @@ class _EntryFormState extends State<EntryForm> {
     if (!mounted || jpgs.isEmpty) return;
     final tok = billTok, items = [for (final j in jpgs) _Bill(jpg: j)];
     setState(() => bills.addAll(items));
+    _readBills(jpgs); // (3.28.0) read on the phone while they are being sent
     for (final b in items) {
       if (!mounted || tok != billTok) return;
       try {
@@ -464,6 +558,8 @@ class _EntryFormState extends State<EntryForm> {
 
   void _billsReset() {
     billTok++;
+    billReadTok++;
+    billRead = null;
     bills.clear();
     billChanged = false;
     billMode = 'new';
@@ -579,9 +675,9 @@ class _EntryFormState extends State<EntryForm> {
       }
     }
     return [
-      if (put.isNotEmpty) 'AI read on the photos: ${put.join(' · ')} – check with the photos; type over it if it is wrong.',
+      if (put.isNotEmpty) 'Read on the photos: ${put.join(' · ')} – check with the photos; type over it if it is wrong.',
       if (warn.isNotEmpty) 'Check: ${warn.join('; ')}.',
-      if (waiting.isNotEmpty) 'The AI is reading ${waiting.join(' and ')} on the photo…',
+      if (waiting.isNotEmpty) 'Reading ${waiting.join(' and ')} on the photo…',
     ].join(' ');
   }
 
@@ -989,11 +1085,11 @@ class _EntryFormState extends State<EntryForm> {
               ],
               if (m != null && hasKm(way)) ...[
                 _label('KM reading', 'KM रीडिंग'),
-                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: dhHint(hist, 'lastKm').isNotEmpty ? dhHint(hist, 'lastKm') : tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read by the AI on the dashboard photo – check it') : null)),
+                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: dhHint(hist, 'lastKm').isNotEmpty ? dhHint(hist, 'lastKm') : tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read from the dashboard photo – check it') : null)),
               ],
               if (m != null && hasHr(way)) ...[
                 _label('Hour meter', 'तास मीटर'),
-                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read by the AI on the dashboard photo – check it') : null)),
+                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read from the dashboard photo – check it') : null)),
               ],
               _label('Litres', 'लिटर'),
               _qtyField(),
@@ -1058,10 +1154,17 @@ class _EntryFormState extends State<EntryForm> {
               _label('Litres', 'लिटर'),
               _qtyField(),
               _label('Rate (₹ per litre)', 'दर'),
-              TextField(controller: rate, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: '0.00', prefixText: '₹ ')),
+              TextField(
+                  controller: rate,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (_) => setState(() => aiPut.remove(rate)),
+                  decoration: InputDecoration(hintText: '0.00', prefixText: '₹ ', fillColor: aiPut.contains(rate) ? C.blueSoft : Colors.white, helperText: aiPut.contains(rate) ? tr('Read from the bill photo – check it') : null)),
               if ((asNum(rate.text) ?? 0) > 0 && (q ?? 0) > 0) InfoLine('Amount ₹ ${fmtNum((asNum(rate.text) ?? 0) * (q ?? 0))}', icon: Icons.currency_rupee_rounded),
               _label('Bill number', 'बिल नंबर'),
-              TextField(controller: billNo, decoration: InputDecoration(hintText: tr('Optional'))),
+              TextField(
+                  controller: billNo,
+                  onChanged: (_) => setState(() => aiPut.remove(billNo)),
+                  decoration: InputDecoration(hintText: tr('Optional'), fillColor: aiPut.contains(billNo) ? C.blueSoft : Colors.white, helperText: aiPut.contains(billNo) ? tr('Read from the bill photo – check it') : null)),
               _label('Bill date', 'बिल तारीख'),
               _box(
                 onTap: () => _pickDate(bill: true),
@@ -1074,6 +1177,18 @@ class _EntryFormState extends State<EntryForm> {
               if (_billsHere) ...[
                 _label('Bill copy', 'बिल कॉपी'),
                 _bills(),
+                if (_billNote.isNotEmpty)
+                  Container(
+                    key: const Key('bill-read'),
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(14)),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Icon(Icons.document_scanner_rounded, color: C.blue, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_billNote, style: const TextStyle(fontSize: 13.5, color: C.blue, height: 1.35, fontWeight: FontWeight.w500))),
+                    ]),
+                  ),
                 Padding(
                     padding: const EdgeInsets.only(top: 6, left: 2),
                     child: Text(onComputer ? 'Photos of the bill – pick several at once from the files of this computer (up to 10).' : 'Photos of the bill – take them one after another with the camera, or pick several at once from the gallery (up to 10).',
