@@ -618,6 +618,42 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/8_issue_saved.png'));
   }, tags: ['golden']);
 
+  testWidgets('(3.29.0, update-139) A machinery measured by KM and Hrs: a 5th photo, the Hour meter; one with one reading: the 4 photos', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    srv.master.add({'id': 'MH-46-TM-1001', 'no': 'MH-46-TM-1001', 'name': 'Transit Mixer', 'type': 'Transit Mixer', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active',
+      'modes': ['KM', 'Hrs', 'KM + Hrs'], 'modesX': [], 'meterKm': true, 'meterHr': true, 'worksOn': ['KM', 'Hrs'], 'unit': 'KM + Hrs', 'kmStd': 3, 'hrStd': 4, 'activeFrom': '2026-09-01', 'inactiveFrom': ''});
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await t.tap(find.text('New Entry'));
+    await net(t);
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('MH-46-TM-1001'));
+    await settle(t, 800);
+    expect(find.text('KM + Hrs · Asset Master'), findsOneWidget);
+    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, -900));
+    await settle(t, 500);
+    for (final k in ['dash', 'hrs', 'veh', 'pump', 'reg']) {
+      expect(find.byKey(Key('photo-$k')), findsOneWidget, reason: k);
+    }
+    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, 1400));
+    await settle(t, 500);
+    await t.tap(find.text('MH-46-TM-1001').first);
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)'));
+    await settle(t, 800);
+    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, -900));
+    await settle(t, 500);
+    expect(find.byKey(const Key('photo-dash')), findsOneWidget);
+    expect(find.byKey(const Key('photo-hrs')), findsNothing, reason: 'measured by Hrs only: its hour meter is the dashboard photo');
+  });
+
   testWidgets('(3.1.13, update-120) Diesel Inward: the bill copies – "Take photo" / "Choose photos"; an edit shows its copies, one taken out is saved', (t) async {
     phone(t);
     final srv = FakeServer()..perms['Diesel Inward'] = 'Edit';
