@@ -104,7 +104,7 @@ class _MeTabState extends State<MeTab> {
         Container(
           padding: EdgeInsets.fromLTRB(Sp.edge, top + 14, Sp.edge, 44),
           decoration: const BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, Color(0xFF2A6148)]),
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, C.greenEnd]),
           ),
           child: Column(children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -198,7 +198,7 @@ class _MeTabState extends State<MeTab> {
                 color: C.greenSoft,
                 trailing: s.crForMe > 0
                     ? Row(mainAxisSize: MainAxisSize.min, children: [
-                        Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3), decoration: BoxDecoration(color: C.gold, borderRadius: BorderRadius.circular(10)), child: Text('${s.crForMe}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+                        Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3), decoration: BoxDecoration(color: C.goldInk, borderRadius: BorderRadius.circular(10)), child: Text('${s.crForMe}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
                         const Icon(Icons.chevron_right_rounded, color: C.faint),
                       ])
                     : null,

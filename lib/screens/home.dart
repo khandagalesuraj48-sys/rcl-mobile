@@ -330,7 +330,7 @@ class _HomeTabState extends State<HomeTab> {
                   height: picH,
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [C.bg, Color(0xE6F8F5EE), Color(0x00F8F5EE)], stops: [.22, .45, .78]),
+                      gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [C.bg, Color(0xE6FAF8F2), Color(0x00FAF8F2)], stops: [.22, .45, .78]),
                     ),
                   ),
                 ),
@@ -341,7 +341,7 @@ class _HomeTabState extends State<HomeTab> {
                   height: picH,
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xCCF8F5EE), Color(0x00F8F5EE), Color(0x00F8F5EE), C.bg], stops: [0, .28, .7, 1]),
+                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xCCFAF8F2), Color(0x00FAF8F2), Color(0x00FAF8F2), C.bg], stops: [0, .28, .7, 1]),
                     ),
                   ),
                 ),
@@ -442,7 +442,7 @@ class _HomeTabState extends State<HomeTab> {
                   padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
-                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, Color(0xFF2A6148)]),
+                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, C.greenEnd]),
                     boxShadow: [BoxShadow(color: C.green.withValues(alpha: .3), blurRadius: 22, offset: const Offset(0, 10))],
                   ),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -568,8 +568,8 @@ class _HomeTabState extends State<HomeTab> {
                     TextButton(
                       key: const Key('home-all'),
                       onPressed: () => Scaffold.of(context).openDrawer(),
-                      style: TextButton.styleFrom(foregroundColor: C.gold, padding: const EdgeInsets.symmetric(horizontal: 6)),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [Text('View All', style: const TextStyle(fontWeight: FontWeight.w700, color: C.gold)), const Icon(Icons.arrow_forward_rounded, size: 18)]),
+                      style: TextButton.styleFrom(foregroundColor: C.goldInk, padding: const EdgeInsets.symmetric(horizontal: 6)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [Text('View All', style: const TextStyle(fontWeight: FontWeight.w700, color: C.goldInk)), const Icon(Icons.arrow_forward_rounded, size: 18)]),
                     ),
                   ]),
                   const SizedBox(height: 8),
@@ -611,7 +611,7 @@ class _HomeTabState extends State<HomeTab> {
 }
 
 /// (3.31.0) the colours of the places in the stock bar (gold, light green, …)
-const _locTone = [C.goldLight, Color(0xFF9FD3B5), Color(0xFFB9C9F2), Color(0xFFE8B4A6)];
+const _locTone = [C.goldLight, Color(0xFF90D7AE), Color(0xFFACC0F5), Color(0xFFECAA98)];
 
 /// (3.31.0) ≡ – every module he may open, Call, Approvals, My settings, Help.
 class _HomeMenu extends StatelessWidget {

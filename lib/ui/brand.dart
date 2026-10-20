@@ -39,7 +39,7 @@ class _BackdropState extends State<Backdrop> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
         const DecoratedBox(
           decoration: BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF0B3D1C), C.greenDark, Color(0xFF2E7D32), Color(0xFF1E6B4E)], stops: [0, .38, .72, 1]),
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenDeep, C.greenDark, C.green, C.greenBright], stops: [0, .38, .72, 1]),
           ),
         ),
         RepaintBoundary(child: AnimatedBuilder(animation: _t, builder: (_, __) => CustomPaint(painter: _Sky(_t.value, widget.road)))),

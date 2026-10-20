@@ -350,8 +350,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               TextButton(
                 key: const Key('login-forgot'),
                 onPressed: _forgot,
-                style: TextButton.styleFrom(foregroundColor: C.gold, padding: const EdgeInsets.symmetric(horizontal: 4)),
-                child: const Text('Forgot password?', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.gold)),
+                style: TextButton.styleFrom(foregroundColor: C.goldInk, padding: const EdgeInsets.symmetric(horizontal: 4)),
+                child: const Text('Forgot password?', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.goldInk)),
               ),
             ]),
             _errBox(err),
@@ -398,7 +398,7 @@ class _SignInButton extends StatelessWidget {
   Widget build(BuildContext context) => DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(40),
-          gradient: const LinearGradient(colors: [C.green, Color(0xFF1E6B4E)]),
+          gradient: const LinearGradient(colors: [C.green, C.greenBright]),
           boxShadow: [BoxShadow(color: C.green.withValues(alpha: .35), blurRadius: 16, offset: const Offset(0, 8))],
         ),
         child: FilledButton(
