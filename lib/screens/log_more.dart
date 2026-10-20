@@ -28,6 +28,7 @@ import '../ui/widgets.dart';
 import 'log_print.dart';
 import 'logbook.dart' show LogCard, tripsOfRow;
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 final _sm = OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12));
 String _today(Session s) => s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
@@ -230,11 +231,11 @@ class _LogFindScreenState extends State<LogFindScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Log Book – all dates', 'लॉग बुक – सर्व तारखा', size: 19, weight: FontWeight.w700),
-        actions: [const GuideButton('log'), IconButton(key: const Key('lf-reload'), tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
+        actions: withAsk([const GuideButton('log'), IconButton(key: const Key('lf-reload'), tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(key: const Key('lf-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 40), children: [
+        child: ListView(key: const Key('lf-list'), padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Row(children: [
             Expanded(child: DateField(key: const Key('lf-from'), label: 'From (blank = from start)', value: from, last: last, onChanged: (v) => _set(() => from = v))),
             const SizedBox(width: 8),
@@ -518,8 +519,8 @@ class _LogImportScreenState extends State<LogImportScreen> {
     final bad = probs.where((p) => p.isNotEmpty).length;
     final stop = bad > 0 || d.tkBad.isNotEmpty;
     return Scaffold(
-      appBar: AppBar(title: Text(stop ? 'Fix the file first' : 'Import into the Log Book', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)), actions: [const GuideButton('log')]),
-      body: ListView(key: const Key('li-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 120), children: [
+      appBar: AppBar(title: Text(stop ? 'Fix the file first' : 'Import into the Log Book', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)), actions: withAsk([const GuideButton('log')])),
+      body: ListView(key: const Key('li-list'), padding: const EdgeInsets.fromLTRB(16, 8, 16, 120), children: [
         Text(widget.file, style: const TextStyle(color: C.muted, fontSize: 13)),
         const SizedBox(height: 6),
         if (stop)

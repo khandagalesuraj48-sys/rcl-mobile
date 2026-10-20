@@ -28,6 +28,7 @@ import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
 import 'machine_form.dart';
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 Future<void> openAssetMaster(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AssetMasterScreen()));
 
@@ -116,7 +117,7 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Asset Master', 'ॲसेट मास्टर', size: 20, weight: FontWeight.w700),
-        actions: [const GuideButton('master'), 
+        actions: withAsk([const GuideButton('master'), 
           if (can) IconButton(key: const Key('m-add'), tooltip: tr('Add machinery'), onPressed: () => _form(null), icon: const Icon(Icons.add_circle_outline_rounded)),
           PopupMenuButton<String>(
             key: const Key('m-menu'),
@@ -130,7 +131,7 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
               PopupMenuItem(key: const Key('m-qr'), value: 'qr', child: Text('QR labels')),
             ],
           ),
-        ],
+        ]),
       ),
       body: Column(children: [
         Padding(
@@ -301,7 +302,7 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
       isScrollControlled: true,
       builder: (c) => SizedBox(
         height: MediaQuery.of(c).size.height * .86,
-        child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 0, 20, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(id, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text(statusText(m), style: TextStyle(fontWeight: FontWeight.w700, color: m['status'] == 'Inactive' ? C.red : C.greenDark)),
@@ -644,7 +645,7 @@ class _FilterSheetState extends State<_FilterSheet> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SizedBox(
         height: MediaQuery.of(context).size.height * .82,
-        child: ListView(padding: const EdgeInsets.fromLTRB(20, 0, 20, 24), children: [
+        child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
           Text('Filters', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
           PickField(label: 'Ownership', value: f.own, items: kOwnerships, blank: 'All', onChanged: (v) => setState(() => f.own = v)),
@@ -698,7 +699,7 @@ class _AssetListAskSheetState extends State<_AssetListAskSheet> {
     Widget tick(String label, bool v, ValueChanged<bool> on) => CheckboxListTile(contentPadding: EdgeInsets.zero, dense: true, controlAffinity: ListTileControlAffinity.leading, value: v, onChanged: (x) => setState(() => on(x == true)), title: Text(label));
     return SizedBox(
       height: MediaQuery.of(context).size.height * .86,
-      child: ListView(padding: const EdgeInsets.fromLTRB(20, 0, 20, 24), children: [
+      child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
         Text('Asset list', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
         PickField(label: 'List for', value: a.kind == 'date' ? 'One date' : a.kind == 'month' ? 'A month' : 'A period (from – to)', items: const ['One date', 'A month', 'A period (from – to)'], onChanged: (v) => setState(() => a.kind = v == 'One date' ? 'date' : v == 'A month' ? 'month' : 'period')),
@@ -753,7 +754,7 @@ class _AssignScreenState extends State<_AssignScreen> {
   String all = '';
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text('Assign vendor – ${widget.list.length} asset${widget.list.length == 1 ? '' : 's'}'), actions: [const GuideButton('master')]),
+        appBar: AppBar(title: Text('Assign vendor – ${widget.list.length} asset${widget.list.length == 1 ? '' : 's'}'), actions: withAsk([const GuideButton('master')])),
         body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Expanded(child: PickField(key: const Key('as-all'), label: 'Set all rows to', value: all, items: widget.vendors, blank: '– pick –', onChanged: (v) => setState(() => all = v))),
@@ -839,7 +840,7 @@ class _EditManyScreenState extends State<EditManyScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(one ? 'Edit ${widget.list.first['id']}' : 'Edit ${widget.list.length} machinery'), actions: [const GuideButton('master')]),
+      appBar: AppBar(title: Text(one ? 'Edit ${widget.list.first['id']}' : 'Edit ${widget.list.length} machinery'), actions: withAsk([const GuideButton('master')])),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(
           one ? 'Change what you need for ${widget.list.first['id']}.' : 'The ${widget.list.length} selected machinery: a value they all share is filled in – change it for all. Boxes marked "different" keep each machinery\'s own value unless you type a new one.',

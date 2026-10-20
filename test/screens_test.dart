@@ -114,7 +114,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await settle(t);
     await pics(t);
-    expect(find.text('Namaskar'), findsOneWidget);
+    expect(find.text('Welcome Back'), findsOneWidget);
     expect(find.image(const AssetImage('assets/brand/rachana_logo.png')), findsOneWidget);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_sign_in.png'));
     await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
@@ -137,7 +137,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await pics(t);
-    expect(find.text('Namaskar, Sujit'), findsOneWidget);
+    expect(find.text('Sujit'), findsOneWidget); // (3.31.0) "Good Morning, Sujit 👋"
     expect(find.text('1,133 L'), findsOneWidget);
     expect(find.text('813 L'), findsOneWidget);
     expect(find.text('320 L'), findsOneWidget);
@@ -509,6 +509,8 @@ void main() {
     await net(t);
     await t.tap(find.text('Reports').last);
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
+    await net(t);
     await t.scrollUntilVisible(find.text('Stock Register'), 300, scrollable: find.ancestor(of: find.text('Daily Inward & Issue'), matching: find.byType(Scrollable)).first);
     await settle(t, 300);
     await t.tap(find.text('Stock Register'));
@@ -536,6 +538,8 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
     await net(t);
     await t.tap(find.text('Monthly Diesel & Average'));
     await net(t);
@@ -733,6 +737,8 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9_me.png'));
     await t.tap(find.text('Reports'));
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel')));
+    await net(t);
     expect(find.text('Monthly Diesel Issue'), findsOneWidget);
   }, tags: ['golden']);
 
@@ -805,7 +811,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await t.pump(const Duration(milliseconds: 400));
     expect(find.text('Sign in'), findsOneWidget);
-    final op = t.widget<Opacity>(find.ancestor(of: find.text('Mechanical Management ERP'), matching: find.byType(Opacity)).first);
+    final op = t.widget<Opacity>(find.ancestor(of: find.text('Fleet & Diesel Management'), matching: find.byType(Opacity)).first);
     expect(op.opacity, 1);
   });
 
@@ -1395,6 +1401,8 @@ void main() {
     await net(t);
     await t.tap(find.text('Reports').last);
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
+    await net(t);
     await t.tap(find.text('Dashboard'));
     await net(t);
     expect(srv.dashAsked.first['fn'], 'getDashboard');
@@ -1444,6 +1452,8 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
     await net(t);
     await t.tap(find.text('Dashboard'));
     await net(t);
@@ -2774,6 +2784,8 @@ void main() {
     await net(t);
     await t.tap(find.text('Reports').last);
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
+    await net(t);
     await t.scrollUntilVisible(find.text('Machinery Diesel Ledger'), 300, scrollable: find.ancestor(of: find.text('Daily Inward & Issue'), matching: find.byType(Scrollable)).first);
     await settle(t, 300);
     await t.tap(find.text('Machinery Diesel Ledger'));
@@ -2823,7 +2835,7 @@ void main() {
     await net(t);
     await t.tap(find.text('Me'));
     await net(t);
-    await t.tap(find.text('Super Admin'));
+    await tapK(t, 'me-super'); // (3.31.0) his role is also on Me now
     await net(t);
     return srv;
   }
@@ -3078,6 +3090,8 @@ void main() {
     var clock = DateTime(2026, 10, 14, 10, 30).millisecondsSinceEpoch;
     rtc.now = () => clock;
     expect(srv.rtcBeats.first, isNull, reason: 'the first heartbeat: "just opened" – the rings still waiting come');
+    await t.tap(find.byKey(const Key('home-menu'))); // (3.31.0) Call is in the menu (≡)
+    await settle(t, 600);
     await t.tap(find.byKey(const Key('home-call')));
     await net(t);
     await settle(t, 1600);

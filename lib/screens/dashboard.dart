@@ -24,6 +24,7 @@ import '../web/print_view.dart';
 import 'compliance.dart' show openCompliance;
 import 'logbook.dart' show LogForm;
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 Future<void> openDashboard(BuildContext context, {int tab = 0}) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DashboardScreen(tab: tab)));
 
@@ -170,7 +171,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Dashboard', 'डॅशबोर्ड', size: 20, weight: FontWeight.w700),
-          actions: [const GuideButton('dash'), 
+          actions: withAsk([const GuideButton('dash'), 
             IconButton(
               tooltip: tr('Refresh'),
               onPressed: () {
@@ -179,7 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               },
               icon: const Icon(Icons.refresh_rounded),
             ),
-          ],
+          ]),
           bottom: TabBar(
             onTap: (i) {
               if (i == 1 && ld == null && !lLoading) _loadLog();

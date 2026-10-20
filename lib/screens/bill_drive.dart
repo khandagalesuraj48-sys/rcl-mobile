@@ -17,6 +17,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'bill_print.dart';
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 const kNoteNames = ['Rachana Construction Limited', 'Sketchline Industries'];
 
@@ -140,7 +141,7 @@ class _DriveScreenState extends State<DriveScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('RCL Drive', 'RCL ड्राइव्ह', size: 20, weight: FontWeight.w700),
-          actions: [const GuideButton('bills'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
+          actions: withAsk([const GuideButton('bills'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
           bottom: TabBar(labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5), tabs: [
             Tab(key: const Key('drv-bills'), child: Text('Saved Bills')),
             Tab(key: const Key('drv-dn'), child: Text('Saved Debit Notes')),
@@ -207,7 +208,7 @@ class _DriveScreenState extends State<DriveScreen> {
 
   Widget _bills(Session s) => RefreshIndicator(
         onRefresh: _load,
-        child: ListView(key: const Key('sb-list'), padding: const EdgeInsets.fromLTRB(14, 6, 14, 30), children: [
+        child: ListView(key: const Key('sb-list'), padding: const EdgeInsets.fromLTRB(16, 6, 16, 30), children: [
           Text('Everything that was submitted – shown exactly as it was saved: the Abstract, the Tax Invoice and the Debit Note of every bill.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 8),
           if (bills.isEmpty && !loading) Padding(padding: const EdgeInsets.all(20), child: Text('No submitted bills for these filters.', textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
@@ -252,7 +253,7 @@ class _DriveScreenState extends State<DriveScreen> {
     final dnBills = bills.where((b) => (num.tryParse('${b['dnAmt'] ?? 0}') ?? 0) > 0).toList();
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView(key: const Key('dn-list'), padding: const EdgeInsets.fromLTRB(14, 6, 14, 30), children: [
+      child: ListView(key: const Key('dn-list'), padding: const EdgeInsets.fromLTRB(16, 6, 16, 30), children: [
         Align(
           alignment: Alignment.centerLeft,
           child: FilledButton.icon(key: const Key('dn-open'), style: FilledButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: s.canEdit('Machinery Billing') ? _newNote : null, icon: const Icon(Icons.add_rounded), label: Text('New Debit Note')),
@@ -473,7 +474,7 @@ class _DebitNoteScreenState extends State<DebitNoteScreen> {
   Widget build(BuildContext context) {
     final t = dnTotals(lines, gst.text, tds.text);
     return Scaffold(
-      appBar: AppBar(title: Text('New Debit Note'), actions: [const GuideButton('bills')]),
+      appBar: AppBar(title: Text('New Debit Note'), actions: withAsk([const GuideButton('bills')])),
       bottomNavigationBar: SafeArea(
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -485,7 +486,7 @@ class _DebitNoteScreenState extends State<DebitNoteScreen> {
           ]),
         ),
       ),
-      body: ListView(padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         PickField(key: const Key('dn-co'), label: 'Name on the note', value: co, items: kNoteNames, onChanged: (v) => setState(() => co = v)),
         const SizedBox(height: 8),
         TextBox(key: const Key('dn-vendor'), label: 'Party (debit to)', controller: party, options: parties),

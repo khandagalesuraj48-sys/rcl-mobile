@@ -21,6 +21,7 @@ import 'bill_money.dart';
 import 'bill_print.dart';
 import 'log_print.dart';
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 /// The billing pages and their access (as the web's tabs).
 const kBillPages = [
@@ -55,7 +56,7 @@ class BillingHub extends StatelessWidget {
     final s = SessionScope.of(context);
     final list = kBillPages.where((p) => s.canSee(p.$3)).toList();
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Billing', 'बिलिंग', size: 20, weight: FontWeight.w700)),
+      appBar: AppBar(actions: withAsk(), title: const TwoLang('Billing', 'बिलिंग', size: 20, weight: FontWeight.w700)),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
         Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
@@ -578,7 +579,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), can = s.canEdit('Machinery Billing');
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Machinery Billing', 'यंत्र बिलिंग', size: 20, weight: FontWeight.w700), actions: [const GuideButton('bill'), IconButton(tooltip: tr('Refresh'), onPressed: _loadInit, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Machinery Billing', 'यंत्र बिलिंग', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('bill'), IconButton(tooltip: tr('Refresh'), onPressed: _loadInit, icon: const Icon(Icons.refresh_rounded))])),
       bottomNavigationBar: bills.isEmpty
           ? null
           : SafeArea(
@@ -598,7 +599,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
             ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(key: const Key('mb-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+          : ListView(key: const Key('mb-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
               if (err.isNotEmpty) InfoLine(err, bad: true),
               if (s.admin) _lockCard(s),
               _filters(s, can),

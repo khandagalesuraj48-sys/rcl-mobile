@@ -19,6 +19,7 @@ import '../ui/widgets.dart';
 import '../ui/help.dart' show GuideButton;
 import 'verify.dart' show askSendAgain, againWords;
 import 'flow_fix.dart' show openFix;
+import '../ui/ask_bot.dart';
 
 Future<void> openApprovals(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ApprovalsScreen()));
 
@@ -275,10 +276,10 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Approvals', 'मंजुरी', size: 20, weight: FontWeight.w700),
-        actions: [const GuideButton('approvals'), 
+        actions: withAsk([const GuideButton('approvals'), 
           if (s.superAdmin) IconButton(key: const Key('flow-rules'), tooltip: tr('Verification rules'), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FlowRulesScreen())), icon: const Icon(Icons.tune_rounded)),
           IconButton(tooltip: tr('Refresh'), onPressed: loading ? null : _load, icon: const Icon(Icons.refresh_rounded)),
-        ],
+        ]),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -560,7 +561,7 @@ class _FlowRulesScreenState extends State<FlowRulesScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const TwoLang('Verification rules', 'तपासणीचे नियम', size: 20, weight: FontWeight.w700), actions: [const GuideButton('approvals')]),
+        appBar: AppBar(title: const TwoLang('Verification rules', 'तपासणीचे नियम', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('approvals')])),
         body: loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [

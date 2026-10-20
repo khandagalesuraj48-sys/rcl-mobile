@@ -19,7 +19,8 @@ import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import 'forms.dart' show MachinePicker;
+import 'forms.dart' show MachinePicker, DraftLine;
+import '../core/draft.dart';
 import 'log_edit.dart';
 import 'log_more.dart';
 import 'log_print.dart';
@@ -27,6 +28,7 @@ import 'tank_check.dart';
 import 'verify.dart';
 import '../ui/t.dart';
 import '../ui/help.dart' show GuideButton, showGuide;
+import '../ui/ask_bot.dart';
 
 const kDayStatus = ['Idle', 'Holiday', 'Breakdown'];
 const kLogShifts = ['Full Day', 'Day', 'Night'];
@@ -496,7 +498,7 @@ class LogCard extends StatelessWidget {
       isScrollControlled: true,
       builder: (c) => SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Container(width: 58, height: 58, decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(picOfType('${r['type'] ?? ''}'), size: 44)),
@@ -603,7 +605,7 @@ class LogCard extends StatelessWidget {
       isScrollControlled: true,
       builder: (c) => SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Container(width: 58, height: 58, decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(picOfType('${r['type'] ?? ''}'), size: 44)),
@@ -734,6 +736,10 @@ class _LogFormState extends State<LogForm> {
   String dayItem = '';
 
   bool get editing => widget.editKey.isNotEmpty;
+  /// (3.31.0) a new entry: what is typed is kept on the phone (draft.dart); [draftAt] = it was brought back (typed then)
+  Draft? _draft;
+  bool _draftReady = false;
+  String draftAt = '';
   TextEditingController t(String k) => c.putIfAbsent(k, TextEditingController.new);
   String v(String k) => t(k).text.trim();
   num? n(String k) => asNum(v(k));
@@ -754,11 +760,89 @@ class _LogFormState extends State<LogForm> {
     } else if (widget.no.isNotEmpty) {
       machine = s.machine(widget.no);
       WidgetsBinding.instance.addPostFrameCallback((_) => _prefill());
+    } else {
+      _draft = Draft(s.api.keep, '${s.site?.code ?? ''}|${s.email}|log');
+      WidgetsBinding.instance.addPostFrameCallback((_) => _restore());
     }
+  }
+
+  /// (3.31.0) the half-filled entry, brought back: its machinery's figures read again, then what he had typed
+  Future<void> _restore() async {
+    final dr = _draft;
+    if (dr == null) return;
+    final d = await dr.read();
+    if (!mounted) return;
+    if (d != null && machine == null) {
+      final s = SessionScope.read(context);
+      String g(String k) => '${d[k] ?? ''}';
+      setState(() {
+        if (g('date').isNotEmpty) date = g('date');
+        if (kLogShifts.contains(g('shift'))) shift = g('shift');
+        half = d['half'] == true;
+        machine = g('no').isEmpty ? null : s.machine(g('no'));
+        draftAt = g('at');
+      });
+      if (machine != null) await _prefill();
+      if (!mounted) return;
+      setState(() {
+        if (g('way').isNotEmpty) way = g('way');
+        newMeter = d['newMeter'] == true;
+        dayItem = g('dayItem');
+        final pk = d['pick'];
+        if (pk is Map) pick.addAll({for (final e in pk.entries) '${e.key}': '${e.value}'});
+        final sl = d['slots'];
+        if (sl is List) {
+          final got = [for (final x in sl) if (x is List && x.length == 2) ['${x[0]}', '${x[1]}']];
+          if (got.isNotEmpty) slots = got;
+        }
+        final cc = d['c'];
+        if (cc is Map) {
+          for (final e in cc.entries) {
+            t('${e.key}').text = '${e.value}';
+          }
+        }
+      });
+    }
+    _draftReady = true;
+  }
+
+  /// What is typed now (null = nothing yet).
+  Map<String, dynamic>? _snap() {
+    final typed = {for (final e in c.entries) if (e.value.text.trim().isNotEmpty) e.key: e.value.text};
+    if (machine == null && typed.isEmpty) return null;
+    return {
+      'date': date,
+      'shift': shift,
+      'half': half,
+      'newMeter': newMeter,
+      'way': way,
+      'no': machine?.id ?? '',
+      'dayItem': dayItem,
+      'pick': pick,
+      'slots': slots,
+      'c': typed,
+    };
+  }
+
+  /// "Start new": the boxes emptied, the kept entry gone.
+  void _startNew() {
+    setState(() {
+      draftAt = '';
+      machine = null;
+      p = null;
+      way = '';
+      half = false;
+      _clearFigures();
+      for (final x in c.values) {
+        x.clear();
+      }
+    });
+    _draft?.clear();
   }
 
   @override
   void dispose() {
+    _draft?.close();
     for (final x in c.values) {
       x.dispose();
     }
@@ -1083,12 +1167,15 @@ class _LogFormState extends State<LogForm> {
       }
       savedOne = true;
       _pendAt = null;
+      _draft?.clear();
+      draftAt = '';
       HapticFeedback.lightImpact();
       setState(() => busy = false);
       await _savedSheet();
     } catch (e) {
       // (3.1.7) no network: a NEW entry may be kept on the phone and sent by itself later (with the same save number)
       if (mounted && !editing && e is ApiError && await offerKeep(context, e)) {
+        _draft?.clear();
         await s.keepEntry('saveLogRows', [{'rows': [_row()]}], e.rid, '${tr('Log Book')} · ${showDate(date)} · ${machine?.id ?? ''} · ${tr(shift)}');
         if (!mounted) return;
         toast(context, Api.keptMsg);
@@ -1098,6 +1185,7 @@ class _LogFormState extends State<LogForm> {
       if (mounted && isSent(e)) {
         // (update-114) sent for verification: nothing saved yet – told in green; the form closes
         HapticFeedback.lightImpact();
+        _draft?.clear();
         toast(context, errText(e));
         Navigator.pop(context, true);
         return;
@@ -1189,14 +1277,14 @@ class _LogFormState extends State<LogForm> {
 
   // ---------- the screen ----------
   Widget _label(String en, [String mr = '']) => Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 8, left: 2),
-        child: Row(children: [
+        padding: const EdgeInsets.only(top: Sp.block, bottom: Sp.label, left: 2),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
           Flexible(child: Text(en, mr: mr, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
           if (mr.isNotEmpty) MrLine('  $mr', style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
         ]),
       );
 
-  Widget _chips(List<String> items, String value, ValueChanged<String> onPick, {bool enabled = true}) => Wrap(spacing: 8, runSpacing: 8, children: [
+  Widget _chips(List<String> items, String value, ValueChanged<String> onPick, {bool enabled = true, List<Widget> extra = const []}) => Wrap(spacing: Sp.chips, runSpacing: 4, children: [
         for (final it in items)
           ChoiceChip(
             label: Text(it),
@@ -1211,6 +1299,7 @@ class _LogFormState extends State<LogForm> {
             shape: const StadiumBorder(),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           ),
+        ...extra,
       ]);
 
   Widget _num2(String a, String la, String b, String lb, {String unit = ''}) => Row(children: [
@@ -1281,13 +1370,14 @@ class _LogFormState extends State<LogForm> {
     final ways = m == null ? <String>[] : [...m.modes, ...kDayStatus, if (m.modes.any((w) => hasKm(w) || hasHr(w))) kNoReading];
     final canNewMeter = !editing && p != null && !off && (hasKm(way) || hasHr(way)) && !((hasKm(way) && p!['firstKm'] == true) || (hasHr(way) && !hasKm(way) && p!['firstHr'] == true));
     final multiRows = editing && (p?['itemParts'] as List?) != null && (p!['itemParts'] as List).length > 1;
+    if (_draftReady) _draft?.put(_snap());
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) Navigator.pop(context, savedOne);
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: AppBar(actions: withAsk(), 
           leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context, savedOne)),
           titleSpacing: 0,
           title: Row(children: [
@@ -1302,6 +1392,8 @@ class _LogFormState extends State<LogForm> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             if (editing && loadingP && p == null) ...[const SizedBox(height: 20), const Shimmer(height: 300)],
             if (!editing) const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(top: 12)),      // (3.1.11, update-118)
+            // (3.31.0) the half-filled entry brought back
+            if (!editing && draftAt.isNotEmpty && m != null) DraftLine(at: draftAt, onNew: _startNew),
             if (!editing || p != null) ...[
               _label('Date', 'तारीख'),
               Press(
@@ -1317,13 +1409,11 @@ class _LogFormState extends State<LogForm> {
                 ]),
               ),
               _label('Shift', 'पाळी'),
-              Row(children: [
-                Expanded(
-                  child: _chips(kLogShifts, shift, (x) {
-                    setState(() => shift = x);
-                    _prefill();
-                  }, enabled: !editing),
-                ),
+              // (3.31.0) ½ day in the same row of chips, the same gap and shape
+              _chips(kLogShifts, shift, (x) {
+                setState(() => shift = x);
+                _prefill();
+              }, enabled: !editing, extra: [
                 FilterChip(
                   label: const Text('½ day'),
                   selected: half,
@@ -1332,6 +1422,8 @@ class _LogFormState extends State<LogForm> {
                   checkmarkColor: C.blue,
                   shape: const StadiumBorder(),
                   side: const BorderSide(color: C.line),
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: C.ink),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 ),
               ]),
               _label('Machinery', 'यंत्र'),
@@ -1715,7 +1807,7 @@ class _TankerScreenState extends State<TankerScreen> {
     final saved = (got?['trips'] as List? ?? []).whereType<Map>().toList();
     final canEdit = s.canEdit('Log Book');
     return Scaffold(
-      appBar: AppBar(titleSpacing: 0, title: const Row(children: [Pic('delivery_truck', size: 30), SizedBox(width: 10), Expanded(child: TwoLang('Water tanker – trips', 'टँकर – फेऱ्या', size: 19, weight: FontWeight.w700))]), actions: [const GuideButton('log')]),
+      appBar: AppBar(titleSpacing: 0, title: const Row(children: [Pic('delivery_truck', size: 30), SizedBox(width: 10), Expanded(child: TwoLang('Water tanker – trips', 'टँकर – फेऱ्या', size: 19, weight: FontWeight.w700))]), actions: withAsk([const GuideButton('log')])),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 120), children: [
         const SizedBox(height: 8),
         const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(bottom: 8)),      // (3.1.11, update-118)

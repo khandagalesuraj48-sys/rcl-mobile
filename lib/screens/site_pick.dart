@@ -45,7 +45,7 @@ class _SitePickScreenState extends State<SitePickScreen> with SingleTickerProvid
         body: Backdrop(
           road: false,
           child: SafeArea(
-            child: ListView(padding: const EdgeInsets.fromLTRB(20, 12, 20, 24), children: [
+            child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
               Row(children: [
                 const Mark(size: 46),
                 const Spacer(),

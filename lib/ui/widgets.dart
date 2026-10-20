@@ -81,7 +81,7 @@ class SectionTitle extends StatelessWidget {
   final Widget? trailing;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 0, 0, 10),
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 10), // (3.31.0) the title on the same edge as the cards
         child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Expanded(child: TwoLang(en, mr, size: 20, weight: FontWeight.w700)),
           if (trailing != null) trailing!,

@@ -16,6 +16,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 Future<void> openTankCheck(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TankCheckScreen()));
 
@@ -189,7 +190,7 @@ class _TankCheckScreenState extends State<TankCheckScreen> {
     final f = x == null ? null : tankFound(method, cap, phys.text, fill.text);
     final diff = x == null || f == null ? null : tankDiff(f, asNum(x['system']) ?? 0);
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Tank Check', 'टँक तपासणी', size: 20, weight: FontWeight.w700), actions: [const GuideButton('tankcheck')]),
+      appBar: AppBar(title: const TwoLang('Tank Check', 'टँक तपासणी', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('tankcheck')])),
       body: RefreshIndicator(
         onRefresh: _list,
         child: SingleChildScrollView(

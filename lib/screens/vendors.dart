@@ -16,6 +16,7 @@ import '../ui/widgets.dart';
 import 'boq.dart';
 import 'machinery.dart' show toneOf, softOf;
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 Future<void> openVendors(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VendorMasterScreen()));
 
@@ -80,10 +81,10 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Vendor Master', 'व्हेंडर मास्टर', size: 20, weight: FontWeight.w700),
-        actions: [const GuideButton('vendors'), 
+        actions: withAsk([const GuideButton('vendors'), 
           if (can) IconButton(key: const Key('v-new'), tooltip: tr('+ New vendor'), onPressed: () => _open(null), icon: const Icon(Icons.person_add_alt_1_rounded)),
           IconButton(tooltip: tr('Refresh'), onPressed: loading ? null : _load, icon: const Icon(Icons.refresh_rounded)),
-        ],
+        ]),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -171,7 +172,7 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
         isScrollControlled: true,
         builder: (c) => SizedBox(
           height: MediaQuery.of(c).size.height * .8,
-          child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 0, 20, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('${v['name']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             for (final x in [
@@ -372,7 +373,7 @@ class _VendorFormScreenState extends State<VendorFormScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: Text(isNew ? 'New vendor' : '${saved ? 'Vendor details – ' : 'Fill vendor details – '}${v!['name']}', maxLines: 1, overflow: TextOverflow.ellipsis), actions: [const GuideButton('vendors')]),
+      appBar: AppBar(title: Text(isNew ? 'New vendor' : '${saved ? 'Vendor details – ' : 'Fill vendor details – '}${v!['name']}', maxLines: 1, overflow: TextOverflow.ellipsis), actions: withAsk([const GuideButton('vendors')])),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(ms.isNotEmpty ? '${ms.length} asset(s): ${ms.map((m) => '${m['id']} (${m['ownership']})').join(', ')}' : 'No assets yet – in Asset Master pick this vendor for its machinery.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
         const SizedBox(height: 12),

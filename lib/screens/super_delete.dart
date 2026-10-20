@@ -17,6 +17,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/ask_bot.dart';
 
 List<Map<String, dynamic>> _maps(dynamic l) => [for (final x in (l as List? ?? const []).whereType<Map>()) x.cast<String, dynamic>()];
 
@@ -165,7 +166,7 @@ class _SuperDeleteScreenState extends State<SuperDeleteScreen> {
     final canTick = [for (final r in saved) if ('${r['bill'] ?? ''}'.isEmpty && r['closed'] != true) '${r['id']}'];
     final n = ticked.length + tickedF.length;
     return Scaffold(
-      appBar: AppBar(title: const Text('Delete entries – Super Admin')),
+      appBar: AppBar(actions: withAsk(), title: const Text('Delete entries – Super Admin')),
       body: !s.superAdmin
           ? const EmptyState('Only the Super Admin', 'Only the Super Admin deletes entries here or brings them back.', pic: 'locked_with_key')
           : ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 40), children: [

@@ -14,6 +14,7 @@ import 'compliance.dart';
 import 'lb_formats.dart';
 import 'machinery.dart';
 import 'vendors.dart';
+import '../ui/ask_bot.dart';
 
 class MasterPage {
   const MasterPage(this.en, this.mr, this.sub, this.pic, this.perm, this.color, this.open);
@@ -41,7 +42,7 @@ class MastersScreen extends StatelessWidget {
     final s = SessionScope.of(context);
     final list = mastersOf(s);
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Machinery', 'यंत्रे', size: 20, weight: FontWeight.w700)),
+      appBar: AppBar(actions: withAsk(), title: const TwoLang('Machinery', 'यंत्रे', size: 20, weight: FontWeight.w700)),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 30), children: [
         Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 14), child: Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600))),
         if (list.isEmpty) const EmptyState('Nothing here for you yet', 'Ask the Admin for access to Master.', pic: 'tractor'),

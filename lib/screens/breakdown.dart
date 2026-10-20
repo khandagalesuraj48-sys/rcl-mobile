@@ -15,6 +15,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 Future<void> openBreakdown(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BreakdownScreen()));
 
@@ -145,7 +146,7 @@ class _BreakdownScreenState extends State<BreakdownScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Breakdown', 'ब्रेकडाउन', size: 20, weight: FontWeight.w700),
-          actions: [const GuideButton('brk'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
+          actions: withAsk([const GuideButton('brk'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
           bottom: TabBar(
             labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
             tabs: [
@@ -171,7 +172,7 @@ class _BreakdownScreenState extends State<BreakdownScreen> {
       onRefresh: _load,
       child: ListView.builder(
         key: const Key('bk-list'),
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 30),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
         itemCount: list.length + 1,
         itemBuilder: (_, i) {
           if (i > 0) return _card(x, list[i - 1], i, can);
@@ -291,7 +292,7 @@ class _BreakdownScreenState extends State<BreakdownScreen> {
   }
 
   // ---------- the saved days ----------
-  Widget _days(BkDay x) => ListView(padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+  Widget _days(BkDay x) => ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         Text('Tap a day to open it – change or delete it there.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 10),
         if (x.reports.isEmpty) Padding(padding: const EdgeInsets.all(20), child: Text('No day saved yet.', textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
@@ -332,7 +333,7 @@ class _BreakdownScreenState extends State<BreakdownScreen> {
     final master = _master(s), rows = bpCalc(x, master, pFrom, pTo, own: pOwn, owner: pOwner, no: pNo, only: pOnly);
     final owners = {for (final m in master) if ('${m['owner'] ?? ''}'.isNotEmpty) '${m['owner']}'}.toList()..sort();
     final tot = (site: rows.fold<int>(0, (a, r) => a + r.site), bd: rows.fold<int>(0, (a, r) => a + r.bd), work: rows.fold<int>(0, (a, r) => a + r.work), times: rows.fold<int>(0, (a, r) => a + r.times));
-    return ListView(key: const Key('bp-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+    return ListView(key: const Key('bp-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
       Text('How many days each machinery was under breakdown.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 10),
       Row(children: [

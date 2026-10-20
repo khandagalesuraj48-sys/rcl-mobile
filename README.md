@@ -14,6 +14,34 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.0 (20-10-2026, with his picture of the five screens and his two photos: "HE BGH SAME AS IT IS HAW AAHE MALA SAME"
+– "TAS DARK EKDAM NKO"):** **the new look** of every screen.
+* Colours (`lib/ui/theme.dart`): a forest green that is not too dark, a warm cream page, gold for the + and the links; every chip the
+  same pill. One spacing for every screen (`Sp`): the page's edge 16, a name and its box 8, one part and the next 16, chips 10 –
+  the Marathi word on the same line as the English one; a thin line under a page's bar when the page goes under it.
+* **Sign in**: his photo (an excavator under the bridge) with the Rachana logo, RCL ERP and English / मराठी / हिंदी; Welcome Back,
+  the email and the password, Remember me (the email kept on this phone), Forgot password?, "Build • Manage • Move Forward".
+* **Home**: ≡ (every module he may open, Call, Approvals, My settings, Help & Support), RCL ERP, search, the bell (approvals, missed
+  calls, entries kept on the phone, a new version), the robot; his photo (an excavator loading a tipper) with "Good Morning,
+  Sujit 👋"; the site and Scan; the green stock card – the change since the start of the day (the Dashboard's opening) and the
+  stock of each place in one bar; the four tiles; Modules (View All); no Rachana logo at the bottom any more.
+* **The bar at the bottom**: green and rounded, the chosen tab in a pill (Reports gold), the gold **+** – a new entry (Diesel Issue,
+  Inward, Transfer, Log Book entry, a tanker trip, Breakdown, Store – only the ones he may add).
+* **Back**: one step back, to where he came from – a diesel page goes back to the Entries list; the tab he came from; on Home a
+  second Back leaves the app.
+* **The robot (Ask)** at the top right of every page (the red dot of the daily summary on it).
+* **Your Entries**: All · Diesel · Machinery · Log Book · Store; each page a card with what it is for (Breakdown, Tanker Trips and
+  Store there too).
+* **Reports**: This Month / Last Month; Overview – Diesel Consumed (issued), Diesel Cost (the inward bills), Machinery Running
+  (machinery that worked), Breakdowns (begun), each against the same number of days just before; the diesel issued in the last 7
+  months; Quick Reports. Diesel · Machinery · Financial – his reports. The server's own answers (getDashboard, logDashboard,
+  getBreakdowns) – nothing new on the server.
+* **Me**: the green top with his photo (✏️ – My settings) and the robot, RCL ERP and his role; App Version; My Settings; Approvals;
+  Help & Support (ask the app, the guides of the pages); Sign out.
+* **A half-filled entry kept** (`lib/core/draft.dart`): what is typed in a new Diesel Issue / Inward / Transfer or a new Log Book
+  entry stays on the phone; the form opened again brings it back ("Half-filled entry brought back" – Start new). Saved, kept for
+  the network or sent for verification: gone.
+
 **Version 3.30.0 (20-10-2026, with his photo of a dashboard "7087.0" that 3.29.0 read as 70820: "HE BGH AS HOTE BARYA PAIKI FAST
 AAHE HE BUT AJUN PN PERFECT NAHI"):** **the seven-segment reader** (`lib/core/seven.dart`). An LED / LCD display's digits are read
 by their 7 segments and its decimal point. ML Kit only finds where the number is and counts its digits; it reads such digits badly

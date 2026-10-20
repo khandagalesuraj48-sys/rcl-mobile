@@ -1,6 +1,11 @@
 /* HOME (picture 1, 14-10-2026): the site's picture with "Namaskar" and the site; the diesel stock (total and each place), the
  * machinery working today and today's Log Book entries; the modules he may open; today's diesel work. Every number is the
- * server's, read now. */
+ * server's, read now.
+ *
+ * (3.31.0, asked 20-10-2026 with his picture: "HE BGH SAME AS IT IS HAW AAHE") ≡ (every page he may open, and Call), the Rachana
+ * mark and RCL ERP, search, the bell (approvals, missed calls, entries kept on the phone, a new version), the robot (Ask); his
+ * site's photo with "Good Morning, Sujit 👋"; the site and Scan; the green stock card – the change since the start of the day and
+ * the stock of each place in one bar; the four tiles; Modules (View All); no Rachana logo at the bottom any more. */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
@@ -9,7 +14,11 @@ import '../core/format.dart';
 import '../core/kinds.dart';
 import '../core/session.dart';
 import '../core/update.dart';
-import '../ui/brand.dart';
+import '../ui/ask_bot.dart';
+import '../ui/help.dart' show showGuide;
+import 'approvals.dart';
+import 'me.dart' show KeptSheet;
+import 'settings.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -97,6 +106,7 @@ class _HomeTabState extends State<HomeTab> {
   bool loading = true;
   DateTime? at;
   int? logEntries, running;
+  num? opening; // (3.31.0) the stock at the start of today (the Dashboard's opening) – for the change on the stock card
   List<_Act> acts = [];
   AppUpdate? update;
 
@@ -149,6 +159,13 @@ class _HomeTabState extends State<HomeTab> {
           run = rows.where((x) => !off.contains('${x['mode'] ?? x['unit'] ?? ''}')).map((x) => '${x['no']}').toSet().length;
         }).catchError((_) {}));
       }
+      num? open;
+      if (s.canSee('Dashboard')) {
+        jobs.add(s.api.call('getDashboard', [{'from': day, 'to': day}]).then((r) {
+          final locs = ((r as Map)['locations'] as List? ?? []).whereType<Map>().toList();
+          if (locs.isNotEmpty) open = locs.fold<num>(0, (a, x) => a + (asNum(x['opening']) ?? 0));
+        }).catchError((_) {}));
+      }
       await Future.wait(jobs);
       got.sort((a, b) => '${b.r['id']}'.compareTo('${a.r['id']}'));
       if (!mounted) return;
@@ -156,6 +173,7 @@ class _HomeTabState extends State<HomeTab> {
         acts = got;
         logEntries = le;
         running = run;
+        opening = open;
         at = DateTime.now();
         loading = false;
       });
@@ -211,6 +229,62 @@ class _HomeTabState extends State<HomeTab> {
     if (await ask(context, 'Change site?', bi('Open another of your sites.', 'दुसरी site उघडायची?'), yes: 'Change')) s.pickAnotherSite();
   }
 
+  String get _hello {
+    final h = SessionScope.read(context).clock().hour;
+    return h < 12 ? 'Good Morning,' : (h < 17 ? 'Good Afternoon,' : 'Good Evening,');
+  }
+
+  /// (3.31.0) the bell: what waits for him – approvals, missed calls, entries kept on the phone, a new version
+  Future<void> _bell() async {
+    final s = SessionScope.read(context);
+    final miss = s.rtc?.missN ?? 0;
+    final rows = <(String, String, String, Color, Future<void> Function())>[
+      if (s.crForMe > 0) ('Approvals', bi('${s.crForMe} waiting for you to approve', '${s.crForMe} तुमच्या मंजुरीसाठी थांबले आहेत'), 'clipboard', C.amberSoft, () async {
+        await openApprovals(context);
+        s.loadApprovals();
+      }),
+      if (miss > 0) ('Missed calls', bi('$miss missed – call back', '$miss चुकलेले कॉल – परत कॉल करा'), 'mobile_phone', C.greenSoft, () => openCallPick(context)),
+      if (s.kept.isNotEmpty) ('Waiting on this phone', s.keptBad > 0 ? bi('${s.keptBad} not saved – open to see why', '${s.keptBad} सेव्ह झाल्या नाहीत – कारण पहा') : bi('${s.kept.length} to send when the network is back', 'नेटवर्क आल्यावर ${s.kept.length} पाठवायच्या'), 'calendar', s.keptBad > 0 ? C.redSoft : C.amberSoft, () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet())),
+      if (update != null) ('New version ${update!.version}', bi('Update the app', 'ॲप update करा'), 'mobile_phone', C.blueSoft, () => runUpdate(context, update!)),
+    ];
+    final pick = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.edge),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const TwoLang('For you', 'तुमच्यासाठी', size: 20, weight: FontWeight.w700),
+            const SizedBox(height: 12),
+            if (rows.isEmpty) const EmptyState('Nothing new', 'Approvals, missed calls and entries waiting on this phone show here.', pic: 'bell'),
+            for (final (i, x) in rows.indexed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Sp.chips),
+                child: Press(
+                  onTap: () => Navigator.pop(c, i),
+                  radius: 18,
+                  shadow: false,
+                  padding: const EdgeInsets.all(12),
+                  child: Row(children: [
+                    Container(width: 46, height: 46, decoration: BoxDecoration(color: x.$4, borderRadius: BorderRadius.circular(14)), alignment: Alignment.center, child: Pic(x.$3, size: 30)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(x.$1, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                        Text(x.$2, style: const TextStyle(fontSize: 13, color: C.muted)),
+                      ]),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: C.faint),
+                  ]),
+                ),
+              ),
+          ]),
+        ),
+      ),
+    );
+    if (pick != null && mounted) await rows[pick].$5();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
@@ -220,223 +294,426 @@ class _HomeTabState extends State<HomeTab> {
     final locs = s.stockByLoc.entries.toList();
     final tiles = <Widget>[
       for (final (i, l) in locs.indexed)
-        _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: placeMr(l.key), value: '${fmtNum(l.value)} L', color: i == 0 ? C.greenSoft : C.amberSoft),
+        _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: placeMr(l.key), value: '${fmtNum(l.value)} L', color: i == 0 ? C.redSoft : C.blueSoft),
       if (s.canSee('Log Book')) ...[
-        _MiniTile(pic: 'tractor', en: 'Running Machines', mr: 'चालू यंत्रे', value: running == null ? '–' : '$running / ${s.machines.where((m) => m.onSite(s.today)).length}', color: C.blueSoft),
-        _MiniTile(pic: 'notebook', en: 'Logbook Entries', mr: 'नोंदी (आज)', value: logEntries == null ? '–' : '$logEntries', color: C.purpleSoft),
+        _MiniTile(pic: 'tractor', en: 'Running', mr: 'चालू यंत्रे', value: running == null ? '–' : '$running / ${s.machines.where((m) => m.onSite(s.today)).length}', color: C.greenSoft),
+        _MiniTile(pic: 'notebook', en: 'Logbook', mr: 'नोंदी (आज)', value: logEntries == null ? '–' : '$logEntries', color: C.purpleSoft),
       ],
     ];
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: RefreshIndicator(
-        color: C.green,
-        edgeOffset: top,
-        onRefresh: () => _load(init: true),
-        child: ListView(padding: EdgeInsets.zero, children: [
-          // ---------- the picture, Namaskar, the site ----------
-          HeroScene(
-            height: 250 + top,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(20, top + 12, 14, 0),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Namaskar${first.isNotEmpty ? ', $first' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
-                      const Text('Mechanical Management ERP', style: TextStyle(fontSize: 15, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
-                      const MrLine('यांत्रिकी व्यवस्थापन प्रणाली', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: Color(0xCCFFFFFF))),
-                    ]),
+    final total = s.stockTotal;
+    final pct = (total != null && opening != null && opening! > 0) ? ((total - opening!) / opening! * 100) : null;
+    final picH = 236 + top;
+    return Scaffold(
+      backgroundColor: C.bg,
+      drawer: _HomeMenu(mods: mods, onModule: _module, onHelp: () => openHelp(context)),
+      body: Builder(
+        builder: (context) => AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
+          child: RefreshIndicator(
+            color: C.green,
+            edgeOffset: top,
+            onRefresh: () => _load(init: true),
+            child: ListView(padding: EdgeInsets.zero, children: [
+              // ---------- his site's photo, the bar, "Good Morning, Sujit", the site ----------
+              Stack(children: [
+                Positioned(
+                  left: 70,
+                  right: 0,
+                  top: 0,
+                  height: picH,
+                  child: Image.asset('assets/brand/site_home.jpg', fit: BoxFit.cover, alignment: const Alignment(.35, .1), filterQuality: FilterQuality.medium, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: picH,
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [C.bg, Color(0xE6F8F5EE), Color(0x00F8F5EE)], stops: [.22, .45, .78]),
+                    ),
                   ),
-                  // (3.14.0) the search of the whole app (the web's Ctrl + K)
-                  _RoundBtn(key: const Key('home-search'), icon: Icons.search_rounded, tip: 'Search', onTap: () => openSearch(context, entries: widget.onOpenEntries, reports: widget.onOpenReports)),
-                  const SizedBox(width: 8),
-                  // (3.14.0) a machinery's QR label: Diesel Issue / Log Book entry / its diesel ledger for it
-                  // (3.19.0) the phone's live camera – not on a computer
-                  if (!onComputer) ...[
-                    _RoundBtn(key: const Key('home-scan'), icon: Icons.qr_code_scanner_rounded, tip: 'Scan a machinery label', onTap: () => scanMachineLabel(context, onSaved: () => _load())),
-                    const SizedBox(width: 8),
-                  ],
-                  _RoundBtn(icon: Icons.refresh_rounded, tip: 'Refresh', onTap: () => _load(init: true)),
-                ]),
-                const SizedBox(height: 16),
-                Row(children: [
-                  Flexible(
-                    child: GestureDetector(
-                      onTap: _site,
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(.18)),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.location_on_rounded, color: C.green, size: 26),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 190),
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                                Text(s.sites.length > 1 ? bi('Tap to change', 'साइट बदला') : (s.site?.code ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.green, fontWeight: FontWeight.w500)),
-                              ]),
-                            ),
-                          ),
-                          if (s.sites.length > 1) const Icon(Icons.keyboard_arrow_down_rounded),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: picH,
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xCCF8F5EE), Color(0x00F8F5EE), Color(0x00F8F5EE), C.bg], stops: [0, .28, .7, 1]),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(6, top + 6, 12, 0),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      IconButton(key: const Key('home-menu'), tooltip: tr('Menu'), onPressed: () => Scaffold.of(context).openDrawer(), icon: const Icon(Icons.menu_rounded, size: 26, color: C.ink)),
+                      Container(
+                        width: 40,
+                        height: 40,
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.line)),
+                        child: Image.asset('assets/brand/rachana_mark.png', fit: BoxFit.contain),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('RCL ERP', maxLines: 1, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark, height: 1.1)),
+                          Text('Fleet & Diesel Management', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: C.muted)),
                         ]),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // (3.26.0) a call with a web or app user (Android) – the number of missed calls on it
-                  if (s.rtc != null) ...[
-                    ListenableBuilder(
-                      listenable: s.rtc!,
-                      builder: (_, __) {
-                        final miss = s.rtc?.missN ?? 0;
-                        return Badge(
-                          isLabelVisible: miss > 0,
-                          label: Text('$miss'),
-                          child: _RoundBtn(key: const Key('home-call'), icon: Icons.video_call_rounded, tip: 'Call', onTap: () => openCallPick(context)),
+                      // (3.14.0) the search of the whole app (the web's Ctrl + K)
+                      _RoundBtn(key: const Key('home-search'), icon: Icons.search_rounded, tip: 'Search', onTap: () => openSearch(context, entries: widget.onOpenEntries, reports: widget.onOpenReports)),
+                      const SizedBox(width: 6),
+                      ListenableBuilder(
+                        listenable: s.rtc ?? ValueNotifier(0),
+                        builder: (_, __) {
+                          final n = s.crForMe + (s.rtc?.missN ?? 0) + s.keptBad + (update == null ? 0 : 1);
+                          return Badge(
+                          isLabelVisible: n > 0,
+                          label: Text('$n'),
+                          child: _RoundBtn(key: const Key('home-bell'), icon: Icons.notifications_none_rounded, tip: 'For you', onTap: _bell),
                         );
-                      },
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      const AskBot(key: Key('home-ask'), size: 40),
+                    ]),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 14, 0, 0),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(_hello, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: C.greenDark)),
+                        Row(children: [
+                          Flexible(child: Text(first.isEmpty ? 'Namaskar' : first, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, height: 1.15))),
+                          const SizedBox(width: 6),
+                          const Text('👋', style: TextStyle(fontSize: 24)),
+                        ]),
+                        const Text('Have a productive day!', style: TextStyle(fontSize: 13, color: C.muted)),
+                      ]),
                     ),
-                    const SizedBox(width: 10),
-                  ],
-                  // (3.15.0) the assistant – the web's "Ask"; a red dot when the daily summary waits (once a day)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: s.briefDue,
-                    builder: (_, due, __) => Badge(
-                      isLabelVisible: due,
-                      smallSize: 13,
-                      backgroundColor: C.brandRed,
-                      child: Material(
-                        color: C.greenDeep,
-                        shape: const StadiumBorder(),
-                        elevation: 3,
-                        child: InkWell(
-                          key: const Key('home-ask'),
-                          customBorder: const StadiumBorder(),
-                          onTap: () => openAssistant(context, entries: widget.onOpenEntries),
-                          child: const Padding(
-                            padding: EdgeInsets.fromLTRB(12, 11, 16, 11),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD54F), size: 22),
-                              SizedBox(width: 6),
-                              Text('Ask', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 10),
+                      child: Row(children: [
+                        Expanded(
+                          child: Press(
+                            onTap: _site,
+                            radius: 18,
+                            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                            child: Row(children: [
+                              const Icon(Icons.location_on_rounded, color: C.green, size: 26),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                                  Text(s.sites.length > 1 ? bi('Tap to change site', 'साइट बदला') : (s.site?.code ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
+                                ]),
+                              ),
+                              if (s.sites.length > 1) const Icon(Icons.chevron_right_rounded, color: C.faint),
                             ]),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                ]),
-              ]),
-            ),
-          ),
-          // ---------- the stock card (over the picture) ----------
-          Transform.translate(
-            offset: const Offset(0, -34),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28), boxShadow: softShadow(.1)),
-                child: Column(children: [
-                  Row(children: [
-                    Container(width: 70, height: 70, decoration: const BoxDecoration(color: C.green, shape: BoxShape.circle), alignment: Alignment.center, child: const Icon(Icons.local_gas_station_rounded, color: Colors.white, size: 36)),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const TwoLang('Total Diesel Stock', 'डिझेल साठा (एकूण)', size: 15.5),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(s.stockTotal == null ? '–' : '${fmtNum(s.stockTotal)} L', style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, height: 1.15)),
-                        ),
-                        if (at != null)
-                          Row(children: [
-                            const Icon(Icons.schedule_rounded, size: 14, color: C.faint),
-                            const SizedBox(width: 4),
-                            Text('Updated ${at!.hour % 12 == 0 ? 12 : at!.hour % 12}:${at!.minute.toString().padLeft(2, '0')} ${at!.hour < 12 ? 'AM' : 'PM'}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-                          ]),
+                        // (3.14.0) a machinery's QR label: Diesel Issue / Log Book entry / its diesel ledger for it
+                        // (3.19.0) the phone's live camera – not on a computer
+                        if (!onComputer) ...[
+                          const SizedBox(width: 8),
+                          Press(
+                            key: const Key('home-scan'),
+                            onTap: () => scanMachineLabel(context, onSaved: () => _load()),
+                            radius: 18,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                            child: const Column(children: [
+                              Icon(Icons.qr_code_scanner_rounded, color: C.greenDark, size: 24),
+                              Text('Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.greenDark)),
+                            ]),
+                          ),
+                        ],
                       ]),
                     ),
                   ]),
-                  const SizedBox(height: 14),
-                  if (tiles.length <= 4)
-                    Row(children: [for (final (i, t) in tiles.indexed) ...[if (i > 0) const SizedBox(width: 8), Expanded(child: t)]])
-                  else
-                    SizedBox(height: 132, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: tiles.length, separatorBuilder: (_, __) => const SizedBox(width: 8), itemBuilder: (_, i) => SizedBox(width: 92, child: tiles[i]))),
-                ]),
-              ),
-            ),
-          ),
-          if (update != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-              child: Press(
-                onTap: () => runUpdate(context, update!),
-                color: C.greenDeep,
-                border: C.greenDeep,
-                padding: const EdgeInsets.all(14),
-                child: Row(children: [
-                  const Icon(Icons.system_update_rounded, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Expanded(child: TwoLang('New version ${update!.version} – Update', 'नवीन version आली आहे', color: Colors.white, size: 15.5)),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white),
-                ]),
-              ),
-            ),
-          // (3.14.0) the notice of the site (Admin → Rules of this site), shown to everybody – as the web's line at the top
-          if ('${s.siteRules['announce'] ?? ''}'.trim().isNotEmpty)
-            Container(
-              key: const Key('home-notice'),
-              margin: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.amber.withValues(alpha: .35))),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Icon(Icons.campaign_rounded, color: C.amber),
-                const SizedBox(width: 10),
-                Expanded(child: Text('${s.siteRules['announce']}'.trim(), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, height: 1.35))),
+                ),
               ]),
-            ),
-          // (3.1.11, update-118) his entries in verification: waiting / sent back / approved – tap: each, with "Remind"
-          const VerifyStrip(days: 1, margin: EdgeInsets.fromLTRB(14, 0, 14, 16)),
-          // ---------- the modules ----------
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const SectionTitle('Modules', mr: 'विभाग'),
-              GridView.count(
-                crossAxisCount: 4,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: .78,
-                children: [for (final m in mods) _ModuleCard(m: m, onTap: () => _module(m))],
-              ),
-              const SizedBox(height: 22),
-              // ---------- today's work ----------
-              if (kKinds.any((k) => s.canSee(k.module)))
-                Container(
-                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26), boxShadow: softShadow(.05)),
+              // ---------- the stock card (green) ----------
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, Color(0xFF2A6148)]),
+                    boxShadow: [BoxShadow(color: C.green.withValues(alpha: .3), blurRadius: 22, offset: const Offset(0, 10))],
+                  ),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    SectionTitle("Today's Activity", mr: 'आजची कामे · ${showDate(s.today)}', action: 'View All', onAction: () => widget.onOpenEntries('')),
-                    if (loading && acts.isEmpty)
-                      ...List.generate(3, (_) => const Padding(padding: EdgeInsets.only(bottom: 10), child: Shimmer(height: 70)))
-                    else if (acts.isEmpty)
-                      const EmptyState('No diesel entry today yet', 'Issue, Inward and Transfer of today show here.', pic: 'fuel_pump')
-                    else
-                      for (final a in acts.take(6)) _ActRow(a: a, onTap: () => widget.onOpenEntries(a.kind.key)),
+                    Row(children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .1), border: Border.all(color: Colors.white.withValues(alpha: .45), width: 1.5)),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.local_gas_station_outlined, color: Colors.white, size: 30),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          const Text('Total Diesel Stock', mr: 'डिझेल साठा (एकूण)', style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(total == null ? '–' : '${fmtNum(total)} L', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+                              ),
+                            ),
+                            if (pct != null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                key: const Key('home-pct'),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
+                                child: Text('${pct >= 0 ? '↑' : '↓'} ${pct >= 0 ? '+' : '−'}${fmtNum((pct.abs() * 10).round() / 10)}%', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+                              ),
+                            ],
+                          ]),
+                        ]),
+                      ),
+                      IconButton(
+                        tooltip: tr('Refresh'),
+                        style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: .14), fixedSize: const Size(40, 40)),
+                        onPressed: () => _load(init: true),
+                        icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+                      ),
+                    ]),
+                    if (locs.isNotEmpty && (total ?? 0) > 0) ...[
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: SizedBox(
+                          height: 8,
+                          child: Row(children: [
+                            for (final (i, l) in locs.indexed)
+                              if (l.value > 0) Expanded(flex: (l.value * 1000 ~/ total!).clamp(1, 1000), child: ColoredBox(color: _locTone[i % _locTone.length])),
+                          ]),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 12, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      for (final (i, l) in locs.indexed)
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          Container(width: 8, height: 8, decoration: BoxDecoration(color: _locTone[i % _locTone.length], shape: BoxShape.circle)),
+                          const SizedBox(width: 5),
+                          Text('${l.key} ${fmtNum(l.value)} L', style: const TextStyle(fontSize: 11.5, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                        ]),
+                      if (at != null)
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.schedule_rounded, size: 13, color: Color(0xCCFFFFFF)),
+                          const SizedBox(width: 4),
+                          Text('Updated ${at!.hour % 12 == 0 ? 12 : at!.hour % 12}:${at!.minute.toString().padLeft(2, '0')} ${at!.hour < 12 ? 'AM' : 'PM'}', style: const TextStyle(fontSize: 11.5, color: Color(0xCCFFFFFF))),
+                        ]),
+                    ]),
                   ]),
                 ),
-              const SizedBox(height: 28),
-              Center(child: Opacity(opacity: .55, child: Image.asset('assets/brand/rachana_logo.png', height: 30))),
-              const SizedBox(height: 24),
+              ),
+              // ---------- the four tiles ----------
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
+                child: tiles.length <= 4
+                    ? Row(children: [for (final (i, t) in tiles.indexed) ...[if (i > 0) const SizedBox(width: 8), Expanded(child: t)]])
+                    : SizedBox(height: 96, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: tiles.length, separatorBuilder: (_, __) => const SizedBox(width: 8), itemBuilder: (_, i) => SizedBox(width: 80, child: tiles[i]))),
+              ),
+              const SizedBox(height: Sp.block),
+              if (update != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.block),
+                  child: Press(
+                    onTap: () => runUpdate(context, update!),
+                    color: C.greenDeep,
+                    border: C.greenDeep,
+                    padding: const EdgeInsets.all(14),
+                    child: Row(children: [
+                      const Icon(Icons.system_update_rounded, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Expanded(child: TwoLang('New version ${update!.version} – Update', 'नवीन version आली आहे', color: Colors.white, size: 15.5)),
+                      const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                    ]),
+                  ),
+                ),
+              // (3.14.0) the notice of the site (Admin → Rules of this site), shown to everybody – as the web's line at the top
+              if ('${s.siteRules['announce'] ?? ''}'.trim().isNotEmpty)
+                Container(
+                  key: const Key('home-notice'),
+                  margin: const EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.block),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.amber.withValues(alpha: .35))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Icon(Icons.campaign_rounded, color: C.amber),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text('${s.siteRules['announce']}'.trim(), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, height: 1.35))),
+                  ]),
+                ),
+              // (3.1.11, update-118) his entries in verification: waiting / sent back / approved – tap: each, with "Remind"
+              const VerifyStrip(days: 1, margin: EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.block)),
+              // ---------- the modules ----------
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, 0),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    const Expanded(child: TwoLang('Modules', 'विभाग', size: 19, weight: FontWeight.w800)),
+                    TextButton(
+                      key: const Key('home-all'),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                      style: TextButton.styleFrom(foregroundColor: C.gold, padding: const EdgeInsets.symmetric(horizontal: 6)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [Text('View All', style: const TextStyle(fontWeight: FontWeight.w700, color: C.gold)), const Icon(Icons.arrow_forward_rounded, size: 18)]),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  GridView.count(
+                    crossAxisCount: 4,
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: .95,
+                    children: [for (final m in mods) _ModuleCard(m: m, onTap: () => _module(m))],
+                  ),
+                  const SizedBox(height: 22),
+                  // ---------- today's work ----------
+                  if (kKinds.any((k) => s.canSee(k.module)))
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: C.line)),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        SectionTitle("Today's Activity", mr: 'आजची कामे · ${showDate(s.today)}', action: 'View All', onAction: () => widget.onOpenEntries('')),
+                        if (loading && acts.isEmpty)
+                          ...List.generate(3, (_) => const Padding(padding: EdgeInsets.only(bottom: 10), child: Shimmer(height: 70)))
+                        else if (acts.isEmpty)
+                          const EmptyState('No diesel entry today yet', 'Issue, Inward and Transfer of today show here.', pic: 'fuel_pump')
+                        else
+                          for (final a in acts.take(6)) _ActRow(a: a, onTap: () => widget.onOpenEntries(a.kind.key)),
+                      ]),
+                    ),
+                  const SizedBox(height: 28),
+                ]),
+              ),
             ]),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// (3.31.0) the colours of the places in the stock bar (gold, light green, …)
+const _locTone = [C.goldLight, Color(0xFF9FD3B5), Color(0xFFB9C9F2), Color(0xFFE8B4A6)];
+
+/// (3.31.0) ≡ – every module he may open, Call, Approvals, My settings, Help.
+class _HomeMenu extends StatelessWidget {
+  const _HomeMenu({required this.mods, required this.onModule, required this.onHelp});
+  final List<ModuleTile> mods;
+  final Future<void> Function(ModuleTile m) onModule;
+
+  /// Help opens from Home (the menu closes first).
+  final VoidCallback onHelp;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context);
+    Widget row(String key, String pic, String en, String mr, Color soft, VoidCallback onTap, {Widget? trailing}) => ListTile(
+          key: Key(key),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          leading: Container(width: 42, height: 42, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(13)), alignment: Alignment.center, child: Pic(pic, size: 28)),
+          title: Text(en, mr: mr, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+          trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: C.faint),
+          onTap: () {
+            Navigator.pop(context);
+            onTap();
+          },
+        );
+    return Drawer(
+      backgroundColor: C.bg,
+      child: SafeArea(
+        child: ListView(padding: const EdgeInsets.fromLTRB(8, 12, 8, 24), children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+            child: Row(children: [
+              Container(width: 44, height: 44, padding: const EdgeInsets.all(7), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13), border: Border.all(color: C.line)), child: Image.asset('assets/brand/rachana_mark.png')),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('RCL ERP', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark)),
+                  Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                ]),
+              ),
+            ]),
+          ),
+          const Padding(padding: EdgeInsets.fromLTRB(12, 4, 12, 6), child: Text('Modules', mr: 'विभाग', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.muted))),
+          for (final m in mods) row('menu-${m.en}', m.pic, m.en, m.mr, m.soft, () => onModule(m)),
+          const Divider(height: 24, indent: 12, endIndent: 12),
+          // (3.26.0) a call with a web or app user (Android) – the number of missed calls on it
+          if (s.rtc != null)
+            row('home-call', 'mobile_phone', 'Call', 'कॉल', C.greenSoft, () => openCallPick(context),
+                trailing: (s.rtc?.missN ?? 0) > 0 ? Badge(label: Text('${s.rtc!.missN}'), child: const Icon(Icons.chevron_right_rounded, color: C.faint)) : null),
+          row('menu-approvals', 'clipboard', 'Approvals', 'मंजुरी', C.amberSoft, () async {
+            await openApprovals(context);
+            s.loadApprovals();
+          }, trailing: s.crForMe > 0 ? Badge(label: Text('${s.crForMe}'), child: const Icon(Icons.chevron_right_rounded, color: C.faint)) : null),
+          row('menu-settings', 'gear', 'My settings', 'माझ्या सेटिंग्ज', C.slateSoft, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()))),
+          row('menu-help', 'robot', 'Help & Support', 'मदत', C.blueSoft, onHelp),
         ]),
       ),
     );
+  }
+}
+
+/// (3.31.0) Help & Support: ask the robot, or the guide of a page (the web's "?").
+Future<void> openHelp(BuildContext context) async {
+  const pages = [('diesel', 'Diesel Issue', 'fuel_pump'), ('inward', 'Diesel Inward', 'inbox_tray'), ('transfer', 'Diesel Transfer', 'left-right_arrow'), ('log', 'Log Book', 'notebook'), ('brk', 'Breakdown', 'wrench'), ('approvals', 'Approvals', 'clipboard'), ('settings', 'My settings', 'gear')];
+  final pick = await showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (c) => SafeArea(
+      child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.edge), children: [
+        const TwoLang('Help & Support', 'मदत', size: 20, weight: FontWeight.w700),
+        const SizedBox(height: 12),
+        Press(
+          key: const Key('help-ask'),
+          onTap: () => Navigator.pop(c, '_ask'),
+          radius: 18,
+          shadow: false,
+          color: C.greenSoft,
+          border: C.greenSoft,
+          padding: const EdgeInsets.all(12),
+          child: const Row(children: [
+            Pic('robot', size: 36),
+            SizedBox(width: 12),
+            Expanded(child: TwoLang('Ask the app', 'ॲपला विचारा', size: 16, weight: FontWeight.w700)),
+            Icon(Icons.chevron_right_rounded, color: C.faint),
+          ]),
+        ),
+        const SizedBox(height: 14),
+        const Text('Guides', mr: 'मार्गदर्शन', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.muted)),
+        const SizedBox(height: 6),
+        for (final p in pages)
+          ListTile(
+            key: Key('help-${p.$1}'),
+            contentPadding: EdgeInsets.zero,
+            leading: Pic(p.$3, size: 30),
+            title: Text(p.$2, style: const TextStyle(fontWeight: FontWeight.w600)),
+            trailing: const Icon(Icons.chevron_right_rounded, color: C.faint),
+            onTap: () => Navigator.pop(c, p.$1),
+          ),
+      ]),
+    ),
+  );
+  if (pick == null || !context.mounted) return;
+  if (pick == '_ask') {
+    await openAssistant(context);
+  } else {
+    await showGuide(context, pick);
   }
 }
 
@@ -450,10 +727,8 @@ class _RoundBtn extends StatelessWidget {
         message: tip,
         child: Material(
           color: Colors.white,
-          shape: const CircleBorder(),
-          elevation: 3,
-          shadowColor: Colors.black26,
-          child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: Padding(padding: const EdgeInsets.all(12), child: Icon(icon, color: C.ink, size: 24))),
+          shape: const CircleBorder(side: BorderSide(color: C.line)),
+          child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: Padding(padding: const EdgeInsets.all(8), child: Icon(icon, color: C.greenDark, size: 22))),
         ),
       );
 }
@@ -464,16 +739,13 @@ class _MiniTile extends StatelessWidget {
   final Color color;
   @override
   Widget build(BuildContext context) => Container(
-        height: 132,
-        padding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
+        height: 96,
+        padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
         decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
         child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Pic(pic, size: 34),
-          en.contains(' ')
-              ? Text(en, mr: mr, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 1.15))
-              : FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600))),
-          MrLine(mr, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 10.5, color: C.muted)),
-          FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+          Pic(pic, size: 30),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: const TextStyle(fontSize: 10.5, color: C.muted, fontWeight: FontWeight.w500))),
         ]),
       );
 }
@@ -485,31 +757,18 @@ class _ModuleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Press(
         onTap: onTap,
-        radius: 20,
+        radius: 18,
         color: m.soft,
-        border: Colors.white,
-        padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        border: m.soft,
+        shadow: false,
+        padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Pic(m.pic, size: 34),
+          const SizedBox(height: 6),
           SizedBox(
-            width: double.infinity,
-            height: 40,
-            child: Stack(children: [
-            Pic(m.pic, size: 40),
-            Positioned(
-              right: 0,
-              top: 0,
-              child: Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .85), shape: BoxShape.circle),
-                child: Icon(Icons.chevron_right_rounded, size: 16, color: m.color),
-              ),
-            ),
-          ]),
+            height: 16,
+            child: FittedBox(fit: BoxFit.scaleDown, child: Text(m.en, mr: m.mr, maxLines: 1, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
           ),
-          const Spacer(),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(m.en, mr: m.mr, maxLines: 1, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: MrLine(m.mr, maxLines: 1, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 11.5, color: C.muted))),
         ]),
       );
 }

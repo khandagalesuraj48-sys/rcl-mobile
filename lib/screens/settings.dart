@@ -16,6 +16,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -170,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final starts = [('', 'Dashboard (as usual)'), for (final p in startPagesFor(s)) (p.$1, p.$2)];
     final shift = s.pref('shift'), loc = s.pref('loc'), lb = s.pref('lbMode'), text = s.pref('text').isEmpty ? 'normal' : s.pref('text');
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('My settings', 'माझ्या सेटिंग्ज', size: 20, weight: FontWeight.w700), actions: [const GuideButton('settings')]),
+      appBar: AppBar(title: const TwoLang('My settings', 'माझ्या सेटिंग्ज', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('settings')])),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 30), children: [
         Center(
           child: GestureDetector(

@@ -1,6 +1,11 @@
 /* THE APP AFTER SIGN-IN: four tabs at the bottom – Home · Entries · Reports · Me (picture 1–3). The tabs keep their place when
- * switched. Back on another tab goes to Home first; on Home a second Back within 3 s leaves the app. */
-import 'package:flutter/material.dart';
+ * switched.
+ * (3.31.0, asked 20-10-2026 with his picture) the bar at the bottom: green, rounded, the chosen tab in its own pill (Reports in
+ * gold), the gold + in the middle – a new entry (only the ones he may add).
+ * (3.31.0, asked 20-10-2026: "jewa mi entry madhun diesel issue sathi jatoy tewa back dabale ki entry madhe yeyla haw … ek back
+ * mhanje ekach back ek step madhe") Back goes one step back, to where he came from: the Entries list from a diesel page, the tab
+ * he came from; on Home a second Back within 3 s leaves the app (as before). */
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/kinds.dart';
@@ -8,13 +13,17 @@ import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'breakdown.dart';
 import 'entries.dart';
+import 'forms.dart' show newEntry;
 import 'home.dart';
+import 'logbook.dart';
 import 'me.dart';
 import 'reports.dart';
-import 'assistant.dart' show shellEntries;
+import 'store.dart';
+import 'assistant.dart' show shellEntries, shellReports;
 import 'start_page.dart';
-import '../ui/t.dart' show tr;
+import '../ui/t.dart';
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -23,11 +32,21 @@ class Shell extends StatefulWidget {
 }
 
 class _ShellState extends State<Shell> with WidgetsBindingObserver {
-  int tab = 0;
+  String tab = 'home';
+
+  /// (3.31.0) the tabs he came from – Back goes to them, one at a time
+  final hist = <String>[];
   Session? _s;
   String entriesKind = '';
   int entriesOpen = 0;
   DateTime? lastBack;
+
+  void _to(String t) {
+    if (t == tab) return;
+    hist.remove(t);
+    hist.add(tab);
+    tab = t;
+  }
 
   /// The Entries tab of a diesel page (issue / inward / transfer).
   void _entries(String k) {
@@ -36,7 +55,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     setState(() {
       entriesKind = k;
       entriesOpen++;
-      if (diesel) tab = 1;
+      if (diesel) _to('entries');
     });
   }
 
@@ -44,6 +63,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     shellEntries = _entries; // (3.16.0) the assistant opened from a help card can open the Entries tab too
+    shellReports = () {
+      if (mounted && reportsOf(SessionScope.read(context)).isNotEmpty) _go('reports');
+    };
     // (3.1.7) live: while the app is on the screen it hears what changed (Session.liveTick) and sends what is kept on the phone
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -58,6 +80,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   @override
   void dispose() {
     if (shellEntries == _entries) shellEntries = null;
+    shellReports = null;
     WidgetsBinding.instance.removeObserver(this);
     _s?.keptNote.removeListener(_note);
     _s?.stopLive();
@@ -87,22 +110,75 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     if (s == null) return;
     await s.prefsReady;
     if (!mounted) return;
-    await s.checkBrief(); // (3.15.0) the daily summary, once a day – a red dot on the Ask button of Home
+    await s.checkBrief(); // (3.15.0) the daily summary, once a day – a red dot on the robot (Ask)
     if (!mounted) return;
-    await openStartPage(context, s, s.pref('start'), entries: (k) {
-      final diesel = kKinds.any((x) => s.canSee(x.module)) || s.canSee('Log Book');
-      setState(() {
-        entriesKind = k;
-        entriesOpen++;
-        if (diesel) tab = 1;
-      });
-    });
+    await openStartPage(context, s, s.pref('start'), entries: _entries);
   }
 
-  void _go(int i) {
-    if (i == tab) return;
+  void _go(String t) {
+    if (t == tab) return;
     HapticFeedback.selectionClick();
-    setState(() => tab = i);
+    setState(() => _to(t));
+  }
+
+  /// (3.31.0) the gold + : the new entries he may add – one tap opens its form
+  Future<void> _plus() async {
+    final s = SessionScope.read(context);
+    HapticFeedback.selectionClick();
+    final tankers = s.machines.any((m) => m.onSite(s.today) && m.waterTanker);
+    final items = <(String, String, String, Color, Future<void> Function())>[
+      for (final k in kKinds.where((k) => s.canEdit(k.module)))
+        (k.en, k.mr, k.pic, k.soft, () async {
+          if (await newEntry(context, k)) _entries(k.key);
+        }),
+      if (s.canEdit('Log Book')) ('Log Book entry', 'लॉग बुक नोंद', 'notebook', C.purpleSoft, () => Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const LogForm()))),
+      if (s.canEdit('Log Book') && tankers) ('Tanker trip', 'टँकर फेरी', 'delivery_truck', C.blueSoft, () => Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => TankerScreen(date: s.today)))),
+      if (s.canEdit('Breakdown')) ('Breakdown', 'ब्रेकडाऊन', 'wrench', C.orangeSoft, () => openBreakdown(context)),
+      if (s.hasModule('store')) ('Store', 'स्टोअर', 'package', C.amberSoft, () => openStore(context)),
+    ];
+    if (items.isEmpty) {
+      toast(context, bi('You may not add entries. Ask the Admin for access.', 'तुम्हाला एंट्री करायची परवानगी नाही. Admin ला विचारा.'));
+      return;
+    }
+    final pick = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.edge),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const TwoLang('New entry', 'नवीन एंट्री', size: 20, weight: FontWeight.w700),
+            const SizedBox(height: 12),
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: Sp.chips,
+              crossAxisSpacing: Sp.chips,
+              childAspectRatio: .95,
+              children: [
+                for (final (i, x) in items.indexed)
+                  Press(
+                    key: Key('plus-${x.$1}'),
+                    onTap: () => Navigator.pop(c, i),
+                    color: x.$4,
+                    border: x.$4,
+                    shadow: false,
+                    radius: 18,
+                    padding: const EdgeInsets.all(8),
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Pic(x.$3, size: 38),
+                      const SizedBox(height: 6),
+                      Text(x.$1, mr: x.$2, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.15)),
+                    ]),
+                  ),
+              ],
+            ),
+          ]),
+        ),
+      ),
+    );
+    if (pick != null && mounted) await items[pick].$5();
   }
 
   @override
@@ -110,37 +186,30 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     final s = SessionScope.of(context);
     final diesel = kKinds.any((k) => s.canSee(k.module)) || s.canSee('Log Book');      // (3.1.8) Entries: diesel pages and the Log Book
     final reports = reportsOf(s).isNotEmpty;
-    final pages = <(Widget, NavigationDestination)>[
-      (
-        HomeTab(
-          onOpenEntries: (k) => setState(() {
-            entriesKind = k;
-            entriesOpen++;
-            if (diesel) tab = 1;
-          }),
-          onOpenReports: () => setState(() => tab = diesel ? 2 : 1),
-        ),
-        NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home_rounded), label: tr('Home'))
-      ),
-      if (diesel) (EntriesTab(kind: entriesKind, open: entriesOpen), NavigationDestination(icon: const Icon(Icons.list_alt_outlined), selectedIcon: const Icon(Icons.list_alt_rounded), label: tr('Entries'))),
-      if (reports) (const ReportsTab(), NavigationDestination(icon: const Icon(Icons.bar_chart_outlined), selectedIcon: const Icon(Icons.bar_chart_rounded), label: tr('Reports'))),
-      (
-        const MeTab(),
-        NavigationDestination(
-          // (3.1.7) a number: what waits for him to approve, and entries kept on this phone that were not saved
-          icon: Badge(isLabelVisible: s.crForMe + s.keptBad > 0, label: Text('${s.crForMe + s.keptBad}'), child: const Icon(Icons.person_outline_rounded)),
-          selectedIcon: Badge(isLabelVisible: s.crForMe + s.keptBad > 0, label: Text('${s.crForMe + s.keptBad}'), child: const Icon(Icons.person_rounded)),
-          label: tr('Me'),
-        )
-      ),
-    ];
-    final cur = tab.clamp(0, pages.length - 1);
+    final pages = <String, Widget>{
+      'home': HomeTab(onOpenEntries: _entries, onOpenReports: () => _go(reports ? 'reports' : 'home')),
+      if (diesel) 'entries': EntriesTab(kind: entriesKind, open: entriesOpen),
+      if (reports) 'reports': const ReportsTab(),
+      'me': const MeTab(),
+    };
+    final keys = pages.keys.toList();
+    final cur = pages.containsKey(tab) ? tab : 'home';
+    final meCount = s.crForMe + s.keptBad;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (cur != 0) {
-          setState(() => tab = 0);
+        // (3.31.0) one step back: a diesel page goes back to the Entries list first
+        if (cur == 'entries' && (entriesBack?.call() ?? false)) return;
+        while (hist.isNotEmpty) {
+          final t = hist.removeLast();
+          if (pages.containsKey(t) && t != cur) {
+            setState(() => tab = t);
+            return;
+          }
+        }
+        if (cur != 'home') {
+          setState(() => tab = 'home');
           return;
         }
         final now = DateTime.now();
@@ -152,17 +221,125 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         toast(context, 'Press Back again to leave the app.');
       },
       child: Scaffold(
-        body: IndexedStack(index: cur, children: [for (final p in pages) p.$1]),
-        bottomNavigationBar: DecoratedBox(
-          decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .06), blurRadius: 16, offset: const Offset(0, -4))]),
-          child: NavigationBar(
-            selectedIndex: cur,
-            onDestinationSelected: _go,
-            backgroundColor: Colors.white,
-            indicatorColor: C.greenChip,
-            destinations: [for (final p in pages) p.$2],
+        body: IndexedStack(index: keys.indexOf(cur), children: [for (final k in keys) pages[k]!]),
+        bottomNavigationBar: _Bar(
+          tab: cur,
+          tabs: keys,
+          meCount: meCount,
+          onTab: _go,
+          onPlus: _plus,
+        ),
+      ),
+    );
+  }
+}
+
+/// (3.31.0) the bar at the bottom of his picture: green, rounded, the chosen tab in a pill, the gold + in the middle.
+class _Bar extends StatelessWidget {
+  const _Bar({required this.tab, required this.tabs, required this.meCount, required this.onTab, required this.onPlus});
+  final String tab;
+  final List<String> tabs;
+  final int meCount;
+  final ValueChanged<String> onTab;
+  final VoidCallback onPlus;
+
+  static const _info = {
+    'home': ('Home', Icons.home_outlined, Icons.home_rounded),
+    'entries': ('Entries', Icons.list_alt_outlined, Icons.list_alt_rounded),
+    'reports': ('Reports', Icons.bar_chart_outlined, Icons.bar_chart_rounded),
+    'me': ('Me', Icons.person_outline_rounded, Icons.person_rounded),
+  };
+
+  Widget _item(String k) {
+    final on = k == tab, i = _info[k]!;
+    final gold = k == 'reports';
+    Widget icon = AnimatedScale(scale: on ? 1.1 : 1, duration: const Duration(milliseconds: 260), curve: Curves.easeOutBack, child: Icon(on ? i.$3 : i.$2, size: 24, color: Colors.white.withValues(alpha: on ? 1 : .78)));
+    if (k == 'me' && meCount > 0) icon = Badge(label: Text('$meCount'), child: icon);
+    return Expanded(
+      child: Semantics(
+        selected: on,
+        button: true,
+        child: InkWell(
+          key: Key('tab-$k'),
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => onTab(k),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOut,
+            margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              color: on && !gold ? Colors.white.withValues(alpha: .16) : null,
+              gradient: on && gold ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.goldLight, C.gold]) : null,
+            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              icon,
+              const SizedBox(height: 2),
+              Text(i.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: Colors.white.withValues(alpha: on ? 1 : .8))),
+            ]),
           ),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    final left = [for (final k in tabs) if (k == 'home' || k == 'entries') k];
+    final right = [for (final k in tabs) if (k == 'reports' || k == 'me') k];
+    return Padding(
+      padding: EdgeInsets.fromLTRB(10, 0, 10, 8 + bottom),
+      child: SizedBox(
+        height: 70,
+        child: Stack(clipBehavior: Clip.none, children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(26),
+                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.bar, C.barDeep]),
+                boxShadow: [BoxShadow(color: C.greenDeep.withValues(alpha: .28), blurRadius: 20, offset: const Offset(0, 8))],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(children: [
+                  for (final k in left) _item(k),
+                  const SizedBox(width: 74),
+                  for (final k in right) _item(k),
+                ]),
+              ),
+            ),
+          ),
+          // the gold + (a new entry)
+          Positioned(
+            top: -24,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Semantics(
+                button: true,
+                label: tr('New entry'),
+                child: Material(
+                  key: const Key('tab-plus'),
+                  shape: const CircleBorder(side: BorderSide(color: C.bg, width: 4)),
+                  elevation: 6,
+                  shadowColor: C.gold.withValues(alpha: .6),
+                  color: C.gold,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onPlus,
+                    child: Ink(
+                      width: 64,
+                      height: 64,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.goldLight, C.gold])),
+                      child: const Icon(Icons.add_rounded, color: Colors.white, size: 34),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ]),
       ),
     );
   }

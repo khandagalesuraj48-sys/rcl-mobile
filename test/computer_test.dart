@@ -230,7 +230,7 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('home-scan')), findsNothing);
     expect(find.byKey(const Key('home-search')), findsOneWidget);
-    expect(find.text('Namaskar, Sujit'), findsOneWidget);
+    expect(find.text('Sujit'), findsOneWidget);
     final app = t.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.scrollBehavior?.dragDevices, contains(PointerDeviceKind.mouse));
     await pics(t);

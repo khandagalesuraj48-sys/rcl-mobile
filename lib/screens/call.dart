@@ -26,6 +26,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/ask_bot.dart';
 
 const _bg = Color(0xFF0B1410), _panel = Color(0xFF16231C), _btn = Color(0xFF243329), _red = Color(0xFFE53935), _blue = Color(0xFF1E88E5);
 
@@ -280,12 +281,12 @@ class _CallPickScreenState extends State<CallPickScreen> {
     final list = rr == null ? <RtcUser>[] : rr.users.where((u) => q.isEmpty || u.name.toLowerCase().contains(q.toLowerCase())).toList();
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const Text('Call', mr: 'कॉल')),
+      appBar: AppBar(actions: withAsk(), title: const Text('Call', mr: 'कॉल')),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : err.isNotEmpty
               ? EmptyState(err, '', pic: 'mobile_phone')
-              : ListView(padding: const EdgeInsets.fromLTRB(14, 8, 14, 120), children: [
+              : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 120), children: [
                   if (missed.isNotEmpty) ...[
                     Row(children: [
                       const Expanded(child: Text('Missed calls', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: C.red))),
@@ -889,7 +890,7 @@ class _ChatSheetState extends State<_ChatSheet> {
                 ? const Center(child: Text('No message yet.', style: TextStyle(color: C.muted)))
                 : ListView.builder(
                     controller: _scroll,
-                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                     itemCount: list.length,
                     itemBuilder: (_, i) {
                       final m = list[i];

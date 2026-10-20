@@ -10,6 +10,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/ask_bot.dart';
 
 /// The web's phStamp: dd-mm-yyyy hh:mm:ss on the phone's clock ('' = no time).
 String photoStamp(String at) {
@@ -48,8 +49,8 @@ class DieselPhotosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title, maxLines: 2, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
-        body: ListView(key: const Key('dp-list'), padding: const EdgeInsets.fromLTRB(14, 8, 14, 24), children: [
+        appBar: AppBar(actions: withAsk(), title: Text(title, maxLines: 2, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
+        body: ListView(key: const Key('dp-list'), padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
           for (final (i, x) in photos.indexed) _photo(context, i, x),
           Text('A picture opens full size when it is pressed. The links work for 15 minutes.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         ]),
@@ -70,7 +71,7 @@ class DieselPhotosScreen extends StatelessWidget {
             onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => Scaffold(
                 backgroundColor: Colors.black,
-                appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white, title: Text('${x['label'] ?? ''}')),
+                appBar: AppBar(actions: withAsk(), backgroundColor: Colors.black, foregroundColor: Colors.white, title: Text('${x['label'] ?? ''}')),
                 body: Center(child: InteractiveViewer(maxScale: 6, child: Image.network(url, errorBuilder: (_, __, ___) => Text('The picture could not be opened.', style: const TextStyle(color: Colors.white))))),
               ),
             )),

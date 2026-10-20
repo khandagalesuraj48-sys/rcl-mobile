@@ -18,6 +18,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/ask_bot.dart';
 
 /// The columns of the web's item files (Export, Import template).
 const kStoreHead = ['Item Code', 'Item Name', 'Unit', 'Category', 'HSN Code', 'GST %', 'Min Stock', 'Status'];
@@ -229,7 +230,7 @@ class _StoreScreenState extends State<StoreScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Store', 'स्टोअर', size: 20, weight: FontWeight.w700),
-          actions: [IconButton(tooltip: tr('Refresh'), onPressed: me == null ? _start : _load, icon: const Icon(Icons.refresh_rounded))],
+          actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: me == null ? _start : _load, icon: const Icon(Icons.refresh_rounded))]),
           bottom: me == null || tabs.length < 2
               ? null
               : TabBar(labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5), tabs: [
@@ -281,7 +282,7 @@ class _StoreScreenState extends State<StoreScreen> {
         );
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView(key: const Key('st-dash'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 90), children: [
+      child: ListView(key: const Key('st-dash'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 90), children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
           tile('Items', d.all, 'in the Item Master', C.ink, Colors.white),
           tile('Active', d.active, 'can be used', C.greenDark, C.greenSoft),
@@ -323,7 +324,7 @@ class _StoreScreenState extends State<StoreScreen> {
     final list = items.where((i) => (fCat.isEmpty || i['category'] == fCat) && (fSt.isEmpty || i['status'] == fSt) && (x.isEmpty || [i['code'], i['name'], i['category'], i['hsn']].join(' ').toLowerCase().contains(x))).toList();
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView(key: const Key('st-items'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 90), children: [
+      child: ListView(key: const Key('st-items'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 90), children: [
         Text('The items of this site. A name is there once: a name that is nearly the same as one already there is asked about first.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 8),
         TextField(key: const Key('st-q'), controller: qc, onChanged: (v) => setState(() => q = v.trim()), decoration: InputDecoration(hintText: tr('Item name, code, category, HSN'), prefixIcon: const Icon(Icons.search_rounded), isDense: true)),
@@ -543,9 +544,9 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.item != null ? 'Change ${widget.item!['code']}' : 'Add item')),
+        appBar: AppBar(actions: withAsk(), title: Text(widget.item != null ? 'Change ${widget.item!['code']}' : 'Add item')),
         bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('it-save'), onPressed: busy ? null : _save, child: Text('Save item')))),
-        body: ListView(padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+        body: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
           TextBox(key: const Key('it-name'), label: 'Item Name *', controller: name, hint: 'e.g. Hydraulic Hose 1/2 inch', onChanged: (_) => _typedName()),
           if (hint.isNotEmpty)
             Padding(
@@ -652,10 +653,10 @@ class _StoreImportScreenState extends State<StoreImportScreen> {
     final list = [for (final x in (rr?['rows'] as List? ?? const []).whereType<Map>()) x.cast<String, dynamic>()];
     final errors = _n('errors');
     return Scaffold(
-      appBar: AppBar(title: Text('Import from Excel – check')),
+      appBar: AppBar(actions: withAsk(), title: Text('Import from Excel – check')),
       body: rr == null
           ? (err.isEmpty ? const Center(child: CircularProgressIndicator()) : ListView(padding: const EdgeInsets.all(16), children: [InfoLine(err, bad: true)]))
-          : ListView(key: const Key('si-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 24), children: [
+          : ListView(key: const Key('si-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 24), children: [
               Text(
                 '${widget.rows.length} rows: ${_n('fresh')} new, ${_n('exists')} already there (left out), ${_n('similar')} near names to confirm, $errors with a mistake.'
                 '${errors > 0 ? ' Correct the mistakes in the file and choose it again – nothing is imported while one is left.' : ''}',
