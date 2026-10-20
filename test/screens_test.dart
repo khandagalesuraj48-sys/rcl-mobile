@@ -3380,7 +3380,8 @@ void main() {
     srv.dashAsked.clear();
     await t.tap(find.text('Reports').last);
     await net(t, 2500);
-    expect(srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first), contains({'from': '2026-10-01', 'to': '2026-10-14'}));
+    expect(srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first), contains(equals({'from': '2026-10-01', 'to': '2026-10-14'})), reason: 'this month');
+    expect(srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first), contains(equals({'from': '2026-09-17', 'to': '2026-09-30'})), reason: 'the same 14 days just before');
     expect(srv.dashAsked.any((x) => x['fn'] == 'logDashboard'), true);
     expect(find.byKey(const Key('ov-used')), findsOneWidget);
     expect(find.byKey(const Key('ov-trend')), findsOneWidget);
