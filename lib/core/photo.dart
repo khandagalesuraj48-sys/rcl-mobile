@@ -68,10 +68,12 @@ Future<Spot> whereNow() async {
 }
 
 class TakenPhoto {
-  TakenPhoto(this.jpg, this.at, this.spot);
+  TakenPhoto(this.jpg, this.at, this.spot, [this.raw = '']);
   final Uint8List jpg;
   final DateTime at;
   final Spot spot;
+  /// (3.28.0) the camera's own file, without the band – what the phone reads (ocr.dart); '' = none
+  final String raw;
   String get dataUrl => 'data:image/jpeg;base64,${base64Encode(jpg)}';
 }
 
@@ -91,7 +93,7 @@ Future<TakenPhoto?> takePhoto(String label, String machineId) async {
   final at = DateTime.now();
   final raw = await x.readAsBytes();
   final lines = ['${stampOf(at)}  ·  $label  ·  $machineId', 'Lat ${spot.lat.toStringAsFixed(6)}, Long ${spot.lng.toStringAsFixed(6)}${spot.acc > 0 ? '  (± ${spot.acc.round()} m)' : ''}'];
-  return TakenPhoto(await stamp(raw, lines), at, spot);
+  return TakenPhoto(await stamp(raw, lines), at, spot, x.path);
 }
 
 /// The picture with the band under it (date, time, kind, machinery; latitude, longitude), as a JPG.
