@@ -821,7 +821,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await pics(t);
     expect(find.text('Log Book'), findsOneWidget);
@@ -858,7 +858,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await pics(t);
     await t.scrollUntilVisible(find.text('10:30 – 10:36'), 300, scrollable: find.byType(Scrollable).first);
@@ -1478,7 +1478,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await t.tap(find.byKey(const Key('lb-menu')));
     await settle(t, 500);
@@ -1519,7 +1519,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await t.tap(find.byKey(const Key('lb-menu')));
     await settle(t, 500);
@@ -1568,7 +1568,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await t.tap(find.byKey(const Key('lb-menu')));
     await settle(t, 500);
@@ -2255,7 +2255,7 @@ void main() {
     final files = catchFiles();
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await t.tap(find.byKey(const Key('lb-menu')));
     await settle(t, 500);
