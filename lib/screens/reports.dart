@@ -253,7 +253,10 @@ class _ReportsTabState extends State<ReportsTab> {
               Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: C.muted)),
               FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(f == null ? (loading ? '…' : '–') : value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
               Row(children: [
-                if (pct != null) Text('${up ? '↑' : '↓'} ${fmtNum((pct.abs()).round())}%', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: tone)),
+                if (pct != null) ...[
+                  Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 13, color: tone),
+                  Text('${fmtNum((pct.abs()).round())}%', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: tone)),
+                ],
                 const Spacer(),
                 if ((f?.line.length ?? 0) > 1) SizedBox(width: 46, height: 16, child: CustomPaint(painter: _Spark(f!.line, tone))),
               ]),

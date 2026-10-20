@@ -310,8 +310,11 @@ class _EntriesTabState extends State<EntriesTab> {
     final today = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     final days = [for (var i = 0; i < 14; i++) today.subtract(Duration(days: i))];
     return Scaffold(
+      // (3.31.0) above the gold + of the bar
       floatingActionButton: s.canEdit(k.module)
-          ? FloatingActionButton.extended(
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 30),
+              child: FloatingActionButton.extended(
               onPressed: _add,
               backgroundColor: k.color,
               foregroundColor: Colors.white,
@@ -319,7 +322,7 @@ class _EntriesTabState extends State<EntriesTab> {
               shape: const StadiumBorder(),
               icon: const Icon(Icons.add_rounded, size: 26),
               label: const Text('New Entry', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            )
+            ))
           : null,
       body: SafeArea(
         bottom: false,
@@ -337,7 +340,7 @@ class _EntriesTabState extends State<EntriesTab> {
                       })),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(k.en, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+                      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(k.en, maxLines: 1, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800))),
                       Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600)),
                     ]),
                   ),

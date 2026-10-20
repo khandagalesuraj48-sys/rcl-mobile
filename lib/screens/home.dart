@@ -349,7 +349,7 @@ class _HomeTabState extends State<HomeTab> {
                   padding: EdgeInsets.fromLTRB(6, top + 6, 12, 0),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      IconButton(key: const Key('home-menu'), tooltip: tr('Menu'), onPressed: () => Scaffold.of(context).openDrawer(), icon: const Icon(Icons.menu_rounded, size: 26, color: C.ink)),
+                      IconButton(key: const Key('home-menu'), tooltip: tr('Menu'), visualDensity: VisualDensity.compact, onPressed: () => Scaffold.of(context).openDrawer(), icon: const Icon(Icons.menu_rounded, size: 26, color: C.ink)),
                       Container(
                         width: 40,
                         height: 40,
@@ -361,7 +361,7 @@ class _HomeTabState extends State<HomeTab> {
                       const Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('RCL ERP', maxLines: 1, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark, height: 1.1)),
-                          Text('Fleet & Diesel Management', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: C.muted)),
+                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Fleet & Diesel Management', maxLines: 1, style: TextStyle(fontSize: 10.5, color: C.muted))),
                         ]),
                       ),
                       // (3.14.0) the search of the whole app (the web's Ctrl + K)
@@ -379,7 +379,7 @@ class _HomeTabState extends State<HomeTab> {
                         },
                       ),
                       const SizedBox(width: 6),
-                      const AskBot(key: Key('home-ask'), size: 40),
+                      const AskBot(key: Key('home-ask'), size: 38),
                     ]),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 14, 0, 0),
@@ -472,7 +472,11 @@ class _HomeTabState extends State<HomeTab> {
                                 key: const Key('home-pct'),
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
-                                child: Text('${pct >= 0 ? '↑' : '↓'} ${pct >= 0 ? '+' : '−'}${fmtNum((pct.abs() * 10).round() / 10)}%', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Icon(pct >= 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 13, color: Colors.white),
+                                  const SizedBox(width: 2),
+                                  Text('${pct >= 0 ? '+' : '−'}${fmtNum((pct.abs() * 10).round() / 10)}%', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+                                ]),
                               ),
                             ],
                           ]),
@@ -728,7 +732,7 @@ class _RoundBtn extends StatelessWidget {
         child: Material(
           color: Colors.white,
           shape: const CircleBorder(side: BorderSide(color: C.line)),
-          child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: Padding(padding: const EdgeInsets.all(8), child: Icon(icon, color: C.greenDark, size: 22))),
+          child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: Padding(padding: const EdgeInsets.all(7), child: Icon(icon, color: C.greenDark, size: 22))),
         ),
       );
 }

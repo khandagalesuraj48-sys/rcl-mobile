@@ -3297,4 +3297,94 @@ void main() {
     expect(find.byKey(const Key('lock-screen')), findsNothing, reason: 'nothing of the ERP is open before a sign-in');
     expect(g2.asked, 0);
   });
+
+  // ---------------- (3.31.0) the new look from his picture ----------------
+  testWidgets('(3.31.0) ≡ the menu (every module, Call, Help); the + (only what he may add); a half-filled Diesel Issue brought back, Start new; Back one step; Reports – Overview', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await pics(t);
+    expect(find.text('Good Morning,'), findsOneWidget, reason: '10:30 in the morning');
+    // ≡
+    await t.tap(find.byKey(const Key('home-menu')));
+    await settle(t, 600);
+    expect(find.byKey(const Key('menu-Machinery')), findsOneWidget);
+    expect(find.byKey(const Key('menu-Billing')), findsNothing, reason: 'no access – not in the menu either');
+    expect(find.byKey(const Key('menu-help')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/59_menu.png'));
+    await t.tapAt(const Offset(350, 400));
+    await settle(t, 600);
+    // the +
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    expect(find.byKey(const Key('plus-Diesel Issue')), findsOneWidget);
+    expect(find.byKey(const Key('plus-Diesel Inward')), findsNothing, reason: 'Diesel Inward: View only');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/60_plus.png'));
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    // half filled, then the form closed (the phone's Back)
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)'));
+    await settle(t, 800);
+    await t.enterText(find.byType(TextField).at(1), '45');
+    await settle(t, 900);
+    expect(find.byKey(const Key('draft-back')), findsNothing, reason: 'nothing brought back the first time');
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.text('Pick the machinery'), findsNothing);
+    // opened again: brought back
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('draft-back')), findsOneWidget);
+    expect(find.text('Sany 210 (No.1)'), findsOneWidget);
+    expect(find.text('45'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/61_draft.png'));
+    await t.tap(find.byKey(const Key('draft-new')));
+    await settle(t, 900);
+    expect(find.byKey(const Key('draft-back')), findsNothing);
+    expect(find.text('Pick the machinery'), findsOneWidget, reason: 'Start new: the boxes emptied');
+    await t.binding.handlePopRoute();
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('draft-back')), findsNothing, reason: 'Start new: nothing kept');
+    await t.binding.handlePopRoute();
+    await net(t);
+    // Back one step: Entries → Diesel Issue → (Back) the Entries list → (Back) Home → (Back) "Press Back again"
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    expect(find.text('4 entries · 240 L'), findsOneWidget);
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('entries-Diesel Inward')), findsOneWidget, reason: 'back to the list of entries – not out of it');
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('home-menu')), findsOneWidget, reason: 'then Home');
+    await t.binding.handlePopRoute();
+    await settle(t, 400);
+    expect(find.text('Press Back again to leave the app.'), findsOneWidget);
+    await settle(t, 4500);
+    // Reports – Overview: the figures of the month from the server's answers
+    srv.dashAsked.clear();
+    await t.tap(find.text('Reports').last);
+    await net(t, 2500);
+    expect(srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first), contains({'from': '2026-10-01', 'to': '2026-10-14'}));
+    expect(srv.dashAsked.any((x) => x['fn'] == 'logDashboard'), true);
+    expect(find.byKey(const Key('ov-used')), findsOneWidget);
+    expect(find.byKey(const Key('ov-trend')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/62_reports_overview.png'));
+  }, tags: ['golden']);
 }
