@@ -46,7 +46,7 @@ void main() {
   });
 
   test('a word right after the digits ("km") spoils most looks: with ML Kit\'s count nothing doubtful is given', () {
-    expect(read('h_km', want: 6), anyOf(null, '45173.4'));
+    expect(read('h_km', want: 6), anyOf(isNull, equals('45173.4')));
   });
 
   test('the choice among the looks: the count ML Kit gave, a point most looks saw, a lost digit supports the longer reading', () {
