@@ -71,6 +71,12 @@ void main() {
     });
   });
 
+  test('(3.30.0) a reading with its point, against records kept with the point or without it', () {
+    expect(meterFrom(L(['7087.0']), lastKm: const LastReading(70800, '2026-10-19'), today: '2026-10-20').km, 70870, reason: 'kept without the point: 70870');
+    expect(meterFrom(L(['7087.0']), lastKm: const LastReading(7080, '2026-10-19'), today: '2026-10-20').km, 7087);
+    expect(meterFrom(L(['7087.0'])).km, 7087);
+  });
+
   group('the dispenser – the litres of this fill', () {
     test('litres × rate = amount tells which number is the litres', () {
       expect(pumpFrom(L(['SALE', '4725.00', 'LITRE', '50.00', 'PRICE', '94.50'])).litres, 50);

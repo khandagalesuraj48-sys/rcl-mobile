@@ -5,9 +5,11 @@
  *   inGuide   – only the text inside the box on the screen is read (the clock, the trip meter … around it are left out);
  *   blurLuma  – a softer copy of the picture for every other look: the segments of an LED / LCD digit join, so the reader sees a
  *               digit and not 7 strokes. */
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'ocr_read.dart';
+import 'seven.dart';
 
 /// One look of the camera: the number read, and whether it is sure (it fits the last reading / the three numbers agreed).
 class ScanRead {
@@ -101,4 +103,55 @@ Uint8List blurLuma(Uint8List nv21, int w, int h) {
     }
   }
   return out;
+}
+
+/// (3.30.0) A part of a picture as its brightness, [w] × [h].
+class Gray {
+  const Gray(this.bytes, this.w, this.h);
+  final Uint8List bytes;
+  final int w, h;
+}
+
+/// The part of the picture to read a line's number from: its box a little bigger (the decimal point, the digits' edges).
+({double left, double top, double width, double height}) roiOf(OcrLine l) =>
+    (left: l.left - l.height * .15, top: l.top - l.height * .25, width: l.width + l.height * .6, height: l.height * 1.5);
+
+/// (3.30.0) The lines with a number: read again by its segments (seven.dart). ML Kit finds WHERE the number is and counts its
+/// digits well; when the segments give a clear reading with as many digits, that reading is the line's (marked [OcrLine.seven]);
+/// else ML Kit's stays. [crop] gives the brightness of a part of the picture (the coordinates of the lines), or null.
+List<OcrLine> sevenLines(List<OcrLine> lines, Gray? Function(double left, double top, double width, double height) crop) => [
+      for (final l in lines) _sevenLine(l, crop) ?? l,
+    ];
+
+/// How many digits ML Kit read on a line.
+int digitsIn(String text) => RegExp(r'\d').allMatches(cleanLine(text)).length;
+
+/// A line with its number as the segments read it ([text] null = ML Kit's stays).
+OcrLine withSeven(OcrLine l, String? text) => text == null ? l : OcrLine(text, left: l.left, top: l.top, width: l.width, height: l.height, seven: true);
+
+OcrLine? _sevenLine(OcrLine l, Gray? Function(double left, double top, double width, double height) crop) {
+  final want = digitsIn(l.text);
+  if (want < 2 || l.height < 8) return null;
+  final r = roiOf(l), g = crop(r.left, r.top, r.width, r.height);
+  if (g == null) return null;
+  final s = readSeven(g.bytes, g.w, g.h, want: want);
+  if (s == null) return null;
+  return OcrLine(s.text, left: l.left, top: l.top, width: l.width, height: l.height, seven: true);
+}
+
+/// A part of an upright picture of [uw] × [uh] whose brightness is [at] (x, y) – made at most about 100 points high (the reader
+/// needs no more; it is quicker).
+Gray? cropOf(int uw, int uh, int Function(int x, int y) at, double left, double top, double width, double height) {
+  final x0 = math.max(0, left.floor()), y0 = math.max(0, top.floor()), x1 = math.min(uw, (left + width).ceil()), y1 = math.min(uh, (top + height).ceil());
+  final cw = x1 - x0, ch = y1 - y0;
+  if (cw < 8 || ch < 8) return null;
+  final f = math.max(1, (ch / 100).ceil()), ow = cw ~/ f, oh = ch ~/ f;
+  if (ow < 8 || oh < 8) return null;
+  final out = Uint8List(ow * oh);
+  for (var j = 0; j < oh; j++) {
+    for (var i = 0; i < ow; i++) {
+      out[j * ow + i] = at(x0 + i * f, y0 + j * f);
+    }
+  }
+  return Gray(out, ow, oh);
 }
