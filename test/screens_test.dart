@@ -114,7 +114,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await settle(t);
     await pics(t);
-    expect(find.text('Namaskar'), findsOneWidget);
+    expect(find.text('Welcome Back'), findsOneWidget);
     expect(find.image(const AssetImage('assets/brand/rachana_logo.png')), findsOneWidget);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_sign_in.png'));
     await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
@@ -137,7 +137,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await pics(t);
-    expect(find.text('Namaskar, Sujit'), findsOneWidget);
+    expect(find.text('Sujit'), findsOneWidget); // (3.31.0) "Good Morning, Sujit 👋"
     expect(find.text('1,133 L'), findsOneWidget);
     expect(find.text('813 L'), findsOneWidget);
     expect(find.text('320 L'), findsOneWidget);
@@ -509,6 +509,8 @@ void main() {
     await net(t);
     await t.tap(find.text('Reports').last);
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
+    await net(t);
     await t.scrollUntilVisible(find.text('Stock Register'), 300, scrollable: find.ancestor(of: find.text('Daily Inward & Issue'), matching: find.byType(Scrollable)).first);
     await settle(t, 300);
     await t.tap(find.text('Stock Register'));
@@ -536,6 +538,8 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
     await net(t);
     await t.tap(find.text('Monthly Diesel & Average'));
     await net(t);
@@ -733,6 +737,8 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9_me.png'));
     await t.tap(find.text('Reports'));
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel')));
+    await net(t);
     expect(find.text('Monthly Diesel Issue'), findsOneWidget);
   }, tags: ['golden']);
 
@@ -805,7 +811,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await t.pump(const Duration(milliseconds: 400));
     expect(find.text('Sign in'), findsOneWidget);
-    final op = t.widget<Opacity>(find.ancestor(of: find.text('Mechanical Management ERP'), matching: find.byType(Opacity)).first);
+    final op = t.widget<Opacity>(find.ancestor(of: find.text('Fleet & Diesel Management'), matching: find.byType(Opacity)).first);
     expect(op.opacity, 1);
   });
 
@@ -815,7 +821,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await pics(t);
     expect(find.text('Log Book'), findsOneWidget);
@@ -852,7 +858,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await pics(t);
     await t.scrollUntilVisible(find.text('10:30 – 10:36'), 300, scrollable: find.byType(Scrollable).first);
@@ -1395,6 +1401,8 @@ void main() {
     await net(t);
     await t.tap(find.text('Reports').last);
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
+    await net(t);
     await t.tap(find.text('Dashboard'));
     await net(t);
     expect(srv.dashAsked.first['fn'], 'getDashboard');
@@ -1445,6 +1453,8 @@ void main() {
     await net(t);
     await t.tap(find.text('Reports').last);
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
+    await net(t);
     await t.tap(find.text('Dashboard'));
     await net(t);
     await t.tap(find.byKey(const Key('dt-log')));
@@ -1468,7 +1478,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await t.tap(find.byKey(const Key('lb-menu')));
     await settle(t, 500);
@@ -1509,7 +1519,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await t.tap(find.byKey(const Key('lb-menu')));
     await settle(t, 500);
@@ -1558,7 +1568,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await t.tap(find.byKey(const Key('lb-menu')));
     await settle(t, 500);
@@ -2245,7 +2255,7 @@ void main() {
     final files = catchFiles();
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Logbook'));
+    await t.tap(find.text('Logbook').last); // (3.31.0) the module (the tile of today's entries is Logbook too)
     await net(t);
     await t.tap(find.byKey(const Key('lb-menu')));
     await settle(t, 500);
@@ -2774,6 +2784,8 @@ void main() {
     await net(t);
     await t.tap(find.text('Reports').last);
     await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
+    await net(t);
     await t.scrollUntilVisible(find.text('Machinery Diesel Ledger'), 300, scrollable: find.ancestor(of: find.text('Daily Inward & Issue'), matching: find.byType(Scrollable)).first);
     await settle(t, 300);
     await t.tap(find.text('Machinery Diesel Ledger'));
@@ -2823,7 +2835,7 @@ void main() {
     await net(t);
     await t.tap(find.text('Me'));
     await net(t);
-    await t.tap(find.text('Super Admin'));
+    await tapK(t, 'me-super'); // (3.31.0) his role is also on Me now
     await net(t);
     return srv;
   }
@@ -3078,6 +3090,8 @@ void main() {
     var clock = DateTime(2026, 10, 14, 10, 30).millisecondsSinceEpoch;
     rtc.now = () => clock;
     expect(srv.rtcBeats.first, isNull, reason: 'the first heartbeat: "just opened" – the rings still waiting come');
+    await t.tap(find.byKey(const Key('home-menu'))); // (3.31.0) Call is in the menu (≡)
+    await settle(t, 600);
     await t.tap(find.byKey(const Key('home-call')));
     await net(t);
     await settle(t, 1600);
@@ -3283,4 +3297,95 @@ void main() {
     expect(find.byKey(const Key('lock-screen')), findsNothing, reason: 'nothing of the ERP is open before a sign-in');
     expect(g2.asked, 0);
   });
+
+  // ---------------- (3.31.0) the new look from his picture ----------------
+  testWidgets('(3.31.0) ≡ the menu (every module, Call, Help); the + (only what he may add); a half-filled Diesel Issue brought back, Start new; Back one step; Reports – Overview', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await pics(t);
+    expect(find.text('Good Morning,'), findsOneWidget, reason: '10:30 in the morning');
+    // ≡
+    await t.tap(find.byKey(const Key('home-menu')));
+    await settle(t, 600);
+    expect(find.byKey(const Key('menu-Machinery')), findsOneWidget);
+    expect(find.byKey(const Key('menu-Billing')), findsNothing, reason: 'no access – not in the menu either');
+    expect(find.byKey(const Key('menu-help')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/59_menu.png'));
+    await t.tapAt(const Offset(350, 400));
+    await settle(t, 600);
+    // the +
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    expect(find.byKey(const Key('plus-Diesel Issue')), findsOneWidget);
+    expect(find.byKey(const Key('plus-Diesel Inward')), findsNothing, reason: 'Diesel Inward: View only');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/60_plus.png'));
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    // half filled, then the form closed (the phone's Back)
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)'));
+    await settle(t, 800);
+    await t.enterText(find.byType(TextField).at(1), '45');
+    await settle(t, 900);
+    expect(find.byKey(const Key('draft-back')), findsNothing, reason: 'nothing brought back the first time');
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.text('Pick the machinery'), findsNothing);
+    // opened again: brought back
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('draft-back')), findsOneWidget);
+    expect(find.text('Sany 210 (No.1)'), findsOneWidget);
+    expect(find.text('45'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/61_draft.png'));
+    await t.tap(find.byKey(const Key('draft-new')));
+    await settle(t, 900);
+    expect(find.byKey(const Key('draft-back')), findsNothing);
+    expect(find.text('Pick the machinery'), findsOneWidget, reason: 'Start new: the boxes emptied');
+    await t.binding.handlePopRoute();
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('draft-back')), findsNothing, reason: 'Start new: nothing kept');
+    await t.binding.handlePopRoute();
+    await net(t);
+    // Back one step: Entries → Diesel Issue → (Back) the Entries list → (Back) Home → (Back) "Press Back again"
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    expect(find.text('4 entries · 240 L'), findsOneWidget);
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('entries-Diesel Inward')), findsOneWidget, reason: 'back to the list of entries – not out of it');
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('home-menu')), findsOneWidget, reason: 'then Home');
+    await t.binding.handlePopRoute();
+    await settle(t, 400);
+    expect(find.text('Press Back again to leave the app.'), findsOneWidget);
+    await settle(t, 4500);
+    // Reports – Overview: the figures of the month from the server's answers
+    srv.dashAsked.clear();
+    await t.tap(find.text('Reports').last);
+    await net(t, 2500);
+    expect(srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first), contains(equals({'from': '2026-10-01', 'to': '2026-10-14'})), reason: 'this month');
+    expect(srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first), contains(equals({'from': '2026-09-17', 'to': '2026-09-30'})), reason: 'the same 14 days just before');
+    expect(srv.dashAsked.any((x) => x['fn'] == 'logDashboard'), true);
+    expect(find.byKey(const Key('ov-used')), findsOneWidget);
+    expect(find.byKey(const Key('ov-trend')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/62_reports_overview.png'));
+  }, tags: ['golden']);
 }

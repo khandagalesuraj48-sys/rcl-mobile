@@ -39,6 +39,7 @@ import 'start_page.dart' show startPagesFor, openStartPage;
 import 'store.dart' show StoreScreen;
 import 'tank_check.dart' show TankCheckScreen;
 import 'vendors.dart' show VendorMasterScreen;
+import '../ui/ask_bot.dart';
 
 /// One result: what it is, its two lines, where it takes him, and its buttons.
 class GsItem {
@@ -426,7 +427,7 @@ class _SearchScreenState extends State<SearchScreen> {
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(hintText: tr('Search everything – machinery, IDs, readings, vendors, bills…'), border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, filled: false),
         ),
-        actions: [
+        actions: withAsk([
           if (q.isNotEmpty)
             IconButton(
               tooltip: tr('Clear'),
@@ -436,9 +437,9 @@ class _SearchScreenState extends State<SearchScreen> {
               },
               icon: const Icon(Icons.close_rounded),
             ),
-        ],
+        ]),
       ),
-      body: ListView(key: const Key('gs-list'), padding: const EdgeInsets.fromLTRB(14, 6, 14, 30), children: [
+      body: ListView(key: const Key('gs-list'), padding: const EdgeInsets.fromLTRB(16, 6, 16, 30), children: [
         if (better.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),

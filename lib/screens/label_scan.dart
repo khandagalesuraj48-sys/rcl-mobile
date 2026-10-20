@@ -19,6 +19,7 @@ import '../ui/widgets.dart';
 import 'forms.dart' show newEntry;
 import 'logbook.dart' show LogForm;
 import 'report_screen.dart' show openReport;
+import '../ui/ask_bot.dart';
 
 /// The scanner → the label → its machinery → the question. [onSaved]: a Diesel Issue was saved (Home reads its figures again).
 Future<void> scanMachineLabel(BuildContext context, {VoidCallback? onSaved}) async {
@@ -148,7 +149,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
           title: const Text('Scan the machinery label', mr: 'मशीनचे QR label स्कॅन करा', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-          actions: [
+          actions: withAsk([
             if (cam != null)
               ValueListenableBuilder<MobileScannerState>(
                 valueListenable: cam!,
@@ -165,7 +166,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                         },
                       ),
               ),
-          ],
+          ]),
         ),
         body: Stack(fit: StackFit.expand, children: [
           _camera(),

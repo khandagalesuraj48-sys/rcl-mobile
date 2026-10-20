@@ -50,6 +50,9 @@ List<(String, String)> assistantTabs(Session s) {
 /// (3.16.0) The Entries tab of the app (the shell sets it): a page button of an answer for a diesel page opens it.
 ValueChanged<String>? shellEntries;
 
+/// (3.31.0) opens the Reports tab (set by the app's frame) – for the search of a page outside Home.
+VoidCallback? shellReports;
+
 AiChat? _chat;
 String _chatOf = '';
 
@@ -521,7 +524,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
             child: ListView.builder(
               key: const Key('ai-list'),
               controller: scroll,
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               itemCount: c.msgs.length + 1,
               itemBuilder: (_, i) => i == 0
                   ? Padding(
@@ -542,7 +545,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
               child: ListView.separated(
                 key: const Key('ai-ready'),
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: ready.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (_, i) => ActionChip(

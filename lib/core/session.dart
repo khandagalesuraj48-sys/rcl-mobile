@@ -141,6 +141,13 @@ class Session extends ChangeNotifier {
     await api.keep.write(kLang, Lang.i.code);
   }
 
+  /// (3.31.0) the language picked on the sign-in screen, before he signs in: kept on this phone; his account's choice (My settings)
+  /// comes after the sign-in as before.
+  Future<void> pickLanguageHere(String c) async {
+    await _lang(c);
+    notifyListeners();
+  }
+
   /// Settings → App language: '' / 'en' / 'mr' / 'hi' – the help of the web follows it.
   Future<void> setLanguage(String c) => savePrefs({'appLang': c, 'lang': c == 'mr' || c == 'hi' ? c : 'en'});
 

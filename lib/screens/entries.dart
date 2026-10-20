@@ -14,6 +14,11 @@ import 'diesel_photos.dart';
 import 'entry_more.dart';
 import 'forms.dart';
 import 'logbook.dart';
+import 'breakdown.dart';
+import 'store.dart';
+import 'search.dart';
+import 'assistant.dart' show shellEntries, shellReports;
+import '../ui/ask_bot.dart';
 import 'super_delete.dart';
 import '../ui/t.dart';
 import '../ui/help.dart' show showGuide;
@@ -28,6 +33,9 @@ class EntriesTab extends StatefulWidget {
   State<EntriesTab> createState() => _EntriesTabState();
 }
 
+/// (3.31.0) Back of the phone on the Entries tab: a diesel page goes back to the list (true = done here). Set by the tab itself.
+bool Function()? entriesBack;
+
 /// Kept while the app is open: a day already seen shows at once (then it is read again).
 final _entriesCache = <String, List<Map<String, dynamic>>>{};
 
@@ -38,11 +46,32 @@ class _EntriesTabState extends State<EntriesTab> {
   List<Map<String, dynamic>> rows = [];
   int seq = 0;
 
+  /// (3.31.0) the page was opened from elsewhere (Home, the +, the assistant): Back goes back there, not to the list
+  bool _direct = false;
+  String group = '';
+
+  bool _back() {
+    if (kind.isEmpty) return false;
+    final direct = _direct;
+    setState(() {
+      kind = '';
+      _direct = false;
+    });
+    return !direct;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    entriesBack = _back;
+  }
+
   @override
   void didUpdateWidget(covariant EntriesTab old) {
     super.didUpdateWidget(old);
     if (widget.kind.isNotEmpty && (widget.kind != old.kind || widget.open != old.open)) {
       kind = widget.kind;
+      _direct = true;
       _load();
     }
   }
@@ -55,6 +84,7 @@ class _EntriesTabState extends State<EntriesTab> {
     if (kind.isEmpty && widget.kind.isNotEmpty && !_opened) {
       _opened = true;
       kind = widget.kind;
+      _direct = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
   }
@@ -67,6 +97,7 @@ class _EntriesTabState extends State<EntriesTab> {
 
   @override
   void dispose() {
+    if (entriesBack == _back) entriesBack = null;
     _ls?.dataTick.removeListener(_live);
     super.dispose();
   }
@@ -141,38 +172,99 @@ class _EntriesTabState extends State<EntriesTab> {
 
   bool _opened = false;
 
-  /// (3.1.8) the list of his pages of entries, one under the other
+  /// (3.1.8) the list of his pages of entries, one under the other.
+  /// (3.31.0, his picture) "Your Entries": the groups on top (All · Diesel · Machinery · Log Book · Store), each page a card with
+  /// what it is for; the search of the app and the robot at the top.
   Widget _menu(Session s) {
-    final items = <(String, String, String, Color, Color, VoidCallback)>[
+    final tankers = s.canSee('Log Book') && s.machines.any((m) => m.onSite(s.today) && m.waterTanker);
+    const subs = {'issue': 'Issue diesel to machinery/vehicle', 'inward': 'Record diesel inward at site', 'transfer': 'Transfer between store/dispensers'};
+    final items = <(String, String, String, String, Color, String, VoidCallback)>[
       for (final k in kKinds.where((k) => s.canSee(k.module)))
-        (k.en, k.mr, k.pic, k.color, k.soft, () {
+        (k.en, k.key == 'transfer' ? 'Diesel Transfer' : k.en, k.mr, subs[k.key] ?? '', k.soft, 'Diesel', () {
           setState(() {
             kind = k.key;
+            _direct = false;
             rows = [];
           });
           _load();
         }),
-      if (s.canSee('Log Book')) ('Log Book', 'लॉग बुक', 'notebook', C.blue, C.blueSoft, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()))),
+      if (s.canSee('Log Book')) ('Log Book', 'Log Book', 'लॉग बुक', 'Daily running & working hours', C.purpleSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()))),
+      if (s.canSee('Breakdown')) ('Breakdown', 'Breakdown', 'ब्रेकडाऊन', 'Machinery working / breakdown', C.orangeSoft, 'Machinery', () => openBreakdown(context)),
+      if (tankers) ('Tanker Trips', 'Tanker Trips', 'टँकर फेऱ्या', 'Water tanker trips & challans', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: s.today)))),
+      if (s.hasModule('store')) ('Store', 'Store', 'स्टोअर', 'Items inward / outward', C.amberSoft, 'Store', () => openStore(context)),
     ];
+    const pics = {'Log Book': 'notebook', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package'};
+    final groups = ['Diesel', 'Machinery', 'Log Book', 'Store'].where((g) => items.any((x) => x.$6 == g)).toList();
+    final shown = group.isEmpty || !groups.contains(group) ? items : items.where((x) => x.$6 == group).toList();
+    Widget chip(String g, String label) {
+      final on = group == g;
+      return ChoiceChip(
+        key: Key('eg-${g.isEmpty ? 'all' : g}'),
+        label: Text(label),
+        selected: on,
+        showCheckmark: false,
+        onSelected: (_) => setState(() => group = g),
+        selectedColor: C.green,
+        labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: on ? Colors.white : C.ink),
+        side: BorderSide(color: on ? C.green : C.line),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      );
+    }
+
     return Scaffold(
       body: SafeArea(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
-          const Padding(padding: EdgeInsets.fromLTRB(4, 0, 4, 4), child: TwoLang('Your entries', 'तुमच्या एन्ट्री', size: 28, weight: FontWeight.w800)),
-          Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 16), child: Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600))),
+        child: ListView(padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 30), children: [
+          Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Your Entries', mr: 'तुमच्या एन्ट्री', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+                Text(s.siteName, style: const TextStyle(fontSize: 14, color: C.muted, fontWeight: FontWeight.w500)),
+              ]),
+            ),
+            IconButton(
+              key: const Key('entries-search'),
+              tooltip: tr('Search'),
+              style: IconButton.styleFrom(backgroundColor: Colors.white, side: const BorderSide(color: C.line), fixedSize: const Size(40, 40)),
+              onPressed: () => openSearch(context, entries: shellEntries ?? (_) {}, reports: shellReports ?? () {}),
+              icon: const Icon(Icons.search_rounded, size: 22),
+            ),
+            const SizedBox(width: 6),
+            const AskBot(size: 40),
+          ]),
+          const SizedBox(height: 14),
           if (items.isEmpty) const EmptyState('No pages of entries', 'Ask the Admin for access to Diesel Issue, Inward, Transfer or Log Book.', pic: 'locked_with_key'),
-          for (final (i, x) in items.indexed)
+          if (groups.length > 1)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                chip('', 'All'),
+                for (final g in groups) ...[const SizedBox(width: 8), chip(g, g)],
+              ]),
+            ),
+          if (groups.length > 1) const SizedBox(height: 14),
+          for (final x in shown)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: Sp.chips),
               child: Press(
                 key: Key('entries-${x.$1}'),
-                onTap: x.$6,
-                padding: const EdgeInsets.all(14),
+                onTap: x.$7,
+                radius: 18,
+                padding: const EdgeInsets.all(12),
                 child: Row(children: [
-                  Container(width: 62, height: 62, decoration: BoxDecoration(color: x.$5, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(x.$3, size: 44)),
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(color: x.$5, borderRadius: BorderRadius.circular(15)),
+                    alignment: Alignment.center,
+                    child: Pic(pics[x.$1] ?? kKinds.firstWhere((k) => k.en == x.$1, orElse: () => kKinds.first).pic, size: 34),
+                  ),
                   const SizedBox(width: 14),
-                  Text('${i + 1}.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: x.$4)),
-                  const SizedBox(width: 8),
-                  Expanded(child: TwoLang(x.$1, x.$2, size: 17, weight: FontWeight.w700)),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(x.$2, mr: x.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(x.$4, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                    ]),
+                  ),
                   const Icon(Icons.chevron_right_rounded, color: C.faint),
                 ]),
               ),
@@ -218,8 +310,11 @@ class _EntriesTabState extends State<EntriesTab> {
     final today = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     final days = [for (var i = 0; i < 14; i++) today.subtract(Duration(days: i))];
     return Scaffold(
+      // (3.31.0) above the gold + of the bar
       floatingActionButton: s.canEdit(k.module)
-          ? FloatingActionButton.extended(
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 30),
+              child: FloatingActionButton.extended(
               onPressed: _add,
               backgroundColor: k.color,
               foregroundColor: Colors.white,
@@ -227,7 +322,7 @@ class _EntriesTabState extends State<EntriesTab> {
               shape: const StadiumBorder(),
               icon: const Icon(Icons.add_rounded, size: 26),
               label: const Text('New Entry', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            )
+            ))
           : null,
       body: SafeArea(
         bottom: false,
@@ -237,12 +332,15 @@ class _EntriesTabState extends State<EntriesTab> {
           child: CustomScrollView(slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 12, 6),
+                padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
                 child: Row(children: [
-                  IconButton(tooltip: tr('All entries'), icon: const Icon(Icons.arrow_back_rounded), onPressed: () => setState(() => kind = '')),
+                  IconButton(tooltip: tr('All entries'), icon: const Icon(Icons.arrow_back_rounded), onPressed: () => setState(() {
+                        kind = '';
+                        _direct = false;
+                      })),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(k.en, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+                      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(k.en, maxLines: 1, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800))),
                       Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600)),
                     ]),
                   ),
@@ -252,6 +350,8 @@ class _EntriesTabState extends State<EntriesTab> {
                     onPressed: _pickDate,
                     icon: const Icon(Icons.calendar_month_rounded),
                   ),
+                  const SizedBox(width: 6),
+                  const AskBot(size: 40),
                   PopupMenuButton<String>(
                     key: const Key('en-more'),
                     tooltip: tr('More'),
@@ -301,7 +401,7 @@ class _EntriesTabState extends State<EntriesTab> {
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 8),
                 child: Row(children: [
                   Expanded(child: Text('${showDate(day)}, ${weekDays[parseKey(day).weekday - 1]}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
                   if (!loading) Text('${list.length} ${list.length == 1 ? 'entry' : 'entries'} · ${fmtNum(total)} L', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: k.color)),

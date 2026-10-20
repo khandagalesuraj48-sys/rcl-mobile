@@ -25,6 +25,7 @@ import 'log_print.dart';
 import 'logbook.dart' show needsOf, kLogShifts;
 import '../core/dash.dart' show kDayStatus;
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 Future<void> openLogEdit(BuildContext context, {String no = ''}) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => LogEditScreen(no: no)));
 
@@ -489,7 +490,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
         appBar: AppBar(
           titleSpacing: 0,
           title: const TwoLang('Edit Log Book', 'लॉग बुक दुरुस्ती', size: 19, weight: FontWeight.w700),
-          actions: [const GuideButton('logedit'), 
+          actions: withAsk([const GuideButton('logedit'), 
             if (e != null || l != null)
               PopupMenuButton<String>(
                 key: const Key('lx-menu'),
@@ -549,12 +550,12 @@ class _LogEditScreenState extends State<LogEditScreen> {
                   PopupMenuItem(key: const Key('lx-print'), value: 'print', child: Text('Print Log Book')),
                 ],
               ),
-          ],
+          ]),
         ),
         body: ListView.builder(
           key: const Key('lx-list'),
           controller: _list,
-          padding: const EdgeInsets.fromLTRB(14, 4, 14, 30),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 30),
           itemCount: 1 + (e != null ? 2 + e.rows.length : 0) + (l != null ? 2 + l.trips.length : 0),
           itemBuilder: (_, i) {
             if (i == 0) return _filter(s);

@@ -219,7 +219,7 @@ class Opening extends StatelessWidget {
                 const SizedBox(height: 22),
                 Text(what.isEmpty ? 'RCL ERP' : 'Opening $what…', textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 4),
-                const Text('Mechanical Management ERP', style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF))),
+                const Text('Fleet & Diesel Management', style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF))), // (3.31.0) the app is RCL ERP
                 const SizedBox(height: 24),
                 const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)),
               ]),

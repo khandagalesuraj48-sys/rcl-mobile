@@ -21,6 +21,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 Future<void> openCompliance(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ComplianceScreen()));
 
@@ -117,7 +118,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Vehicle Compliance', 'वाहन कागदपत्रे', size: 20, weight: FontWeight.w700),
-        actions: [const GuideButton('comp'), 
+        actions: withAsk([const GuideButton('comp'), 
           PopupMenuButton<String>(
             key: const Key('cp-menu'),
             onSelected: (k) {
@@ -131,7 +132,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
               if (can) PopupMenuItem(key: const Key('cp-import'), value: 'import', child: Text('Import Excel')),
             ],
           ),
-        ],
+        ]),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -408,7 +409,7 @@ class _RulesScreenState extends State<_RulesScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text('Papers needed per machinery type'), actions: [const GuideButton('comp')]),
+        appBar: AppBar(title: Text('Papers needed per machinery type'), actions: withAsk([const GuideButton('comp')])),
         body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text('Tick the papers a type of machinery must have. Papers not ticked are not asked for (shown as —). A type with nothing ticked (DG, pump …) is left out of Vehicle Compliance.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
           const SizedBox(height: 10),

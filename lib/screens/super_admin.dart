@@ -24,6 +24,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/ask_bot.dart';
 
 Future<void> openSuperAdmin(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SuperAdminScreen()));
 
@@ -168,7 +169,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Super Admin', 'सुपर ॲडमिन', size: 20, weight: FontWeight.w700),
-          actions: [IconButton(key: const Key('sa-reload'), tooltip: tr('Refresh'), onPressed: load, icon: const Icon(Icons.refresh_rounded))],
+          actions: withAsk([IconButton(key: const Key('sa-reload'), tooltip: tr('Refresh'), onPressed: load, icon: const Icon(Icons.refresh_rounded))]),
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
@@ -219,7 +220,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
     final x = d!, people = x.users.where((u) => u['super'] != true).toList();
     return RefreshIndicator(
       onRefresh: load,
-      child: ListView(key: const Key('sa-users'), padding: const EdgeInsets.fromLTRB(14, 12, 14, 30), children: [
+      child: ListView(key: const Key('sa-users'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
         _note('Pick a site: for every user, which module he may open there – Admin, User or No access. Access is separate on every site. Switched off = cannot sign in.'),
         Row(children: [
           Expanded(
@@ -295,7 +296,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
     final x = d!;
     return RefreshIndicator(
       onRefresh: load,
-      child: ListView(key: const Key('sa-sites'), padding: const EdgeInsets.fromLTRB(14, 12, 14, 30), children: [
+      child: ListView(key: const Key('sa-sites'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
         _note('Every site of every module. Closed = switched off: nobody can open it. A closed site can be deleted – its data stays in its own database.'),
         Align(
           alignment: Alignment.centerLeft,
@@ -346,7 +347,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
     final x = d!;
     return RefreshIndicator(
       onRefresh: load,
-      child: ListView(key: const Key('sa-companies'), padding: const EdgeInsets.fromLTRB(14, 12, 14, 30), children: [
+      child: ListView(key: const Key('sa-companies'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
         _note('The companies a site belongs to.'),
         Align(
           alignment: Alignment.centerLeft,
@@ -388,7 +389,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
     final x = d!;
     return RefreshIndicator(
       onRefresh: load,
-      child: ListView(key: const Key('sa-modules'), padding: const EdgeInsets.fromLTRB(14, 12, 14, 30), children: [
+      child: ListView(key: const Key('sa-modules'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
         _note('A module shows on the dashboard only when it is Live and has its link. A module that is Off can be deleted (not Mechanical).'),
         Align(
           alignment: Alignment.centerLeft,
@@ -426,7 +427,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
     final rows = audit;
     return RefreshIndicator(
       onRefresh: loadAudit,
-      child: ListView(key: const Key('sa-audit'), padding: const EdgeInsets.fromLTRB(14, 12, 14, 30), children: [
+      child: ListView(key: const Key('sa-audit'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
         _note('Sign-ins, users, access, sites, companies, modules – the last 200.'),
         if (auditErr.isNotEmpty) InfoLine(auditErr, bad: true),
         if (rows == null && auditErr.isEmpty)
@@ -503,7 +504,7 @@ class _SaUserScreenState extends State<SaUserScreen> {
   Widget build(BuildContext context) {
     final u = widget.user, site = widget.site;
     return Scaffold(
-      appBar: AppBar(title: mt.Text(isNew ? tr('+ Add user') : '${u!['name']}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+      appBar: AppBar(actions: withAsk(), title: mt.Text(isNew ? tr('+ Add user') : '${u!['name']}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
@@ -629,7 +630,7 @@ class _SaMechPagesScreenState extends State<SaMechPagesScreen> {
   Widget build(BuildContext context) {
     final d = widget.console.d!, u = d.user(widget.email) ?? {'name': widget.email}, admin = d.roleOf(widget.email, widget.site, 'mechanical') == 'admin';
     return Scaffold(
-      appBar: AppBar(title: mt.Text('${tr('Pages in Mechanical')} – ${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+      appBar: AppBar(actions: withAsk(), title: mt.Text('${tr('Pages in Mechanical')} – ${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
       bottomNavigationBar: pages == null || admin
           ? null
           : SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('sa-pg-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save pages')))),
@@ -703,7 +704,7 @@ class _SaStorePagesScreenState extends State<SaStorePagesScreen> {
   Widget build(BuildContext context) {
     final d = widget.console.d!, u = d.user(widget.email) ?? {'name': widget.email}, admin = d.roleOf(widget.email, widget.site, 'store') == 'admin';
     return Scaffold(
-      appBar: AppBar(title: mt.Text('${tr('Pages in the Store')} – ${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+      appBar: AppBar(actions: withAsk(), title: mt.Text('${tr('Pages in the Store')} – ${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
       bottomNavigationBar: admin
           ? null
           : SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('sa-spg-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save pages')))),
@@ -789,7 +790,7 @@ class _SaSiteScreenState extends State<SaSiteScreen> {
   Widget build(BuildContext context) {
     final d = widget.console.d!, closed = widget.site['status'] == 'closed';
     return Scaffold(
-      appBar: AppBar(title: mt.Text('${widget.site['name']} ($code)', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+      appBar: AppBar(actions: withAsk(), title: mt.Text('${widget.site['name']} ($code)', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
       bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('sa-st-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save')))),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 30), children: [
         TextField(key: const Key('sa-st-name'), controller: name, maxLength: 80, decoration: InputDecoration(labelText: tr('Name'))),
@@ -984,7 +985,7 @@ class _SaPlacesScreenState extends State<SaPlacesScreen> {
   Widget build(BuildContext context) {
     final d = widget.console.d!, x = r;
     return Scaffold(
-      appBar: AppBar(title: mt.Text('${tr('Diesel places')} – ${d.siteName(widget.site)} (${widget.site})', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+      appBar: AppBar(actions: withAsk(), title: mt.Text('${tr('Diesel places')} – ${d.siteName(widget.site)} (${widget.site})', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
       bottomNavigationBar: x == null
           ? null
           : SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('pl-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save diesel places')))),
@@ -1140,7 +1141,7 @@ class _SaNewSiteScreenState extends State<SaNewSiteScreen> {
   Widget build(BuildContext context) {
     final d = widget.console.d!, x = r;
     return Scaffold(
-      appBar: AppBar(title: const Text('New site', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+      appBar: AppBar(actions: withAsk(), title: const Text('New site', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
       bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('ns-check'), onPressed: busy ? null : _check, child: Text(busy ? 'Checking…' : 'Check & set up')))),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 30), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const Text('Mechanical for a new site – the same app, its own database. Nothing of another site is copied and no user is made; afterwards you give the site to people under Users & Access.',
@@ -1216,7 +1217,7 @@ class _SaCompanyScreenState extends State<SaCompanyScreen> {
     const hints = {'gstin': '27ABCDE1234F1Z5', 'pan': 'ABCDE1234F', 'logo': 'https://…'};
     const max = {'name': 80, 'gstin': 15, 'pan': 10, 'address': 300, 'logo': 300};
     return Scaffold(
-      appBar: AppBar(title: mt.Text(co == null ? tr('Add a company') : '${tr('Change')}: ${co['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+      appBar: AppBar(actions: withAsk(), title: mt.Text(co == null ? tr('Add a company') : '${tr('Change')}: ${co['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
       bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('co-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save company')))),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 30), children: [
         for (final k in labels.keys) ...[
@@ -1294,7 +1295,7 @@ class _SaModuleScreenState extends State<SaModuleScreen> {
   Widget build(BuildContext context) {
     final m = widget.module;
     return Scaffold(
-      appBar: AppBar(title: mt.Text(isNew ? tr('+ Add module') : '${m!['name']} (${m['key']})', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
+      appBar: AppBar(actions: withAsk(), title: mt.Text(isNew ? tr('+ Add module') : '${m!['name']} (${m['key']})', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))),
       bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('m-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : (isNew ? 'Add' : 'Save'))))),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 30), children: [
         if (isNew) ...[TextField(key: const Key('m-key'), controller: key, decoration: InputDecoration(labelText: tr('Key'), hintText: 'key, e.g. store')), const SizedBox(height: 8)],

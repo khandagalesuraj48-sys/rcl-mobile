@@ -18,6 +18,7 @@ import '../core/lb_print.dart' show lbSampleRows;
 import 'log_print.dart';
 import 'machinery.dart' show uniqOf;
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 Future<void> openLbFormats(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LbFormatScreen()));
 
@@ -134,7 +135,7 @@ class _LbFormatScreenState extends State<LbFormatScreen> {
     final fmts = [for (final f in kLbFormats) f.id];
     String label(String id) => lbName(_f(id), names);
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Log Book Format', 'लॉगबुक फॉरमॅट', size: 20, weight: FontWeight.w700), actions: [const GuideButton('lbf')]),
+      appBar: AppBar(title: const TwoLang('Log Book Format', 'लॉगबुक फॉरमॅट', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('lbf')])),
       body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('The Log Book of a machinery prints in the format set here. The top (Rachana / Sketchline, site, owner, machinery) is the same in every format.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
         const SizedBox(height: 10),

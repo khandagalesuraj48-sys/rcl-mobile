@@ -19,6 +19,7 @@ import '../ui/widgets.dart';
 import 'bill_print.dart';
 import 'billing.dart' show openBillPage;
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 String _today(Session s) => s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
 
@@ -106,10 +107,10 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
     final rows = all.where((r) => vendor.isEmpty || r['vendor'] == vendor).toList(), months = brMonths(fromM, toM);
     final RDoc? doc = rows.isEmpty || months.isEmpty ? null : brDoc(rows, months, view, company: co, vendor: vendor);
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Bill Summary', 'बिल सारांश', size: 20, weight: FontWeight.w700), actions: [const GuideButton('breg'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Bill Summary', 'बिल सारांश', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('breg'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(key: const Key('br-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+        child: ListView(key: const Key('br-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
           Text('Only submitted bills that are in force (a bill replaced by a revision is not counted twice). A bill is shown in the month its work period starts.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 8),
           Row(children: [
@@ -370,10 +371,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), can = s.canEdit('Machinery Payments'), open = type == 'Opening';
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Machinery Payments', 'यंत्र पेमेंट', size: 20, weight: FontWeight.w700), actions: [const GuideButton('pay'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Machinery Payments', 'यंत्र पेमेंट', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('pay'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(key: const Key('py-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+        child: ListView(key: const Key('py-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
           if (!can) InfoLine('View only – you can see payments, but you cannot add, change or delete. Ask Admin for Edit access.', bad: true),
           if (can)
             Container(
@@ -561,10 +562,10 @@ class _LedgerScreenState extends State<LedgerScreen> {
     final s = SessionScope.of(context), x = d, names = [...vendors, if (vendor.isNotEmpty && !vendors.contains(vendor)) vendor];
     final doc = x == null ? null : vlDoc(x, _today(s));
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Vendor Ledger', 'vendor खाते', size: 20, weight: FontWeight.w700), actions: [const GuideButton('vled'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Vendor Ledger', 'vendor खाते', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('vled'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(key: const Key('vl-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+        child: ListView(key: const Key('vl-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
           Text('One ledger per vendor – bills of both names (Sketchline / Rachana) and all payments together. Balance = what is still to be paid.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 8),
           PickField(key: const Key('vl-vendor'), label: 'Vendor', value: vendor, items: names, blank: '– pick –', onChanged: (v) {
@@ -683,10 +684,10 @@ class _OutstandingScreenState extends State<OutstandingScreen> {
     final s = SessionScope.of(context), t = _today(s), x = d, rows = x == null ? const <Map<String, dynamic>>[] : maps(x['rows']);
     final doc = x == null || rows.isEmpty ? null : voDoc(x);
     return Scaffold(
-      appBar: AppBar(title: const TwoLang('Vendor Outstanding', 'vendor बाकी', size: 20, weight: FontWeight.w700), actions: [const GuideButton('vout'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))]),
+      appBar: AppBar(title: const TwoLang('Vendor Outstanding', 'vendor बाकी', size: 20, weight: FontWeight.w700), actions: withAsk([const GuideButton('vout'), IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(key: const Key('vo-list'), padding: const EdgeInsets.fromLTRB(14, 10, 14, 30), children: [
+        child: ListView(key: const Key('vo-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
           Text('Every vendor\'s balance: opening, bills, payments and what is still to be paid – and the balance at the end of each month. Tap a vendor for the ledger.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 8),
           Row(children: [

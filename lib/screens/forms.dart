@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import '../core/api.dart';
 import '../core/device.dart';
 import '../core/diesel_hist.dart';
+import '../core/draft.dart';
 import '../core/format.dart';
 import '../core/rdoc.dart' show fmt;
 import '../core/kinds.dart';
@@ -30,6 +31,7 @@ import 'scan.dart';
 import 'verify.dart';
 import 'flow_fix.dart';
 import '../ui/help.dart' show GuideButton;
+import '../ui/ask_bot.dart';
 
 class EntryForm extends StatefulWidget {
   const EntryForm({super.key, required this.kind, this.edit, this.no = '', this.preset = const {}, this.fix});
@@ -97,6 +99,10 @@ class _EntryFormState extends State<EntryForm> {
   int billTok = 0;
 
   Kind get k => widget.kind;
+  /// (3.31.0) a new entry: what is typed is kept on the phone (draft.dart); [draftAt] = it was brought back (typed then)
+  Draft? _draft;
+  bool _draftReady = false;
+  String draftAt = '';
   /// (3.1.8, update-116) this save goes to verification (the Super Admin's rule for him): the button says so
   bool get _sends => SessionScope.read(context).flowWill(k.module, dates: [date], qty: asNum(qty.text) ?? 0);
   bool get issue => k.key == 'issue';
@@ -139,7 +145,86 @@ class _EntryFormState extends State<EntryForm> {
       });
       if (k.key == 'inward' && e != null) WidgetsBinding.instance.addPostFrameCallback((_) => _loadBills());
       if (k.key == 'transfer') WidgetsBinding.instance.addPostFrameCallback((_) => _balance());
+      if (e == null && widget.fix == null && widget.preset.isEmpty && widget.no.isEmpty) {
+        _draft = Draft(s.api.keep, '${s.site?.code ?? ''}|${s.email}|${k.key}');
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restore());
+      }
     }
+  }
+
+  /// (3.31.0) the half-filled entry of this page, brought back
+  Future<void> _restore() async {
+    final dr = _draft;
+    if (dr == null) return;
+    final d = await dr.read();
+    if (!mounted) return;
+    if (d != null && machine == null && qty.text.isEmpty) {
+      final s = SessionScope.read(context);
+      String v(String key) => '${d[key] ?? ''}';
+      setState(() {
+        if (v('date').isNotEmpty) date = v('date');
+        if (v('shift').isNotEmpty) shift = v('shift');
+        if (s.locations.contains(v('source'))) source = v('source');
+        if (s.locations.contains(v('from'))) from = v('from');
+        if (s.locations.contains(v('to'))) to = v('to');
+        if (v('no').isNotEmpty) machine = s.machine(v('no'));
+        way = machine == null ? '' : v('way');
+        qty.text = v('qty');
+        km.text = v('km');
+        hr.text = v('hr');
+        driver.text = v('driver');
+        remark.text = v('remark');
+        pump.text = v('pump');
+        rate.text = v('rate');
+        billNo.text = v('billNo');
+        billDate = v('billDate');
+        for (final x in (d['shots'] as List? ?? const []).whereType<Map>()) {
+          final kind = '${x['k'] ?? ''}', path = '${x['p'] ?? ''}', jpg = dr.photo(kind);
+          if (kind.isNotEmpty && path.isNotEmpty && jpg != null) shots[kind] = _Shot()..jpg = jpg..path = path;
+        }
+        draftAt = v('at');
+      });
+      if (issue && machine != null) _hist();
+      _balance();
+    }
+    _draftReady = true;
+  }
+
+  /// What is typed now (null = nothing yet).
+  Map<String, dynamic>? _snap() {
+    final boxes = {'qty': qty, 'km': km, 'hr': hr, 'driver': driver, 'remark': remark, 'pump': pump, 'rate': rate, 'billNo': billNo};
+    final typed = {for (final e in boxes.entries) if (e.value.text.trim().isNotEmpty && !(e.key == 'driver' && driverAuto)) e.key: e.value.text};
+    final photos = [for (final e in shots.entries) if (e.value.path.isNotEmpty) {'k': e.key, 'p': e.value.path}];
+    if (machine == null && typed.isEmpty && photos.isEmpty) return null;
+    return {
+      'date': date,
+      'shift': shift,
+      'source': source,
+      'from': from,
+      'to': to,
+      'way': way,
+      'no': machine?.id ?? '',
+      'billDate': billDate,
+      ...typed,
+      'shots': photos,
+    };
+  }
+
+  /// "Start new": the boxes emptied, the kept entry gone.
+  void _startNew() {
+    setState(() {
+      draftAt = '';
+      machine = null;
+      way = '';
+      shots.clear();
+      ai.clear();
+      aiPut.clear();
+      for (final c in [qty, km, hr, driver, remark, rate, billNo, pump]) {
+        c.clear();
+      }
+    });
+    _draft?.clear();
+    _balance();
   }
 
   /// An entry being changed: its values in the boxes.
@@ -175,6 +260,7 @@ class _EntryFormState extends State<EntryForm> {
 
   @override
   void dispose() {
+    _draft?.close();
     for (final c in [qty, km, hr, driver, remark, pump, rate, billNo]) {
       c.dispose();
     }
@@ -381,6 +467,8 @@ class _EntryFormState extends State<EntryForm> {
       final r = (await s.api.call('dieselPhoto', [{'kind': pk.key, 'data': shot.dataUrl, 'lat': shot.spot.lat, 'lng': shot.spot.lng, 'acc': shot.spot.acc, 'at': shot.at.toUtc().toIso8601String(), 'no': m.id}], true) as Map);
       if (!mounted || machine?.id != m.id) return;
       setState(() => sh.path = (r['path'] ?? '').toString());
+      final dr = _draft, jpg = sh.jpg;
+      if (dr != null && jpg != null && sh.path.isNotEmpty) dr.putPhoto(pk.key, jpg);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -857,6 +945,8 @@ class _EntryFormState extends State<EntryForm> {
       if (r['stock'] != null) s.setStock(r['stock']);
       if (issue && driver.text.trim().isNotEmpty && !s.drivers.contains(driver.text.trim())) s.drivers.add(driver.text.trim());
       savedOne = true;
+      _draft?.clear();
+      draftAt = '';
       HapticFeedback.lightImpact();
       if (ed != null) {
         if (mounted) {
@@ -884,6 +974,8 @@ class _EntryFormState extends State<EntryForm> {
       // (3.1.7) no network: a NEW entry may be kept on the phone and sent by itself later (with the same save number)
       if (mounted && ed == null && fx == null && sentD != null && e is ApiError && await offerKeep(context, e)) {
         final m0 = machine;
+        _draft?.clear();
+        draftAt = '';
         await s.keepEntry(k.save, [sentD], e.rid, '${tr(k.en)} · ${showDate(date)}${m0 != null ? ' · ${m0.id}' : ''} · ${qty.text.trim()} L');
         if (!mounted) return;
         setState(() {
@@ -904,6 +996,8 @@ class _EntryFormState extends State<EntryForm> {
       if (mounted && isSent(e)) {
         // (update-114) sent for verification: nothing saved yet; the form is emptied for the next entry (an edit is closed)
         HapticFeedback.lightImpact();
+        _draft?.clear();
+        draftAt = '';
         if (ed != null) {
           toast(context, errText(e));
           Navigator.pop(context, false);
@@ -972,14 +1066,14 @@ class _EntryFormState extends State<EntryForm> {
 
   // ---------- the pieces of the form ----------
   Widget _label(String en, [String mr = '']) => Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 8, left: 2),
-        child: Row(children: [
+        padding: const EdgeInsets.only(top: Sp.block, bottom: Sp.label, left: 2),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
           Flexible(child: Text(en, mr: mr, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.ink))),
           if (mr.isNotEmpty) MrLine('  $mr', style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 12.5, color: C.muted)),
         ]),
       );
 
-  Widget _chips<T>(List<(T, String)> items, T? value, ValueChanged<T> onPick, {Color? color}) => Wrap(spacing: 8, runSpacing: 8, children: [
+  Widget _chips<T>(List<(T, String)> items, T? value, ValueChanged<T> onPick, {Color? color}) => Wrap(spacing: Sp.chips, runSpacing: 4, children: [
         for (final it in items)
           ChoiceChip(
             label: Text(it.$2),
@@ -1105,6 +1199,7 @@ class _EntryFormState extends State<EntryForm> {
     final q = asNum(qty.text);
     final m = machine;
     final avail = bal == null ? null : asNum(bal!['available']);
+    if (_draftReady) _draft?.put(_snap());
     return PopScope(
       canPop: false, // the system Back too says whether something was saved (the list then loads again)
       onPopInvokedWithResult: (didPop, _) {
@@ -1118,7 +1213,7 @@ class _EntryFormState extends State<EntryForm> {
             Pic(k.pic, size: 30),
             const SizedBox(width: 10),
             Expanded(child: TwoLang(widget.fix != null ? tr('Correct {0}').replaceFirst('{0}', widget.fix!.id) : ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700)),
-          ]), actions: [GuideButton(k.key == 'issue' ? 'diesel' : k.key)],
+          ]), actions: withAsk([GuideButton(k.key == 'issue' ? 'diesel' : k.key)]),
         ),
         // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away
         body: SingleChildScrollView(
@@ -1126,6 +1221,8 @@ class _EntryFormState extends State<EntryForm> {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             // (3.1.11, update-118) his entries of this page in verification – waiting / sent back / approved, "Remind"
+            // (3.31.0) the half-filled entry brought back
+            if (draftAt.isNotEmpty && (machine != null || qty.text.isNotEmpty)) DraftLine(at: draftAt, color: k.color, onNew: _startNew),
             if (widget.fix != null) Padding(padding: const EdgeInsets.only(top: 12), child: FixBar(widget.fix!))      // (3.22.0) correcting a returned entry
             else if (ed == null) VerifyStrip(module: k.module, margin: const EdgeInsets.only(top: 12)),
             _label('Date', 'तारीख'),
@@ -1162,7 +1259,7 @@ class _EntryFormState extends State<EntryForm> {
               // (3.1.8) KM / Hrs / KM + Hrs by itself from the Asset Master – nothing to pick; only "Meter not working"
               if (m != null && !m.debit && m.dieselWay.isNotEmpty) ...[
                 _label('Measured by', 'मोजणी'),
-                Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Wrap(spacing: Sp.chips, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   Pill(way == kNoReading ? m.dieselWay : '${m.dieselWay} · Asset Master', icon: Icons.verified_rounded, color: way == kNoReading ? C.muted : C.greenDark, bg: way == kNoReading ? C.bg : C.greenSoft),
                   FilterChip(
                     label: Text(tr('Meter not working')),
@@ -1441,3 +1538,29 @@ class DieselHistoryCard extends StatelessWidget {
 
 /// A figure to 2 decimals (the web's r2).
 num r2n(num v) => (v * 100).round() / 100;
+
+/// (3.31.0) "Half-filled entry brought back · 6:05 PM" – "Start new".
+class DraftLine extends StatelessWidget {
+  const DraftLine({super.key, required this.at, required this.onNew, this.color = C.blue});
+  final String at;
+  final VoidCallback onNew;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('draft-back'),
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+        decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [
+          const Icon(Icons.history_rounded, color: C.blue),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Half-filled entry brought back', mr: 'अर्धवट एन्ट्री परत आणली', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.blue)),
+              Text(draftTime(at, SessionScope.read(context).clock()), style: const TextStyle(fontSize: 12.5, color: C.blue)),
+            ]),
+          ),
+          TextButton(key: const Key('draft-new'), onPressed: onNew, style: TextButton.styleFrom(foregroundColor: color), child: const Text('Start new')),
+        ]),
+      );
+}
