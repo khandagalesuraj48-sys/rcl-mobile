@@ -40,7 +40,10 @@ void openReportOf(BuildContext context, String page) {
 }
 
 class ReportsTab extends StatefulWidget {
-  const ReportsTab({super.key});
+  const ReportsTab({super.key, this.active = true});
+
+  /// (3.31.0) the tab is on the screen – the Overview's figures are read only then (not at every start of the app)
+  final bool active;
   @override
   State<ReportsTab> createState() => _ReportsTabState();
 }
@@ -140,7 +143,7 @@ class _ReportsTabState extends State<ReportsTab> {
     }..removeWhere((_, v) => v.isEmpty);
     final tabs = [if (over) 'Overview', ...groups.keys];
     final cur = tabs.contains(tab) ? tab : (tabs.isEmpty ? '' : tabs.first);
-    if (cur == 'Overview' && !loading && loadedFor != '$range|${s.today}|${s.site?.code}') {
+    if (widget.active && cur == 'Overview' && !loading && loadedFor != '$range|${s.today}|${s.site?.code}') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _load();
       });

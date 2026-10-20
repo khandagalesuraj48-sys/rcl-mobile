@@ -189,7 +189,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     final pages = <String, Widget>{
       'home': HomeTab(onOpenEntries: _entries, onOpenReports: () => _go(reports ? 'reports' : 'home')),
       if (diesel) 'entries': EntriesTab(kind: entriesKind, open: entriesOpen),
-      if (reports) 'reports': const ReportsTab(),
+      if (reports) 'reports': ReportsTab(active: tab == 'reports'),
       'me': const MeTab(),
     };
     final keys = pages.keys.toList();
