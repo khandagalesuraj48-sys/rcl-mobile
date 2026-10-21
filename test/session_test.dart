@@ -436,6 +436,34 @@ void main() {
     expect(srv.calls, isNot(contains('mech:getInit')));
   });
 
+  test('(3.32.0) live: every 2 seconds while the phone is used; 5 minutes after the last touch every 15 seconds; a touch brings the 2 seconds back', () async {
+    final s = make();
+    var now = DateTime(2026, 10, 21, 10, 0, 0);
+    s.clock = () => now;
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    expect(Session.liveEvery, const Duration(seconds: 2), reason: 'as the web page');
+    s.touched();
+    await s.liveTick();
+    now = now.add(const Duration(seconds: 2));
+    expect(s.liveDue(), isTrue, reason: 'used: every 2 s');
+    now = now.add(const Duration(minutes: 4, seconds: 50));
+    await s.liveTick();
+    now = now.add(const Duration(seconds: 2));
+    expect(s.liveDue(), isTrue, reason: 'still within 5 minutes of the touch');
+    now = now.add(const Duration(seconds: 10));
+    await s.liveTick();
+    now = now.add(const Duration(seconds: 2));
+    expect(s.liveDue(), isFalse, reason: 'more than 5 minutes without a touch: not 2 s later');
+    now = now.add(const Duration(seconds: 13));
+    expect(s.liveDue(), isTrue, reason: '…but 15 s later');
+    await s.liveTick();
+    now = now.add(const Duration(seconds: 2));
+    expect(s.liveDue(), isFalse);
+    s.touched();
+    expect(s.liveDue(), isTrue, reason: 'a touch: at once 2 s again');
+  });
+
   // ---------------- 3.1.8 ----------------
   test('(3.1.8) the number plate: the text read on the phone → the machinery of the Asset Master (exact, two lines, a letter mixed up)', () {
     final ms = [

@@ -559,20 +559,36 @@ class Session extends ChangeNotifier {
   }
 
   /* ---------------- LIVE (3.1.7, asked 15-10-2026: "app madhe live sync haway, app refresh kraychi kahich garaj nahi") ----------------
-   * While the app is on the screen it asks Mechanical every 15 seconds what changed (the same light "sync" as the web page). When
-   * the machinery, the stock, the Log Book or the diesel entries change – also by another person, on the web or another phone –
-   * the screens load again by themselves ([dataTick]); a verification request ("flow") updates the Approvals count. In the
-   * background nothing is asked. */
+   * While the app is on the screen it asks Mechanical what changed (the same light "sync" as the web page). When the machinery,
+   * the stock, the Log Book or the diesel entries change – also by another person, on the web or another phone – the screens load
+   * again by themselves ([dataTick]); a verification request ("flow") updates the Approvals count. In the background nothing is
+   * asked.
+   * (3.32.0, 21-10-2026 – "live updates within 2 seconds" on the web AND the phone) EVERY 2 SECONDS, as the web page: while the
+   * phone is used, and up to 5 minutes after the last touch; then every 15 seconds (the web's rule for a page nobody uses) until
+   * the next touch ([touched] – the shell hears every touch). Until 3.32.0 the phone asked every 15 seconds. */
   Map<String, String> versions = {};
   final ValueNotifier<int> dataTick = ValueNotifier<int>(0);
   Set<String> lastChanged = {};
   Timer? _live;
   bool _ticking = false;
-  static const liveEvery = Duration(seconds: 15);
+  static const liveEvery = Duration(seconds: 2), liveQuietAfter = Duration(minutes: 5), liveQuietEvery = Duration(seconds: 15);
+  DateTime _touchAt = DateTime.now(), _tickAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// (3.32.0) A touch anywhere on the screen: the live sync is at its 2 seconds again.
+  void touched() => _touchAt = clock();
+
+  /// (3.32.0) Is a live tick due now? Every 2 s up to 5 minutes after the last touch; then every 15 s.
+  bool liveDue() {
+    final now = clock();
+    return now.difference(_touchAt) < liveQuietAfter || now.difference(_tickAt) >= liveQuietEvery;
+  }
 
   void startLive() {
     _live?.cancel();
-    _live = Timer.periodic(liveEvery, (_) => liveTick());
+    _touchAt = clock(); // (the app has just come to the screen: somebody is looking at it)
+    _live = Timer.periodic(liveEvery, (_) {
+      if (liveDue()) liveTick();
+    });
     _rtcOn();
     liveTick();
   }
@@ -603,6 +619,7 @@ class Session extends ChangeNotifier {
   Future<void> liveTick() async {
     if (stage != Stage.ready || _ticking) return;
     _ticking = true;
+    _tickAt = clock();
     try {
       final r = await api.call('sync', [rtc?.beatArg() ?? <String, dynamic>{}]);
       if (r is Map && r['rtc'] != null) rtc?.inbox(r['rtc']); // (3.26.0) the notes of a call

@@ -195,39 +195,44 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     final keys = pages.keys.toList();
     final cur = pages.containsKey(tab) ? tab : 'home';
     final meCount = s.crForMe + s.keptBad;
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        // (3.31.0) one step back: a diesel page goes back to the Entries list first
-        if (cur == 'entries' && (entriesBack?.call() ?? false)) return;
-        while (hist.isNotEmpty) {
-          final t = hist.removeLast();
-          if (pages.containsKey(t) && t != cur) {
-            setState(() => tab = t);
+    // (3.32.0) every touch keeps the live sync at its 2 seconds (Session.touched); it never takes the touch away from the screen
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => s.touched(),
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          // (3.31.0) one step back: a diesel page goes back to the Entries list first
+          if (cur == 'entries' && (entriesBack?.call() ?? false)) return;
+          while (hist.isNotEmpty) {
+            final t = hist.removeLast();
+            if (pages.containsKey(t) && t != cur) {
+              setState(() => tab = t);
+              return;
+            }
+          }
+          if (cur != 'home') {
+            setState(() => tab = 'home');
             return;
           }
-        }
-        if (cur != 'home') {
-          setState(() => tab = 'home');
-          return;
-        }
-        final now = DateTime.now();
-        if (lastBack != null && now.difference(lastBack!) < const Duration(seconds: 3)) {
-          SystemNavigator.pop();
-          return;
-        }
-        lastBack = now;
-        toast(context, 'Press Back again to leave the app.');
-      },
-      child: Scaffold(
-        body: IndexedStack(index: keys.indexOf(cur), children: [for (final k in keys) pages[k]!]),
-        bottomNavigationBar: _Bar(
-          tab: cur,
-          tabs: keys,
-          meCount: meCount,
-          onTab: _go,
-          onPlus: _plus,
+          final now = DateTime.now();
+          if (lastBack != null && now.difference(lastBack!) < const Duration(seconds: 3)) {
+            SystemNavigator.pop();
+            return;
+          }
+          lastBack = now;
+          toast(context, 'Press Back again to leave the app.');
+        },
+        child: Scaffold(
+          body: IndexedStack(index: keys.indexOf(cur), children: [for (final k in keys) pages[k]!]),
+          bottomNavigationBar: _Bar(
+            tab: cur,
+            tabs: keys,
+            meCount: meCount,
+            onTab: _go,
+            onPlus: _plus,
+          ),
         ),
       ),
     );
