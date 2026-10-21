@@ -14,6 +14,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.32.0 (21-10-2026, "live updates within 2 seconds" on the web and the phone):** the phone asks what changed **every
+2 seconds**, as the web page (until now every 15 seconds): while it is used and up to 5 minutes after the last touch; after that every
+15 seconds until the next touch (the web's rule for a page nobody uses); in the background nothing, as before
+(`Session.liveDue`, `Session.touched` – the shell hears every touch). Nothing else changes.
+
 **Version 3.31.1 (20-10-2026, "AIK N OK AHE SAGLE FKT COLOUR THODE DIM DISAT AAHE APP THODI ENHANCE KR"):** the same colours a
 little brighter and fuller (`lib/ui/theme.dart`): the greens and the gold stronger, the cream page lighter, the soft tiles
 fuller, the grey words darker; gold words (View All, Forgot password?) in a deeper gold that is easy to read; the green of the
