@@ -811,7 +811,7 @@ class _LogEditScreenState extends State<LogEditScreen> {
                     Text(weekDays[parseKey(r.date).weekday - 1], style: const TextStyle(fontSize: 12.5, color: C.muted)),
                     if (r.isNew) const Pill('NEW', color: C.greenDark, bg: C.greenChip),
                     if (!r.isNew && f.changed) const Pill('CHANGED', color: C.amber, bg: C.amberSoft),
-                    if (r.lock != null) Pill('RA Bill ${r.lock!['billNo']}', color: C.slate, bg: Colors.white),
+                    if (r.lock != null) r.lock!['ap'] != null ? Pill('✔ Approved', color: C.greenDark, bg: Colors.white) : Pill('RA Bill ${r.lock!['billNo']}', color: C.slate, bg: Colors.white),
                   ]),
           ),
           if (r.lock == null && can) IconButton(key: Key('lxd-$i'), tooltip: tr('Delete this row'), onPressed: () => _remove([r], ask: false), icon: const Icon(Icons.close_rounded, color: C.red)),

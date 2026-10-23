@@ -102,12 +102,12 @@ class _DriveScreenState extends State<DriveScreen> {
 
   Future<void> _delete(Map b) async {
     final s = SessionScope.read(context);
-    final why = await askNote(context, 'Delete this bill?', body: [Text('Only Admin can delete a submitted bill. Write the reason:')], label: 'Reason', ok: 'Delete', danger: true, needed: false);
+    final why = await askNote(context, 'Delete this bill?', body: [Text('Only the Super Admin deletes a submitted bill. It is not removed: it is kept, marked Deleted, with your reason – its Log Book stays locked, its debit notes are open again. Write the reason:')], label: 'Reason', ok: 'Delete', danger: true, needed: true);
     if (why == null || !mounted) return;
     try {
       await s.api.call('deleteBill', [b['id'], why], true);
       if (!mounted) return;
-      toast(context, 'Bill deleted.');
+      toast(context, 'Bill marked Deleted (kept, with the reason).');
       _load();
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: !isSent(e));
@@ -217,7 +217,7 @@ class _DriveScreenState extends State<DriveScreen> {
       );
 
   Widget _billTile(Session s, Map<String, dynamic> b) {
-    final old = b['status'] == 'Superseded', rev = num.tryParse('${b['rev'] ?? 0}') ?? 0;
+    final gone = b['status'] == 'Deleted', old = b['status'] == 'Superseded' || gone, rev = num.tryParse('${b['rev'] ?? 0}') ?? 0; // (3.33.0) a deleted bill is kept, marked Deleted
     return Container(
       key: Key('sb-${b['id']}'),
       margin: const EdgeInsets.only(bottom: 10),
@@ -231,19 +231,20 @@ class _DriveScreenState extends State<DriveScreen> {
               Text('${b['company']}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
               Text('${showDate('${b['from']}')} – ${showDate('${b['to']}')} · dated ${showDate('${b['billDate']}')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
               Text('Submitted by ${'${b['enteredBy'] ?? ''}'.isNotEmpty ? b['enteredBy'] : '–'}', style: const TextStyle(fontSize: 12, color: C.faint)),
+              if (gone) Text('Deleted by ${'${b['deletedBy'] ?? ''}'.isNotEmpty ? b['deletedBy'] : '–'}${'${b['deletedAt'] ?? ''}'.length >= 10 ? ' on ${showDate('${b['deletedAt']}'.substring(0, 10))}' : ''} – ${b['deleteReason'] ?? ''}', style: const TextStyle(fontSize: 12, color: C.red)),
             ]),
           ),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text('₹${n2(b['net'])}', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
-            old ? Pill('Superseded', color: C.amber, bg: C.amberSoft) : Pill('Active', color: C.greenDark, bg: C.greenSoft),
+            gone ? Pill('Deleted', color: C.red, bg: C.redSoft) : old ? Pill('Superseded', color: C.amber, bg: C.amberSoft) : Pill('Active', color: C.greenDark, bg: C.greenSoft),
           ]),
         ]),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
           OutlinedButton.icon(key: Key('sbv-${b['id']}'), style: kSmallBtn, onPressed: () => viewSavedBill(context, s, '${b['id']}'), icon: const Icon(Icons.print_rounded), label: Text('View / Print')),
           OutlinedButton.icon(key: Key('sbl-${b['id']}'), style: kSmallBtn, onPressed: () => printSavedBillLog(context, s, '${b['id']}'), icon: const Icon(Icons.menu_book_rounded), label: Text('Log Book')),
-          if (s.admin) OutlinedButton.icon(key: Key('sbd-${b['id']}'), style: kSmallBtn, onPressed: () => _delete(b), icon: const Icon(Icons.delete_outline_rounded, color: C.red), label: Text('Delete')),
+          if (s.superAdmin && !gone) OutlinedButton.icon(key: Key('sbd-${b['id']}'), style: kSmallBtn, onPressed: () => _delete(b), icon: const Icon(Icons.delete_outline_rounded, color: C.red), label: Text('Delete')),
         ]),
       ]),
     );

@@ -120,9 +120,35 @@ void main() {
     expect(s.superAdmin, true);
     srv.billLock = true;
     s.api.askApproval = (m) async => fail('the Super Admin is not asked');
+    // (3.33.0 – Mechanical update-152) he gives his reason (the server asks: SA_REASON); the same save goes again with it, as a new save
+    final asked = <String>[];
+    s.api.askReason = (m) async { asked.add(m); return ' meter photo shows 15250 '; };
     final r = await s.api.call('updateLogRow', ['MH-25-AJ-2169|2026-10-14|Full Day', {'closingKm': 15250}], true) as Map;
     expect(r['ok'], true);
     expect(srv.requests, isEmpty);
+    expect(asked.single, startsWith('Super Admin – this save changes 1 locked Log Book entry'));
+    expect(srv.saReasons, ['meter photo shows 15250']);
+    final ups = srv.rids.where((x) => x.startsWith('updateLogRow:')).toList();
+    expect(ups.length, 1, reason: 'the refused try is not numbered as done (it was refused before the number was kept here)');
+    // no reason (Cancel): not saved, said so
+    s.api.askReason = (m) async => null;
+    await expectLater(s.api.call('updateLogRow', ['MH-25-AJ-2169|2026-10-14|Full Day', {'closingKm': 15260}], true), throwsA(predicate((e) => e is ApiError && e.message == 'Not saved – no reason was given.')));
+    expect(srv.saReasons.length, 1);
+  });
+
+  test('(3.33.0 – Mechanical update-152) an approved entry: a user\'s change is offered to the Super Admin (as for a billed one), with its own words', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    srv.apLock = true;
+    final asked = <String>[];
+    s.api.askApproval = (m) async { asked.add(m); return 'Close KM typed wrong'; };
+    await expectLater(s.api.call('updateLogRow', ['MH-25-AJ-2169|2026-10-14|Full Day', {'closingKm': 15250}], true), throwsA(predicate((e) => e is ApiError && e.message == Api.crSent)));
+    expect(Api.crApproved(asked.single), true);
+    expect(Api.crLocked(asked.single), true);
+    expect(srv.requests.single['reason'], 'Close KM typed wrong');
+    expect(Api.saReason('SA_REASON: x'), true);
+    expect(Api.saReason('Log Book entry of X'), false);
   });
 
   test('(14-10-2026) Day / Night by the time: the site\'s hours from getInit (8 AM / 8 PM unless set); his usual shift still wins', () async {

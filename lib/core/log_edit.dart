@@ -294,6 +294,9 @@ class LogEdit {
   /// The submitted bill that holds a date (null = free; the Super Admin changes them – update-108).
   Map? lockOf(String dk) => superUser ? null : locks.where((l) => '${l['from']}'.compareTo(dk) <= 0 && dk.compareTo('${l['to']}') <= 0).firstOrNull;
 
+  /// (3.33.0 – Mechanical update-152) an approved entry (saved through a verification rule): read-only here too, but for the Super Admin.
+  Map? apLock(Map r) => superUser || r['ap'] is! Map ? null : {'ap': r['ap']};
+
   /// The kind of work that may have a row each on this row's date ('hr' / 'km'; '' = none).
   String partKind(LxRow r) {
     final its = boqOf(r.date), w = way(r);
@@ -485,7 +488,7 @@ class LogEdit {
       pc[x.key] = ps?.length ?? 1;
       if (ps == null) {
         x.orig = x.snap();
-        x.lock = lockOf(x.date);
+        x.lock = lockOf(x.date) ?? apLock(r);
         rows.add(x);
         continue;
       }
@@ -617,7 +620,7 @@ class LogEdit {
           y.trip = '';
         }
         y.orig = y.snap();
-        y.lock = lockOf(y.date);
+        y.lock = lockOf(y.date) ?? apLock(r);
         rows.add(y);
       }
     }
@@ -757,7 +760,7 @@ class LogEdit {
       if (misK || misH) {
         final what = [if (misK) '${fmtNum(expK)}${hr ? ' km' : ''}', if (misH) '${fmtNum(expH)}${km ? ' hr' : ''}'].join(' / ');
         f.note = '${inShift && !ho ? 'This work starts where the row above closed: ' : 'Start cannot be less than '}$what (Close of ${inShift ? 'the row above' : 'the last reading before it'})'
-            '${r.lock != null ? ' – this entry is in RA Bill ${r.lock!['billNo']}: lower the Close before it' : ''}';
+            '${r.lock != null ? (r.lock!['ap'] != null ? ' – this entry was approved: lower the Close before it' : ' – this entry is in RA Bill ${r.lock!['billNo']}: lower the Close before it') : ''}';
         f.fixable = r.lock == null;
       } else if (gapK > 0 || gapH > 0) {
         f.gapNote = [if (gapK > 0) '${fmtNum(gapK)} km', if (gapH > 0) '${fmtNum(gapH)} hr'].join(' + ') + (inShift ? ' not worked between the rows – not counted' : ' ran elsewhere before this entry – not counted');
@@ -1232,7 +1235,9 @@ class LogEdit {
         for (final l in locks)
           '${showDate('${l['from']}'.compareTo(from) < 0 ? from : '${l['from']}')} to ${showDate('${l['to']}'.compareTo(to) > 0 ? to : '${l['to']}')} are in the submitted RA Bill ${l['billNo']}${_s(l['rev']).isNotEmpty && l['rev'] != 0 ? ' rev ${l['rev']}' : ''}'
               ' of ${l['vendor']} (${l['company']}, ${showDate(_s(l['from']))} to ${showDate(_s(l['to']))}) – '
-              '${superUser ? 'you are the Super Admin: you can change them here; the difference is taken in the next bill of the vendor.' : 'the entries of those dates are shown but cannot be changed here. To correct one: Log Book list → Edit / Delete on that entry – the change goes to the Super Admin for approval. (Or the Admin deletes that bill, the correction is made, and the bill is built and submitted again.)'}',
+              '${superUser ? 'you are the Super Admin: you can change them here; the difference is taken in the next bill of the vendor.' : 'the entries of those dates are shown but cannot be changed here. To correct one: Log Book list → Edit / Delete on that entry – the change goes to the Super Admin for approval.'}',
+        if (rows.any((r) => r.lock?['ap'] != null))
+          'Entries marked ✔ Approved were approved in verification – they are shown but cannot be changed here. To correct one: Log Book list → Edit / Delete on that entry – the change goes to the Super Admin for approval.',
       ];
 
   /// The ways a row may be put in (a saved entry keeps a way the format no longer offers).
@@ -1265,8 +1270,8 @@ class LxSave {
 
 /// The words when a date of a submitted RA Bill is picked (as the web's lockText).
 String lockText(Map l, String no, String dk, String what) =>
-    '$what of $no on ${showDate(dk)}: this machinery is in the submitted RA Bill ${l['billNo']}${_s(l['rev']).isNotEmpty && l['rev'] != 0 ? ' rev ${l['rev']}' : ''} of ${l['vendor']} (${l['company']}, ${showDate(_s(l['from']))} to ${showDate(_s(l['to']))})'
-    ' – its Log Book and diesel entries of those dates cannot be added, changed or deleted without the Super Admin. To correct them: change the entry and send it to the Super Admin for approval (the page asks) – approved, it is saved and the difference is taken in the next bill of this vendor; or the Admin deletes that bill, the correction is made, and the bill is built and submitted again.';
+    '$what of $no on ${showDate(dk)}: this machinery is in the submitted RA Bill ${l['billNo']}${_s(l['rev']).isNotEmpty && l['rev'] != 0 ? ' rev ${l['rev']}' : ''}${_s(l['status']).isNotEmpty ? ' (${_s(l['status']).toLowerCase()})' : ''} of ${l['vendor']} (${l['company']}, ${showDate(_s(l['from']))} to ${showDate(_s(l['to']))})'
+    ' – its Log Book and diesel entries of those dates cannot be added, changed or deleted without the Super Admin (a bill replaced or deleted keeps them locked). To correct them: change the entry and send it to the Super Admin for approval (the page asks) – approved, it is saved and the difference is taken in the next bill of this vendor.';
 
 // =====================================================================================================================
 //  A WATER TANKER (Log Book Format I): its trips, one row each (update-104) – getTankerRange → saveTankerRange

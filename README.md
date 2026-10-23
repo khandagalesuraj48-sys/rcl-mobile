@@ -14,6 +14,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.33.0 (24-10-2026, with Mechanical's update-152 – "Once a Logbook Entry has been approved, or it is included in a submitted
+Machinery Bill: ONLY SUPER ADMIN CAN …"):** an entry approved in verification is marked **✔ Approved** (Log Book list, its details, Edit
+Log Book) and locked like a billed one: anybody else's change or delete is refused by the server and offered to the Super Admin
+("An approved entry – send it to the Super Admin?", with the reason); Edit Log Book shows it read-only. **The Super Admin's** save of
+a locked entry (approved or billed) asks **"Locked entry – give the reason"** (the server's SA_REASON) and goes again with it, as a
+new save – the reason is kept with the entry's history. **Bills:** only the Super Admin has Delete (RCL Drive); a deleted bill is
+kept, shown **Deleted** (who, when, why; "DELETED" across its papers) and its entries stay locked. `api.dart` (`crApproved`,
+`saReason`, `askReason`, the reason sent as the 4th part of the call), `main.dart` (`askReasonBox`), `log_edit.dart` (`apLock`, the
+lock texts as the web's), `logbook.dart`, `entries.dart`, `bill_drive.dart`, `bill_print.dart`, the print style `.deleted`; tests in
+`session_test.dart`, `log_edit_test.dart`.
+
 **Version 3.32.0 (24-10-2026, with Mechanical's update-151 – "bill final zalyawar nantar kuni logbook photo badalla tari june bill
 badalta kama naye, karan te arthik purawa asto"):** a saved bill's Log Book is shown **as it was submitted** – the evidence the
 server kept with the bill (its entries, its machinery as it was, its BOQ / diesel / rates and Idle choice), never the Log Book of

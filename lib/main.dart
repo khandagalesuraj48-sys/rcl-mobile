@@ -57,7 +57,10 @@ void main() {
   }();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
   if (Platform.isAndroid) Session.callKit = () => WebrtcKit(); // (3.26.0) calls with the web – the Android phone first
-  final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep())..askApproval = askApprovalBox)..start();
+  final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep())
+        ..askApproval = askApprovalBox
+        ..askReason = askReasonBox)
+      ..start();
   // (3.14.0) a fault of the app's own code goes to the Admin's "Faults of the app" (as the web's page reports its faults)
   FlutterError.onError = (d) {
     FlutterError.presentError(d);
@@ -90,12 +93,12 @@ Future<String?> askApprovalBox(String message) async {
   return showDialog<String>(
     context: ctx,
     builder: (c) => AlertDialog(
-      title: const Text('In a submitted bill – send it to the Super Admin?'),
+      title: Text(Api.crApproved(message) ? 'An approved entry – send it to the Super Admin?' : 'In a submitted bill – send it to the Super Admin?'),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(message.replaceFirst(RegExp(r'^(Line|Row) [^:]+: '), ''), style: const TextStyle(fontSize: 13)),
           const SizedBox(height: 10),
-          const Text('It is saved only when the Super Admin approves it. The bill is not changed – the difference comes in the next bill.', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text(Api.crApproved(message) ? 'It is saved only when the Super Admin approves it.' : 'It is saved only when the Super Admin approves it. The bill is not changed – the difference comes in the next bill.', style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
           TextField(key: const ValueKey('cr_reason'), controller: why, maxLines: 2, maxLength: 300, decoration: InputDecoration(labelText: tr('Why is this change needed?'))),
         ]),
@@ -103,6 +106,31 @@ Future<String?> askApprovalBox(String message) async {
       actions: [
         TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
         FilledButton(onPressed: () { if (why.text.trim().isNotEmpty) Navigator.pop(c, why.text.trim()); }, child: const Text('Send for approval')),
+      ],
+    ),
+  );
+}
+
+/// (3.33.0 – Mechanical update-152) The Super Admin's save of a locked Log Book entry (approved, or in a submitted bill): the server asks
+/// why – the reason is kept with the entry's history. null = not saved.
+Future<String?> askReasonBox(String message) async {
+  final ctx = appNav.currentContext;
+  if (ctx == null) return null;
+  final why = TextEditingController();
+  return showDialog<String>(
+    context: ctx,
+    builder: (c) => AlertDialog(
+      title: const Text('Locked entry – give the reason'),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(message, style: const TextStyle(fontSize: 13)),
+          const SizedBox(height: 10),
+          TextField(key: const ValueKey('sa_reason'), controller: why, maxLines: 2, maxLength: 300, decoration: InputDecoration(labelText: tr('Reason'))),
+        ]),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
+        FilledButton(onPressed: () { if (why.text.trim().isNotEmpty) Navigator.pop(c, why.text.trim()); }, child: const Text('Save with this reason')),
       ],
     ),
   );

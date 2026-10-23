@@ -17,6 +17,8 @@ class FakeServer {
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
   bool billLock = false; // (14-10-2026) the entries are in a submitted bill: Mechanical refuses a change (not the Super Admin's)
+  bool apLock = false; // (3.33.0, Mechanical update-152) the entry was approved in verification: refused the same way (not the Super Admin's)
+  final saReasons = <String>[]; // (3.33.0) the Super Admin's reasons that came with a save of a locked entry
   final requests = <Map<String, dynamic>>[];
   bool tanker = false; // a water tanker (Log Book Format I) on the site, with an entry of 2 trips today
   bool tanker2 = false; // (3.18.1) a second water tanker of another agency, with a trip on 13-10-2026
@@ -648,6 +650,14 @@ class FakeServer {
       }
       final stock = {'stock': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}};
       const lockMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: this machinery is in the submitted RA Bill 9 of Rana (RCL, 01-10-2026 to 14-10-2026) – its Log Book and diesel entries of those dates cannot be added, changed or deleted without the Super Admin.';
+      const apMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: it was approved on 14-10-2026 by Checker One (VF-00003) – an approved entry cannot be changed or deleted without the Super Admin. To correct it: change the entry and send it to the Super Admin for approval (the page asks) – it is saved only when he approves.';
+      if (apLock && !superAdmin && action == 'updateLogRow') return _j({'error': apMsg}, 500);
+      // (3.33.0) the Super Admin's save of a locked entry: his reason first (it comes as the 4th part of the call)
+      if ((billLock || apLock) && superAdmin && action == 'updateLogRow') {
+        final m = args.length > 3 && args[3] is Map ? args[3] as Map : null;
+        if (m == null || '${m['reason'] ?? ''}'.trim().isEmpty) return _j({'error': 'SA_REASON: Super Admin – this save changes 1 locked Log Book entry (MH-25-AJ-2169 14-10-2026 – changed, in RA Bill 9). Give the reason: it is kept with the entry\'s history.'}, 500);
+        saReasons.add('${m['reason']}');
+      }
       if (billLock && !superAdmin && action == 'updateLogRow') return _j({'error': lockMsg}, 500);
       if (billLock && !superAdmin && action == 'saveLogRows') return _j({'result': {'ok': false, 'errors': [{'row': 1, 'msg': lockMsg}]}});
       if (action == 'sendChangeRequest') {

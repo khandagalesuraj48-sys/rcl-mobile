@@ -163,6 +163,16 @@ void main() {
     expect(l.lockTexts.single, startsWith('29-09-2026 to 30-09-2026 are in the submitted RA Bill RA-3 of Vendor 5 (RCL, 29-09-2026 to 30-09-2026) – the entries of those dates are shown but cannot be changed here.'));
     expect(l.change(l.rows[0], 'date', '2026-09-29'), startsWith('Log Book entry of GAPX-1 on 29-09-2026: this machinery is in the submitted RA Bill RA-3 of Vendor 5'));
     expect(LogEdit(d2, superUser: true, today: '2026-10-16').rows.every((r) => r.lock == null), true, reason: 'update-108: the Super Admin changes them');
+    expect(l.lockTexts.single, isNot(contains('the Admin deletes that bill')), reason: 'update-152: a deleted bill keeps them locked – no such way out');
+    // (3.33.0 – Mechanical update-152) an approved entry: read-only for everybody but the Super Admin; the note says so
+    final d3 = kmData();
+    (d3['rows'] as List)[0]['ap'] = {'by': 'Checker One', 'at': '2026-10-14T05:00:00.000Z', 'ref': 'VF-00003'};
+    final ap = LogEdit(d3, superUser: false, today: '2026-10-16');
+    expect(ap.rows.map((r) => r.lock?['ap'] != null), [true, false, false]);
+    expect(ap.lockTexts.single, startsWith('Entries marked ✔ Approved were approved in verification – they are shown but cannot be changed here.'));
+    expect(LogEdit(d3, superUser: true, today: '2026-10-16').rows.every((r) => r.lock == null), true, reason: 'the Super Admin changes them (with his reason)');
+    expect(lockText({'billNo': '9', 'rev': 0, 'status': 'Deleted', 'vendor': 'V', 'company': 'RCL', 'from': '2026-09-01', 'to': '2026-09-30'}, 'X-1', '2026-09-02', 'Log Book entry'),
+        'Log Book entry of X-1 on 02-09-2026: this machinery is in the submitted RA Bill 9 (deleted) of V (RCL, 01-09-2026 to 30-09-2026) – its Log Book and diesel entries of those dates cannot be added, changed or deleted without the Super Admin (a bill replaced or deleted keeps them locked). To correct them: change the entry and send it to the Super Admin for approval (the page asks) – approved, it is saved and the difference is taken in the next bill of this vendor.');
   });
 
   test('A row for each work in a shift: opened as its rows, saved back as the same entry; + work in this shift', () {
