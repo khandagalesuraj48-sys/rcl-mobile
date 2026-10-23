@@ -9,7 +9,7 @@
  *   – the look-ups the AI service asks for (AI_RUN) run here with his own sign-in; the snapshot of the day; the daily summary
  *     (getBrief) and what is said aloud (aiSpeakable).
  * Proven against the web's own code: test/assistant_test.dart (fixtures/ai/web_ai.json – the web's functions run in node). */
-import 'format.dart' show showDate;
+import 'format.dart' show asNum, showDate;
 import 'rdoc.dart' show fmt;
 import 'sheet_read.dart' show jsS, jsTrue;
 import 'web_help.dart';
@@ -786,12 +786,17 @@ class Assistant {
     if (m['supply'] == 'Debit Basis') return AiDraft(error: aiL({'en': '$id is on debit basis – it keeps no Log Book.', 'mr': '$id debit basis वर आहे; तिची Log Book नसते.', 'hi': '$id debit basis पर है; उसकी Log Book नहीं होती।'}));
     Map pf;
     try {
-      pf = await _call('getLogRowPrefill', [id, date, shift]);
+      pf = await _call('getLogRowPrefill', [id, date, shift, {'add': 1}]);
     } catch (e) {
       return AiDraft(error: aiErr(e));
     }
     if (jsTrue(pf['problem'])) return AiDraft(error: js(pf['problem']));
     final ckm = aiN(a['close_km']), chr = aiN(a['close_hr']), notes = <String>[];
+    // (3.31.2 – update-143, as the web) this date and shift is already saved: the work is added to that entry as its next work
+    if (pf['addTo'] is Map) {
+      final w = '${((asNum((pf['addTo'] as Map)['rows']) ?? 1) + 1).round()}';
+      notes.add(aiL({'en': '${showDate(date)} ($shift) is already saved for $id – this work is added to that entry as work $w.', 'mr': '$id ची ${showDate(date)} ($shift) ची entry आधीच आहे; हे काम त्याच entry मध्ये work $w म्हणून जोडले जाईल.', 'hi': '$id की ${showDate(date)} ($shift) की entry पहले से है; यह काम उसी entry में work $w के रूप में जुड़ेगा।'}));
+    }
     if (status.isNotEmpty) {
       return AiDraft(
         kind: kind,
@@ -871,6 +876,7 @@ class Assistant {
       if (needKm) ...{'openingKm': pf['openingKm'], 'closingKm': ckm},
       if (needHr) ...{'openingHr': pf['openingHr'], 'closingHr': chr},
       if (work.isNotEmpty) 'work': work.length > 200 ? work.substring(0, 200) : work,
+      if (pf['addTo'] is Map) 'add': 1,      // (3.31.2 – update-143) added to the saved entry of the shift, as the web
     };
     String said(String k, String h, String and) => [if (needKm) '${js(wk)} $k', if (needHr) '${js(wh)} $h'].join(and);
     return AiDraft(

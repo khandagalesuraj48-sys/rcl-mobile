@@ -695,7 +695,7 @@ Future<bool> deleteLog(BuildContext context, String key) async {
       bi('This cannot be undone.', 'हे परत आणता येणार नाही.'),
     ].join('\n\n');
     if (!await ask(context, 'Delete Log Book entry?', body, yes: 'Delete', danger: true)) return false;
-    await s.api.call('deleteLogRow', [key], true);
+    await s.api.call('deleteLogRow', [key, '${e['ver'] ?? ''}'], true); // (Mechanical update-145: changed by someone else since it was opened → refused)
     if (context.mounted) toast(context, 'Log Book entry deleted${next != null ? ' – later entries updated' : ''}.');
     return true;
   } catch (e) {
@@ -726,6 +726,12 @@ class _LogFormState extends State<LogForm> {
   bool half = false, newMeter = false, busy = false, loadingP = false, savedOne = false;
   Machine? machine;
   Map<String, dynamic>? p; // the server's figures for this machinery, date and shift (or the saved entry when changing)
+  /* (3.31.2, with Mechanical update-143 – asked 23-10-2026: "1 day madhe multiple entry ghet nahi … multiple entry hou de; jar same data
+   * bharat asel tr te duplicate hoil") THIS DATE AND SHIFT IS ALREADY SAVED: the server adds this entry to the saved one as its next
+   * work (addTo: { rows, kind, mode, closeKm, closeHr, stock, lastWork, sameOk }). Its Start is the saved Close (the server's figure);
+   * the diesel of the shift and the ½ day stay on the saved entry; one work per row (no Split). The same work twice is refused there. */
+  Map<String, dynamic>? get addTo => !editing && p?['addTo'] is Map ? (p!['addTo'] as Map).cast<String, dynamic>() : null;
+  num lastAdded = 0;
   String err = '', pErr = '';
   int pSeq = 0;
   final c = <String, TextEditingController>{};
@@ -874,7 +880,7 @@ class _LogFormState extends State<LogForm> {
       pErr = '';
     });
     try {
-      final r = ((await s.api.call('getLogRowPrefill', [m.id, date, shift])) as Map).cast<String, dynamic>();
+      final r = ((await s.api.call('getLogRowPrefill', [m.id, date, shift, {'add': 1}])) as Map).cast<String, dynamic>();      // (3.31.2: a saved shift answered as "add to it")
       if (my != pSeq || !mounted) return;
       setState(() {
         final changed = p == null || '${p!['machine']?['id']}' != m.id;
@@ -921,6 +927,7 @@ class _LogFormState extends State<LogForm> {
       String g(String k) => '${e[k] ?? ''}';
       setState(() {
         p = e;
+        _ver = g('ver'); // (Mechanical update-145) the entry as it was opened – sent back with the change
         loadingP = false;
         date = g('date');
         shift = g('shift');
@@ -1042,7 +1049,12 @@ class _LogFormState extends State<LogForm> {
     if (items.isEmpty || way == 'Holiday' || way == 'Breakdown' || way == 'Idle') return null;
     for (final k in ['hr', 'km', 'trip']) {
       final its = _of(k);
-      if (its.length > 1 && (pick[k] ?? '').isEmpty && !editing) return 'Pick the work of this entry (${its.map((i) => i.name).join(' / ')}) – or Split.';
+      if (its.length > 1 && (pick[k] ?? '').isEmpty && !editing) return 'Pick the work of this entry (${its.map((i) => i.name).join(' / ')})${addTo == null ? ' – or Split' : ''}.';
+      final add = addTo;
+      if (add != null && its.length > 1 && '${add['kind']}' == k) {
+        if (pick[k] == '_split') return 'This entry is added to the saved one as its next work – it is ONE work: press ${its.map((i) => i.name).join(' / ')} (not Split).';
+        if (add['sameOk'] != true && '${add['lastWork'] ?? ''}'.isNotEmpty && pick[k] == '${add['lastWork']}') return 'Same work as the saved entry\'s last work (${add['lastWork']}) – press the other work, or change the saved entry in Edit Log Book.';
+      }
       if (its.length > 1 && pick[k] == '_split') {
         final sum = its.where((i) => !i.rest).fold<num>(0, (a, i) => a + (asNum(v('it:${i.name}')) ?? 0));
         if (sum > total(k) + .005) return 'The works typed (${fmtNum(sum)} ${kItemWord[k]}) are more than the entry (${fmtNum(total(k))} ${kItemWord[k]}).';
@@ -1102,7 +1114,7 @@ class _LogFormState extends State<LogForm> {
   Map<String, dynamic> _row() {
     final tripOn = way == 'Trip' || (needs.tripAll && !status);
     return {
-      'date': date, 'shift': shift, 'half': half, 'no': machine!.id, 'mode': way,
+      'date': date, 'shift': shift, 'half': half && addTo == null, 'no': machine!.id, 'mode': way, if (addTo != null) 'add': 1,
       'openingKm': hasKm(way) ? (_num('okm') ?? '') : '', 'closingKm': hasKm(way) ? (_num('ckm') ?? '') : '',
       'openingHr': hasHr(way) ? (_num('ohr') ?? '') : '', 'closingHr': hasHr(way) ? (_num('chr') ?? '') : '',
       'tStart': way == 'Time' || (way == 'Trip' && needs.tripTime) ? slots.first[0] : '',
@@ -1119,9 +1131,13 @@ class _LogFormState extends State<LogForm> {
     };
   }
 
+  /// (Mechanical update-145) the version of the entry when it was opened for a change.
+  String _ver = '';
+
   Map<String, dynamic> _change() {
     final km = hasKm(way), hr = hasHr(way);
     return {
+      if (_ver.isNotEmpty) 'ver': _ver,
       'openingKm': km ? (_num('okm') ?? '') : '', 'closingKm': km ? (_num('ckm') ?? '') : '', 'openingHr': hr ? (_num('ohr') ?? '') : '', 'closingHr': hr ? (_num('chr') ?? '') : '',
       'openingDiesel': p?['first'] == true ? (_num('odsl') ?? '') : '',
       'chFrom': v('chFrom'), 'chTo': v('chTo'), 'work': v('work'), 'debitTo': v('debitTo'), 'debitRate': v('debitRate'),
@@ -1166,6 +1182,7 @@ class _LogFormState extends State<LogForm> {
         return;
       }
       savedOne = true;
+      lastAdded = asNum(res['added']) ?? 0;
       _pendAt = null;
       _draft?.clear();
       draftAt = '';
@@ -1220,6 +1237,11 @@ class _LogFormState extends State<LogForm> {
           const TwoLang('Log Book saved', 'नोंद झाली', size: 21, weight: FontWeight.w700, align: CrossAxisAlignment.center),
           const SizedBox(height: 6),
           Text('${m.id} · ${showDate(date)} · $shift · ${workText({'mode': way, 'wkm': workKm, 'whr': way == 'Time' ? timeHrs : workHr, 'trip': n('trip')})}', textAlign: TextAlign.center, style: const TextStyle(color: C.muted, fontWeight: FontWeight.w500)),
+          // (3.31.2 – update-143) it went into the entry already saved for this shift, as its next work
+          if (lastAdded > 0) ...[
+            const SizedBox(height: 6),
+            const TwoLang('Added to the entry already saved for this shift', 'या shift च्या आधीच्या entry मध्ये जोडली', size: 13.5, color: C.blue, align: CrossAxisAlignment.center),
+          ],
           const SizedBox(height: 20),
           for (final o in byMachine ? ['date', 'machine'] : ['machine', 'date'])
             Padding(
@@ -1334,7 +1356,7 @@ class _LogFormState extends State<LogForm> {
         final pk = pick[k] ?? '';
         if (its.length > 1) {
           out.add(Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Work (${kItemWord[k]}) – ${fmtNum(total(k))} ${kItemWord[k]}', style: const TextStyle(fontSize: 13, color: C.muted))));
-          out.add(_chips([...its.map((i) => i.name), 'Split'], pk == '_split' ? 'Split' : pk, (x) => setState(() => pick[k] = x == 'Split' ? '_split' : x), enabled: true));
+          out.add(_chips([...its.map((i) => i.name), if (addTo == null) 'Split'], pk == '_split' ? 'Split' : pk, (x) => setState(() => pick[k] = x == 'Split' ? '_split' : x), enabled: true));
         }
         if (its.length == 1 || pk == '_split') {
           for (final it in its.where((i) => !i.rest)) {
@@ -1416,8 +1438,8 @@ class _LogFormState extends State<LogForm> {
               }, enabled: !editing, extra: [
                 FilterChip(
                   label: const Text('½ day'),
-                  selected: half,
-                  onSelected: editing ? null : (x) => setState(() => half = x),
+                  selected: half && addTo == null,
+                  onSelected: editing || addTo != null ? null : (x) => setState(() => half = x),
                   selectedColor: C.blueSoft,
                   checkmarkColor: C.blue,
                   shape: const StadiumBorder(),
@@ -1450,13 +1472,18 @@ class _LogFormState extends State<LogForm> {
               if (pErr.isNotEmpty) InfoLine(pErr, bad: true),
               if (p != null && !editing) ...[
                 if ('${p!['problem'] ?? ''}'.isNotEmpty) InfoLine('${p!['problem']}', bad: true),
+                if (addTo != null)
+                  InfoLine(const ['trip', 'day'].contains('${addTo!['kind']}')      // (Mechanical update-146: by trips / by the day – no reading)
+                      ? 'This ${shift == 'Night' ? 'night' : 'day'} is already saved – this entry is added to it as work ${(asNum(addTo!['rows']) ?? 1) + 1}. The diesel of this shift is already on it.'
+                      : 'This ${shift == 'Night' ? 'night' : 'day'} is already saved – this entry is added to it as work ${(asNum(addTo!['rows']) ?? 1) + 1}. It starts at its Close; the diesel of this shift is already on it.',
+                      icon: Icons.playlist_add_rounded),
                 Container(
                   margin: const EdgeInsets.only(top: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: C.blueSoft.withValues(alpha: .6), borderRadius: BorderRadius.circular(16)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(p!['first'] == true ? 'First entry of this machinery' : 'Last entry: ${showDate('${p!['lastDate'] ?? ''}')} (${p!['lastShift'] ?? ''})', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.blue)),
-                    Text('Diesel issued this ${shift == 'Full Day' ? 'date' : 'shift'}: ${fmtNum(asNum(p!['diesel']) ?? 0)} L${'${p!['dieselText'] ?? ''}'.isNotEmpty ? ' (${p!['dieselText']})' : ''}', style: const TextStyle(fontSize: 13, color: C.blue)),
+                    Text('Diesel issued this ${shift == 'Full Day' ? 'date' : 'shift'}: ${fmtNum(asNum(p!['diesel']) ?? 0)} L${'${p!['dieselText'] ?? ''}'.isNotEmpty ? ' (${p!['dieselText']})' : ''}${addTo != null ? ' – already on the saved entry' : ''}', style: const TextStyle(fontSize: 13, color: C.blue)),
                   ]),
                 ),
               ],

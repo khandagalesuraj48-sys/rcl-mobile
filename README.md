@@ -14,6 +14,22 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.2 (23-10-2026, with Mechanical update-143 – "1 day madhe multiple entry ghet nahi … multiple entry hou de; jar same data
+bharat asel tr te duplicate hoil ani jr same data nasel tr duplicate honar nahi"):** a new Log Book entry for a date and shift that
+is **already saved** is no longer refused – the server adds it to that entry as its next work (`lib/screens/logbook.dart`, `addTo`
+of getLogRowPrefill). The form says so ("This day is already saved – this entry is added to it as work 2"); its Start is the saved
+Close; the diesel of the shift is shown as already on the saved entry; no ½ day and no Split on such a work (one work per row); the
+same work as the saved last one is refused on a machinery that is not on hours only. The same work twice is refused by the server
+("already in the saved entry of this shift"). The assistant says it too. The prefill is asked with `{add: 1}` and such a row is
+sent with `add: 1`: the server adds only rows so marked (an older app is refused as before). The web's help
+(`assets/help/web_help.json`) taken again from the web page (`tool/web_help.js`), with its fixture
+(`test/fixtures/help/web_fix.json`); the assistant's fixture (`test/fixtures/ai/web_ai.json`) made again from update-143's page –
+the only change is `{add: 1}` on its 27 prefill calls. **With Mechanical update-144** ("ase error nko n yeyla" – his JCB in Edit
+Log Book: Bucket by Time 14:00 – 18:00, "+ work in this shift" Breaker by Time 09:00 – 13:00): Edit Log Book (`lib/core/log_edit.dart`)
+no longer says "the rows of this shift are all by Time" for a machinery on hours – the shift is sent as ONE entry by Time, its times
+the rows' times in the order of the shift (`timeSpans`), its rows in that order; two rows at the same time are red ("is at the same
+time as row N … a machinery does one work at a time"). The web's help taken again (+1 rule).
+
 **Version 3.31.1 (20-10-2026, "AIK N OK AHE SAGLE FKT COLOUR THODE DIM DISAT AAHE APP THODI ENHANCE KR"):** the same colours a
 little brighter and fuller (`lib/ui/theme.dart`): the greens and the gold stronger, the cream page lighter, the soft tiles
 fuller, the grey words darker; gold words (View All, Forgot password?) in a deeper gold that is easy to read; the green of the

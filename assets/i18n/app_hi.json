@@ -843,5 +843,12 @@
 "Forgot password?": "Password भूल गए?",
 "Running": "चालू",
 "Breakdowns": "ब्रेकडाउन",
-"New entry": "नई एंट्री"
+"New entry": "नई एंट्री",
+"This {0} is already saved – this entry is added to it as work {1}. It starts at its Close; the diesel of this shift is already on it.": "यह {0} पहले से save है – यह एंट्री उसमें काम {1} के रूप में जुड़ेगी। यह उसके Close से शुरू होती है; इस शिफ्ट का डीजल पहले से उस एंट्री पर है।",
+"Diesel issued this {0}: {1} L{2} – already on the saved entry": "इस {0} में दिया गया डीजल: {1} L{2} – पहले वाली एंट्री पर पहले से है",
+"Pick the work of this entry ({0}).": "इस एंट्री का काम चुनें ({0})।",
+"This entry is added to the saved one as its next work – it is ONE work: press {0} (not Split).": "यह एंट्री पहले वाली एंट्री में अगले काम के रूप में जुड़ती है – यह एक ही काम है: {0} दबाएँ (स्प्लिट नहीं)।",
+"Same work as the saved entry's last work ({0}) – press the other work, or change the saved entry in Edit Log Book.": "पहले वाली एंट्री के आखिरी काम जैसा ही काम ({0}) – दूसरा काम दबाएँ, या पहले वाली एंट्री Edit Log Book में बदलें।",
+"Added to the entry already saved for this shift": "इस शिफ्ट की पहले वाली एंट्री में जोड़ी गई",
+"This {0} is already saved – this entry is added to it as work {1}. The diesel of this shift is already on it.": "यह {0} पहले से save है – यह एन्ट्री उसमें काम {1} के रूप में जोड़ी जाती है। इस shift का डीज़ल पहले से उस पर है।"
 }

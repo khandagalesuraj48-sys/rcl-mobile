@@ -72,6 +72,30 @@ int slotsGap(List<List<String>> sl) {
   return first == null ? 0 : (cur! - first) - mins;
 }
 
+/// update-144: the From – To of a row by Time as minutes in the order of its shift (a Night's times after midnight come last; the
+/// row's own times follow each other) – the web's timeSpansP / the server's timeSpans_.
+List<List<int>> timeSpans(List<List<String>> sl, String shift) {
+  int? cur;
+  final out = <List<int>>[];
+  for (final x in sl) {
+    final a = tMin(x[0]), d = slotMin(x[0], x[1]);
+    if (a == null || d == null) continue;
+    var at = cur == null ? (shift == 'Night' && a < 720 ? a + 1440 : a) : a;
+    if (cur != null) {
+      while (at < cur) {
+        at += 1440;
+      }
+    }
+    cur = at + d;
+    out.add([at, at + d]);
+  }
+  return out;
+}
+
+/// Two rows "meet" when one of their times overlaps.
+bool spansMeet(List<List<int>> a, List<List<int>> b) => a.any((u) => b.any((v) => u[0] < v[1] && v[0] < u[1]));
+String slotsSay(List<List<String>> sl) => sl.map((x) => '${x[0]} – ${x[1]}').join(', ');
+
 /// Hours of From – To less the break in minutes ('' when a time is missing).
 Object lgTimeHrs(String a, String b, Object? brk) {
   if (a.isEmpty || b.isEmpty) return '';
@@ -245,6 +269,7 @@ class LogEdit {
   final odsl = '';
   final cut = <String, bool>{};
   final pc = <String, int>{};
+  final pk = <String, ({bool o, bool x, bool tr})>{}; // (Mechanical update-146 review) what the loaded rows of an entry carry
 
   Map<String, dynamic> get m => (d['machine'] as Map? ?? {}).cast<String, dynamic>();
   Machine get mach => Machine(m);
@@ -274,15 +299,24 @@ class LogEdit {
     final its = boqOf(r.date), w = way(r);
     int n(String k) => its.where((it) => itemKind('${it['basis']}') == k).length;
     if (ho && (hasHr(w) || w == 'Time')) return 'hr';
-    return hasHr(w) && n('hr') > 1 ? 'hr' : hasKm(w) && n('km') > 1 ? 'km' : '';
+    if (w == 'Time') return 'hr'; // (Mechanical update-144, 23-10-2026 "sagle machinery la ha rule ghe": every machinery – rows by Time)
+    if (hasHr(w) && n('hr') > 1) return 'hr';
+    if (hasKm(w) && n('km') > 1) return 'km';
+    // (Mechanical update-146) every machinery – rows by its readings, by trips or by the day (a water tanker: its own trip list)
+    return hasKm(w) ? 'km' : hasHr(w) ? 'hr' : w == 'Trip' && mach.lbFormat != 'I' ? 'trip' : w == 'Day' ? 'day' : '';
   }
 
-  /// Its rows need no work picked when the BOQ has fewer than two hour works (just its times of work).
-  bool plain(LxRow r) => ho && boqOf(r.date).where((it) => itemKind('${it['basis']}') == 'hr').length < 2;
+  /// Its rows need no work picked when the BOQ has fewer than two works of the row's measure (update-146: any machinery; by trips / by the day always).
+  bool plain(LxRow r) {
+    final k = partKind(r);
+    return k.isNotEmpty && (k == 'day' || boqOf(r.date).where((it) => itemKind('${it['basis']}') == k).length < 2); // (review: trips with two works – each row ONE of them)
+  }
   bool later(LxRow r) => partKind(r).isNotEmpty && slotRows(r).first != r;
   bool canMore(LxRow r) => partKind(r).isNotEmpty && r.lock == null && !kDayStatus.contains(way(r));
 
   num rowQty(LxRow r, String k) {
+    if (k == 'trip') return asNum(r.trip) ?? 0;
+    if (k == 'day') return 1;
     if (k == 'hr' && way(r) == 'Time') return asNum(lgTimeHrs(r.tStart, r.tEnd, r.tBrk)) ?? 0;
     if (k == 'hr') return r.ohr != '' && r.chr != '' ? r2(_n0(r.chr) - _n0(r.ohr)) : 0;
     return r.okm != '' && r.ckm != '' ? r2(_n0(r.ckm) - _n0(r.okm)) : 0;
@@ -295,6 +329,16 @@ class LogEdit {
     final typed = its.where((it) => it['qty'] != 'rest' && _n0(r.items['${it['name']}']) > 0).toList(), rest = its.where((it) => it['qty'] == 'rest').firstOrNull, tot = rowQty(r, k);
     if (typed.isEmpty) return rest == null ? '' : '${rest['name']}';
     return typed.length == 1 && (_n0(r.items['${typed.first['name']}']) - tot).abs() < .005 ? '${typed.first['name']}' : '';
+  }
+
+  /// (Mechanical update-146 review) what was typed on a row (its own share of the entry's typed items).
+  Map<String, Object?> rowX(LxRow r) {
+    final its = boqOf(r.date), o = <String, Object?>{};
+    for (final n in r.items.keys) {
+      final it = its.where((q) => q['name'] == n).firstOrNull, v = asNum(r.items[n]) ?? 0;
+      if (it != null && itemKind('${it['basis']}') != 'day' && v > 0) o[n] = v;
+    }
+    return o;
   }
 
   Map<String, Object?> otherItems(List<LxRow> g, String kind) {
@@ -313,20 +357,47 @@ class LogEdit {
     return itemSig(boqOf(r.date), r.items) + (k.isNotEmpty ? '|${pickOf(r, k)}' : '');
   }
 
+  /// (update-146) The same row twice by trips / by the day: the same trips, challan, chainage, work, remark (and in / out times that meet).
+  bool sameRow(LxRow a, LxRow b) {
+    String t(Object? v) => '${v ?? ''}'.trim().replaceAll(RegExp(r'\s+'), ' ').toUpperCase();
+    if (![(LxRow x) => x.challan, (LxRow x) => x.chFrom, (LxRow x) => x.chTo, (LxRow x) => x.work, (LxRow x) => x.remark].every((f) => t(f(a)) == t(f(b)))) return false;
+    if (way(a) == 'Trip' && (asNum(a.trip) ?? 0) != (asNum(b.trip) ?? 0)) return false;
+    if (a.tStart.isEmpty || a.tEnd.isEmpty || b.tStart.isEmpty || b.tEnd.isEmpty) return true;
+    return spansMeet(timeSpans([[a.tStart, a.tEnd]], a.shift), timeSpans([[b.tStart, b.tEnd]], b.shift));
+  }
+
   /// What is wrong with this row as one of several rows of its shift: null = this machinery cannot have several rows a shift, '' = fine.
   String? partsProblem(List<LxRow> grp, LxRow r) {
-    final k = partKind(grp.first);
-    if (k.isEmpty || grp.any((x) => kDayStatus.contains(way(x)) || way(x) == kNoReading)) return null;
+    // (update-146) a day without work / without a reading is the whole shift – said, never "two entries"
+    final st = grp.map(way).where(kDayStatus.contains).firstOrNull;
+    if (st != null) return '$st is the whole shift – it cannot be one of two rows of the same shift. Keep one row for it (or make one Day and the other Night).';
+    if (grp.any((x) => way(x) == kNoReading)) return 'a row without a meter reading ($kNoReading) cannot be one of two rows of the same shift – keep one row, with the estimated work of the whole shift.';
     final mixOk = ho && grp.every((x) => hasHr(way(x)) || way(x) == 'Time');
     if (!mixOk && grp.any((x) => way(x) != way(grp.first))) return 'the rows of one shift must be measured the same way (${way(grp.first)}).';
-    if (mixOk && !grp.any((x) => hasHr(way(x)))) return 'the rows of this shift are all by Time – keep one row and give it its times (or one row of the shift by Hrs).';
+    final k = partKind(grp.first);
+    if (k.isEmpty) return null;
+    final allTime = grp.every((x) => way(x) == 'Time'); // (update-144: every row by Time – any machinery)
     final j = grp.indexOf(r), names = boqOf(r.date).where((it) => itemKind('${it['basis']}') == k).map((it) => '${it['name']}').join(' / ');
-    if (!(rowQty(r, k) > 0)) return 'this row has no work yet – type its ${way(r) == 'Time' ? 'From and To' : 'Close'} (or delete the row).';
+    if (!(rowQty(r, k) > 0)) return k == 'trip' ? 'this row has no trips yet – type its trips (or delete the row).' : 'this row has no work yet – type its ${way(r) == 'Time' ? 'From and To' : 'Close'} (or delete the row).';
+    if (k == 'trip' || k == 'day') {
+      final o = grp.take(j).where((x) => sameRow(x, r)).firstOrNull;
+      if (o != null) return 'the same as row ${grp.indexOf(o) + 1} of this shift (the same ${k == 'trip' ? 'trips, ' : ''}challan, chainage and work) – the same work is not saved twice.';
+      if (k == 'trip' && r.tStart.isNotEmpty && r.tEnd.isNotEmpty) {
+        final mine = timeSpans([[r.tStart, r.tEnd]], r.shift);
+        final o2 = grp.where((x) => x != r && x.tStart.isNotEmpty && x.tEnd.isNotEmpty && spansMeet(mine, timeSpans([[x.tStart, x.tEnd]], x.shift))).firstOrNull;
+        if (o2 != null) return 'this row (${slotsSay([[r.tStart, r.tEnd]])}) is at the same time as row ${grp.indexOf(o2) + 1} of this shift (${slotsSay([[o2.tStart, o2.tEnd]])}) – a machinery does one work at a time: correct the in / out time.';
+      }
+    }
+    // update-144: every row of the shift by Time (no row by Hrs) – each row its own From – To, never at the same time as another row
+    if (allTime) {
+      List<List<String>> sl(LxRow x) => slotsParse(timePart(x)['ts']);
+      final mine = timeSpans(sl(r), r.shift), o = grp.where((x) => x != r && rowQty(x, k) > 0 && spansMeet(mine, timeSpans(sl(x), x.shift))).firstOrNull;
+      if (o != null) return 'this row (${slotsSay(sl(r))}) is at the same time as row ${grp.indexOf(o) + 1} of this shift (${slotsSay(sl(o))}) – a machinery does one work at a time: correct the From – To.';
+    }
     if (plain(r)) return '';
     final p = pickOf(r, k);
     if (p.isEmpty) return 'each row of this shift is ONE work – press $names (not Split).';
-    if (j > 0 && !ho && pickOf(grp[j - 1], k) == p) return 'same work as the row above ($p) – make them one row, or press the other work.';
-    return '';
+    return ''; // (update-146: the same work may come again in a row of its own – its own readings, challan, chainage)
   }
 
   static const _ord = {'Day': 0, 'Full Day': 0, 'Night': 1};
@@ -421,6 +492,35 @@ class LogEdit {
       // the entry holds the rows of its shift: one grid row for each work, its Start / Close worked out from the entry's Start
       var at = _n0(ps.first['k'] == 'hr' ? r['ohr'] : r['okm']);
       final lastR = [for (var j = 0; j < ps.length; j++) if (ps[j]['m'] != 'T') j].lastOrNull;
+      // (Mechanical update-146) read in KM + Hrs: each row its other meter too (o)
+      final two = ps.any((p) => p['o'] != null);
+      var at2 = _n0(ps.first['k'] == 'km' ? r['ohr'] : r['okm']);
+      // (review) rows without a work picked: each row gets back what was typed on it (x); rows saved before it had that: the entry's
+      // typed items are shared out over its rows in order, each up to its own quantity (as the web)
+      final plainP = ps.every((p) => _s(p['n']).isEmpty), hasX = plainP && ps.any((p) => p['x'] is Map), hasTr = ps.any((p) => p['tr'] != null);
+      pk[x.key] = (o: two, x: hasX, tr: hasTr);
+      final dist = [for (final _ in ps) <String, Object?>{}];
+      if (plainP && !hasX) {
+        final used = [for (final _ in ps) <String, num>{}];
+        String kindOf(Map p) => p['m'] == 'T' ? 'hr' : (_s(p['k']).isEmpty ? 'hr' : _s(p['k']));
+        for (final n in x.items.keys.where((n) => !n.startsWith('_') && _n0(x.items[n]) > 0).toList()) {
+          final o = its.where((q) => q['name'] == n).firstOrNull, ik = o == null ? '' : itemKind('${o['basis']}');
+          num left = _n0(x.items[n]);
+          for (var j = 0; j < ps.length; j++) {
+            if (left <= .005 || kindOf(ps[j]) != ik) continue;
+            final cap = _n0(ps[j]['q']) - (used[j][ik] ?? 0), take = r2(left < cap ? left : (cap > 0 ? cap : 0));
+            if (take > 0) {
+              dist[j][n] = r2(_n0(dist[j][n]) + take);
+              used[j][ik] = r2((used[j][ik] ?? 0) + take);
+              left = r2(left - take);
+            }
+          }
+          if (left > .005) {
+            final jj = ik.isNotEmpty && ps.any((p) => kindOf(p) == ik) ? ps.length - 1 : 0;
+            dist[jj][n] = r2(_n0(dist[jj][n]) + left);
+          }
+        }
+      }
       for (var j = 0; j < ps.length; j++) {
         final p = ps[j], y = x.copy(), it = its.where((q) => q['name'] == p['n']).firstOrNull ?? const {};
         final k = _s(p['k']);
@@ -438,6 +538,17 @@ class LogEdit {
           y.tSlots = sl.length > 1 ? sl.map((t) => '${t[0]}-${t[1]}').join(',') : '';
           final b = r2(_n0(p['tb']) + slotsGap(sl));
           y.tBrk = b == 0 ? '' : b;
+        } else if (k == 'trip' || k == 'day') {
+          // (update-146) a row by trips (its own in / out time) or by the day – no reading
+          final ti = _s(p['ti']).split('-');
+          y
+            ..okm = ''
+            ..ckm = ''
+            ..ohr = ''
+            ..chr = ''
+            ..trip = k == 'trip' ? (p['q'] ?? '') : ''
+            ..tStart = ti.length == 2 ? ti[0] : ''
+            ..tEnd = ti.length == 2 ? ti[1] : '';
         } else {
           final a = r2(at + _n0(p['g'])), b = r2(a + _n0(p['q']));
           at = b;
@@ -467,6 +578,19 @@ class LogEdit {
               y.ckm = lxN(r['ckm']);
             }
           }
+          if (two) {
+            final a2 = at2, b2 = j == lastR ? _n0(k == 'km' ? r['chr'] : r['ckm']) : r2(a2 + _n0(p['o']));
+            at2 = b2;
+            if (k == 'km') {
+              y
+                ..ohr = a2
+                ..chr = b2;
+            } else {
+              y
+                ..okm = a2
+                ..ckm = b2;
+            }
+          }
         }
         final others = <String, Object?>{};
         if (j == 0) {
@@ -476,7 +600,9 @@ class LogEdit {
           }
         }
         final pn = _s(p['n']);
-        y.items = {if (_s(x.items['_day']).isNotEmpty) '_day': x.items['_day'], ...others, if (pn.isNotEmpty && it['qty'] != 'rest') pn: p['q']};
+        y.items = plainP
+            ? {if (_s(x.items['_day']).isNotEmpty) '_day': x.items['_day'], ...(hasX ? ((p['x'] as Map?) ?? const {}).cast<String, Object?>() : dist[j])}
+            : {if (_s(x.items['_day']).isNotEmpty) '_day': x.items['_day'], ...others, if (pn.isNotEmpty && it['qty'] != 'rest') pn: p['q']};
         y.pick = {k: pn};
         y.itemSig = sig(y);
         y
@@ -485,7 +611,11 @@ class LogEdit {
           ..chFrom = _s(p['f'])
           ..chTo = _s(p['t'])
           ..work = _s(p['w']);
-        if (j > 0) y.trip = '';
+        if (k != 'trip' && hasTr) {
+          y.trip = p['tr'] ?? ''; // (review: each row its own trips – Format B)
+        } else if (j > 0 && k != 'trip') {
+          y.trip = '';
+        }
         y.orig = y.snap();
         y.lock = lockOf(y.date);
         rows.add(y);
@@ -837,9 +967,15 @@ class LogEdit {
     return r;
   }
 
-  String addWorkSay(LxRow r) => ho
-      ? 'Row added in ${showDate(r.date)} (${r.shift}): type its Start (the Close of the row above, or higher – the hours between are not counted) and its Close${plain(r) ? '.' : ', and press its work.'}'
-      : 'Row added for another work of ${showDate(r.date)} (${r.shift}): press its work, then type its Close – or lower the Close of the row above, its Start follows.';
+  /// What to type in the row just added (as the web's lxMoreSay – Mechanical update-146).
+  String addWorkSay(LxRow r) {
+    final k = partKind(r), w = way(r), at = '${showDate(r.date)} (${r.shift})';
+    if (ho && w != 'Time') return 'Row added in $at: type its Start (the Close of the row above, or higher – the hours between are not counted) and its Close${plain(r) ? '.' : ', and press its work.'}';
+    if (w == 'Time') return 'Row added in $at: type its From and To${plain(r) ? '.' : ', and press its work.'}';
+    if (k == 'trip') return 'Row added for another work of $at: type its trips, challan and work.';
+    if (k == 'day') return 'Row added for another work of $at: type its work (and challan / chainage) – the shift stays one day.';
+    return plain(r) ? 'Row added for another work of $at: type its Close – it starts where the row above closed.' : 'Row added for another work of $at: press its work, then type its Close – or lower the Close of the row above, its Start follows.';
+  }
 
   /// "+ Add row": the ticked dates get their other shift; nothing ticked – the first free date. → (words, bad?, the row added).
   (String, bool, LxRow?) addRow() {
@@ -962,16 +1098,49 @@ class LogEdit {
       final r = g.first, own = owner[g] ?? '', hg = g.where((x) => hasHr(way(x))).toList(), mix = g.length > 1 && ho && hg.isNotEmpty && hg.length < g.length;
       final rr = mix ? hg.first : r, z = mix ? hg.last : g.last, w = way(rr), k = hasKm(w), h = hasHr(w);
       final odSet = r.date.endsWith('-01') ? r.odSet : '';
+      // update-144: every row of the shift by Time – ONE entry by Time: its times are the rows' times in the order of the shift, its break
+      // the breaks typed on the rows; the rows go in that order too
+      final allT = g.length > 1 && hg.isEmpty && g.every((x) => way(x) == 'Time');
+      int at0(LxRow x) => (timeSpans(slotsParse(timePart(x)['ts']), x.shift).firstOrNull ?? const [0])[0];
+      // (Mechanical update-146) rows by trips, each with its in / out time – in the order of the day too
+      final allTi = g.length > 1 && w == 'Trip' && g.every((x) => x.tStart.isNotEmpty && x.tEnd.isNotEmpty);
+      int ti0(LxRow x) => (timeSpans([[x.tStart, x.tEnd]], x.shift).firstOrNull ?? const [0])[0];
+      final gg = allT ? ([...g]..sort((a, b) => at0(a) - at0(b))) : allTi ? ([...g]..sort((a, b) => ti0(a) - ti0(b))) : g;
+      // (every time of every row in the order of the shift – a row with "+ time" may hold times around another row's)
+      final tSl = <List<String>>[];
+      if (allT) {
+        final each = <(int, List<String>)>[];
+        for (final x in gg) {
+          final sl = slotsParse(timePart(x)['ts']), sp = timeSpans(sl, x.shift);
+          for (var j = 0; j < sl.length; j++) {
+            each.add(((j < sp.length ? sp[j] : (sp.firstOrNull ?? const [0]))[0], sl[j]));
+          }
+        }
+        each.sort((a, b) => a.$1 - b.$1);
+        tSl.addAll(each.map((e) => e.$2));
+      }
+      final tB = allT ? r2(gg.fold<num>(0, (a, x) => a + _n0(timePart(x)['tb']))) : 0;
       if (g.length > 1) {
         final kind = partKind(r), parts = <Map<String, Object?>>[];
-        for (var j = 0; j < g.length; j++) {
-          final x = g[j], ph = g.sublist(0, j).where((y) => hasHr(way(y))).lastOrNull;
+        // (review) an entry not touched is sent back as it was loaded – nothing new is added to its rows
+        final pk0 = pk[own], fresh = g.any((x) => x.isNew || changed(x)) || (pc[own] ?? 1) != g.length;
+        for (var j = 0; j < gg.length; j++) {
+          final x = gg[j], ph = gg.sublist(0, j).where((y) => hasHr(way(y))).lastOrNull;
           final p = <String, Object?>{'n': plain(x) ? '' : pickOf(x, kind), 'q': rowQty(x, kind), 'c': x.challan, 'p': x.remark, 'f': x.chFrom, 't': x.chTo, 'w': x.work};
           if (way(x) == 'Time') {
             p.addAll(timePart(x));
           } else if (ph != null && kind == 'hr' && ho && _n0(x.ohr) > _n0(ph.chr)) {
             p['g'] = r2(_n0(x.ohr) - _n0(ph.chr)); // (update-77: hours not worked before this row)
           }
+          // (Mechanical update-146) a plain row says its measure (KM, trips, the day); a row read in KM + Hrs keeps its other meter (o);
+          // a row by trips its in / out time
+          if (way(x) != 'Time' && ((plain(x) && kind != 'hr') || kind == 'trip')) p['k'] = kind;
+          if (k && h && (kind == 'km' || kind == 'hr') && way(x) != 'Time' && (fresh || (pk0?.o ?? false))) p['o'] = rowQty(x, kind == 'km' ? 'hr' : 'km');
+          if (kind == 'trip' && x.tStart.isNotEmpty && x.tEnd.isNotEmpty) p['ti'] = '${x.tStart}-${x.tEnd}';
+          // (review) a plain row keeps what was typed on it; a row of Format B its trips
+          final rx = rowX(x);
+          if (plain(x) && (fresh || (pk0?.x ?? false)) && rx.isNotEmpty) p['x'] = rx;
+          if (kind != 'trip' && fmtB && '${x.trip}'.isNotEmpty && (fresh || (pk0?.tr ?? false))) p['tr'] = asNum(x.trip) ?? 0;
           parts.add(p);
         }
         final trips = g.fold<num>(0, (a, x) => a + _n0(x.trip));
@@ -980,12 +1149,14 @@ class LogEdit {
           'same': g.every((x) => !x.isNew && !changed(x) && x.key == own) && pc[own] == g.length,
           'half': r.half, 'date': r.date, 'shift': r.shift, 'mode': w,
           'openingKm': k ? rr.okm : '', 'closingKm': k ? z.ckm : '', 'openingHr': h ? rr.ohr : '', 'closingHr': h ? z.chr : '',
-          'tStart': '', 'tEnd': '', 'tBreak': '', 'remark': joinTxt(g.map((x) => x.remark)),
-          'trip': fmtB && trips != 0 ? trips : '',
-          'challan': joinTxt(g.map((x) => x.challan)),
-          'chFrom': g.where((x) => x.chFrom.trim().isNotEmpty).firstOrNull?.chFrom ?? '',
-          'chTo': g.reversed.where((x) => x.chTo.trim().isNotEmpty).firstOrNull?.chTo ?? '',
-          'work': joinTxt(g.map((x) => x.work)), 'odSet': odSet,
+          'tStart': allT ? tSl.first[0] : allTi ? gg.first.tStart : '', 'tEnd': allT ? tSl.last[1] : allTi ? gg.last.tEnd : '', 'tBreak': allT && tB > 0 ? tB : '',
+          if (allT) 'tSlots': tSl,
+          'remark': joinTxt(gg.map((x) => x.remark)),
+          'trip': (fmtB || w == 'Trip') && trips != 0 ? trips : '',
+          'challan': joinTxt(gg.map((x) => x.challan)),
+          'chFrom': gg.where((x) => x.chFrom.trim().isNotEmpty).firstOrNull?.chFrom ?? '',
+          'chTo': gg.reversed.where((x) => x.chTo.trim().isNotEmpty).firstOrNull?.chTo ?? '',
+          'work': joinTxt(gg.map((x) => x.work)), 'odSet': odSet,
           'items': {
             if (_s(r.items['_day']).isNotEmpty) '_day': r.items['_day'],
             ...otherItems(g, plain(r) ? '' : kind),
@@ -1004,10 +1175,15 @@ class LogEdit {
         'tStart': w == 'Time' || w == 'Trip' ? r.tStart : '', 'tEnd': w == 'Time' || w == 'Trip' ? r.tEnd : '', 'tBreak': w == 'Time' ? r.tBrk : '',
         'remark': r.remark, 'trip': w == 'Trip' || (fmtB && !kDayStatus.contains(w)) ? r.trip : '', 'challan': r.challan,
         'chFrom': r.chFrom, 'chTo': r.chTo, 'work': r.work, 'odSet': odSet,
-        if (boqOf(r.date).isNotEmpty) 'items': r.items else if (d['hrsOnly'] == true && one) 'items': <String, Object?>{}, // (an entry that had rows and has one now: its rows go)
+        if (boqOf(r.date).isNotEmpty) 'items': r.items else if (one) 'items': <String, Object?>{}, // (an entry that had rows and has one now: its rows go – update-146: any machinery)
       });
     }
-    return LxSave(ask, notes, {'no': no, 'from': from, 'to': to, 'rows': out, 'deleted': del, 'openingDiesel': odsl});
+    // (Mechanical update-145) every entry of the grid as it was opened – one changed by someone else since: nothing is saved
+    final vers = <String, String>{
+      for (final r in (d['rows'] as List? ?? const []).whereType<Map>())
+        if ('${r['key'] ?? ''}'.isNotEmpty && '${r['ver'] ?? ''}'.isNotEmpty) '${r['key']}': '${r['ver']}',
+    };
+    return LxSave(ask, notes, {'no': no, 'from': from, 'to': to, 'rows': out, 'deleted': del, 'openingDiesel': odsl, if (vers.isNotEmpty) 'vers': vers});
   }
 
   /// update-78: a row by Time among the rows by Hrs – its times (a split kept while From, To and Break are as loaded) and the break.

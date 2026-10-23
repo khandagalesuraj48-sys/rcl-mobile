@@ -161,12 +161,17 @@ List<Map<String, dynamic>>? lbWorkRows(Map<String, dynamic> r) {
   final later = r2(ws.skip(1).fold<num>(0, (a, p) => a + _n(p['q'])));
   bool isT(Map p) => kept && p['m'] == 'T';
   final lastR = [for (var j = 0; j < ws.length; j++) if (!isT(ws[j])) j].lastOrNull;
+  // (Mechanical update-146) rows read in KM + Hrs keep their other meter (o) – each row prints both
+  final two = kept && f != null && ws.where((p) => !isT(p)).every((p) => p['o'] != null) && !_blank(r[o[0]]) && !_blank(r[o[1]]);
+  num at2 = two ? _n(r[o[0]]) : 0;
   final out = <Map<String, dynamic>>[];
   for (var j = 0; j < ws.length; j++) {
     final p = ws[j];
     final y = <String, dynamic>{...r, '_ent': r, '_sub': j, '_part': _s(p['n']), '_prt': kept ? _s(p['p']) : '', 'itemQty': [{'n': p['n'], 'q': p['q'], 'k': k}, if (j == 0) ...others], 'itemParts': null};
     if (k == 'trip') {
       y['trip'] = p['q'];
+    } else if (k == 'day') {
+      y['itemQty'] = j == 0 ? q0 : const []; // (update-146: a row of a day's works – the day is paid once, on its first row)
     } else {
       y[f![2]] = p['q'];
       if (isT(p)) {
@@ -199,6 +204,19 @@ List<Map<String, dynamic>>? lbWorkRows(Map<String, dynamic> r) {
       y['work'] = _s(p['w']);
       if (j > 0 || _s(p['f']).isNotEmpty || _s(p['t']).isNotEmpty) y['chainage'] = '';
     }
+    if (two && !isT(p)) {
+      final a2 = at2, b2 = j == lastR ? _n(r[o[1]]) : r2(a2 + _n(p['o']));
+      at2 = b2;
+      y[o[0]] = a2;
+      y[o[1]] = b2;
+      y[o[2]] = r2(b2 - a2);
+    }
+    if (k == 'trip' && _s(p['ti']).isNotEmpty) {
+      final ti = _s(p['ti']).split('-');
+      y['tStart'] = ti.first;
+      y['tEnd'] = ti.length > 1 ? ti[1] : '';
+    }
+    if (kept && k != 'trip' && ws.any((z) => z['tr'] != null)) y['trip'] = p['tr'] ?? ''; // (update-146 review: each row its own trips – Format B)
     if (isT(p)) {
       final sl = slotsParse(p['ts']);
       y['mode'] = 'Time';
