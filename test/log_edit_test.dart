@@ -429,4 +429,27 @@ void main() {
       expect(p.title, c['title']);
     });
   }
+  test('(3.32.0) a saved bill\'s Log Book: its note printed above the sheets (the sheets themselves the same)', () {
+    final c = (cases.first as Map).cast<String, dynamic>(), ms = (c['machines'] as Map).cast<String, dynamic>();
+    LbPrint make(String note) => logBookPrint(
+          rows: [for (final r in c['rows'] as List) (r as Map).cast<String, dynamic>()],
+          from: '${c['from']}',
+          to: '${c['to']}',
+          head: '${c['head']}',
+          site: '${c['site']}',
+          extra: c['extra'] as Map,
+          machine: (no) => (ms[no] as Map?)?.cast<String, dynamic>(),
+          fmtF: '${c['fmt']}',
+          sample: '${c['sample']}',
+          dieselRate: c['dieselRate'] as num,
+          idle: c['idle'] as Map?,
+          note: note,
+        );
+    const n = '<div class="ev-note">Log Book as submitted with RA Bill 7 – kept with the bill, never changed afterwards.</div>';
+    final p = make(n), q = make('');
+    expect(p.html, contains('<div class="sheet">$n<section class="lbsheet">'));
+    expect(p.sheets, q.sheets);
+    expect(p.html.replaceFirst(n, ''), q.html);
+    expect(p.html, contains('.ev-note { font: 9pt/1.35 Arial, sans-serif;'));
+  });
 }

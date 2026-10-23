@@ -661,6 +661,29 @@ String debitNoteDocHtml(Map n) {
       '<div class="dnp-sign"><span>Accepted by – ${_e(vName ?? '')}</span><span>For ${_e(n['company'] ?? '')}</span></div></div>';
 }
 
+/// (3.32.0 – the web's update-151) The note printed above a saved bill's Log Book, word for word as the web's billLogOf. [ev] is
+/// the server's getBillEvidence answer: kind 'submission' – the Log Book AS SUBMITTED (kept with the bill, never changed), with
+/// its check; anything else (a bill submitted before, or no answer) – the Log Book of TODAY, said so, with how many entries of its
+/// machinery and dates changed after the bill was saved. [now]: the time of this print (the phone's time).
+String evNoteHtml(Map b, Map? ev, DateTime now) {
+  String two(int v) => v.toString().padLeft(2, '0');
+  String stamp(DateTime t) => '${showDate('${t.year.toString().padLeft(4, '0')}-${two(t.month)}-${two(t.day)}')} ${two(t.hour)}:${two(t.minute)}';
+  int n(Object? v) => (num.tryParse('${v ?? 0}') ?? 0).toInt();
+  if (ev != null && ev['kind'] == 'submission') {
+    final c = (ev['check'] as Map?) ?? const {}, ok = c['ok'] == true, bad = (c['bad'] as List?) ?? const [];
+    final t0 = DateTime.tryParse('${ev['submittedAt'] ?? ''}')?.toLocal(); // (the database keeps the time in UTC – shown in the phone's time)
+    final billNo = '${ev['billNoThen'] ?? ''}'.isNotEmpty ? ev['billNoThen'] : b['billNo'];
+    final rev = num.tryParse('${ev['revThen'] ?? 0}') ?? 0, by = '${ev['submittedBy'] ?? ''}', count = n(ev['count']), hash = '${ev['hash'] ?? ''}';
+    return '<div class="ev-note${ok ? '' : ' bad'}">Log Book as submitted with RA Bill ${_e(billNo)}${rev != 0 ? ' rev ${_e(ev['revThen'])}' : ''}'
+        '${t0 != null ? ' on ${_e(stamp(t0))}' : ''}${by.isNotEmpty ? ' by ${_e(by)}' : ''} – kept with the bill, never changed afterwards. '
+        '${ok ? 'Evidence check ✔ ($count entr${count == 1 ? 'y' : 'ies'}, SHA-256 ${_e(hash.length > 16 ? hash.substring(0, 16) : hash)}…).' : 'EVIDENCE CHECK FAILED – ${bad.isNotEmpty ? '${bad.length} entr${bad.length == 1 ? 'y does not match its record' : 'ies do not match their records'}' : 'the record does not match its fingerprint'}. Tell the Super Admin.'}</div>';
+  }
+  final ch = ev == null ? null : ev['changes'] as Map?;
+  final changed = n(ch?['changed']), added = n(ch?['added']), deleted = n(ch?['deleted']);
+  return '<div class="ev-note legacy">This bill was submitted before the Log Book was kept with bills. The Log Book below is TODAY\'S Log Book (${_e(stamp(now))}), not a record of the time of submission.'
+      '${ch != null ? ' Since the bill was saved: ${changed != 0 || added != 0 || deleted != 0 ? '$changed entr${changed == 1 ? 'y' : 'ies'} changed, $added added, $deleted deleted' : 'no entry of its machinery and dates was changed, added or deleted'} (by the database\'s own times).' : ''}</div>';
+}
+
 /// The page to print: bills (and their Log Books) on A4, as the web's print window. [foot]: the name at the foot of each page.
 String billPrintHtml(String title, String pages, {bool withLb = false, String foot = ''}) =>
     '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${_e(title)}</title>'
