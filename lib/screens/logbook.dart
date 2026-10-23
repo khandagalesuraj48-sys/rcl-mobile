@@ -1473,7 +1473,9 @@ class _LogFormState extends State<LogForm> {
               if (p != null && !editing) ...[
                 if ('${p!['problem'] ?? ''}'.isNotEmpty) InfoLine('${p!['problem']}', bad: true),
                 if (addTo != null)
-                  InfoLine('This ${shift == 'Night' ? 'night' : 'day'} is already saved – this entry is added to it as work ${(asNum(addTo!['rows']) ?? 1) + 1}. It starts at its Close; the diesel of this shift is already on it.',
+                  InfoLine(const ['trip', 'day'].contains('${addTo!['kind']}')      // (Mechanical update-146: by trips / by the day – no reading)
+                      ? 'This ${shift == 'Night' ? 'night' : 'day'} is already saved – this entry is added to it as work ${(asNum(addTo!['rows']) ?? 1) + 1}. The diesel of this shift is already on it.'
+                      : 'This ${shift == 'Night' ? 'night' : 'day'} is already saved – this entry is added to it as work ${(asNum(addTo!['rows']) ?? 1) + 1}. It starts at its Close; the diesel of this shift is already on it.',
                       icon: Icons.playlist_add_rounded),
                 Container(
                   margin: const EdgeInsets.only(top: 12),

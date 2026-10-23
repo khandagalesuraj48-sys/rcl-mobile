@@ -264,6 +264,78 @@ void main() {
     expect(row['tSlots'], [['10:00', '13:00'], ['14:00', '18:00'], ['19:00', '22:00']]);
   });
 
+  test('(Mechanical update-146, 23-10-2026 "sagle machinery la ha rule ghe") a tipper on KM: + work in this shift; its rows follow each other; saved as ONE entry that keeps them', () {
+    final e = LogEdit(kmData(), superUser: false, today: '2026-10-16');
+    final n = e.addWork(e.rows[1]);
+    expect(n, isNotNull, reason: 'one work in its BOQ (none here) – before: no "+ work", "two entries on Full Day"');
+    expect(e.addWorkSay(n!), 'Row added for another work of 29-09-2026 (Full Day): type its Close – it starts where the row above closed.');
+    expect((n.okm, n.ckm), (1150, 1150));
+    e.type(n, 'ckm', 1180);
+    e.type(n, 'work', 'CARTING');
+    var c = e.calc();
+    expect((c.bad, c.figs[2].slotNote), (0, ''));
+    expect(e.rows[3].okm, 1180, reason: 'the 30th follows the new last Close of the 29th');
+    e.type(n, 'okm', 1160);
+    c = e.calc();
+    expect(c.figs[2].note, startsWith('This work starts where the row above closed: 1,150'), reason: 'a gap: the KM between belong to a row');
+    e.type(n, 'okm', 1150);
+    final row = (e.save().body['rows'] as List).firstWhere((r) => r['date'] == '2026-09-29') as Map;
+    expect((row['openingKm'], row['closingKm'], row['work']), (1100, 1180, 'CARTING'));
+    expect((row['items'] as Map)['_parts'], [
+      {'n': '', 'q': 50, 'c': '', 'p': '', 'f': '', 't': '', 'w': '', 'k': 'km'},
+      {'n': '', 'q': 30, 'c': '', 'p': '', 'f': '', 't': '', 'w': 'CARTING', 'k': 'km'},
+    ]);
+  });
+
+  test('(Mechanical update-146) by trips: + work – its trips; the same row twice is a duplicate; saved as ONE entry of all the trips; Idle beside a work says why', () {
+    final d = kmData();
+    (d['machine'] as Map<String, dynamic>).addAll(<String, dynamic>{'unit': 'Trip', 'worksOn': ['Trip'], 'modes': ['Trip'], 'meterKm': false, 'meterHr': false});
+    d['rows'] = [
+      for (final r in (d['rows'] as List).cast<Map<String, dynamic>>().take(1)) {...r, 'unit': 'Trip', 'mode': 'Trip', 'okm': '', 'ckm': '', 'trip': 5, 'challan': 'T1', 'work': 'SOIL'},
+    ];
+    d['prevKm'] = '';
+    final e = LogEdit(d, superUser: false, today: '2026-10-16');
+    final n = e.addWork(e.rows[0])!;
+    expect(e.addWorkSay(n), 'Row added for another work of 28-09-2026 (Full Day): type its trips, challan and work.');
+    e.type(n, 'trip', 5);
+    e.type(n, 'challan', 'T1');
+    e.type(n, 'work', 'SOIL');
+    var c = e.calc();
+    expect(c.figs[1].slotNote, '28-09-2026 Full Day: the same as row 1 of this shift (the same trips, challan, chainage and work) – the same work is not saved twice.');
+    e.type(n, 'trip', 3);
+    e.type(n, 'challan', 'T2');
+    e.type(n, 'work', 'MURUM');
+    c = e.calc();
+    expect(c.bad, 0);
+    final row = (e.save().body['rows'] as List).first as Map;
+    expect((row['mode'], row['trip'], row['challan'], row['work']), ('Trip', 8, 'T1 / T2', 'SOIL / MURUM'));
+    expect([for (final p in (row['items'] as Map)['_parts'] as List) (p['k'], p['q'], p['c'])], [('trip', 5, 'T1'), ('trip', 3, 'T2')]);
+    // a day without work beside a work of the same shift: said, not "two entries"
+    e.change(n, 'mode', 'Idle');
+    expect(e.calc().figs[1].slotNote, '28-09-2026 Full Day: Idle is the whole shift – it cannot be one of two rows of the same shift. Keep one row for it (or make one Day and the other Night).');
+  });
+
+  test('(Mechanical update-146) read in KM + Hrs: each row keeps its own hours (o); opened again as its rows', () {
+    final d = kmData();
+    (d['machine'] as Map<String, dynamic>).addAll(<String, dynamic>{'unit': 'KM + Hrs', 'worksOn': ['KM', 'Hrs'], 'modes': ['KM', 'Hrs', 'KM + Hrs'], 'meterKm': true, 'meterHr': true, 'hrStd': 4});
+    d['rows'] = [for (final r in (d['rows'] as List).cast<Map<String, dynamic>>().take(1)) {...r, 'unit': 'KM + Hrs', 'mode': 'KM + Hrs', 'ohr': 100, 'chr': 103}];
+    d['prevHr'] = 100;
+    var e = LogEdit(d, superUser: false, today: '2026-10-16');
+    final n = e.addWork(e.rows[0])!;
+    expect((n.okm, n.ohr), (1100, 103));
+    e.type(n, 'ckm', 1130);
+    e.type(n, 'chr', 107);
+    expect(e.calc().bad, 0);
+    final row = (e.save().body['rows'] as List).first as Map;
+    expect((row['openingKm'], row['closingKm'], row['openingHr'], row['closingHr']), (1000, 1130, 100, 107));
+    expect([for (final p in (row['items'] as Map)['_parts'] as List) (p['k'], p['q'], p['o'])], [('km', 100, 3), ('km', 30, 4)]);
+    // opened again (the server's rows): each row its own hours
+    final r0 = (d['rows'] as List)[0] as Map<String, dynamic>;
+    r0.addAll({'ckm': 1130, 'chr': 107, 'itemParts': [{'n': '', 'q': 100, 'k': 'km', 'o': 3}, {'n': '', 'q': 30, 'k': 'km', 'o': 4}]});
+    e = LogEdit(d, superUser: false, today: '2026-10-16');
+    expect([for (final r in e.rows) (r.okm, r.ckm, r.ohr, r.chr)], [(1000, 1100, 100, 103), (1100, 1130, 103, 107)]);
+  });
+
   test('A water tanker: the trips, what is wrong before saving, what is sent', () {
     final t = LtEdit({
       'machine': {'id': 'WT-1', 'owner': 'Jal Agency', 'type': 'Water Tanker'},

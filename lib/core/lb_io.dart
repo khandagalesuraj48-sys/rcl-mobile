@@ -72,7 +72,7 @@ double partsGap(Object? ps) {
     if (p is Map && p['m'] == 'T') {
       a += -_n0(p['q']);
     } else {
-      final g = p is Map ? _n0(p['g']) : 0.0;
+      final g = p is Map && (p['k'] == null || p['k'] == 'hr') ? _n0(p['g']) : 0.0; // (Mechanical update-146: only rows on hours have a gap)
       a += g > 0 ? g : 0;
     }
   }
