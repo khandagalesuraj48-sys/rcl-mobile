@@ -20,8 +20,11 @@ is **already saved** is no longer refused – the server adds it to that entry a
 of getLogRowPrefill). The form says so ("This day is already saved – this entry is added to it as work 2"); its Start is the saved
 Close; the diesel of the shift is shown as already on the saved entry; no ½ day and no Split on such a work (one work per row); the
 same work as the saved last one is refused on a machinery that is not on hours only. The same work twice is refused by the server
-("already in the saved entry of this shift"). The assistant says it too. The web's help (`assets/help/web_help.json`) taken again
-from the web page (`tool/web_help.js`), with its fixture (`test/fixtures/help/web_fix.json`).
+("already in the saved entry of this shift"). The assistant says it too. The prefill is asked with `{add: 1}` and such a row is
+sent with `add: 1`: the server adds only rows so marked (an older app is refused as before). The web's help
+(`assets/help/web_help.json`) taken again from the web page (`tool/web_help.js`), with its fixture
+(`test/fixtures/help/web_fix.json`); the assistant's fixture (`test/fixtures/ai/web_ai.json`) made again from update-143's page –
+the only change is `{add: 1}` on its 27 prefill calls.
 
 **Version 3.31.1 (20-10-2026, "AIK N OK AHE SAGLE FKT COLOUR THODE DIM DISAT AAHE APP THODI ENHANCE KR"):** the same colours a
 little brighter and fuller (`lib/ui/theme.dart`): the greens and the gold stronger, the cream page lighter, the soft tiles
