@@ -16,6 +16,8 @@
 	<string>RCL ERP saves the place of every entry, as the web ERP does.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>RCL ERP opens with your Face ID, so that nobody else can open it on this iPhone.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>RCL ERP uses the phone's motion sensor to turn the box of the meter reading when the phone is held sideways.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>RCL ERP uses the microphone when you talk with the assistant and for a screen-share help call.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

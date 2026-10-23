@@ -71,6 +71,43 @@ class Guide {
   final double left, top, width, height;
 }
 
+/* (3.31.3) THE PHONE TURNED SIDEWAYS (asked 23-10-2026: "jewa user landscap madhe rotate krto tewa pn ha box rotate hoyla hawa"):
+ * the scanner's screen stays upright on the phone, and the box turns with the phone – across the meter as the person sees it.
+ *   turnOf        – how the phone is held, from its accelerometer (m/s², Android's way; sensors_plus gives the iPhone's the same way);
+ *   guideFor      – the box for that way: upright as before; sideways a box as wide as the long side of the picture, in its middle;
+ *   guideOnScreen – where that box is drawn on the (upright) screen;
+ *   readTurn      – the turn the reader gives the camera's picture so the digits stand upright for the person;
+ *   uprightTurn   – the clockwise turn that makes the photo (taken upright on the phone) stand as the person saw it. */
+
+/// How the phone is held: 0 upright, 90 turned to the left (its top to the left – counter-clockwise), 270 turned to the right.
+/// [x], [y] = the accelerometer across and along the phone; lying flat or between two ways, [was] is kept (the box does not flicker).
+int turnOf(double x, double y, int was) {
+  const g = 6.0, margin = 2.0;
+  if (x.abs() >= g && x.abs() > y.abs() + margin) return x > 0 ? 90 : 270;
+  if (y >= g && y > x.abs() + margin) return 0;
+  return was;
+}
+
+/// The box for the way the phone is held ([wide] = a dispenser's display). As parts of the picture AS THE PERSON SEES IT.
+Guide guideFor(int turn, {bool wide = false}) => turn % 180 == 0
+    ? (wide ? const Guide(.06, .24, .88, .46) : const Guide(.07, .36, .86, .2))
+    : (wide ? const Guide(.05, .14, .90, .72) : const Guide(.08, .30, .84, .40));
+
+/// Where the box [g] (of the picture as the person sees it) is on the upright screen [w] × [h] when the phone is held [turn].
+({double left, double top, double width, double height}) guideOnScreen(Guide g, double w, double h, int turn) {
+  if (turn % 180 == 0) return (left: g.left * w, top: g.top * h, width: g.width * w, height: g.height * h);
+  // sideways the person sees the screen h wide and w high
+  final u0 = g.left * h, u1 = (g.left + g.width) * h, v0 = g.top * w, v1 = (g.top + g.height) * w;
+  return turn == 90 ? (left: w - v1, top: u0, width: v1 - v0, height: u1 - u0) : (left: v0, top: h - u1, width: v1 - v0, height: u1 - u0);
+}
+
+/// The turn the reader gives the back camera's picture ([sensor] = the camera's own turn) when the phone is held [turn]
+/// (Google ML Kit's way: the camera's turn less the phone's).
+int readTurn(int sensor, int turn) => ((sensor - turn) % 360 + 360) % 360;
+
+/// The clockwise turn that makes a photo taken upright on the phone stand as the person saw it when the phone was held [turn].
+int uprightTurn(int turn) => (360 - turn % 360) % 360;
+
 /// The lines inside the box ([w] × [h] = the upright picture). None inside (the box was missed, or the picture is turned another
 /// way on this phone): every line, so the reading still works.
 List<OcrLine> inGuide(List<OcrLine> lines, double w, double h, Guide g) {
