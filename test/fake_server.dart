@@ -82,7 +82,7 @@ class FakeServer {
 
   static final issues = [
     {'id': 'DI-000525', 'date': '2026-10-14', 'shift': 'Day', 'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'qty': 60, 'source': 'VTR Store', 'driver': 'Gupta', 'ph': 4},
-    {'id': 'DI-000522', 'date': '2026-10-14', 'shift': 'Day', 'no': 'MH-12-SY-6216', 'type': 'Bolero', 'qty': 20, 'source': 'Dispenser', 'driver': 'Maruti'},
+    {'id': 'DI-000522', 'date': '2026-10-14', 'shift': 'Day', 'no': 'MH-12-SY-6216', 'type': 'Bolero', 'qty': 20, 'source': 'Dispenser', 'driver': 'Maruti', 'ver': 'v522'},
     {'id': 'DI-000521', 'date': '2026-10-14', 'shift': 'Day', 'no': 'Kobelco Sk 220', 'type': 'Excavator', 'qty': 80, 'source': 'Dispenser', 'driver': 'Babu Bag'},
     {'id': 'DI-000520', 'date': '2026-10-14', 'shift': 'Night', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'qty': 80, 'source': 'Dispenser', 'driver': 'Rupesh'},
   ];
@@ -980,6 +980,9 @@ class FakeServer {
         case 'saveInward':
           saved.add((a[0] as Map).cast<String, dynamic>());
           return _j({'result': {'ok': true, 'id': 'IN-000051', 'stock': stock}});
+        case 'updateDieselIssue': // (Mechanical update-145: what is sent back – the version too)
+          saved.add({'update': a[0], ...(a[1] as Map).cast<String, dynamic>()});
+          return _j({'result': {'ok': true, 'id': a[0]}});
         case 'updateInward':
           saved.add({'update': a[0], ...(a[1] as Map).cast<String, dynamic>()});
           return _j({'result': {'ok': true, 'id': a[0], 'stock': stock}});

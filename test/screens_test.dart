@@ -694,6 +694,26 @@ void main() {
     expect(srv.saved.last['photos'], [{'p': 'inward/2026-10/00000000-0000-0000-0000-000000000001.jpg'}], reason: 'the list as it is now');
   }, tags: ['golden']);
 
+  testWidgets('(Mechanical update-145) a Diesel Issue opened for a change sends back the version it had when it was opened', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms['Diesel Issue'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await t.tap(find.text('MH-12-SY-6216').first);
+    await settle(t, 800);
+    await t.tap(find.text('Change'));
+    await net(t);
+    await t.tap(find.text('Save the change'));
+    await net(t);
+    expect(srv.saved.last['update'], 'DI-000522');
+    expect(srv.saved.last['ver'], 'v522', reason: 'changed by someone else since it was opened → the server refuses it');
+  });
+
   testWidgets('(3.1.13) a new Diesel Inward: the bill copy box; saved without copies – nothing about them sent (as before)', (t) async {
     phone(t);
     final srv = FakeServer()..perms['Diesel Inward'] = 'Edit';

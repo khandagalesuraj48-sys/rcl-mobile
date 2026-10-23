@@ -1057,7 +1057,12 @@ class LogEdit {
         if (boqOf(r.date).isNotEmpty) 'items': r.items else if (d['hrsOnly'] == true && one) 'items': <String, Object?>{}, // (an entry that had rows and has one now: its rows go)
       });
     }
-    return LxSave(ask, notes, {'no': no, 'from': from, 'to': to, 'rows': out, 'deleted': del, 'openingDiesel': odsl});
+    // (Mechanical update-145) every entry of the grid as it was opened – one changed by someone else since: nothing is saved
+    final vers = <String, String>{
+      for (final r in (d['rows'] as List? ?? const []).whereType<Map>())
+        if ('${r['key'] ?? ''}'.isNotEmpty && '${r['ver'] ?? ''}'.isNotEmpty) '${r['key']}': '${r['ver']}',
+    };
+    return LxSave(ask, notes, {'no': no, 'from': from, 'to': to, 'rows': out, 'deleted': del, 'openingDiesel': odsl, if (vers.isNotEmpty) 'vers': vers});
   }
 
   /// update-78: a row by Time among the rows by Hrs – its times (a split kept while From, To and Break are as loaded) and the break.

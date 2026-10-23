@@ -232,6 +232,18 @@ void main() {
     expect(c.bad > 0, true);
   });
 
+  test('(Mechanical update-145) Edit Log Book sends every entry of the grid with the version it had when the grid was opened', () {
+    final d = fx('ex200');
+    ((d['rows'] as List)[0] as Map<String, dynamic>)['ver'] = 'v1';
+    ((d['rows'] as List)[1] as Map<String, dynamic>)['ver'] = 'v2';
+    final e = LogEdit(d, superUser: false, today: '2026-10-16');
+    e.type(e.rows[0], 'work', 'Loading');
+    e.calc();
+    final p = e.save();
+    expect(p.problem, '');
+    expect(p.body['vers'], {'EX-200|2026-10-01|Full Day': 'v1', 'EX-200|2026-10-02|Full Day': 'v2'});
+  });
+
   test('A water tanker: the trips, what is wrong before saving, what is sent', () {
     final t = LtEdit({
       'machine': {'id': 'WT-1', 'owner': 'Jal Agency', 'type': 'Water Tanker'},

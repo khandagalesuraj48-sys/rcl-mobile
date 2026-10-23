@@ -695,7 +695,7 @@ Future<bool> deleteLog(BuildContext context, String key) async {
       bi('This cannot be undone.', 'हे परत आणता येणार नाही.'),
     ].join('\n\n');
     if (!await ask(context, 'Delete Log Book entry?', body, yes: 'Delete', danger: true)) return false;
-    await s.api.call('deleteLogRow', [key], true);
+    await s.api.call('deleteLogRow', [key, '${e['ver'] ?? ''}'], true); // (Mechanical update-145: changed by someone else since it was opened → refused)
     if (context.mounted) toast(context, 'Log Book entry deleted${next != null ? ' – later entries updated' : ''}.');
     return true;
   } catch (e) {
@@ -927,6 +927,7 @@ class _LogFormState extends State<LogForm> {
       String g(String k) => '${e[k] ?? ''}';
       setState(() {
         p = e;
+        _ver = g('ver'); // (Mechanical update-145) the entry as it was opened – sent back with the change
         loadingP = false;
         date = g('date');
         shift = g('shift');
@@ -1130,9 +1131,13 @@ class _LogFormState extends State<LogForm> {
     };
   }
 
+  /// (Mechanical update-145) the version of the entry when it was opened for a change.
+  String _ver = '';
+
   Map<String, dynamic> _change() {
     final km = hasKm(way), hr = hasHr(way);
     return {
+      if (_ver.isNotEmpty) 'ver': _ver,
       'openingKm': km ? (_num('okm') ?? '') : '', 'closingKm': km ? (_num('ckm') ?? '') : '', 'openingHr': hr ? (_num('ohr') ?? '') : '', 'closingHr': hr ? (_num('chr') ?? '') : '',
       'openingDiesel': p?['first'] == true ? (_num('odsl') ?? '') : '',
       'chFrom': v('chFrom'), 'chTo': v('chTo'), 'work': v('work'), 'debitTo': v('debitTo'), 'debitRate': v('debitRate'),
