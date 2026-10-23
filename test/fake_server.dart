@@ -52,6 +52,8 @@ class FakeServer {
   ];
   int billsSent = 0; // (3.1.13) bill copies sent (inwardPhoto)
   final decided = <Map<String, dynamic>>[]; // (3.2.0) what the Approvals screen sent (decide, several, answer)
+  final flowDetails = <String, Map<String, dynamic>>{}; // (3.31.5, update-147) an entry in full, by its number
+  final detAsked = <List<String>>[]; // …and which numbers were asked for
   final rulesSaved = <Map<String, dynamic>>[];
   final reportAsked = <Map<String, dynamic>>[]; // (3.2.0) the reports asked, with their filters
   bool down = false; // no network to Mechanical
@@ -674,6 +676,11 @@ class FakeServer {
           return _j({'result': {'none': true, 'name': 'Mahesh Jadhav'}});
         case 'getChangeRequests':
           return _j({'result': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}});
+        case 'approvalDetails':
+          final ids = (((a[0] as Map)['ids'] as List?) ?? const []).map((e) => '$e').toList();
+          detAsked.add(ids);
+          if (ids.isEmpty) return _no('Choose an entry to see its details.');
+          return _j({'result': {'details': [for (final id in ids) flowDetails[id] ?? {'id': id, 'error': 'This request was not found – refresh the list.'}]}});
         case 'remindFlow':
           final x = (a[0] as Map).cast<String, dynamic>();
           final ids = x['all'] == true ? flowReqs.where((r) => r['canRemind'] == true).map((r) => '${r['id']}').toList() : (x['ids'] as List).map((e) => '$e').toList();
