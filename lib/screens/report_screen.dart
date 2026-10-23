@@ -460,8 +460,8 @@ class _ReportScreenState extends State<ReportScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Wrap(spacing: 8, runSpacing: 8, children: [
-                OutlinedButton.icon(key: const Key('ldebit-rates'), onPressed: () => _ldRates(s), icon: const Icon(Icons.edit_rounded), label: const Text('Change rates')),
-                OutlinedButton.icon(key: const Key('ldebit-import'), onPressed: () => _ldImport(s), icon: const Icon(Icons.upload_file_rounded), label: const Text('Import party + rate (Excel)')),
+                OutlinedButton.icon(key: const Key('ldebit-rates'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: () => _ldRates(s), icon: const Icon(Icons.edit_rounded), label: const Text('Change rates')),
+                OutlinedButton.icon(key: const Key('ldebit-import'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: () => _ldImport(s), icon: const Icon(Icons.upload_file_rounded), label: const Text('Import party + rate (Excel)')),
               ]),
             ),
           ReportView(d),
@@ -715,6 +715,7 @@ class _LdRatesState extends State<_LdRates> {
               const SizedBox(width: 8),
               OutlinedButton(
                 key: const Key('ld-apply'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52)), // in a Row: not the theme's full width
                 onPressed: () => setState(() {
                   final v = num.tryParse(all.text.trim());
                   if (v == null || v <= 0) {
