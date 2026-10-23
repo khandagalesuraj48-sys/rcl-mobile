@@ -336,6 +336,44 @@ void main() {
     expect([for (final r in e.rows) (r.okm, r.ckm, r.ohr, r.chr)], [(1000, 1100, 100, 103), (1100, 1130, 103, 107)]);
   });
 
+  test('(Mechanical update-146 review) a typed item on rows without a work picked comes back on its rows; untouched – sent back as loaded; changed – each row keeps its own', () {
+    final d = kmData();
+    d['boqItems'] = {'2026-09-29': [{'name': 'CARTING', 'basis': 'Per KM', 'qty': 'typed'}]};
+    final r1 = (d['rows'] as List)[1] as Map<String, dynamic>;
+    r1.addAll({'itemWork': {'CARTING': 50}, 'itemParts': [{'n': '', 'q': 20, 'k': 'km'}, {'n': '', 'q': 30, 'k': 'km'}]});
+    var e = LogEdit(d, superUser: false, today: '2026-10-16');
+    final rs = e.rows.where((r) => r.date == '2026-09-29').toList();
+    expect([for (final r in rs) r.items['CARTING']], [20, 30], reason: 'saved before the rows kept it: shared out over the rows, each up to its KM');
+    expect(e.calc().bad, 0);
+    var row = (e.save().body['rows'] as List).firstWhere((r) => r['date'] == '2026-09-29') as Map;
+    expect((row['items'] as Map)['CARTING'], 50);
+    expect([for (final p in (row['items'] as Map)['_parts'] as List) p['x']], [null, null], reason: 'not touched: sent back as it was loaded');
+    e.type(rs[1], 'work', 'MORE');
+    row = (e.save().body['rows'] as List).firstWhere((r) => r['date'] == '2026-09-29') as Map;
+    expect([for (final p in (row['items'] as Map)['_parts'] as List) p['x']], [{'CARTING': 20}, {'CARTING': 30}]);
+    // opened again with x: each row exactly what it had
+    r1['itemParts'] = [{'n': '', 'q': 20, 'k': 'km', 'x': {'CARTING': 5}}, {'n': '', 'q': 30, 'k': 'km', 'x': {'CARTING': 45}}];
+    e = LogEdit(d, superUser: false, today: '2026-10-16');
+    expect([for (final r in e.rows.where((r) => r.date == '2026-09-29')) r.items['CARTING']], [5, 45]);
+  });
+
+  test('(Mechanical update-146 review) trips with two works (SOIL / MURUM): each row ONE of them – pressed, sent as its work', () {
+    final d = kmData();
+    (d['machine'] as Map<String, dynamic>).addAll(<String, dynamic>{'unit': 'Trip', 'worksOn': ['Trip'], 'modes': ['Trip'], 'meterKm': false, 'meterHr': false});
+    d['boqItems'] = {'2026-09-28': [{'name': 'SOIL', 'basis': 'Per Trip', 'qty': 'typed'}, {'name': 'MURUM', 'basis': 'Per Trip', 'qty': 'rest'}]};
+    d['rows'] = [for (final r in (d['rows'] as List).cast<Map<String, dynamic>>().take(1)) {...r, 'unit': 'Trip', 'mode': 'Trip', 'okm': '', 'ckm': '', 'trip': 5, 'itemWork': {'SOIL': 5}}];
+    d['prevKm'] = '';
+    final e = LogEdit(d, superUser: false, today: '2026-10-16');
+    final n = e.addWork(e.rows[0])!;
+    e.type(n, 'trip', 3);
+    expect(e.calc().figs[1].slotNote, '28-09-2026 Full Day: each row of this shift is ONE work – press SOIL / MURUM (not Split).');
+    e.pressWork(n, 'trip', 'MURUM');
+    expect(e.calc().bad, 0);
+    final row = (e.save().body['rows'] as List).first as Map;
+    expect(row['trip'], 8);
+    expect([for (final p in (row['items'] as Map)['_parts'] as List) (p['n'], p['q'], p['k'])], [('SOIL', 5, 'trip'), ('MURUM', 3, 'trip')]);
+  });
+
   test('A water tanker: the trips, what is wrong before saving, what is sent', () {
     final t = LtEdit({
       'machine': {'id': 'WT-1', 'owner': 'Jal Agency', 'type': 'Water Tanker'},

@@ -216,6 +216,7 @@ List<Map<String, dynamic>>? lbWorkRows(Map<String, dynamic> r) {
       y['tStart'] = ti.first;
       y['tEnd'] = ti.length > 1 ? ti[1] : '';
     }
+    if (kept && k != 'trip' && ws.any((z) => z['tr'] != null)) y['trip'] = p['tr'] ?? ''; // (update-146 review: each row its own trips – Format B)
     if (isT(p)) {
       final sl = slotsParse(p['ts']);
       y['mode'] = 'Time';

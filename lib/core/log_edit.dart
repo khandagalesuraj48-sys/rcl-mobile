@@ -269,6 +269,7 @@ class LogEdit {
   final odsl = '';
   final cut = <String, bool>{};
   final pc = <String, int>{};
+  final pk = <String, ({bool o, bool x, bool tr})>{}; // (Mechanical update-146 review) what the loaded rows of an entry carry
 
   Map<String, dynamic> get m => (d['machine'] as Map? ?? {}).cast<String, dynamic>();
   Machine get mach => Machine(m);
@@ -308,7 +309,7 @@ class LogEdit {
   /// Its rows need no work picked when the BOQ has fewer than two works of the row's measure (update-146: any machinery; by trips / by the day always).
   bool plain(LxRow r) {
     final k = partKind(r);
-    return k.isNotEmpty && (k == 'trip' || k == 'day' || boqOf(r.date).where((it) => itemKind('${it['basis']}') == k).length < 2);
+    return k.isNotEmpty && (k == 'day' || boqOf(r.date).where((it) => itemKind('${it['basis']}') == k).length < 2); // (review: trips with two works – each row ONE of them)
   }
   bool later(LxRow r) => partKind(r).isNotEmpty && slotRows(r).first != r;
   bool canMore(LxRow r) => partKind(r).isNotEmpty && r.lock == null && !kDayStatus.contains(way(r));
@@ -328,6 +329,16 @@ class LogEdit {
     final typed = its.where((it) => it['qty'] != 'rest' && _n0(r.items['${it['name']}']) > 0).toList(), rest = its.where((it) => it['qty'] == 'rest').firstOrNull, tot = rowQty(r, k);
     if (typed.isEmpty) return rest == null ? '' : '${rest['name']}';
     return typed.length == 1 && (_n0(r.items['${typed.first['name']}']) - tot).abs() < .005 ? '${typed.first['name']}' : '';
+  }
+
+  /// (Mechanical update-146 review) what was typed on a row (its own share of the entry's typed items).
+  Map<String, Object?> rowX(LxRow r) {
+    final its = boqOf(r.date), o = <String, Object?>{};
+    for (final n in r.items.keys) {
+      final it = its.where((q) => q['name'] == n).firstOrNull, v = asNum(r.items[n]) ?? 0;
+      if (it != null && itemKind('${it['basis']}') != 'day' && v > 0) o[n] = v;
+    }
+    return o;
   }
 
   Map<String, Object?> otherItems(List<LxRow> g, String kind) {
@@ -484,6 +495,32 @@ class LogEdit {
       // (Mechanical update-146) read in KM + Hrs: each row its other meter too (o)
       final two = ps.any((p) => p['o'] != null);
       var at2 = _n0(ps.first['k'] == 'km' ? r['ohr'] : r['okm']);
+      // (review) rows without a work picked: each row gets back what was typed on it (x); rows saved before it had that: the entry's
+      // typed items are shared out over its rows in order, each up to its own quantity (as the web)
+      final plainP = ps.every((p) => _s(p['n']).isEmpty), hasX = plainP && ps.any((p) => p['x'] is Map), hasTr = ps.any((p) => p['tr'] != null);
+      pk[x.key] = (o: two, x: hasX, tr: hasTr);
+      final dist = [for (final _ in ps) <String, Object?>{}];
+      if (plainP && !hasX) {
+        final used = [for (final _ in ps) <String, num>{}];
+        String kindOf(Map p) => p['m'] == 'T' ? 'hr' : (_s(p['k']).isEmpty ? 'hr' : _s(p['k']));
+        for (final n in x.items.keys.where((n) => !n.startsWith('_') && _n0(x.items[n]) > 0).toList()) {
+          final o = its.where((q) => q['name'] == n).firstOrNull, ik = o == null ? '' : itemKind('${o['basis']}');
+          num left = _n0(x.items[n]);
+          for (var j = 0; j < ps.length; j++) {
+            if (left <= .005 || kindOf(ps[j]) != ik) continue;
+            final cap = _n0(ps[j]['q']) - (used[j][ik] ?? 0), take = r2(left < cap ? left : (cap > 0 ? cap : 0));
+            if (take > 0) {
+              dist[j][n] = r2(_n0(dist[j][n]) + take);
+              used[j][ik] = r2((used[j][ik] ?? 0) + take);
+              left = r2(left - take);
+            }
+          }
+          if (left > .005) {
+            final jj = ik.isNotEmpty && ps.any((p) => kindOf(p) == ik) ? ps.length - 1 : 0;
+            dist[jj][n] = r2(_n0(dist[jj][n]) + left);
+          }
+        }
+      }
       for (var j = 0; j < ps.length; j++) {
         final p = ps[j], y = x.copy(), it = its.where((q) => q['name'] == p['n']).firstOrNull ?? const {};
         final k = _s(p['k']);
@@ -563,7 +600,9 @@ class LogEdit {
           }
         }
         final pn = _s(p['n']);
-        y.items = {if (_s(x.items['_day']).isNotEmpty) '_day': x.items['_day'], ...others, if (pn.isNotEmpty && it['qty'] != 'rest') pn: p['q']};
+        y.items = plainP
+            ? {if (_s(x.items['_day']).isNotEmpty) '_day': x.items['_day'], ...(hasX ? ((p['x'] as Map?) ?? const {}).cast<String, Object?>() : dist[j])}
+            : {if (_s(x.items['_day']).isNotEmpty) '_day': x.items['_day'], ...others, if (pn.isNotEmpty && it['qty'] != 'rest') pn: p['q']};
         y.pick = {k: pn};
         y.itemSig = sig(y);
         y
@@ -572,7 +611,11 @@ class LogEdit {
           ..chFrom = _s(p['f'])
           ..chTo = _s(p['t'])
           ..work = _s(p['w']);
-        if (j > 0 && k != 'trip') y.trip = '';
+        if (k != 'trip' && hasTr) {
+          y.trip = p['tr'] ?? ''; // (review: each row its own trips – Format B)
+        } else if (j > 0 && k != 'trip') {
+          y.trip = '';
+        }
         y.orig = y.snap();
         y.lock = lockOf(y.date);
         rows.add(y);
@@ -1079,6 +1122,8 @@ class LogEdit {
       final tB = allT ? r2(gg.fold<num>(0, (a, x) => a + _n0(timePart(x)['tb']))) : 0;
       if (g.length > 1) {
         final kind = partKind(r), parts = <Map<String, Object?>>[];
+        // (review) an entry not touched is sent back as it was loaded – nothing new is added to its rows
+        final pk0 = pk[own], fresh = g.any((x) => x.isNew || changed(x)) || (pc[own] ?? 1) != g.length;
         for (var j = 0; j < gg.length; j++) {
           final x = gg[j], ph = gg.sublist(0, j).where((y) => hasHr(way(y))).lastOrNull;
           final p = <String, Object?>{'n': plain(x) ? '' : pickOf(x, kind), 'q': rowQty(x, kind), 'c': x.challan, 'p': x.remark, 'f': x.chFrom, 't': x.chTo, 'w': x.work};
@@ -1089,9 +1134,13 @@ class LogEdit {
           }
           // (Mechanical update-146) a plain row says its measure (KM, trips, the day); a row read in KM + Hrs keeps its other meter (o);
           // a row by trips its in / out time
-          if (way(x) != 'Time' && plain(x) && kind != 'hr') p['k'] = kind;
-          if (k && h && (kind == 'km' || kind == 'hr') && way(x) != 'Time') p['o'] = rowQty(x, kind == 'km' ? 'hr' : 'km');
+          if (way(x) != 'Time' && ((plain(x) && kind != 'hr') || kind == 'trip')) p['k'] = kind;
+          if (k && h && (kind == 'km' || kind == 'hr') && way(x) != 'Time' && (fresh || (pk0?.o ?? false))) p['o'] = rowQty(x, kind == 'km' ? 'hr' : 'km');
           if (kind == 'trip' && x.tStart.isNotEmpty && x.tEnd.isNotEmpty) p['ti'] = '${x.tStart}-${x.tEnd}';
+          // (review) a plain row keeps what was typed on it; a row of Format B its trips
+          final rx = rowX(x);
+          if (plain(x) && (fresh || (pk0?.x ?? false)) && rx.isNotEmpty) p['x'] = rx;
+          if (kind != 'trip' && fmtB && '${x.trip}'.isNotEmpty && (fresh || (pk0?.tr ?? false))) p['tr'] = asNum(x.trip) ?? 0;
           parts.add(p);
         }
         final trips = g.fold<num>(0, (a, x) => a + _n0(x.trip));
