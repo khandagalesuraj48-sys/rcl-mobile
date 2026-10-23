@@ -465,7 +465,10 @@ void main() {
   }, tags: ['golden']);
 
   testWidgets('(3.31.5, update-147) Approvals: "Details" – the entry in full under its card; "Details of all"; several ticked – each in full before the decision', (t) async {
-    phone(t);
+    // a phone's width, a long screen: every card stays built while the details open (a list builds only what is near the screen)
+    t.view.physicalSize = const Size(1080, 9000);
+    t.view.devicePixelRatio = 3;
+    addTearDown(t.view.reset);
     final srv = FakeServer()..crForMe = 2;
     final now = DateTime.now().toUtc().toIso8601String();
     Map<String, dynamic> req(String id, String what) => {'kind': 'Flow', 'mine': false, 'id': id, 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': 'Pending', 'at': now, 'waitSince': now, 'by': 'Mahesh Jadhav', 'waitingFor': ['Sujit Mule'], 'level': 1, 'levels': 1, 'canDecide': true, 'summary': [what],
