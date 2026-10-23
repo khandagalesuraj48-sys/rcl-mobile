@@ -475,7 +475,8 @@ void main() {
           'history': [{'step': 'Sent', 'by': 'Mahesh Jadhav', 'at': now}]};
     srv.flowReqs.addAll([req('VF-00011', 'Add: MH-25-AJ-2169 · 16-10-2026 · Day: Litres 60'), req('VF-00012', 'Add: Sany 210 (No.1) · 16-10-2026 · Night: Litres 30')]);
     srv.flowDetails['VF-00011'] = {'id': 'VF-00011', 'kind': 'Flow', 'task': 'Diesel Issue', 'action': 'New diesel issue – one entry', 'by': 'Mahesh Jadhav', 'at': now, 'status': 'Pending',
-      'fields': [['Machinery', 'MH-25-AJ-2169 – Tipper · Tipper'], ['Litres', '60'], ['KM reading', '48409'], ['Driver', 'Ramesh Pawar'], ['Remark', 'night trip'], ['Date', '16-10-2026'], ['Shift', 'Day'], ['Diesel source', 'Dispenser']], 'tables': [], 'photos': 1, 'savedNow': []};
+      'fields': [['Machinery', 'MH-25-AJ-2169 – Tipper · Tipper'], ['Litres', '60'], ['KM reading', '48409'], ['Driver', 'Ramesh Pawar'], ['Remark', 'night trip'], ['Date', '16-10-2026'], ['Shift', 'Day'], ['Diesel source', 'Dispenser']], 'tables': [], 'photos': 2, 'savedNow': [],
+      'pics': [{'label': 'Dashboard', 'url': 'https://photos.test/a.jpg'}, {'label': 'Dispenser litres', 'url': ''}]};      // (3.31.6) the pictures
     srv.flowDetails['VF-00012'] = {'id': 'VF-00012', 'kind': 'Flow', 'task': 'Diesel Issue', 'action': 'New diesel issue – multiple entries', 'by': 'Mahesh Jadhav', 'at': now, 'status': 'Pending',
       'fields': [['Date', '16-10-2026'], ['Shift', 'Night'], ['Diesel source', 'Dispenser']],
       'tables': [{'title': 'Rows', 'cols': ['#', 'Machinery', 'Litres', 'KM reading', 'Driver'], 'rows': [['1', 'Sany 210 (No.1) – Excavator', '30', '', 'Suresh Kale'], ['2', 'JCB-07 – Backhoe', '25', '5260', '']], 'more': 0}], 'photos': 0, 'savedNow': []};
@@ -496,6 +497,10 @@ void main() {
     expect(find.text('Ramesh Pawar'), findsOneWidget);
     expect(find.text('MH-25-AJ-2169 – Tipper · Tipper'), findsOneWidget);
     expect(find.text('Hide details'), findsOneWidget);
+    // (3.31.6, update-148) its photos: the pictures, named – never a list of file names
+    expect(find.byKey(const Key('det-pic-VF-00011-0')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('det-pic-VF-00011-0')), matching: find.text('Dashboard')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('det-pic-VF-00011-1')), matching: find.text('The picture was not found.')), findsOneWidget);
     // closed again – and opened again: not asked again (the same version of the request)
     await tapK(t, 'det-VF-00011');
     await settle(t, 400);

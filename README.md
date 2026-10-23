@@ -14,6 +14,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.6 (24-10-2026, with Mechanical's update-148 – "details mdhe attachment disayla haw"):** Approvals → Details shows the
+entry's **photos / bill copies themselves** (small; pressed – full size, as the photos of a saved fill), named (Dashboard, Dispenser
+litres, Bill copy …) – no longer a table of their file names. `approval_details.dart` (`_Pic`); test in `screens_test.dart`.
+
 **Version 3.31.5 (23-10-2026, with Mechanical's update-147 – "approval detna details madhe sagle bghta yaw ki entry mdhe ky ahe fkt
 diesel nhi sagle approval mdhe … bulk approval asel tri"):** Approvals – **"Details"** on every request opens the entry in full
 under its card (the server's `approvalDetails`: who sent it and what it does, every field with its name, its rows as a table that
