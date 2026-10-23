@@ -165,10 +165,20 @@ void main() {
       {'id': 'DG <1>', 'name': '', 'type': ''},
     ], 'https://rcl-erp.example.app', 'NHAI – VTR');
     expect('<div class="qrl">'.allMatches(html).length, 3);
-    expect(html, contains('<u>NHAI – VTR</u>'));
-    expect(html, contains('<b>MH-25-AJ-8511</b><span>Tipper</span>'), reason: 'the name left out when it is the number');
+    expect('<div class="qrs">'.allMatches(html).length, 1, reason: 'one page');
+    expect(html, contains('<div class="qrt"><u>NHAI – VTR</u><b>MH-25-AJ-8511</b><span>Tipper</span></div></div><i>Scan: diesel issue · Log Book entry</i></div>'), reason: 'the name left out when it is the number');
     expect(html, contains('<b>EX-1</b><span>Sany 210</span>'), reason: 'the type left out when it is the name');
     expect(html, contains('<b>DG &lt;1&gt;</b><span></span>'));
+    expect(html, contains('grid-template-columns:1fr 1fr;grid-auto-rows:62mm'), reason: '(update-150) 2 × 4 on an A4 page');
+    // (update-150) 8 on a page: 9 labels → 2 pages (8 + 1), in their order
+    final nine = qrLabelsHtml([for (var i = 1; i <= 9; i++) {'id': 'QR-$i', 'name': '', 'type': 'Tipper'}], 'https://rcl-erp.example.app', '');
+    final pages = nine.split('<div class="qrs">').skip(1).map((p) => '<div class="qrl">'.allMatches(p).length).toList();
+    expect(pages, [8, 1]);
+    expect(RegExp(r'<b>(QR-\d)</b>').allMatches(nine).map((m) => m[1]).join(','), 'QR-1,QR-2,QR-3,QR-4,QR-5,QR-6,QR-7,QR-8,QR-9');
+    expect(qrLabelsHtml(const [], 'https://rcl-erp.example.app', ''), isNot(contains('<div class="qrs">')));
+    // …exactly the web's sheet (made by the web page's own qrLabelsHtml of update-150: 10 labels → 8 + 2)
+    final w = jsonDecode(File('test/fixtures/qr/web_labels150.json').readAsStringSync()) as Map;
+    expect(qrLabelsHtml([for (final m in w['list'] as List) (m as Map).cast<String, dynamic>()], 'https://rcl-erp.example.app', '${w['customer']}'), w['html']);
     final page = qrPrintHtml('QR labels – 3 machinery', html, 'Sketchline "Infra"');
     expect(page, contains('<body class="qr-labels"><div class="sheet">$html</div>'));
     expect(page, contains('@bottom-left { content: "SKETCHLINE INFRA  |  Fleet ERP"; }'));

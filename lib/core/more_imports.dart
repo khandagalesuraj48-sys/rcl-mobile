@@ -7,7 +7,7 @@
  *     file is of EVERY water tanker of every agency – VEHICLE NO picked from the list of tankers, the agency by itself – and
  *     each imported line goes to its own VEHICLE NO (none is filled in for it);
  *   – the Store's Item Master "Import from Excel" (rcl-store f_file: the cells as the sheet SHOWS them – raw: false);
- *   – the QR labels of the Asset Master: the web's QR code (qrcode-generator 1.4.4, type auto, level M) of the app's link with
+ *   – the QR labels of the Asset Master (8 on an A4 page, update-150): the web's QR code (qrcode-generator 1.4.4, type auto, level M) of the app's link with
  *     the machinery, drawn as the web's SVG.
  * Proven against the web's code: test/fixtures/more/web_more.json, test/fixtures/qr/web_qr.json. */
 import 'dart:convert';
@@ -295,25 +295,35 @@ String qrSvg(String text) {
   return b.toString();
 }
 
-/// The A4 sheet of labels (12 a page): the web's qrLabels html – the customer on top, the code, the number, name · type.
+/// (3.31.8, Mechanical update-150) labels on one A4 page: 2 × 4.
+const kQrPerPage = 8;
+
+/// The line under the number: name · type, each once (the web's qrSub).
+String qrSub(Map m) {
+  final parts = [jsTrue(m['name']) && m['name'] != m['id'] ? '${m['name']}' : '', '${m['type'] ?? ''}'];
+  final out = <String>[];
+  for (final (i, x) in parts.indexed) {
+    if (x.isEmpty) continue;
+    if (parts.indexWhere((y) => y.toLowerCase() == x.toLowerCase()) != i) continue;
+    out.add(x);
+  }
+  return out.join(' · ');
+}
+
+/// The A4 sheets of labels, 8 a page (2 × 4): the web's qrLabelsHtml (update-150) – the code on the left; the customer, the
+/// number, name · type on its right; "Scan: …" under them.
 String qrLabelsHtml(List<Map<String, dynamic>> list, String mechUrl, String customer) {
   String e(Object? v) => '${v ?? ''}'.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-  const css = '<style>.qrs{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm}.qrl{border:1.2px solid #222;border-radius:3mm;padding:3mm 3mm 2.5mm;text-align:center;break-inside:avoid;page-break-inside:avoid}.qrl svg{width:42mm;height:42mm;display:block;margin:0 auto 1.5mm}'
-      '.qrl b{display:block;font:800 13pt Arial,sans-serif;letter-spacing:.02em;word-break:break-word}.qrl span{display:block;font:9pt Arial,sans-serif;color:#333;margin-top:.5mm}.qrl i{display:block;font:italic 7.5pt Arial,sans-serif;color:#555;margin-top:1.2mm}.qrl u{display:block;text-decoration:none;font:700 7pt Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#777;margin-bottom:1mm}</style>';
-  String sub(Map m) {
-    final parts = [jsTrue(m['name']) && m['name'] != m['id'] ? '${m['name']}' : '', '${m['type'] ?? ''}'];
-    final out = <String>[];
-    for (final (i, x) in parts.indexed) {
-      if (x.isEmpty) continue;
-      if (parts.indexWhere((y) => y.toLowerCase() == x.toLowerCase()) != i) continue;
-      out.add(x);
-    }
-    return out.join(' · ');
-  }
-
-  return '$css<div class="qrs">${[
-    for (final m in list) '<div class="qrl"><u>${e(customer)}</u>${qrSvg(qrLink(mechUrl, '${m['id']}'))}<b>${e(m['id'])}</b><span>${e(sub(m))}</span><i>Scan: diesel issue · Log Book entry</i></div>',
-  ].join()}</div>';
+  const css = '<style>.qrs{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:62mm;gap:5mm;break-after:page;page-break-after:always}.qrs:last-child{break-after:auto;page-break-after:auto}'
+      '.qrl{border:1.4px solid #222;border-radius:3mm;padding:3mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden;break-inside:avoid;page-break-inside:avoid}'
+      '.qrl .qrw{display:flex;align-items:center;gap:3mm}.qrl svg{width:50mm;height:50mm;flex:none;display:block}.qrl .qrt{flex:1;min-width:0;text-align:left}'
+      '.qrl b{display:block;font:800 14pt Arial,sans-serif;letter-spacing:.02em;word-break:break-word;line-height:1.15}.qrl span{display:block;font:9.5pt Arial,sans-serif;color:#333;margin-top:1.2mm;word-break:break-word}'
+      '.qrl i{display:block;font:italic 8pt Arial,sans-serif;color:#555;margin-top:1.5mm;text-align:center}.qrl u{display:block;text-decoration:none;font:700 7pt Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#777;margin-bottom:1.5mm;word-break:break-word}</style>';
+  final pages = [for (var i = 0; i < list.length; i += kQrPerPage) list.sublist(i, i + kQrPerPage > list.length ? list.length : i + kQrPerPage)];
+  return css +
+      pages
+          .map((pg) => '<div class="qrs">${pg.map((m) => '<div class="qrl"><div class="qrw">${qrSvg(qrLink(mechUrl, '${m['id']}'))}<div class="qrt"><u>${e(customer)}</u><b>${e(m['id'])}</b><span>${e(qrSub(m))}</span></div></div><i>Scan: diesel issue · Log Book entry</i></div>').join()}</div>')
+          .join();
 }
 
 /// The page to print the labels on (A4 portrait, the customer at the foot of each page) – as the web's printDoc(…, 'qr-labels').

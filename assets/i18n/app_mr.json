@@ -864,5 +864,6 @@
 "Change rates": "दर बदला",
 "A rate must be more than 0.": "रेट 0 पेक्षा जास्त हवा.",
 "No entry to change – every one shown is in a Debit Note.": "बदलण्यासाठी एन्ट्री नाही – दाखवलेली प्रत्येक डेबिट नोटमध्ये आहे.",
-"{0}  |  {1} machinery  |  {2} entries": "{0}  |  {1} मशिनरी  |  {2} एन्ट्री"
+"{0}  |  {1} machinery  |  {2} entries": "{0}  |  {1} मशिनरी  |  {2} एन्ट्री",
+"number, name or type": "नंबर, नाव किंवा प्रकार"
 }

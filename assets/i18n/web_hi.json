@@ -442,7 +442,6 @@
 "1. Diesel stock": "1. डीजल स्टॉक",
 "10 digits": "10 अंक",
 "12 digits": "12 अंक",
-"12 labels on an A4 page (portrait). Print on sticker paper, or on paper and laminate.": "एक A4 पेज पर 12 लेबल (खड़ा). स्टिकर पेपर पर प्रिंट करें, या काग़ज़ पर प्रिंट करके लैमिनेट करें.",
 "1ST HR": "पहला घंटा",
 "1ST HR / 2ND HRS": "पहला घंटा / दूसरे से घंटे",
 "2-digit": "2-अंकीय",
@@ -4396,7 +4395,6 @@
 "Where the diesel figures do not fit: more diesel than the work needs, diesel with no work, a fill bigger than the tank, a meter that did not move, a tank check that found less – and the machinery whose diesel cannot be checked because their Log Book is not kept. Things to look at, not proof.": "जहाँ डीजल के आँकड़े मेल नहीं खाते: काम की ज़रूरत से ज़्यादा डीजल, बिना काम के डीजल, टैंक से बड़ी भराई, न हिला मीटर, कम पाई गई टैंक जाँच – और वे मशीनरी जिनका डीजल जाँचा नहीं जा सकता क्योंकि उनकी लॉग बुक नहीं रखी जाती। देखने की बातें, सबूत नहीं।",
 "Where: Supabase → SQL Editor → New query → paste the file → Run. The text of every file is in Admin → Read Me. Every file only adds what is missing and can be run again.": "कहाँ: Supabase → SQL Editor → New query → फ़ाइल पेस्ट करें → Run। हर फ़ाइल का टेक्स्ट एडमिन → जानकारी में है। हर फ़ाइल सिर्फ़ जो नहीं है वह जोड़ती है और फिर से चलाई जा सकती है।",
 "Which BOQ rate is in force for a machinery on a date": "किसी तारीख़ पर मशीनरी के लिए कौन-सा BOQ रेट लागू है",
-"Which machinery": "कौन-सी मशीनरी",
 "Which name should be printed at the top?": "ऊपर कौन-सा नाम प्रिंट होना चाहिए?",
 "Which site do you want to open?": "आप कौन-सी साइट खोलना चाहते हैं?",
 "Who": "कौन",
@@ -6456,5 +6454,13 @@
 "The file has no lines under its heading.": "फ़ाइल में हेडिंग के नीचे कोई पंक्ति नहीं.",
 "Total – {0} parties": "कुल – {0} पार्टियाँ",
 "Type the rate first (more than 0).": "पहले रेट लिखें (0 से ज़्यादा).",
-"Up to 2000 entries can be changed at once – import the rest in a second file.": "एक बार में 2000 तक एंट्रियाँ बदल सकते हैं – बाकी दूसरी फ़ाइल से इंपोर्ट करें."
+"Up to 2000 entries can be changed at once – import the rest in a second file.": "एक बार में 2000 तक एंट्रियाँ बदल सकते हैं – बाकी दूसरी फ़ाइल से इंपोर्ट करें.",
+"{0} ticked – {1} page{2}": "{0} tick की गईं – {1} पेज{2}",
+"8 labels on an A4 page (2 × 4, portrait). Print on sticker paper, or on paper and laminate.": "एक A4 पेज पर 8 लेबल (2 × 4, खड़ा). स्टिकर पेपर पर प्रिंट करें, या कागज़ पर प्रिंट करके लैमिनेट करें.",
+"All owners ({0} machinery)": "सभी मालिक ({0} मशीनरी)",
+"No machinery matches.": "कोई मशीनरी मेल नहीं खाती.",
+"Nothing ticked": "कुछ भी tick नहीं किया",
+"Tick all shown": "दिखाई गई सभी tick करें",
+"Tick at least one machinery.": "कम से कम एक मशीनरी tick करें.",
+"Untick all shown": "दिखाई गई सभी का tick हटाएँ"
 }

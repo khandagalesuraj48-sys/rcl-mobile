@@ -2396,11 +2396,27 @@ void main() {
     await settle(t, 600);
     await t.tap(find.byKey(const Key('m-qr')));
     await settle(t, 800);
-    expect(find.text('All 2 active machinery'), findsOneWidget, reason: 'the machinery on site today (OLD-9 left)');
-    expect(find.byKey(const Key('qr-one')), findsOneWidget);
+    // (3.31.8, update-150) by owner, or the machinery ticked – one or many; 8 on an A4 page
+    expect(find.text('2 ticked – 1 page'), findsOneWidget, reason: 'the machinery on site today (OLD-9 left), all ticked');
+    expect(find.byKey(const Key('qr-MH-25-AJ-2169')), findsOneWidget);
+    expect(find.byKey(const Key('qr-OLD-9')), findsNothing);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/39_qr_labels.png'));
-    await t.tapAt(const Offset(200, 80));
+    await t.tap(find.byKey(const Key('qr-owner')));
+    await settle(t, 600);
+    await t.tap(find.text('I E Enterprises (1)').last);
+    await settle(t, 600);
+    expect(find.text('1 ticked – 1 page'), findsOneWidget, reason: 'an owner: all its machinery ticked');
+    expect(find.byKey(const Key('qr-Sany 210 (No.1)')), findsNothing);
+    await t.tap(find.byKey(const Key('qr-untick')));
+    await settle(t, 300);
+    expect(find.text('Nothing ticked'), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('qr-make'))).onPressed, isNull, reason: 'nothing to make');
+    await t.tap(find.byKey(const Key('qr-MH-25-AJ-2169')));
+    await settle(t, 300);
+    expect(find.text('1 ticked – 1 page'), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('qr-make'))).onPressed, isNotNull);
+    Navigator.of(t.element(find.byKey(const Key('qr-make')))).pop();
     await settle(t, 600);
     // a mistake in the file: nothing imported, the rows listed
     pickThis('master.csv', utf8.encode('Machinery Number,Machinery Name,Type of Machinery\n,BAD,\n'));
