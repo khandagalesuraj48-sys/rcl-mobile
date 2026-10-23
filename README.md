@@ -14,6 +14,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.8 (24-10-2026, with Mechanical's update-150 – "asset sathi qr … owner wise machine wise sigle or bulk mdhe print kru
+shako a4 page war multiple jastit jast 6 to 8 qr"; his answer: 8, 2 × 4):** Asset Master ⋮ → **QR labels** chooses which labels:
+an **Owner** (all its machinery ticked), **Find**, a ticked list (**Tick all shown** / **Untick all shown**; one machinery or many,
+of any owners), "n ticked – p pages"; **8 labels on an A4 page (2 × 4)** – the code bigger (50 mm) on the left, the customer, the
+number and name · type on its right – exactly the web's sheet. `machinery.dart` (`_QrPick`), `more_imports.dart`
+(`qrLabelsHtml`, `kQrPerPage`, `qrSub`); tests in `more_imports_test.dart` (the web's own sheet as the fixture
+`test/fixtures/qr/web_labels150.json`), `screens_test.dart`.
+
 **Version 3.31.7 (24-10-2026, with Mechanical's update-149 – "log book mdhun ekadi entry debit to keli jate tr tyach wegle record
 rahaw … filter import export print rate change … app mdhe"):** Reports → Financial → **Log Book Debit Statement**: the Log Book
 entries charged to a party ("Debit to") – a summary, one line per party, then every entry party by party (date, shift, machinery,

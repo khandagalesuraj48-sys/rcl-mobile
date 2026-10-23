@@ -14,7 +14,7 @@ import '../core/assets.dart';
 import '../core/format.dart';
 import '../core/imports.dart' show onSiteOn;
 import '../core/lb_io.dart' show localeCmp;
-import '../core/more_imports.dart' show masterImportRows, qrLabelsHtml, qrPrintHtml;
+import '../core/more_imports.dart' show kQrPerPage, masterImportRows, qrLabelsHtml, qrPrintHtml, qrSub;
 import '../core/session.dart';
 import '../core/sheet_read.dart' show readSheets, SheetError;
 import '../ui/fields.dart';
@@ -436,43 +436,19 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
     });
   }
 
-  /// (3.13.0) QR labels – the web's: a label with a QR code for the machinery (all on site today, or one), 12 on an A4 page.
-  /// A scan with a phone opens Mechanical on that machinery (after sign-in): Diesel Issue or Log Book entry.
+  /// (3.13.0) QR labels – the web's: a label with a QR code for the machinery. (3.31.8, update-150) by owner, or the machinery
+  /// ticked – one or many; 8 on an A4 page (2 × 4). A scan with a phone opens Mechanical on that machinery (after sign-in).
   Future<void> _qr(Session s) async {
-    final all = [for (final m in s.machines) m.m].where((m) => onSiteOn(m, s.today)).toList();
+    final all = [for (final m in s.machines) m.m].where((m) => onSiteOn(m, s.today)).toList()..sort((a, b) => localeCmp('${a['id']}', '${b['id']}', numeric: true));
     if (all.isEmpty) {
       toast(context, 'There is no active machinery.', bad: true);
       return;
     }
-    final how = await showModalBottomSheet<String>(
-      context: context,
-      builder: (c) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const TwoLang('QR labels', 'QR लेबल', size: 20, weight: FontWeight.w700),
-            const SizedBox(height: 8),
-            Text('A label with a QR code for the machinery – stick it where the driver / operator can reach it. A scan with a phone opens this app on that machinery (after sign-in): Diesel Issue or Log Book entry.', style: const TextStyle(fontSize: 14, height: 1.4)),
-            const SizedBox(height: 6),
-            Text('12 labels on an A4 page (portrait). Print on sticker paper, or on paper and laminate.', style: const TextStyle(fontSize: 13, color: C.muted)),
-            const SizedBox(height: 16),
-            FilledButton.icon(key: const Key('qr-all'), onPressed: () => Navigator.pop(c, 'all'), icon: const Icon(Icons.qr_code_2_rounded), label: Text('All ${all.length} active machinery')),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(key: const Key('qr-one'), onPressed: () => Navigator.pop(c, 'one'), icon: const Icon(Icons.search_rounded), label: Text('One machinery')),
-          ]),
-        ),
-      ),
-    );
-    if (how == null || !mounted) return;
-    Map<String, dynamic>? m1;
-    if (how == 'one') {
-      final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(only: s.machines));
-      if (m == null || !mounted) return;
-      m1 = m.m;
-    }
-    final list = [...(m1 != null ? [m1] : all)]..sort((a, b) => localeCmp('${a['id']}', '${b['id']}', numeric: true));
+    final got = await showModalBottomSheet<(List<Map<String, dynamic>>, String)>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _QrPick(all: all));
+    if (got == null || !mounted) return;
+    final (list, owner) = got;
     final customer = '${s.org['customer'] ?? ''}';
-    final title = 'QR labels – ${m1 != null ? m1['id'] : '${list.length} machinery'}';
+    final title = 'QR labels – ${list.length == 1 ? list.first['id'] : '${owner.isNotEmpty && list.every((m) => qrOwnerOf(m) == owner) ? '$owner – ' : ''}${list.length} machinery'}';
     final html = qrPrintHtml(title, qrLabelsHtml(list, s.api.mechUrl, customer), customer);
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: html, title: title)));
   }
@@ -620,6 +596,108 @@ Color toneOf(String t) => switch (t) { 'bad' => C.red, 'warn' => C.amber, 'good'
 Color softOf(String t) => switch (t) { 'bad' => C.redSoft, 'warn' => C.amberSoft, 'good' => C.greenSoft, _ => C.slateSoft };
 
 /* ---------------- the filters ---------------- */
+/// The owner of a machinery as the QR chooser shows it ('–' when it has none) – the web's ownerOf.
+String qrOwnerOf(Map m) => '${m['owner'] ?? ''}'.trim().isEmpty ? '–' : '${m['owner']}'.trim();
+
+/// (3.31.8, update-150) Which QR labels: an owner (all its machinery ticked), a search, a ticked list – as the web's chooser.
+class _QrPick extends StatefulWidget {
+  const _QrPick({required this.all});
+  final List<Map<String, dynamic>> all;
+  @override
+  State<_QrPick> createState() => _QrPickState();
+}
+
+class _QrPickState extends State<_QrPick> {
+  late final sel = {for (final m in widget.all) '${m['id']}'};
+  String owner = '', q = '';
+  late final owners = () {
+    final o = <String, int>{};
+    for (final m in widget.all) {
+      o[qrOwnerOf(m)] = (o[qrOwnerOf(m)] ?? 0) + 1;
+    }
+    return o;
+  }();
+
+  List<Map<String, dynamic>> get shown => [
+        for (final m in widget.all)
+          if ((owner.isEmpty || qrOwnerOf(m) == owner) && (q.isEmpty || [m['id'], m['name'], m['type'], m['owner']].any((x) => '${x ?? ''}'.toLowerCase().contains(q.toLowerCase())))) m,
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    final list = shown, n = sel.length, pg = (n / kQrPerPage).ceil();
+    final names = owners.keys.toList()..sort((a, b) => localeCmp(a, b, numeric: true));
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * .9,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const TwoLang('QR labels', 'QR लेबल', size: 20, weight: FontWeight.w700),
+            const SizedBox(height: 6),
+            Text('A label with a QR code for the machinery – stick it where the driver / operator can reach it. A scan with a phone opens this app on that machinery (after sign-in): Diesel Issue or Log Book entry.', style: const TextStyle(fontSize: 13.5, height: 1.35)),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              key: const Key('qr-owner'),
+              initialValue: owner,
+              isExpanded: true,
+              decoration: InputDecoration(labelText: tr('Owner')),
+              items: [
+                DropdownMenuItem(value: '', child: Text('All owners (${widget.all.length} machinery)', overflow: TextOverflow.ellipsis)),
+                for (final o in names) DropdownMenuItem(value: o, child: Text('$o (${owners[o]})', overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: (v) => setState(() {
+                owner = v ?? '';
+                sel
+                  ..clear()
+                  ..addAll(shown.map((m) => '${m['id']}')); // an owner: all its machinery ticked
+              }),
+            ),
+            const SizedBox(height: 8),
+            TextField(key: const Key('qr-find'), onChanged: (v) => setState(() => q = v.trim()), decoration: InputDecoration(labelText: tr('Find'), hintText: tr('number, name or type'), prefixIcon: const Icon(Icons.search_rounded))),
+            Row(children: [
+              TextButton(key: const Key('qr-tick'), onPressed: () => setState(() => sel.addAll(list.map((m) => '${m['id']}'))), child: Text('Tick all shown')),
+              TextButton(key: const Key('qr-untick'), onPressed: () => setState(() => sel.removeAll(list.map((m) => '${m['id']}'))), child: Text('Untick all shown')),
+              const Spacer(),
+              Text(n == 0 ? 'Nothing ticked' : '$n ticked – $pg page${pg == 1 ? '' : 's'}', key: const Key('qr-count'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            ]),
+          ]),
+        ),
+        Expanded(
+          child: list.isEmpty
+              ? const Center(child: Text('No machinery matches.', style: TextStyle(color: C.muted)))
+              : ListView(key: const Key('qr-list'), children: [
+                  for (final m in list)
+                    CheckboxListTile(
+                      key: Key('qr-${m['id']}'),
+                      dense: true,
+                      value: sel.contains('${m['id']}'),
+                      onChanged: (v) => setState(() => v == true ? sel.add('${m['id']}') : sel.remove('${m['id']}')),
+                      title: Text('${m['id']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: Text([qrSub(m), qrOwnerOf(m)].where((e) => e.isNotEmpty).join(' · ')),
+                    ),
+                ]),
+        ),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('8 labels on an A4 page (2 × 4, portrait). Print on sticker paper, or on paper and laminate.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                key: const Key('qr-make'),
+                onPressed: n == 0 ? null : () => Navigator.pop(context, ([for (final m in widget.all) if (sel.contains('${m['id']}')) m], owner)),
+                icon: const Icon(Icons.qr_code_2_rounded),
+                label: Text('Make the labels'),
+              ),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
 class _FilterSheet extends StatefulWidget {
   const _FilterSheet({required this.f, required this.types, required this.owners, required this.today});
   final AssetFilter f;
