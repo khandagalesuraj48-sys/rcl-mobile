@@ -244,6 +244,26 @@ void main() {
     expect(p.body['vers'], {'EX-200|2026-10-01|Full Day': 'v1', 'EX-200|2026-10-02|Full Day': 'v2'});
   });
 
+  test('(Mechanical update-144, 23-10-2026) a machinery on Time only (his Hydra MH-46-B-0651): 10:00 – 18:00 (split) and + work 19:00 – 22:00 the same Day – no "two entries", one entry by Time', () {
+    final d = fx('ex200');
+    (d['machine'] as Map<String, dynamic>).addAll(<String, dynamic>{'unit': 'Time', 'worksOn': ['Time'], 'modes': ['Time'], 'modesX': <String>[], 'lbFormat': 'G', 'meterHr': false, 'meterKm': false});
+    final r0 = (d['rows'] as List)[0] as Map<String, dynamic>;
+    r0.addAll({'mode': 'Time', 'unit': 'Time', 'ohr': '', 'chr': '', 'whr': 7, 'tStart': '10:00', 'tEnd': '18:00', 'tBrk': 60, 'tSlots': '10:00-13:00,14:00-18:00', 'itemWork': <String, Object?>{}});
+    (d['rows'] as List).removeAt(1);
+    final e = LogEdit(d, superUser: false, today: '2026-10-16');
+    expect(e.ho, false, reason: 'no hour meter');
+    final n = e.addWork(e.rows[0]);
+    expect(n, isNotNull, reason: '"+ work in this shift" is there for a row by Time');
+    e.type(n!, 'tStart', '19:00');
+    e.type(n, 'tEnd', '22:00');
+    e.pressWork(n, 'hr', 'Breaker');
+    final c = e.calc();
+    expect((c.figs[0].slotNote, c.figs[1].slotNote, c.bad), ('', '', 0));
+    final row = (e.save().body['rows'] as List).first as Map;
+    expect((row['mode'], row['tStart'], row['tEnd']), ('Time', '10:00', '22:00'));
+    expect(row['tSlots'], [['10:00', '13:00'], ['14:00', '18:00'], ['19:00', '22:00']]);
+  });
+
   test('A water tanker: the trips, what is wrong before saving, what is sent', () {
     final t = LtEdit({
       'machine': {'id': 'WT-1', 'owner': 'Jal Agency', 'type': 'Water Tanker'},

@@ -298,11 +298,12 @@ class LogEdit {
     final its = boqOf(r.date), w = way(r);
     int n(String k) => its.where((it) => itemKind('${it['basis']}') == k).length;
     if (ho && (hasHr(w) || w == 'Time')) return 'hr';
+    if (w == 'Time') return 'hr'; // (Mechanical update-144, 23-10-2026 "sagle machinery la ha rule ghe": every machinery – rows by Time)
     return hasHr(w) && n('hr') > 1 ? 'hr' : hasKm(w) && n('km') > 1 ? 'km' : '';
   }
 
   /// Its rows need no work picked when the BOQ has fewer than two hour works (just its times of work).
-  bool plain(LxRow r) => ho && boqOf(r.date).where((it) => itemKind('${it['basis']}') == 'hr').length < 2;
+  bool plain(LxRow r) => (ho || way(r) == 'Time') && boqOf(r.date).where((it) => itemKind('${it['basis']}') == 'hr').length < 2;
   bool later(LxRow r) => partKind(r).isNotEmpty && slotRows(r).first != r;
   bool canMore(LxRow r) => partKind(r).isNotEmpty && r.lock == null && !kDayStatus.contains(way(r));
 
@@ -342,11 +343,12 @@ class LogEdit {
     final k = partKind(grp.first);
     if (k.isEmpty || grp.any((x) => kDayStatus.contains(way(x)) || way(x) == kNoReading)) return null;
     final mixOk = ho && grp.every((x) => hasHr(way(x)) || way(x) == 'Time');
+    final allTime = grp.every((x) => way(x) == 'Time'); // (update-144: every row by Time – any machinery)
     if (!mixOk && grp.any((x) => way(x) != way(grp.first))) return 'the rows of one shift must be measured the same way (${way(grp.first)}).';
     final j = grp.indexOf(r), names = boqOf(r.date).where((it) => itemKind('${it['basis']}') == k).map((it) => '${it['name']}').join(' / ');
     if (!(rowQty(r, k) > 0)) return 'this row has no work yet – type its ${way(r) == 'Time' ? 'From and To' : 'Close'} (or delete the row).';
     // update-144: every row of the shift by Time (no row by Hrs) – each row its own From – To, never at the same time as another row
-    if (mixOk && !grp.any((x) => hasHr(way(x)))) {
+    if (allTime) {
       List<List<String>> sl(LxRow x) => slotsParse(timePart(x)['ts']);
       final mine = timeSpans(sl(r), r.shift), o = grp.where((x) => x != r && rowQty(x, k) > 0 && spansMeet(mine, timeSpans(sl(x), x.shift))).firstOrNull;
       if (o != null) return 'this row (${slotsSay(sl(r))}) is at the same time as row ${grp.indexOf(o) + 1} of this shift (${slotsSay(sl(o))}) – a machinery does one work at a time: correct the From – To.';
@@ -354,7 +356,7 @@ class LogEdit {
     if (plain(r)) return '';
     final p = pickOf(r, k);
     if (p.isEmpty) return 'each row of this shift is ONE work – press $names (not Split).';
-    if (j > 0 && !ho && pickOf(grp[j - 1], k) == p) return 'same work as the row above ($p) – make them one row, or press the other work.';
+    if (j > 0 && !ho && !allTime && pickOf(grp[j - 1], k) == p) return 'same work as the row above ($p) – make them one row, or press the other work.';
     return '';
   }
 
@@ -993,7 +995,7 @@ class LogEdit {
       final odSet = r.date.endsWith('-01') ? r.odSet : '';
       // update-144: every row of the shift by Time – ONE entry by Time: its times are the rows' times in the order of the shift, its break
       // the breaks typed on the rows; the rows go in that order too
-      final allT = g.length > 1 && ho && hg.isEmpty && g.every((x) => way(x) == 'Time');
+      final allT = g.length > 1 && hg.isEmpty && g.every((x) => way(x) == 'Time');
       int at0(LxRow x) => (timeSpans(slotsParse(timePart(x)['ts']), x.shift).firstOrNull ?? const [0])[0];
       final gg = allT ? ([...g]..sort((a, b) => at0(a) - at0(b))) : g;
       // (every time of every row in the order of the shift – a row with "+ time" may hold times around another row's)
