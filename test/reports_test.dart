@@ -18,8 +18,8 @@ void main() {
   final all = [...kDieselReports, kDailyReport, kMonthlyReport, kAvgReport];
 
   test('every report of the web is here, each from its own server report', () {
-    expect(kDieselReports.map((d) => d.key).toList(), ['debit', 'mcost', 'cost', 'purchase', 'ledger', 'watch', 'owner', 'type', 'stock', 'compare', 'tank', 'average']);
-    for (final p in ['rdaily', 'rmonthly', 'ravg', 'rp-average', 'rp-ledger', 'rp-stock', 'rp-purchase', 'rp-cost', 'rp-mcost', 'rp-owner', 'rp-type', 'rp-compare', 'rp-watch', 'rp-tank', 'rp-debit']) {
+    expect(kDieselReports.map((d) => d.key).toList(), ['debit', 'ldebit', 'mcost', 'cost', 'purchase', 'ledger', 'watch', 'owner', 'type', 'stock', 'compare', 'tank', 'average']);
+    for (final p in ['rdaily', 'rmonthly', 'ravg', 'rp-average', 'rp-ledger', 'rp-stock', 'rp-purchase', 'rp-cost', 'rp-mcost', 'rp-owner', 'rp-type', 'rp-compare', 'rp-watch', 'rp-tank', 'rp-debit', 'rp-ldebit']) {
       expect(reportOfPage(p), isNotNull, reason: p);
     }
     expect(reportOfPage('dash'), isNull, reason: 'the Dashboard is its own screen');
@@ -48,6 +48,28 @@ void main() {
     });
   }
 
+  test('(3.31.7) the Log Book Debit Statement: party by party, each entry, the totals, its Debit Note (the real answer of the server)', () {
+    final doc = kDieselReports.firstWhere((x) => x.key == 'ldebit').build(fx('rptLogDebit'));
+    final sum = doc.tables.firstWhere((t) => t.sheet == 'Summary'), det = doc.tables.firstWhere((t) => t.sheet == 'Details');
+    String row(RRow r) => r.cells.map((c) => c.text).join('|');
+    expect(sum.rows.map(row).toList(), ['1|Chalke Enterprises|1|2|100 KM|1|5,500.00', '2|I E Enterprises|1|2|12.5 Hrs|–|13,750.00']);
+    expect(row(sum.foot.single), 'Total – 2 parties|2|4|100 KM, 12.5 Hrs|1|19,250.00');
+    expect(det.rows.map(row).first, 'Chalke Enterprises  |  1 machinery  |  2 entries');
+    expect(row(det.rows[1]), startsWith('1|14-10-2026|Day|MH-25-LD-2169|Tipper|KM|42|KM|Murum carting for Chalke|RCL/'));
+    expect(row(det.rows[1]), endsWith('|55.00|2,310.00'));
+    expect(doc.kpis.map((k) => k.$2).toList(), ['2', '4', '100 KM, 12.5 Hrs', '₹19,250.00']);
+    // the Excel lines of an import, as the web reads them
+    final rows = ldImportRows([
+      {'line': '2', 'date': '15-10-2026', 'shift': 'Day', 'no': 'MH-25-LD-2169', 'to': 'I E Enterprises', 'rate': '₹ 1,050', '_has': {'date': 0, 'shift': 1, 'no': 2, 'to': 3, 'rate': 4}},
+      {'line': '3', 'date': 46310, 'shift': '', 'no': 'MH-25-LD-0210', 'to': '', 'rate': 60, '_has': {'date': 0, 'no': 2, 'rate': 4}},
+      {'line': '4', 'date': '2026-10-14', 'shift': 'Night', 'no': 'MH-25-LD-0210', 'to': '  ', 'rate': 61, '_has': {'date': 0, 'shift': 1, 'no': 2, 'to': 3, 'rate': 4}},
+    ]);
+    expect(rows.first, {'line': '2', 'date': '2026-10-15', 'shift': 'Day', 'no': 'MH-25-LD-2169', 'to': 'I E Enterprises', 'rate': '1050'});
+    expect(rows[1].containsKey('to'), false, reason: 'no "Debit to" column: the entry keeps its party');
+    expect(rows[1]['shift'], '');
+    expect(rows[2].containsKey('to'), false, reason: 'a blank "Debit to" cell: the entry keeps its party (as the web)');
+  });
+
   test('the Stock Register: opening, every movement with its balance, the closing (as the web)', () {
     final d = fx('rptStock'), doc = kDieselReports.firstWhere((x) => x.key == 'stock').build(d);
     final tb = doc.tables.single;
@@ -75,6 +97,14 @@ void main() {
     expect(() => reportFilters(cost, p), throwsA(isA<ArgumentError>().having((e) => e.message, 'message', 'Tick at least one Ownership.')));
     final ledger = kDieselReports.firstWhere((x) => x.key == 'ledger');
     expect(() => reportFilters(ledger, ReportPick()..start('2026-10-16', [], ledger)), throwsA(isA<ArgumentError>().having((e) => e.message, 'message', 'Pick a machinery from Master.')));
+    // (3.31.7) the Log Book Debit Statement: a party and one machinery – both may be blank (all)
+    final ld = kDieselReports.firstWhere((x) => x.key == 'ldebit');
+    final lp = ReportPick()..start('2026-10-16', [], ld);
+    expect(reportFilters(ld, lp), {'from': '2026-10-01', 'to': '2026-10-16', 'party': '', 'no': ''});
+    lp
+      ..party = ' Chalke Enterprises '
+      ..no = 'MH-25-LD-2169';
+    expect(reportFilters(ld, lp), {'from': '2026-10-01', 'to': '2026-10-16', 'party': 'Chalke Enterprises', 'no': 'MH-25-LD-2169'});
     final m = ReportPick()..start('2026-10-16', [], kAvgReport);
     expect(reportFilters(kAvgReport, m)['withReadings'], true);
     expect(reportFilters(kMonthlyReport, m)['withReadings'], false);

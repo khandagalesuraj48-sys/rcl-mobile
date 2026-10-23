@@ -1,6 +1,8 @@
 /* ONE REPORT (3.2.0) – the app's own screen for a report of the web: its filters (the same as the web page: dates, ownership,
  * vendor, rate, pump, location, machinery, months, source / shift / supply), "Generate report" (the same server report), the
- * report on the phone, and Excel / Print-PDF of it. The Debit Recovery Statement: the rates may be changed and saved, as on the web. */
+ * report on the phone, and Excel / Print-PDF of it. The Debit Recovery Statement: the rates may be changed and saved, as on the web.
+ * (3.31.7, Mechanical update-149) The Log Book Debit Statement: its party / machinery filters; the rates changed (one, or one for all
+ * shown) and the party + rate of saved entries imported from Excel – the server's saveLogDebits, all or nothing, as on the web. */
 
 import 'package:flutter/material.dart' hide Text;
 
@@ -17,6 +19,9 @@ import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker;
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../ui/pick_file.dart' show pickSheetFile;
+import '../core/imports.dart' show readExcelRows, xlDate, Cols;
+import '../core/sheet_read.dart' show jsS, readSheets;
 
 Future<void> openReport(BuildContext context, ReportDef def, {String no = '', String owner = '', bool run = false}) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportScreen(def: def, no: no, owner: owner, run: run)));
@@ -58,6 +63,8 @@ Map<String, dynamic> reportFilters(ReportDef def, ReportPick p) {
     if (p.no.isEmpty) throw ArgumentError('Pick a machinery from Master.');
     x['no'] = p.no;
   }
+  if (f.contains('party')) x['party'] = p.party.trim();      // (3.31.7) blank = all parties
+  if (f.contains('machine0')) x['no'] = p.no.trim(); // blank = all machinery
   if (f.contains('months')) {
     x['monthA'] = p.monthA;
     x['monthB'] = p.monthB;
@@ -76,7 +83,7 @@ Map<String, dynamic> reportFilters(ReportDef def, ReportPick p) {
 
 /// What is picked on a report's screen.
 class ReportPick {
-  String from = '', to = '', owner = '', rateMode = 'last', fixedRate = '', pump = '', location = '', no = '', monthA = '', monthB = '';
+  String from = '', to = '', owner = '', party = '', rateMode = 'last', fixedRate = '', pump = '', location = '', no = '', monthA = '', monthB = '';
   String source = '', shift = '', supply = '';
   bool zero = false, pickSome = false;
   final owns = {...kOwns};
@@ -107,7 +114,8 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   final p = ReportPick();
-  final owner = TextEditingController(), fixed = TextEditingController(), pump = TextEditingController();
+  final owner = TextEditingController(), fixed = TextEditingController(), pump = TextEditingController(), party = TextEditingController();
+  List<String> parties = [];      // (3.31.7) the Vendor Master's parties, for "Debit to"
   RDoc? doc;
   Map<String, dynamic>? data;
   bool busy = false, open = true;
@@ -126,12 +134,21 @@ class _ReportScreenState extends State<ReportScreen> {
         if (widget.owner.isNotEmpty) owner.text = widget.owner;
       });
       if (widget.run) _go();
+      if (def.filters.contains('party')) _parties(s);
     });
+  }
+
+  Future<void> _parties(Session s) async {
+    try {
+      final l = (await s.api.call('getLookups')) as Map;
+      if (mounted) setState(() => parties = ((l['vendors'] as List?) ?? const []).map((e) => '$e').toList());
+    } catch (_) {/* typed by hand then */}
   }
 
   @override
   void dispose() {
     owner.dispose();
+    party.dispose();
     fixed.dispose();
     pump.dispose();
     super.dispose();
@@ -140,6 +157,7 @@ class _ReportScreenState extends State<ReportScreen> {
   Future<void> _go() async {
     final s = SessionScope.read(context);
     p.owner = owner.text;
+    p.party = party.text;
     p.fixedRate = fixed.text;
     p.pump = pump.text;
     Map<String, dynamic> f;
@@ -297,6 +315,22 @@ class _ReportScreenState extends State<ReportScreen> {
       kids.add(_box('Machinery Number / Name', p.no, _pickMachine, icon: Icons.precision_manufacturing_outlined));
       gap();
     }
+    if (f.contains('party')) {
+      kids.add(Autocomplete<String>(
+        key: const Key('rep-party'),
+        optionsBuilder: (v) => v.text.isEmpty ? parties : parties.where((x) => x.toLowerCase().contains(v.text.toLowerCase())),
+        onSelected: (v) => party.text = v,
+        fieldViewBuilder: (c, ctl, fn, _) => TextField(controller: ctl, focusNode: fn, onChanged: (v) => party.text = v, decoration: InputDecoration(labelText: tr('Party (Debit to)'), hintText: tr('Blank = all parties'))),
+      ));
+      gap();
+    }
+    if (f.contains('machine0')) {
+      kids.add(Row(children: [
+        Expanded(child: _box('Machinery', p.no.isEmpty ? tr('Blank = all machinery') : p.no, _pickMachine, icon: Icons.precision_manufacturing_outlined)),
+        if (p.no.isNotEmpty) IconButton(key: const Key('rep-mno-clear'), tooltip: tr('All machinery'), onPressed: () => setState(() => p.no = ''), icon: const Icon(Icons.close_rounded)),
+      ]));
+      gap();
+    }
     if (f.contains('location1')) {
       kids.add(_drop('Location', p.location, [for (final l in s.locations) (l, l)], (v) => setState(() => p.location = v)));
       gap();
@@ -422,6 +456,14 @@ class _ReportScreenState extends State<ReportScreen> {
               padding: const EdgeInsets.only(bottom: 10),
               child: OutlinedButton.icon(key: const Key('debit-rates'), onPressed: () => _rates(s), icon: const Icon(Icons.edit_rounded), label: const Text('Change rates')),
             ),
+          if (def.key == 'ldebit' && s.canEdit('Log Book') && data != null)      // (3.31.7)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Wrap(spacing: 8, runSpacing: 8, children: [
+                OutlinedButton.icon(key: const Key('ldebit-rates'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: () => _ldRates(s), icon: const Icon(Icons.edit_rounded), label: const Text('Change rates')),
+                OutlinedButton.icon(key: const Key('ldebit-import'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: () => _ldImport(s), icon: const Icon(Icons.upload_file_rounded), label: const Text('Import party + rate (Excel)')),
+              ]),
+            ),
           ReportView(d),
         ],
       ]),
@@ -435,6 +477,54 @@ class _ReportScreenState extends State<ReportScreen> {
         if (p.location.isNotEmpty) p.location,
         if (def.filters.contains('owns') && p.owns.length < kOwns.length) p.owns.join(', '),
       ].join('  ·  ');
+
+  /// (3.31.7) the Log Book Debit Statement: the rate of an entry (one, or one rate for all shown) – an entry in a Debit Note keeps its rate.
+  Future<void> _ldRates(Session s) async {
+    final rows = [for (final g in listOf(data?['parties'])) ...listOf(g['rows']).where((r) => '${r['note'] ?? ''}'.isEmpty)];
+    if (rows.isEmpty) {
+      toast(context, tr('No entry to change – every one shown is in a Debit Note.'), bad: true);
+      return;
+    }
+    final changed = await showModalBottomSheet<List<Map<String, dynamic>>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _LdRates(rows: rows));
+    if (changed == null || changed.isEmpty || !mounted) return;
+    final who = {for (final r in rows) '${r['logId']}': '${r['no']} · ${dmy(r['date'])} · ${r['shift']}'};
+    final was = {for (final r in rows) '${r['logId']}': r['rate']};
+    await _ldSave(s, changed, 'report', 'Save ${changed.length} changed rate${changed.length == 1 ? '' : 's'}?', [for (final x in changed) '${who[x['logId']]}: ₹${money(was[x['logId']])} → ₹${money(x['rate'])}']);
+  }
+
+  /// (3.31.7) the party and rate of saved entries from an Excel file: Date, Shift, Machinery, Debit to, Rate.
+  Future<void> _ldImport(Session s) async {
+    final f = await pickSheetFile();
+    if (f == null || !mounted) return;
+    List<Map<String, dynamic>> rows;
+    try {
+      rows = ldImportRows(readExcelRows(readSheets(f.bytes), kLdCols, const ['date', 'no', 'rate']));
+    } catch (e) {
+      toast(context, tr(errText(e)), bad: true);
+      return;
+    }
+    if (rows.isEmpty) {
+      toast(context, tr('The file has no lines under its heading.'), bad: true);
+      return;
+    }
+    await _ldSave(s, rows, 'import', 'Import ${rows.length} line${rows.length == 1 ? '' : 's'} – party and rate?',
+        [for (final x in rows) 'Row ${x['line']}: ${x['no']} · ${showDate('${x['date']}')}${'${x['shift']}'.isEmpty ? '' : ' · ${x['shift']}'} → ${x.containsKey('to') ? x['to'] : '(its party)'} @ ₹${x['rate']}']);
+  }
+
+  Future<void> _ldSave(Session s, List<Map<String, dynamic>> rows, String from, String title, List<String> lines) async {
+    if (!await askLines(context, title, [...lines.take(40), if (lines.length > 40) '… ${lines.length - 40} more'],
+        note: 'Each one is checked as a change of its Log Book entry: the party in the Vendor Master, a rate above 0, the month open, a submitted bill (Super Admin only), not in a Debit Note. One that cannot be changed is said – then nothing is saved.', yes: 'Save')) return;
+    try {
+      final r = (await s.api.call('saveLogDebits', [{'rows': rows, 'from': from}], true) as Map).cast<String, dynamic>();
+      if (!mounted) return;
+      final n = asNum(r['count']) ?? 0, same = asNum(r['same']) ?? 0;
+      toast(context, tr('$n entr${n == 1 ? 'y' : 'ies'} saved${same > 0 ? ', $same already as given' : ''}.'));
+      s.dataTick.value++;
+      await _go();
+    } catch (e) {
+      if (mounted) toast(context, tr(errText(e)), bad: true);
+    }
+  }
 
   /// (as the web) the rate of any debit entry changed: only for recovering from the vendor; empty = the rate of the day again.
   Future<void> _rates(Session s) async {
@@ -452,6 +542,31 @@ class _ReportScreenState extends State<ReportScreen> {
       if (mounted) toast(context, tr(errText(e)), bad: true);
     }
   }
+}
+
+/// (3.31.7) the Excel columns of the party + rate of Log Book entries – the web's LD_COLS.
+final Cols kLdCols = [
+  ('date', RegExp(r'^(date|entry date)$')),
+  ('shift', RegExp(r'^shift$')),
+  ('no', RegExp(r'^(machinery|machinery number|machinery no|machine|vehicle|vehicle no|asset)$')),
+  ('to', RegExp(r'^(debit to|party|debit to \(party\)|party \(debit to\))$')),
+  ('rate', RegExp(r'^(rate|debit rate|rate \(₹\)|rate \(rs\))$')),
+];
+
+/// The lines of a party + rate file for saveLogDebits (the web's rpldebit_file handler); the server checks each one.
+List<Map<String, dynamic>> ldImportRows(List<Map<String, Object?>> x) {
+  String t(Object? v) => v == null ? '' : jsS(v).trim(); // String(v) of the web: 1050, not 1050.0
+  return [
+    for (final r in x)
+      {
+        'line': '${r['line']}',
+        'date': xlDate(r['date']),
+        'shift': t(r['shift']),
+        'no': t(r['no']),
+        if (((r['_has'] as Map?) ?? const {}).containsKey('to') && t(r['to']).isNotEmpty) 'to': t(r['to']), // blank: the entry keeps its party
+        'rate': t(r['rate']).replaceAll(RegExp(r'[,₹\s]'), ''),
+      },
+  ];
 }
 
 /// Several machinery picked for the monthly reports (within the ownerships ticked).
@@ -555,6 +670,108 @@ class _DebitRatesState extends State<_DebitRates> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
               child: FilledButton(onPressed: _changed().isEmpty ? null : () => Navigator.pop(context, _changed()), child: Text('Save changed rates (${_changed().length})')),
+            ),
+          ),
+        ]),
+      );
+}
+
+/// (3.31.7) The Log Book entries charged to a party with their rates: change any, or one rate for all shown.
+class _LdRates extends StatefulWidget {
+  const _LdRates({required this.rows});
+  final List<Map<String, dynamic>> rows;
+  @override
+  State<_LdRates> createState() => _LdRatesState();
+}
+
+class _LdRatesState extends State<_LdRates> {
+  late final ctl = {for (final r in widget.rows) '${r['logId']}': TextEditingController(text: blankV(r['rate']) ? '' : '${r['rate']}')};
+  final all = TextEditingController();
+  String err = '';
+  @override
+  void dispose() {
+    for (final c in ctl.values) {
+      c.dispose();
+    }
+    all.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> _changed() => [
+        for (final r in widget.rows)
+          if (num.tryParse(ctl['${r['logId']}']!.text.trim()) != nOf(r['rate'])) {'logId': '${r['logId']}', 'rate': num.tryParse(ctl['${r['logId']}']!.text.trim()) ?? 0},
+      ];
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: MediaQuery.of(context).size.height * .86,
+        child: Column(children: [
+          const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 4), child: Align(alignment: Alignment.centerLeft, child: TwoLang('Change rates', 'दर बदला', size: 18, weight: FontWeight.w700))),
+          const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 8), child: Text('A changed rate is only for what the party pays (the Debit Note). The bills of the machinery are not changed. An entry already in a Debit Note keeps its rate (cancel that note first).', style: TextStyle(fontSize: 12.5, color: C.muted))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(children: [
+              Expanded(child: TextField(key: const Key('ld-all'), controller: all, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: tr('Rate for all shown'), prefixText: '₹ '))),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                key: const Key('ld-apply'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52)), // in a Row: not the theme's full width
+                onPressed: () => setState(() {
+                  final v = num.tryParse(all.text.trim());
+                  if (v == null || v <= 0) {
+                    err = 'Type the rate first (more than 0).';
+                    return;
+                  }
+                  err = '';
+                  for (final c in ctl.values) {
+                    c.text = all.text.trim();
+                  }
+                }),
+                child: const Text('Put on all shown'),
+              ),
+            ]),
+          ),
+          if (err.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 6), child: Text(err, style: const TextStyle(color: C.red, fontSize: 13))),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: widget.rows.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final r = widget.rows[i];
+                final rate = num.tryParse(ctl['${r['logId']}']!.text.trim()) ?? 0;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${r['no']} · ${dmy(r['date'])} · ${r['shift']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text('${fmt(r['qty'])} ${r['unit']} × ₹${money(rate)} = ₹${money(nOf(r['qty']) * rate)}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                      ]),
+                    ),
+                    SizedBox(width: 110, child: TextField(key: Key('ld-rate-$i'), controller: ctl['${r['logId']}'], keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: const InputDecoration(prefixText: '₹ ', contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12)))),
+                  ]),
+                );
+              },
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+              child: FilledButton(
+                key: const Key('ld-save'),
+                onPressed: _changed().isEmpty
+                    ? null
+                    : () {
+                        final bad = _changed().where((x) => nOf(x['rate']) <= 0);
+                        if (bad.isNotEmpty) {
+                          setState(() => err = 'A rate must be more than 0.');
+                          return;
+                        }
+                        Navigator.pop(context, _changed());
+                      },
+                child: Text('Save changed rates (${_changed().length})'),
+              ),
             ),
           ),
         ]),

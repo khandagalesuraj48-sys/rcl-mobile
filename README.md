@@ -14,6 +14,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.7 (24-10-2026, with Mechanical's update-149 – "log book mdhun ekadi entry debit to keli jate tr tyach wegle record
+rahaw … filter import export print rate change … app mdhe"):** Reports → Financial → **Log Book Debit Statement**: the Log Book
+entries charged to a party ("Debit to") – a summary, one line per party, then every entry party by party (date, shift, machinery,
+measured by, quantity, work, its Debit Note, rate, amount); filters: dates, a party, one machinery (blank = all). **Change rates**:
+the rate of one entry, or "Rate for all shown" → "Put on all shown", then save (an entry in a Debit Note keeps its rate). **Import
+party + rate (Excel)**: Date, Shift, Machinery, Debit to, Rate – each line is a saved entry (a blank Debit to keeps its party).
+Both ask first and go to the server's `saveLogDebits` (all or nothing, every check of a Log Book change); Excel and Print as every
+report. Log Book View access: the statement only. `report_defs.dart` (`ldebit`), `report_screen.dart` (`_ldRates`, `_ldImport`,
+`ldImportRows`, `kLdCols`), `home.dart`; tests in `reports_test.dart`, `screens_test.dart`.
+
 **Version 3.31.6 (24-10-2026, with Mechanical's update-148 – "details mdhe attachment disayla haw"):** Approvals → Details shows the
 entry's **photos / bill copies themselves** (small; pressed – full size, as the photos of a saved fill), named (Dashboard, Dispenser
 litres, Bill copy …) – no longer a table of their file names. `approval_details.dart` (`_Pic`); test in `screens_test.dart`.

@@ -82,6 +82,7 @@ List<(String, String, String, String)> reportsOf(Session s) => [
         ('Diesel Watch – signs of loss', 'डिझेल वॉच – गळतीची चिन्हे', 'rp-watch', 'shield'),
         ('Tank Check – System vs Physical', 'टँक तपासणी', 'rp-tank', 'oil_drum'),
         ('Debit Recovery Statement', 'डेबिट वसुली', 'rp-debit', 'receipt'),
+        ('Log Book Debit Statement', 'Log Book डेबिट', 'rp-ldebit', 'receipt'), // (3.31.7, update-149)
       ],
       if (s.canSee('Bill Summary')) ('Bill Summary', 'बिल सारांश', 'breg', 'receipt'),
       if (s.canSee('Vendor Ledger')) ('Vendor Ledger', 'vendor खाते', 'vled', 'ledger'),

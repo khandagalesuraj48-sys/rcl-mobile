@@ -858,5 +858,11 @@
 "The update downloads in the background – keep working, or leave the app. When it is ready, the app asks you to install it.": "अपडेट मागे (background ला) डाउनलोड होईल – काम चालू ठेवा किंवा ॲपमधून बाहेर जा. तयार झाले की ॲप install विचारेल.",
 "Install it now? Android asks once more – press Install there.": "आता install करायचे? Android पुन्हा एकदा विचारेल – तिथे Install दाबा.",
 "It goes on in the background – you may close this or leave the app.": "हे मागे (background ला) चालूच राहील – हे बंद करा किंवा ॲपमधून बाहेर जा.",
-"Allow \"Install unknown apps\" for RCL ERP, then come back – Install is asked again.": "RCL ERP ला \"Install unknown apps\" परवानगी द्या आणि परत या – Install पुन्हा विचारले जाईल."
+"Allow \"Install unknown apps\" for RCL ERP, then come back – Install is asked again.": "RCL ERP ला \"Install unknown apps\" परवानगी द्या आणि परत या – Install पुन्हा विचारले जाईल.",
+"Blank = all machinery": "रिकामे = सर्व मशिनरी",
+"Blank = all parties": "रिकामे = सर्व पार्टी",
+"Change rates": "दर बदला",
+"A rate must be more than 0.": "रेट 0 पेक्षा जास्त हवा.",
+"No entry to change – every one shown is in a Debit Note.": "बदलण्यासाठी एन्ट्री नाही – दाखवलेली प्रत्येक डेबिट नोटमध्ये आहे.",
+"{0}  |  {1} machinery  |  {2} entries": "{0}  |  {1} मशिनरी  |  {2} एन्ट्री"
 }

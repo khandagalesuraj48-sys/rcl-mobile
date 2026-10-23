@@ -7,6 +7,7 @@ class ReportDef {
   const ReportDef({required this.key, required this.label, required this.mr, required this.fn, required this.filters, required this.note, required this.build, this.portrait = true, this.pic = 'bar_chart', this.perm = 'Reports'});
   final String key, label, mr, fn, note, pic, perm;
   /// range · vendor · rate · owns · pump · location · location1 · machine · months · monthly (source, shift, supply, zero, machinery) · dloc
+  /// · (3.31.7) party (Debit to) · machine0 (one machinery, or blank = all)
   final List<String> filters;
   final RDoc Function(Map<String, dynamic> d) build;
   final bool portrait;
@@ -90,6 +91,56 @@ final kDieselReports = <ReportDef>[
               RRow([const RCell('Grand total', bold: true, span: 8), nc(tot['qty'], bold: true), const RCell('', n: true), mc(tot['amount'], bold: true)], kind: RKind.grand),
             ]),
           const RNote('* = a rate changed by hand (only for recovering from the vendor).'),
+        ],
+      );
+    },
+  ),
+  /* (3.31.7, Mechanical update-149) the Log Book entries charged to a party ("Debit to") – as the web's report: the summary, then
+   * every entry party by party; the rates are changed (one, or one for all) and the party + rate imported from Excel (report_screen). */
+  ReportDef(
+    key: 'ldebit',
+    label: 'Log Book Debit Statement',
+    mr: 'Log Book डेबिट',
+    fn: 'rptLogDebit',
+    pic: 'receipt',
+    portrait: false,
+    filters: const ['range', 'party', 'machine0'],
+    note: 'Log Book entries charged to a party ("Debit to"): a summary (one line per party), then every entry party by party – the quantity as the entry is measured (hours, KM, trips or the day), its rate and the amount. Change the rate of one entry, or give one rate to all shown, and save; or import the party and rate of saved entries from Excel. An entry in a Debit Note keeps its rate.',
+    build: (d) {
+      final ps = listOf(d['parties']), tot = mapOf(d['total']);
+      String qt(dynamic q) {
+        final m = mapOf(q);
+        return m.isEmpty ? '–' : m.entries.map((e) => '${fmt(e.value)} ${e.key}').join(', ');
+      }
+      final details = <RRow>[];
+      for (final p in ps) {
+        final rows = listOf(p['rows']);
+        details.add(grp('${p['party']}  |  ${p['machines']} machinery  |  ${rows.length} entries', 12));
+        for (var i = 0; i < rows.length; i++) {
+          final r = rows[i];
+          details.add(RRow([sc(i + 1), tc(dmy(r['date'])), tc(r['shift']), tc(r['no'], bold: true), tc(r['type']), tc(r['mode']), nc(r['qty']), tc(r['unit']), tc(r['work']), tc('${r['note'] ?? ''}'.isEmpty ? '–' : r['note']), mc(r['rate']), mc(r['amount'])]));
+        }
+        details.add(RRow([RCell('Total – ${p['party']}', bold: true, span: 6), RCell(qt(p['qty']), span: 5), mc(p['amount'], bold: true)], kind: RKind.sub));
+      }
+      return RDoc(
+        title: '${d['title'] ?? 'Log Book Debit Statement'}',
+        period: _period(d),
+        file: _file('LogBook_Debit', d),
+        meta: _meta(d, [if ('${d['party'] ?? ''}'.isNotEmpty) 'Party: ${d['party']}' else 'All parties', if ('${d['no'] ?? ''}'.isNotEmpty) 'Machinery: ${d['no']}'].join('  |  ')),
+        kpis: [('Parties', '${ps.length}'), ('Entries', '${tot['entries'] ?? 0}'), ('Quantity', qt(tot['qty'])), ('Amount', '₹${money(tot['amount'])}')],
+        blocks: [
+          const RNote('Summary', heading: true),
+          RTable(sheet: 'Summary', head: const ['Sr', 'Party (Debit to)', 'Machinery', 'Entries', 'Quantity', 'In a Debit Note', 'Amount (₹)'], numCols: const {2, 3, 5, 6}, empty: 'No Log Book entry charged to a party in this period.', rows: [
+            for (var i = 0; i < ps.length; i++) RRow([sc(i + 1), tc(ps[i]['party'], bold: true), nc(ps[i]['machines']), nc(listOf(ps[i]['rows']).length), tc(qt(ps[i]['qty'])), nOf(ps[i]['inNote']) == 0 ? const RCell('–', n: true) : nc(ps[i]['inNote']), mc(ps[i]['amount'], bold: true)]),
+          ], foot: [
+            RRow([RCell('Total – ${ps.length} parties', bold: true, span: 2), nc(tot['machines']), nc(tot['entries']), tc(qt(tot['qty'])), nOf(tot['inNote']) == 0 ? const RCell('–', n: true) : nc(tot['inNote']), mc(tot['amount'])], kind: RKind.grand),
+          ]),
+          if (ps.isNotEmpty) const RNote('Details', heading: true),
+          if (ps.isNotEmpty)
+            RTable(sheet: 'Details', head: const ['Sr', 'Date', 'Shift', 'Machinery', 'Type', 'Measured by', 'Quantity', 'Unit', 'Work', 'Debit Note', 'Rate (₹)', 'Amount (₹)'], numCols: const {6, 10, 11}, rows: details, foot: [
+              RRow([const RCell('Grand total', bold: true, span: 6), RCell(qt(tot['qty']), span: 5), mc(tot['amount'], bold: true)], kind: RKind.grand),
+            ]),
+          const RNote('A changed rate is only for what the party pays (the Debit Note). The bills of the machinery are not changed. An entry already in a Debit Note keeps its rate (cancel that note first).'),
         ],
       );
     },

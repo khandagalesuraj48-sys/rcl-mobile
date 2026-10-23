@@ -1,0 +1,103 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Log Book Debit Statement",
+ "from": "2026-10-01",
+ "to": "2026-10-16",
+ "generated": "16-10-2026 10:30",
+ "party": "",
+ "no": "",
+ "parties": [
+  {
+   "party": "Chalke Enterprises",
+   "rows": [
+    {
+     "logId": "MH-25-LD-2169|2026-10-14|Day",
+     "date": "2026-10-14",
+     "shift": "Day",
+     "no": "MH-25-LD-2169",
+     "type": "Tipper",
+     "owner": "Rachana Construction Limited",
+     "mode": "KM",
+     "qty": 42,
+     "unit": "KM",
+     "rate": 55,
+     "amount": 2310,
+     "work": "Murum carting for Chalke",
+     "note": "RCL/VTR/DN-001"
+    },
+    {
+     "logId": "MH-25-LD-2169|2026-10-15|Day",
+     "date": "2026-10-15",
+     "shift": "Day",
+     "no": "MH-25-LD-2169",
+     "type": "Tipper",
+     "owner": "Rachana Construction Limited",
+     "mode": "KM",
+     "qty": 58,
+     "unit": "KM",
+     "rate": 55,
+     "amount": 3190,
+     "work": "Murum carting for Chalke",
+     "note": ""
+    }
+   ],
+   "amount": 5500,
+   "machines": 1,
+   "qty": {
+    "KM": 100
+   },
+   "inNote": 1
+  },
+  {
+   "party": "I E Enterprises",
+   "rows": [
+    {
+     "logId": "MH-25-LD-0210|2026-10-14|Day",
+     "date": "2026-10-14",
+     "shift": "Day",
+     "no": "MH-25-LD-0210",
+     "type": "Excavator",
+     "owner": "Rachana Construction Limited",
+     "mode": "Hrs",
+     "qty": 8,
+     "unit": "Hrs",
+     "rate": 1100,
+     "amount": 8800,
+     "work": "Excavation",
+     "note": ""
+    },
+    {
+     "logId": "MH-25-LD-0210|2026-10-14|Night",
+     "date": "2026-10-14",
+     "shift": "Night",
+     "no": "MH-25-LD-0210",
+     "type": "Excavator",
+     "owner": "Rachana Construction Limited",
+     "mode": "Hrs",
+     "qty": 4.5,
+     "unit": "Hrs",
+     "rate": 1100,
+     "amount": 4950,
+     "work": "Excavation",
+     "note": ""
+    }
+   ],
+   "amount": 13750,
+   "machines": 1,
+   "qty": {
+    "Hrs": 12.5
+   },
+   "inNote": 0
+  }
+ ],
+ "total": {
+  "entries": 4,
+  "amount": 19250,
+  "machines": 2,
+  "inNote": 1,
+  "qty": {
+   "KM": 100,
+   "Hrs": 12.5
+  }
+ }
+}
