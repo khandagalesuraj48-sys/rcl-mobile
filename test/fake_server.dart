@@ -9,6 +9,8 @@ class FakeServer {
   final calls = <String>[];
   int tickets = 0;
   bool portalSignedIn = false, superAdmin = false, mustChange = false;
+  /// (3.31.2 – update-143) the date and shift asked for is already saved: the server's prefill says so (addTo) and the save adds to it
+  Map<String, dynamic>? addTo;
   String newPassword = '';
   String expireOnce = ''; // an action that first answers SESSION_EXPIRED (a Mechanical sign-in that ended)
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
@@ -1188,12 +1190,13 @@ class FakeServer {
           return _j({'result': {'items': [['OLD-9', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-13']]}});
         case 'getLogRowPrefill':
           final no = a[0] as String;
-          return _j({'result': {'machine': {'id': no}, 'problem': '', 'first': false, 'openingKm': no == 'MH-25-AJ-2169' ? 15230 : '', 'openingHr': no.startsWith('Sany') ? 4700 : '', 'firstKm': false, 'firstHr': false,
-            'lastDate': '2026-10-13', 'lastShift': 'Full Day', 'diesel': 80, 'dieselText': 'DI-000520', 'reads': [], 'boqItems': [], 'avgWork': {'km': 120, 'hr': '', 'src': 'own'}}});
+          return _j({'result': {'machine': {'id': no}, 'problem': '', 'first': false, 'openingKm': no == 'MH-25-AJ-2169' ? 15230 : '', 'openingHr': no.startsWith('Sany') ? (addTo != null ? addTo!['closeHr'] : 4700) : '', 'firstKm': false, 'firstHr': false,
+            'lastDate': '2026-10-13', 'lastShift': 'Full Day', 'diesel': 80, 'dieselText': 'DI-000520', 'reads': [], 'boqItems': [], 'avgWork': {'km': 120, 'hr': '', 'src': 'own'},
+            if (addTo != null) 'addTo': addTo}});
         case 'saveLogRows':
           final rows = ((a[0] as Map)['rows'] as List).map((x) => (x as Map).cast<String, dynamic>()).toList();
           logSaved.addAll(rows);
-          return _j({'result': {'ok': true, 'count': rows.length}});
+          return _j({'result': {'ok': true, 'count': rows.length, if (addTo != null) 'added': rows.length, if (addTo != null) 'into': 1}});
         case 'getLogEntry':
           return _j({'result': {'key': a[0], 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'unit': 'KM', 'okm': 15100, 'ckm': 15230, 'ohr': '', 'chr': '', 'work': 'Earth carting', 'chFrom': '12+000', 'chTo': '12+500', 'first': false, 'boqItems': [], 'itemWork': {}, 'lock': null, 'next': null, 'prev': {'date': '2026-10-13', 'shift': 'Full Day'}}});
         case 'updateLogRow':

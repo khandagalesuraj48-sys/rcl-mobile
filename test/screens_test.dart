@@ -850,6 +850,35 @@ void main() {
     expect(find.text('Log Book saved'), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('(3.31.2 – update-143) a shift already saved: the new entry is added to it as its next work – said on the form, Start at its Close, no ½ day; saved', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms['Log Book'] = 'Edit'
+      ..addTo = {'rows': 1, 'kind': 'hr', 'mode': 'Hrs', 'closeKm': '', 'closeHr': 4712, 'stock': 40, 'lastWork': '', 'sameOk': true};
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook').last);
+    await net(t);
+    await t.tap(find.text('New Entry'));
+    await net(t);
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)'));
+    await net(t);
+    expect(find.textContaining('is already saved – this entry is added to it as work 2'), findsOneWidget);
+    expect(find.textContaining('already on the saved entry'), findsOneWidget, reason: 'the diesel of the shift is on the saved entry');
+    expect((t.widget<TextField>(find.widgetWithText(TextField, 'Start')).controller!).text, '4712', reason: 'it starts at the saved Close');
+    expect(t.widget<FilterChip>(find.widgetWithText(FilterChip, '½ day')).onSelected, isNull, reason: 'the ½ day stays on the saved entry');
+    await t.enterText(find.widgetWithText(TextField, 'Close'), '4715');
+    await settle(t, 300);
+    await t.tap(find.text('Save Log Book'));
+    await net(t);
+    final row = srv.logSaved.single;
+    expect([row['no'], row['mode'], row['openingHr'], row['closingHr'], row['half']], ['Sany 210 (No.1)', 'Hrs', 4712, 4715, false]);
+    expect(find.text('Added to the entry already saved for this shift'), findsOneWidget);
+  });
+
   testWidgets('Log Book: a water tanker\'s entry is a card per trip (Trip 1, Trip 2), each with Change / Delete; Change opens that trip on the tanker screen', (t) async {
     phone(t);
     final srv = FakeServer()

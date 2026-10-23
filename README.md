@@ -14,6 +14,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.2 (23-10-2026, with Mechanical update-143 – "1 day madhe multiple entry ghet nahi … multiple entry hou de; jar same data
+bharat asel tr te duplicate hoil ani jr same data nasel tr duplicate honar nahi"):** a new Log Book entry for a date and shift that
+is **already saved** is no longer refused – the server adds it to that entry as its next work (`lib/screens/logbook.dart`, `addTo`
+of getLogRowPrefill). The form says so ("This day is already saved – this entry is added to it as work 2"); its Start is the saved
+Close; the diesel of the shift is shown as already on the saved entry; no ½ day and no Split on such a work (one work per row); the
+same work as the saved last one is refused on a machinery that is not on hours only. The same work twice is refused by the server
+("already in the saved entry of this shift"). The assistant says it too. The web's help (`assets/help/web_help.json`) taken again
+from the web page (`tool/web_help.js`), with its fixture (`test/fixtures/help/web_fix.json`).
+
 **Version 3.31.1 (20-10-2026, "AIK N OK AHE SAGLE FKT COLOUR THODE DIM DISAT AAHE APP THODI ENHANCE KR"):** the same colours a
 little brighter and fuller (`lib/ui/theme.dart`): the greens and the gold stronger, the cream page lighter, the soft tiles
 fuller, the grey words darker; gold words (View All, Forgot password?) in a deeper gold that is easy to read; the green of the
