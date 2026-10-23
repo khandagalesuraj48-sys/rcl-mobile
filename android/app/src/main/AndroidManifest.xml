@@ -69,6 +69,10 @@
             <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>
         </receiver>
         <!-- (3.26.0) a call with the web: "Call is on" (CallService.kt) -->
+        <!-- (3.31.4) the update downloaded in the background: "Update ready – tap to install" (UpdateKit.kt) -->
+        <receiver android:name=".UpdateDoneReceiver" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.DOWNLOAD_COMPLETE"/></intent-filter>
+        </receiver>
         <service android:name=".CallService" android:exported="false" android:foregroundServiceType="microphone|camera|mediaProjection"/>
     </application>
     <!-- Required to query activities that can process text, see:

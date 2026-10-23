@@ -14,6 +14,7 @@ import 'core/device.dart';
 import 'core/lock_gate.dart';
 import 'core/rtc_kit.dart';
 import 'core/session.dart';
+import 'core/update.dart' show updateContext, updateWatch;
 import 'screens/call.dart';
 import 'screens/lock.dart';
 import 'screens/login.dart';
@@ -70,7 +71,13 @@ void main() {
   final lock = AppLock(PhoneLockGate());
   session.freshSignIn = lock.signedIn;
   runApp(RclApp(session: session, lock: lock));
+  // (3.31.4) the update downloaded in the background: "Install?" over whatever screen is open – when the app opens and when it
+  // comes back (core/update.dart updateWatch)
+  updateContext = () => appNav.currentContext;
+  AppLifecycleListener(onResume: () => updateWatch(opened: true)); // (it stays with the app's binding)
+  WidgetsBinding.instance.addPostFrameCallback((_) => updateWatch(opened: true));
 }
+
 
 /// (14-10-2026) the app's navigator – the box "send it to the Super Admin?" opens over any screen (Api.askApproval).
 final appNav = GlobalKey<NavigatorState>();

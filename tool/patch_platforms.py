@@ -51,6 +51,10 @@ def manifest(s):
                       '        <receiver android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver" android:enabled="false" android:exported="false">\n'
                       '            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>\n'
                       '        </receiver>\n    </application>', 1)
+    if '.UpdateDoneReceiver' not in s:      # (3.31.4) the update downloaded in the background (UpdateKit.kt, kept in git with MainActivity.kt)
+        s = s.replace('</application>', '    <receiver android:name=".UpdateDoneReceiver" android:exported="true">\n'
+                      '            <intent-filter><action android:name="android.intent.action.DOWNLOAD_COMPLETE"/></intent-filter>\n'
+                      '        </receiver>\n    </application>', 1)
     if '.CallService' not in s:      # (3.26.0) a call with the web: "Call is on" (CallService.kt, kept in git with MainActivity.kt)
         s = s.replace('</application>', '    <service android:name=".CallService" android:exported="false" android:foregroundServiceType="microphone|camera|mediaProjection"/>\n    </application>', 1)
     if 'android.speech.RecognitionService' not in s:      # (3.15.0) the assistant: the phone's listening and speaking services
@@ -185,7 +189,7 @@ def phone():
     edit(MAN, manifest)
     os.makedirs('android/app/src/main/res/xml', exist_ok=True)
     with open('android/app/src/main/res/xml/filepaths.xml', 'w') as f:
-        f.write('<?xml version="1.0" encoding="utf-8"?>\n<paths>\n    <files-path name="internal_apk_storage" path="ota_update/"/>\n</paths>\n')
+        f.write('<?xml version="1.0" encoding="utf-8"?>\n<paths>\n    <files-path name="internal_apk_storage" path="ota_update/"/>\n    <external-files-path name="rcl_update" path="Download/"/>\n</paths>\n')
     need(os.path.exists('android/app/build.gradle.kts'), 'android/app/build.gradle.kts is missing (an older Groovy template?)')
     edit('android/app/build.gradle.kts', gradle)
     if os.path.exists('android/build.gradle.kts'): edit('android/build.gradle.kts', root_gradle)

@@ -14,6 +14,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.4 (23-10-2026, "app madhun baher al ki updet hoych band hot nantr app prt chalu krun prt sagle 0 pasun start hot tr as nko
+… background la app updet chaluch asel ani complte al ki konte hi screen war aso mi install karaychi as ek pop up eil"):** Android –
+Update hands the download to **Android's own Download Manager** (`android/…/UpdateKit.kt`, channel `rcl/update`): it goes on when
+the app is left or closed and after the network comes back; pressed again while it goes, it is **not started again from 0**. Its
+progress is in the phone's notifications and in the box "Updating" (it may be closed – "Keep working"). When it is there and its
+fingerprint (SHA-256) is the release's: **"Update … is ready – Install?" over whatever screen of the app is open**; the app away:
+the notification "update ready – tap to install" (`UpdateDoneReceiver`) opens the app, which asks. "Later": asked again when the
+app is opened again. Installed: its file goes. A phone whose Download Manager cannot be used: the download inside the app, as
+before. `lib/core/update.dart` (`startBgUpdate`, `updateWatch`; `main.dart` – when the app opens and comes back);
+`test/update_bg_test.dart`. The file path `external-files-path` (filepaths.xml), the receiver in the manifest
+(`tool/patch_platforms.py` the same). The Windows app and the iPhone: as before.
+
 **Version 3.31.3 (23-10-2026, "jewa user landscap madhe rotate krto tewa pn ha box rotate hoyla hawa … fkt box ha rotate hoyla
 hawa"):** the live reading of a photo (Dashboard, Hour meter, Dispenser litres – `lib/screens/scan.dart`) with the phone held
 **sideways**: the screen stays upright on the phone (as a camera app's), the **box turns with the phone** and lies across the
