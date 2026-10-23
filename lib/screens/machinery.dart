@@ -25,7 +25,6 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import 'forms.dart' show MachinePicker;
 import 'machine_form.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
