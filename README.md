@@ -14,6 +14,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.5 (23-10-2026, with Mechanical's update-147 – "approval detna details madhe sagle bghta yaw ki entry mdhe ky ahe fkt
+diesel nhi sagle approval mdhe … bulk approval asel tri"):** Approvals – **"Details"** on every request opens the entry in full
+under its card (the server's `approvalDetails`: who sent it and what it does, every field with its name, its rows as a table that
+scrolls sideways, the machinery with its name, photos / bill copies counted, for a change of a saved entry what is saved now);
+**"Details of all"** opens every one; several ticked → **each one in full** in the question before Approve / Send back / Reject.
+Asked once per version of the request (decided or corrected → asked again). Only reads – the server decides who may see it.
+`lib/screens/approval_details.dart`, `approvals.dart`; test in `screens_test.dart` (fake server `approvalDetails`).
+
 **Version 3.31.4 (23-10-2026, "app madhun baher al ki updet hoych band hot nantr app prt chalu krun prt sagle 0 pasun start hot tr as nko
 … background la app updet chaluch asel ani complte al ki konte hi screen war aso mi install karaychi as ek pop up eil"):** Android –
 Update hands the download to **Android's own Download Manager** (`android/…/UpdateKit.kt`, channel `rcl/update`): it goes on when

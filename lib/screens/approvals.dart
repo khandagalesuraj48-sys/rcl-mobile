@@ -6,6 +6,8 @@
  *   – each request: when, who, which work, what it changes, its steps; waiting at whom (level x of y), sent back (the question),
  *     approved / rejected / returned (by whom, the note, why not saved);
  *   – Approve / Send back / Reject (one, or several ticked at once), Answer and send again / Take back, Remind;
+ *   – (3.31.5, update-147) "Details" on each request and "Details of all": the entry in full (approval_details.dart); before
+ *     several ticked are decided, each one in full;
  *   – the Super Admin: the verification rules of the site (works, levels of people, "only when", remind after). */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
@@ -20,6 +22,7 @@ import '../ui/help.dart' show GuideButton;
 import 'verify.dart' show askSendAgain, againWords;
 import 'flow_fix.dart' show openFix;
 import '../ui/ask_bot.dart';
+import 'approval_details.dart';
 
 Future<void> openApprovals(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ApprovalsScreen()));
 
@@ -45,6 +48,10 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   String err = '', busy = '';
   final ticked = <String>{};
   Session? _ls;
+  // (3.31.5) the requests opened in full, and their details (by the version of the request)
+  final open = <String>{};
+  final det = <String, Map<String, dynamic>>{};
+  bool detBusy = false;
 
   @override
   void initState() {
@@ -92,6 +99,10 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     s.takeApprovals(d!);
     final can = approvalsShown(d, all: true).where((r) => r['canDecide'] == true).map((r) => '${r['id']}').toSet();
     ticked.removeWhere((id) => !can.contains(id));
+    // (3.31.5) an open request that moved on meanwhile (decided, corrected and sent again): its details asked again
+    open.removeWhere((id) => _req(id) == null);
+    final miss = open.where((id) => !det.containsKey(detailsKey(_req(id)!))).toList();
+    if (miss.isNotEmpty && !detBusy) Future.microtask(() => _toggle(miss, true));
   }
 
   Map<String, dynamic>? _req(String id) {
@@ -99,6 +110,41 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       if (r['id'] == id) return r;
     }
     return null;
+  }
+
+  /// The details of these requests: asked once per version of the request.
+  Future<List<Map<String, dynamic>>> _details(List<String> ids) async {
+    final s = SessionScope.read(context);
+    final want = [for (final id in ids) if (_req(id) != null && !det.containsKey(detailsKey(_req(id)!))) id];
+    if (want.isNotEmpty) {
+      final got = await loadApprovalDetails(s, want);
+      for (final d in got) {
+        final r = _req('${d['id']}');
+        if (r != null) det[detailsKey(r)] = d;
+      }
+    }
+    return [for (final id in ids) if (_req(id) != null && det[detailsKey(_req(id)!)] != null) det[detailsKey(_req(id)!)]!];
+  }
+
+  Future<void> _toggle(List<String> ids, bool show) async {
+    if (!mounted) return;
+    setState(() {
+      if (show) {
+        open.addAll(ids);
+      } else {
+        open.removeAll(ids);
+      }
+    });
+    if (!show) return;
+    setState(() => detBusy = true);
+    try {
+      await _details(ids);
+    } catch (e) {
+      if (mounted) toast(context, tr(errText(e)), bad: true);
+      open.removeAll(ids);
+    } finally {
+      if (mounted) setState(() => detBusy = false);
+    }
   }
 
   Future<void> _run(String key, Future<void> Function() job) async {
@@ -230,9 +276,22 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     if (ids.isEmpty) return;
     final approve = how == 'ok', back = how == 'back';
     final title = '${back ? 'Send back' : approve ? 'Approve' : 'Reject'} ${ids.length} request(s)?';
+    List<Map<String, dynamic>> full = const [];
+    try {
+      setState(() => busy = 'bulk');
+      full = await _details(ids);      // (3.31.5) each one in full, before the decision
+    } catch (e) {
+      if (mounted) toast(context, tr(errText(e)), bad: true);
+      return;
+    } finally {
+      if (mounted) setState(() => busy = '');
+    }
+    if (!mounted) return;
     final note = await askNote(context, title,
         body: [
-          Text(ids.join(', '), style: const TextStyle(fontWeight: FontWeight.w600)),
+          ...(full.length == ids.length
+              ? [for (final d in full) Padding(padding: const EdgeInsets.only(bottom: 8), child: ApprovalDetailsView(d, key: Key('bulk-det-${d['id']}')))]
+              : [Text(ids.join(', '), style: const TextStyle(fontWeight: FontWeight.w600))]),
           const SizedBox(height: 6),
           Text(
               back
@@ -297,6 +356,17 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
             FilterChip(key: const Key('cr-all'), label: Text('Show approved and rejected too'), selected: all, onSelected: (v) => setState(() => all = v)),
+            if (list.isNotEmpty)
+              TextButton(
+                key: const Key('det-all'),
+                onPressed: detBusy
+                    ? null
+                    : () {
+                        final ids = list.map((r) => '${r['id']}').toList();
+                        _toggle(ids, !ids.every(open.contains));
+                      },
+                child: Text(list.every((r) => open.contains('${r['id']}')) ? 'Hide all details' : 'Details of all'),
+              ),
             if (canTick)
               TextButton(
                 onPressed: () => setState(() {
@@ -396,6 +466,21 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
         const SizedBox(height: 8),
         for (final l in sum.take(8)) Padding(padding: const EdgeInsets.only(bottom: 2), child: Text(l, style: const TextStyle(fontSize: 14, height: 1.3))),
         if (sum.length > 8) Text('+ ${sum.length - 8} more', style: const TextStyle(fontSize: 13, color: C.muted)),
+        // (3.31.5) the entry in full
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: Key('det-$id'),
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 36)),
+            onPressed: () => _toggle([id], !open.contains(id)),
+            icon: Icon(open.contains(id) ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20),
+            label: Text(open.contains(id) ? 'Hide details' : 'Details'),
+          ),
+        ),
+        if (open.contains(id))
+          det[detailsKey(r)] != null
+              ? ApprovalDetailsView(det[detailsKey(r)]!, head: false)
+              : const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Text('Loading the details…', style: TextStyle(fontSize: 13, color: C.muted))),
         if (!flow && '${r['reason'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Reason: ${r['reason']}', style: const TextStyle(fontSize: 13, color: C.muted))),
         if (fixed != null)
           Container(

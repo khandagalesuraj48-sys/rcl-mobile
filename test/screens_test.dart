@@ -464,6 +464,67 @@ void main() {
     expect(find.text('1 done.'), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('(3.31.5, update-147) Approvals: "Details" – the entry in full under its card; "Details of all"; several ticked – each in full before the decision', (t) async {
+    // a phone's width, a long screen: every card stays built while the details open (a list builds only what is near the screen)
+    t.view.physicalSize = const Size(1080, 9000);
+    t.view.devicePixelRatio = 3;
+    addTearDown(t.view.reset);
+    final srv = FakeServer()..crForMe = 2;
+    final now = DateTime.now().toUtc().toIso8601String();
+    Map<String, dynamic> req(String id, String what) => {'kind': 'Flow', 'mine': false, 'id': id, 'm': 'Diesel Issue', 'task': 'Diesel Issue', 'status': 'Pending', 'at': now, 'waitSince': now, 'by': 'Mahesh Jadhav', 'waitingFor': ['Sujit Mule'], 'level': 1, 'levels': 1, 'canDecide': true, 'summary': [what],
+          'history': [{'step': 'Sent', 'by': 'Mahesh Jadhav', 'at': now}]};
+    srv.flowReqs.addAll([req('VF-00011', 'Add: MH-25-AJ-2169 · 16-10-2026 · Day: Litres 60'), req('VF-00012', 'Add: Sany 210 (No.1) · 16-10-2026 · Night: Litres 30')]);
+    srv.flowDetails['VF-00011'] = {'id': 'VF-00011', 'kind': 'Flow', 'task': 'Diesel Issue', 'action': 'New diesel issue – one entry', 'by': 'Mahesh Jadhav', 'at': now, 'status': 'Pending',
+      'fields': [['Machinery', 'MH-25-AJ-2169 – Tipper · Tipper'], ['Litres', '60'], ['KM reading', '48409'], ['Driver', 'Ramesh Pawar'], ['Remark', 'night trip'], ['Date', '16-10-2026'], ['Shift', 'Day'], ['Diesel source', 'Dispenser']], 'tables': [], 'photos': 1, 'savedNow': []};
+    srv.flowDetails['VF-00012'] = {'id': 'VF-00012', 'kind': 'Flow', 'task': 'Diesel Issue', 'action': 'New diesel issue – multiple entries', 'by': 'Mahesh Jadhav', 'at': now, 'status': 'Pending',
+      'fields': [['Date', '16-10-2026'], ['Shift', 'Night'], ['Diesel source', 'Dispenser']],
+      'tables': [{'title': 'Rows', 'cols': ['#', 'Machinery', 'Litres', 'KM reading', 'Driver'], 'rows': [['1', 'Sany 210 (No.1) – Excavator', '30', '', 'Suresh Kale'], ['2', 'JCB-07 – Backhoe', '25', '5260', '']], 'more': 0}], 'photos': 0, 'savedNow': []};
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Me'));
+    await net(t);
+    await t.ensureVisible(find.text('Approvals').first);
+    await settle(t, 300);
+    await t.tap(find.text('Approvals').first);
+    await net(t);
+    expect(find.byKey(const Key('det-VF-00011')), findsOneWidget, reason: 'every request has its Details');
+    expect(find.text('Ramesh Pawar'), findsNothing, reason: 'closed at first');
+    await tapK(t, 'det-VF-00011');
+    await net(t);
+    expect(srv.detAsked.last, ['VF-00011']);
+    expect(find.text('Ramesh Pawar'), findsOneWidget);
+    expect(find.text('MH-25-AJ-2169 – Tipper · Tipper'), findsOneWidget);
+    expect(find.text('Hide details'), findsOneWidget);
+    // closed again – and opened again: not asked again (the same version of the request)
+    await tapK(t, 'det-VF-00011');
+    await settle(t, 400);
+    expect(find.text('Ramesh Pawar'), findsNothing);
+    await tapK(t, 'det-VF-00011');
+    await net(t);
+    expect(srv.detAsked.length, 1, reason: 'kept, not asked again');
+    // Details of all: the Multiple entries as a table
+    await tapK(t, 'det-all');
+    await net(t);
+    expect(srv.detAsked.last, ['VF-00012']);
+    expect(find.text('Suresh Kale'), findsOneWidget);
+    expect(find.text('JCB-07 – Backhoe'), findsOneWidget);
+    expect(find.text('Hide all details'), findsOneWidget);
+    // several ticked: each one in full in the question
+    await tapK(t, 'tick-VF-00011');
+    await tapK(t, 'tick-VF-00012');
+    await settle(t, 300);
+    await tapK(t, 'bulk-ok');
+    await net(t);
+    expect(find.byKey(const Key('bulk-det-VF-00011')), findsOneWidget);
+    expect(find.byKey(const Key('bulk-det-VF-00012')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('bulk-det-VF-00012')), matching: find.text('Suresh Kale')), findsOneWidget);
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(srv.decided.last['ids'], ['VF-00011', 'VF-00012']);
+    expect(srv.decided.last['approve'], true);
+  });
+
   testWidgets('(3.2.0) Approvals: the sender answers an entry sent back, or takes it back; the Super Admin\'s rules', (t) async {
     phone(t);
     final srv = FakeServer()..superAdmin = true;
