@@ -704,14 +704,16 @@ void main() {
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
-    await t.tap(find.text('MH-12-SY-6216').first);
+    await t.tap(find.text('MH-25-AJ-2169').first);      // (a machinery of this site's Master: the form can be saved)
     await settle(t, 800);
     await t.tap(find.text('Change'));
     await net(t);
+    await t.ensureVisible(find.text('Save the change'));
+    await settle(t, 600);
     await t.tap(find.text('Save the change'));
     await net(t);
-    expect(srv.saved.last['update'], 'DI-000522');
-    expect(srv.saved.last['ver'], 'v522', reason: 'changed by someone else since it was opened → the server refuses it');
+    expect(srv.saved.last['update'], 'DI-000520');
+    expect(srv.saved.last['ver'], 'v520', reason: 'changed by someone else since it was opened → the server refuses it');
   });
 
   testWidgets('(3.1.13) a new Diesel Inward: the bill copy box; saved without copies – nothing about them sent (as before)', (t) async {
