@@ -14,6 +14,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.31.3 (23-10-2026, "jewa user landscap madhe rotate krto tewa pn ha box rotate hoyla hawa … fkt box ha rotate hoyla
+hawa"):** the live reading of a photo (Dashboard, Hour meter, Dispenser litres – `lib/screens/scan.dart`) with the phone held
+**sideways**: the screen stays upright on the phone (as a camera app's), the **box turns with the phone** and lies across the
+meter as the person sees it (as wide as the long side); the digits are read the way they stand; the photo is kept as the person
+saw it (turned upright before its band). How the phone is held comes from its accelerometer (`sensors_plus`; flat or between two
+ways the box stays as it was); the rules and their tests: `lib/core/scan_rules.dart` (`turnOf`, `guideFor`, `guideOnScreen`,
+`readTurn`, `uprightTurn`), `test/scan_rules_test.dart`. Upright: exactly as before. iPhone: `NSMotionUsageDescription` in
+`Info.plist`. No server change.
+
 **Version 3.31.2 (23-10-2026, with Mechanical update-143 – "1 day madhe multiple entry ghet nahi … multiple entry hou de; jar same data
 bharat asel tr te duplicate hoil ani jr same data nasel tr duplicate honar nahi"):** a new Log Book entry for a date and shift that
 is **already saved** is no longer refused – the server adds it to that entry as its next work (`lib/screens/logbook.dart`, `addTo`
