@@ -996,7 +996,19 @@ class LogEdit {
       final allT = g.length > 1 && ho && hg.isEmpty && g.every((x) => way(x) == 'Time');
       int at0(LxRow x) => (timeSpans(slotsParse(timePart(x)['ts']), x.shift).firstOrNull ?? const [0])[0];
       final gg = allT ? ([...g]..sort((a, b) => at0(a) - at0(b))) : g;
-      final tSl = allT ? [for (final x in gg) ...slotsParse(timePart(x)['ts'])] : <List<String>>[];
+      // (every time of every row in the order of the shift – a row with "+ time" may hold times around another row's)
+      final tSl = <List<String>>[];
+      if (allT) {
+        final each = <(int, List<String>)>[];
+        for (final x in gg) {
+          final sl = slotsParse(timePart(x)['ts']), sp = timeSpans(sl, x.shift);
+          for (var j = 0; j < sl.length; j++) {
+            each.add(((j < sp.length ? sp[j] : (sp.firstOrNull ?? const [0]))[0], sl[j]));
+          }
+        }
+        each.sort((a, b) => a.$1 - b.$1);
+        tSl.addAll(each.map((e) => e.$2));
+      }
       final tB = allT ? r2(gg.fold<num>(0, (a, x) => a + _n0(timePart(x)['tb']))) : 0;
       if (g.length > 1) {
         final kind = partKind(r), parts = <Map<String, Object?>>[];
@@ -1018,12 +1030,12 @@ class LogEdit {
           'openingKm': k ? rr.okm : '', 'closingKm': k ? z.ckm : '', 'openingHr': h ? rr.ohr : '', 'closingHr': h ? z.chr : '',
           'tStart': allT ? tSl.first[0] : '', 'tEnd': allT ? tSl.last[1] : '', 'tBreak': allT && tB > 0 ? tB : '',
           if (allT) 'tSlots': tSl,
-          'remark': joinTxt(g.map((x) => x.remark)),
+          'remark': joinTxt(gg.map((x) => x.remark)),
           'trip': fmtB && trips != 0 ? trips : '',
-          'challan': joinTxt(g.map((x) => x.challan)),
-          'chFrom': g.where((x) => x.chFrom.trim().isNotEmpty).firstOrNull?.chFrom ?? '',
-          'chTo': g.reversed.where((x) => x.chTo.trim().isNotEmpty).firstOrNull?.chTo ?? '',
-          'work': joinTxt(g.map((x) => x.work)), 'odSet': odSet,
+          'challan': joinTxt(gg.map((x) => x.challan)),
+          'chFrom': gg.where((x) => x.chFrom.trim().isNotEmpty).firstOrNull?.chFrom ?? '',
+          'chTo': gg.reversed.where((x) => x.chTo.trim().isNotEmpty).firstOrNull?.chTo ?? '',
+          'work': joinTxt(gg.map((x) => x.work)), 'odSet': odSet,
           'items': {
             if (_s(r.items['_day']).isNotEmpty) '_day': r.items['_day'],
             ...otherItems(g, plain(r) ? '' : kind),

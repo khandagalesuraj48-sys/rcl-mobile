@@ -213,6 +213,7 @@ void main() {
     e.type(n, 'tStart', '09:00');
     e.type(n, 'tEnd', '13:00');
     e.pressWork(n, 'hr', 'Breaker');
+    e.type(n, 'work', 'BREAKING');
     var c = e.calc();
     expect(c.figs[0].slotNote, '');
     expect(c.figs[1].slotNote, '', reason: 'no "the rows of this shift are all by Time" any more');
@@ -222,7 +223,8 @@ void main() {
     final row = (p.body['rows'] as List).first as Map;
     expect((row['mode'], row['tStart'], row['tEnd'], row['tBreak']), ('Time', '09:00', '18:00', ''));
     expect(row['tSlots'], [['09:00', '13:00'], ['14:00', '18:00']]);
-    expect(((row['items'] as Map)['_parts'] as List).map((q) => '${q['n']} ${q['ts']} ${q['q']} ${q['m']}'), ['Breaker 09:00-13:00 4 T', 'Bucket 14:00-18:00 4 T'], reason: 'the rows in the order of the day');
+    expect(((row['items'] as Map)['_parts'] as List).map((q) => '${q['n']} ${q['ts']} ${(q['q'] as num).round()} ${q['m']}'), ['Breaker 09:00-13:00 4 T', 'Bucket 14:00-18:00 4 T'], reason: 'the rows in the order of the day');
+    expect(row['work'], 'BREAKING / LOADING', reason: 'the entry\'s texts in the order of the day');
     // the Breaker row into the Bucket time: both red with the reason
     e.type(n, 'tEnd', '15:00');
     c = e.calc();
