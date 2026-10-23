@@ -203,6 +203,7 @@ void main() {
   });
 
   test('(update-144) every row of a shift by Time: his screen – Bucket 14:00 – 18:00, + work Breaker 09:00 – 13:00: no red; saved as ONE entry by Time in the order of the day; two rows at the same time red', () {
+    try {
     final d = fx('ex200');
     final r0 = (d['rows'] as List)[0] as Map;
     r0.addAll({'mode': 'Time', 'unit': 'Time', 'ohr': '', 'chr': '', 'whr': 4, 'tStart': '14:00', 'tEnd': '18:00', 'tBrk': '', 'tSlots': '', 'itemWork': <String, Object?>{}, 'work': 'LOADING'});
@@ -228,6 +229,11 @@ void main() {
     c = e.calc();
     expect(c.figs[1].slotNote, '01-10-2026 Full Day: this row (09:00 – 15:00) is at the same time as row 1 of this shift (14:00 – 18:00) – a machinery does one work at a time: correct the From – To.');
     expect(c.bad > 0, true);
+    } on TestFailure {
+      rethrow;
+    } catch (e, st) {
+      fail('Error: $e\n${st.toString().split('\n').take(10).join('\n')}');
+    }
   });
 
   test('A water tanker: the trips, what is wrong before saving, what is sent', () {
