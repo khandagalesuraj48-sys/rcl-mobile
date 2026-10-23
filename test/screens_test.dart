@@ -2044,6 +2044,98 @@ void main() {
     await net(t);
   }
 
+  // (3.31.7, Mechanical update-149) the Log Book Debit Statement: the statement, Change rates (one / all shown), Import party + rate
+  Future<void> openLdebit(WidgetTester t) async {
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-financial')));
+    await net(t);
+    await t.scrollUntilVisible(find.text('Log Book Debit Statement'), 300, scrollable: find.ancestor(of: find.text('Debit Recovery Statement'), matching: find.byType(Scrollable)).first);
+    await settle(t, 300);
+    await t.tap(find.text('Log Book Debit Statement'));
+    await net(t);
+  }
+
+  testWidgets('(3.31.7) Log Book Debit Statement: a party / one machinery (blank = all), the statement; Change rates – one, or one for all shown; Import party + rate → saveLogDebits', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    srv.perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await openLdebit(t);
+    expect(find.byKey(const Key('rep-party')), findsOneWidget);
+    await tapK(t, 'rep-go');
+    await net(t);
+    expect(srv.reportAsked.single['fn'], 'rptLogDebit');
+    expect(srv.reportAsked.single['party'], '', reason: 'blank = all parties');
+    expect(srv.reportAsked.single['no'], '', reason: 'blank = all machinery');
+    expect(find.byKey(const Key('rtable-Summary')), findsOneWidget);
+    expect(find.byKey(const Key('rtable-Details')), findsOneWidget);
+    // one rate changed, then one rate for all shown (the entry in a Debit Note is not there)
+    await tapK(t, 'ldebit-rates');
+    await net(t);
+    expect(find.byKey(const Key('ld-rate-2')), findsOneWidget);
+    expect(find.byKey(const Key('ld-rate-3')), findsNothing, reason: 'the entry in RCL/VTR/DN-001 keeps its rate');
+    await t.enterText(find.byKey(const Key('ld-rate-0')), '60');
+    await settle(t, 300);
+    expect(find.text('Save changed rates (1)'), findsOneWidget);
+    expect(find.text('58 KM × ₹60.00 = ₹3,480.00'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('ld-all')), '1200');
+    await tapK(t, 'ld-apply');
+    await settle(t, 300);
+    expect(find.text('Save changed rates (3)'), findsOneWidget);
+    await tapK(t, 'ld-save');
+    await net(t);
+    expect(find.text('Save 3 changed rates?'), findsOneWidget);
+    expect(find.textContaining('MH-25-LD-2169 · 15-10-2026 · Day: ₹55.00 → ₹1,200.00'), findsOneWidget);
+    await tapK(t, 'ask-yes');
+    await net(t);
+    expect(srv.ldSaved.single, {
+      'rows': [
+        {'logId': 'MH-25-LD-2169|2026-10-15|Day', 'rate': 1200},
+        {'logId': 'MH-25-LD-0210|2026-10-14|Day', 'rate': 1200},
+        {'logId': 'MH-25-LD-0210|2026-10-14|Night', 'rate': 1200},
+      ],
+      'from': 'report',
+    });
+    expect(srv.reportAsked.length, 2, reason: 'the statement made again');
+    // the party and rate of saved entries from a file: a blank "Debit to" keeps its party
+    pickThis('debit_to.csv', utf8.encode('Date,Shift,Machinery,Debit to,Rate\n15-10-2026,Day,MH-25-LD-2169,I E Enterprises,"1,050"\n14-10-2026,,MH-25-LD-0210,,60\n'));
+    await tapK(t, 'ldebit-import');
+    await net(t);
+    expect(find.text('Import 2 lines – party and rate?'), findsOneWidget);
+    expect(find.textContaining('Row 2: MH-25-LD-2169 · 15-10-2026 · Day → I E Enterprises @ ₹1050'), findsOneWidget);
+    expect(find.textContaining('Row 3: MH-25-LD-0210 · 14-10-2026 → (its party) @ ₹60'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/63_ldebit_import.png'));
+    await tapK(t, 'ask-yes');
+    await net(t);
+    expect(srv.ldSaved.last, {
+      'rows': [
+        {'line': '2', 'date': '2026-10-15', 'shift': 'Day', 'no': 'MH-25-LD-2169', 'to': 'I E Enterprises', 'rate': '1050'},
+        {'line': '3', 'date': '2026-10-14', 'shift': '', 'no': 'MH-25-LD-0210', 'rate': '60'},
+      ],
+      'from': 'import',
+    });
+  }, tags: ['golden']);
+
+  testWidgets('(3.31.7) Log Book Debit Statement with Log Book View access: the statement, no Change rates / Import', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await openLdebit(t);
+    await tapK(t, 'rep-go');
+    await net(t);
+    expect(find.byKey(const Key('rtable-Summary')), findsOneWidget);
+    expect(find.byKey(const Key('ldebit-rates')), findsNothing);
+    expect(find.byKey(const Key('ldebit-import')), findsNothing);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/64_ldebit_statement.png'));
+  }, tags: ['golden']);
+
   testWidgets('(3.11.0) Diesel Issue ⋮: Import from Excel – each row checked (Fix the file first / Import N rows) → importDiesel; the template; All dates & Export', (t) async {
     phone(t);
     final srv = FakeServer();
