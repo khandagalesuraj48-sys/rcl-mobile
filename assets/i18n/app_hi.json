@@ -850,5 +850,13 @@
 "This entry is added to the saved one as its next work – it is ONE work: press {0} (not Split).": "यह एंट्री पहले वाली एंट्री में अगले काम के रूप में जुड़ती है – यह एक ही काम है: {0} दबाएँ (स्प्लिट नहीं)।",
 "Same work as the saved entry's last work ({0}) – press the other work, or change the saved entry in Edit Log Book.": "पहले वाली एंट्री के आखिरी काम जैसा ही काम ({0}) – दूसरा काम दबाएँ, या पहले वाली एंट्री Edit Log Book में बदलें।",
 "Added to the entry already saved for this shift": "इस शिफ्ट की पहले वाली एंट्री में जोड़ी गई",
-"This {0} is already saved – this entry is added to it as work {1}. The diesel of this shift is already on it.": "यह {0} पहले से save है – यह एन्ट्री उसमें काम {1} के रूप में जोड़ी जाती है। इस shift का डीज़ल पहले से उस पर है।"
+"This {0} is already saved – this entry is added to it as work {1}. The diesel of this shift is already on it.": "यह {0} पहले से save है – यह एन्ट्री उसमें काम {1} के रूप में जोड़ी जाती है। इस shift का डीज़ल पहले से उस पर है।",
+"Update {0} is ready": "अपडेट {0} तैयार है",
+"Install": "इंस्टॉल करें",
+"Later": "बाद में",
+"Keep working": "काम जारी रखें",
+"The update downloads in the background – keep working, or leave the app. When it is ready, the app asks you to install it.": "अपडेट पीछे (background में) डाउनलोड होगा – काम जारी रखें या ऐप से बाहर जाएँ। तैयार होने पर ऐप install पूछेगा।",
+"Install it now? Android asks once more – press Install there.": "अभी install करें? Android एक बार फिर पूछेगा – वहाँ Install दबाएँ।",
+"It goes on in the background – you may close this or leave the app.": "यह पीछे (background में) चलता रहेगा – इसे बंद करें या ऐप से बाहर जाएँ।",
+"Allow \"Install unknown apps\" for RCL ERP, then come back – Install is asked again.": "RCL ERP को \"Install unknown apps\" की अनुमति दें और वापस आएँ – Install फिर से पूछा जाएगा।"
 }
