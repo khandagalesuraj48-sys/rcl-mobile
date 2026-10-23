@@ -880,7 +880,7 @@ class _LogFormState extends State<LogForm> {
       pErr = '';
     });
     try {
-      final r = ((await s.api.call('getLogRowPrefill', [m.id, date, shift])) as Map).cast<String, dynamic>();
+      final r = ((await s.api.call('getLogRowPrefill', [m.id, date, shift, {'add': 1}])) as Map).cast<String, dynamic>();      // (3.31.2: a saved shift answered as "add to it")
       if (my != pSeq || !mounted) return;
       setState(() {
         final changed = p == null || '${p!['machine']?['id']}' != m.id;
@@ -1113,7 +1113,7 @@ class _LogFormState extends State<LogForm> {
   Map<String, dynamic> _row() {
     final tripOn = way == 'Trip' || (needs.tripAll && !status);
     return {
-      'date': date, 'shift': shift, 'half': half && addTo == null, 'no': machine!.id, 'mode': way,
+      'date': date, 'shift': shift, 'half': half && addTo == null, 'no': machine!.id, 'mode': way, if (addTo != null) 'add': 1,
       'openingKm': hasKm(way) ? (_num('okm') ?? '') : '', 'closingKm': hasKm(way) ? (_num('ckm') ?? '') : '',
       'openingHr': hasHr(way) ? (_num('ohr') ?? '') : '', 'closingHr': hasHr(way) ? (_num('chr') ?? '') : '',
       'tStart': way == 'Time' || (way == 'Trip' && needs.tripTime) ? slots.first[0] : '',

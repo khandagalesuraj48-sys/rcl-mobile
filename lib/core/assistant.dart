@@ -786,7 +786,7 @@ class Assistant {
     if (m['supply'] == 'Debit Basis') return AiDraft(error: aiL({'en': '$id is on debit basis – it keeps no Log Book.', 'mr': '$id debit basis वर आहे; तिची Log Book नसते.', 'hi': '$id debit basis पर है; उसकी Log Book नहीं होती।'}));
     Map pf;
     try {
-      pf = await _call('getLogRowPrefill', [id, date, shift]);
+      pf = await _call('getLogRowPrefill', [id, date, shift, {'add': 1}]);
     } catch (e) {
       return AiDraft(error: aiErr(e));
     }
@@ -876,6 +876,7 @@ class Assistant {
       if (needKm) ...{'openingKm': pf['openingKm'], 'closingKm': ckm},
       if (needHr) ...{'openingHr': pf['openingHr'], 'closingHr': chr},
       if (work.isNotEmpty) 'work': work.length > 200 ? work.substring(0, 200) : work,
+      if (pf['addTo'] is Map) 'add': 1,      // (3.31.2 – update-143) added to the saved entry of the shift, as the web
     };
     String said(String k, String h, String and) => [if (needKm) '${js(wk)} $k', if (needHr) '${js(wh)} $h'].join(and);
     return AiDraft(

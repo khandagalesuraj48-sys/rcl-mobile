@@ -1189,7 +1189,8 @@ class FakeServer {
         case 'logPending':
           return _j({'result': {'items': [['OLD-9', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-13']]}});
         case 'getLogRowPrefill':
-          final no = a[0] as String;
+          final no = a[0] as String, askAdd = a.length > 3 && a[3] is Map && (a[3] as Map)['add'] == 1;      // (3.31.2: the app asks for the "add" answer)
+          if (addTo != null && !askAdd) throw StateError('getLogRowPrefill without {add: 1}');
           return _j({'result': {'machine': {'id': no}, 'problem': '', 'first': false, 'openingKm': no == 'MH-25-AJ-2169' ? 15230 : '', 'openingHr': no.startsWith('Sany') ? (addTo != null ? addTo!['closeHr'] : 4700) : '', 'firstKm': false, 'firstHr': false,
             'lastDate': '2026-10-13', 'lastShift': 'Full Day', 'diesel': 80, 'dieselText': 'DI-000520', 'reads': [], 'boqItems': [], 'avgWork': {'km': 120, 'hr': '', 'src': 'own'},
             if (addTo != null) 'addTo': addTo}});

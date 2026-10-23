@@ -875,7 +875,7 @@ void main() {
     await t.tap(find.text('Save Log Book'));
     await net(t);
     final row = srv.logSaved.single;
-    expect([row['no'], row['mode'], row['openingHr'], row['closingHr'], row['half']], ['Sany 210 (No.1)', 'Hrs', 4712, 4715, false]);
+    expect([row['no'], row['mode'], row['openingHr'], row['closingHr'], row['half'], row['add']], ['Sany 210 (No.1)', 'Hrs', 4712, 4715, false, 1], reason: 'marked "add": the server adds it to the saved entry');
     expect(find.text('Added to the entry already saved for this shift'), findsOneWidget);
   });
 
