@@ -72,6 +72,30 @@ int slotsGap(List<List<String>> sl) {
   return first == null ? 0 : (cur! - first) - mins;
 }
 
+/// update-144: the From – To of a row by Time as minutes in the order of its shift (a Night's times after midnight come last; the
+/// row's own times follow each other) – the web's timeSpansP / the server's timeSpans_.
+List<List<int>> timeSpans(List<List<String>> sl, String shift) {
+  int? cur;
+  final out = <List<int>>[];
+  for (final x in sl) {
+    final a = tMin(x[0]), d = slotMin(x[0], x[1]);
+    if (a == null || d == null) continue;
+    var at = cur == null ? (shift == 'Night' && a < 720 ? a + 1440 : a) : a;
+    if (cur != null) {
+      while (at < cur) {
+        at += 1440;
+      }
+    }
+    cur = at + d;
+    out.add([at, at + d]);
+  }
+  return out;
+}
+
+/// Two rows "meet" when one of their times overlaps.
+bool spansMeet(List<List<int>> a, List<List<int>> b) => a.any((u) => b.any((v) => u[0] < v[1] && v[0] < u[1]));
+String slotsSay(List<List<String>> sl) => sl.map((x) => '${x[0]} – ${x[1]}').join(', ');
+
 /// Hours of From – To less the break in minutes ('' when a time is missing).
 Object lgTimeHrs(String a, String b, Object? brk) {
   if (a.isEmpty || b.isEmpty) return '';
@@ -319,9 +343,14 @@ class LogEdit {
     if (k.isEmpty || grp.any((x) => kDayStatus.contains(way(x)) || way(x) == kNoReading)) return null;
     final mixOk = ho && grp.every((x) => hasHr(way(x)) || way(x) == 'Time');
     if (!mixOk && grp.any((x) => way(x) != way(grp.first))) return 'the rows of one shift must be measured the same way (${way(grp.first)}).';
-    if (mixOk && !grp.any((x) => hasHr(way(x)))) return 'the rows of this shift are all by Time – keep one row and give it its times (or one row of the shift by Hrs).';
     final j = grp.indexOf(r), names = boqOf(r.date).where((it) => itemKind('${it['basis']}') == k).map((it) => '${it['name']}').join(' / ');
     if (!(rowQty(r, k) > 0)) return 'this row has no work yet – type its ${way(r) == 'Time' ? 'From and To' : 'Close'} (or delete the row).';
+    // update-144: every row of the shift by Time (no row by Hrs) – each row its own From – To, never at the same time as another row
+    if (mixOk && !grp.any((x) => hasHr(way(x)))) {
+      List<List<String>> sl(LxRow x) => slotsParse(timePart(x)['ts']);
+      final mine = timeSpans(sl(r), r.shift), o = grp.where((x) => x != r && rowQty(x, k) > 0 && spansMeet(mine, timeSpans(sl(x), x.shift))).firstOrNull;
+      if (o != null) return 'this row (${slotsSay(sl(r))}) is at the same time as row ${grp.indexOf(o) + 1} of this shift (${slotsSay(sl(o))}) – a machinery does one work at a time: correct the From – To.';
+    }
     if (plain(r)) return '';
     final p = pickOf(r, k);
     if (p.isEmpty) return 'each row of this shift is ONE work – press $names (not Split).';
@@ -962,10 +991,17 @@ class LogEdit {
       final r = g.first, own = owner[g] ?? '', hg = g.where((x) => hasHr(way(x))).toList(), mix = g.length > 1 && ho && hg.isNotEmpty && hg.length < g.length;
       final rr = mix ? hg.first : r, z = mix ? hg.last : g.last, w = way(rr), k = hasKm(w), h = hasHr(w);
       final odSet = r.date.endsWith('-01') ? r.odSet : '';
+      // update-144: every row of the shift by Time – ONE entry by Time: its times are the rows' times in the order of the shift, its break
+      // the breaks typed on the rows; the rows go in that order too
+      final allT = g.length > 1 && ho && hg.isEmpty && g.every((x) => way(x) == 'Time');
+      int at0(LxRow x) => (timeSpans(slotsParse(timePart(x)['ts']), x.shift).firstOrNull ?? const [0])[0];
+      final gg = allT ? ([...g]..sort((a, b) => at0(a) - at0(b))) : g;
+      final tSl = allT ? [for (final x in gg) ...slotsParse(timePart(x)['ts'])] : <List<String>>[];
+      final tB = allT ? r2(gg.fold<num>(0, (a, x) => a + _n0(timePart(x)['tb']))) : 0;
       if (g.length > 1) {
         final kind = partKind(r), parts = <Map<String, Object?>>[];
-        for (var j = 0; j < g.length; j++) {
-          final x = g[j], ph = g.sublist(0, j).where((y) => hasHr(way(y))).lastOrNull;
+        for (var j = 0; j < gg.length; j++) {
+          final x = gg[j], ph = gg.sublist(0, j).where((y) => hasHr(way(y))).lastOrNull;
           final p = <String, Object?>{'n': plain(x) ? '' : pickOf(x, kind), 'q': rowQty(x, kind), 'c': x.challan, 'p': x.remark, 'f': x.chFrom, 't': x.chTo, 'w': x.work};
           if (way(x) == 'Time') {
             p.addAll(timePart(x));
@@ -980,7 +1016,9 @@ class LogEdit {
           'same': g.every((x) => !x.isNew && !changed(x) && x.key == own) && pc[own] == g.length,
           'half': r.half, 'date': r.date, 'shift': r.shift, 'mode': w,
           'openingKm': k ? rr.okm : '', 'closingKm': k ? z.ckm : '', 'openingHr': h ? rr.ohr : '', 'closingHr': h ? z.chr : '',
-          'tStart': '', 'tEnd': '', 'tBreak': '', 'remark': joinTxt(g.map((x) => x.remark)),
+          'tStart': allT ? tSl.first[0] : '', 'tEnd': allT ? tSl.last[1] : '', 'tBreak': allT && tB > 0 ? tB : '',
+          if (allT) 'tSlots': tSl,
+          'remark': joinTxt(g.map((x) => x.remark)),
           'trip': fmtB && trips != 0 ? trips : '',
           'challan': joinTxt(g.map((x) => x.challan)),
           'chFrom': g.where((x) => x.chFrom.trim().isNotEmpty).firstOrNull?.chFrom ?? '',

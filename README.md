@@ -24,7 +24,11 @@ same work as the saved last one is refused on a machinery that is not on hours o
 sent with `add: 1`: the server adds only rows so marked (an older app is refused as before). The web's help
 (`assets/help/web_help.json`) taken again from the web page (`tool/web_help.js`), with its fixture
 (`test/fixtures/help/web_fix.json`); the assistant's fixture (`test/fixtures/ai/web_ai.json`) made again from update-143's page –
-the only change is `{add: 1}` on its 27 prefill calls.
+the only change is `{add: 1}` on its 27 prefill calls. **With Mechanical update-144** ("ase error nko n yeyla" – his JCB in Edit
+Log Book: Bucket by Time 14:00 – 18:00, "+ work in this shift" Breaker by Time 09:00 – 13:00): Edit Log Book (`lib/core/log_edit.dart`)
+no longer says "the rows of this shift are all by Time" for a machinery on hours – the shift is sent as ONE entry by Time, its times
+the rows' times in the order of the shift (`timeSpans`), its rows in that order; two rows at the same time are red ("is at the same
+time as row N … a machinery does one work at a time"). The web's help taken again (+1 rule).
 
 **Version 3.31.1 (20-10-2026, "AIK N OK AHE SAGLE FKT COLOUR THODE DIM DISAT AAHE APP THODI ENHANCE KR"):** the same colours a
 little brighter and fuller (`lib/ui/theme.dart`): the greens and the gold stronger, the cream page lighter, the soft tiles

@@ -202,6 +202,34 @@ void main() {
     expect(c.figs[3].note, 'Start cannot be less than 1,018 (Close of the last reading before it)', reason: 'the next entry is not moved (update-77)');
   });
 
+  test('(update-144) every row of a shift by Time: his screen – Bucket 14:00 – 18:00, + work Breaker 09:00 – 13:00: no red; saved as ONE entry by Time in the order of the day; two rows at the same time red', () {
+    final d = fx('ex200');
+    final r0 = (d['rows'] as List)[0] as Map;
+    r0.addAll({'mode': 'Time', 'unit': 'Time', 'ohr': '', 'chr': '', 'whr': 4, 'tStart': '14:00', 'tEnd': '18:00', 'tBrk': '', 'tSlots': '', 'itemWork': <String, Object?>{}, 'work': 'LOADING'});
+    final e = LogEdit(d, superUser: false, today: '2026-10-16');
+    expect('${e.rows[0].mode} ${e.rows[0].tStart}-${e.rows[0].tEnd} ${e.pickOf(e.rows[0], 'hr')}', 'Time 14:00-18:00 Bucket');
+    final n = e.addWork(e.rows[0])!;
+    expect(e.change(n, 'mode', 'Time'), isNull);
+    e.type(n, 'tStart', '09:00');
+    e.type(n, 'tEnd', '13:00');
+    e.pressWork(n, 'hr', 'Breaker');
+    var c = e.calc();
+    expect(c.figs[0].slotNote, '');
+    expect(c.figs[1].slotNote, '', reason: 'no "the rows of this shift are all by Time" any more');
+    expect(c.bad, 0);
+    final p = e.save();
+    expect(p.problem, '');
+    final row = (p.body['rows'] as List).first as Map;
+    expect((row['mode'], row['tStart'], row['tEnd'], row['tBreak']), ('Time', '09:00', '18:00', ''));
+    expect(row['tSlots'], [['09:00', '13:00'], ['14:00', '18:00']]);
+    expect(((row['items'] as Map)['_parts'] as List).map((q) => '${q['n']} ${q['ts']} ${q['q']} ${q['m']}'), ['Breaker 09:00-13:00 4 T', 'Bucket 14:00-18:00 4 T'], reason: 'the rows in the order of the day');
+    // the Breaker row into the Bucket time: both red with the reason
+    e.type(n, 'tEnd', '15:00');
+    c = e.calc();
+    expect(c.figs[1].slotNote, '01-10-2026 Full Day: this row (09:00 – 15:00) is at the same time as row 1 of this shift (14:00 – 18:00) – a machinery does one work at a time: correct the From – To.');
+    expect(c.bad > 0, true);
+  });
+
   test('A water tanker: the trips, what is wrong before saving, what is sent', () {
     final t = LtEdit({
       'machine': {'id': 'WT-1', 'owner': 'Jal Agency', 'type': 'Water Tanker'},
