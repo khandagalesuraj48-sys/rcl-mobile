@@ -654,12 +654,12 @@ class _QrPickState extends State<_QrPick> {
             ),
             const SizedBox(height: 8),
             TextField(key: const Key('qr-find'), onChanged: (v) => setState(() => q = v.trim()), decoration: InputDecoration(labelText: tr('Find'), hintText: tr('number, name or type'), prefixIcon: const Icon(Icons.search_rounded))),
-            Row(children: [
+            // the two buttons wrap on a narrow phone (one row overflowed at 360 px); the count on its own line
+            Wrap(spacing: 4, children: [
               TextButton(key: const Key('qr-tick'), onPressed: () => setState(() => sel.addAll(list.map((m) => '${m['id']}'))), child: Text('Tick all shown')),
               TextButton(key: const Key('qr-untick'), onPressed: () => setState(() => sel.removeAll(list.map((m) => '${m['id']}'))), child: Text('Untick all shown')),
-              const Spacer(),
-              Text(n == 0 ? 'Nothing ticked' : '$n ticked – $pg page${pg == 1 ? '' : 's'}', key: const Key('qr-count'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             ]),
+            Text(n == 0 ? 'Nothing ticked' : '$n ticked – $pg page${pg == 1 ? '' : 's'}', key: const Key('qr-count'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           ]),
         ),
         Expanded(
