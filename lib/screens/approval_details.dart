@@ -9,6 +9,7 @@ import '../core/format.dart';
 import '../core/session.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
+import '../ui/ask_bot.dart' show withAsk;
 
 /// The version of a request its details belong to: corrected and sent again, or decided → asked again.
 String detailsKey(Map<String, dynamic> r) => '${r['id']}|${r['status']}|${((r['history'] as List?) ?? const []).length}';
@@ -37,6 +38,7 @@ class ApprovalDetailsView extends StatelessWidget {
     final tables = ((d['tables'] as List?) ?? const []).whereType<Map>().map((t) => t.cast<String, dynamic>()).toList();
     final now = ((d['savedNow'] as List?) ?? const []).map((e) => '$e').toList();
     final photos = asNum(d['photos']) ?? 0;
+    final pics = ((d['pics'] as List?) ?? const []).whereType<Map>().map((p) => p.cast<String, dynamic>()).toList();      // (3.31.6) the pictures themselves
     return Container(
       key: Key('det-view-$id'),
       width: double.infinity,
@@ -61,7 +63,15 @@ class ApprovalDetailsView extends StatelessWidget {
           _DetTable(t),
           if ((asNum(t['more']) ?? 0) > 0) Text(tr('… {0} more rows').replaceFirst('{0}', '${t['more']}'), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         ],
-        if (photos > 0) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${tr('Photos / bill copies with it:')} ${photos.toInt()}', style: const TextStyle(fontSize: 13, color: C.muted))),
+        if (pics.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [for (var i = 0; i < pics.length; i++) _Pic(pics[i], key: Key('det-pic-$id-$i'))]),
+          Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('${d['picErr'] ?? ''}'.isNotEmpty ? tr('${d['picErr']}') : 'A picture opens full size when it is pressed. The links work for 15 minutes.',
+                  style: TextStyle(fontSize: 12.5, color: '${d['picErr'] ?? ''}'.isNotEmpty ? C.red : C.muted))),
+        ] else if (photos > 0)
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text('${tr('Photos / bill copies with it:')} ${photos.toInt()}', style: const TextStyle(fontSize: 13, color: C.muted))),
         if (now.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${tr('Saved now (before this change):')} ${now.join('; ')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
         if ('${d['reason'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('${tr('Reason:')} ${d['reason']}', style: const TextStyle(fontSize: 13, color: C.muted))),
         if (fields.isEmpty && tables.isEmpty) const Text('Nothing more than the line above was sent.', style: TextStyle(fontSize: 13, color: C.muted)),
@@ -95,6 +105,41 @@ class _DetTable extends StatelessWidget {
             for (final r in rows) TableRow(children: [for (var i = 0; i < cols.length; i++) cell(i < r.length ? '${r[i]}' : '')]),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// (3.31.6, Mechanical update-148) one photo of the entry: small here, full size when pressed (as the photos of a saved fill).
+class _Pic extends StatelessWidget {
+  const _Pic(this.x, {super.key});
+  final Map<String, dynamic> x;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = '${x['url'] ?? ''}', label = '${x['label'] ?? ''}';
+    Widget none(String w) => Container(color: C.bg, alignment: Alignment.center, padding: const EdgeInsets.all(6), child: Text(w, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: C.muted)));
+    return GestureDetector(
+      onTap: url.isEmpty
+          ? null
+          : () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => Scaffold(
+                  backgroundColor: Colors.black,
+                  appBar: AppBar(actions: withAsk(), backgroundColor: Colors.black, foregroundColor: Colors.white, title: Text(label)),
+                  body: Center(child: InteractiveViewer(maxScale: 6, child: Image.network(url, errorBuilder: (_, __, ___) => const Text('The picture could not be opened.', style: TextStyle(color: Colors.white))))),
+                ),
+              )),
+      child: Container(
+        width: 132,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.line)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            height: 96,
+            child: url.isEmpty ? none('The picture was not found.') : Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => none('The picture could not be opened.')),
+          ),
+          Padding(padding: const EdgeInsets.fromLTRB(8, 5, 8, 6), child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+        ]),
       ),
     );
   }
