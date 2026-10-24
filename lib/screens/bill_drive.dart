@@ -244,6 +244,8 @@ class _DriveScreenState extends State<DriveScreen> {
         Wrap(spacing: 8, runSpacing: 6, children: [
           OutlinedButton.icon(key: Key('sbv-${b['id']}'), style: kSmallBtn, onPressed: () => viewSavedBill(context, s, '${b['id']}'), icon: const Icon(Icons.print_rounded), label: Text('View / Print')),
           OutlinedButton.icon(key: Key('sbl-${b['id']}'), style: kSmallBtn, onPressed: () => printSavedBillLog(context, s, '${b['id']}'), icon: const Icon(Icons.menu_book_rounded), label: Text('Log Book')),
+          // (3.34.0, Mechanical update-153) the photos / PDF of its Log Book as submitted – one ZIP, each file checked
+          OutlinedButton.icon(key: Key('sbz-${b['id']}'), style: kSmallBtn, onPressed: () => billFilesZip(context, s, '${b['id']}'), icon: const Icon(Icons.attach_file_rounded), label: Text('Files')),
           if (s.superAdmin && !gone) OutlinedButton.icon(key: Key('sbd-${b['id']}'), style: kSmallBtn, onPressed: () => _delete(b), icon: const Icon(Icons.delete_outline_rounded, color: C.red), label: Text('Delete')),
         ]),
       ]),

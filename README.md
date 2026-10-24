@@ -14,6 +14,23 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.34.0 (24-10-2026, with Mechanical's update-153 – "Universal Smart Attachment … PDFs supported … multi-entry linking, no
+duplicate uploads … up to 10 per entry (configurable)" and the photo correction):** a Log Book entry (new or changed) has
+**Attachments – photos or PDF**: 📷 Camera, 🖼 Gallery, 📄 PDF; each photo is made ready on the phone (upright, at most 1600 px, a JPEG
+of a few hundred KB) and ✎ corrects it before it is sent – ⟲ ⟳, straighten, the four corners (a cut, or a photo taken at an angle
+made straight), ✂ a suggested cut of the paper (shown – used on "Use this"), Whole photo, Reset, Original quality, Use the original
+file. Only one copy of a photo is ever sent; the same file twice in one entry is refused. The files are sent when the entry is saved
+(`uploadAttachment` – the server keeps each file once under its SHA-256) and the entry keeps their fingerprints; a change sends the
+whole list with what it had when opened (`attWas` – changed by someone else meanwhile → refused, nothing lost). The entry card shows
+📎 n and its details open the files. **Scan with Mobile:** the web's QR code read by the app's scanner opens the capture screen –
+the same person, the same site – and the photos taken there show on the computer, which saves them with the entry (`capClaim`,
+`capAdd`). **Bills:** View / Print of a saved bill ends with the annex of its Log Book's files AS SUBMITTED (each file once, with its
+entries and fingerprint); RCL Drive → **Files**: one ZIP of them, each checked against its SHA-256, with `FINGERPRINTS.txt`.
+Administration → Rules of this site: the number of attachments of one entry (1 to 20, 10 unless set). `core/attach.dart`,
+`screens/attach_box.dart` (`AttachStrip`, `AttViewer`, `AttEditor`, `CaptureScreen`), `logbook.dart`, `label_scan.dart`,
+`bill.dart` (`billAttHtml`), `bill_print.dart` (`billFilesZip`), `bill_drive.dart`, `admin.dart`, the print style `.bill-att`; tests in
+`attach_test.dart` and `screens_test.dart`.
+
 **Version 3.33.0 (24-10-2026, with Mechanical's update-152 – "Once a Logbook Entry has been approved, or it is included in a submitted
 Machinery Bill: ONLY SUPER ADMIN CAN …"):** an entry approved in verification is marked **✔ Approved** (Log Book list, its details, Edit
 Log Book) and locked like a billed one: anybody else's change or delete is refused by the server and offered to the Super Admin

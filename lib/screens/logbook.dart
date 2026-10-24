@@ -20,6 +20,8 @@ import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker, DraftLine;
+import '../core/attach.dart';
+import 'attach_box.dart';
 import '../core/draft.dart';
 import 'log_edit.dart';
 import 'log_more.dart';
@@ -578,6 +580,7 @@ class LogCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text('${r['shift'] ?? ''}${r['half'] == true ? ' · ½' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           if (r['ap'] is Map) Padding(padding: const EdgeInsets.only(top: 3), child: Pill('✔ Approved', color: C.greenDark, bg: C.greenSoft)), // (3.33.0) approved in verification: locked
+          if ((r['att'] as List?)?.isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 3), child: Pill('📎 ${(r['att'] as List).length}', color: C.blue, bg: C.blueSoft)), // (3.34.0) its photos / PDF
           if ((asNum(r['qty']) ?? 0) > 0) Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.local_gas_station_rounded, size: 14, color: C.green), Text(' ${fmtNum(asNum(r['qty']))} L', style: const TextStyle(fontSize: 12.5, color: C.green, fontWeight: FontWeight.w600))]),
         ]),
       ]),
@@ -627,6 +630,17 @@ class LogCard extends StatelessWidget {
                   Expanded(child: Text(x.$2, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5))),
                 ]),
               ),
+            // (3.34.0, Mechanical update-153) its photos / PDF: opened from their 15-minute links
+            if ((r['att'] as List?)?.isNotEmpty == true && '${r['key'] ?? ''}'.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: OutlinedButton.icon(
+                  key: const Key('lc-att'),
+                  onPressed: () => openLogAttachments(context, '${r['key']}'),
+                  icon: const Icon(Icons.attach_file_rounded),
+                  label: Text('Attachments (${(r['att'] as List).length})'),
+                ),
+              ),
             if (s.canEdit('Log Book') && '${r['key'] ?? ''}'.isNotEmpty) ...[
               const SizedBox(height: 16),
               Row(children: [
@@ -660,6 +674,23 @@ class LogCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// (3.34.0, Mechanical update-153) the photos / PDF of a saved entry, big (getLogAttachments – links that work for 15 minutes).
+Future<void> openLogAttachments(BuildContext context, String key) async {
+  final s = SessionScope.read(context);
+  try {
+    final r = ((await s.api.call('getLogAttachments', [{'key': key}])) as Map).cast<String, dynamic>();
+    final fs = attList(r['files']);
+    if (!context.mounted) return;
+    if (fs.isEmpty) {
+      toast(context, 'This entry has no attachments now.');
+      return;
+    }
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttViewer(files: fs)));
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e), bad: true);
   }
 }
 
@@ -977,7 +1008,12 @@ class _LogFormState extends State<LogForm> {
         }
         dayItem = '${iw['_day'] ?? ''}';
         _pickFromTyped();
+        atts
+          ..clear()
+          ..addAll(attList(e['att']));
+        att0 = attShas(atts);
       });
+      if (atts.isNotEmpty) _attLinks();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -986,6 +1022,20 @@ class _LogFormState extends State<LogForm> {
         });
       }
     }
+  }
+
+  /// (3.34.0) the links of the entry's files (15 minutes), for their pictures
+  Future<void> _attLinks() async {
+    try {
+      final r = ((await SessionScope.read(context).api.call('getLogAttachments', [{'key': widget.editKey}])) as Map).cast<String, dynamic>();
+      final urls = {for (final f in attList(r['files'])) f.sha: f.url};
+      if (!mounted) return;
+      setState(() {
+        for (final f in atts) {
+          if ((urls[f.sha] ?? '').isNotEmpty) f.url = urls[f.sha]!;
+        }
+      });
+    } catch (_) {/* the tiles show without their pictures */}
   }
 
   /// Minutes between the times of a split (as the web: slotsGap).
@@ -1138,11 +1188,17 @@ class _LogFormState extends State<LogForm> {
       'chFrom': v('chFrom'), 'chTo': v('chTo'), 'work': v('work'), 'debitTo': v('debitTo'), 'debitRate': v('debitRate'),
       'estKm': off ? v('estKm') : '', 'estHr': off ? v('estHr') : '', 'meterNote': off || newMeter ? v('meterNote') : '', 'meter': newMeter ? 'new' : '',
       if (_itemsOut() != null) 'items': _itemsOut(),
+      if (atts.isNotEmpty) 'attachments': [for (final f in atts) f.ref],      // (3.34.0) added to what the entry has
     };
   }
 
   /// (Mechanical update-145) the version of the entry when it was opened for a change.
   String _ver = '';
+
+  /// (3.34.0, Mechanical update-153) the entry's photos / PDFs (sent when it is saved) and – a change – what it had when opened
+  final List<AttFile> atts = [];
+  List<String> att0 = [];
+  bool get _attChanged => attShas(atts).join(',') != att0.join(',');
 
   Map<String, dynamic> _change() {
     final km = hasKm(way), hr = hasHr(way);
@@ -1157,6 +1213,8 @@ class _LogFormState extends State<LogForm> {
       'tTimes': way == 'Time' ? slots.map((x) => '${x[0]} – ${x[1]}').join(', ') : '',
       'tBreak': way == 'Time' ? v('brk') : '', 'trip': way == 'Trip' ? v('trip') : '', 'challan': status ? '' : v('challan'),
       if (_itemsOut() != null) 'items': _itemsOut(),
+      // (3.34.0) the files changed: the whole list, and what it had when it was opened (changed by someone else since → refused)
+      if (_attChanged) ...{'attachments': [for (final f in atts) f.ref], 'attWas': att0},
     };
   }
 
@@ -1169,10 +1227,29 @@ class _LogFormState extends State<LogForm> {
     }
     final s = SessionScope.read(context);
     FocusScope.of(context).unfocus();
+    if (atts.any((f) => f.state == 'make')) {
+      setState(() => err = 'Wait a moment – a photo is being made ready.');
+      return;
+    }
     setState(() {
       busy = true;
       err = '';
     });
+    // (3.34.0) the files not sent yet go first (each kept once by the server); the entry is saved only when all are kept
+    if (atts.any((f) => f.state != 'ok')) {
+      final bad = await attSendAll(s.api, atts, () {
+        if (mounted) setState(() {});
+      });
+      if (bad.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            busy = false;
+            err = bad;
+          });
+        }
+        return;
+      }
+    }
     try {
       if (editing) {
         await s.api.call('updateLogRow', [widget.editKey, _change()], true);
@@ -1601,6 +1678,9 @@ class _LogFormState extends State<LogForm> {
                   const SizedBox(width: 10),
                   Expanded(flex: 2, child: TextField(controller: t('debitRate'), keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(hintText: tr('Rate'), prefixText: '₹ '))),
                 ]),
+                // (3.34.0, Mechanical update-153) photos / PDF of the entry – sent and kept with it when it is saved
+                _label('Attachments – photos or PDF', 'फोटो / PDF'),
+                AttachStrip(files: atts, max: attMaxOf(s.siteRules), enabled: !busy, onChanged: () => setState(() {})),
               ],
               if (err.isNotEmpty) InfoLine(err, bad: true),
             ],
