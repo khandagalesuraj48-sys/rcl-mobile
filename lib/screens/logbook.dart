@@ -96,6 +96,13 @@ class LogBookScreen extends StatefulWidget {
 final _logCache = <String, List<Map<String, dynamic>>>{};
 Map<String, dynamic>? _pendCache;
 DateTime? _pendAt;
+String? _pendSite; // (update-155) the site the pending list is of: another site asks again
+void _logForget() { // (update-155) emptied at sign-out and at another site (Session.clearMemory)
+  _logCache.clear();
+  _pendCache = null;
+  _pendAt = null;
+  _pendSite = null;
+}
 
 class _LogBookScreenState extends State<LogBookScreen> {
   String day = '', q = '';
@@ -130,6 +137,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
   Future<void> _load({bool pend = false}) async {
     final s = SessionScope.read(context), my = ++seq, key = '${s.site?.code}|$day';
     _ls ??= s..dataTick.addListener(_live);
+    Session.memoryClears.add(_logForget);
     setState(() {
       loading = rows.isEmpty;
       err = '';
@@ -143,10 +151,12 @@ class _LogBookScreenState extends State<LogBookScreen> {
           if (my == seq) rows = list;
         }),
       ];
-      if (pend || _pendCache == null || _pendAt == null || DateTime.now().difference(_pendAt!) > const Duration(minutes: 1)) {
+      if (pend || _pendCache == null || _pendAt == null || _pendSite != s.site?.code || DateTime.now().difference(_pendAt!) > const Duration(minutes: 1)) {
+        final ps = s.site?.code;
         jobs.add(s.api.call('logPending').then((r) {
           _pendCache = (r as Map).cast<String, dynamic>();
           _pendAt = DateTime.now();
+          _pendSite = ps;
         }).catchError((_) {}));
       }
       await Future.wait(jobs);

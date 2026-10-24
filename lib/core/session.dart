@@ -382,6 +382,7 @@ class Session extends ChangeNotifier {
   /// Opens a site: Mechanical's sign-in (a kept one, else a new ticket), the person's access and the site's lists.
   Future<void> chooseSite(String code) async {
     final s = sites.firstWhere((x) => x.code == code);
+    if (site?.code != code) clearMemory(); // (update-155) another site: nothing the screens kept of the one before
     site = s;
     siteName = s.name;
     api.mechUrl = s.module('mechanical')!.url;
@@ -559,22 +560,62 @@ class Session extends ChangeNotifier {
   }
 
   /* ---------------- LIVE (3.1.7, asked 15-10-2026: "app madhe live sync haway, app refresh kraychi kahich garaj nahi") ----------------
-   * While the app is on the screen it asks Mechanical every 15 seconds what changed (the same light "sync" as the web page). When
-   * the machinery, the stock, the Log Book or the diesel entries change – also by another person, on the web or another phone –
-   * the screens load again by themselves ([dataTick]); a verification request ("flow") updates the Approvals count. In the
-   * background nothing is asked. */
+   * While the app is on the screen it asks Mechanical what changed (the same light "sync" as the web page). When the machinery,
+   * the stock, the Log Book or the diesel entries change – also by another person, on the web or another phone – the screens
+   * load again by themselves ([dataTick]); a verification request ("flow") updates the Approvals count. In the background nothing
+   * is asked; coming back asks at once.
+   * (update-155 of Mechanical, asked 24-10-2026: "User A ने Data Save केला की User B ला सक्रिय Screen वर शक्यतो 2 सेकंदांत Update
+   * दिसला पाहिजे … Web, Android, iPhone आणि Windows") – the same rhythm as the web page (was every 15 seconds): Home and Entries
+   * (the screens that show others' entries) every 2 seconds, Reports and Me every 5, after 5 minutes without a touch every 15;
+   * the first touch after a quiet spell asks at once. Each answer is "the same" in a few bytes when nothing changed (answers.dart). */
   Map<String, String> versions = {};
   final ValueNotifier<int> dataTick = ValueNotifier<int>(0);
   Set<String> lastChanged = {};
   Timer? _live;
-  bool _ticking = false;
-  static const liveEvery = Duration(seconds: 15);
+  bool _ticking = false, _liveOn = false;
+  static const liveEvery = Duration(seconds: 15), liveFast = Duration(seconds: 2), liveOther = Duration(seconds: 5);
+  static const liveTabs = {'home', 'entries'};
+
+  /// the tab on the screen (set by the shell)
+  String screen = 'home';
+  DateTime _touched = DateTime.now();
+
+  /// how long until the next "what changed?"
+  Duration liveGap() {
+    if (DateTime.now().difference(_touched) > const Duration(minutes: 5)) return liveEvery;
+    return liveTabs.contains(screen) ? liveFast : liveOther;
+  }
+
+  /// a touch of the screen (main.dart): the quick rhythm stays; the first touch after a quiet spell asks at once
+  void touch() {
+    final quiet = DateTime.now().difference(_touched) > const Duration(seconds: 30);
+    _touched = DateTime.now();
+    if (quiet && _liveOn) _liveLoop();
+  }
+
+  /// another tab: a live one asks at once
+  void showing(String tab) {
+    if (tab == screen) return;
+    screen = tab;
+    if (_liveOn && liveTabs.contains(tab)) _liveLoop();
+  }
+
+  void _liveNext() {
+    _live?.cancel();
+    _live = _liveOn ? Timer(liveGap(), _liveLoop) : null;
+  }
+
+  Future<void> _liveLoop() async {
+    _live?.cancel();
+    await liveTick();
+    _liveNext();
+  }
 
   void startLive() {
-    _live?.cancel();
-    _live = Timer.periodic(liveEvery, (_) => liveTick());
+    _liveOn = true;
+    _touched = DateTime.now();
     _rtcOn();
-    liveTick();
+    _liveLoop();
   }
 
   /* (3.26.0) CALLS with the web (lib/core/rtc.dart): the phone's media come from [callKit] (main.dart gives flutter_webrtc on Android;
@@ -596,8 +637,31 @@ class Session extends ChangeNotifier {
   }
 
   void stopLive() {
+    _liveOn = false;
     _live?.cancel();
     _live = null;
+  }
+
+  /* (update-155) WHAT THE SCREENS KEEP IN MEMORY (a day's list, the pending list …) is emptied at sign-out and at another site, with
+   * the server answers kept by the Api (answers.dart): a screen registers its own clean-up here the first time it keeps something. */
+  static final memoryClears = <void Function()>{};
+  void clearMemory() {
+    for (final f in memoryClears.toList()) {
+      try {
+        f();
+      } catch (_) {/* the others are still emptied */}
+    }
+    api.answers.clear();
+  }
+
+  /// (update-155) the app is open and asking (kept on the phone at most once a minute): the Android alarm does not ask then
+  DateTime _liveMark = DateTime.fromMillisecondsSinceEpoch(0);
+  Future<void> _markLive() async {
+    if (DateTime.now().difference(_liveMark) < const Duration(minutes: 1)) return;
+    _liveMark = DateTime.now();
+    try {
+      await api.keep.write(kLiveAt, '${_liveMark.millisecondsSinceEpoch}');
+    } catch (_) {/* the alarm asks as before */}
   }
 
   Future<void> liveTick() async {
@@ -605,6 +669,7 @@ class Session extends ChangeNotifier {
     _ticking = true;
     try {
       final r = await api.call('sync', [rtc?.beatArg() ?? <String, dynamic>{}]);
+      unawaited(_markLive());
       if (r is Map && r['rtc'] != null) rtc?.inbox(r['rtc']); // (3.26.0) the notes of a call
       if (r is Map) _admin(r);
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
@@ -837,6 +902,7 @@ class Session extends ChangeNotifier {
   Future<void> signOut([String msg = '']) async {
     stopLive();
     rtcOff();
+    clearMemory(); // (update-155) nothing the screens kept stays after sign-out
     await api.signOut();
     site = null;
     machines = [];

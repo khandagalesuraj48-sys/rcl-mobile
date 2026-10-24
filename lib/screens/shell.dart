@@ -46,6 +46,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     hist.remove(t);
     hist.add(tab);
     tab = t;
+    _s?.showing(t); // (update-155) the live sync's rhythm follows the tab on the screen
   }
 
   /// The Entries tab of a diesel page (issue / inward / transfer).
@@ -186,9 +187,11 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     final s = SessionScope.of(context);
     final diesel = kKinds.any((k) => s.canSee(k.module)) || s.canSee('Log Book');      // (3.1.8) Entries: diesel pages and the Log Book
     final reports = reportsOf(s).isNotEmpty;
+    // (update-155) the tab on the screen (as "cur" below): Home and Entries load after others' changes only when they are seen
+    final seen = (tab == 'entries' && diesel) || (tab == 'reports' && reports) || tab == 'me' ? tab : 'home';
     final pages = <String, Widget>{
-      'home': HomeTab(onOpenEntries: _entries, onOpenReports: () => _go(reports ? 'reports' : 'home')),
-      if (diesel) 'entries': EntriesTab(kind: entriesKind, open: entriesOpen),
+      'home': HomeTab(onOpenEntries: _entries, onOpenReports: () => _go(reports ? 'reports' : 'home'), active: seen == 'home'),
+      if (diesel) 'entries': EntriesTab(kind: entriesKind, open: entriesOpen, active: tab == 'entries'),
       if (reports) 'reports': ReportsTab(active: tab == 'reports'),
       'me': const MeTab(),
     };
