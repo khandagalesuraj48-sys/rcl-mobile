@@ -14,6 +14,21 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.35.0 (24-10-2026, with Mechanical's update-155 – "Smart Cache … Smart Data Sync … User B ला सक्रिय Screen वर शक्यतो 2
+सेकंदांत Update … API Calls आणि Egress कमी करणे"):** the app keeps the last answer of each question **in memory only** (never on the
+phone's storage) with its fingerprint; asked again, the server answers "the same" (a few bytes), only the parts that changed, or the
+whole answer – the app rebuilds it and checks it against the server's SHA-256, and asks whole again on any mismatch (`core/answers.dart`,
+the same pieces and patch as the web page's; `Api._rpc`). Emptied at sign-out, at another site and at a new sign-in; a refusal drops
+it. **Live sync as the web:** Home and Entries every 2 seconds (was 15), Reports and Me every 5, after 5 minutes without a touch every
+15, nothing in the background and at once when the app comes back, a tab is chosen or the screen is touched after a quiet spell
+(`Session.liveGap`, `touch`, `showing`). **A tab that is not seen does not load:** Home and Entries load after others' changes only
+when they are on the screen (and only for what they show) – else the moment they are seen again (`ui/live.dart`, `appRoutes`).
+**What the screens keep** (a day's Entries and Log Book, the pending list – now kept per site) is emptied at sign-out and at
+another site (`Session.memoryClears`). **No answer at all:** a question and a numbered save are sent again (as before); a change
+without a number only when the server said it did not start it (busy, another save running). **Android:** the 15-minute alarm does
+not fetch the Approvals list while the app is open and asking (`live_at`). Tests: `answers_test.dart` (replays what Mechanical's own
+`server/delta.js` answers – `test/fixtures/answers155.json`).
+
 **Version 3.34.0 (24-10-2026, with Mechanical's update-153 – "Universal Smart Attachment … PDFs supported … multi-entry linking, no
 duplicate uploads … up to 10 per entry (configurable)" and the photo correction):** a Log Book entry (new or changed) has
 **Attachments – photos or PDF**: 📷 Camera, 🖼 Gallery, 📄 PDF; each photo is made ready on the phone (upright, at most 1600 px, a JPEG

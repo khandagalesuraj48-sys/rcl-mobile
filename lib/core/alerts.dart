@@ -80,7 +80,7 @@ class Alerts {
   }
 }
 
-const kAlertsSeen = 'alerts_seen', kMechUrl = 'mech_url';
+const kAlertsSeen = 'alerts_seen', kMechUrl = 'mech_url', kLiveAt = 'live_at'; // live_at: (update-155) the app was open and asking
 
 /// Tells what is new from the Approvals answer [d] (kept on the phone in [keep]).
 Future<void> tellAlerts(Map d, Keep keep) async {
@@ -101,6 +101,9 @@ Future<void> backgroundAlerts(Api api) async {
   await api.load();
   api.mechUrl = await api.keep.read(kMechUrl) ?? '';
   if (api.mechUrl.isEmpty || (api.token ?? '').isEmpty) return;
+  // (update-155) the app is open and asking by itself (its live sync – it tells what is new): the alarm does not ask as well
+  final at = int.tryParse(await api.keep.read(kLiveAt) ?? '') ?? 0;
+  if (DateTime.now().millisecondsSinceEpoch - at < 150000) return;
   final d = await api.call('getChangeRequests', [<String, dynamic>{}]);
   if (d is Map) await tellAlerts(d, api.keep);
 }

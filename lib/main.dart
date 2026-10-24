@@ -24,6 +24,7 @@ import 'ui/brand.dart';
 import 'ui/scope.dart';
 import 'ui/theme.dart';
 import 'ui/t.dart';
+import 'ui/live.dart' show appRoutes;
 
 /// The sign-in kept in the phone's own safe (Android Keystore / iOS Keychain) – never in plain files.
 class SecureKeep implements Keep {
@@ -146,6 +147,7 @@ class RclApp extends StatelessWidget {
         session: session,
         child: LangScope(child: MaterialApp(
           navigatorKey: appNav,
+          navigatorObservers: [appRoutes], // (update-155) a tab under a closed screen loads if it is old (ui/live.dart)
           title: 'RCL ERP',
           debugShowCheckedModeBanner: false,
           theme: appTheme(),
@@ -156,7 +158,12 @@ class RclApp extends StatelessWidget {
           builder: (context, child) {
             final m = MediaQuery.of(context), k = SessionScope.of(context).textScale;
             // (3.27.0) the lock over everything – the call's bar too
-            final app = LockLayer(lock: lock, nav: appNav, child: CallLayer(nav: appNav, child: child!));
+            // (update-155) a touch anywhere keeps the live sync's quick rhythm (Session.touch)
+            final app = Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: (_) => SessionScope.read(context).touch(),
+              child: LockLayer(lock: lock, nav: appNav, child: CallLayer(nav: appNav, child: child!)),
+            );
             return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
           },
           home: const Gate(),

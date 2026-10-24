@@ -22,10 +22,14 @@ import '../ui/ask_bot.dart';
 import 'super_delete.dart';
 import '../ui/t.dart';
 import '../ui/help.dart' show showGuide;
+import '../ui/live.dart';
 
 class EntriesTab extends StatefulWidget {
-  const EntriesTab({super.key, this.kind = '', this.open = 0});
+  const EntriesTab({super.key, this.kind = '', this.open = 0, this.active = true});
   final String kind;
+
+  /// (update-155) Entries is the tab on the screen (the shell says so): only then it loads after others' changes
+  final bool active;
 
   /// Home asked to open [kind] (counted, so the same page can be asked again after going back to the list).
   final int open;
@@ -38,8 +42,9 @@ bool Function()? entriesBack;
 
 /// Kept while the app is open: a day already seen shows at once (then it is read again).
 final _entriesCache = <String, List<Map<String, dynamic>>>{};
+void _entriesForget() => _entriesCache.clear(); // (update-155) emptied at sign-out and at another site (Session.clearMemory)
 
-class _EntriesTabState extends State<EntriesTab> {
+class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
   String kind = '', day = '', q = '', place = '';
   bool loading = false;
   String err = '';
@@ -69,6 +74,7 @@ class _EntriesTabState extends State<EntriesTab> {
   @override
   void didUpdateWidget(covariant EntriesTab old) {
     super.didUpdateWidget(old);
+    if (widget.active && !old.active) liveMaybe();
     if (widget.kind.isNotEmpty && (widget.kind != old.kind || widget.open != old.open)) {
       kind = widget.kind;
       _direct = true;
@@ -91,8 +97,16 @@ class _EntriesTabState extends State<EntriesTab> {
 
   Session? _ls;
   // (3.1.7) live: an entry added or changed elsewhere (the web, another phone, an approval) – the list loads again by itself
+  // (update-155) only when the tab is seen – else when it is seen again (lib/ui/live.dart)
   void _live() {
-    if (mounted && kind.isNotEmpty && (_ls?.lastChanged.any((g) => g == 'stock' || g == 'master' || g == 'flow') ?? true)) _load();
+    if (mounted && kind.isNotEmpty && (_ls?.lastChanged.any((g) => g == 'stock' || g == 'master' || g == 'flow') ?? true)) liveChanged();
+  }
+
+  @override
+  bool get liveActive => widget.active;
+  @override
+  void liveReload() {
+    if (kind.isNotEmpty) _load();
   }
 
   @override
@@ -105,6 +119,7 @@ class _EntriesTabState extends State<EntriesTab> {
   Future<void> _load() async {
     final s = SessionScope.read(context), k = kindOf(kind), my = ++seq, ck = '${s.site?.code}|$kind|$day';
     _ls ??= s..dataTick.addListener(_live);
+    Session.memoryClears.add(_entriesForget);
     setState(() {
       rows = _entriesCache[ck] ?? [];
       loading = rows.isEmpty;
