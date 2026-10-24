@@ -3,7 +3,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show ComputeCallback;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +20,9 @@ import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
 import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
+import 'package:rcl_mobile/core/attach.dart' show attCompute;
+import 'package:rcl_mobile/screens/attach_box.dart' show pickAttFiles, CaptureScreen;
+import 'package:image/image.dart' as img;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
@@ -3613,4 +3618,124 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/62_reports_overview.png'));
   }, tags: ['golden']);
+
+
+  // ---------- (3.34.0, Mechanical update-153) attachments of a Log Book entry ----------
+  Uint8List attPhoto() {
+    final im = img.Image(width: 320, height: 240);
+    img.fill(im, color: img.ColorRgb8(30, 41, 59));
+    img.fillRect(im, x1: 64, y1: 36, x2: 256, y2: 204, color: img.ColorRgb8(248, 250, 252));
+    return Uint8List.fromList(img.encodeJpg(im, quality: 90));
+  }
+  final attPdf = Uint8List.fromList(utf8.encode('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n'));
+  void attHooks() {
+    final p0 = pickAttFiles, c0 = attCompute;
+    attCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);      // (the photo is made at once)
+    addTearDown(() {
+      pickAttFiles = p0;
+      attCompute = c0;
+    });
+  }
+
+  testWidgets('(3.34.0 – update-153) attachments: a photo from the gallery and a PDF on a new Log Book entry – sent when it is saved; the entry keeps their fingerprints; the same photo twice is refused', (t) async {
+    phone(t);
+    attHooks();
+    final photo = attPhoto();
+    pickAttFiles = (how, room) async => how == 'pdf' ? [(name: 'challan.pdf', bytes: attPdf)] : [(name: 'meter.jpg', bytes: photo)];
+    final srv = FakeServer()..perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook').last);
+    await net(t);
+    await t.tap(find.text('New Entry'));
+    await net(t);
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('MH-25-AJ-2169'));
+    await net(t);
+    await t.enterText(find.widgetWithText(TextField, 'Close'), '15350');
+    await settle(t, 300);
+    await t.ensureVisible(find.byKey(const Key('att-gal')));
+    await settle(t, 300);
+    expect(find.text('None yet – optional.'), findsOneWidget);
+    await t.tap(find.byKey(const Key('att-gal')));
+    await net(t);
+    await t.tap(find.byKey(const Key('att-pdf')));
+    await net(t);
+    expect(find.byKey(const Key('att-tile-0')), findsOneWidget);
+    expect(find.byKey(const Key('att-tile-1')), findsOneWidget);
+    expect(find.textContaining('2 of 10'), findsOneWidget, reason: 'the site\'s number: 10 unless set');
+    expect(srv.uploads, isEmpty, reason: 'nothing is sent before the entry is saved');
+    await t.tap(find.byKey(const Key('att-gal')));
+    await net(t);
+    expect(find.textContaining('is already attached – it is not added twice'), findsOneWidget);
+    expect(find.byKey(const Key('att-tile-2')), findsNothing);
+    await t.tap(find.text('Save Log Book'));
+    await net(t);
+    expect(srv.uploads.map((u) => '${u['mime']} ${u['name']}').toList(), ['image/jpeg meter.jpg', 'application/pdf challan.pdf']);
+    final row = srv.logSaved.single;
+    expect(row['attachments'], [{'sha': srv.uploads[0]['sha']}, {'sha': srv.uploads[1]['sha']}]);
+    expect(find.text('Log Book saved'), findsOneWidget);
+  });
+
+  testWidgets('(3.34.0 – update-153) a change: the entry\'s files shown; one taken out – sent with what it had when opened (attWas); nothing else is changed', (t) async {
+    phone(t);
+    attHooks();
+    final srv = FakeServer()
+      ..perms['Log Book'] = 'Edit'
+      ..entryAtt = [
+        {'sha': 'a' * 64, 'p': 'log/aa/${'a' * 64}.jpg', 'mime': 'image/jpeg', 'size': 120000, 'name': 'meter.jpg', 'by': 'Op', 'at': '2026-10-14T03:00:00Z'},
+        {'sha': 'b' * 64, 'p': 'log/bb/${'b' * 64}.pdf', 'mime': 'application/pdf', 'size': 30000, 'name': 'challan.pdf', 'by': 'Op', 'at': '2026-10-14T03:00:00Z'},
+      ];
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    final nav = t.state<NavigatorState>(find.byType(Navigator).first);
+    unawaited(nav.push(MaterialPageRoute<bool>(builder: (_) => const LogForm(editKey: 'MH-25-AJ-2169|2026-10-14|Full Day'))));
+    await net(t);
+    await t.ensureVisible(find.byKey(const Key('att-tile-1')));
+    await settle(t, 300);
+    expect(find.byKey(const Key('att-tile-0')), findsOneWidget);
+    await t.tap(find.byKey(const Key('att-rm-1')));
+    await settle(t, 300);
+    expect(find.textContaining('nothing is deleted'), findsOneWidget);
+    await t.tap(find.text('Save the change'));
+    await net(t);
+    final ch = srv.logSaved.single;
+    expect(ch['update'], 'MH-25-AJ-2169|2026-10-14|Full Day');
+    expect(ch['attachments'], [{'sha': 'a' * 64}]);
+    expect(ch['attWas'], ['a' * 64, 'b' * 64]);
+    expect(srv.uploads, isEmpty, reason: 'the kept files are not sent again');
+  });
+
+  testWidgets('(3.34.0 – update-153) Scan with Mobile: the computer\'s QR code → the same person\'s phone takes a photo and sends it (uploadAttachment, then capAdd with the code and this phone); a code that is not valid says so', (t) async {
+    phone(t);
+    attHooks();
+    final photo = attPhoto();
+    pickAttFiles = (how, room) async => [(name: 'phone.jpg', bytes: photo)];
+    final srv = FakeServer()..perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    final nav = t.state<NavigatorState>(find.byType(Navigator).first);
+    unawaited(nav.push(MaterialPageRoute<void>(builder: (_) => CaptureScreen(code: srv.capCodeOk))));
+    await net(t);
+    expect(find.text('MH-25-AJ-2169 · 14-10-2026 · Day'), findsOneWidget);
+    await t.tap(find.byKey(const Key('att-cam')));
+    await net(t);
+    expect(find.byKey(const Key('att-tile-0')), findsOneWidget);
+    await t.tap(find.byKey(const Key('cap-send')));
+    await net(t);
+    expect(srv.uploads.length, 1);
+    final add = srv.capAdds.single;
+    expect([add['code'], add['shas'], RegExp(r'^p-[0-9a-f]{24}$').hasMatch('${add['phone']}')], [srv.capCodeOk, [srv.uploads[0]['sha']], true]);
+    expect(find.textContaining('1 sent ✓'), findsOneWidget);
+    nav.pop();
+    await net(t);
+    unawaited(nav.push(MaterialPageRoute<void>(builder: (_) => CaptureScreen(code: '${'c' * 32}.${'d' * 64}'))));
+    await net(t);
+    expect(find.textContaining('This QR code is not valid'), findsOneWidget);
+    expect(find.byKey(const Key('cap-send')), findsNothing);
+  });
 }

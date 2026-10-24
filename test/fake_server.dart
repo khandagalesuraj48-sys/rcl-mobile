@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -16,6 +17,13 @@ class FakeServer {
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
+  // (3.34.0, Mechanical update-153) attachments: the files sent (uploadAttachment), the entry's files (getLogEntry → att), Scan with
+  // Mobile (the code the "computer" made, what the phone added) and a saved bill's files (getBillAttachments)
+  final uploads = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> entryAtt = [];
+  final capCodeOk = '${'a' * 32}.${'b' * 64}';
+  final capAdds = <Map<String, dynamic>>[];
+  int capHave = 0;
   bool billLock = false; // (14-10-2026) the entries are in a submitted bill: Mechanical refuses a change (not the Super Admin's)
   bool apLock = false; // (3.33.0, Mechanical update-152) the entry was approved in verification: refused the same way (not the Super Admin's)
   final saReasons = <String>[]; // (3.33.0) the Super Admin's reasons that came with a save of a locked entry
@@ -1224,7 +1232,27 @@ class FakeServer {
           logSaved.addAll(rows);
           return _j({'result': {'ok': true, 'count': rows.length, if (addTo != null) 'added': rows.length, if (addTo != null) 'into': 1}});
         case 'getLogEntry':
-          return _j({'result': {'key': a[0], 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'unit': 'KM', 'okm': 15100, 'ckm': 15230, 'ohr': '', 'chr': '', 'work': 'Earth carting', 'chFrom': '12+000', 'chTo': '12+500', 'first': false, 'boqItems': [], 'itemWork': {}, 'lock': null, 'next': null, 'prev': {'date': '2026-10-13', 'shift': 'Full Day'}}});
+          return _j({'result': {'key': a[0], 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'unit': 'KM', 'okm': 15100, 'ckm': 15230, 'ohr': '', 'chr': '', 'work': 'Earth carting', 'chFrom': '12+000', 'chTo': '12+500', 'first': false, 'boqItems': [], 'itemWork': {}, 'lock': null, 'next': null, 'prev': {'date': '2026-10-13', 'shift': 'Full Day'}, if (entryAtt.isNotEmpty) 'att': entryAtt}});
+        case 'uploadAttachment':
+          final up = (a[0] as Map).cast<String, dynamic>(), m = RegExp(r'^data:(image/jpeg|image/png|application/pdf);base64,(.+)$').firstMatch('${up['data']}');
+          if (m == null) return _j({'error': 'An attachment must be a photo (JPG or PNG) or a PDF.'}, 500);
+          final raw = base64Decode(m.group(2)!), sha = crypto.sha256.convert(raw).toString(), ext = m.group(1) == 'application/pdf' ? 'pdf' : m.group(1) == 'image/png' ? 'png' : 'jpg';
+          uploads.add({'sha': sha, 'mime': m.group(1), 'size': raw.length, 'name': up['name']});
+          return _j({'result': {'ok': true, 'sha': sha, 'path': 'log/${sha.substring(0, 2)}/$sha.$ext', 'mime': m.group(1), 'size': raw.length, 'name': up['name'], 'dup': false}});
+        case 'getLogAttachments':
+          return _j({'result': {'key': _arg(a, 'key'), 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'max': 10, 'files': [for (final f in entryAtt) {...f, 'url': ''}]}});
+        case 'capClaim':
+          if ('${_arg(a, 'code')}' != capCodeOk) return _j({'error': 'This QR code is not valid (any more) – make a new one on the computer ("Scan with Mobile").'}, 500);
+          return _j({'result': {'ok': true, 'label': 'MH-25-AJ-2169 · 14-10-2026 · Day', 'key': 'MH-25-AJ-2169|2026-10-14|Day', 'max': 10, 'have': capHave, 'ends': '2026-10-14T05:15:00Z'}});
+        case 'capAdd':
+          capAdds.add((a[0] as Map).cast<String, dynamic>());
+          capHave += ((_arg(a, 'shas') as List?) ?? const []).length;
+          return _j({'result': {'ok': true, 'have': capHave}});
+        case 'getBillAttachments':
+          return _j({'result': {'id': _arg(a, 'id'), 'billNo': '7', 'rev': 0, 'kind': 'submission', 'fixed': true, 'count': 2, 'files': [
+            {'sha': 'c' * 64, 'p': 'log/cc/${'c' * 64}.jpg', 'mime': 'image/jpeg', 'name': 'meter.jpg', 'by': 'Op', 'at': '2026-10-01T03:00:00Z', 'url': 'https://x.test/c.jpg', 'entries': [{'key': 'K1', 'no': 'MH-25-AJ-2169', 'date': '2026-10-01', 'shift': 'Day'}, {'key': 'K2', 'no': 'MH-25-AJ-2169', 'date': '2026-10-01', 'shift': 'Night'}]},
+            {'sha': 'd' * 64, 'p': 'log/dd/${'d' * 64}.pdf', 'mime': 'application/pdf', 'name': 'challan.pdf', 'by': 'Op', 'at': '2026-10-01T03:00:00Z', 'url': 'https://x.test/d.pdf', 'entries': [{'key': 'K1', 'no': 'MH-25-AJ-2169', 'date': '2026-10-01', 'shift': 'Day'}]},
+          ]}});
         case 'updateLogRow':
           logSaved.add({'update': a[0], ...(a[1] as Map).cast<String, dynamic>()});
           return _j({'result': {'ok': true}});

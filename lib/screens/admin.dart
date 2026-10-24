@@ -536,7 +536,7 @@ class RulesScreen extends StatefulWidget {
 }
 
 class _RulesScreenState extends State<RulesScreen> {
-  final back = TextEditingController(), note = TextEditingController();
+  final back = TextEditingController(), note = TextEditingController(), att = TextEditingController();      // (3.34.0) attachments of an entry
   String day = '08:00', night = '20:00';
   bool busy = false, started = false;
 
@@ -548,6 +548,7 @@ class _RulesScreenState extends State<RulesScreen> {
     final s = SessionScope.read(context), r = s.siteRules;
     back.text = '${r['backDays'] ?? ''}';
     note.text = '${r['announce'] ?? ''}';
+    att.text = '${r['attachMax'] ?? 10}';
     day = s.dayFrom;
     night = s.nightFrom;
   }
@@ -556,6 +557,7 @@ class _RulesScreenState extends State<RulesScreen> {
   void dispose() {
     back.dispose();
     note.dispose();
+    att.dispose();
     super.dispose();
   }
 
@@ -572,7 +574,7 @@ class _RulesScreenState extends State<RulesScreen> {
     setState(() => busy = true);
     try {
       final r = (await s.api.call('saveSiteRules', [
-        {'backDays': back.text.trim(), 'announce': note.text.trim(), 'dayFrom': day, 'nightFrom': night}
+        {'backDays': back.text.trim(), 'announce': note.text.trim(), 'dayFrom': day, 'nightFrom': night, 'attachMax': att.text.trim()}
       ], true)) as Map;
       final rules = (r['rules'] as Map?)?.cast<String, dynamic>();
       if (rules != null) {
@@ -605,6 +607,8 @@ class _RulesScreenState extends State<RulesScreen> {
             const SizedBox(width: 8),
             Expanded(child: _timeBox('rule-night', 'Night shift starts at', night, () => _time(false))),
           ]),
+          const SizedBox(height: 8),
+          TextBox(key: const Key('rule-att'), label: 'Attachments of one Log Book entry (photos / PDF), at most', controller: att, kb: TextInputType.number, hint: '1 to 20 (10 unless set)'),
           const SizedBox(height: 12),
           FilledButton(key: const Key('rule-save'), onPressed: busy ? null : _save, child: Text('Save the rules')),
           const SizedBox(height: 12),

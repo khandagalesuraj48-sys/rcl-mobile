@@ -662,6 +662,24 @@ String debitNoteDocHtml(Map n) {
 }
 
 /// (3.32.0 – the web's update-151) The note printed above a saved bill's Log Book, word for word as the web's billLogOf. [ev] is
+/// (3.34.0, Mechanical update-153 – the web's billAttHtml) the annex of a saved bill's files (getBillAttachments): each file once,
+/// with its entries and fingerprint; photos shown, a PDF marked; "as submitted" (its evidence) or, a legacy bill, today's.
+String billAttHtml(Map? r) {
+  final files = [for (final f in (r?['files'] as List? ?? const [])) if (f is Map) f];
+  if (files.isEmpty) return '';
+  final fixed = r!['fixed'] == true, rev = '${r['rev'] ?? ''}';
+  final b = StringBuffer('<section class="billsheet bill-att"><h2>Attachments of the Log Book – RA Bill ${_e('${r['billNo'] ?? ''}')}${rev.isNotEmpty && rev != '0' ? ' rev ${_e(rev)}' : ''} (${files.length} file${files.length == 1 ? '' : 's'})</h2>');
+  b.write('<div class="ev-note${fixed ? '' : ' legacy'}">${fixed ? 'The files each entry had when the bill was submitted – kept with the bill; a file is kept under its fingerprint (SHA-256) and never changed.' : 'This bill was submitted before files were kept with bills: these are the files the entries have TODAY.'}</div><div class="ba-grid">');
+  for (final (i, f) in files.indexed) {
+    final pdf = '${f['mime']}' == 'application/pdf', url = '${f['url'] ?? ''}', sha = '${f['sha'] ?? ''}';
+    final ents = [for (final e in (f['entries'] as List? ?? const [])) if (e is Map) _e('${e['no']} · ${showDate('${e['date'] ?? ''}')} · ${e['shift'] ?? ''}')].join('<br>');
+    final name = '${f['name'] ?? ''}'.isNotEmpty ? '${f['name']}' : (pdf ? 'document.pdf' : 'photo');
+    b.write('<figure>${pdf ? '<div class="ba-pdf">PDF</div>' : url.isNotEmpty ? '<img alt="" src="${_e(url)}">' : ''}<figcaption><b>${i + 1}.</b> ${_e(name)}<br>$ents<br>SHA-256 ${_e(sha.length > 20 ? sha.substring(0, 20) : sha)}…</figcaption></figure>');
+  }
+  b.write('</div></section>');
+  return b.toString();
+}
+
 /// the server's getBillEvidence answer: kind 'submission' – the Log Book AS SUBMITTED (kept with the bill, never changed), with
 /// its check; anything else (a bill submitted before, or no answer) – the Log Book of TODAY, said so, with how many entries of its
 /// machinery and dates changed after the bill was saved. [now]: the time of this print (the phone's time).

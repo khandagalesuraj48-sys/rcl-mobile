@@ -3,14 +3,20 @@
  * company name; handed to the phone's printing (a printer, or "Save as PDF"). Used by Machinery Billing (preview, the bills just
  * submitted), RCL Drive, Bill Summary and the Vendor Ledger (a saved bill: View / Print, its Log Book). */
 import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:archive/archive.dart' show Archive, ArchiveFile, ZipEncoder;
+import 'package:http/http.dart' as http;
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart' show rootBundle;
 
+import '../core/attach.dart' show attSha;
 import '../core/bill.dart';
 import '../core/lb_print.dart';
 import '../core/session.dart';
 import '../ui/widgets.dart';
+import '../web/files.dart' show handOver;
 import '../web/print_view.dart';
 import 'log_print.dart';
 
@@ -136,8 +142,60 @@ Future<void> viewSavedBill(BuildContext context, Session s, String id) async {
     } catch (e) {
       if (context.mounted) toast(context, 'The Log Book could not be read (${errText(e)}) – the bill papers are shown without it.', bad: true);
     }
+    // (3.34.0, Mechanical update-153) the annex of its files, as submitted
+    var ann = '';
+    try {
+      ann = billAttHtml((await s.api.call('getBillAttachments', [
+        {'id': id}
+      ])) as Map?);
+    } catch (_) {/* the papers without the annex */}
     if (!context.mounted) return;
-    await showBillPrint(context, 'Abstract of Bill – ${b['vendor']} – RA Bill ${b['billNo']}', billSheets(data, b['status'] == 'Superseded' ? ' superseded' : b['status'] == 'Deleted' ? ' deleted' : '', logo: logo) + lb, withLb: lb.isNotEmpty, foot: '${b['company'] ?? ''}');
+    await showBillPrint(context, 'Abstract of Bill – ${b['vendor']} – RA Bill ${b['billNo']}', billSheets(data, b['status'] == 'Superseded' ? ' superseded' : b['status'] == 'Deleted' ? ' deleted' : '', logo: logo) + lb + ann, withLb: lb.isNotEmpty, foot: '${b['company'] ?? ''}');
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e), bad: true);
+  }
+}
+
+/// (3.34.0, Mechanical update-153 – the web's billFilesZip) the files of a saved bill's Log Book as submitted: one ZIP – each file named
+/// by date, machinery and shift, checked against its SHA-256 as it is put in, and FINGERPRINTS.txt – handed over (share sheet).
+Future<void> billFilesZip(BuildContext context, Session s, String id) async {
+  try {
+    final r = ((await s.api.call('getBillAttachments', [
+      {'id': id}
+    ])) as Map).cast<String, dynamic>();
+    final files = [for (final f in (r['files'] as List? ?? const [])) if (f is Map) f];
+    if (!context.mounted) return;
+    if (files.isEmpty) {
+      toast(context, 'This bill\'s Log Book has no attachments${r['fixed'] == true ? ' (as submitted)' : ''}.');
+      return;
+    }
+    final rev = '${r['rev'] ?? ''}', a = Archive();
+    final lines = ['Attachments of the Log Book – RA Bill ${r['billNo']}${rev.isNotEmpty && rev != '0' ? ' rev $rev' : ''}', r['fixed'] == true ? 'As submitted with the bill (its evidence). Each file is checked against its SHA-256.' : 'Legacy bill: the files the entries have TODAY.', ''];
+    var bad = 0;
+    for (final (i, f) in files.indexed) {
+      final e0 = ((f['entries'] as List?)?.firstOrNull as Map?) ?? const {};
+      final ext = '${f['mime']}' == 'application/pdf' ? 'pdf' : '${f['mime']}' == 'image/png' ? 'png' : 'jpg';
+      final nm = '${(i + 1).toString().padLeft(2, '0')}_${e0['date'] ?? ''}_${e0['no'] ?? ''}_${e0['shift'] ?? ''}'.replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '-') + '.$ext';
+      Uint8List? b;
+      try {
+        final res = await http.get(Uri.parse('${f['url']}')).timeout(const Duration(seconds: 60));
+        if (res.statusCode == 200) b = res.bodyBytes;
+      } catch (_) {
+        b = null;
+      }
+      final same = b != null && attSha(b) == '${f['sha']}';
+      if (!same) bad++;
+      if (b != null) a.addFile(ArchiveFile(nm, b.length, b));
+      final ents = [for (final x in (f['entries'] as List? ?? const [])) if (x is Map) '${x['no']} ${x['date']} ${x['shift']}'].join(', ');
+      lines.add('$nm  SHA-256 ${f['sha']}  ${b == null ? 'could not be read ✗' : same ? 'checked ✔' : 'DOES NOT MATCH ✗'}  $ents');
+    }
+    final t = utf8.encode('${lines.join('\r\n')}\r\n');
+    a.addFile(ArchiveFile('FINGERPRINTS.txt', t.length, t));
+    final List<int>? zout = ZipEncoder().encode(a);
+    final zip = Uint8List.fromList(zout ?? const []);
+    if (!context.mounted) return;
+    await handOver(zip, 'RA-Bill-${r['billNo']}${rev.isNotEmpty && rev != '0' ? '-rev$rev' : ''}-attachments.zip', 'application/zip');
+    if (context.mounted) toast(context, bad > 0 ? '$bad file${bad == 1 ? '' : 's'} could not be read or did not match – see FINGERPRINTS.txt in the ZIP.' : '${files.length} file${files.length == 1 ? '' : 's'} in the ZIP – each matches its fingerprint ✔.', bad: bad > 0);
   } catch (e) {
     if (context.mounted) toast(context, errText(e), bad: true);
   }
