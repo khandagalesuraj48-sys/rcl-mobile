@@ -616,7 +616,7 @@ class EntryCard extends StatelessWidget {
                       final s = SessionScope.read(context);
                       if (!await ask(c, 'Delete ${r['id']}?', '$_title – ${fmtNum(asNum(r['qty']))} L, ${showDate('${r['date'] ?? ''}')}. ${bi('This cannot be undone.', 'हे परत आणता येणार नाही.')}', yes: 'Delete', danger: true)) return;
                       try {
-                        await s.api.call(deleteOf(kind.key), [r['id'], if (kind.key == 'issue' && '${r['ver'] ?? ''}'.isNotEmpty) '${r['ver']}'], true); // (Mechanical update-145)
+                        await s.api.call(deleteOf(kind.key), [r['id'], if ('${r['ver'] ?? ''}'.isNotEmpty) '${r['ver']}'], true); // (Mechanical update-145; update-156: every kind)
                         if (c.mounted) Navigator.pop(c);
                         if (context.mounted) toast(context, '${r['id']} deleted.');
                         onChanged?.call();

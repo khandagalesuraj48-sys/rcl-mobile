@@ -14,6 +14,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.36.0 (24-10-2026, with Mechanical's update-156 – "Concurrent Updates साठी Version Checks आणि Conflict Detection"):**
+every edit screen sends the version of the entry it opened, as the web page does – Diesel Issue (since update-145) and now Inward,
+Transfer, Payments, Asset Master (one, many at once, delete, delete many), Vendor BOQ (change, delete) and Vendor Master (change,
+delete): an entry someone else changed after it was opened is refused with who changed it; nothing is saved (`forms.dart`,
+`entries.dart`, `bill_money.dart`, `machine_form.dart`, `machinery.dart`, `boq.dart`, `vendors.dart`; test `version156_test.dart`).
+
 **Version 3.35.0 (24-10-2026, with Mechanical's update-155 – "Smart Cache … Smart Data Sync … User B ला सक्रिय Screen वर शक्यतो 2
 सेकंदांत Update … API Calls आणि Egress कमी करणे"):** the app keeps the last answer of each question **in memory only** (never on the
 phone's storage) with its fingerprint; asked again, the server answers "the same" (a few bytes), only the parts that changed, or the

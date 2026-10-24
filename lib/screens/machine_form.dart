@@ -188,6 +188,8 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
       err = '';
     });
     try {
+      // (Mechanical update-156) the version it had when it was opened – changed by someone else since → refused, nothing saved
+      if (widget.edit != null && '${before?['ver'] ?? ''}'.isNotEmpty) m['ver'] = '${before!['ver']}';
       final res = (await s.api.call('saveMaster', [m, mode, widget.edit == null ? null : editId], true) as Map).cast<String, dynamic>();
       s.setMaster(res['master']);
       if (!mounted) return;
