@@ -909,6 +909,5 @@
 "This entry has no attachments now.": "इस entry के अब attachments नहीं हैं।",
 "Files": "Files (फ़ोटो / PDF)",
 "Attachments of one Log Book entry (photos / PDF), at most": "एक Log Book entry के attachments (फ़ोटो / PDF), ज़्यादा से ज़्यादा",
-"1 to 20 (10 unless set)": "1 से 20 (तय न हो तो 10)",
-"This QR code is not a machinery label of the ERP (nor a \"Scan with Mobile\" code).": "यह QR code ERP का machinery label नहीं है (और \"Scan with Mobile\" code भी नहीं)।"
+"1 to 20 (10 unless set)": "1 से 20 (तय न हो तो 10)"
 }

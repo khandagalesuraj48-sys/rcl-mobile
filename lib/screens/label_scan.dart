@@ -42,7 +42,7 @@ Future<void> scanMachineLabel(BuildContext context, {VoidCallback? onSaved}) asy
   }
   final id = labelMachine(text);
   if (id.isEmpty) {
-    toast(context, 'This QR code is not a machinery label of the ERP (nor a "Scan with Mobile" code).', bad: true);
+    toast(context, 'This QR code is not a machinery label of the ERP.', bad: true);
     return;
   }
   final f = findMachine([for (final m in s.machines) m.m], id);
