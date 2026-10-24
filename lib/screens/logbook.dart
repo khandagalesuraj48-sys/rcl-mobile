@@ -492,6 +492,8 @@ class LogCard extends StatelessWidget {
       ('Chainage', '${t['ch']}'),
       ('Use for', '${t['u']}'),
       ('Entered by', [r['enteredBy'], if ('${r['updatedBy'] ?? ''}'.isNotEmpty) 'changed by ${r['updatedBy']}'].where((e) => '${e ?? ''}'.isNotEmpty).join(' · ')),
+      // (3.33.0) approved in verification: locked – only the Super Admin changes it
+      if (r['ap'] is Map) ('Approved', [if ('${(r['ap'] as Map)['by'] ?? ''}'.isNotEmpty) 'by ${(r['ap'] as Map)['by']}', if ('${(r['ap'] as Map)['at'] ?? ''}'.length >= 10) 'on ${showDate('${(r['ap'] as Map)['at']}'.substring(0, 10))}', '${(r['ap'] as Map)['ref'] ?? ''}', '– only the Super Admin changes it'].where((e) => e.isNotEmpty).join(' ')),
     ].where((x) => x.$2.trim().isNotEmpty).toList();
     await showModalBottomSheet<void>(
       context: context,
@@ -575,6 +577,7 @@ class LogCard extends StatelessWidget {
           Pill(workText(r), color: color, bg: soft),
           const SizedBox(height: 6),
           Text('${r['shift'] ?? ''}${r['half'] == true ? ' · ½' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (r['ap'] is Map) Padding(padding: const EdgeInsets.only(top: 3), child: Pill('✔ Approved', color: C.greenDark, bg: C.greenSoft)), // (3.33.0) approved in verification: locked
           if ((asNum(r['qty']) ?? 0) > 0) Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.local_gas_station_rounded, size: 14, color: C.green), Text(' ${fmtNum(asNum(r['qty']))} L', style: const TextStyle(fontSize: 12.5, color: C.green, fontWeight: FontWeight.w600))]),
         ]),
       ]),
@@ -599,6 +602,8 @@ class LogCard extends StatelessWidget {
       ('Debit to', '${r['debitTo'] ?? ''}'.isEmpty ? '' : '${r['debitTo']}${asNum(r['debitRate']) != null ? ' @ ₹${fmtNum(asNum(r['debitRate']))}' : ''}'),
       ('Diesel issued', (asNum(r['qty']) ?? 0) > 0 ? '${fmtNum(asNum(r['qty']))} L' : ''),
       ('Entered by', [r['enteredBy'], if ('${r['updatedBy'] ?? ''}'.isNotEmpty) 'changed by ${r['updatedBy']}'].where((e) => '${e ?? ''}'.isNotEmpty).join(' · ')),
+      // (3.33.0) approved in verification: locked – only the Super Admin changes it
+      if (r['ap'] is Map) ('Approved', [if ('${(r['ap'] as Map)['by'] ?? ''}'.isNotEmpty) 'by ${(r['ap'] as Map)['by']}', if ('${(r['ap'] as Map)['at'] ?? ''}'.length >= 10) 'on ${showDate('${(r['ap'] as Map)['at']}'.substring(0, 10))}', '${(r['ap'] as Map)['ref'] ?? ''}', '– only the Super Admin changes it'].where((e) => e.isNotEmpty).join(' ')),
     ].where((x) => x.$2.trim().isNotEmpty).toList();
     await showModalBottomSheet<void>(
       context: context,
@@ -682,6 +687,11 @@ Future<bool> deleteLog(BuildContext context, String key) async {
     // (14-10-2026) an entry of a submitted bill: the Super Admin deletes it; anybody else may send the delete for his approval
     if (e['lock'] != null && !s.superAdmin &&
         !await ask(context, 'In a submitted bill', bi('This entry is in a saved bill. You can delete it: on "Delete" it goes to the Super Admin for approval and is deleted only when he approves.', 'बिलमध्ये आहे – Super Admin च्या मंजुरीने.'), yes: 'Go on')) {
+      return false;
+    }
+    // (3.33.0 – Mechanical update-152) an approved entry: the same – only the Super Admin deletes it
+    if (e['lock'] == null && e['ap'] is Map && !s.superAdmin &&
+        !await ask(context, 'This entry was approved', bi('This entry was approved in verification. You can delete it: on "Delete" it goes to the Super Admin for approval and is deleted only when he approves.', 'Approve झालेली entry – Super Admin च्या मंजुरीने.'), yes: 'Go on')) {
       return false;
     }
     if (!context.mounted) return false;

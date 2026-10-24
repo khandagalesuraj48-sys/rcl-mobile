@@ -137,7 +137,7 @@ Future<void> viewSavedBill(BuildContext context, Session s, String id) async {
       if (context.mounted) toast(context, 'The Log Book could not be read (${errText(e)}) – the bill papers are shown without it.', bad: true);
     }
     if (!context.mounted) return;
-    await showBillPrint(context, 'Abstract of Bill – ${b['vendor']} – RA Bill ${b['billNo']}', billSheets(data, b['status'] == 'Superseded' ? ' superseded' : '', logo: logo) + lb, withLb: lb.isNotEmpty, foot: '${b['company'] ?? ''}');
+    await showBillPrint(context, 'Abstract of Bill – ${b['vendor']} – RA Bill ${b['billNo']}', billSheets(data, b['status'] == 'Superseded' ? ' superseded' : b['status'] == 'Deleted' ? ' deleted' : '', logo: logo) + lb, withLb: lb.isNotEmpty, foot: '${b['company'] ?? ''}');
   } catch (e) {
     if (context.mounted) toast(context, errText(e), bad: true);
   }

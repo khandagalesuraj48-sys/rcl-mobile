@@ -214,7 +214,12 @@ class Api {
   static const crFns = {'saveLogRows', 'saveLogBook', 'saveLogDay', 'updateLogRow', 'deleteLogRow', 'saveLogBulk', 'importLogBook', 'saveTankerTrips', 'deleteTankerTrip',
     'updateTankerTrip', 'saveTankerRange', 'importTankerTrips', 'saveDieselIssue', 'saveDieselBulk', 'importDiesel', 'updateDieselIssue', 'deleteDieselIssue'};
   static const crSent = 'Sent to the Super Admin for approval – it is saved only when he approves (nothing is saved until then).';
-  static bool crLocked(String m) => m.contains('is in the submitted RA Bill');
+  static bool crLocked(String m) => m.contains('is in the submitted RA Bill') || crApproved(m);
+  /// (3.33.0 – Mechanical update-152) an entry approved in verification: locked as well – only the Super Admin changes it.
+  static bool crApproved(String m) => m.contains(' – an approved entry cannot be changed or deleted without the Super Admin');
+  /// (3.33.0) the Super Admin's save of a locked entry: the server asks his reason ("SA_REASON: …") – [askReason] (a box) gives it.
+  static bool saReason(String m) => m.startsWith('SA_REASON: ');
+  Future<String?> Function(String message)? askReason;
   /// (15-10-2026, update-114) A work the Super Admin put under verification: the server CHECKED the entry and sent it to the
   /// people who approve it ("Sent for verification to … – VF-00001 …"); it is saved when the last of them approves. Not a fault.
   static bool isSent(String m) => m.startsWith('Sent for verification ') || m == crSent;
@@ -234,12 +239,13 @@ class Api {
   /// One action of Mechanical (getInit, saveDieselIssue …) with the person's sign-in. [save]: it changes data – it gets its
   /// own number and is sent again after a lost connection (at most 4 tries); a question is asked again at most twice.
   Future<dynamic> call(String fn, [List<dynamic> args = const [], bool save = false, String? sameRid]) async {
-    final rid = save ? (sameRid ?? _newRid()) : null;
+    var rid = save ? (sameRid ?? _newRid()) : null;
     var renewed = false;
+    Map<String, dynamic>? meta; // (3.33.0) the Super Admin's reason, when the server asked for it
     for (var tryNo = 1;; tryNo++) {
       try {
         if ((token ?? '').isEmpty) throw ApiError('SESSION_EXPIRED', status: 401);
-        final res = await _rpc('api', [token, fn, args], rid: rid);
+        final res = await _rpc('api', [token, fn, args, if (meta != null) meta], rid: rid);
         // a save that answers "not saved" with a line refused by the bill lock (saveLogRows …)
         if (crFns.contains(fn) && res is Map && res['ok'] == false && res['errors'] is List) {
           final lk = (res['errors'] as List).map((x) => x is Map ? (x['msg'] ?? '').toString() : x.toString()).where(crLocked).toList();
@@ -250,6 +256,13 @@ class Api {
         if (e.code == 'sent') rethrow;
         if (isSent(e.message)) throw ApiError(e.message, code: 'sent');      // sent for verification: told as it is, never sent again
         if (crFns.contains(fn) && crLocked(e.message) && await _offer(fn, args, e.message)) throw ApiError(crSent, code: 'sent');
+        if (saReason(e.message) && meta == null) {
+          final ask = askReason, why = ask == null ? null : await ask(e.message.replaceFirst('SA_REASON: ', ''));
+          if (why == null || why.trim().isEmpty) throw ApiError('Not saved – no reason was given.', code: 'noreason');
+          meta = {'reason': why.trim()};
+          if (rid != null) rid = _newRid(); // (the refused number keeps its answer on the server: the save with the reason is a new one)
+          continue;
+        }
         if (e.sessionEnded && !renewed && (site ?? '').isNotEmpty && hasPortal) {
           renewed = true; // a new Mechanical sign-in with a new ticket, nothing typed
           await openSite(site!);

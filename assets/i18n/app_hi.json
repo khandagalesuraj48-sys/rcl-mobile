@@ -865,5 +865,21 @@
 "A rate must be more than 0.": "रेट 0 से ज़्यादा होना चाहिए.",
 "No entry to change – every one shown is in a Debit Note.": "बदलने को कोई एंट्री नहीं – दिखाई गई हर एंट्री डेबिट नोट में है.",
 "{0}  |  {1} machinery  |  {2} entries": "{0}  |  {1} मशीनरी  |  {2} एंट्रियाँ",
-"number, name or type": "नंबर, नाम या प्रकार"
+"number, name or type": "नंबर, नाम या प्रकार",
+"Locked entry – give the reason": "Locked entry – कारण दें",
+"Save with this reason": "इस कारण के साथ save करें",
+"Reason": "कारण",
+"An approved entry – send it to the Super Admin?": "Approve हुई entry – Super Admin को भेजें?",
+"In a submitted bill – send it to the Super Admin?": "Submit हुए bill में – Super Admin को भेजें?",
+"It is saved only when the Super Admin approves it.": "Super Admin के approve करने पर ही वह save होता है।",
+"This entry was approved": "यह entry approve हो चुकी है",
+"Approved": "Approve हुई",
+"Deleted": "Deleted (हटाया गया)",
+"Bill marked Deleted (kept, with the reason).": "Bill \"Deleted\" के रूप में रखा गया (कारण के साथ)।",
+"Only the Super Admin deletes a submitted bill. It is not removed: it is kept, marked Deleted, with your reason – its Log Book stays locked, its debit notes are open again. Write the reason:": "Submit हुआ bill केवल Super Admin delete करता है। वह हटाया नहीं जाता: आपके कारण के साथ \"Deleted\" के रूप में रखा जाता है – उसकी Log Book locked रहती है, उसकी debit notes फिर open होती हैं। कारण लिखें:",
+"Not saved – no reason was given.": "Save नहीं हुआ – कारण नहीं दिया गया।",
+"Entries marked ✔ Approved were approved in verification – they are shown but cannot be changed here. To correct one: Log Book list → Edit / Delete on that entry – the change goes to the Super Admin for approval.": "✔ Approved वाली entries verification में approve हो चुकी हैं – वे दिखती हैं पर यहाँ बदली नहीं जा सकतीं। किसी को सुधारने के लिए: Log Book list → उस entry पर Edit / Delete – बदलाव Super Admin के पास approval के लिए जाता है।",
+"This entry was approved – a change goes to the Super Admin for approval.": "यह entry approve हो चुकी है – बदलाव Super Admin की मंजूरी से।",
+"This entry was approved – you are the Super Admin: your change asks for the reason, kept with its history.": "यह entry approve हो चुकी है – आप Super Admin हैं: आपका बदलाव कारण पूछता है, जो उसके history के साथ रखा जाता है।",
+"This entry was approved in verification. You can delete it: on \"Delete\" it goes to the Super Admin for approval and is deleted only when he approves.": "यह entry verification में approve हो चुकी है। आप इसे delete कर सकते हैं: \"Delete\" पर यह Super Admin के पास approval के लिए जाती है और उसके approve करने पर ही delete होती है।"
 }
