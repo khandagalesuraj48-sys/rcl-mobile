@@ -6661,5 +6661,11 @@
 "{0} file{1} in the ZIP – each matches its fingerprint ✔.": "ZIP मध्ये {0} file{1} – प्रत्येक तिच्या fingerprint शी जुळते ✔.",
 "{0} file{1} could not be read or did not match – see FINGERPRINTS.txt in the ZIP.": "{0} file{1} वाचता आल्या नाहीत किंवा जुळल्या नाहीत – ZIP मधील FINGERPRINTS.txt पहा.",
 "As submitted with the bill (its evidence). Each file is checked against its SHA-256.": "Bill सोबत submit केल्याप्रमाणे (त्याचा पुरावा). प्रत्येक file तिच्या SHA-256 शी तपासली जाते.",
-"Legacy bill: the files the entries have TODAY.": "जुने bill: entries कडे आज असलेल्या files."
+"Legacy bill: the files the entries have TODAY.": "जुने bill: entries कडे आज असलेल्या files.",
+"You sent too many attachments today (at most {0} files, {1} MB a person in a day) – send the rest tomorrow. If you did not send them, tell the Admin at once.": "आज तुम्ही खूप attachments पाठवले (एका व्यक्तीसाठी दिवसाला जास्तीत जास्त {0} files, {1} MB) – उरलेले उद्या पाठवा. हे तुम्ही पाठवले नसतील तर लगेच Admin ला सांगा.",
+"Attachments {0} → {1}": "Attachments: {0} → {1}",
+"(the same)": "(तेच)",
+"{0} taken off": "{0} काढले",
+"Attach {0} file{1} to": "{0} file{1} जोडा:",
+"· {0} attachment{1}": "· {0} attachment{1} जोडले"
 }
