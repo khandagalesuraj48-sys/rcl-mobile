@@ -34,6 +34,7 @@ import 'logbook.dart';
 import 'store.dart';
 import 'masters.dart';
 import '../ui/t.dart';
+import '../ui/live.dart';
 
 /// A module tile of Home: where it goes and who may see it.
 class ModuleTile {
@@ -90,9 +91,12 @@ List<(String, String, String, String)> reportsOf(Session s) => [
     ];
 
 class HomeTab extends StatefulWidget {
-  const HomeTab({super.key, required this.onOpenEntries, required this.onOpenReports});
+  const HomeTab({super.key, required this.onOpenEntries, required this.onOpenReports, this.active = true});
   final ValueChanged<String> onOpenEntries;
   final VoidCallback onOpenReports;
+
+  /// (update-155) Home is the tab on the screen (the shell says so): only then it loads after others' changes
+  final bool active;
   @override
   State<HomeTab> createState() => _HomeTabState();
 }
@@ -103,7 +107,7 @@ class _Act {
   final Map<String, dynamic> r;
 }
 
-class _HomeTabState extends State<HomeTab> {
+class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   bool loading = true;
   DateTime? at;
   int? logEntries, running;
@@ -113,8 +117,21 @@ class _HomeTabState extends State<HomeTab> {
 
   Session? _ls;
   // (3.1.7) live: something changed on the server (another person, the web) – the figures load again by themselves
+  // (update-155) only for what Home shows (diesel and stock, the Log Book, the machinery), and only when Home is seen – else
+  // when it is seen again (lib/ui/live.dart)
   void _live() {
-    if (mounted) _load(quiet: true);
+    if (mounted && (_ls?.lastChanged.any((g) => g == 'stock' || g == 'log' || g == 'master') ?? true)) liveChanged();
+  }
+
+  @override
+  bool get liveActive => widget.active;
+  @override
+  void liveReload() => _load(quiet: true);
+
+  @override
+  void didUpdateWidget(covariant HomeTab old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !old.active) liveMaybe();
   }
 
   @override

@@ -351,7 +351,7 @@ class _BoqScreenState extends State<BoqScreen> {
     final amend = '${b['amendOf'] ?? ''}'.isNotEmpty;
     if (!await ask(context, 'Delete ${b['id']}${amend ? ' (amendment ${b['amendNo']})' : ''}?', '${b['vendor']} – ${showDate('${b['from']}')} to ${'${b['to'] ?? ''}'.isEmpty ? 'open' : showDate('${b['to']}')}', yes: 'Delete', danger: true)) return;
     try {
-      await s.api.call('deleteBoq', ['${b['id']}'], true);
+      await s.api.call('deleteBoq', ['${b['id']}', '${b['ver'] ?? ''}'], true); // (update-156) the version shown
       if (!mounted) return;
       toast(context, '${b['id']} deleted.');
       await _load(quiet: true);
@@ -687,6 +687,7 @@ class _BoqFormScreenState extends State<BoqFormScreen> {
     try {
       Map<String, dynamic> res;
       if (mode == 'edit') {
+        body['ver'] = '${b!['ver'] ?? ''}'; // (update-156) the version it had when it was opened
         res = (await s.api.call('saveBoq', [body, 'edit', '${b!['id']}'], true) as Map).cast<String, dynamic>();
       } else {
         if (mode == 'amend') body['amendOf'] = b!['id'];

@@ -11,6 +11,8 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
+import 'answers.dart';
+
 /// What the server answered instead of a result – its own words (English, as the web app shows them).
 class ApiError implements Exception {
   ApiError(this.message, {this.status = 0, this.code = '', this.rid = '', this.data = const {}});
@@ -83,6 +85,7 @@ class Api {
   Future<void> keepSite(String code) async {
     if (site != code) {
       token = null;
+      answers.clear(); // (update-155) another site: nothing kept of this one
       await keep.write(kToken, null);
     }
     site = code;
@@ -93,9 +96,10 @@ class Api {
     _cookie = null;
     token = null;
     site = null;
+    answers.clear(); // (update-155) signed out: no answer is kept
     _storeCookie = '';
     _storeKey = '';
-    for (final k in [kCookie, kToken, kSite, 'mech_url', 'alerts_seen']) {
+    for (final k in [kCookie, kToken, kSite, 'mech_url', 'alerts_seen', 'live_at']) {
       await keep.write(k, null);
     }
   }
@@ -183,12 +187,54 @@ class Api {
   }
 
   // ---------------- Mechanical ----------------
-  Future<dynamic> _rpc(String fn, List<dynamic> args, {String? rid}) async {
+  /// (update-155) the last answers of the questions, in memory only (answers.dart)
+  final answers = KeptAnswers();
+
+  Future<dynamic> _rpc(String fn, List<dynamic> args, {String? rid, bool whole = false}) async {
     if (mechUrl.isEmpty) throw ApiError('Mechanical is not open on this site.');
-    final body = <String, dynamic>{'fn': fn, 'args': args, if (rid != null) 'rid': rid, if ((site ?? '').isNotEmpty) 'site': site};
+    // (update-155) a question (never a save): "the same" / only what changed / whole – the key is the site and the whole question
+    String? mk;
+    if (fn == 'api' && rid == null && args.length > 1 && keptQuestion('${args[1]}')) {
+      mk = '${site ?? ''}|${jsonEncode(args)}';
+      if (mk.length > 20000) mk = null;
+    }
+    final had = mk == null || whole ? null : answers.get(mk);
+    final body = <String, dynamic>{'fn': fn, 'args': args, if (rid != null) 'rid': rid, if ((site ?? '').isNotEmpty) 'site': site, if (mk != null) 'm': 1, if (had != null) 'have': had.h, if (had != null) 'dx': 1};
     final r = await _send(() => _c.post(Uri.parse('$mechUrl/api/rpc'), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body)));
     final j = _json(r, 'The ERP server');
-    if (j.containsKey('error')) throw ApiError(j['error'].toString(), status: r.statusCode);
+    if (j.containsKey('error')) {
+      if (mk != null) answers.drop(mk); // a refusal (no access any more …): nothing of it is kept
+      throw ApiError(j['error'].toString(), status: r.statusCode);
+    }
+    final h = j['h'];
+    if (mk != null && h is String) {
+      if (j['same'] != null) {
+        if (had != null && had.h == h) {
+          answers.same++;
+          answers.touch(mk);
+          return jsonDecode(had.text);
+        }
+        return _rpc(fn, args, whole: true);
+      }
+      if (j['delta'] != null) {
+        final t = had != null && had.h == j['base'] ? rclPatch(had.text, j['delta']) : null;
+        if (t != null && fingerprint(t) == h) {
+          answers.delta++;
+          answers.keep(mk, h, t);
+          return jsonDecode(t);
+        }
+        answers.mismatch++;
+        answers.drop(mk);
+        return _rpc(fn, args, whole: true);
+      }
+      if (j.containsKey('result')) {
+        final text = utf8.decode(r.bodyBytes), p = text.indexOf('"result":');
+        if (text.startsWith('{"h":"') && p > 0) {
+          answers.full++;
+          answers.keep(mk, h, text.substring(p + 9, text.length - 1));
+        }
+      }
+    }
     return j['result'];
   }
 
@@ -198,6 +244,7 @@ class Api {
     site = siteCode;
     final res = await _rpc('ssoLogin', [t]);
     final m = (res as Map).cast<String, dynamic>();
+    answers.clear(); // (update-155) a new sign-in: nothing kept of the one before
     token = m['token']?.toString();
     if ((m['site'] ?? '').toString().isNotEmpty) site = m['site'].toString();
     await keep.write(kToken, token);
@@ -268,7 +315,11 @@ class Api {
           await openSite(site!);
           continue;
         }
-        final again = e.noConnection || e.status == 503;
+        // (update-155, the audit's R3) sent again by itself: a question, or a save with its number (saved once on the server); a
+        // change WITHOUT a number only when the server said it did not start it (busy, another save running): after no answer – or
+        // "could not reach the database" – it may have been done, so it is not sent again (the person sees the message and decides)
+        final notStarted = e.status == 503 && RegExp(r'RETRY_LATER|Another save is still running').hasMatch(e.message);
+        final again = (save || keptQuestion(fn) || fn == 'whoami') ? (e.noConnection || e.status == 503) : notStarted;
         if (again && tryNo < (save ? 4 : 3)) {
           await Future<void>.delayed(Duration(milliseconds: 700 * tryNo));
           continue;
