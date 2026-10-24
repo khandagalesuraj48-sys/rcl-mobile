@@ -207,7 +207,7 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
     final s = SessionScope.read(context);
     if (!await ask(context, 'Delete vendor ${v['name']}?', 'A vendor that still has assets in Asset Master, or BOQs, cannot be deleted – give the assets another vendor / delete the BOQs first.', yes: 'Delete', danger: true)) return;
     try {
-      await s.api.call('deleteVendor', ['${v['name']}'], true);
+      await s.api.call('deleteVendor', ['${v['name']}', '${v['ver'] ?? ''}'], true); // (update-156) the version shown
       if (!mounted) return;
       toast(context, 'Vendor details deleted.');
       _load(quiet: true);
@@ -338,6 +338,7 @@ class _VendorFormScreenState extends State<VendorFormScreen> {
         'oldName': renaming ? was : '', 'name': g('name'), 'gstReg': gstReg, 'gst': g('gst'), 'gstPct': '${v?['gstPct'] ?? ''}', 'pan': g('pan'), 'tds': '${v?['tds'] ?? ''}', 'bank': g('bank'),
         'branch': g('branch'), 'account': g('account'), 'ifsc': g('ifsc'), 'phone': g('phone'), 'address': g('address'), 'remark': g('remark'), 'aadhaar': g('aadhaar'), 'email': g('email'),
       };
+      if (saved) body['ver'] = '${v?['ver'] ?? ''}'; // (update-156) the version it had when it was opened
       final res = (await s.api.call('saveVendor', [body, saved ? 'edit' : 'add'], true) as Map).cast<String, dynamic>();
       if (!mounted) return;
       final r = res['renamed'];

@@ -350,7 +350,8 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
   Future<void> _delete(String id, bool force) async {
     final s = SessionScope.read(context);
     if (!force && !await ask(context, 'Delete machinery?', 'Delete $id from Master? This cannot be undone.', yes: 'Delete', danger: true)) return;
-    final res = (await s.api.call('deleteMaster', [id, force], true) as Map).cast<String, dynamic>();
+    final ver = '${s.machine(id)?.m['ver'] ?? ''}'; // (update-156) the version shown
+    final res = (await s.api.call('deleteMaster', [id, force, ver], true) as Map).cast<String, dynamic>();
     if (!mounted) return;
     if (res['warning'] != null) {
       if (await ask(context, 'This machinery has entries', '${res['warning']}', yes: 'Delete anyway', danger: true)) await _delete(id, true);
@@ -556,7 +557,8 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
       return;
     }
     await _run('editmany', () async {
-      final res = (await s.api.call('editMasterMany', [list.map((m) => m['id']).toList(), ch], true) as Map).cast<String, dynamic>();
+      final vers = {for (final m in list) '${m['id']}': '${m['ver'] ?? ''}'}; // (update-156) the versions shown
+      final res = (await s.api.call('editMasterMany', [list.map((m) => m['id']).toList(), ch, vers], true) as Map).cast<String, dynamic>();
       if (!mounted) return;
       if (res['ok'] != true) {
         await tellLines(context, 'Nothing saved', [for (final e in (res['errors'] as List? ?? const []).whereType<Map>()) '${e['id']}: ${e['msg']}']);
@@ -571,9 +573,10 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
   Future<void> _deleteMany() async {
     final s = SessionScope.read(context), ids = sel.toList();
     if (ids.isEmpty) return;
+    final vers = {for (final id in ids) id: '${s.machine(id)?.m['ver'] ?? ''}'}; // (update-156) the versions shown
     if (!await askLines(context, 'Delete ${ids.length} machinery from Master?', [ids.take(30).join(', ') + (ids.length > 30 ? ' …' : '')], yes: 'Delete', danger: true)) return;
     await _run('delmany', () async {
-      var res = (await s.api.call('deleteMasterMany', [ids, false], true) as Map).cast<String, dynamic>();
+      var res = (await s.api.call('deleteMasterMany', [ids, false, vers], true) as Map).cast<String, dynamic>();
       if (res['ok'] != true && res['used'] is List) {
         if (!mounted) return;
         final used = (res['used'] as List).whereType<Map>().toList();
@@ -581,7 +584,7 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
             note: 'Their entries stay, but the machinery will be removed from Master.', yes: 'Delete anyway', danger: true)) {
           return;
         }
-        res = (await s.api.call('deleteMasterMany', [ids, true], true) as Map).cast<String, dynamic>();
+        res = (await s.api.call('deleteMasterMany', [ids, true, vers], true) as Map).cast<String, dynamic>();
       }
       if (!mounted) return;
       s.setMaster(res['master']);

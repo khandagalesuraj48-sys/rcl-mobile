@@ -910,8 +910,8 @@ class _EntryFormState extends State<EntryForm> {
     try {
       final d = _data();
       if (force) d['force'] = true;
-      // (Mechanical update-145) a Diesel Issue changed: the version it had when it was opened – changed by someone else since → refused
-      if (ed != null && k.key == 'issue' && '${ed!['ver'] ?? ''}'.isNotEmpty) d['ver'] = '${ed!['ver']}';
+      // (Mechanical update-145; update-156: Inward and Transfer too) the version it had when it was opened – changed by someone else since → refused
+      if (ed != null && '${ed!['ver'] ?? ''}'.isNotEmpty) d['ver'] = '${ed!['ver']}';
       sentD = d;
       // (3.22.0) correcting a returned entry: what he corrected (asked once), then Mechanical's editFlow
       final note = fx == null ? '' : await askFixNote(context, fx);

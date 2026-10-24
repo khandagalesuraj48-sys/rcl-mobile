@@ -212,6 +212,7 @@ class PaymentsScreen extends StatefulWidget {
 
 class _PaymentsScreenState extends State<PaymentsScreen> {
   String type = 'Payment', date = '', vendor = '', side = 'Payable', mode = '', bill = '', editId = '', bal = '';
+  String editVer = ''; // (Mechanical update-156) the version of the entry when it was opened
   String fVendor = '', fFrom = '', fTo = '', fType = '', err = '';
   final amount = TextEditingController(), ref = TextEditingController(), remark = TextEditingController();
   List<String> vendors = [], modes = [], billOpts = [];
@@ -299,6 +300,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   void _clear() {
     setState(() {
       editId = '';
+      editVer = '';
       type = 'Payment';
       for (final c in [amount, ref, remark]) {
         c.clear();
@@ -312,7 +314,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   Future<void> _save() async {
     final s = SessionScope.read(context);
-    final x = {'id': editId.isEmpty ? null : editId, 'type': type, 'date': date, 'vendor': vendor, 'amount': amount.text, 'side': side, 'mode': mode, 'ref': ref.text, 'bill': bill, 'remark': remark.text};
+    final x = {'id': editId.isEmpty ? null : editId, 'type': type, 'date': date, 'vendor': vendor, 'amount': amount.text, 'side': side, 'mode': mode, 'ref': ref.text, 'bill': bill, 'remark': remark.text, if (editId.isNotEmpty && editVer.isNotEmpty) 'ver': editVer}; // (update-156) changed by someone else meanwhile → refused
     if (editId.isNotEmpty && !await ask(context, 'Save the changes?', 'Entry $editId of $vendor will be changed.', yes: 'Save changes')) return;
     if (!mounted) return;
     setState(() => busy = true);
@@ -338,6 +340,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Future<void> _edit(Map p) async {
     setState(() {
       editId = '${p['id']}';
+      editVer = '${p['ver'] ?? ''}';
       type = '${p['type']}' == 'Opening' ? 'Opening' : 'Payment';
       date = '${p['date'] ?? ''}';
       vendor = '${p['vendor'] ?? ''}';
@@ -356,7 +359,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     if (!await ask(context, 'Delete this entry?', '${p['type'] == 'Opening' ? 'Opening balance' : 'Payment'} of ${p['vendor']} – ₹ ${n2(p['amount'])} on ${showDate('${p['date']}')}. The vendor balance will change.', yes: 'Delete', danger: true)) return;
     if (!mounted) return;
     try {
-      await s.api.call('deletePayment', [p['id']], true);
+      await s.api.call('deletePayment', [p['id'], if ('${p['ver'] ?? ''}'.isNotEmpty) '${p['ver']}'], true); // (update-156) the version shown
       if (!mounted) return;
       toast(context, 'Deleted.');
       if (editId == '${p['id']}') _clear();
