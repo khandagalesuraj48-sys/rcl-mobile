@@ -121,6 +121,22 @@ void main() {
     }
   });
 
+  // (3.32.0 – the web's update-151) the note above a saved bill's Log Book: the web's billLogOf text, character for character
+  // (test/fixtures/bill/web_ev_notes.json – made by running App.html's billLogOf in node on these getBillEvidence answers)
+  final evCases = jsonDecode(File('test/fixtures/bill/web_ev_notes.json').readAsStringSync()) as List;
+  for (final c0 in evCases) {
+    final c = (c0 as Map).cast<String, dynamic>();
+    test('(3.32.0) a saved bill\'s Log Book note "${c['name']}" – the same as the web', () {
+      expect(evNoteHtml(c['b'] as Map, c['ev'] as Map?, DateTime.parse('${c['now']}')), c['note']);
+    });
+  }
+  test('(3.32.0) the time of submission (kept in UTC by the database) is shown in the phone\'s time', () {
+    final t = DateTime.parse('2026-10-05T08:37:31Z').toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    final h = evNoteHtml({'billNo': '7'}, {'kind': 'submission', 'billNoThen': '7', 'submittedAt': '2026-10-05T08:37:31.120+00:00', 'count': 2, 'hash': 'ab', 'check': {'ok': true}}, DateTime(2026, 10, 24));
+    expect(h, '<div class="ev-note">Log Book as submitted with RA Bill 7 on ${two(t.day)}-${two(t.month)}-${t.year} ${two(t.hour)}:${two(t.minute)} – kept with the bill, never changed afterwards. Evidence check ✔ (2 entries, SHA-256 ab…).</div>');
+  });
+
   test('The bill print page: the papers on A4 under the company name, the Log Book after them', () {
     final h = billPrintHtml('Bill preview', '<section class="billsheet draft">x</section>', withLb: true, foot: 'Sketchline Industries');
     expect(h, contains('<body class="rep rep-bill rep-lb"><div class="sheet"><section class="billsheet draft">x</section></div>'));

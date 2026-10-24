@@ -1,0 +1,316 @@
+[
+ {
+  "name": "submission, check ok",
+  "ev": {
+   "kind": "submission",
+   "billNoThen": "151",
+   "revThen": 0,
+   "submittedAt": "2026-10-05T14:07:31",
+   "submittedBy": "Sujit Mule",
+   "count": 6,
+   "hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+   "check": {
+    "ok": true,
+    "bad": []
+   }
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note\">Log Book as submitted with RA Bill 151 on 05-10-2026 14:07 by Sujit Mule – kept with the bill, never changed afterwards. Evidence check ✔ (6 entries, SHA-256 0123456789abcdef…).</div>",
+  "kind": "submission"
+ },
+ {
+  "name": "submission, one entry",
+  "ev": {
+   "kind": "submission",
+   "billNoThen": "15<1>",
+   "revThen": 2,
+   "submittedAt": "2026-10-05T14:07:31",
+   "submittedBy": "",
+   "count": 1,
+   "hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+   "check": {
+    "ok": true,
+    "bad": []
+   }
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note\">Log Book as submitted with RA Bill 15&lt;1&gt; rev 2 on 05-10-2026 14:07 – kept with the bill, never changed afterwards. Evidence check ✔ (1 entry, SHA-256 0123456789abcdef…).</div>",
+  "kind": "submission"
+ },
+ {
+  "name": "submission, one entry does not match",
+  "ev": {
+   "kind": "submission",
+   "billNoThen": "151",
+   "revThen": 0,
+   "submittedAt": "2026-10-05T14:07:31",
+   "submittedBy": "Sujit Mule",
+   "count": 6,
+   "hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+   "check": {
+    "ok": false,
+    "bad": [
+     "EV151-1|2026-09-03|Full Day"
+    ]
+   }
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note bad\">Log Book as submitted with RA Bill 151 on 05-10-2026 14:07 by Sujit Mule – kept with the bill, never changed afterwards. EVIDENCE CHECK FAILED – 1 entry does not match its record. Tell the Super Admin.</div>",
+  "kind": "submission"
+ },
+ {
+  "name": "submission, two entries do not match",
+  "ev": {
+   "kind": "submission",
+   "billNoThen": "151",
+   "revThen": 0,
+   "submittedAt": "2026-10-05T14:07:31",
+   "submittedBy": "Sujit Mule",
+   "count": 6,
+   "hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+   "check": {
+    "ok": false,
+    "bad": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note bad\">Log Book as submitted with RA Bill 151 on 05-10-2026 14:07 by Sujit Mule – kept with the bill, never changed afterwards. EVIDENCE CHECK FAILED – 2 entries do not match their records. Tell the Super Admin.</div>",
+  "kind": "submission"
+ },
+ {
+  "name": "submission, the whole does not match",
+  "ev": {
+   "kind": "submission",
+   "billNoThen": "151",
+   "revThen": 0,
+   "submittedAt": "",
+   "submittedBy": "Sujit Mule",
+   "count": 6,
+   "hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+   "check": {
+    "ok": false,
+    "bad": []
+   }
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note bad\">Log Book as submitted with RA Bill 151 by Sujit Mule – kept with the bill, never changed afterwards. EVIDENCE CHECK FAILED – the record does not match its fingerprint. Tell the Super Admin.</div>",
+  "kind": "submission"
+ },
+ {
+  "name": "legacy, changes",
+  "ev": {
+   "kind": "legacy",
+   "changes": {
+    "entries": 6,
+    "changed": 1,
+    "added": 2,
+    "deleted": 0
+   }
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note legacy\">This bill was submitted before the Log Book was kept with bills. The Log Book below is TODAY'S Log Book (24-10-2026 09:05), not a record of the time of submission. Since the bill was saved: 1 entry changed, 2 added, 0 deleted (by the database's own times).</div>",
+  "kind": "legacy"
+ },
+ {
+  "name": "legacy, many changed",
+  "ev": {
+   "kind": "legacy",
+   "changes": {
+    "entries": 6,
+    "changed": 3,
+    "added": 0,
+    "deleted": 1
+   }
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note legacy\">This bill was submitted before the Log Book was kept with bills. The Log Book below is TODAY'S Log Book (24-10-2026 09:05), not a record of the time of submission. Since the bill was saved: 3 entries changed, 0 added, 1 deleted (by the database's own times).</div>",
+  "kind": "legacy"
+ },
+ {
+  "name": "legacy, nothing changed",
+  "ev": {
+   "kind": "legacy",
+   "changes": {
+    "entries": 6,
+    "changed": 0,
+    "added": 0,
+    "deleted": 0
+   }
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note legacy\">This bill was submitted before the Log Book was kept with bills. The Log Book below is TODAY'S Log Book (24-10-2026 09:05), not a record of the time of submission. Since the bill was saved: no entry of its machinery and dates was changed, added or deleted (by the database's own times).</div>",
+  "kind": "legacy"
+ },
+ {
+  "name": "legacy, changes unknown",
+  "ev": {
+   "kind": "legacy",
+   "changes": null
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note legacy\">This bill was submitted before the Log Book was kept with bills. The Log Book below is TODAY'S Log Book (24-10-2026 09:05), not a record of the time of submission.</div>",
+  "kind": "legacy"
+ },
+ {
+  "name": "before step 1zc",
+  "ev": {
+   "kind": "off"
+  },
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note legacy\">This bill was submitted before the Log Book was kept with bills. The Log Book below is TODAY'S Log Book (24-10-2026 09:05), not a record of the time of submission.</div>",
+  "kind": "off"
+ },
+ {
+  "name": "no answer",
+  "ev": null,
+  "b": {
+   "id": "BILL-00012",
+   "billNo": "151",
+   "from": "2026-09-01",
+   "to": "2026-09-30",
+   "data": {
+    "machines": [
+     {
+      "no": "EV151-1"
+     }
+    ]
+   }
+  },
+  "now": "2026-10-24T09:05:00",
+  "note": "<div class=\"ev-note legacy\">This bill was submitted before the Log Book was kept with bills. The Log Book below is TODAY'S Log Book (24-10-2026 09:05), not a record of the time of submission.</div>",
+  "kind": "off"
+ }
+]

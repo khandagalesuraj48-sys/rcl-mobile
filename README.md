@@ -14,6 +14,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.32.0 (24-10-2026, with Mechanical's update-151 – "bill final zalyawar nantar kuni logbook photo badalla tari june bill
+badalta kama naye, karan te arthik purawa asto"):** a saved bill's Log Book is shown **as it was submitted** – the evidence the
+server kept with the bill (its entries, its machinery as it was, its BOQ / diesel / rates and Idle choice), never the Log Book of
+today: RCL Drive → View / Print and Log Book, Bill Summary, the Vendor Ledger and the print after Submit. On top: "Log Book as
+submitted with RA Bill … Evidence check ✔" (or "EVIDENCE CHECK FAILED … Tell the Super Admin"); the Log Book print of such a bill
+asks no diesel rate (the bill's own). A bill submitted before has no evidence: its Log Book is today's, and the paper says so, with
+how many entries changed after it was saved. `bill.dart` (`evNoteHtml`), `bill_print.dart` (`SavedLog`, `savedBillLog`,
+`savedBillLogSheets`), `log_print.dart` (`printLogBook`: `fixed`, `machines`, `note`), `lb_print.dart` (`note`), the print style
+`.ev-note`; tests in `bill_test.dart` (the web's own note texts as the fixture `test/fixtures/bill/web_ev_notes.json`) and
+`log_edit_test.dart`.
+
 **Version 3.31.8 (24-10-2026, with Mechanical's update-150 – "asset sathi qr … owner wise machine wise sigle or bulk mdhe print kru
 shako a4 page war multiple jastit jast 6 to 8 qr"; his answer: 8, 2 × 4):** Asset Master ⋮ → **QR labels** chooses which labels:
 an **Owner** (all its machinery ticked), **Find**, a ticked list (**Tick all shown** / **Untick all shown**; one machinery or many,

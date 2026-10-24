@@ -98,12 +98,14 @@ Future<LbPrintAsk?> askLbPrint(BuildContext context, List<String> names, {requir
 }
 
 /// The Log Book of [rows] (getLogBookList's rows) for [from] – [to], printed. [fmt] / [sample]: View format.
-Future<void> printLogBook(BuildContext context, Session s, {required List<Map<String, dynamic>> rows, required String from, required String to, String fmt = '', String sample = '', num dieselRate = 0, Map? rateBy, Map? idle}) async {
+/// (3.32.0) A saved bill's Log Book as submitted: [fixed] = its BOQ / diesel / rates as kept with the bill (nothing is asked from
+/// the server and the rate is the bill's own – no rate question), [machines] = its machinery as it was, [note] printed on top.
+Future<void> printLogBook(BuildContext context, Session s, {required List<Map<String, dynamic>> rows, required String from, required String to, String fmt = '', String sample = '', num dieselRate = 0, Map? rateBy, Map? idle, Map? fixed, Map<String, Map<String, dynamic>>? machines, String note = ''}) async {
   if (rows.isEmpty) {
     toast(context, 'No Log Book entries to print – pick a Machinery and dates first.', bad: true);
     return;
   }
-  final opt = await askLbPrint(context, s.printNames, rate: sample.isEmpty, value: dieselRate, byBill: dieselRate <= 0 && rateBy != null && rateBy.isNotEmpty);
+  final opt = await askLbPrint(context, s.printNames, rate: sample.isEmpty && fixed == null, value: dieselRate, byBill: dieselRate <= 0 && rateBy != null && rateBy.isNotEmpty);
   if (opt == null || !context.mounted) return;
   if (opt.bad) {
     toast(context, 'Diesel rate: type ₹ per litre (for example 95.50), or leave it empty for the automatic rate. Nothing was printed.', bad: true);
@@ -111,7 +113,7 @@ Future<void> printLogBook(BuildContext context, Session s, {required List<Map<St
   }
   var rate = dieselRate;
   var by = rateBy;
-  if (sample.isEmpty) {
+  if (sample.isEmpty && fixed == null) {
     // typed here = the rate of this print; a rate that stood in the box and was emptied = automatic; empty for several bills = each bill's own rate
     if ((opt.typed ?? 0) > 0) {
       rate = r2(opt.typed!);
@@ -123,8 +125,8 @@ Future<void> printLogBook(BuildContext context, Session s, {required List<Map<St
   }
   final dates = rows.map((r) => '${r['date']}').toList()..sort();
   final f = from.isNotEmpty ? from : dates.first, t = to.isNotEmpty ? to : (s.today.isNotEmpty ? s.today : dates.last);
-  Map extra = {'debit': {}};
-  if (sample.isEmpty) {
+  Map extra = fixed ?? {'debit': {}};
+  if (sample.isEmpty && fixed == null) {
     try {
       extra = (await s.api.call('logPrintExtra', [
             {'from': f, 'to': t, 'nos': rows.map((r) => '${r['no']}').toSet().toList()}
@@ -145,7 +147,7 @@ Future<void> printLogBook(BuildContext context, Session s, {required List<Map<St
     head: opt.head,
     site: s.siteLabel,
     extra: extra,
-    machine: (no) => sample.isNotEmpty ? null : s.machine(no)?.m,
+    machine: (no) => sample.isNotEmpty ? null : (machines?[no.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '')] ?? s.machine(no)?.m),
     fmtF: fmt,
     sample: sample,
     dieselRate: rate,
@@ -153,6 +155,7 @@ Future<void> printLogBook(BuildContext context, Session s, {required List<Map<St
     idle: idle,
     logo: logo,
     portrait: opt.portrait,
+    note: note,
   );
   if (!context.mounted) return;
   await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: p.html, title: p.title, fit: true)));

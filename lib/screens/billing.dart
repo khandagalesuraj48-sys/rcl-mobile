@@ -435,7 +435,14 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
       for (final b in got.whereType<Map>()) {
         final data = <String, dynamic>{'dnNo': b['dnNo'], ...((b['data'] as Map?) ?? const {}).cast<String, dynamic>(), 'billNo': b['billNo'], 'rev': b['rev']};
         final l = logs;
-        final lb = l == null ? '' : billLogSheets(s, {...data, 'company': b['company']}, l.rows, l.from, l.to, l.extra, logo: logo);
+        var lb = ''; // (3.32.0) each bill's Log Book from the evidence saved with it; else (no evidence) the Log Book built
+        try {
+          final x = await savedBillLog(s, b);
+          if (x.fixed && x.rows.isNotEmpty) lb = await savedBillLogSheets(s, b, data, x, logo: logo);
+        } catch (_) {
+          lb = '';
+        }
+        if (lb.isEmpty) lb = l == null ? '' : billLogSheets(s, {...data, 'company': b['company']}, l.rows, l.from, l.to, l.extra, logo: logo);
         if (lb.isNotEmpty) anyLb = true;
         pages.write(billSheets(data, '', logo: logo) + lb);
       }
