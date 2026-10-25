@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.40.0 (25-10-2026 – the app icon, "1 banaw"):** the app's icon is option 1 of the six shown – the navy of the approved
+design (#0B3A66 → #022646 → #06111C) with the white rounded tile and the red / dark R in its middle (as on the start screen); the old
+green fuel-pump icon is gone. The R is traced from the logo picture into sharp shapes and drawn at every size. Android: the legacy
+icons (`mipmap-*/ic_launcher.png`, rounded), the adaptive icon's front (`drawable-*/ic_launcher_foreground.png`, the tile and the R) on
+a navy gradient (`drawable/ic_launcher_background_navy.xml`, `mipmap-anydpi-v26/ic_launcher.xml`); iPhone: every size of
+`AppIcon.appiconset` (square, no see-through – iOS rounds it). The sources for `flutter_launcher_icons`: `assets/icon/icon.png`,
+`icon_fg.png`, `icon_bg.png` (not in the app's assets).
+
 **Version 3.39.0 (25-10-2026 – "aple app madhe new screen ali aahe tri pn old screen diste … old screen purn pn remove kr"):** the
 old green screen is gone. **The app lock** (the fingerprint / face / PIN not given, or wrong) and **"No connection"** are on the
 approved design of the opening (`screens/splash.dart`: `SplashScene` – the navy, the PQC road, the mark and RCL ERP at the top – with
