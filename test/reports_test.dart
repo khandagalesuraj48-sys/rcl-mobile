@@ -119,4 +119,30 @@ void main() {
     expect(h, contains('Prepared by'));
     expect(reportHtml(kDailyReport.build(fx('getDailyInwardIssueReport')), company: 'Rachana Construction Limited', site: '', printed: ''), contains('size:A4 portrait'));
   });
+
+  test('(3.38.0 – Mechanical update-159) the daily report at 18B: a "Received from" and a "Sent to" column for EACH other stock point', () {
+    const cp = 'CAMP PUMP', ze = 'DISPENSER - MH12ZE-1739', wj = 'DISPENSER - MH12WJ-1381';
+    final doc = kDailyReport.build(<String, dynamic>{
+      'company': 'Rachana Construction Limited', 'from': '2026-10-25', 'to': '2026-10-25', 'location': wj, 'byLocation': true, 'otherLocations': [cp, ze], 'groups': ['Own', 'Rental', 'Debit'],
+      'rows': [
+        {'date': '2026-10-25', 'opening': 0, 'inward': 0, 'tin': 1800, 'tout': 0, 'tinBy': {cp: 1500, ze: 300}, 'toutBy': {}, 'issue': {'Own': 150}, 'issued': 150, 'closing': 1650},
+      ],
+      'totals': {'opening': 0, 'inward': 0, 'tin': 1800, 'tout': 0, 'tinBy': {cp: 1500, ze: 300}, 'toutBy': {}, 'issued': 150, 'issue': {'Own': 150}, 'closing': 1650},
+      'generated': '25-10-2026 13:00',
+    });
+    final t = doc.blocks.whereType<RTable>().single;
+    expect(t.head.sublist(0, 7), ['Date', 'Opening stock', 'Inward (pump)', 'Received from $cp', 'Received from $ze', 'Sent to $cp', 'Sent to $ze']);
+    expect(t.head.any((h) => h.contains(' / ')), false, reason: 'never "A / B" together');
+    expect(t.rows.single.cells.sublist(3, 7).map((c) => c.text).toList(), ['1,500', '300', '–', '–']);
+    expect(t.foot.single.cells.sublist(3, 7).map((c) => c.text).toList(), ['1,500', '300', '0', '0']);
+    expect(doc.meta, contains('+ Received 1,800 − Sent 0 − Issued 150 = Closing 1,650'));
+    // a server before update-159 (no tinBy): one column for the other places together, as the app showed before
+    final old = kDailyReport.build(<String, dynamic>{'from': '2026-10-25', 'to': '2026-10-25', 'location': wj, 'byLocation': true, 'otherLocations': [cp, ze], 'groups': ['Own'],
+      'rows': [{'date': '2026-10-25', 'opening': 0, 'inward': 0, 'tin': 1800, 'tout': 0, 'issue': {}, 'issued': 0, 'closing': 1800}], 'totals': {'opening': 0, 'inward': 0, 'tin': 1800, 'tout': 0, 'issued': 0, 'issue': {}, 'closing': 1800}});
+    final ot = old.blocks.whereType<RTable>().single;
+    expect(ot.head.sublist(3, 5), ['Received from $cp / $ze', 'Sent to $cp / $ze']);
+    expect(ot.rows.single.cells[3].text, '1,800');
+    // all locations: no transfer columns, as before
+    expect(kDailyReport.build(fx('getDailyInwardIssueReport')).blocks.whereType<RTable>().single.head.sublist(0, 4), ['Date', 'Opening stock', 'Inward (pump)', 'Issued – Own']);
+  });
 }

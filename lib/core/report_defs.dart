@@ -604,7 +604,12 @@ final kDailyReport = ReportDef(
   filters: const ['range', 'dloc'],
   note: 'Every day of the dates: opening stock, inward from the pump, diesel issued (by ownership) and closing stock.',
   build: (d) {
-    final byLoc = d['byLocation'] == true, other = (d['otherLocations'] is List ? (d['otherLocations'] as List).join(' / ') : '').toString();
+    // (3.38.0 – Mechanical update-159, asked 25-10-2026: "te 2 vehicle ektr dakhawat aahe ass nko") a "Received from" and a
+    // "Sent to" column for EACH other stock point, always
+    // (a server before update-159 has no tinBy: one column for the other places together, as before)
+    final fresh = mapOf(d['totals'])['tinBy'] is Map, others = d['otherLocations'] is List ? [for (final e in d['otherLocations'] as List) '$e'] : <String>[];
+    final byLoc = d['byLocation'] == true, peers = !byLoc ? const <String>[] : fresh ? others : [others.isEmpty ? 'other location' : others.join(' / ')];
+    num pv(Map<String, dynamic> x, String k, String p) => fresh ? (x[k] is Map ? nOf((x[k] as Map)[p]) : 0) : nOf(x[k == 'tinBy' ? 'tin' : 'tout']);
     final gs = (d['groups'] is List ? (d['groups'] as List).map((e) => '$e').toList() : <String>[]);
     final rs = listOf(d['rows']), t0 = mapOf(d['totals']);
     const dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -614,7 +619,7 @@ final kDailyReport = ReportDef(
     }
 
     final check = 'Opening ${fmt(t0['opening'])} + Inward ${fmt(t0['inward'])}${byLoc ? ' + Received ${fmt(t0['tin'])} − Sent ${fmt(t0['tout'])}' : ''} − Issued ${fmt(t0['issued'])} = Closing ${fmt(t0['closing'])}';
-    final head = ['Date', 'Opening stock', 'Inward (pump)', if (byLoc) 'Received from ${other.isEmpty ? 'other location' : other}', if (byLoc) 'Sent to ${other.isEmpty ? 'other location' : other}', for (final g in gs) 'Issued – $g', 'Total issued', 'Closing stock'];
+    final head = ['Date', 'Opening stock', 'Inward (pump)', for (final p in peers) 'Received from $p', for (final p in peers) 'Sent to $p', for (final g in gs) 'Issued – $g', 'Total issued', 'Closing stock'];
     return RDoc(
       title: 'Daily Diesel Inward & Issue Summary',
       period: _period(d),
@@ -625,10 +630,10 @@ final kDailyReport = ReportDef(
         RTable(sheet: 'Daily Inward & Issue', head: head, numCols: {for (var i = 1; i < head.length; i++) i}, rows: [
           for (final x in rs)
             RRow([
-              tc('${dmy(x['date'])} ${dayOf('${x['date']}')}'), nc(x['opening']), zc(x['inward']), if (byLoc) zc(x['tin']), if (byLoc) zc(x['tout']), for (final g in gs) zc(mapOf(x['issue'])[g] ?? 0), zc(x['issued'], bold: true), nc(x['closing']),
+              tc('${dmy(x['date'])} ${dayOf('${x['date']}')}'), nc(x['opening']), zc(x['inward']), for (final p in peers) zc(pv(x, 'tinBy', p)), for (final p in peers) zc(pv(x, 'toutBy', p)), for (final g in gs) zc(mapOf(x['issue'])[g] ?? 0), zc(x['issued'], bold: true), nc(x['closing']),
             ], kind: dayOf('${x['date']}') == 'Sun' ? RKind.sunday : RKind.normal),
         ], foot: [
-          RRow([const RCell('Total', bold: true), nc(t0['opening']), nc(t0['inward']), if (byLoc) nc(t0['tin']), if (byLoc) nc(t0['tout']), for (final g in gs) nc(mapOf(t0['issue'])[g] ?? 0), nc(t0['issued']), nc(t0['closing'])], kind: RKind.grand),
+          RRow([const RCell('Total', bold: true), nc(t0['opening']), nc(t0['inward']), for (final p in peers) nc(pv(t0, 'tinBy', p)), for (final p in peers) nc(pv(t0, 'toutBy', p)), for (final g in gs) nc(mapOf(t0['issue'])[g] ?? 0), nc(t0['issued']), nc(t0['closing'])], kind: RKind.grand),
         ]),
       ],
     );

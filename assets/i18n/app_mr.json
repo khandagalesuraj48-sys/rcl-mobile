@@ -910,5 +910,7 @@
 "This entry has no attachments now.": "या entry ला आता attachments नाहीत.",
 "Files": "Files (फोटो / PDF)",
 "Attachments of one Log Book entry (photos / PDF), at most": "एका Log Book entry चे attachments (फोटो / PDF), जास्तीत जास्त",
-"1 to 20 (10 unless set)": "1 ते 20 (ठरवले नाही तर 10)"
+"1 to 20 (10 unless set)": "1 ते 20 (ठरवले नाही तर 10)",
+"From (stock point)": "कुठून (stock point)",
+"Stock of {0} only. Each \"Received from\" / \"Sent to\" column is the diesel transfers with that one stock point. Opening + Received − Sent − Issued = Closing.": "फक्त {0} चा stock. प्रत्येक \"कडून मिळाले\" / \"ला पाठवले\" column त्या एकाच stock point सोबतचे diesel transfers दाखवतो. Opening + मिळाले − पाठवले − Issued = Closing."
 }

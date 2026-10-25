@@ -158,7 +158,8 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
   List<Map<String, dynamic>> get _shown {
     final words = q.toLowerCase().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
     return rows.where((r) {
-      if (place.isNotEmpty && _placeOf(r) != place && (r['to'] ?? '') != place) return false;
+      // (3.38.0 – Mechanical update-159, asked 25-10-2026) a transfer: only those sent FROM the place, as the web's list
+      if (place.isNotEmpty && _placeOf(r) != place) return false;
       if (words.isEmpty) return true;
       final t = r.values.map((v) => '$v').join(' ').toLowerCase();
       return words.every(t.contains);

@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.38.0 (25-10-2026, with Mechanical's update-159 – asked at 18B: "/ nko … jyach tyach seprate ale gel transfer"; "jo
+stock point asel tithun transfer asel trch"):** with one stock point chosen, Dashboard → Day-wise diesel stock and its stock cards,
+and Reports → Daily Inward & Issue show a **"Received from" and a "Sent to" column (line) for EACH other stock point** – never
+"A / B" together (at 18B: CAMP PUMP, DISPENSER - MH12ZE-1739, DISPENSER - MH12WJ-1381); every column always, 0 when nothing moved.
+The server's answer carries `tinBy` / `toutBy` (Ltr by the other stock point) and `others`; `tin` / `tout` stay the totals (an older
+answer: the site's places, 0). VTR (two places) reads as before. The Transfer list's filter is **"From (stock point)"**: only the
+transfers sent FROM it (the server's `getTransfers`, and the day list of the Transfer page). `core/dash.dart` (`peersOf`, `byPeer`,
+`locationCards`, `ledgerTable`, `ledgerHelp`), `core/report_defs.dart` (`kDailyReport`), `screens/entries.dart`,
+`screens/entry_more.dart`; tests in `dash_test.dart`, `reports_test.dart`.
+
 **Version 3.37.0 (25-10-2026 – the approved "RCL ERP Premium Splash Screen"):** the app's first screen (while the kept sign-in is
 checked and the site is opened) is the approved design – dark navy, the photo of the PQC road (finished concrete on the left, the
 paving on the right), the Rachana mark on its white tile, **RCL ERP** (RCL red, ERP white) with its red line, INTEGRATED
