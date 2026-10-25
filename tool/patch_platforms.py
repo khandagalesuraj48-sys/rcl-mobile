@@ -55,6 +55,14 @@ def manifest(s):
         s = s.replace('</application>', '    <receiver android:name=".UpdateDoneReceiver" android:exported="true">\n'
                       '            <intent-filter><action android:name="android.intent.action.DOWNLOAD_COMPLETE"/></intent-filter>\n'
                       '        </receiver>\n    </application>', 1)
+    if 'flutter_deeplinking_enabled' not in s:      # (3.41.0) a "Scan with Mobile" QR (…/scan) opens in the app (Mechanical update-160)
+        s = s.replace('        </activity>', '            <intent-filter android:autoVerify="true">\n'
+                      '                <action android:name="android.intent.action.VIEW"/>\n'
+                      '                <category android:name="android.intent.category.DEFAULT"/>\n'
+                      '                <category android:name="android.intent.category.BROWSABLE"/>\n'
+                      '                <data android:scheme="https" android:host="oneclicksolution-erp.vercel.app" android:path="/scan"/>\n'
+                      '            </intent-filter>\n'
+                      '            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>\n        </activity>', 1)
     if '.CallService' not in s:      # (3.26.0) a call with the web: "Call is on" (CallService.kt, kept in git with MainActivity.kt)
         s = s.replace('</application>', '    <service android:name=".CallService" android:exported="false" android:foregroundServiceType="microphone|camera|mediaProjection"/>\n    </application>', 1)
     if 'android.speech.RecognitionService' not in s:      # (3.15.0) the assistant: the phone's listening and speaking services

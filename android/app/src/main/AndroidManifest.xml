@@ -43,6 +43,18 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- (3.41.0, asked 25-10-2026: "google scanner mobile scanner madhun jari scan kel adhi app kade jaw app nasel tr browser
+                 kade") a "Scan with Mobile" QR code of the web (…/scan?cap=…&site=…) opens in the app – the phone's camera and Google
+                 Lens too. autoVerify: Android checks https://oneclicksolution-erp.vercel.app/.well-known/assetlinks.json (Mechanical
+                 update-160). Without the app the link opens in the browser as before. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="oneclicksolution-erp.vercel.app" android:path="/scan"/>
+            </intent-filter>
+            <!-- (3.41.0) the link is read by the app itself (app_links, core/scan_link.dart), not as a page of Flutter's own routes -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

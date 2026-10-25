@@ -11,8 +11,7 @@ import 'package:mobile_scanner/mobile_scanner.dart' show MobileScanner, MobileSc
 import '../core/imports.dart' show findMachine;
 import '../core/kinds.dart';
 import '../core/qr_scan.dart';
-import '../core/attach.dart' show capCode;
-import 'attach_box.dart' show CaptureScreen;
+import '../core/scan_link.dart';
 import '../core/report_defs.dart' show kDieselReports;
 import '../ui/scope.dart';
 import '../ui/t.dart';
@@ -34,12 +33,9 @@ Future<void> scanMachineLabel(BuildContext context, {VoidCallback? onSaved}) asy
     return;
   }
   if (text == null || text.isEmpty || !context.mounted) return;
-  // (3.34.0, Mechanical update-153) the QR code of "Scan with Mobile" on a computer: the photos for its entry are taken here
-  final cap = capCode(text);
-  if (cap.isNotEmpty) {
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CaptureScreen(code: cap)));
-    return;
-  }
+  // (3.34.0, Mechanical update-153) the QR code of "Scan with Mobile" on a computer: the photos for its entry are taken here –
+  // (3.41.0) the same way as from the phone's camera / Google Lens (core/scan_link.dart): its site opened first when it is another
+  if (ScanLink.i.take(text)) return;
   final id = labelMachine(text);
   if (id.isEmpty) {
     toast(context, 'This QR code is not a machinery label of the ERP.', bad: true);

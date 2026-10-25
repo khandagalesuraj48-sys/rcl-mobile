@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:app_links/app_links.dart';
 
 import 'config.dart';
 import 'core/alerts.dart';
@@ -13,11 +14,13 @@ import 'core/applock.dart';
 import 'core/device.dart';
 import 'core/lock_gate.dart';
 import 'core/rtc_kit.dart';
+import 'core/scan_link.dart';
 import 'core/session.dart';
 import 'core/update.dart' show updateContext, updateWatch;
 import 'screens/call.dart';
 import 'screens/lock.dart';
 import 'screens/login.dart';
+import 'screens/scan_link_layer.dart';
 import 'screens/shell.dart';
 import 'screens/site_pick.dart';
 import 'screens/splash.dart';
@@ -79,6 +82,15 @@ void main() {
   // comes back (core/update.dart updateWatch)
   updateContext = () => appNav.currentContext;
   AppLifecycleListener(onResume: () => updateWatch(opened: true)); // (it stays with the app's binding)
+  // (3.41.0, asked 25-10-2026: "google scanner mobile scanner madhun jari scan kel adhi app kade jaw") a "Scan with Mobile" QR code
+  // read by the phone's camera / Google Lens opens HERE (core/scan_link.dart): the link the app was opened with, and any later one
+  if (Platform.isAndroid || Platform.isIOS) {
+    final links = AppLinks();
+    links.getInitialLink().then((u) {
+      if (u != null) ScanLink.i.take('$u');
+    }).catchError((Object _) {});
+    links.uriLinkStream.listen((u) => ScanLink.i.take('$u'), onError: (Object _) {});
+  }
   WidgetsBinding.instance.addPostFrameCallback((_) => updateWatch(opened: true));
 }
 
@@ -162,7 +174,8 @@ class RclApp extends StatelessWidget {
             final app = Listener(
               behavior: HitTestBehavior.translucent,
               onPointerDown: (_) => SessionScope.read(context).touch(),
-              child: LockLayer(lock: lock, nav: appNav, child: CallLayer(nav: appNav, child: child!)),
+              // (3.41.0) a "Scan with Mobile" QR code waiting: opened as soon as he is signed in, unlocked and at its site
+              child: LockLayer(lock: lock, nav: appNav, child: ScanLinkLayer(nav: appNav, lock: lock, child: CallLayer(nav: appNav, child: child!))),
             );
             return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
           },

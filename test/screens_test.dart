@@ -13,6 +13,7 @@ import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/applock.dart';
 import 'package:rcl_mobile/core/lang.dart';
 import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
+import 'package:rcl_mobile/core/scan_link.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
@@ -3738,5 +3739,94 @@ void main() {
     await net(t);
     expect(find.textContaining('This QR code is not valid'), findsOneWidget);
     expect(find.byKey(const Key('cap-send')), findsNothing);
+  });
+
+  // ---------------- (3.41.0 – update-160) the QR code of "Scan with Mobile" read by the phone's camera / Google Lens ----------------
+  testWidgets('(3.41.0) A "Scan with Mobile" QR code read by the phone\'s camera / Google Lens opens in the app: at another of his sites → that site is opened by itself, then the photos screen; the same link again: once; a site not given to him: said; the app\'s own Scan the same way', (t) async {
+    phone(t);
+    ScanLink.i.reset();
+    addTearDown(ScanLink.i.reset);
+    final srv = FakeServer()..perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(s.site!.code, 'S1');
+    final nav = t.state<NavigatorState>(find.byType(Navigator).first);
+    unawaited(nav.push(MaterialPageRoute<bool>(builder: (_) => const LogForm(editKey: 'MH-25-AJ-2169|2026-10-14|Full Day'))));
+    await net(t);
+    // the link as Android gives it to the app (the QR code made at the computer of site T2)
+    final u = 'https://oneclicksolution-erp.vercel.app/scan?cap=${srv.capCodeOk}&site=T2';
+    ScanLink.i.take(u);
+    await net(t);
+    await net(t);
+    expect(s.site!.code, 'T2', reason: 'his other site opened by itself – nothing to choose');
+    expect(find.byType(CaptureScreen), findsOneWidget);
+    expect(find.text('MH-25-AJ-2169 · 14-10-2026 · Day'), findsOneWidget);
+    expect(find.byType(LogForm), findsNothing, reason: 'the screen of the site before is not left open under it');
+    expect(ScanLink.i.code, '');
+    nav.pop();
+    await net(t);
+    ScanLink.i.take(u);
+    await net(t);
+    expect(find.byType(CaptureScreen), findsNothing, reason: 'the same link again: opened once');
+    // a site that is not given to him: said, nothing opened, his site stays
+    ScanLink.i.take('https://oneclicksolution-erp.vercel.app/scan?cap=${'e' * 32}.${'f' * 64}&site=ZZ9');
+    await net(t);
+    expect(find.textContaining('This QR code is for site ZZ9 – that site is not given to you.'), findsOneWidget);
+    expect(find.byType(CaptureScreen), findsNothing);
+    expect([s.site!.code, ScanLink.i.code], ['T2', '']);
+    await settle(t, 4000);
+    // the app's own Scan: the same way (a QR code of site S1: S1 opened again first)
+    QrScanScreen.cameraForTest = (found) => GestureDetector(key: const Key('qr-cam'), onTap: () => found('https://oneclicksolution-erp.vercel.app/scan?cap=${'c' * 32}.${'d' * 64}&site=S1'), child: const ColoredBox(color: Color(0xFF3B4A40)));
+    addTearDown(() => QrScanScreen.cameraForTest = null);
+    await t.tap(find.byKey(const Key('home-scan')));
+    await net(t);
+    await t.tap(find.byKey(const Key('qr-cam')));
+    await net(t);
+    await net(t);
+    expect(s.site!.code, 'S1');
+    expect(find.byType(CaptureScreen), findsOneWidget);
+    expect(find.textContaining('This QR code is not valid'), findsOneWidget, reason: 'the server checks the code, as before');
+  });
+
+  testWidgets('(3.41.0) The QR code\'s link waits – nothing is lost: the app locked → opened after the fingerprint; signed out → opened after the sign-in (at the QR code\'s site)', (t) async {
+    phone(t);
+    ScanLink.i.reset();
+    addTearDown(ScanLink.i.reset);
+    final srv = FakeServer()..perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    final g = FakeGate()..answers.add(const LockAnswer(LockOutcome.no));
+    ScanLink.i.take('https://oneclicksolution-erp.vercel.app/scan?cap=${srv.capCodeOk}&site=S1'); // (the link the app was opened with)
+    await t.pumpWidget(RclApp(session: s, lock: AppLock(g)));
+    await net(t);
+    expect(find.byKey(const Key('lock-screen')), findsOneWidget);
+    expect(find.byType(CaptureScreen), findsNothing, reason: 'nothing of the ERP before the fingerprint');
+    expect(ScanLink.i.code, srv.capCodeOk, reason: 'kept');
+    await t.tap(find.byKey(const Key('lock-unlock')));
+    await net(t);
+    expect(find.byKey(const Key('lock-screen')), findsNothing);
+    expect(find.byType(CaptureScreen), findsOneWidget);
+    expect(find.text('MH-25-AJ-2169 · 14-10-2026 · Day'), findsOneWidget);
+    t.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await net(t);
+    expect(find.byType(CaptureScreen), findsNothing);
+    // signed out: kept until the sign-in, then his site of the QR code (T2) – not the list of sites
+    ScanLink.i.reset();
+    final srv2 = FakeServer()..perms['Log Book'] = 'Edit';
+    final s2 = make(srv2);
+    await t.runAsync(s2.start);
+    await t.pumpWidget(RclApp(session: s2));
+    await net(t);
+    expect(s2.stage, Stage.signedOut);
+    ScanLink.i.take('https://oneclicksolution-erp.vercel.app/scan?cap=${srv2.capCodeOk}&site=T2');
+    await net(t);
+    expect(find.byType(CaptureScreen), findsNothing);
+    expect(ScanLink.i.code, srv2.capCodeOk, reason: 'kept until he is signed in');
+    await t.runAsync(() => s2.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await net(t);
+    await net(t);
+    expect(s2.site?.code, 'T2');
+    expect(find.byType(CaptureScreen), findsOneWidget);
+    expect(find.text('MH-25-AJ-2169 · 14-10-2026 · Day'), findsOneWidget);
   });
 }

@@ -41,19 +41,37 @@ class AppLock extends ChangeNotifier {
   String said = '';
   int _errors = 0;
   DateTime? _left;
+  bool _leftForPicker = false;
+
+  /// (3.41.0, asked 25-10-2026: "complete process zal shiway madhech cut hou naye") the app's OWN camera, gallery or file box is open
+  /// (a photo for an entry, Scan with Mobile, a bill copy …): the phone shows another screen, but the person is still at work in the
+  /// app – the lock does not come in the middle of it. Only when that box stays open longer than [pickerAway] is it locked again.
+  static int outside = 0;
+  static const pickerAway = Duration(minutes: 10);
+
+  /// [f] opens the app's own camera / gallery / file box – while it is open the app is not "away".
+  static Future<T> whileOutside<T>(Future<T> Function() f) async {
+    outside++;
+    try {
+      return await f();
+    } finally {
+      outside--;
+    }
+  }
 
   /// The app went to the background (another app, the screen off).
   void away0() {
     if (asking) return; // (the phone's own PIN screen is another screen: not "away")
+    if (_left == null) _leftForPicker = outside > 0;
     _left ??= clock();
   }
 
-  /// The app is back: locked again when it was away for more than [away].
+  /// The app is back: locked again when it was away for more than [away] (its own camera / file box: more than [pickerAway]).
   void back() {
     final l = _left;
     _left = null;
     if (asking || l == null || locked) return;
-    if (clock().difference(l) >= away) {
+    if (clock().difference(l) >= (_leftForPicker ? pickerAway : away)) {
       locked = true;
       said = '';
       notifyListeners();

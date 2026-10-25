@@ -82,4 +82,32 @@ void main() {
     expect(l3.locked, true);
     expect(l3.said, '');
   });
+
+  test('(3.41.0) the app\'s own camera / file box open: not "away" – 3 minutes taking photos, no lock; open more than 10 minutes: locked', () async {
+    final g = FakeGate(), l = AppLock(g);
+    var now = DateTime(2026, 10, 25, 9);
+    l.clock = () => now;
+    await l.unlock('Unlock RCL ERP');
+    expect(l.locked, false);
+    final photo = AppLock.whileOutside(() async {
+      l.away0(); // (the camera app comes in front of RCL ERP)
+      now = now.add(const Duration(minutes: 3));
+      l.back(); // (the photo is taken, RCL ERP is in front again – before the picker's answer)
+      return 'photo';
+    });
+    expect(await photo, 'photo');
+    expect(l.locked, false, reason: 'the process is not cut in the middle');
+    expect(AppLock.outside, 0);
+    await AppLock.whileOutside(() async {
+      l.away0();
+      now = now.add(const Duration(minutes: 11));
+      l.back();
+    });
+    expect(l.locked, true, reason: 'left open too long: locked');
+    await l.unlock('Unlock RCL ERP');
+    l.away0(); // another app, not the app's own box
+    now = now.add(const Duration(minutes: 2));
+    l.back();
+    expect(l.locked, true, reason: 'away in another app: as before');
+  });
 }

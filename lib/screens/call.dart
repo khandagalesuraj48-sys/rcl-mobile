@@ -27,6 +27,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/ask_bot.dart';
+import '../core/applock.dart';
 
 const _bg = Color(0xFF0B1410), _panel = Color(0xFF16231C), _btn = Color(0xFF243329), _red = Color(0xFFE53935), _blue = Color(0xFF1E88E5);
 
@@ -858,7 +859,7 @@ class _ChatSheetState extends State<_ChatSheet> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      final x = await ImagePicker().pickImage(source: camera ? ImageSource.camera : ImageSource.gallery, maxWidth: 1280, maxHeight: 1280, imageQuality: 75);
+      final x = await AppLock.whileOutside(() => ImagePicker().pickImage(source: camera ? ImageSource.camera : ImageSource.gallery, maxWidth: 1280, maxHeight: 1280, imageQuality: 75));
       if (x == null) return;
       final s = await compute(chatJpg, await x.readAsBytes());
       if (s.isEmpty) {

@@ -15,6 +15,20 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.41.0 (25-10-2026 – "google scanner mobile scanner madhun jari scann kel adhi app kade jaw app nasel tr browser kade ok
+ani complete process zal shiway madhech cut hou naye"):** the QR code of "Scan with Mobile" (Log Book attachments on the computer,
+Mechanical update-160: `…/scan?cap=<code>&site=<site>`) opens in THIS app whoever reads it – the phone's camera, Google Lens or the
+app's own Scan; without the app on the phone it opens in the browser, as before. Android App Links: `AndroidManifest.xml` (an
+`autoVerify` intent filter for `https://oneclicksolution-erp.vercel.app/scan`, Flutter's own deep links off – also in
+`tool/patch_platforms.py`) with the web's `/.well-known/assetlinks.json` (this app's package and its signing fingerprint); the
+links are read with `app_links` (`main.dart`: the link the app was opened with and every later one). `core/scan_link.dart` keeps
+the code until it can be opened and `screens/scan_link_layer.dart` opens it over every screen: after the sign-in (signed out),
+after the fingerprint (locked), at the QR code's site – another of HIS sites is opened by itself (the screens of the site before
+are closed), a site not given to him is said – then the photos screen (`CaptureScreen`, the server checks the person, the site
+and the code as before). The same link twice is opened once. Not cut midway: the app's own camera, gallery and file box (entry
+photos, Scan with Mobile, the plate, a photo in a call's chat, an Excel file, his photo – `AppLock.whileOutside`) are not "away" – the lock asks again only after 10 minutes there (1 minute for another app).
+iPhone: the link opens in the browser for now (Universal Links need the Apple team – not done).
+
 **Version 3.40.0 (25-10-2026 – the app icon, "1 banaw"):** the app's icon is option 1 of the six shown – the navy of the approved
 design (#0B3A66 → #022646 → #06111C) with the white rounded tile and the red / dark R in its middle (as on the start screen); the old
 green fuel-pump icon is gone. The R is traced from the logo picture into sharp shapes and drawn at every size. Android: the legacy

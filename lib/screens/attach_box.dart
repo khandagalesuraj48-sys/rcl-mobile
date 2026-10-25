@@ -26,6 +26,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../core/applock.dart';
 
 /// The site's number of attachments of one entry (Settings → Rules of the site; 10 unless set).
 int attMaxOf(Map<String, dynamic> rules) {
@@ -39,7 +40,7 @@ Future<List<({String name, Uint8List bytes})>> Function(String how, int room) pi
 Future<List<({String name, Uint8List bytes})>> _pickFiles(String how, int room) async {
   if (room < 1) return [];
   if (how == 'pdf') {
-    final r = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf'], allowMultiple: true, withData: true);
+    final r = await AppLock.whileOutside(() => FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf'], allowMultiple: true, withData: true));
     if (r == null) return [];
     return [for (final f in r.files.take(room)) if (f.bytes != null) (name: f.name, bytes: f.bytes!)];
   }
@@ -52,13 +53,13 @@ Future<List<({String name, Uint8List bytes})>> _pickFiles(String how, int room) 
   final picker = ImagePicker();
   final List<XFile> xs;
   if (camera) {
-    final x = await picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear);
+    final x = await AppLock.whileOutside(() => picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear));
     xs = [if (x != null) x];
   } else if (room == 1) {
-    final x = await picker.pickImage(source: ImageSource.gallery);
+    final x = await AppLock.whileOutside(() => picker.pickImage(source: ImageSource.gallery));
     xs = [if (x != null) x];
   } else {
-    xs = await picker.pickMultiImage(limit: room);
+    xs = await AppLock.whileOutside(() => picker.pickMultiImage(limit: room));
   }
   return [for (final x in xs.take(room)) (name: x.name, bytes: await x.readAsBytes())];
 }
