@@ -83,11 +83,10 @@ class Api {
   bool get hasPortal => (_cookie ?? '').isNotEmpty;
 
   Future<void> keepSite(String code) async {
-    if (site != code) {
-      token = null;
-      answers.clear(); // (update-155) another site: nothing kept of this one
-      await keep.write(kToken, null);
-    }
+    if (site == code) return; // (3.39.0) the same site as kept: nothing written again at every opening
+    token = null;
+    answers.clear(); // (update-155) another site: nothing kept of this one
+    await keep.write(kToken, null);
     site = code;
     await keep.write(kSite, code);
   }
@@ -281,6 +280,14 @@ class Api {
     if (why == null || why.trim().isEmpty) return false;
     await _rpc('api', [token, 'sendChangeRequest', [{'fn': fn, 'args': args, 'reason': why.trim()}]]);
     return true;
+  }
+
+  /// (3.39.0, asked 25-10-2026: "app opening slow … ultra fast") A question asked once, as it is – with the sign-in kept on the
+  /// phone, nothing renewed or tried again (Session.start asks the site's first lists this way while the Portal is still being
+  /// asked; if it fails the normal [call] is made).
+  Future<dynamic> callOnce(String fn) {
+    if ((token ?? '').isEmpty) return Future.error(ApiError('SESSION_EXPIRED', status: 401));
+    return _rpc('api', [token, fn, const []]);
   }
 
   /// One action of Mechanical (getInit, saveDieselIssue …) with the person's sign-in. [save]: it changes data – it gets its

@@ -190,6 +190,47 @@ void main() {
     });
   }
 
+  // (3.39.0) the lock and "No connection" on the same design: their card at the bottom fits every screen – never cut, its button on
+  // the screen (on a phone held across the words at the top give way and the card scrolls)
+  for (final (name, w, h, top, bottom) in [
+    ('small phone', 320.0, 568.0, 20.0, 0.0),
+    ('phone', 360.0, 780.0, 24.0, 48.0),
+    ('phone held across', 800.0, 360.0, 24.0, 0.0),
+    ('tablet', 800.0, 1280.0, 24.0, 48.0),
+  ]) {
+    testWidgets('(3.39.0) the lock card fits a $name ($w × $h)', (t) async {
+      _screen(t, w, h, top: top, bottom: bottom);
+      await t.pumpWidget(MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: SplashScene(
+            room: 300,
+            side: .07,
+            bottom: (_) => SplashPanel(children: [
+              const SizedBox(key: Key('card-top'), height: 200),
+              SplashButton(key: const Key('card-btn'), label: const Text('Unlock'), icon: Icons.fingerprint_rounded, onPressed: () {}),
+            ]),
+          ),
+        ),
+      ));
+      await t.pump(const Duration(milliseconds: 300));
+      expect(t.takeException(), isNull);
+      final btn = t.getRect(find.byKey(const Key('card-btn')));
+      expect(btn.bottom, lessThanOrEqualTo(h - bottom), reason: 'above the navigation bar');
+      expect(btn.top, greaterThanOrEqualTo(top), reason: 'below the status bar');
+      expect(btn.left, greaterThanOrEqualTo(0));
+      expect(btn.right, lessThanOrEqualTo(w));
+      if (h >= 568) {
+        final logo = t.getRect(find.byKey(const Key('splash-logo'))), sub = t.getRect(find.byKey(const Key('splash-sub')));
+        final card = t.getRect(find.byKey(const Key('card-top')));
+        expect(logo.top, greaterThanOrEqualTo(top));
+        expect(sub.bottom, lessThan(card.top), reason: 'the words at the top and the card never meet');
+      } else {
+        expect(find.byKey(const Key('splash-logo')), findsNothing, reason: 'too short for both: the words at the top give way');
+      }
+    });
+  }
+
   for (final (file, w, h, dpr) in [
     ('00_splash.png', 393.0, 852.0, 3.0),
     ('00_splash_small.png', 360.0, 640.0, 2.0),

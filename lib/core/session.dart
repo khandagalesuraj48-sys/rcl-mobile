@@ -288,15 +288,28 @@ class Session extends ChangeNotifier {
   Future<void> start() async {
     boot = .05;
     await api.load();
+    // (3.39.0, asked 25-10-2026: "app opening slow zal aahe … ultra fast") with the sign-in kept on this phone, the Portal ("is he
+    // still signed in, which sites") and the kept site's first lists (getInit) are asked AT THE SAME TIME – one wait, not two – and
+    // the language is read meanwhile. Nothing of the site's answer is used before the Portal says he is still signed in and still
+    // has that site at that address; otherwise it is dropped (and asked the normal way).
+    final meF = api.hasPortal ? _quiet(api.auth({'action': 'me'})) : null;
+    _keptMech = await api.keep.read(kMechUrl) ?? '';
+    final keptSite = api.site ?? '';
+    Future<dynamic>? early;
+    if (meF != null && (api.token ?? '').isNotEmpty && keptSite.isNotEmpty && _keptMech.startsWith('https://')) {
+      api.mechUrl = _keptMech;
+      early = _quiet(api.callOnce('getInit'));
+    }
     await Lang.i.set(await api.keep.read(kLang) ?? '', read: langRead);
     if (!api.hasPortal) return _go(Stage.signedOut);
     _boot(.15);
     try {
-      await _loadSites();
+      await _loadSites(meF);
       _boot(.4);
       final kept = api.site ?? '';
       if (sites.any((x) => x.code == kept)) {
-        await chooseSite(kept);
+        final at = sites.firstWhere((x) => x.code == kept).module('mechanical')?.url ?? '';
+        await chooseSite(kept, early: kept == keptSite && at == _keptMech ? early : null);
       } else if (sites.length == 1) {
         await chooseSite(sites.first.code);
       } else {
@@ -313,8 +326,9 @@ class Session extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadSites() async {
-    final me = await api.auth({'action': 'me'});
+  /// [meF]: the Portal's answer already asked (Session.start).
+  Future<void> _loadSites([Future<Map<String, dynamic>>? meF]) async {
+    final me = await (meF ?? api.auth({'action': 'me'}));
     if (me['signedIn'] != true) throw ApiError('Please sign in.', code: 'signin');
     // (15-10-2026) still on the password the Super Admin gave: he sets his own first (here in the app)
     if (me['mustChange'] == true) throw ApiError('Set your own password first.', code: 'mustchange');
@@ -391,7 +405,17 @@ class Session extends ChangeNotifier {
   }
 
   /// Opens a site: Mechanical's sign-in (a kept one, else a new ticket), the person's access and the site's lists.
-  Future<void> chooseSite(String code) async {
+  /// The kept address of the site's Mechanical (written only when it changes).
+  String _keptMech = '';
+
+  /// (3.39.0) A future asked ahead whose fault is taken up later (where it is awaited) – never an "unhandled" error meanwhile.
+  static Future<T> _quiet<T>(Future<T> f) {
+    f.then<void>((_) {}, onError: (Object _) {});
+    return f;
+  }
+
+  /// [early]: the site's first lists already asked (Session.start) – used when they came; else they are asked here.
+  Future<void> chooseSite(String code, {Future<dynamic>? early}) async {
     final s = sites.firstWhere((x) => x.code == code);
     if (site?.code != code) clearMemory(); // (update-155) another site: nothing the screens kept of the one before
     site = s;
@@ -402,9 +426,12 @@ class Session extends ChangeNotifier {
     _go(Stage.opening);
     try {
       if ((api.token ?? '').isEmpty) _user(await api.openSite(code));
-      await api.keep.write(kMechUrl, api.mechUrl);      // (3.1.8) for the notifications with the app closed
+      if (_keptMech != api.mechUrl) {
+        await api.keep.write(kMechUrl, api.mechUrl);      // (3.1.8) for the notifications with the app closed
+        _keptMech = api.mechUrl;
+      }
       _boot(.7);
-      await loadInit();
+      await loadInit(early);
       versions = {};
       boot = 1;
       _go(Stage.ready);
@@ -432,8 +459,17 @@ class Session extends ChangeNotifier {
     if ((r['siteName'] ?? '').toString().isNotEmpty) siteName = r['siteName'].toString();
   }
 
-  Future<void> loadInit() async {
-    final d = (await api.call('getInit') as Map).cast<String, dynamic>();
+  /// [early]: getInit already asked (Session.start); if it failed, it is asked again the normal way.
+  Future<void> loadInit([Future<dynamic>? early]) async {
+    dynamic got;
+    if (early != null) {
+      try {
+        got = await early;
+      } catch (_) {
+        got = null; // (an ended sign-in, no network …: the normal call below renews, tries again and says what is wrong)
+      }
+    }
+    final d = ((got is Map ? got : await api.call('getInit')) as Map).cast<String, dynamic>();
     final u = d['user'];
     if (u is Map) _user({'user': u});
     today = (d['today'] ?? '').toString();
