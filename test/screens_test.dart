@@ -852,6 +852,7 @@ void main() {
     expect(find.textContaining('You are still signed in'), findsOneWidget);
     expect(find.text('Sign in'), findsNothing, reason: 'not the sign-in screen');
     await pics(t);
+    await t.pump(const Duration(milliseconds: 400)); // (3.39.0) the road photo comes in softly (260 ms)
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/0_no_network.png'));
     srv.portalDown = false;
     await t.tap(find.byKey(const Key('wait-again')));

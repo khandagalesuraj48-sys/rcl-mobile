@@ -21,7 +21,6 @@ import 'screens/login.dart';
 import 'screens/shell.dart';
 import 'screens/site_pick.dart';
 import 'screens/splash.dart';
-import 'ui/brand.dart';
 import 'ui/scope.dart';
 import 'ui/theme.dart';
 import 'ui/t.dart';
@@ -202,7 +201,8 @@ class Gate extends StatelessWidget {
 
 /// (3.20.1, asked 18-10-2026: "app madhun pn auto log out nko aahe") No network – or the server not reached – while the kept
 /// sign-in is checked or a site is opened: he is STILL SIGNED IN (never the sign-in screen for this). The app tries again by
-/// itself (Session.retryEvery); "Try again" tries at once.
+/// itself (Session.retryEvery); "Try again" tries at once. (3.39.0, asked 25-10-2026: "old screen purn pn remove kr") on the
+/// approved design of the opening (screens/splash.dart) – the old green screen is gone.
 class Waiting extends StatelessWidget {
   const Waiting({super.key});
   @override
@@ -211,35 +211,32 @@ class Waiting extends StatelessWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: C.greenDark,
-        body: Backdrop(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Mark(size: 96),
-                const SizedBox(height: 22),
-                Text(bi('No connection', 'नेटवर्क नाही'), key: const Key('wait-title'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-                const SizedBox(height: 8),
-                Text(bi('You are still signed in. The app tries again by itself.', 'तुमचा login चालू आहे. App स्वतः पुन्हा प्रयत्न करेल.', '\n'),
-                    key: const Key('wait-kept'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.35, color: Color(0xE6FFFFFF))),
-                if (s.error.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(s.error, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Color(0xB3FFFFFF))),
-                ],
-                const SizedBox(height: 26),
-                if (s.retrying)
-                  const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
-                else
-                  FilledButton(
-                    key: const Key('wait-again'),
-                    style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: C.greenDark, minimumSize: const Size(190, 52)),
-                    onPressed: s.tryAgain,
-                    child: const Text('Try again', mr: 'पुन्हा प्रयत्न करा'),
-                  ),
-              ]),
-            ),
-          ),
+        backgroundColor: SplashC.navy,
+        body: SplashScene(
+          room: 280,
+          side: .07,
+          bottom: (_) => SplashPanel(children: [
+            const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 28),
+            const SizedBox(height: 8),
+            Text(bi('No connection', 'नेटवर्क नाही'), key: const Key('wait-title'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+            const SizedBox(height: 8),
+            Text(bi('You are still signed in. The app tries again by itself.', 'तुमचा login चालू आहे. App स्वतः पुन्हा प्रयत्न करेल.', '\n'),
+                key: const Key('wait-kept'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 14.5, height: 1.35, color: Color(0xE6FFFFFF))),
+            if (s.error.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(s.error, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Color(0xB3FFFFFF))),
+            ],
+            const SizedBox(height: 18),
+            if (s.retrying)
+              const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)))
+            else
+              SplashButton(
+                key: const Key('wait-again'),
+                onPressed: s.tryAgain,
+                icon: Icons.refresh_rounded,
+                label: const Text('Try again', mr: 'पुन्हा प्रयत्न करा'),
+              ),
+          ]),
         ),
       ),
     );

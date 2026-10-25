@@ -8,6 +8,7 @@ import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/t.dart';
+import 'splash.dart';
 
 class SitePickScreen extends StatefulWidget {
   const SitePickScreen({super.key});
@@ -41,9 +42,9 @@ class _SitePickScreenState extends State<SitePickScreen> with SingleTickerProvid
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
       child: Scaffold(
-        backgroundColor: C.greenDark,
-        body: Backdrop(
-          road: false,
+        backgroundColor: SplashC.navy,
+        // (3.39.0, asked 25-10-2026: "old screen purn pn remove kr") the navy of the approved design, not the old green
+        body: SplashBackdrop(
           child: SafeArea(
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
               Row(children: [

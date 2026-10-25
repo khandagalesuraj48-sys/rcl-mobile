@@ -1,14 +1,14 @@
-/* (3.27.0) THE LOCK SCREEN over the whole app (lib/core/applock.dart): the Rachana mark, "RCL ERP is locked", Unlock – the phone's own
+/* (3.27.0) THE LOCK SCREEN over the whole app (lib/core/applock.dart) – (3.39.0) on the approved design: the mark, "RCL ERP is locked", Unlock – the phone's own
  * box (fingerprint / face / PIN) opens by itself when the lock screen comes. Over the call's bar too (the names are not shown). */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/applock.dart';
 import '../core/session.dart';
-import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
+import 'splash.dart';
 
 class LockLayer extends StatefulWidget {
   const LockLayer({super.key, required this.lock, required this.nav, required this.child});
@@ -83,6 +83,10 @@ class _LockLayerState extends State<LockLayer> with WidgetsBindingObserver {
   }
 }
 
+/// (3.39.0, asked 25-10-2026: "old screen nahi disli pahije … jr passowrd finger nahi takla or chukich asel tewa … sagle hoyla
+/// pahije but new screen war") The lock on the approved design (screens/splash.dart): the same navy, road, mark and RCL ERP as the
+/// opening; at the bottom "RCL ERP is locked", his name, what the phone said (not unlocked, wrong, …) and Unlock – the old green
+/// screen is gone. What it does is as before.
 class _LockScreen extends StatelessWidget {
   const _LockScreen({required this.lock, required this.name});
   final AppLock lock;
@@ -92,44 +96,36 @@ class _LockScreen extends StatelessWidget {
         value: SystemUiOverlayStyle.light,
         child: Material(
           key: const Key('lock-screen'),
-          color: C.greenDark,
-          child: Backdrop(
-            child: SafeArea(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Mark(size: 96),
-                    const SizedBox(height: 22),
-                    const Icon(Icons.lock_rounded, color: Colors.white, size: 30),
-                    const SizedBox(height: 10),
-                    const Text('RCL ERP is locked', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
-                    if (name.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: Color(0xE6FFFFFF))),
-                    ],
-                    const SizedBox(height: 10),
-                    const Text('Use your fingerprint, face or the phone\'s PIN.', textAlign: TextAlign.center, style: TextStyle(fontSize: 15, height: 1.35, color: Color(0xE6FFFFFF))),
-                    if (lock.said.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(color: const Color(0x33FFFFFF), borderRadius: BorderRadius.circular(14)),
-                        child: Text(lock.said, key: const Key('lock-said'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                      ),
-                    ],
-                    const SizedBox(height: 28),
-                    FilledButton.icon(
-                      key: const Key('lock-unlock'),
-                      style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: C.greenDark, minimumSize: const Size(220, 56)),
-                      onPressed: lock.asking ? null : () => lock.unlock(tr('Unlock RCL ERP')),
-                      icon: const Icon(Icons.fingerprint_rounded, size: 28),
-                      label: const Text('Unlock', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                    ),
-                  ]),
+          color: SplashC.navy,
+          child: SplashScene(
+            room: 300,
+            side: .07,
+            bottom: (s) => SplashPanel(children: [
+              const Icon(Icons.lock_rounded, color: Colors.white, size: 28),
+              const SizedBox(height: 8),
+              const Text('RCL ERP is locked', textAlign: TextAlign.center, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+              if (name.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, color: Color(0xE6FFFFFF))),
+              ],
+              const SizedBox(height: 8),
+              const Text('Use your fingerprint, face or the phone\'s PIN.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14.5, height: 1.35, color: Color(0xCCFFFFFF))),
+              if (lock.said.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(color: const Color(0x33D90A16), border: Border.all(color: const Color(0x80F25750)), borderRadius: BorderRadius.circular(14)),
+                  child: Text(lock.said, key: const Key('lock-said'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 14)),
                 ),
+              ],
+              const SizedBox(height: 18),
+              SplashButton(
+                key: const Key('lock-unlock'),
+                onPressed: lock.asking ? null : () => lock.unlock(tr('Unlock RCL ERP')),
+                icon: Icons.fingerprint_rounded,
+                label: const Text('Unlock'),
               ),
-            ),
+            ]),
           ),
         ),
       );

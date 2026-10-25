@@ -38,63 +38,140 @@ class SplashScreen extends StatelessWidget {
         value: SystemUiOverlayStyle.light, // (as the opening screen before: light icons on the dark screen)
         child: Scaffold(
           backgroundColor: SplashC.navy,
-          body: LayoutBuilder(builder: (context, box) {
-            final mq = MediaQuery.of(context);
-            final w = box.maxWidth, h = box.maxHeight, pad = mq.padding;
-            // the width the design is drawn for: the phone's width; on a wide screen (a tablet held across) the design's
-            // own shape (852 × 1846) at this height – never smaller than 300 so a phone held across still reads
-            final s = math.min(w, math.max(h * 852 / 1846, math.min(w, 300.0)));
-            // the road: the whole width of the photo (as the design – its finished road on the left, the paver and the worker on the
-            // right), its sun at 36 % of the height; a short wide screen: at least half the height
-            final rh = math.max(w * 1.02 / _roadAspect, h * .5), rw = rh * _roadAspect, rt = h * _sunOnScreen - rh * _sunAt;
-            final logoTop = math.max(h * .099, pad.top + s * .03);
-            final barBottom = math.max(s * .149, pad.bottom + 16);
-            return Stack(fit: StackFit.expand, children: [
+          body: SplashScene(bottom: (s) => _Progress(s: s, value: progress)),
+        ),
+      );
+}
+
+/// (3.39.0, asked 25-10-2026: "old screen purn pn remove kr … sagle hoyla pahije but new screen war") The scene of the approved
+/// design – the navy, the PQC road, the red tile, the band; the mark, RCL ERP and its words at the top – with [bottom] at the bottom:
+/// the opening's bar (SplashScreen), the app lock (screens/lock.dart), "No connection" (main.dart Waiting). [room] = the height
+/// [bottom] needs (0: the bar, placed as the design has it); on a screen too short for both (a phone held across) the words at
+/// the top give way and [bottom] scrolls – it is never cut, its button (at its foot) always on the screen. [side]: its margin left and right (of the design's width).
+class SplashScene extends StatelessWidget {
+  const SplashScene({super.key, required this.bottom, this.room = 0, this.side = .12});
+  final Widget Function(double s) bottom;
+  final double room, side;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final mq = MediaQuery.of(context);
+        final w = box.maxWidth, h = box.maxHeight, pad = mq.padding;
+        // the width the design is drawn for: the phone's width; on a wide screen (a tablet held across) the design's
+        // own shape (852 × 1846) at this height – never smaller than 300 so a phone held across still reads
+        final s = math.min(w, math.max(h * 852 / 1846, math.min(w, 300.0)));
+        // the road: the whole width of the photo (as the design – its finished road on the left, the paver and the worker on the
+        // right), its sun at 36 % of the height; a short wide screen: at least half the height
+        final rh = math.max(w * 1.02 / _roadAspect, h * .5), rw = rh * _roadAspect, rt = h * _sunOnScreen - rh * _sunAt;
+        final logoTop = math.max(h * .099, pad.top + s * .03);
+        final bar = room <= 0, below = bar ? math.max(s * .149, pad.bottom + 16) : math.max(s * .06, pad.bottom + 16);
+        final brandEnd = logoTop + s * .40, brand = bar || h - below - room >= brandEnd + 8;
+        final rest = h - below - (brand ? brandEnd + 8 : pad.top + 12);
+        final x = (w - s) / 2;
+        return Stack(fit: StackFit.expand, children: [
+          // (3.39.0, asked 25-10-2026: "app opening slow zal aahe") the still part of the screen is drawn ONCE and kept: the bar that
+          // moves (and the photo while it comes in) are their own layers – nothing else is drawn again on every frame
+          RepaintBoundary(
+            child: Stack(fit: StackFit.expand, children: [
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [SplashC.navy, Color(0xFF0B2643), SplashC.navyDeep], stops: [0, .45, 1]),
                 ),
               ),
               Positioned.fill(child: CustomPaint(painter: _Glow(Offset(w * .1, rt + rh * _sunAt), s))),
-              Positioned(left: (w - rw) / 2, top: rt, width: rw, height: rh, child: const _Road()),
+              Positioned(left: (w - rw) / 2, top: rt, width: rw, height: rh, child: const RepaintBoundary(child: _Road())),
               Positioned.fill(child: CustomPaint(painter: _Decor(s))),
-              Positioned(
-                top: logoTop,
-                left: 0,
-                right: 0,
-                child: _Brand(s: s),
-              ),
-              Positioned(left: s * .12 + (w - s) / 2, right: s * .122 + (w - s) / 2, bottom: barBottom, child: _Progress(s: s, value: progress)),
-            ]);
-          }),
+              if (brand) Positioned(top: logoTop, left: 0, right: 0, child: _Brand(s: s)),
+            ]),
+          ),
+          if (bar)
+            Positioned(left: s * side + x, right: s * (side + .002) + x, bottom: below, child: bottom(s))
+          else
+            Positioned(
+              left: s * side + x,
+              right: s * side + x,
+              bottom: below,
+              child: ConstrainedBox(constraints: BoxConstraints(maxHeight: math.max(0.0, rest)), child: SingleChildScrollView(reverse: true, child: bottom(s))), // (its button stays on the screen)
+            ),
+        ]);
+      });
+}
+
+/// (3.39.0) The dark glass card at the bottom of the scene (the app lock, "No connection") – it reads over the photo.
+class SplashPanel extends StatelessWidget {
+  const SplashPanel({super.key, required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+        decoration: BoxDecoration(
+          color: const Color(0xD906111C),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0x24FFFFFF)),
+          boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 8))],
         ),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
       );
 }
 
-/// The photo – its top and its bottom fade out (they are see-through there, so the navy and the sunset's light behind it go on
-/// into the photo without a line); it comes in softly when it is read (the screen never waits for it).
+/// (3.39.0) The red button of the scene (as the design's bar).
+class SplashButton extends StatelessWidget {
+  const SplashButton({super.key, required this.label, required this.icon, required this.onPressed});
+  final Widget label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  @override
+  Widget build(BuildContext context) => FilledButton.icon(
+        style: FilledButton.styleFrom(
+          backgroundColor: SplashC.barFrom,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0x66D90A16),
+          disabledForegroundColor: const Color(0xB3FFFFFF),
+          minimumSize: const Size.fromHeight(54),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle: const TextStyle(fontFamily: 'Rubik', fontFamilyFallback: ['NotoDeva'], fontSize: 17, fontWeight: FontWeight.w800), // (the app's own letters)
+        ),
+        onPressed: onPressed,
+        icon: Icon(icon, size: 26),
+        label: label,
+      );
+}
+
+/// (3.39.0) The navy of the design behind a screen of its own (Which site): the sky above, the deep band below, the sunset's light.
+class SplashBackdrop extends StatelessWidget {
+  const SplashBackdrop({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final w = box.maxWidth, h = box.maxHeight, s = math.min(w, math.max(h * 852 / 1846, math.min(w, 300.0)));
+        return Stack(fit: StackFit.expand, children: [
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [SplashC.navy, Color(0xFF0B2643), SplashC.navyDeep], stops: [0, .45, 1]),
+            ),
+          ),
+          Positioned.fill(child: CustomPaint(painter: _Glow(Offset(w * .1, h * .62), s))),
+          child,
+        ]);
+      });
+}
+
+/// The photo – its top and its bottom fade out (see-through there, so the navy and the sunset's light behind it go on into the photo
+/// without a line). (3.39.0, asked 25-10-2026: "app opening slow zal aahe") the fade is in the picture itself (its own alpha) – no
+/// mask to work out on every frame. It comes in softly when it is read (the screen never waits for it).
 class _Road extends StatelessWidget {
   const _Road();
   @override
-  Widget build(BuildContext context) => ShaderMask(
-        blendMode: BlendMode.dstIn,
-        shaderCallback: (r) => const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0x00000000), Color(0x73000000), Color(0xD9000000), Color(0xFF000000), Color(0xFF000000), Color(0x00000000)],
-          stops: [0, .045, .1, .15, .87, 1],
-        ).createShader(r),
-        child: Image.asset(
-          kSplashRoad,
-          key: const Key('splash-road'),
-          fit: BoxFit.fill,
-          filterQuality: FilterQuality.medium,
-          gaplessPlayback: true,
-          excludeFromSemantics: true,
-          frameBuilder: (context, child, frame, sync) => sync
-              ? child
-              : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 260), curve: Curves.easeOut, child: child),
-        ),
+  Widget build(BuildContext context) => Image.asset(
+        kSplashRoad,
+        key: const Key('splash-road'),
+        fit: BoxFit.fill,
+        filterQuality: FilterQuality.medium,
+        gaplessPlayback: true,
+        excludeFromSemantics: true,
+        frameBuilder: (context, child, frame, sync) => sync
+            ? child
+            : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 260), curve: Curves.easeOut, child: child),
       );
 }
 

@@ -67,6 +67,43 @@ void main() {
     expect(s2.canEdit('Diesel Issue'), true, reason: 'the access comes with getInit too');
   });
 
+  test('(3.39.0) the opening asks the Portal and the site\'s first lists AT THE SAME TIME; signed out at the Portal: nothing of it is used', () async {
+    final s1 = make();
+    await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s1.chooseSite('T2');
+    srv.calls.clear();
+    srv.portalSignedIn = false; // (signed out elsewhere)
+    final s2 = make();
+    await s2.start();
+    expect(s2.stage, Stage.signedOut);
+    expect(s2.machines, isEmpty, reason: 'the site\'s answer asked ahead is dropped');
+    expect(srv.calls, containsAll(['portal:me', 'mech:getInit']), reason: 'both were asked at once, before the Portal answered');
+  });
+
+  test('(3.39.0) a kept site the Portal no longer gives: the answer asked ahead is not used – Which site', () async {
+    final s1 = make();
+    await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s1.chooseSite('T2');
+    await keep.write('site', 'Q7');
+    final s2 = make();
+    await s2.start();
+    expect(s2.stage, Stage.pickSite);
+    expect(s2.machines, isEmpty);
+  });
+
+  test('(3.39.0) the answer asked ahead failed (an ended sign-in): asked again the normal way – renewed, the app opens', () async {
+    final s1 = make();
+    await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s1.chooseSite('S1');
+    srv.calls.clear();
+    srv.expireOnce = 'getInit';
+    final s2 = make();
+    await s2.start();
+    expect(s2.stage, Stage.ready);
+    expect(s2.machines, isNotEmpty);
+    expect(srv.calls.where((c) => c == 'mech:getInit').length, greaterThanOrEqualTo(2), reason: 'the first refused, then asked again');
+  });
+
   test('a Mechanical sign-in that ended is renewed by itself (a new ticket) and the action goes on', () async {
     final s = make();
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');

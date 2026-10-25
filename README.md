@@ -15,6 +15,22 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.39.0 (25-10-2026 – "aple app madhe new screen ali aahe tri pn old screen diste … old screen purn pn remove kr"):** the
+old green screen is gone. **The app lock** (the fingerprint / face / PIN not given, or wrong) and **"No connection"** are on the
+approved design of the opening (`screens/splash.dart`: `SplashScene` – the navy, the PQC road, the mark and RCL ERP at the top – with
+their own card at the bottom: `SplashPanel`, the red `SplashButton`); what they do is as before (Unlock asks the phone again, the
+phone's answer shown in the card; Try again). **Which site** is on the navy of the design (`SplashBackdrop`). The old moving green
+background (`Backdrop` in `ui/brand.dart`) is removed. On a screen too short for both (a phone held across) the words at the top give
+way and the card scrolls – its button always on the screen. **Faster opening** ("app opening slow zal aahe new screen ale pasun …
+ultra fast"): (1) with the sign-in kept on the phone, the Portal's "is he still signed in" and the kept site's first lists (getInit)
+are asked **at the same time** (`Session.start`, `Api.callOnce`) – one wait instead of two; the site's answer is used only when the
+Portal says he still has that site at that address (else dropped, asked the normal way; a refused one is asked again with the
+renewal); the language is read meanwhile; (2) the still part of the opening screen is drawn **once** (a `RepaintBoundary`) – only the
+bar is drawn again while it moves; the photo's fade is in the picture itself (its own alpha, `pqc_road.webp`), no mask on every frame;
+(3) the kept site and the site's address are written to the phone's safe only when they change. Tests: `splash_test.dart` (the card
+on 4 sizes), `session_test.dart` (asked at once; signed out → dropped; a site no longer given → Which site; a refused answer → asked
+again); pictures `58_lock.png`, `0_no_network.png`, `2_sites.png`.
+
 **Version 3.38.0 (25-10-2026, with Mechanical's update-159 – asked at 18B: "/ nko … jyach tyach seprate ale gel transfer"; "jo
 stock point asel tithun transfer asel trch"):** with one stock point chosen, Dashboard → Day-wise diesel stock and its stock cards,
 and Reports → Daily Inward & Issue show a **"Received from" and a "Sent to" column (line) for EACH other stock point** – never
