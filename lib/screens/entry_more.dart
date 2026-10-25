@@ -441,7 +441,7 @@ class _EntryFindScreenState extends State<EntryFindScreen> {
             box('Bill Number / Inward ID', bill, 'ef-bill'),
           ],
           if (moreF && k.key == 'transfer') ...[
-            PickField(key: const Key('ef-place'), label: 'Stock point', value: place, items: s.locations, blank: 'All', onChanged: (v) => _set(() => place = v)),
+            PickField(key: const Key('ef-place'), label: 'From (stock point)', value: place, items: s.locations, blank: 'All', onChanged: (v) => _set(() => place = v)), // (3.38.0) the web's filter: From only
             const SizedBox(height: 8),
             box('Transfer ID / Remark', q, 'ef-q'),
           ],

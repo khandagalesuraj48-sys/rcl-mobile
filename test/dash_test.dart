@@ -50,6 +50,32 @@ void main() {
     expect(ledgerHelp('', ['Dispenser', 'VTR Store']), contains('Dispenser and VTR Store'));
   });
 
+  test('(3.38.0 – Mechanical update-159) 18B, three stock points: a "Received from" and a "Sent to" line and column for EACH, never "A / B"', () {
+    const cp = 'CAMP PUMP', ze = 'DISPENSER - MH12ZE-1739', wj = 'DISPENSER - MH12WJ-1381';
+    const places = [cp, ze, wj];
+    final cards = locationCards([
+      {'loc': wj, 'opening': 0, 'inward': 0, 'tin': 1800, 'tout': 0, 'issued': 150, 'closing': 1650, 'current': 1650, 'tinBy': {cp: 1500, ze: 300}, 'toutBy': <String, dynamic>{}, 'others': [cp, ze]},
+    ], '2026-10-25', '2026-10-25', places);
+    expect(cards[1].lines.map((l) => (l.$1, l.$2)).toList(), [
+      ('Opening stock on 25-10-2026', 0), ('+ Received from pump (inward)', 0), ('+ Received from $cp', 1500), ('+ Received from $ze', 300),
+      ('− Sent to $cp', 0), ('− Sent to $ze', 0), ('− Issued to machinery', 150), ('= Closing stock on 25-10-2026', 1650),
+    ]);
+    expect(cards[1].ok, true);
+    expect(cards.expand((c) => c.lines).any((l) => l.$1.contains(' / ')), false);
+    final l = <String, dynamic>{
+      'others': [ze, wj],
+      'rows': [
+        {'date': '2026-10-25', 'opening': 0, 'inward': 12000, 'tin': 0, 'tout': 3500, 'issued': 0, 'closing': 8500, 'tinBy': <String, dynamic>{}, 'toutBy': {ze: 2000, wj: 1500}},
+      ],
+    };
+    final t = ledgerTable(l, cp, places);
+    expect(t.head, ['Date', 'Opening stock', '+ Received from pump', '+ Received from $ze', '+ Received from $wj', '− Sent to $ze', '− Sent to $wj', '− Issued to machinery', 'Closing stock']);
+    expect(t.rows.single.cells.map((c) => c.text).toList(), ['25-10-2026', '0', '12,000', '0', '0', '2,000', '1,500', '0', '8,500']);
+    expect(t.foot.single.cells.map((c) => c.text).toList(), ['Whole period', '0', '12,000', '0', '0', '2,000', '1,500', '0', '8,500']);
+    expect(ledgerHelp(cp, places), contains('Each "Received from" / "Sent to" column is the diesel transfers with that one stock point'));
+    expect(ledgerTable(<String, dynamic>{'rows': []}, cp, places).head, contains('− Sent to $ze / $wj'), reason: 'a server before update-159 (no others): as the app showed before');
+  });
+
   test('A tank: how full, low below the level', () {
     final t = tankOf({'Dispenser': 800}, {'caps': {'Dispenser': 10000}, 'low': 1000}, 'Dispenser', 0);
     expect((t.qty, t.cap, t.low, t.chip), (800, 10000, true, 'Low stock'));

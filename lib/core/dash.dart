@@ -65,7 +65,6 @@ List<LocCard> locationCards(List<Map<String, dynamic>> list, String from, String
   final c = {'opening': sum('opening'), 'inward': sum('inward'), 'moved': sum('tout'), 'issued': sum('issued'), 'closing': sum('closing'), 'current': sum('current')};
   final cCalc = r2n(c['opening']! + c['inward']! - c['issued']!), cOk = (cCalc - c['closing']!).abs() < 0.01;
   final vtr = places.length == 2 && places.contains('Dispenser') && places.contains('VTR Store');
-  String others(String l) => places.where((x) => x != l).join(' / ').isEmpty ? 'other location' : places.where((x) => x != l).join(' / ');
   return [
     LocCard('Combined – all locations', c['current']!, [
       (startTxt, c['opening']!, ''),
@@ -80,8 +79,9 @@ List<LocCard> locationCards(List<Map<String, dynamic>> list, String from, String
         return LocCard(_s(x['loc']), _n(x['current']), [
           (startTxt, _n(x['opening']), ''),
           ('+ Received from pump (inward)', _n(x['inward']), 'plus'),
-          ('+ Received from ${others(_s(x['loc']))}', _n(x['tin']), 'plus'),
-          ('− Sent to ${others(_s(x['loc']))}', _n(x['tout']), 'minus'),
+          // (3.38.0 – Mechanical update-159, asked 25-10-2026: "/ nko … jyach tyach seprate") a line for EACH other stock point
+          for (final p in peersOf(x, places)) ('+ Received from $p', byPeer(x, 'tinBy', p), 'plus'),
+          for (final p in peersOf(x, places)) ('− Sent to $p', byPeer(x, 'toutBy', p), 'minus'),
           ('− Issued to machinery', _n(x['issued']), 'minus'),
           ('= $endTxt', _n(x['closing']), 'tot'),
         ], ok, ok ? 'Opening + Received − Sent − Issued = Closing' : 'Does not add up: ${fmtNum(calc)} vs ${fmtNum(x['closing'])}');
@@ -89,21 +89,38 @@ List<LocCard> locationCards(List<Map<String, dynamic>> list, String from, String
   ];
 }
 
-/// The day-wise stock table (as the web's loadLedger): one location – with its transfers –, or all together.
+/// (3.38.0 – Mechanical update-159) The other stock points of a place, in the site's order (the server's `others`). An answer of
+/// a server before update-159 (no `others`): one line for the other places together, as the app showed before.
+List<String> peersOf(Map<String, dynamic> x, List<String> places, [String? loc]) {
+  final o = x['others'];
+  if (o is List) return [for (final e in o) '$e'];
+  final rest = places.where((p) => p != (loc ?? _s(x['loc']))).join(' / ');
+  return [rest.isEmpty ? 'other location' : rest];
+}
+
+/// The litres received from (tinBy) or sent to (toutBy) one other stock point (a server before update-159: the total).
+num byPeer(Map<String, dynamic> x, String k, String p) {
+  final m = x[k];
+  return m is Map ? _n(m[p]) : _n(x[k == 'tinBy' ? 'tin' : 'tout']);
+}
+
+/// The day-wise stock table (as the web's loadLedger): one location – a "Received from" and a "Sent to" column for EACH other
+/// stock point (never "A / B" together) –, or all together.
 RTable ledgerTable(Map<String, dynamic> l, String loc, List<String> places) {
-  final other = loc.isEmpty ? '' : (places.where((x) => x != loc).join(' / ').isEmpty ? 'other location' : places.where((x) => x != loc).join(' / '));
+  final peers = loc.isEmpty ? const <String>[] : peersOf(l, places, loc);
   final cols = loc.isNotEmpty
-      ? [('opening', 'Opening stock'), ('inward', '+ Received from pump'), ('tin', '+ Received from $other'), ('tout', '− Sent to $other'), ('issued', '− Issued to machinery'), ('closing', 'Closing stock')]
+      ? [('opening', 'Opening stock'), ('inward', '+ Received from pump'), for (final p in peers) ('tin:$p', '+ Received from $p'), for (final p in peers) ('tout:$p', '− Sent to $p'), ('issued', '− Issued to machinery'), ('closing', 'Closing stock')]
       : [('opening', 'Opening stock'), ('inward', '+ Received from pump'), ('issued', '− Issued to machinery'), ('closing', 'Closing stock')];
   final rows = mapsOf(l['rows']);
-  num tot(String k) => k == 'opening' ? (rows.isEmpty ? 0 : _n(rows.first['opening'])) : k == 'closing' ? (rows.isEmpty ? 0 : _n(rows.last['closing'])) : r2n(rows.fold<num>(0, (s, x) => s + _n(x[k])));
+  num v(Map<String, dynamic> x, String k) => k.startsWith('tin:') ? byPeer(x, 'tinBy', k.substring(4)) : k.startsWith('tout:') ? byPeer(x, 'toutBy', k.substring(5)) : _n(x[k]);
+  num tot(String k) => k == 'opening' ? (rows.isEmpty ? 0 : _n(rows.first['opening'])) : k == 'closing' ? (rows.isEmpty ? 0 : _n(rows.last['closing'])) : r2n(rows.fold<num>(0, (s, x) => s + v(x, k)));
   return RTable(
     sheet: 'Day-wise stock',
     head: ['Date', for (final c in cols) c.$2],
     numCols: {for (var i = 1; i <= cols.length; i++) i},
     rows: [
       for (final x in rows.reversed)
-        RRow([RCell(showDate(_s(x['date']))), for (final c in cols) RCell(fmtNum(_n(x[c.$1])), n: true, bold: c.$1 == 'closing', tone: c.$1 == 'closing' && _n(x[c.$1]) < 0 ? 'bad' : '', value: _n(x[c.$1]))]),
+        RRow([RCell(showDate(_s(x['date']))), for (final c in cols) RCell(fmtNum(v(x, c.$1)), n: true, bold: c.$1 == 'closing', tone: c.$1 == 'closing' && v(x, c.$1) < 0 ? 'bad' : '', value: v(x, c.$1))]),
     ],
     foot: rows.isEmpty ? const [] : [RRow([const RCell('Whole period'), for (final c in cols) RCell(fmtNum(tot(c.$1)), n: true, value: tot(c.$1))])],
   );
@@ -111,8 +128,7 @@ RTable ledgerTable(Map<String, dynamic> l, String loc, List<String> places) {
 
 String ledgerHelp(String loc, List<String> places) {
   final vtr = places.length == 2 && places.contains('Dispenser') && places.contains('VTR Store');
-  final other = places.where((x) => x != loc).join(' / ');
-  if (loc.isNotEmpty) return 'Stock of $loc only. "Received from / Sent to" are diesel transfers between $loc and ${other.isEmpty ? 'other location' : other}. Opening + Received − Sent − Issued = Closing.';
+  if (loc.isNotEmpty) return 'Stock of $loc only. Each "Received from" / "Sent to" column is the diesel transfers with that one stock point. Opening + Received − Sent − Issued = Closing.';
   return vtr
       ? 'All locations together. Opening + Received from pump − Issued = Closing. Transfers between Dispenser and VTR Store are inside the company and do not change this total.'
       : 'All locations together. Opening + Received from pump − Issued = Closing. Transfers between the diesel places are inside the company and do not change this total.';
