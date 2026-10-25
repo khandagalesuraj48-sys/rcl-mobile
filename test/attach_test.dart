@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:rcl_mobile/core/attach.dart';
 import 'package:rcl_mobile/core/bill.dart' show billAttHtml;
+import 'package:rcl_mobile/core/scan_link.dart';
 
 /// A "meter photo": a light paper on a dark table.
 Uint8List paper(int w, int h) {
@@ -32,6 +33,29 @@ void main() {
     expect(capCode('https://x.test/?m=MH-25-AJ-8511'), '');
     expect(capCode('https://x.test/?cap=${'a' * 31}.${'b' * 64}'), '');
     expect(capCode('https://x.test/?cap=${'A' * 32}.${'b' * 64}'), '', reason: 'the server makes lower-case codes only');
+  });
+
+  test('(3.41.0 – update-160) the QR code\'s link …/scan?cap=<code>&site=<site>: its code and its site; the same link twice is opened once; not a QR code of the ERP: not taken', () {
+    ScanLink.i.reset();
+    final c = '${'a' * 32}.${'b' * 64}', u = 'https://oneclicksolution-erp.vercel.app/scan?cap=$c&site=T2';
+    expect([capCode(u), capSite(u)], [c, 'T2']);
+    expect(capSite('https://oneclicksolution-erp.vercel.app/?cap=$c'), '', reason: 'a QR code made before update-160: no site');
+    expect(capSite('https://x.test/scan?cap=$c&site=<b>'), '');
+    var n = 0;
+    void f() => n++;
+    ScanLink.i.addListener(f);
+    expect(ScanLink.i.take('https://www.google.com/'), false);
+    expect(ScanLink.i.take('https://x.test/?m=MH-25-AJ-8511'), false, reason: 'a machinery label is for the scanner itself');
+    expect(ScanLink.i.take(u), true);
+    expect([ScanLink.i.code, ScanLink.i.site, n], [c, 'T2', 1]);
+    expect(ScanLink.i.take(u), true);
+    expect(n, 1, reason: 'the same link again (the link the app was opened with, and its stream): once');
+    ScanLink.i.done();
+    expect([ScanLink.i.code, ScanLink.i.site, n], ['', '', 2]);
+    expect(ScanLink.i.take(u), true);
+    expect([ScanLink.i.code, n], ['', 2], reason: 'opened already: not again');
+    ScanLink.i.removeListener(f);
+    ScanLink.i.reset();
   });
 
   test('a photo made ready: at most 1600 px, JPEG; turned right it is taller than wide; a cut keeps what the corners hold; a photo taken at an angle is made straight', () {

@@ -912,5 +912,7 @@
 "Attachments of one Log Book entry (photos / PDF), at most": "एक Log Book entry के attachments (फ़ोटो / PDF), ज़्यादा से ज़्यादा",
 "1 to 20 (10 unless set)": "1 से 20 (तय न हो तो 10)",
 "From (stock point)": "कहाँ से (stock point)",
-"Stock of {0} only. Each \"Received from\" / \"Sent to\" column is the diesel transfers with that one stock point. Opening + Received − Sent − Issued = Closing.": "सिर्फ़ {0} का stock. हर \"से मिला\" / \"को भेजा\" column उसी एक stock point के साथ के diesel transfers दिखाता है. Opening + मिला − भेजा − Issued = Closing."
+"Stock of {0} only. Each \"Received from\" / \"Sent to\" column is the diesel transfers with that one stock point. Opening + Received − Sent − Issued = Closing.": "सिर्फ़ {0} का stock. हर \"से मिला\" / \"को भेजा\" column उसी एक stock point के साथ के diesel transfers दिखाता है. Opening + मिला − भेजा − Issued = Closing.",
+"Site {0} could not be opened – open it and scan the QR code again.": "{0} site नहीं खुली – उसे खोलें और QR code फिर से scan करें.",
+"This QR code is for site {0} – that site is not given to you.": "यह QR code {0} site का है – वह site आपको नहीं दी गई है."
 }

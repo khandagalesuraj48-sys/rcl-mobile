@@ -17,6 +17,7 @@ import '../ui/widgets.dart';
 import '../ui/t.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../core/applock.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -87,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _photo() async {
     final s = SessionScope.read(context);
-    final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 400, maxHeight: 400, imageQuality: 85);
+    final x = await AppLock.whileOutside(() => ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 400, maxHeight: 400, imageQuality: 85));
     if (x == null) return;
     final raw = await x.readAsBytes();
     final im = img.decodeImage(raw);

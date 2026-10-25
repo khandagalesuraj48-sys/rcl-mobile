@@ -19,6 +19,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'device.dart';
+import 'applock.dart';
 
 class PhotoKind {
   const PhotoKind(this.key, this.en, this.mr, this.pic);
@@ -89,7 +90,7 @@ Future<TakenPhoto?> takePhoto(String label, String machineId) async {
     final st = await Permission.camera.request();
     if (!st.isGranted) throw PhotoProblem('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');
   }
-  final x = await ImagePicker().pickImage(source: onComputer ? ImageSource.gallery : ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 92, preferredCameraDevice: CameraDevice.rear);
+  final x = await AppLock.whileOutside(() => ImagePicker().pickImage(source: onComputer ? ImageSource.gallery : ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 92, preferredCameraDevice: CameraDevice.rear));
   if (x == null) return null;
   return photoFrom(x, label, machineId);
 }
@@ -173,13 +174,13 @@ Future<List<Uint8List>> pickBills({required bool camera, int room = kBillMax}) a
   final picker = ImagePicker();
   final List<XFile> xs;
   if (camera) {
-    final x = await picker.pickImage(source: ImageSource.camera, maxWidth: 2000, maxHeight: 2000, imageQuality: 92, preferredCameraDevice: CameraDevice.rear);
+    final x = await AppLock.whileOutside(() => picker.pickImage(source: ImageSource.camera, maxWidth: 2000, maxHeight: 2000, imageQuality: 92, preferredCameraDevice: CameraDevice.rear));
     xs = [if (x != null) x];
   } else if (room == 1) {
-    final x = await picker.pickImage(source: ImageSource.gallery, maxWidth: 2000, maxHeight: 2000, imageQuality: 92);
+    final x = await AppLock.whileOutside(() => picker.pickImage(source: ImageSource.gallery, maxWidth: 2000, maxHeight: 2000, imageQuality: 92));
     xs = [if (x != null) x];
   } else {
-    xs = await picker.pickMultiImage(maxWidth: 2000, maxHeight: 2000, imageQuality: 92, limit: room);
+    xs = await AppLock.whileOutside(() => picker.pickMultiImage(maxWidth: 2000, maxHeight: 2000, imageQuality: 92, limit: room));
   }
   final out = <Uint8List>[];
   for (final x in xs.take(room)) {
