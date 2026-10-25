@@ -1,6 +1,7 @@
 # RCL ERP – mobile app
 
-Android and iPhone app for the people at the sites – and (3.19.0) the same app on a Windows computer.
+Android and iPhone app for the people at the sites. (The Windows computer app of 3.19.0 is no longer built – since 3.37.0,
+asked 25-10-2026; computers use the web ERP.)
 
 **Version 3 (14-10-2026: "mobile UI purn wegla hawa … fkt app che all logics functions mobile madhe … premium"):** the app
 has its **own phone screens** (the desktop web stays as it is), on the same servers and with the same access:
@@ -13,6 +14,21 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   after it, driver, remark and the **4 photos** (camera now, the place printed on each, sent at once – as on the web);
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
+
+**Version 3.37.0 (25-10-2026 – the approved "RCL ERP Premium Splash Screen"):** the app's first screen (while the kept sign-in is
+checked and the site is opened) is the approved design – dark navy, the photo of the PQC road (finished concrete on the left, the
+paving on the right), the Rachana mark on its white tile, **RCL ERP** (RCL red, ERP white) with its red line, INTEGRATED
+CONSTRUCTION MANAGEMENT, and at the bottom "Preparing your workspace..." with its bar. The bar is the **real** opening
+(`Session.boot`: the kept sign-in read 15 %, the sites from the Portal 40 %, the site opened 50 %, its sign-in 70 %, its lists 100 % –
+100 % only when the app is open), moving smoothly between the steps (at once with "less motion"). The logo, the words and the bar
+are drawn by the app (sharp on every screen); only the road is a picture (`assets/splash/pqc_road.webp`, 852 × 990, 196 KB, shown
+as soon as it is read – the screen never waits for it). Sizes follow the design's width, so a small phone, a large one and a tablet look
+the same, clear of the status bar and the navigation bar. The phone's own launch moment is the same navy
+(Android `launch_background`, Android 12+ `values-v31` without an icon, iPhone `LaunchScreen`), so no white or green flash. Fonts:
+Montserrat 400 / 800 (Latin letters only, OFL). Nothing of the sign-in, the access, the screens after it or the servers changes.
+`screens/splash.dart`, `core/session.dart` (`boot`), `main.dart` (`Gate`); tests in `splash_test.dart` (the steps, the figure, every
+screen size; pictures `00_splash*.png`). **No Windows app any more** (asked 25-10-2026: "app fkt android ios sathi"): the
+Windows jobs of `build.yml` and `release.yml` are switched off (`if: false`) – a release is Android only; computers use the web ERP.
 
 **Version 3.36.0 (24-10-2026, with Mechanical's update-156 – "Concurrent Updates साठी Version Checks आणि Conflict Detection"):**
 every edit screen sends the version of the entry it opened, as the web page does – Diesel Issue (since update-145) and now Inward,

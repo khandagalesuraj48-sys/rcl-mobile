@@ -20,6 +20,7 @@ import 'screens/lock.dart';
 import 'screens/login.dart';
 import 'screens/shell.dart';
 import 'screens/site_pick.dart';
+import 'screens/splash.dart';
 import 'ui/brand.dart';
 import 'ui/scope.dart';
 import 'ui/theme.dart';
@@ -187,8 +188,8 @@ class Gate extends StatelessWidget {
       duration: const Duration(milliseconds: 350),
       switchInCurve: Curves.easeOut,
       child: switch (s.stage) {
-        Stage.starting => const Opening(key: ValueKey('start')),
-        Stage.opening => Opening(key: const ValueKey('opening'), what: s.siteName),
+        // (3.37.0) the start screen – one screen while the kept sign-in is checked and the site is opened: its bar goes on
+        Stage.starting || Stage.opening => SplashScreen(key: const ValueKey('opening'), progress: s.boot),
         Stage.signedOut => const LoginScreen(key: ValueKey('login')),
         Stage.setPassword => const LoginScreen(key: ValueKey('setpw'), setPassword: true),
         Stage.pickSite => const SitePickScreen(key: ValueKey('site')),
@@ -243,30 +244,4 @@ class Waiting extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The first moment: the Rachana mark on the green background while the kept sign-in is checked, or a site is opened.
-class Opening extends StatelessWidget {
-  const Opening({super.key, this.what = ''});
-  final String what;
-  @override
-  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: Scaffold(
-          backgroundColor: C.greenDark,
-          body: Backdrop(
-            child: Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Mark(size: 96),
-                const SizedBox(height: 22),
-                Text(what.isEmpty ? 'RCL ERP' : 'Opening $what…', textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-                const SizedBox(height: 4),
-                const Text('Fleet & Diesel Management', style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF))), // (3.31.0) the app is RCL ERP
-                const SizedBox(height: 24),
-                const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)),
-              ]),
-            ),
-          ),
-        ),
-      );
 }

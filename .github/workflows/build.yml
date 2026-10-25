@@ -139,7 +139,8 @@ jobs:
 
   # (3.19.0) THE WINDOWS APP: built on Windows, the Visual C++ files put next to it, its setup made (windows/installer.iss)
   windows:
-    if: github.event_name != 'pull_request'
+    # (3.37.0, asked 25-10-2026: "app fkt android ios sathi asel window sathi app banwaychi nahi") no Windows app any more
+    if: false
     runs-on: windows-latest
     timeout-minutes: 50
     steps:

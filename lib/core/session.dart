@@ -153,6 +153,14 @@ class Session extends ChangeNotifier {
 
   Stage stage = Stage.starting;
   String error = '';
+
+  /// (3.37.0) How far the opening is, 0 – 1 – the start screen's bar (screens/splash.dart). Each value is set when that step is
+  /// really done: the sign-in kept on this phone read, the sites from the Portal, the site's sign-in, the site's lists.
+  double boot = 0;
+  void _boot(double v) {
+    boot = v;
+    notifyListeners();
+  }
   String name = '', email = '';
   bool admin = false;
   /// (14-10-2026) the Super Admin (his Portal ticket says so): he changes entries of a submitted bill; others send them for approval.
@@ -278,11 +286,14 @@ class Session extends ChangeNotifier {
 
   /// The app opens: the sign-in kept on this phone is used – nothing to type while the Portal still knows the person.
   Future<void> start() async {
+    boot = .05;
     await api.load();
     await Lang.i.set(await api.keep.read(kLang) ?? '', read: langRead);
     if (!api.hasPortal) return _go(Stage.signedOut);
+    _boot(.15);
     try {
       await _loadSites();
+      _boot(.4);
       final kept = api.site ?? '';
       if (sites.any((x) => x.code == kept)) {
         await chooseSite(kept);
@@ -387,12 +398,15 @@ class Session extends ChangeNotifier {
     siteName = s.name;
     api.mechUrl = s.module('mechanical')!.url;
     await api.keepSite(code);
+    boot = .5; // (3.37.0) signed in, his sites known: the site is opened now
     _go(Stage.opening);
     try {
       if ((api.token ?? '').isEmpty) _user(await api.openSite(code));
       await api.keep.write(kMechUrl, api.mechUrl);      // (3.1.8) for the notifications with the app closed
+      _boot(.7);
       await loadInit();
       versions = {};
+      boot = 1;
       _go(Stage.ready);
       prefsReady = loadPrefs(); // his settings – the screens use them as soon as they come
       await loadKept();
