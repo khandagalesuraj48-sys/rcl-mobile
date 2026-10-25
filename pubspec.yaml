@@ -1,7 +1,7 @@
 name: rcl_mobile
-description: RCL ERP – the mobile app (Android and iPhone) and the computer app (Windows). Its own phone screens on the same servers; one sign-in through the Portal.
+description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.36.0+1
+version: 3.37.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -58,6 +58,7 @@ flutter:
     - assets/brand/rachana_mark.png
     - assets/brand/site_home.jpg
     - assets/brand/site_login.jpg
+    - assets/splash/pqc_road.webp
     - assets/i18n/
     - assets/help/web_help.json
   fonts:
@@ -71,6 +72,12 @@ flutter:
           weight: 600
         - asset: assets/fonts/Rubik_700Bold.ttf
           weight: 700
+    - family: Montserrat # (3.37.0) the start screen's title and its words (only the Latin letters – see assets/fonts/OFL-Montserrat.txt)
+      fonts:
+        - asset: assets/fonts/Montserrat_400Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Montserrat_800ExtraBold.ttf
+          weight: 800
     - family: NotoDeva
       fonts:
         - asset: assets/fonts/NotoSansDevanagari_400Regular.ttf

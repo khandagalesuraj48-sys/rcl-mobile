@@ -118,7 +118,8 @@ jobs:
 
   # (3.19.0) the Windows app and its setup – the same version and build number as the Android app
   windows:
-    if: github.ref == 'refs/heads/main'
+    # (3.37.0, asked 25-10-2026) the app is for Android and iPhone only – no Windows setup (the release says "Android")
+    if: false
     runs-on: windows-latest
     timeout-minutes: 50
     steps:
