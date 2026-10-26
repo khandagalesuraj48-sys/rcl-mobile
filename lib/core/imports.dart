@@ -210,8 +210,9 @@ List<Map<String, Object?>> transferRows(List<SheetTab> tabs, List<String> locati
         },
     ];
 
-/// The web's trProblems (a file's row and a row of "Multiple entries").
-List<String> transferProblems(Map r, String today, List<String> locations) {
+/// The web's trProblems (a file's row and a row of "Multiple entries"). [mine] (3.43.0, update-162): his own diesel sources for the
+/// From (null = every place); the To may be any place.
+List<String> transferProblems(Map r, String today, List<String> locations, {List<String>? mine}) {
   final p = <String>[];
   final d = '${r['date']}';
   if (!_day.hasMatch(d)) {
@@ -219,7 +220,11 @@ List<String> transferProblems(Map r, String today, List<String> locations) {
   } else if (d.compareTo(today) > 0) {
     p.add('date after today');
   }
-  if (!locations.contains(r['from'])) p.add('From');
+  if (!locations.contains(r['from'])) {
+    p.add('From');
+  } else if (mine != null && !mine.contains(r['from'])) {
+    p.add('From – not your diesel source');
+  }
   if (!locations.contains(r['to'])) p.add('To');
   if (jsTrue(r['from']) && r['from'] == r['to']) p.add('From = To');
   if (!_posNum(r['qty'])) p.add('qty');
@@ -271,7 +276,8 @@ String activeProblem(Map<String, dynamic>? m, String dk) {
 }
 
 /// The diesel issues of a file (the web's d_file handler).
-List<Map<String, Object?>> issueRows(List<SheetTab> tabs, List<String> locations, Iterable<Map<String, dynamic>> master) {
+/// [mine] (3.43.0, update-162): his own diesel sources – a blank source takes the first of them.
+List<Map<String, Object?>> issueRows(List<SheetTab> tabs, List<String> locations, Iterable<Map<String, dynamic>> master, {List<String>? mine}) {
   Object num0(Object? v) => v == '' || v == null ? '' : _numText(v);
   return [
     for (final x in readExcelRows(tabs, kIssueCols, const ['date', 'no', 'qty']))
@@ -282,7 +288,7 @@ List<Map<String, Object?>> issueRows(List<SheetTab> tabs, List<String> locations
           'line': x['line'],
           'date': xlDate(x['date']),
           'shift': shiftName(x['shift']),
-          'source': src.isNotEmpty ? src : (locations.isNotEmpty ? locations.first : 'Dispenser'),
+          'source': src.isNotEmpty ? src : (mine != null && mine.isNotEmpty ? mine.first : locations.isNotEmpty ? locations.first : 'Dispenser'),
           'no': m != null ? '${m['id']}' : jsS(x['no']).trim(),
           'qty': num0(x['qty']),
           'kmReading': num0(x['km']),
@@ -294,8 +300,8 @@ List<Map<String, Object?>> issueRows(List<SheetTab> tabs, List<String> locations
   ];
 }
 
-/// The web's diProblems.
-List<String> issueProblems(Map r, String today, List<String> locations, Iterable<Map<String, dynamic>> master) {
+/// The web's diProblems. [mine] (3.43.0, update-162): his own diesel sources (null = every place).
+List<String> issueProblems(Map r, String today, List<String> locations, Iterable<Map<String, dynamic>> master, {List<String>? mine}) {
   final p = <String>[];
   final d = '${r['date']}';
   if (!_day.hasMatch(d)) {
@@ -303,7 +309,11 @@ List<String> issueProblems(Map r, String today, List<String> locations, Iterable
   } else if (d.compareTo(today) > 0) {
     p.add('date after today');
   }
-  if (!locations.contains(r['source'])) p.add('Diesel Source');
+  if (!locations.contains(r['source'])) {
+    p.add('Diesel Source');
+  } else if (mine != null && !mine.contains(r['source'])) {
+    p.add('Diesel Source – not your diesel source');
+  }
   final m = findMachine(master, r['no']);
   if (m == null) {
     p.add('machinery not in Master');

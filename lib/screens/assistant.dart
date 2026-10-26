@@ -75,6 +75,7 @@ AiChat chatFor(Session s) {
     ..today = s.today
     ..master = [for (final m in s.machines) m.m]
     ..locations = s.locations
+    ..ownSources = s.ownSources('Diesel Issue') ? s.mySources('Diesel Issue') : null
     ..prefs = s.prefs
     ..helpLang = helpLangOf(s)
     ..tabs = assistantTabs(s);

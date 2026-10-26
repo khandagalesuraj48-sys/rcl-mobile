@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.43.0 (26-10-2026 – "user wise konala konte source cha access deycha … jya user la jyacha access asel to tyach madhun
+issue kru shakel same transfer la pn … inward la nko", with Mechanical update-162):** his **diesel sources** – the places the Super
+Admin gave him in the Portal (Users & Access → Pages → Diesel sources; Mechanical tells them in `getInit` / `sync` as `user.dsrc`).
+A **Diesel Issue** (one entry, "Multiple entries" – both kinds, an Excel file) and the **From of a Diesel Transfer** (one entry,
+"Multiple entries", an Excel file) offer only them; given some, the Issue shows its source even when there is one (he sees where the
+diesel comes from); none given: a red line says so. The **To** of a transfer, **Diesel Inward**, the lists and reports: every place
+(as before). Nothing chosen for him / an Admin: every place, as before. A change in the Portal reaches the open app at the next sync.
+The assistant's diesel entry takes his own source when he names none. Mechanical refuses another source whatever the app sends (its
+message has its help). `Session.dsrc` / `mySources(page)` / `ownSources(page)`; the import checks (`issueProblems`,
+`transferProblems`: "… – not your diesel source"). The web's help taken again (`assets/help/web_help.json` – also the help rules of
+Mechanical updates 157, 158 and 161 that had not been taken yet; `test/fixtures/help/web_fix.json` from the web's own rules).
+
 **Version 3.42.0 (26-10-2026 – "mala app war pratek gostich realtime notification jayla haw app band aso ki chalu app updet pasun te
 sagle kahi"):** the notifications come AT ONCE through Google Firebase (FCM), whether the app is open or closed (Android): a call –
 its ringtone with **Answer** (the app opens at the call's site and answers) and **Decline** (said to the caller); answered on another

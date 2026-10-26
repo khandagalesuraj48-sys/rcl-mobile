@@ -15,6 +15,10 @@ class FakeServer {
   String newPassword = '';
   String expireOnce = ''; // an action that first answers SESSION_EXPIRED (a Mechanical sign-in that ended)
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
+  /// (3.43.0, Mechanical update-162) his diesel sources (getInit's user.dsrc); [userInSync]: the sync tells the user too (as Mechanical)
+  Map<String, dynamic>? dsrc;
+  bool userInSync = false;
+  final issueBal = <List>[];
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
   // (3.34.0, Mechanical update-153) attachments: the files sent (uploadAttachment), the entry's files (getLogEntry → att), Scan with
@@ -683,7 +687,8 @@ class FakeServer {
           rtcBeats.add(beat['r']);
           final m = [...rtcIn];
           rtcIn.clear();
-          return _j({'result': {'versions': versions, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m}}});
+          return _j({'result': {'versions': versions, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m},
+            if (userInSync) 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc}}});
         case 'rtcUsers':
           return _j({'result': {'me': 'u-sujit', 'name': 'Sujit Mule', 'users': rtcPeople, 'ice': [{'urls': ['stun:stun.l.google.com:19302']}], 'relay': false, 'max': 3}});
         case 'fcmSave':
@@ -833,7 +838,7 @@ class FakeServer {
           return _j({'result': stock});
         case 'getInit':
           return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': ['Dispenser', 'VTR Store'], 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
-            'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms},
+            'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc},
             'master': _master, 'ai': {'on': aiOn}}});
         // (3.4.0) the masters
         case 'getVendors':
@@ -1271,6 +1276,7 @@ class FakeServer {
           tankerCalls.add({'action': action, ...(a[0] as Map).cast<String, dynamic>()});
           return _j({'result': {..._tankerDay, 'ok': true}});
         case 'getIssueBalance':
+          issueBal.add(a);      // (3.43.0) which source's stock was asked
           return _j({'result': {'balance': 813, 'available': 813, 'loc': 'Dispenser'}});
         case 'dieselPhoto':
           return _j({'result': {'ok': true, 'kind': (a[0] as Map)['kind'], 'path': '2026-10/00000000-0000-0000-0000-000000000001.jpg'}});

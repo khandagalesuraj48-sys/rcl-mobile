@@ -2656,6 +2656,75 @@ void main() {
     expect(find.text('Can transfer up to 850 Ltr'), findsOneWidget);
   });
 
+  testWidgets('(3.43.0, Mechanical update-162) his diesel sources: Diesel Issue and the From of a transfer offer only them (To and Inward: every place); none given: a red line; changed in the Portal: at the next sync', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms['Diesel Transfer'] = 'Edit'
+      ..dsrc = {'Diesel Issue': ['VTR Store'], 'Diesel Transfer': ['VTR Store']}
+      ..userInSync = true;
+    final s = await ready(t, srv);
+    expect([s.mySources('Diesel Issue'), s.mySources('Diesel Transfer'), s.locations], [['VTR Store'], ['VTR Store'], ['Dispenser', 'VTR Store']]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    Finder chip(String l) => find.widgetWithText(ChoiceChip, l);
+    // from the grid of Entries: a page's list, its New Entry
+    Future<void> newEntry(String page) async {
+      await t.tap(find.byKey(Key('entries-$page')));
+      await net(t);
+      await t.tap(find.text('New Entry').last);
+      await net(t);
+    }
+    // back from the form to the grid
+    Future<void> toGrid() async {
+      await t.pageBack();
+      await net(t);
+      await t.tap(find.byTooltip('All entries'));
+      await net(t);
+    }
+    await t.tap(find.text('Entries'));
+    await net(t);
+    // Diesel Issue: only VTR Store – shown although one (he sees where the diesel comes from), chosen
+    await newEntry('Diesel Issue');
+    expect(find.text('Diesel from'), findsOneWidget);
+    expect(chip('VTR Store'), findsOneWidget);
+    expect(chip('Dispenser'), findsNothing);
+    expect(t.widget<ChoiceChip>(chip('VTR Store')).selected, true);
+    expect(srv.issueBal.last.last, 'VTR Store', reason: 'the stock of his source');
+    await toGrid();
+    // Diesel Transfer: From only VTR Store; To every place, ready on the other one
+    await newEntry('Transfer');
+    expect(chip('VTR Store'), findsNWidgets(2), reason: 'From and To');
+    expect(chip('Dispenser'), findsOneWidget, reason: 'To only');
+    expect(t.widget<ChoiceChip>(chip('Dispenser')).selected, true);
+    final a = srv.extraCalls.lastWhere((c) => c['fn'] == 'getTransferBalance')['args'] as List;
+    expect([a[2], a[3]], ['VTR Store', 'Dispenser']);
+    await t.pageBack();
+    await net(t);
+    // "Multiple entries" of transfers: From only his
+    await more(t, 'en-many');
+    final f0 = t.widget(find.byKey(const Key('tm-from-0'))) as dynamic, t0 = t.widget(find.byKey(const Key('tm-to-0'))) as dynamic;
+    expect([f0.items, f0.value, t0.items, t0.value], [['VTR Store'], 'VTR Store', ['Dispenser', 'VTR Store'], 'Dispenser']);
+    await toGrid();
+    // the Super Admin takes every Issue source away in the Portal: the next sync – a red line, no chip
+    srv.dsrc = {'Diesel Issue': [], 'Diesel Transfer': ['VTR Store']};
+    await t.runAsync(() => s.liveTick());
+    await net(t);
+    expect(s.mySources('Diesel Issue'), isEmpty);
+    await newEntry('Diesel Issue');
+    expect(find.text('No diesel source is given to you – ask the Super Admin (Portal → Users & Access → Pages).'), findsOneWidget);
+    expect(chip('VTR Store'), findsNothing);
+    expect(chip('Dispenser'), findsNothing);
+    await toGrid();
+    // every place ticked again (nothing kept for him): every source, as before – both places
+    srv.dsrc = null;
+    await t.runAsync(() => s.liveTick());
+    await net(t);
+    expect([s.mySources('Diesel Issue'), s.mySources('Diesel Transfer')], [['Dispenser', 'VTR Store'], ['Dispenser', 'VTR Store']]);
+    await newEntry('Diesel Issue');
+    expect(chip('Dispenser'), findsOneWidget);
+    expect(chip('VTR Store'), findsOneWidget);
+  });
+
   testWidgets('(3.14.0) My settings: Log Book list shows, the page to open after sign-in, my last sign-ins, back to the usual settings', (t) async {
     phone(t);
     final srv = FakeServer();

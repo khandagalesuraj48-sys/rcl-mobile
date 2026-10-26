@@ -216,6 +216,22 @@ class Session extends ChangeNotifier {
   DateTime Function() clock = DateTime.now;
   List<Machine> machines = [];
   List<String> drivers = [], pumps = [], locations = [];
+  /// (3.43.0, Mechanical update-162) the diesel sources the Super Admin gave him (Portal → Users & Access → Pages): {page: places}
+  /// – 'Diesel Issue' (its source) and 'Diesel Transfer' (its From). A page not there = every place (as before; an Admin always).
+  Map<String, List<String>> dsrc = {};
+  /// The places he may give diesel FROM on [page], in the site's order. The server refuses any other, whatever the app sends.
+  List<String> mySources(String page) {
+    final l = dsrc[page];
+    return l == null ? locations : locations.where(l.contains).toList();
+  }
+
+  /// Only some places for [page] (then even one is shown, so he sees where the diesel comes from).
+  bool ownSources(String page) => dsrc.containsKey(page);
+  bool _dsrc(dynamic u) {
+    final d = u is Map ? u['dsrc'] : null, was = dsrc.toString();
+    dsrc = d is Map ? {for (final e in d.entries) if (e.value is List) '${e.key}': [for (final x in e.value as List) '$x']} : {};
+    return dsrc.toString() != was;
+  }
   num? stockTotal;
   Map<String, num> stockByLoc = {};
 
@@ -465,6 +481,7 @@ class Session extends ChangeNotifier {
     superAdmin = u['super'] == true;
     final p = u['perms'];
     perms = p is Map ? p.map((k, v) => MapEntry(k.toString(), v.toString())) : {};
+    _dsrc(u);
     if ((r['siteName'] ?? '').toString().isNotEmpty) siteName = r['siteName'].toString();
   }
 
@@ -731,6 +748,7 @@ class Session extends ChangeNotifier {
       unawaited(_markLive());
       if (r is Map && r['rtc'] != null) rtc?.inbox(r['rtc']); // (3.26.0) the notes of a call
       if (r is Map) _admin(r);
+      final dsNew = r is Map && r['user'] is Map && _dsrc(r['user']); // (3.43.0) his diesel sources changed in the Portal: the forms at once
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
       final first = versions.isEmpty;
       final changed = first ? <String>{} : v.keys.where((k) => versions[k] != v[k]).toSet();
@@ -748,6 +766,8 @@ class Session extends ChangeNotifier {
         if (changed.contains('flow')) await loadApprovals();
         lastChanged = changed;
         dataTick.value++;
+        notifyListeners();
+      } else if (dsNew) {
         notifyListeners();
       }
       // (3.1.8) an entry sent back to him: asked again every 10 minutes (its notification every 30 – alerts.dart)
@@ -972,6 +992,7 @@ class Session extends ChangeNotifier {
     site = null;
     machines = [];
     perms = {};
+    dsrc = {};
     admin = false;
     superAdmin = false;
     _go(Stage.signedOut, msg);
