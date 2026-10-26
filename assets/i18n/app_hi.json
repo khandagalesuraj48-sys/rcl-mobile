@@ -925,5 +925,12 @@
 "Reminder from {0} – {1} waits for your approval": "{0} की याद – {1} आपकी मंज़ूरी का इंतज़ार कर रहा है",
 "No diesel source is given to you – ask the Super Admin (Portal → Users & Access → Pages).": "आपको कोई diesel source नहीं दिया गया है – Super Admin से कहें (Portal → Users & Access → Pages).",
 "Diesel Source – not your diesel source": "Diesel Source – आपका diesel source नहीं",
-"From – not your diesel source": "From – आपका diesel source नहीं"
+"From – not your diesel source": "From – आपका diesel source नहीं",
+"Kg": "किलो",
+"Enter the kg.": "किलो डालें.",
+"Rate (₹ per kg)": "दर (₹ प्रति किलो)",
+"Fuel from": "ईंधन कहाँ से",
+"Fuel": "ईंधन",
+"What it runs on": "किस ईंधन पर चलती है",
+"Not the fuel of this source": "इस जगह का ईंधन अलग है"
 }

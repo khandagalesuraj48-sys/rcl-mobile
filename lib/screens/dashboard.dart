@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 
 import '../core/dash.dart';
 import '../core/format.dart';
+import '../core/rdoc.dart' show fuelDoc;
 import '../core/session.dart';
 import '../ui/fields.dart';
 import '../ui/outputs.dart';
@@ -41,6 +42,8 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   // diesel
   String from = '', to = '', ledLoc = '';
+  /// (3.44.0, Mechanical update-163) a site with more than one fuel: the dashboard of ONE fuel at a time ('' = a site of one fuel)
+  String fuel = '';
   Map<String, dynamic>? d, led, cp;
   bool loading = true, daily = false;
   String err = '';
@@ -59,6 +62,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final s = SessionScope.read(context);
       _ls = s..dataTick.addListener(_live);
       from = to = s.today; // (as the web: the Dashboard opens on Today)
+      fuel = s.multiFuel ? s.siteFuels.first : '';
       final r = lbRange('month', s.today);
       lFrom = r.$1;
       lTo = r.$2;
@@ -87,10 +91,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final s = SessionScope.read(context), seq = ++_seq;
     if (!quiet) setState(() => loading = true);
     try {
-      final r = (await s.api.call('getDashboard', [{'from': from, 'to': to}]) as Map).cast<String, dynamic>();
-      final l = (await s.api.call('getStockLedger', [{'from': from, 'to': to, 'location': ledLoc}]) as Map).cast<String, dynamic>();
+      final r = (await s.api.call('getDashboard', [_fv({'from': from, 'to': to})]) as Map).cast<String, dynamic>();
+      final l = (await s.api.call('getStockLedger', [_fv({'from': from, 'to': to, 'location': ledLoc})]) as Map).cast<String, dynamic>();
       if (!mounted || seq != _seq) return;
-      if (r['stock'] is Map) s.setStock(r['stock']);
+      if (r['stock'] is Map && fuel.isEmpty) s.setStock(r['stock']);      // (a fuel's stock is not the whole site's)
       setState(() {
         d = r;
         led = l;
@@ -106,10 +110,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  /// the filter with the fuel shown (a site with more than one fuel)
+  Map<String, dynamic> _fv(Map<String, dynamic> f) => {...f, if (fuel.isNotEmpty) 'fuel': fuel};
+  /// the places of the fuel shown
+  List<String> _places(Session s) => fuel.isEmpty ? s.locations : s.locations.where((l) => s.placeFuel(l) == fuel).toList();
+
   Future<void> _loadLedger() async {
     final s = SessionScope.read(context);
     try {
-      final l = (await s.api.call('getStockLedger', [{'from': from, 'to': to, 'location': ledLoc}]) as Map).cast<String, dynamic>();
+      final l = (await s.api.call('getStockLedger', [_fv({'from': from, 'to': to, 'location': ledLoc})]) as Map).cast<String, dynamic>();
       if (mounted) setState(() => led = l);
     } catch (e) {
       if (mounted) toast(context, tr(errText(e)), bad: true);
@@ -206,7 +215,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final which = dashWhich(from, to, s.today);
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView(key: const Key('dash-diesel'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
+      child: FuelScope(fuel: fuel, child: ListView(key: const Key('dash-diesel'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
         Row(children: [
           Expanded(child: Text('Diesel summary – all locations', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
           Pill(rangeText(from, to), color: C.blue, bg: C.blueSoft),
@@ -228,6 +237,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _load();
           })),
         ]),
+        // (3.44.0, update-163) a site with more than one fuel: the fuel shown (the chips keep their own names)
+        if (s.multiFuel) ...[
+          const SizedBox(height: 8),
+          FuelScope(
+            fuel: '',
+            child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Text('Fuel', style: const TextStyle(fontWeight: FontWeight.w700, color: C.muted)),
+              for (final f in s.siteFuels)
+                ChoiceChip(key: Key('dfuel-$f'), selected: fuel == f, label: Text(f), onSelected: (_) {
+                  setState(() {
+                    fuel = f;
+                    if (ledLoc.isNotEmpty && s.placeFuel(ledLoc) != f) ledLoc = '';
+                  });
+                  _load();
+                }),
+            ]),
+          ),
+        ],
         const SizedBox(height: 8),
         FilledButton.icon(
           key: const Key('d-daily'),
@@ -256,7 +283,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 14),
           _ledger(s),
         ],
-      ]),
+      ])),
     );
   }
 
@@ -360,7 +387,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final byLoc = endsToday ? ((stock['byLoc'] as Map?)?.cast<String, dynamic>() ?? const {}) : {for (final x in locs) '${x['loc']}': asNum(x['closing']) ?? 0};
     final tanks = (dd['tanks'] as Map?)?.cast<String, dynamic>() ?? const {};
     final caps = (tanks['caps'] as Map?) ?? const {};
-    final places = s.locations.isNotEmpty ? s.locations : [for (final k in caps.keys) '$k'];
+    final places = s.locations.isNotEmpty ? _places(s) : [for (final k in caps.keys) '$k'];      // (3.44.0) the tanks of the fuel shown
     return _panel(
       endsToday ? 'Diesel tank – live stock (today)' : 'Diesel tank – closing stock on ${showDate(to)} (end of day)',
       note: endsToday ? '' : 'Live now: ${fmtNum(asNum(stock['stock']))} Ltr',
@@ -489,12 +516,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// core/dash.dart – the same as the web's box). Only shown: nothing in it can be changed. The big number is the card's.
   Future<void> _numSheet(String kind, Map<String, dynamic> dd, Color tone) {
     final s = SessionScope.read(context);
-    final fut = numDetail(kind, dd, from, to, s.today, (fn, args) => s.api.call(fn, args));
+    final fut = numDetail(kind, dd, from, to, s.today, (fn, args) => s.api.call(fn, args), fuel: fuel), fu = fuel;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (c) => SizedBox(
+      builder: (c) => FuelScope(fuel: fu, child: SizedBox(
         key: const Key('num-sheet'),
         height: MediaQuery.of(c).size.height * .92,
         child: FutureBuilder<NumDetail>(
@@ -583,20 +610,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ]);
           },
         ),
-      ),
+      )),
     );
   }
 
   Future<void> _ownDetail(String own) async {
     final s = SessionScope.read(context);
     try {
-      final r = (await s.api.call('getOwnershipDetail', [own, {'from': from, 'to': to}]) as Map).cast<String, dynamic>();
+      final r = (await s.api.call('getOwnershipDetail', [own, _fv({'from': from, 'to': to})]) as Map).cast<String, dynamic>();
       if (!mounted) return;
-      final rows = mapsOf(r['rows']), tot = (r['total'] as Map?) ?? const {};
+      final rows = mapsOf(r['rows']), tot = (r['total'] as Map?) ?? const {}, fu = fuel;
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
-        builder: (c) => SizedBox(
+        builder: (c) => FuelScope(fuel: fu, child: SizedBox(
           height: MediaQuery.of(c).size.height * .85,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Padding(
@@ -608,7 +635,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Text('${rangeText('${r['from'] ?? ''}', '${r['to'] ?? ''}')}, ${rows.length} machines, ${tot['entries'] ?? 0} entries', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                   ]),
                 ),
-                IconButton(key: const Key('own-print'), tooltip: tr('Print'), onPressed: rows.isEmpty ? null : () => printDoc(c, s, ownershipDoc(r)), icon: const Icon(Icons.print_rounded)),
+                IconButton(key: const Key('own-print'), tooltip: tr('Print'), onPressed: rows.isEmpty ? null : () => printDoc(c, s, fuelDoc(ownershipDoc(r), fu)), icon: const Icon(Icons.print_rounded)),
               ]),
             ),
             Expanded(
@@ -635,7 +662,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ]),
             ),
           ]),
-        ),
+        )),
       );
     } catch (e) {
       if (mounted) toast(context, tr(errText(e)), bad: true);
@@ -680,7 +707,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 
   Widget _locations(Session s, Map<String, dynamic> dd) {
-    final cards = locationCards(mapsOf(dd['locations']), from, to, s.locations);
+    final cards = locationCards(mapsOf(dd['locations']), from, to, _places(s));
     return _panel('Diesel stock – combined and by location', key: const Key('d-locs'), note: 'Period: ${rangeText(from, to)}. "Stock now" is the live stock after every entry saved till now.', [
       for (final c in cards)
         Container(
@@ -772,14 +799,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _ledger(Session s) {
     final l = led;
     return _panel('Day-wise diesel stock', key: const Key('d-ledger'), note: l == null ? '' : '${showDate('${l['from']}')} to ${showDate('${l['to']}')}', [
-      PickField(key: const Key('lg-loc'), label: 'Location', value: ledLoc, items: s.locations, blank: 'All locations', onChanged: (v) {
+      PickField(key: const Key('lg-loc'), label: 'Location', value: ledLoc, items: _places(s), blank: 'All locations', onChanged: (v) {
         setState(() => ledLoc = v);
         _loadLedger();
       }),
       const SizedBox(height: 6),
-      Text(ledgerHelp(ledLoc, s.locations), style: const TextStyle(fontSize: 12, color: C.muted, height: 1.3)),
+      Text(ledgerHelp(ledLoc, _places(s)), style: const TextStyle(fontSize: 12, color: C.muted, height: 1.3)),
       const SizedBox(height: 8),
-      if (l != null) RTableView(ledgerTable(l, ledLoc, s.locations)),
+      if (l != null) RTableView(ledgerTable(l, ledLoc, _places(s))),
     ]);
   }
 
@@ -788,10 +815,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => daily = true);
     try {
       final day = from.isNotEmpty && to.isNotEmpty && from == to ? to : s.today;
+      // (3.44.0, update-163) a site with more than one fuel: the Dashboard of each fuel – its stock, received and issued on its own
+      final fuels = s.multiFuel ? s.siteFuels : const <String>[];
+      final fd = await Future.wait([for (final f in fuels) s.api.call('getDashboard', [{'from': day, 'to': day, 'fuel': f}])]);
       final res = await Future.wait([
         s.api.call('getDashboard', [{'from': day, 'to': day}]),
         s.api.call('getDieselIssues', [{'from': day, 'to': day, 'all': true}]),
-        s.api.call('getInwards', [{'from': day, 'to': day}]),
+        s.api.call('getInwards', [{'from': day, 'to': day, 'all': true}]),
         s.api.call('getLogBookList', [{'from': day, 'to': day, 'all': true}]),
         s.api.call('getBreakdowns', [{'date': day}]).catchError((_) => <String, dynamic>{}),
       ]);
@@ -808,6 +838,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         logs: mapsOf(m(res[3])['rows']),
         breakdowns: m(res[4]),
         activeMachines: [for (final x in s.machines) if (x.onSite(day) && needsLogBook(x.m)) x.m],
+        fuelDash: {for (final (i, f) in fuels.indexed) f: m(fd[i])},
+        placeFuels: s.placeFuels,
       );
       if (!mounted) return;
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: html, title: 'Daily Report ${showDate(day)}')));

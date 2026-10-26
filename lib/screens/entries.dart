@@ -323,6 +323,15 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
     final k = kindOf(kind);
     final list = _shown;
     final total = list.fold<num>(0, (a, r) => a + (asNum(r['qty']) ?? 0));
+    // (3.44.0, Mechanical update-163) a site with more than one fuel: the day's total of each fuel – never added together
+    final byFuel = <String, num>{};
+    if (s.multiFuel) {
+      for (final r in list) {
+        final f = s.placeFuel('${k.key == 'issue' ? r['source'] : k.key == 'inward' ? r['location'] : r['from']}');
+        byFuel[f] = (byFuel[f] ?? 0) + (asNum(r['qty']) ?? 0);
+      }
+    }
+    final totalText = s.multiFuel ? [for (final e in byFuel.entries) '${e.key} ${fmtNum(e.value)} ${e.key == 'CNG' ? 'kg' : 'L'}'].join(' · ') : '${fmtNum(total)} L';
     final today = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     final days = [for (var i = 0; i < 14; i++) today.subtract(Duration(days: i))];
     return Scaffold(
@@ -420,7 +429,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
                 padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 8),
                 child: Row(children: [
                   Expanded(child: Text('${showDate(day)}, ${weekDays[parseKey(day).weekday - 1]}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
-                  if (!loading) Text('${list.length} ${list.length == 1 ? 'entry' : 'entries'} · ${fmtNum(total)} L', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: k.color)),
+                  if (!loading) Flexible(child: Text('${list.length} ${list.length == 1 ? 'entry' : 'entries'}${totalText.isEmpty ? '' : ' · $totalText'}', textAlign: TextAlign.right, style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: k.color))),
                 ]),
               ),
             ),
@@ -475,6 +484,10 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
   }
 }
 
+/// (3.44.0, Mechanical update-163) the unit of an entry: kg at a CNG place, L at the others (the place: the issue's source, the
+/// inward's location, the transfer's From)
+String unitOfEntry(Session s, String kindKey, Map r) => s.placeUnit('${kindKey == 'issue' ? r['source'] : kindKey == 'inward' ? r['location'] : r['from']}') == 'kg' ? 'kg' : 'L';
+
 /// One entry as a card (picture 2).
 class EntryCard extends StatelessWidget {
   const EntryCard({super.key, required this.kind, required this.r, this.onChanged, this.note = ''});
@@ -516,13 +529,16 @@ class EntryCard extends StatelessWidget {
   Widget build(BuildContext context) => Press(
         onTap: () => _details(context),
         padding: const EdgeInsets.all(12),
-        child: note.isEmpty ? _main() : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _main(),
+        child: note.isEmpty ? _main(_unit(context)) : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _main(_unit(context)),
           Padding(padding: const EdgeInsets.only(top: 6, left: 4), child: Text(note, style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w600))),
         ]),
       );
 
-  Widget _main() => Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+  /// (3.44.0, Mechanical update-163) kg for an entry of a CNG place, L for the others
+  String _unit(BuildContext context) => unitOfEntry(SessionScope.read(context), kind.key, r);
+
+  Widget _main(String u) => Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Container(width: 74, height: 74, decoration: BoxDecoration(color: kind.soft.withValues(alpha: .6), borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(_pic, size: 56)),
           const SizedBox(width: 12),
           Expanded(
@@ -542,7 +558,7 @@ class EntryCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Pill('${fmtNum(asNum(r['qty']))} L', color: kind.color, bg: kind.soft, big: true),
+            Pill('${fmtNum(asNum(r['qty']))} $u', color: kind.color, bg: kind.soft, big: true),
             const SizedBox(height: 8),
             if ('${r['shift'] ?? ''}'.isNotEmpty) Text('${r['shift']} shift', style: const TextStyle(fontSize: 12.5, color: C.muted)),
             if (kind.key == 'inward' && asNum(r['amount']) != null) Text('₹ ${fmtNum(asNum(r['amount']))}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
@@ -550,6 +566,7 @@ class EntryCard extends StatelessWidget {
         ]);
 
   void _details(BuildContext context) {
+    final u = _unit(context);
     final rowsOf = <(String, String)>[
       ('Entry', '${r['id'] ?? ''}'),
       ('Date', '${showDate('${r['date'] ?? ''}')}${'${r['shift'] ?? ''}'.isNotEmpty ? ' · ${r['shift']} shift' : ''}'),
@@ -560,18 +577,18 @@ class EntryCard extends StatelessWidget {
         ('Reading', [asNum(r['kmReading']) != null ? '${fmtNum(asNum(r['kmReading']))} km' : '', asNum(r['hrReading']) != null ? '${fmtNum(asNum(r['hrReading']))} hr' : '', '${r['meter'] ?? ''}'].where((e) => e.isNotEmpty).join(' · ')),
         ('Operator', '${r['driver'] ?? ''}'),
         ('Photos', (asNum(r['ph']) ?? 0) > 0 ? '${fmtNum(asNum(r['ph']))} of 4' : ''),
-        ('Stock after', asNum(r['balance']) != null ? '${fmtNum(asNum(r['balance']))} L' : ''),
+        ('Stock after', asNum(r['balance']) != null ? '${fmtNum(asNum(r['balance']))} $u' : ''),
       ],
       if (kind.key == 'inward') ...[
         ('Pump', '${r['pump'] ?? ''}'),
         ('Received at', '${r['location'] ?? ''}'),
-        ('Rate', asNum(r['rate']) != null ? '₹ ${fmtNum(asNum(r['rate']))} / L' : ''),
+        ('Rate', asNum(r['rate']) != null ? '₹ ${fmtNum(asNum(r['rate']))} / $u' : ''),
         ('Amount', asNum(r['amount']) != null ? '₹ ${fmtNum(asNum(r['amount']))}' : ''),
         ('Bill', [r['billNo'], showDate('${r['billDate'] ?? ''}')].where((e) => '${e ?? ''}'.isNotEmpty).join(' · ')),
         ('Bill copy', (asNum(r['ph']) ?? 0) == 1 ? '1 photo' : (asNum(r['ph']) ?? 0) > 1 ? '${fmtNum(asNum(r['ph']))} photos' : ''),      // (3.1.13, update-120)
       ],
       if (kind.key == 'transfer') ...[('From', '${r['from'] ?? ''}'), ('To', '${r['to'] ?? ''}')],
-      ('Litres', '${fmtNum(asNum(r['qty']))} L'),
+      (u == 'kg' ? 'Kg' : 'Litres', '${fmtNum(asNum(r['qty']))} $u'),
       ('Remark', '${r['remark'] ?? ''}'),
       ('Entered by', [r['enteredBy'], if ('${r['updatedBy'] ?? ''}'.isNotEmpty) 'changed by ${r['updatedBy']}'].where((e) => '${e ?? ''}'.isNotEmpty).join(' · ')),
     ].where((x) => x.$2.trim().isNotEmpty).toList();
@@ -586,7 +603,7 @@ class EntryCard extends StatelessWidget {
               Container(width: 60, height: 60, decoration: BoxDecoration(color: kind.soft, borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(_pic, size: 46)),
               const SizedBox(width: 14),
               Expanded(child: TwoLang(_title, kind.en, size: 20, weight: FontWeight.w700)),
-              Pill('${fmtNum(asNum(r['qty']))} L', color: kind.color, bg: kind.soft, big: true),
+              Pill('${fmtNum(asNum(r['qty']))} $u', color: kind.color, bg: kind.soft, big: true),
             ]),
             const SizedBox(height: 16),
             for (final x in rowsOf)

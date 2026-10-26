@@ -69,6 +69,7 @@ Map<String, dynamic> reportFilters(ReportDef def, ReportPick p) {
     x['monthA'] = p.monthA;
     x['monthB'] = p.monthB;
   }
+  if (p.fuel.isNotEmpty && def.key != 'ldebit') x['fuel'] = p.fuel;      // (3.44.0, update-163) the report of one fuel
   if (f.contains('monthly')) {
     if (p.pickSome && p.picked.isEmpty) throw ArgumentError('Select at least one machinery, or choose All machinery.');
     x['source'] = p.source;
@@ -85,6 +86,8 @@ Map<String, dynamic> reportFilters(ReportDef def, ReportPick p) {
 class ReportPick {
   String from = '', to = '', owner = '', party = '', rateMode = 'last', fixedRate = '', pump = '', location = '', no = '', monthA = '', monthB = '';
   String source = '', shift = '', supply = '';
+  /// (3.44.0, Mechanical update-163) a site with more than one fuel: the report of ONE fuel ('' = the site's one fuel)
+  String fuel = '';
   bool zero = false, pickSome = false;
   final owns = {...kOwns};
   final picked = <String>{};
@@ -122,6 +125,8 @@ class _ReportScreenState extends State<ReportScreen> {
   String err = '', out = '';
 
   ReportDef get def => widget.def;
+  /// the places of the fuel picked (every place on a site of one fuel)
+  List<String> _places(Session s) => p.fuel.isEmpty ? s.locations : s.locations.where((l) => s.placeFuel(l) == p.fuel).toList();
 
   @override
   void initState() {
@@ -129,7 +134,8 @@ class _ReportScreenState extends State<ReportScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final s = SessionScope.read(context);
       setState(() {
-        p.start(s.today, s.locations, def);
+        if (s.multiFuel && def.key != 'ldebit') p.fuel = s.siteFuels.first;      // (3.44.0)
+        p.start(s.today, _places(s), def);
         if (widget.no.isNotEmpty) p.no = widget.no;
         if (widget.owner.isNotEmpty) owner.text = widget.owner;
       });
@@ -176,7 +182,7 @@ class _ReportScreenState extends State<ReportScreen> {
       if (!mounted) return;
       setState(() {
         data = d;
-        doc = def.build(d);
+        doc = fuelDoc(def.build(d), '${f['fuel'] ?? ''}');      // (3.44.0) in the words of its fuel – the screen, the print and Excel
         open = false;
         busy = false;
       });
@@ -272,7 +278,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Future<void> _pickMany() async {
     final s = SessionScope.read(context);
-    final got = await showModalBottomSheet<Set<String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _ManyPicker(machines: s.machines, picked: p.picked, owns: p.owns));
+    final got = await showModalBottomSheet<Set<String>>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _ManyPicker(machines: p.fuel.isEmpty ? s.machines : s.machines.where((m) => m.fuel == p.fuel).toList(), picked: p.picked, owns: p.owns));
     if (got != null) {
       setState(() {
         p.picked
@@ -311,6 +317,17 @@ class _ReportScreenState extends State<ReportScreen> {
     final f = def.filters;
     final kids = <Widget>[];
     void gap() => kids.add(const SizedBox(height: 10));
+    // (3.44.0, Mechanical update-163) a site with more than one fuel: the report of one fuel, never added together
+    if (s.multiFuel && def.key != 'ldebit') {
+      kids.add(_drop('Fuel', p.fuel, [for (final x in s.siteFuels) (x, x)], (v) => setState(() {
+            p.fuel = v;
+            final pl = _places(s);
+            if (p.location.isNotEmpty && !pl.contains(p.location)) p.location = f.contains('location1') && pl.isNotEmpty ? pl.first : '';
+            if (p.source.isNotEmpty && !pl.contains(p.source)) p.source = '';
+            p.picked.removeWhere((no) => s.machine(no)?.fuel != v);
+          })));
+      gap();
+    }
     if (f.contains('machine')) {
       kids.add(_box('Machinery Number / Name', p.no, _pickMachine, icon: Icons.precision_manufacturing_outlined));
       gap();
@@ -332,7 +349,7 @@ class _ReportScreenState extends State<ReportScreen> {
       gap();
     }
     if (f.contains('location1')) {
-      kids.add(_drop('Location', p.location, [for (final l in s.locations) (l, l)], (v) => setState(() => p.location = v)));
+      kids.add(KeyedSubtree(key: ValueKey('rl1-${p.fuel}'), child: _drop('Location', p.location, [for (final l in _places(s)) (l, l)], (v) => setState(() => p.location = v))));
       gap();
     }
     if (f.contains('range')) {
@@ -352,11 +369,11 @@ class _ReportScreenState extends State<ReportScreen> {
       gap();
     }
     if (f.contains('dloc') || f.contains('location')) {
-      kids.add(_drop(f.contains('dloc') ? 'Stock location' : 'Location', p.location, [('', f.contains('dloc') ? 'All locations' : 'All locations'), for (final l in s.locations) (l, l)], (v) => setState(() => p.location = v)));
+      kids.add(KeyedSubtree(key: ValueKey('rl-${p.fuel}'), child: _drop(f.contains('dloc') ? 'Stock location' : 'Location', p.location, [('', f.contains('dloc') ? 'All locations' : 'All locations'), for (final l in _places(s)) (l, l)], (v) => setState(() => p.location = v))));
       gap();
     }
     if (f.contains('monthly')) {
-      kids.add(_drop('Diesel Source', p.source, [('', 'All'), for (final l in s.locations) (l, l)], (v) => setState(() => p.source = v)));
+      kids.add(KeyedSubtree(key: ValueKey('rs-${p.fuel}'), child: _drop('Diesel Source', p.source, [('', 'All'), for (final l in _places(s)) (l, l)], (v) => setState(() => p.source = v))));
       gap();
       kids.add(Row(children: [
         Expanded(child: _drop('Shift', p.shift, const [('', 'All'), ('Day', 'Day'), ('Night', 'Night')], (v) => setState(() => p.shift = v))),

@@ -323,14 +323,19 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     final locs = s.stockByLoc.entries.toList();
     final tiles = <Widget>[
       for (final (i, l) in locs.indexed)
-        _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: placeMr(l.key), value: '${fmtNum(l.value)} L', color: i == 0 ? C.redSoft : C.blueSoft),
+        _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: placeMr(l.key), value: '${fmtNum(l.value)} ${s.placeUnit(l.key) == 'kg' ? 'kg' : 'L'}', color: i == 0 ? C.redSoft : C.blueSoft),
       if (s.canSee('Log Book')) ...[
         _MiniTile(pic: 'tractor', en: 'Running', mr: 'चालू यंत्रे', value: running == null ? '–' : '$running / ${s.machines.where((m) => m.onSite(s.today)).length}', color: C.greenSoft),
         _MiniTile(pic: 'notebook', en: 'Logbook', mr: 'नोंदी (आज)', value: logEntries == null ? '–' : '$logEntries', color: C.purpleSoft),
       ],
     ];
-    final total = s.stockTotal;
-    final pct = (total != null && opening != null && opening! > 0) ? ((total - opening!) / opening! * 100) : null;
+    // (3.44.0, Mechanical update-163) a site with more than one fuel: each fuel's stock on its own – the first in big, the others under it
+    final multi = s.multiFuel, f0 = multi ? s.siteFuels.first : 'Diesel', byFuel = <String, num>{};
+    for (final l in locs) {
+      byFuel[s.placeFuel(l.key)] = (byFuel[s.placeFuel(l.key)] ?? 0) + l.value;
+    }
+    final total = multi ? byFuel[f0] : s.stockTotal;
+    final pct = (!multi && total != null && opening != null && opening! > 0) ? ((total - opening!) / opening! * 100) : null;
     final picH = 236 + top;
     return Scaffold(
       backgroundColor: C.bg,
@@ -486,13 +491,15 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Text('Total Diesel Stock', mr: 'डिझेल साठा (एकूण)', style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                          multi
+                              ? Text('$f0 stock', mr: '$f0 साठा', style: const TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500))
+                              : const Text('Total Diesel Stock', mr: 'डिझेल साठा (एकूण)', style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
                           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                             Flexible(
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
-                                child: Text(total == null ? '–' : '${fmtNum(total)} L', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+                                child: Text(total == null ? '–' : '${fmtNum(total)} ${f0 == 'CNG' ? 'kg' : 'L'}', key: const Key('home-stock'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
                               ),
                             ),
                             if (pct != null) ...[
@@ -518,7 +525,20 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                         icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
                       ),
                     ]),
-                    if (locs.isNotEmpty && (total ?? 0) > 0) ...[
+                    if (multi)      // the other fuels, never added to it
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Wrap(spacing: 8, runSpacing: 6, children: [
+                          for (final f in s.siteFuels.skip(1))
+                            Container(
+                              key: Key('home-fuel-$f'),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
+                              child: Text('$f ${fmtNum(byFuel[f] ?? 0)} ${f == 'CNG' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ),
+                        ]),
+                      ),
+                    if (!multi && locs.isNotEmpty && (total ?? 0) > 0) ...[
                       const SizedBox(height: 12),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(5),
@@ -537,7 +557,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                         Row(mainAxisSize: MainAxisSize.min, children: [
                           Container(width: 8, height: 8, decoration: BoxDecoration(color: _locTone[i % _locTone.length], shape: BoxShape.circle)),
                           const SizedBox(width: 5),
-                          Text('${l.key} ${fmtNum(l.value)} L', style: const TextStyle(fontSize: 11.5, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                          Text('${l.key} ${fmtNum(l.value)} ${s.placeUnit(l.key) == 'kg' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 11.5, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
                         ]),
                       if (at != null)
                         Row(mainAxisSize: MainAxisSize.min, children: [

@@ -18,6 +18,9 @@ class FakeServer {
   /// (3.43.0, Mechanical update-162) his diesel sources (getInit's user.dsrc); [userInSync]: the sync tells the user too (as Mechanical)
   Map<String, dynamic>? dsrc;
   bool userInSync = false;
+  /// (3.44.0, Mechanical update-163) a site with a place per fuel card (HO): DIESEL CARD, PETROL CARD, PETROL CAN, CNG CARD with their
+  /// fuel (getInit's placeFuels), and a Petrol, a CNG and an Electric car
+  bool fuels = false;
   final issueBal = <List>[];
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
@@ -118,6 +121,11 @@ class FakeServer {
   ];
   List<Map<String, dynamic>> get _master => [
         ...master,
+        if (fuels) ...[
+          {'id': 'MH-12-HO-1163', 'no': 'MH-12-HO-1163', 'name': 'Hycross', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': 23, 'fuel': 'Petrol'},
+          {'id': 'MH-12-HO-2163', 'no': 'MH-12-HO-2163', 'name': 'Ertiga', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': 25, 'fuel': 'CNG'},
+          {'id': 'MH-12-HO-3163', 'no': 'MH-12-HO-3163', 'name': 'Nexon EV', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': '', 'fuel': 'Electric'},
+        ],
         if (tanker) {'id': 'MH-04-J-9844', 'name': '', 'type': 'Water Tanker', 'owner': 'Chalke Enterprises', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['Trip'], 'modesX': [], 'lbFormat': 'I'},
         if (tanker2) {'id': 'MH-12-AB-1001', 'name': '', 'type': 'Water Tanker', 'owner': 'Patil Water Supply', 'ownership': 'Rental', 'supply': 'Company', 'status': 'Active', 'modes': ['Trip'], 'modesX': [], 'lbFormat': 'I'},
       ];
@@ -662,7 +670,7 @@ class FakeServer {
         expireOnce = '';
         return _j({'error': 'SESSION_EXPIRED'}, 401);
       }
-      final stock = {'stock': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}};
+      final stock = fuels ? {'stock': 302, 'byLoc': {'DIESEL CARD': 150, 'PETROL CARD': 100, 'PETROL CAN': 20, 'CNG CARD': 32}, 'byFuel': {'Diesel': 150, 'Petrol': 120, 'CNG': 32}} : {'stock': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}};
       const lockMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: this machinery is in the submitted RA Bill 9 of Rana (RCL, 01-10-2026 to 14-10-2026) – its Log Book and diesel entries of those dates cannot be added, changed or deleted without the Super Admin.';
       const apMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: it was approved on 14-10-2026 by Checker One (VF-00003) – an approved entry cannot be changed or deleted without the Super Admin. To correct it: change the entry and send it to the Super Admin for approval (the page asks) – it is saved only when he approves.';
       if (apLock && !superAdmin && action == 'updateLogRow') return _j({'error': apMsg}, 500);
@@ -837,7 +845,8 @@ class FakeServer {
         case 'getStock':
           return _j({'result': stock});
         case 'getInit':
-          return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': ['Dispenser', 'VTR Store'], 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
+          return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': fuels ? ['DIESEL CARD', 'PETROL CARD', 'PETROL CAN', 'CNG CARD'] : ['Dispenser', 'VTR Store'],
+            if (fuels) 'placeFuels': {'DIESEL CARD': 'Diesel', 'PETROL CARD': 'Petrol', 'PETROL CAN': 'Petrol', 'CNG CARD': 'CNG'}, 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
             'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc},
             'master': _master, 'ai': {'on': aiOn}}});
         // (3.4.0) the masters

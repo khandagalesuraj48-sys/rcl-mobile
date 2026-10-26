@@ -202,7 +202,8 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
     final id = '${m['id']}', on = sel.contains(id), ds = docState(m, s.today);
     final inactive = m['status'] == 'Inactive';
     final sub = [if (m['no'] != null && '${m['no']}'.isNotEmpty && '${m['name'] ?? ''}'.isNotEmpty) '${m['name']}', '${m['type'] ?? ''}', '${m['make'] ?? ''}'].where((x) => x.isNotEmpty).join(' · ');
-    final std = [if ((asNum(m['kmStd']) ?? 0) > 0) '${fmtNum(asNum(m['kmStd']))} KM/Ltr', if ((asNum(m['hrStd']) ?? 0) > 0) '${fmtNum(asNum(m['hrStd']))} Ltr/Hr', if ((asNum(m['tankCap']) ?? 0) > 0) 'Tank ${fmtNum(asNum(m['tankCap']))} L'];
+    final fu = Machine(m).fuel, u = fuelUnit(fu);      // (3.44.0, update-163) its fuel
+    final std = [if ((asNum(m['kmStd']) ?? 0) > 0) '${fmtNum(asNum(m['kmStd']))} KM/$u', if ((asNum(m['hrStd']) ?? 0) > 0) '${fmtNum(asNum(m['hrStd']))} $u/Hr', if ((asNum(m['tankCap']) ?? 0) > 0) 'Tank ${fmtNum(asNum(m['tankCap']))} L'];
     final early = earlierText(m);
     return Press(
       key: Key('m-$id'),
@@ -243,6 +244,7 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
               if (early.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(early, style: const TextStyle(fontSize: 12, color: C.faint))),
               const SizedBox(height: 8),
               Wrap(spacing: 6, runSpacing: 6, children: [
+                if (fu != 'Diesel') Pill(fu, key: Key('mfuel-$id'), color: C.blue, bg: C.blueSoft),
                 if (worksOf(m).isNotEmpty) Pill(worksOf(m).join(', '), color: C.blue, bg: C.blueSoft),
                 for (final x in std) Pill(x, color: C.slate, bg: C.slateSoft),
                 if (ds.given > 0) Pill('Papers: ${ds.text}', color: toneOf(ds.tone), bg: softOf(ds.tone)),
@@ -311,9 +313,10 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
           InfoRow('Machinery Name', '${m['name'] ?? ''}'),
           InfoRow('Type of Machinery', '${m['type'] ?? ''}'),
           InfoRow('Make', '${m['make'] ?? ''}'),
+          InfoRow('Fuel', Machine(m).fuel),      // (3.44.0)
           InfoRow('Works on', worksOf(m).isEmpty ? '${m['unit'] ?? ''}' : worksOf(m).join(', ')),
-          InfoRow('KM/Ltr', (asNum(m['kmStd']) ?? 0) > 0 ? fmtNum(asNum(m['kmStd'])) : ''),
-          InfoRow('Ltr/Hr', (asNum(m['hrStd']) ?? 0) > 0 ? fmtNum(asNum(m['hrStd'])) : ''),
+          InfoRow('KM/${fuelUnit(Machine(m).fuel)}', (asNum(m['kmStd']) ?? 0) > 0 ? fmtNum(asNum(m['kmStd'])) : ''),
+          InfoRow('${fuelUnit(Machine(m).fuel)}/Hr', (asNum(m['hrStd']) ?? 0) > 0 ? fmtNum(asNum(m['hrStd'])) : ''),
           InfoRow('Tank (Ltr)', (asNum(m['tankCap']) ?? 0) > 0 ? fmtNum(asNum(m['tankCap'])) : ''),
           InfoRow('Vendor', '${m['owner'] ?? ''}'),
           InfoRow('Ownership', '${m['ownership'] ?? ''}'),

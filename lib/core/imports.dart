@@ -212,7 +212,10 @@ List<Map<String, Object?>> transferRows(List<SheetTab> tabs, List<String> locati
 
 /// The web's trProblems (a file's row and a row of "Multiple entries"). [mine] (3.43.0, update-162): his own diesel sources for the
 /// From (null = every place); the To may be any place.
-List<String> transferProblems(Map r, String today, List<String> locations, {List<String>? mine}) {
+/// (3.44.0, Mechanical update-163) [fuels] = the fuel of each place (given when the site has fuels to check): a fill only from a place of
+/// the machinery's fuel, a transfer only between places of one fuel – the server refuses the rest
+String _mFuel(Map m) => const ['Diesel', 'Petrol', 'CNG', 'Electric'].contains('${m['fuel'] ?? ''}') ? '${m['fuel']}' : 'Diesel';
+List<String> transferProblems(Map r, String today, List<String> locations, {List<String>? mine, Map<String, String>? fuels}) {
   final p = <String>[];
   final d = '${r['date']}';
   if (!_day.hasMatch(d)) {
@@ -227,6 +230,10 @@ List<String> transferProblems(Map r, String today, List<String> locations, {List
   }
   if (!locations.contains(r['to'])) p.add('To');
   if (jsTrue(r['from']) && r['from'] == r['to']) p.add('From = To');
+  if (fuels != null && locations.contains(r['from']) && locations.contains(r['to']) && r['from'] != r['to']) {
+    final ff = fuels['${r['from']}'] ?? 'Diesel', tf = fuels['${r['to']}'] ?? 'Diesel';
+    if (ff != tf) p.add('From $ff, To $tf – not the same fuel');
+  }
   if (!_posNum(r['qty'])) p.add('qty');
   return p;
 }
@@ -277,18 +284,21 @@ String activeProblem(Map<String, dynamic>? m, String dk) {
 
 /// The diesel issues of a file (the web's d_file handler).
 /// [mine] (3.43.0, update-162): his own diesel sources – a blank source takes the first of them.
-List<Map<String, Object?>> issueRows(List<SheetTab> tabs, List<String> locations, Iterable<Map<String, dynamic>> master, {List<String>? mine}) {
+/// [fuels] (3.44.0, update-163): the fuel of each place – a blank source takes the first place of the machinery's fuel.
+List<Map<String, Object?>> issueRows(List<SheetTab> tabs, List<String> locations, Iterable<Map<String, dynamic>> master, {List<String>? mine, Map<String, String>? fuels}) {
   Object num0(Object? v) => v == '' || v == null ? '' : _numText(v);
   return [
     for (final x in readExcelRows(tabs, kIssueCols, const ['date', 'no', 'qty']))
       () {
         final m = findMachine(master, jsS(x['no']).trim());
         final src = locName(x['source'], locations);
+        final fz = fuels, mf = m == null ? '' : _mFuel(m), own0 = mine ?? locations;
+        final ownF = fz != null && mf.isNotEmpty ? own0.where((l) => (fz[l] ?? 'Diesel') == mf).toList() : own0, own = ownF.isNotEmpty ? ownF : own0;
         return <String, Object?>{
           'line': x['line'],
           'date': xlDate(x['date']),
           'shift': shiftName(x['shift']),
-          'source': src.isNotEmpty ? src : (mine != null && mine.isNotEmpty ? mine.first : locations.isNotEmpty ? locations.first : 'Dispenser'),
+          'source': src.isNotEmpty ? src : (own.isNotEmpty ? own.first : locations.isNotEmpty ? locations.first : 'Dispenser'),
           'no': m != null ? '${m['id']}' : jsS(x['no']).trim(),
           'qty': num0(x['qty']),
           'kmReading': num0(x['km']),
@@ -301,7 +311,7 @@ List<Map<String, Object?>> issueRows(List<SheetTab> tabs, List<String> locations
 }
 
 /// The web's diProblems. [mine] (3.43.0, update-162): his own diesel sources (null = every place).
-List<String> issueProblems(Map r, String today, List<String> locations, Iterable<Map<String, dynamic>> master, {List<String>? mine}) {
+List<String> issueProblems(Map r, String today, List<String> locations, Iterable<Map<String, dynamic>> master, {List<String>? mine, Map<String, String>? fuels}) {
   final p = <String>[];
   final d = '${r['date']}';
   if (!_day.hasMatch(d)) {
@@ -319,6 +329,13 @@ List<String> issueProblems(Map r, String today, List<String> locations, Iterable
     p.add('machinery not in Master');
   } else if (activeProblem(m, d).isNotEmpty) {
     p.add('machinery not active on that date');
+  } else if (fuels != null && locations.contains(r['source'])) {
+    final mf = _mFuel(m), pf = fuels['${r['source']}'] ?? 'Diesel';
+    if (mf == 'Electric') {
+      p.add('runs on Electric – no fuel');
+    } else if (mf != pf) {
+      p.add('runs on $mf – not at ${r['source']}');
+    }
   }
   if (!_posNum(r['qty'])) p.add('qty');
   return p;

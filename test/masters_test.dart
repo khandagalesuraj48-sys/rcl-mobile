@@ -108,6 +108,10 @@ void main() {
       expect(masterChanges({...before, 'earlier': []}, {...before, 'worksOn': 'KM', 'earlier': [{'from': '2026-06-01', 'until': '2026-08-01'}]}).single.$1, 'Earlier periods on site');
       expect(savedWords('edit', {'renamed': {'from': 'A-1', 'to': 'B-2', 'text': '3 diesel issues'}}), 'Machinery updated – A-1 is now B-2 (moved with it: 3 diesel issues).');
       expect(savedWords('add', {}), 'Machinery saved.');
+      // (3.44.0, Mechanical update-163) its Fuel: none = Diesel (a machinery of before); a change is said
+      expect(masterChanges(before, {...before, 'worksOn': 'KM', 'fuel': 'Diesel'}), isEmpty, reason: 'none = Diesel');
+      expect(masterChanges(before, {...before, 'worksOn': 'KM', 'fuel': 'CNG'}).single, ('Fuel', 'Diesel', 'CNG'));
+      expect(masterChanges({...before, 'fuel': 'Petrol'}, {...before, 'worksOn': 'KM'}), isEmpty, reason: 'a save that sends no Fuel keeps it');
     });
 
     test('Edit selected: a shared value is filled in; only what was changed is sent', () {

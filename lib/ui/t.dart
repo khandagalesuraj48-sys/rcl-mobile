@@ -6,8 +6,19 @@
 import 'package:flutter/material.dart' as m;
 import 'package:flutter/widgets.dart';
 
+import '../core/fuel.dart';
 import '../core/lang.dart';
 export '../core/lang.dart' show tr, bi, Lang, hasDeva;
+
+/// (3.44.0, Mechanical update-163) the words of ONE fuel under it – a Petrol / CNG dashboard or report: "Diesel" → its name, for
+/// CNG the litres → kg (core/fuel.dart fuelText). Diesel / none: the words as they are.
+class FuelScope extends InheritedWidget {
+  const FuelScope({super.key, required this.fuel, required super.child});
+  final String fuel;
+  static String of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<FuelScope>()?.fuel ?? '';
+  @override
+  bool updateShouldNotify(FuelScope oldWidget) => oldWidget.fuel != fuel;
+}
 
 /// Rebuilds what shows words when the language changes.
 class LangScope extends InheritedNotifier<Lang> {
@@ -49,8 +60,8 @@ class Text extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = LangScope.of(context);
-    final s = mr.isNotEmpty ? l.pair(data, mr) : l.tr(data);
+    final l = LangScope.of(context), f = FuelScope.of(context);
+    final s0 = mr.isNotEmpty ? l.pair(data, mr) : l.tr(data), s = f.isEmpty ? s0 : fuelText(s0, f);
     return m.Text(s,
         style: style,
         strutStyle: strutStyle,

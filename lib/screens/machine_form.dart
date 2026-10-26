@@ -31,6 +31,7 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
   final t = <String, TextEditingController>{for (final k in ['no', 'name', 'type', 'make', 'kmStd', 'hrStd', 'tankCap', 'owner', 'engineNo', 'chassisNo', 'engineMake']) k: TextEditingController()};
   final works = <String>{};
   String ownership = '', supply = 'Company', status = 'Active', activeFrom = '', inactiveFrom = '';
+  String fuel = 'Diesel';      // (3.44.0, Mechanical update-163) Diesel / Petrol / CNG / Electric
   bool ownAuto = false, supplyTouched = false;
   String wasOwn = '';
   final docs = <String, String>{for (final d in kDocs) d.$1: ''}; // a date · 'NA' · 'LIFETIME' · ''
@@ -53,6 +54,7 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
       }
       works.addAll(worksOf(m));
       ownership = kOwnerships.contains(v('ownership')) ? v('ownership') : '';
+      fuel = kFuels.contains(v('fuel')) ? v('fuel') : 'Diesel';
       wasOwn = ownership;
       supply = v('supply').isEmpty ? 'Company' : v('supply');
       supplyTouched = true;
@@ -156,7 +158,7 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
       'no': t['no']!.text.trim(), 'name': t['name']!.text.trim(), 'type': t['type']!.text.trim(), 'make': t['make']!.text.trim(),
       'unit': unit, 'worksOn': worksList.join(', '),
       'kmStd': hasKm(unit) ? nv('kmStd') : '', 'hrStd': hasHr(unit) ? nv('hrStd') : '', 'tankCap': nv('tankCap'), 'owner': t['owner']!.text.trim(), 'ownership': ownership,
-      'engineNo': t['engineNo']!.text.trim(), 'chassisNo': t['chassisNo']!.text.trim(), 'engineMake': t['engineMake']!.text.trim(),
+      'engineNo': t['engineNo']!.text.trim(), 'chassisNo': t['chassisNo']!.text.trim(), 'engineMake': t['engineMake']!.text.trim(), 'fuel': fuel,
       for (final d in kDocs) d.$3: docs[d.$1] ?? '',
       'supply': supply, 'status': status, 'activeFrom': activeFrom, 'inactiveFrom': status == 'Inactive' ? inactiveFrom : '',
     };
@@ -223,6 +225,11 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
         TextBox(key: const Key('mf-type'), label: 'Type of Machinery', controller: t['type']!, options: uniqOf(s.machines, 'type')),
         gap(),
         TextBox(key: const Key('mf-make'), label: 'Make', controller: t['make']!, options: uniqOf(s.machines, 'make')),
+        // (3.44.0, update-163) the fuel it runs on: diesel / petrol / CNG is given to it only from a place of that fuel; Electric: none
+        const FormHead('Fuel *', sub: 'What it runs on'),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final f in kFuels) ChoiceChip(key: Key('mf-fuel-$f'), label: Text(f), selected: fuel == f, onSelected: (_) => setState(() => fuel = f)),
+        ]),
         FormHead('Works on${debit ? '' : ' *'}', sub: 'Tick all that apply'),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final w in kWorks)
@@ -234,9 +241,9 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
             ),
         ]),
         gap(12),
-        TextBox(key: const Key('mf-kmstd'), label: 'Standard Average (KM/Ltr)', controller: t['kmStd']!, enabled: hasKm(unit), kb: const TextInputType.numberWithOptions(decimal: true)),
+        TextBox(key: const Key('mf-kmstd'), label: 'Standard Average (KM/${fuelUnit(fuel)})${fuel == 'Electric' ? ' – not for Electric' : ''}', controller: t['kmStd']!, enabled: hasKm(unit), kb: const TextInputType.numberWithOptions(decimal: true)),
         gap(),
-        TextBox(key: const Key('mf-hrstd'), label: 'Standard Average (Ltr/Hr)', controller: t['hrStd']!, enabled: hasHr(unit), kb: const TextInputType.numberWithOptions(decimal: true)),
+        TextBox(key: const Key('mf-hrstd'), label: 'Standard Average (${fuelUnit(fuel)}/Hr)${fuel == 'Electric' ? ' – not for Electric' : ''}', controller: t['hrStd']!, enabled: hasHr(unit), kb: const TextInputType.numberWithOptions(decimal: true)),
         gap(),
         TextBox(key: const Key('mf-tcap'), label: 'Tank Capacity (Ltr)', controller: t['tankCap']!, hint: 'Optional – for reference', kb: TextInputType.number),
         gap(),
@@ -330,10 +337,10 @@ class BulkMachineryScreen extends StatefulWidget {
 
 class _BulkRow {
   final t = <String, TextEditingController>{for (final k in ['no', 'name', 'type', 'make', 'kmStd', 'hrStd', 'owner']) k: TextEditingController()};
-  String unit = '', ownership = '', supply = '';
+  String unit = '', ownership = '', supply = '', fuel = 'Diesel';
   String err = '';
   Map<String, dynamic> get value => {
-        for (final k in kBulkFields) k: switch (k) { 'unit' => unit, 'ownership' => ownership, 'supply' => supply, 'no' => formatNo(t[k]!.text), _ => t[k]!.text.trim() },
+        for (final k in kBulkFields) k: switch (k) { 'unit' => unit, 'ownership' => ownership, 'supply' => supply, 'fuel' => fuel, 'no' => formatNo(t[k]!.text), _ => t[k]!.text.trim() },
       };
   void dispose() {
     for (final c in t.values) {
@@ -459,6 +466,8 @@ class _BulkMachineryScreenState extends State<BulkMachineryScreen> {
                 const SizedBox(width: 8),
                 Expanded(child: PickField(label: 'Diesel Supply', value: r.supply, items: kSupplies, blank: 'Auto', onChanged: (v) => setState(() => r.supply = v))),
               ]),
+              const SizedBox(height: 8),
+              PickField(key: Key('br-fuel-$i'), label: 'Fuel', value: r.fuel, items: kFuels, onChanged: (v) => setState(() => r.fuel = v)),      // (3.44.0)
             ]),
           ),
         OutlinedButton.icon(key: const Key('br-add'), onPressed: () => setState(() => rows.addAll([for (var i = 0; i < 5; i++) _BulkRow()])), icon: const Icon(Icons.add_rounded), label: Text('Add 5 rows')),

@@ -3,6 +3,7 @@
  * dailyReport, openOwnership's print) from the server's answers (getDashboard, getStockLedger, logDashboard, pendingLog,
  * getOwnershipDetail …). The figures are the server's; here they are only laid out. */
 import 'format.dart';
+import 'fuel.dart';
 import 'rdoc.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -274,40 +275,57 @@ String dailyReportHtml({
   required Map<String, dynamic> breakdowns,
   required List<Map<String, dynamic>> activeMachines, // on site that day and needing a Log Book
   String itemsOf(Map<String, dynamic> r) = itemQtyText,
+  // (3.44.0, Mechanical update-163) a site with more than one fuel: the Dashboard of each fuel and the fuel of each place – the stock,
+  // received and issued of EACH fuel on its own (never added together); empty = one fuel, exactly as before
+  Map<String, Map<String, dynamic>> fuelDash = const {},
+  Map<String, String> placeFuels = const {},
 }) {
   String n(dynamic v) => v == null || v == '' ? '' : fmtNum(_n(v));
   String dash0(dynamic v) => n(v).isEmpty ? '–' : n(v); // (as the web: a blank is –, a 0 is 0)
+  String dash0z(dynamic v) => dash0(v);
   num sum(List<Map<String, dynamic>> a, String k) => r2n(a.fold<num>(0, (t, x) => t + _n(x[k])));
   String th(List<(String, bool)> a) => '<tr>${a.map((x) => '<th${x.$2 ? ' class="n"' : ''}>${x.$1}</th>').join()}</tr>';
   String td(Object v, [bool num = false]) => '<td${num ? ' class="n"' : ''}>$v</td>';
   String sec(String title, String body, [String note = '']) => '<div class="dr-sec"><h3>$title${note.isNotEmpty ? ' <small>$note</small>' : ''}</h3>$body</div>';
   String none(String t) => '<p class="dr-none">$t</p>';
+  String kp(String v, String l) => '<div><b>$v</b><span>$l</span></div>';
   int byNo(Map<String, dynamic> a, Map<String, dynamic> b) => _s(a['no']).compareTo(_s(b['no']));
   final iss = [...issues]..sort(byNo), lg = [...logs]..sort(byNo);
-  // 1. diesel stock
-  final locs = mapsOf(dash['locations']).where((x) => ['opening', 'inward', 'tin', 'tout', 'issued', 'closing'].any((k) => _n(x[k]) != 0)).toList();
-  final stock = locs.isEmpty
-      ? none('No diesel stock.')
-      : '<table>${th([('Location', false), ('Opening', true), ('Received', true), ('Transfer in', true), ('Transfer out', true), ('Issued', true), ('Closing', true)])}'
-          '${locs.map((x) => '<tr>${td(_e(_s(x['loc'])))}${td(n(x['opening']), true)}${td(dash0(x['inward']), true)}${td(dash0(x['tin']), true)}${td(dash0(x['tout']), true)}${td(dash0(x['issued']), true)}${td('<b>${n(x['closing'])}</b>', true)}</tr>').join()}'
-          '<tr class="tot">${td('Total')}${td(n(sum(locs, 'opening')), true)}${td(n(sum(locs, 'inward')), true)}${td(n(sum(locs, 'tin')), true)}${td(n(sum(locs, 'tout')), true)}${td(n(sum(locs, 'issued')), true)}${td(n(sum(locs, 'closing')), true)}</tr></table>';
-  // 2. received
-  final rec = inwards.isEmpty
-      ? none('No diesel received.')
-      : '<table>${th([('Received at', false), ('Pump', false), ('Bill No', false), ('Qty (L)', true), ('Rate', true), ('Amount (₹)', true)])}'
-          '${inwards.map((x) => '<tr>${td(_e(_s(x['location'])))}${td(_e(_s(x['pump']).isNotEmpty ? _s(x['pump']) : x['open'] == true ? 'Opening stock' : ''))}${td(_e(_s(x['billNo'])))}${td(n(x['qty']), true)}${td(n(x['rate']), true)}${td(n(x['amount']), true)}</tr>').join()}'
-          '<tr class="tot">${td('Total')}${td('')}${td('')}${td(n(sum(inwards, 'qty')), true)}${td('')}${td(n(sum(inwards, 'amount')), true)}</tr></table>';
-  // 3. issued
   String reading(Map<String, dynamic> x) {
     final t = [if (_s(x['kmReading']).isNotEmpty) '${n(x['kmReading'])} km', if (_s(x['hrReading']).isNotEmpty) '${n(x['hrReading'])} hr'].join(' / ');
     return t.isNotEmpty ? t : (_s(x['meter']).isNotEmpty ? _e(_s(x['meter'])) : '–');
   }
 
-  final issT = iss.isEmpty
-      ? none('No diesel issued.')
-      : '<table>${th([('#', false), ('Machinery', false), ('Type', false), ('Owner', false), ('Shift', false), ('From', false), ('Qty (L)', true), ('Reading', true), ('Driver', false)])}'
-          '${[for (final (i, x) in iss.indexed) '<tr>${td(i + 1)}${td('<b>${_e(_s(x['no']))}</b>')}${td(_e(_s(x['type'])))}${td(_e(_s(x['owner'])))}${td(_e(_s(x['shift'])))}${td(_e(_s(x['source'])))}${td(n(x['qty']), true)}${td(reading(x), true)}${td(_e(_s(x['driver'])))}</tr>'].join()}'
-          '<tr class="tot">${td('')}${td('Total – ${iss.length} issue(s), ${iss.map((x) => x['no']).toSet().length} machinery')}${td('')}${td('')}${td('')}${td('')}${td(n(sum(iss, 'qty')), true)}${td('')}${td('')}</tr></table>';
+  // 1. diesel stock, 2. received, 3. issued – of one fuel ([fu] '' = the site's one fuel, as before)
+  ({String stock, String rec, String issT, String kpis}) part(String fu, Map<String, dynamic> dash0, List<Map<String, dynamic>> inwards0, List<Map<String, dynamic>> iss0) {
+    final u = fu == 'CNG' ? 'kg' : 'L';
+    String w(String t) => fuelText(t, fu);
+    final locs = mapsOf(dash0['locations']).where((x) => ['opening', 'inward', 'tin', 'tout', 'issued', 'closing'].any((k) => _n(x[k]) != 0)).toList();
+    final stock = locs.isEmpty
+        ? none(w('No diesel stock.'))
+        : '<table>${th([('Location', false), ('Opening', true), ('Received', true), ('Transfer in', true), ('Transfer out', true), ('Issued', true), ('Closing', true)])}'
+            '${locs.map((x) => '<tr>${td(_e(_s(x['loc'])))}${td(n(x['opening']), true)}${td(dash0z(x['inward']), true)}${td(dash0z(x['tin']), true)}${td(dash0z(x['tout']), true)}${td(dash0z(x['issued']), true)}${td('<b>${n(x['closing'])}</b>', true)}</tr>').join()}'
+            '<tr class="tot">${td('Total')}${td(n(sum(locs, 'opening')), true)}${td(n(sum(locs, 'inward')), true)}${td(n(sum(locs, 'tin')), true)}${td(n(sum(locs, 'tout')), true)}${td(n(sum(locs, 'issued')), true)}${td(n(sum(locs, 'closing')), true)}</tr></table>';
+    final rec = inwards0.isEmpty
+        ? none(w('No diesel received.'))
+        : '<table>${th([('Received at', false), ('Pump', false), ('Bill No', false), ('Qty ($u)', true), ('Rate', true), ('Amount (₹)', true)])}'
+            '${inwards0.map((x) => '<tr>${td(_e(_s(x['location'])))}${td(_e(_s(x['pump']).isNotEmpty ? _s(x['pump']) : x['open'] == true ? 'Opening stock' : ''))}${td(_e(_s(x['billNo'])))}${td(n(x['qty']), true)}${td(n(x['rate']), true)}${td(n(x['amount']), true)}</tr>').join()}'
+            '<tr class="tot">${td('Total')}${td('')}${td('')}${td(n(sum(inwards0, 'qty')), true)}${td('')}${td(n(sum(inwards0, 'amount')), true)}</tr></table>';
+    final issT = iss0.isEmpty
+        ? none(w('No diesel issued.'))
+        : '<table>${th([('#', false), ('Machinery', false), ('Type', false), ('Owner', false), ('Shift', false), ('From', false), ('Qty ($u)', true), ('Reading', true), ('Driver', false)])}'
+            '${[for (final (i, x) in iss0.indexed) '<tr>${td(i + 1)}${td('<b>${_e(_s(x['no']))}</b>')}${td(_e(_s(x['type'])))}${td(_e(_s(x['owner'])))}${td(_e(_s(x['shift'])))}${td(_e(_s(x['source'])))}${td(n(x['qty']), true)}${td(reading(x), true)}${td(_e(_s(x['driver'])))}</tr>'].join()}'
+            '<tr class="tot">${td('')}${td('Total – ${iss0.length} issue(s), ${iss0.map((x) => x['no']).toSet().length} machinery')}${td('')}${td('')}${td('')}${td('')}${td(n(sum(iss0, 'qty')), true)}${td('')}${td('')}</tr></table>';
+    final kpis = '${kp('${n(sum(locs, 'closing'))} $u', w('Diesel stock at close'))}${kp('${n(sum(inwards0, 'qty'))} $u', w('Diesel received'))}${kp('${n(sum(iss0, 'qty'))} $u', '${w('Diesel issued')} (${iss0.length})')}';
+    return (stock: stock, rec: rec, issT: issT, kpis: kpis);
+  }
+
+  final fuels = fuelDash.keys.toList();
+  final parts = fuels.isEmpty
+      ? [('', part('', dash, inwards, iss))]
+      : [for (final f in fuels) (f, part(f, fuelDash[f]!, inwards.where((x) => (placeFuels[_s(x['location'])] ?? 'Diesel') == f).toList(), iss.where((x) => (placeFuels[_s(x['source'])] ?? 'Diesel') == f).toList()))];
+  String each(String Function(({String stock, String rec, String issT, String kpis}) p) k) => parts.map((p) => (p.$1.isEmpty ? '' : '<h4 class="dr-fuel">${_e(p.$1)}</h4>') + k(p.$2)).join();
+  String fw(String t) => fuels.isEmpty ? t : t.replaceFirst('Diesel', 'Fuel');
   // 4. Log Book
   String st(Map<String, dynamic> r) => _s(r['mode']).isNotEmpty ? _s(r['mode']) : _s(r['unit']);
   bool isSt(Map<String, dynamic> r) => kDayStatus.contains(st(r));
@@ -345,16 +363,15 @@ String dailyReportHtml({
       '<li><b>Diesel issued but no Log Book entry (${noLog.length}):</b> ${noLog.isEmpty ? 'none' : _e(noLog.join(', '))}</li>'
       '<li><b>Active machinery without a Log Book entry (${noEntry.length} of ${activeMachines.length}):</b> ${noEntry.isEmpty ? 'none' : _e(noEntry.take(80).join(', ')) + (noEntry.length > 80 ? ' … +${noEntry.length - 80}' : '')}</li>'
       '<li><b>Under breakdown (${brk.length}):</b> ${brk.isEmpty ? 'none' : brk.join('; ')}</li></ul>';
-  String kp(String v, String l) => '<div><b>$v</b><span>$l</span></div>';
   const css = '<style>@page{size:A4 portrait;margin:10mm}body{font-family:Arial,Helvetica,"Noto Sans Devanagari",sans-serif;color:#111;margin:0}'
       '.dr h2{margin:0 0 2px;font-size:17px}.dr .dr-sub{color:#555;font-size:11.5px;margin-bottom:8px}.dr-kpi{display:flex;gap:8px;margin:8px 0 4px}.dr-kpi div{flex:1;border:1px solid #bbb;border-radius:6px;padding:6px 8px}.dr-kpi b{display:block;font-size:15px}.dr-kpi span{font-size:10.5px;color:#555}'
       '.dr-sec{margin-top:10px;break-inside:auto}.dr-sec h3{font-size:12.5px;margin:0 0 4px;border-bottom:1.5px solid #222;padding-bottom:2px}.dr-sec h3 small{font-weight:400;color:#555}.dr table{width:100%;border-collapse:collapse;font-size:10.5px}.dr th,.dr td{border:1px solid #999;padding:2.5px 5px;text-align:left;vertical-align:top}'
       '.dr th{background:#eee}.dr .n{text-align:right;white-space:nowrap}.dr td:nth-child(2),.dr td:nth-child(5){white-space:nowrap}.dr tr.tot td{font-weight:700;background:#f4f4f4}.dr-none{color:#666;font-size:11px;margin:2px 0}.dr-look{margin:2px 0 0 16px;padding:0;font-size:11px}.dr-look li{margin:2px 0}'
-      '.dr-sign{display:flex;justify-content:space-between;margin-top:34px;font-size:11px}.dr-sign span{border-top:1px solid #333;padding-top:3px;min-width:150px;text-align:center}</style>';
+      '.dr h4.dr-fuel{font-size:11.5px;margin:6px 0 2px}.dr-sign{display:flex;justify-content:space-between;margin-top:34px;font-size:11px}.dr-sign span{border-top:1px solid #333;padding-top:3px;min-width:150px;text-align:center}</style>';
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Daily Report ${showDate(day)}</title>$css</head><body><div class="dr">'
       '<h2>${_e(company)} – Daily Report</h2><div class="dr-sub">${_e(showDate(day))} · ${_e(site)} · made ${_e(madeAt)} by ${_e(madeBy)}</div>'
-      '<div class="dr-kpi">${kp('${n(sum(locs, 'closing'))} L', 'Diesel stock at close')}${kp('${n(sum(inwards, 'qty'))} L', 'Diesel received')}${kp('${n(sum(iss, 'qty'))} L', 'Diesel issued (${iss.length})')}${kp('$worked / ${lg.length}', 'Machinery worked / entries')}${kp('${noLog.length + noEntry.length}', 'To look at')}</div>'
-      '${sec('1. Diesel stock', stock)}${sec('2. Diesel received', rec)}${sec('3. Diesel issued', issT)}${sec('4. Log Book', lbT, lbNote)}${sec('5. To look at', look)}'
+      '${fuels.isEmpty ? '<div class="dr-kpi">${parts.first.$2.kpis}' : '${parts.map((p) => '<div class="dr-kpi">${p.$2.kpis}</div>').join()}<div class="dr-kpi">'}${kp('$worked / ${lg.length}', 'Machinery worked / entries')}${kp('${noLog.length + noEntry.length}', 'To look at')}</div>'
+      '${sec(fw('1. Diesel stock'), each((p) => p.stock))}${sec(fw('2. Diesel received'), each((p) => p.rec))}${sec(fw('3. Diesel issued'), each((p) => p.issT))}${sec('4. Log Book', lbT, lbNote)}${sec('5. To look at', look)}'
       '<div class="dr-sign"><span>Prepared by</span><span>Site In-charge</span><span>Project Manager</span></div></div></body></html>';
 }
 
@@ -398,7 +415,8 @@ class NumDetail {
   final NumLine? total;
 }
 
-Future<NumDetail> numDetail(String kind, Map<String, dynamic> d, String from, String to, String today, Future<dynamic> Function(String fn, List<dynamic> args) call) async {
+/// [fuel] (3.44.0, Mechanical update-163): the Dashboard of one fuel – only its entries (the words follow it on the screen: FuelScope)
+Future<NumDetail> numDetail(String kind, Map<String, dynamic> d, String from, String to, String today, Future<dynamic> Function(String fn, List<dynamic> args) call, {String fuel = ''}) async {
   final title = kNumTitles[kind] ?? kind;
   final when = kind == 'today' ? 'Today, ${showDate(today)}' : kind == 'now' ? 'Live – after every entry saved till now' : rangeText(from, to);
   List<(String, String)> only(List<(String, String)> l) => [for (final x in l) if (x.$2.trim().isNotEmpty) x];
@@ -444,7 +462,7 @@ Future<NumDetail> numDetail(String kind, Map<String, dynamic> d, String from, St
     );
   }
   if (kind == 'in') {
-    final r = (await call('getInwards', [{'from': from, 'to': to, 'all': true}]) as Map?) ?? const {};
+    final r = (await call('getInwards', [{'from': from, 'to': to, 'all': true, if (fuel.isNotEmpty) 'fuel': fuel}]) as Map?) ?? const {};
     // as getDashboard: an opening stock on or before the start date is part of the opening, not "received"
     final list = mapsOf(r['rows']).where((x) => !(x['open'] == true && (from.isEmpty || _s(x['date']).compareTo(from) <= 0))).toList();
     final qty = r2n(list.fold<num>(0, (a, x) => a + _n(x['qty']))), amt = r2n(list.fold<num>(0, (a, x) => a + _n(x['amount'])));
@@ -469,7 +487,7 @@ Future<NumDetail> numDetail(String kind, Map<String, dynamic> d, String from, St
     );
   }
   // the Diesel Issue entries: of today, or of the Dashboard's dates
-  final r = (await call('getDieselIssues', [kind == 'today' ? {'from': today, 'to': today} : {'from': from, 'to': to}]) as Map?) ?? const {};
+  final r = (await call('getDieselIssues', [{...(kind == 'today' ? {'from': today, 'to': today} : {'from': from, 'to': to}), if (fuel.isNotEmpty) 'fuel': fuel}]) as Map?) ?? const {};
   final n = _n(r['count']), tq = _n(r['totalQty']);
   if (kind == 'machines') {
     final sh = mapsOf(r['share']);

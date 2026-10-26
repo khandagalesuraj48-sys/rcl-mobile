@@ -2,6 +2,8 @@
  * screens, and the same report goes to Excel (every table a sheet) and to a PDF to print or send. Every figure is the server's
  * (the same report action as the web); here it is only laid out, the same columns and totals as the web. */
 
+import 'fuel.dart';
+
 enum RKind { normal, group, sub, grand, sunday }
 
 /// One cell. [n] = a number column (right side); [value] = the number for Excel; [span] = cells it covers (a group line).
@@ -48,6 +50,32 @@ class RDoc {
   /// (3.4.0) the signatures under the print (title, small line) – none given: Prepared / Checked / Approved by
   final List<(String, String)> signs;
   List<RTable> get tables => blocks.whereType<RTable>().toList();
+}
+
+/// (3.44.0, Mechanical update-163) the same report in the words of ONE fuel (a Petrol / CNG report): every text of it – on the
+/// screen, the print and Excel alike ("Diesel" → its name; CNG's litres → kg). Diesel / none: as it is.
+RDoc fuelDoc(RDoc d, String f) {
+  if (f.isEmpty || f == 'Diesel') return d;
+  String w(String t) => fuelText(t, f);
+  RRow row(RRow r) => RRow([for (final c in r.cells) RCell(w(c.text), n: c.n, bold: c.bold, tone: c.tone, value: c.value, span: c.span)], kind: r.kind);
+  return RDoc(
+    title: w(d.title),
+    meta: w(d.meta),
+    kpis: [for (final k in d.kpis) (w(k.$1), w(k.$2))],
+    blocks: [
+      for (final b in d.blocks)
+        b is RTable
+            ? RTable(sheet: w(b.sheet), head: [for (final h in b.head) w(h)], rows: [for (final r in b.rows) row(r)], foot: [for (final r in b.foot) row(r)], title: w(b.title), numCols: b.numCols, empty: w(b.empty))
+            : b is RNote
+                ? RNote(w(b.text), heading: b.heading, letter: b.letter)
+                : b,
+    ],
+    portrait: d.portrait,
+    period: d.period,
+    file: d.file,
+    signs: d.signs,
+    onBehalf: d.onBehalf,
+  );
 }
 
 /* ---- the web's ways of writing numbers ---- */
