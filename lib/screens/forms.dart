@@ -33,6 +33,9 @@ import 'flow_fix.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
 
+/// (3.43.0, Mechanical update-162) the Super Admin gave him no diesel source for this page
+const _noSource = 'No diesel source is given to you – ask the Super Admin (Portal → Users & Access → Pages).';
+
 class EntryForm extends StatefulWidget {
   const EntryForm({super.key, required this.kind, this.edit, this.no = '', this.preset = const {}, this.fix});
   final Kind kind;
@@ -117,8 +120,13 @@ class _EntryFormState extends State<EntryForm> {
       date = s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
       // his usual diesel place and shift (Settings)
       final loc = s.pref('loc');
-      source = s.locations.contains(loc) ? loc : (s.locations.isNotEmpty ? s.locations.first : 'Dispenser');
-      from = source;
+      // (3.43.0, update-162) a Diesel Issue / the From of a transfer: only his own diesel sources (Inward: every place)
+      final own = k.key == 'inward' ? s.locations : s.mySources('Diesel Issue'), trf = s.mySources('Diesel Transfer');
+      // (none given to him: the first place, never empty – an empty source means "not set up yet" here; the red line says it, the
+      // server refuses the save)
+      final any = s.locations.isNotEmpty ? s.locations.first : 'Dispenser';
+      source = own.contains(loc) ? loc : (own.isNotEmpty ? own.first : any);
+      from = trf.contains(loc) ? loc : (trf.isNotEmpty ? trf.first : any);
       to = s.locations.firstWhere((l) => l != from, orElse: () => '');
       shift = s.myShift(const ['Day', 'Night']); // (14-10-2026) his usual shift, else Day / Night by the time
       final e = ed;
@@ -164,8 +172,8 @@ class _EntryFormState extends State<EntryForm> {
       setState(() {
         if (v('date').isNotEmpty) date = v('date');
         if (v('shift').isNotEmpty) shift = v('shift');
-        if (s.locations.contains(v('source'))) source = v('source');
-        if (s.locations.contains(v('from'))) from = v('from');
+        if ((k.key == 'inward' ? s.locations : s.mySources('Diesel Issue')).contains(v('source'))) source = v('source');
+        if (s.mySources('Diesel Transfer').contains(v('from'))) from = v('from');
         if (s.locations.contains(v('to'))) to = v('to');
         if (v('no').isNotEmpty) machine = s.machine(v('no'));
         way = machine == null ? '' : v('way');
@@ -1238,9 +1246,11 @@ class _EntryFormState extends State<EntryForm> {
             ],
             // ---------- Diesel Issue ----------
             if (issue) ...[
-              if (s.locations.length > 1) ...[
+              // (3.43.0, update-162) only his own diesel sources; given some = shown even when one (he sees where it comes from)
+              if (s.mySources('Diesel Issue').length > 1 || s.ownSources('Diesel Issue')) ...[
                 _label('Diesel from', 'डिझेल कुठून'),
-                _chips<String>([for (final l in s.locations) (l, l)], source, (v) {
+                if (s.mySources('Diesel Issue').isEmpty) const InfoLine(_noSource, bad: true, help: false),
+                _chips<String>([for (final l in s.mySources('Diesel Issue')) (l, l)], source, (v) {
                   setState(() => source = v);
                   _balance();
                 }),
@@ -1385,7 +1395,8 @@ class _EntryFormState extends State<EntryForm> {
             // ---------- Diesel Transfer ----------
             if (k.key == 'transfer') ...[
               _label('From', 'कुठून'),
-              _chips<String>([for (final l in s.locations) (l, l)], from, (v) {
+              if (s.mySources('Diesel Transfer').isEmpty) const InfoLine(_noSource, bad: true, help: false),
+              _chips<String>([for (final l in s.mySources('Diesel Transfer')) (l, l)], from, (v) {
                 setState(() => from = v);
                 _balance();
               }),

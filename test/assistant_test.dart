@@ -144,6 +144,19 @@ void main() {
     }
   });
 
+  test('(3.43.0, the web\'s aiOwnSource_) his own diesel sources: no source named → his own; a source he names stays (the server says it is not his)', () async {
+    final (a, _) = make('en');
+    a.ownSources = ['VTR Store'];
+    var cmd = a.aiCommand('8511 la 60 litre diesel de, reading 148200')!;
+    expect((await a.aiDraft(cmd.kind, cmd.a)).data['source'], 'VTR Store');
+    cmd = a.aiCommand('8511 la 60 litre diesel de Dispenser madhun, reading 148200')!;
+    expect(cmd.a['source'], 'Dispenser');
+    expect((await a.aiDraft(cmd.kind, cmd.a)).data['source'], 'Dispenser');
+    a.ownSources = null;
+    cmd = a.aiCommand('8511 la 60 litre diesel de, reading 148200')!;
+    expect((await a.aiDraft(cmd.kind, cmd.a)).data['source'], 'Dispenser', reason: 'nothing chosen for him: as before');
+  });
+
   test('The ⚡ questions on the Dashboard and the daily summary', () async {
     for (final c in fx['ready'] as List) {
       if (c['id'] == 'page') continue; // (the web's page guide was left out in node – its own test below)

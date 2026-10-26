@@ -150,4 +150,18 @@ void main() {
     expect([jsParseFloat('12abc'), jsParseFloat(' -3.5e2x')], [12, -350]);
     expect(jsParseFloat('abc').isNaN, true);
   });
+
+  test('(3.43.0, Mechanical update-162) his diesel sources: the web\'s diProblems / trProblems say "not your diesel source"; a blank source = his first', () {
+    const locs = ['CAMP PUMP', 'DISPENSER - MH12ZE-1739', 'DISPENSER - MH12WJ-1381'], ze = 'DISPENSER - MH12ZE-1739';
+    final master = [<String, dynamic>{'id': 'TP-1', 'name': 'Tipper', 'status': 'Active', 'activeFrom': '2026-01-01'}];
+    Map<String, Object?> iss(String src) => {'line': 1, 'date': '2026-10-14', 'shift': 'Day', 'source': src, 'no': 'TP-1', 'qty': 10};
+    expect(issueProblems(iss('CAMP PUMP'), '2026-10-14', locs, master), isNot(contains('Diesel Source – not your diesel source')), reason: 'nothing chosen: every place');
+    expect(issueProblems(iss('CAMP PUMP'), '2026-10-14', locs, master, mine: [ze]), contains('Diesel Source – not your diesel source'));
+    expect(issueProblems(iss(ze), '2026-10-14', locs, master, mine: [ze]).where((p) => p.startsWith('Diesel Source')), isEmpty);
+    expect(issueProblems(iss('NOWHERE'), '2026-10-14', locs, master, mine: [ze]), contains('Diesel Source'), reason: 'not a place at all: as before');
+    Map<String, Object?> tr(String f, String t) => {'line': 1, 'date': '2026-10-14', 'shift': 'Day', 'from': f, 'to': t, 'qty': 10};
+    expect(transferProblems(tr('CAMP PUMP', ze), '2026-10-14', locs, mine: [ze]), ['From – not your diesel source']);
+    expect(transferProblems(tr(ze, 'CAMP PUMP'), '2026-10-14', locs, mine: [ze]), isEmpty, reason: 'to any place');
+    expect(transferProblems(tr('CAMP PUMP', ze), '2026-10-14', locs), isEmpty, reason: 'nothing chosen: every place');
+  });
 }

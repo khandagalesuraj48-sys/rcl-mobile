@@ -189,6 +189,8 @@ class Assistant {
   String today, helpLang;
   List<Map<String, dynamic>> master;
   List<String> locations;
+  /// (3.43.0, Mechanical update-162) his own diesel sources for a Diesel Issue when the Super Admin gave him some (null = every place)
+  List<String>? ownSources;
   Map prefs;
   final bool Function(String module) canEdit;
   final bool Function(Map<String, dynamic> m)? onSite;
@@ -734,7 +736,10 @@ class Assistant {
       if (!(qty is num && qty > 0)) return AiDraft(need: aiL({'en': 'How many litres for $id?', 'mr': '$id ला किती लिटर?', 'hi': '$id को कितने लीटर?'}), partial: AiCmd(kind, {...a, 'machinery': id}));
       final shift = _ri('night').hasMatch(a['shift'] == null ? '' : js(a['shift'])) ? 'Night' : 'Day';
       final src = a['source'] == null ? '' : js(a['source']).toLowerCase();
-      final source = locations.where((l) => l.toLowerCase() == src).firstOrNull ?? (jsTrue(prefs['loc']) ? '${prefs['loc']}' : null) ?? locations.firstOrNull ?? 'Dispenser';
+      // (3.43.0, the web's aiOwnSource_) a source he names stays as he said (the server then says it is not his); none named: his
+      // usual place – of his own sources when he was given some
+      final own = ownSources, usual = jsTrue(prefs['loc']) ? '${prefs['loc']}' : null;
+      final source = locations.where((l) => l.toLowerCase() == src).firstOrNull ?? (own == null ? usual : (own.contains(usual) ? usual : own.firstOrNull)) ?? locations.firstOrNull ?? 'Dispenser';
       final km = aiN(a['km_reading']), hr = aiN(a['hr_reading']), debit = m['supply'] == 'Debit Basis', notes = <String>[];
       Object? stock = '';
       try {

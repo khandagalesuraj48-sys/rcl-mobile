@@ -57,7 +57,7 @@ Future<bool> importEntries(BuildContext context, Kind k) async {
     rows = switch (k.key) {
       'inward' => readInward(tabs, s.locations),
       'transfer' => transferRows(tabs, s.locations),
-      _ => issueRows(tabs, s.locations, s.machines.map((m) => m.m)),
+      _ => issueRows(tabs, s.locations, s.machines.map((m) => m.m), mine: s.mySources('Diesel Issue')),
     };
     if (rows.isEmpty) throw SheetError('No rows found under the heading row.');
   } on SheetError catch (e) {
@@ -106,8 +106,8 @@ class _ImportCheckScreenState extends State<ImportCheckScreen> {
 
   List<String> _problems(Session s, Map r) => switch (widget.kind.key) {
         'inward' => inwardProblems(r, _today(s), s.locations),
-        'transfer' => transferProblems(r, _today(s), s.locations),
-        _ => issueProblems(r, _today(s), s.locations, s.machines.map((m) => m.m)),
+        'transfer' => transferProblems(r, _today(s), s.locations, mine: s.mySources('Diesel Transfer')),
+        _ => issueProblems(r, _today(s), s.locations, s.machines.map((m) => m.m), mine: s.mySources('Diesel Issue')),
       };
 
   Future<void> _go() async {
@@ -555,8 +555,10 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
   /// A new row – the same date, shift, from and to as the row above.
   void _add() {
     final s = SessionScope.read(context), l = s.locations.isEmpty ? const ['Dispenser', 'VTR Store'] : s.locations;
+    // (3.43.0, update-162) From: his own diesel sources only; To: another place
+    final mine = s.locations.isEmpty ? l : s.mySources('Diesel Transfer'), f0 = mine.isNotEmpty ? mine.first : l[0];
     final last = rows.isEmpty ? null : rows.last;
-    rows.add(last == null ? _TrRow(_today(s), 'Day', l[0], l.length > 1 ? l[1] : l[0]) : _TrRow(last.date, last.shift, last.from, last.to));
+    rows.add(last == null ? _TrRow(_today(s), 'Day', f0, l.firstWhere((x) => x != f0, orElse: () => l[0])) : _TrRow(last.date, last.shift, last.from, last.to));
   }
 
   void _reset() {
@@ -576,7 +578,7 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
       toast(context, 'Type the Qty in at least one row.', bad: true);
       return;
     }
-    final bad = list.where((r) => transferProblems(r, _today(s), s.locations).isNotEmpty).toList();
+    final bad = list.where((r) => transferProblems(r, _today(s), s.locations, mine: s.mySources('Diesel Transfer')).isNotEmpty).toList();
     if (bad.isNotEmpty) {
       toast(context, 'Fix the rows in red first (row ${bad.map((r) => r['line']).join(', ')}).', bad: true);
       return;
@@ -606,7 +608,7 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final s = SessionScope.of(context), today = _today(s), locs = s.locations;
+    final s = SessionScope.of(context), today = _today(s), locs = s.locations, mine = s.mySources('Diesel Transfer');
     final vals = [for (final (i, r) in rows.indexed) r.value(i + 1)];
     final filled = vals.where((r) => r['qty'] != '').toList();
     final tot = r2(filled.fold<num>(0, (a, r) => a + (r['qty'] is num && !(r['qty'] as num).isNaN ? r['qty'] as num : 0)));
@@ -614,7 +616,7 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
       appBar: AppBar(title: const TwoLang('Multiple entries', 'ट्रान्स्फर – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700), actions: withAsk([const GuideButton('transfer')])),
       body: ListView(key: const Key('tm-list'), padding: const EdgeInsets.fromLTRB(16, 8, 16, 140), children: [
         if (errors.isNotEmpty) ...[InfoLine('Nothing saved:\n${errors.join('\n')}', bad: true), const SizedBox(height: 8)],
-        for (final (i, r) in rows.indexed) _row(i, r, vals[i], today, locs),
+        for (final (i, r) in rows.indexed) _row(i, r, vals[i], today, locs, mine),
         Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton(key: const Key('tm-add'), style: _sm, onPressed: () => setState(_add), child: const Text('+ Add row')),
@@ -637,8 +639,8 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
     );
   }
 
-  Widget _row(int i, _TrRow r, Map<String, Object> v, String today, List<String> locs) {
-    final p = v['qty'] == '' ? const <String>[] : transferProblems(v, today, locs);
+  Widget _row(int i, _TrRow r, Map<String, Object> v, String today, List<String> locs, List<String> mine) {
+    final p = v['qty'] == '' ? const <String>[] : transferProblems(v, today, locs, mine: mine);
     return Container(
       key: Key('tm-row-$i'),
       margin: const EdgeInsets.only(bottom: 10),
@@ -670,7 +672,7 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
         ]),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: PickField(key: Key('tm-from-$i'), label: 'From', value: r.from, items: locs, onChanged: (x) => setState(() => r.from = x))),
+          Expanded(child: PickField(key: Key('tm-from-$i'), label: 'From', value: r.from, items: mine, onChanged: (x) => setState(() => r.from = x))),
           const SizedBox(width: 8),
           Expanded(child: PickField(key: Key('tm-to-$i'), label: 'To', value: r.to, items: locs, onChanged: (x) => setState(() => r.to = x))),
         ]),
@@ -756,7 +758,9 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     final s = SessionScope.read(context);
     if (date.isEmpty) {
       date = _today(s);
-      source = bmSrc = s.locations.isNotEmpty ? s.locations.first : 'Dispenser';
+      // (3.43.0, update-162) his own diesel sources only (none given: the first place – the server refuses it, the screen says it)
+      final mine = s.mySources('Diesel Issue');
+      source = bmSrc = mine.isNotEmpty ? mine.first : s.locations.isNotEmpty ? s.locations.first : 'Dispenser';
       final fx = widget.fix;
       if (fx != null) {
         _fillFix(s, fx);
@@ -1100,7 +1104,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
   // ---------------- the screen ----------------
   @override
   Widget build(BuildContext context) {
-    final s = SessionScope.of(context), today = _today(s), locs = s.locations;
+    final s = SessionScope.of(context), today = _today(s), locs = s.mySources('Diesel Issue');      // (3.43.0, update-162) only his own sources
     return Scaffold(
       appBar: AppBar(title: widget.fix != null ? Text(tr('Correct {0}').replaceFirst('{0}', widget.fix!.id), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)) : const TwoLang('Multiple entries', 'डिझेल देणे – एकाच वेळी अनेक', size: 19, weight: FontWeight.w700), actions: withAsk([const GuideButton('diesel')])),
       body: ListView(key: const Key('im-list'), padding: const EdgeInsets.fromLTRB(16, 8, 16, 150), children: [
