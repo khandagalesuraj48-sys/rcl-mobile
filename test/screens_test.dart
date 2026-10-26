@@ -2819,11 +2819,13 @@ void main() {
     await net(t);
     await t.tap(find.text('Dashboard'));
     await net(t);
-    expect((srv.dashAsked.firstWhere((x) => x['fn'] == 'getDashboard')['args'] as List).first, {'from': '2026-10-14', 'to': '2026-10-14', 'fuel': 'Diesel'});
+    Iterable<dynamic> dashArgs() => srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first);
+    expect(dashArgs(), contains(equals({'from': '2026-10-01', 'to': '2026-10-14', 'fuel': 'Diesel'})), reason: 'Reports → Overview: the Diesel figures only');
+    expect(dashArgs(), contains(equals({'from': '2026-10-14', 'to': '2026-10-14', 'fuel': 'Diesel'})), reason: 'the Dashboard opens on Diesel');
     expect(find.byKey(const Key('dfuel-CNG')), findsOneWidget);
     await t.tap(find.byKey(const Key('dfuel-CNG')));
     await net(t);
-    expect((srv.dashAsked.lastWhere((x) => x['fn'] == 'getDashboard')['args'] as List).first, {'from': '2026-10-14', 'to': '2026-10-14', 'fuel': 'CNG'});
+    expect(dashArgs().last, {'from': '2026-10-14', 'to': '2026-10-14', 'fuel': 'CNG'});
     expect((srv.dashAsked.lastWhere((x) => x['fn'] == 'getStockLedger')['args'] as List).first['fuel'], 'CNG');
     expect(find.text('CNG summary – all locations'), findsOneWidget);
     expect(find.text('19,895 kg'), findsOneWidget, reason: 'CNG: in kg');

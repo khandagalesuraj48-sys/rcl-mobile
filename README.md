@@ -25,7 +25,8 @@ balances, the cards). The Excel checks: "runs on Petrol – not at DIESEL CARD",
 added together:** Home shows the first fuel in big and the others under it; the lists' day totals per fuel; the **Dashboard** and
 every **report** of a site with more than one fuel have a **Fuel** choice – one fuel at a time, in its own words and unit (`FuelScope`
 in `ui/t.dart` turns "Diesel" into its name and the litres into kg for CNG; `fuelDoc` does the same for a report's print and Excel);
-the Daily report shows each fuel's stock, received and issued one after another. The assistant's diesel entry takes a place of the
+the Daily report shows each fuel's stock, received and issued one after another; Reports → Overview's diesel figures (consumed,
+cost, the trend) are Diesel's only. The assistant's diesel entry takes a place of the
 machinery's fuel. A site whose places are all Diesel (VTR, 18B) looks exactly as before. `core/fuel.dart`; `Session.placeFuels` /
 `placeFuel` / `siteFuels` / `multiFuel` / `fuelPlaces` / `fuelProblem` / `transferTos`; `Machine.fuel`. The web's help taken again.
 
