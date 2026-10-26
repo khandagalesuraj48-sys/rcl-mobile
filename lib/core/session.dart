@@ -238,10 +238,19 @@ class Session extends ChangeNotifier {
 
   void _go(Stage s, [String err = '']) {
     if (s != Stage.waiting) _again?.cancel();
+    final was = stage;
     stage = s;
     error = err;
     notifyListeners();
+    // (3.42.0) at a site: this phone is given for the notifications (core/push.dart – once a day; the app is not kept waiting)
+    final f = onReady;
+    if (s == Stage.ready && was != Stage.ready && f != null) unawaited(f(this).catchError((Object _) {}));
   }
+
+  /// (3.42.0) the app's notifications through Firebase (main.dart sets these on the phone; none in the tests unless a test sets them):
+  /// at a site – the phone is given; signing out – taken off first (while the sign-in still works).
+  static Future<void> Function(Session s)? onReady;
+  static Future<void> Function(Session s)? onSignOut;
 
   /* (3.20.1, asked 18-10-2026: "app madhun pn auto log out nko aahe") The sign-in kept on this phone could not be checked, or the
    * site could not be opened, because there is NO NETWORK or the server did not answer: the person is NOT signed out. Before,
@@ -950,6 +959,12 @@ class Session extends ChangeNotifier {
   }
 
   Future<void> signOut([String msg = '']) async {
+    final off = onSignOut;
+    if (off != null) {
+      try {
+        await off(this).timeout(const Duration(seconds: 4));
+      } catch (_) {/* signing out never waits for it */}
+    }
     stopLive();
     rtcOff();
     clearMemory(); // (update-155) nothing the screens kept stays after sign-out

@@ -10,6 +10,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'attach.dart' show capCode;
+import 'push.dart' show PushTap;
 
 /// The site written in the QR code (…&site=T2) – '' when none (a QR code made before update-160).
 String capSite(String text) => RegExp(r'[?&]site=([A-Za-z0-9_-]{1,20})(&|$)').firstMatch(text.trim())?.group(1) ?? '';
@@ -43,10 +44,25 @@ class ScanLink extends ChangeNotifier {
     notifyListeners();
   }
 
+  /* (3.42.0) A NOTIFICATION PRESSED (core/push.dart): what it opens, at its site – kept and opened the same way (after the sign-in,
+   * the fingerprint, at that site – another of his sites opened by itself): Approvals, the call (Answer: answered), missed calls. */
+  PushTap? tap;
+  void open(PushTap t) {
+    tap = t;
+    notifyListeners();
+  }
+
+  void tapDone() {
+    if (tap == null) return;
+    tap = null;
+    notifyListeners();
+  }
+
   @visibleForTesting
   void reset() {
     code = '';
     site = '';
     _last = '';
+    tap = null;
   }
 }

@@ -498,7 +498,16 @@ class Rtc extends ChangeNotifier {
     });
     kit.ring(true, title: '${r.name} is calling', text: ringWhat(r));
     _changed();
+    // (3.42.0) "Answer" was pressed on its notification (the app was closed or at another site – core/push.dart): answered now
+    if (autoAnswer.isNotEmpty && autoAnswer == r.call && DateTime.now().millisecondsSinceEpoch - autoAt < 90000) {
+      autoAnswer = '';
+      scheduleMicrotask(accept);
+    }
   }
+
+  /// (3.42.0) the call whose notification's "Answer" was pressed (answered when its ring comes – 90 s at most)
+  static String autoAnswer = '';
+  static int autoAt = 0;
 
   /// What the one who calls wants (the web's words of the ring).
   static String ringWhat(RtcRing r) {

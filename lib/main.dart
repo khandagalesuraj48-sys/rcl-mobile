@@ -6,13 +6,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:app_links/app_links.dart';
+import 'package:firebase_messaging/firebase_messaging.dart' show RemoteMessage;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart' show NotificationResponse;
 
 import 'config.dart';
 import 'core/alerts.dart';
 import 'core/api.dart';
 import 'core/applock.dart';
 import 'core/device.dart';
+import 'core/lang.dart' show Lang;
 import 'core/lock_gate.dart';
+import 'core/push.dart' show PushTap;
+import 'core/push_fcm.dart';
 import 'core/rtc_kit.dart';
 import 'core/scan_link.dart';
 import 'core/session.dart';
@@ -48,8 +53,36 @@ Future<void> alertsInBackground() async {
   } catch (_) {/* the next time */}
 }
 
+/// (3.42.0, asked 26-10-2026: "app band aso ki chalu … pratek gostich realtime notification") A message of Firebase with the app
+/// closed (core/push_fcm.dart): shown at once, in the app's language.
+@pragma('vm:entry-point')
+Future<void> pushInBackground(RemoteMessage m) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  Alerts.onBackgroundTap = pushActionInBackground;
+  try {
+    final keep = SecureKeep();
+    await Lang.i.set(await keep.read(Session.kLang) ?? '');
+    await Fcm.show(m.data, keep);
+  } catch (_) {/* never in the way */}
+}
+
+/// (3.42.0) "Decline" on a call's notification (the app closed): said to the one who calls, with the sign-in kept on this phone.
+@pragma('vm:entry-point')
+void pushActionInBackground(NotificationResponse r) {
+  final t = PushTap.of(r.payload, r.actionId);
+  if (t == null || !t.decline || t.call.isEmpty || t.from.isEmpty) return;
+  () async {
+    WidgetsFlutterBinding.ensureInitialized();
+    final api = Api(portalUrl: kPortalUrl, keep: SecureKeep());
+    await api.load();
+    api.mechUrl = await api.keep.read(kMechUrl) ?? '';
+    await Fcm.decline(api, t);
+  }().catchError((Object _) {});
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  Alerts.onBackgroundTap = pushActionInBackground; // (3.42.0)
   () async {
     if (Platform.isAndroid) {
       try {
@@ -77,7 +110,15 @@ void main() {
   // (3.27.0) the app lock: the phone's fingerprint / face / PIN – for everyone, asked again after a minute away (applock.dart)
   final lock = AppLock(PhoneLockGate());
   session.freshSignIn = lock.signedIn;
+  // (3.42.0) the notifications through Firebase (core/push_fcm.dart): a notification pressed opens what it is about (at its site)
+  Alerts.onTap = (r) => Fcm.tapped(session, PushTap.of(r.payload, r.actionId));
+  () async {
+    if (await Fcm.start(pushInBackground)) Fcm.listen(session);
+  }();
   runApp(RclApp(session: session, lock: lock));
+  Alerts.launchedWith().then((r) {
+    if (r != null) Fcm.tapped(session, PushTap.of(r.payload, r.actionId));
+  });
   // (3.31.4) the update downloaded in the background: "Install?" over whatever screen is open – when the app opens and when it
   // comes back (core/update.dart updateWatch)
   updateContext = () => appNav.currentContext;

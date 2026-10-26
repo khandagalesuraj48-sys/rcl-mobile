@@ -77,6 +77,21 @@ jobs:
           BN=$((100 + GITHUB_RUN_NUMBER))
           echo "VER=$VER" >> "$GITHUB_ENV"; echo "BN=$BN" >> "$GITHUB_ENV"
           echo "::notice::Releasing $VER ($BN)"
+      # (3.42.0) the notifications at once (Firebase): its settings from the GitHub secret – a release never goes out without them
+      - name: Firebase settings (from the secret GOOGLE_SERVICES_JSON)
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GSJ" ]; then echo "::error::Add GOOGLE_SERVICES_JSON (Firebase → Project settings → the Android app → google-services.json) in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          printf '%s' "$GSJ" > android/app/google-services.json
+          python3 - <<'PY'
+          import json, sys
+          j = json.load(open('android/app/google-services.json'))
+          names = [c.get('client_info', {}).get('android_client_info', {}).get('package_name', '') for c in j.get('client', [])]
+          if 'in.rachana.rcl.rcl_mobile' not in names:
+              print('::error::GOOGLE_SERVICES_JSON is not the file of the app in.rachana.rcl.rcl_mobile (it has: %s)' % names); sys.exit(1)
+          print('::notice::Firebase: project %s' % j.get('project_info', {}).get('project_id', '?'))
+          PY
       - run: flutter pub get
       - name: Tests (a release only when they pass)
         run: flutter test --exclude-tags golden
@@ -107,6 +122,8 @@ jobs:
             vc=$("${AS}aapt2" dump badging "$f" 2>/dev/null | grep -o "versionCode='[0-9]*'" | head -1)
             [ "$vc" = "versionCode='$BN'" ] || { echo "::error::$f has $vc, not $BN."; exit 1; }
             echo "::notice::$f signed by: $(grep -m1 'certificate SHA-256 digest' certs.txt | sed 's/.*: //') – $vc"
+            # (3.42.0) Firebase's settings are inside (the notifications)
+            "${AS}aapt2" dump resources "$f" 2>/dev/null | grep -q "string/google_app_id" || { echo "::error::$f has no Firebase settings (google_app_id) – not released."; exit 1; }
           done
       - name: One place for the app – the Portal's store entry of before (14-10-2026, build 102) is taken out
         run: |
@@ -201,3 +218,10 @@ jobs:
           gh release upload "v$VER-$BN" "$A32"
           gh release view "v$VER-$BN" --json assets --jq '.assets[] | .name' | sed 's/^/::notice::in the release: /'
           echo "::notice::Released $VER ($BN) – $WHAT – https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VER-$BN"
+      # (3.42.0) every phone with the app is told at once: "RCL ERP <version> is ready" (Firebase, the topic rcl-app-update)
+      - name: Tell every phone (needs the GitHub secret FCM_SERVICE_ACCOUNT_JSON)
+        env:
+          FCM_SA: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$FCM_SA" ]; then echo "::warning::FCM_SERVICE_ACCOUNT_JSON is not set – the phones are not told now (they see the update when the app is opened)."; exit 0; fi
+          timeout 120 bash tool/fcm_topic.sh "$VER" "$BN" || echo "::warning::The phones could not be told now (they see the update when the app is opened)."

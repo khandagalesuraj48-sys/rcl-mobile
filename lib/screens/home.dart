@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import '../core/device.dart';
 import '../core/format.dart';
 import '../core/kinds.dart';
+import '../core/push.dart' show pushUpdateTick;
 import '../core/session.dart';
 import '../core/update.dart';
 import '../ui/ask_bot.dart';
@@ -137,7 +138,16 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   @override
   void dispose() {
     _ls?.dataTick.removeListener(_live);
+    pushUpdateTick.removeListener(_newVersion);
     super.dispose();
+  }
+
+  // (3.42.0) a new version was told (Firebase – core/push.dart): its Update on Home now, not at the next opening
+  void _newVersion() {
+    if (!mounted) return;
+    checkUpdate(SessionScope.read(context).api).then((u) {
+      if (mounted && u != null) setState(() => update = u);
+    });
   }
 
   @override
@@ -150,6 +160,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       checkUpdate(s.api).then((u) {
         if (mounted && u != null) setState(() => update = u);
       });
+      pushUpdateTick.addListener(_newVersion);
     });
   }
 

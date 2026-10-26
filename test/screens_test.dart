@@ -14,6 +14,9 @@ import 'package:rcl_mobile/core/applock.dart';
 import 'package:rcl_mobile/core/lang.dart';
 import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
 import 'package:rcl_mobile/core/scan_link.dart';
+import 'package:rcl_mobile/core/push.dart' show PushTap;
+import 'package:rcl_mobile/screens/approvals.dart' show ApprovalsScreen;
+import 'package:rcl_mobile/screens/call.dart' show CallPickScreen;
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
@@ -3787,6 +3790,29 @@ void main() {
     expect(s.site!.code, 'S1');
     expect(find.byType(CaptureScreen), findsOneWidget);
     expect(find.textContaining('This QR code is not valid'), findsOneWidget, reason: 'the server checks the code, as before');
+  });
+
+  // ---------------- (3.42.0) a notification of Firebase pressed (core/push.dart PushTap) ----------------
+  testWidgets('(3.42.0) A notification pressed: Approvals at ITS site (another of his sites opened by itself, the screen before closed); a missed call → Call with its missed calls', (t) async {
+    phone(t);
+    ScanLink.i.reset();
+    addTearDown(ScanLink.i.reset);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(s.site!.code, 'S1');
+    ScanLink.i.open(const PushTap('cr', 'T2', id: 'VF-1'));
+    await net(t);
+    await net(t);
+    expect(s.site!.code, 'T2', reason: 'the approval is at T2: that site opened by itself');
+    expect(find.byType(ApprovalsScreen), findsOneWidget);
+    expect(ScanLink.i.tap, isNull, reason: 'opened once');
+    t.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await net(t);
+    ScanLink.i.open(const PushTap('missed', 'T2', call: 'k1'));
+    await net(t);
+    expect(find.byType(CallPickScreen), findsOneWidget);
   });
 
   testWidgets('(3.41.0) The QR code\'s link waits – nothing is lost: the app locked → opened after the fingerprint; signed out → opened after the sign-in (at the QR code\'s site)', (t) async {
