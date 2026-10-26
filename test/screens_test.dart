@@ -2755,9 +2755,13 @@ void main() {
       await t.tap(find.text('New Entry').last);
       await net(t);
     }
-    Future<void> toGrid() async {
-      await t.pageBack();
+    // back from the form (its own back arrow) to the list
+    Future<void> formBack() async {
+      await t.tap(find.byIcon(Icons.arrow_back_rounded).first);
       await net(t);
+    }
+    // from the list to the grid
+    Future<void> toGrid() async {
       await t.tap(find.byTooltip('All entries'));
       await net(t);
     }
@@ -2785,6 +2789,7 @@ void main() {
     expect(find.text('kg'), findsWidgets);
     await pick('MH-12-HO-3163');
     expect(find.text('MH-12-HO-3163 runs on Electric – no fuel is issued to it (Asset Master → Fuel).'), findsWidgets);
+    await formBack();
     await toGrid();
     // Transfer: the To follows the From's fuel
     await newEntry('Transfer');
@@ -2795,8 +2800,7 @@ void main() {
     expect(chip('DIESEL CARD'), findsOneWidget, reason: 'From only');
     expect(chip('CNG CARD'), findsOneWidget, reason: 'From only');
     expect(t.widget<ChoiceChip>(chip('PETROL CAN').last).selected, true, reason: 'To: the other Petrol place');
-    await t.pageBack();
-    await net(t);
+    await formBack();
     await more(t, 'en-many');
     await t.tap(find.byKey(const Key('tm-from-0')));
     await settle(t, 600);
@@ -2804,6 +2808,8 @@ void main() {
     await net(t);
     final t0 = t.widget(find.byKey(const Key('tm-to-0'))) as dynamic;
     expect([t0.items, t0.value], [['PETROL CARD', 'PETROL CAN'], 'PETROL CAN']);
+    await t.pageBack();
+    await net(t);
     await toGrid();
     // the Dashboard: a Fuel chip each; the dashboard of one fuel – its words and unit; the site's stock is not changed by it
     srv.dashAsked.clear();
