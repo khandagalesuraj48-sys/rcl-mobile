@@ -2674,10 +2674,13 @@ void main() {
       await t.tap(find.text('New Entry').last);
       await net(t);
     }
-    // back from the form to the grid
-    Future<void> toGrid() async {
-      await t.pageBack();
+    // back from the form (its own back arrow) to the list
+    Future<void> formBack() async {
+      await t.tap(find.byIcon(Icons.arrow_back_rounded).first);
       await net(t);
+    }
+    // from the list to the grid
+    Future<void> toGrid() async {
       await t.tap(find.byTooltip('All entries'));
       await net(t);
     }
@@ -2690,6 +2693,7 @@ void main() {
     expect(chip('Dispenser'), findsNothing);
     expect(t.widget<ChoiceChip>(chip('VTR Store')).selected, true);
     expect(srv.issueBal.last.last, 'VTR Store', reason: 'the stock of his source');
+    await formBack();
     await toGrid();
     // Diesel Transfer: From only VTR Store; To every place, ready on the other one
     await newEntry('Transfer');
@@ -2698,12 +2702,13 @@ void main() {
     expect(t.widget<ChoiceChip>(chip('Dispenser')).selected, true);
     final a = srv.extraCalls.lastWhere((c) => c['fn'] == 'getTransferBalance')['args'] as List;
     expect([a[2], a[3]], ['VTR Store', 'Dispenser']);
-    await t.pageBack();
-    await net(t);
+    await formBack();
     // "Multiple entries" of transfers: From only his
     await more(t, 'en-many');
     final f0 = t.widget(find.byKey(const Key('tm-from-0'))) as dynamic, t0 = t.widget(find.byKey(const Key('tm-to-0'))) as dynamic;
     expect([f0.items, f0.value, t0.items, t0.value], [['VTR Store'], 'VTR Store', ['Dispenser', 'VTR Store'], 'Dispenser']);
+    await t.pageBack();
+    await net(t);
     await toGrid();
     // the Super Admin takes every Issue source away in the Portal: the next sync – a red line, no chip
     srv.dsrc = {'Diesel Issue': [], 'Diesel Transfer': ['VTR Store']};
@@ -2714,6 +2719,7 @@ void main() {
     expect(find.text('No diesel source is given to you – ask the Super Admin (Portal → Users & Access → Pages).'), findsOneWidget);
     expect(chip('VTR Store'), findsNothing);
     expect(chip('Dispenser'), findsNothing);
+    await formBack();
     await toGrid();
     // every place ticked again (nothing kept for him): every source, as before – both places
     srv.dsrc = null;
