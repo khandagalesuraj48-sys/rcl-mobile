@@ -1,7 +1,7 @@
 name: rcl_mobile
 description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.41.0+1
+version: 3.42.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -16,6 +16,8 @@ dependencies:
   ota_update: ^7.1.0
   url_launcher: ^6.3.0
   app_links: ^6.3.2 # (3.41.0) a "Scan with Mobile" QR code scanned with the phone's camera / Google Lens opens in the app
+  firebase_core: ^4.14.0 # (3.42.0) the notifications at once, also with the app closed (Firebase Cloud Messaging – core/push_fcm.dart)
+  firebase_messaging: ^16.7.0
   flutter_inappwebview: 6.2.0-beta.3 # 6.1.5 (stable) no longer builds with this Flutter (its Android build file)
   permission_handler: ^12.0.1
   share_plus: ^12.0.2

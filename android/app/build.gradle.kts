@@ -9,6 +9,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// (3.42.0) Firebase (the notifications at once, also with the app closed): only when the build put its settings here (the GitHub
+// secret GOOGLE_SERVICES_JSON – never in git, the repository is public). Without them the app is built as before.
+if (file("google-services.json").exists()) apply(plugin = "com.google.gms.google-services")
+
 android {
     namespace = "in.rachana.rcl.rcl_mobile"
     compileSdk = flutter.compileSdkVersion

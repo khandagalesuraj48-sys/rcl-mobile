@@ -23,6 +23,8 @@ class FakeServer {
   List<Map<String, dynamic>> entryAtt = [];
   final capCodeOk = '${'a' * 32}.${'b' * 64}';
   final capAdds = <Map<String, dynamic>>[];
+  // (3.42.0, Mechanical update-161) the phone given for the notifications (fcmSave) / taken off (fcmOff): [action, token, site]
+  final fcm = <List<String>>[];
   int capHave = 0;
   bool billLock = false; // (14-10-2026) the entries are in a submitted bill: Mechanical refuses a change (not the Super Admin's)
   bool apLock = false; // (3.33.0, Mechanical update-152) the entry was approved in verification: refused the same way (not the Super Admin's)
@@ -684,6 +686,10 @@ class FakeServer {
           return _j({'result': {'versions': versions, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m}}});
         case 'rtcUsers':
           return _j({'result': {'me': 'u-sujit', 'name': 'Sujit Mule', 'users': rtcPeople, 'ice': [{'urls': ['stun:stun.l.google.com:19302']}], 'relay': false, 'max': 3}});
+        case 'fcmSave':
+        case 'fcmOff':
+          fcm.add([action, '${(a[0] as Map)['token']}', '${b['site'] ?? ''}']);
+          return _j({'result': {'ok': true, 'phones': 1, 'sending': true}});
         case 'rtcSend':
           rtcSent.add((a[0] as Map).cast<String, dynamic>());
           return _j({'result': {'ok': true, 'n': ++rtcN}});

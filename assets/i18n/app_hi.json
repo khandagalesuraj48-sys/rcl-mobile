@@ -914,5 +914,13 @@
 "From (stock point)": "कहाँ से (stock point)",
 "Stock of {0} only. Each \"Received from\" / \"Sent to\" column is the diesel transfers with that one stock point. Opening + Received − Sent − Issued = Closing.": "सिर्फ़ {0} का stock. हर \"से मिला\" / \"को भेजा\" column उसी एक stock point के साथ के diesel transfers दिखाता है. Opening + मिला − भेजा − Issued = Closing.",
 "Site {0} could not be opened – open it and scan the QR code again.": "{0} site नहीं खुली – उसे खोलें और QR code फिर से scan करें.",
-"This QR code is for site {0} – that site is not given to you.": "यह QR code {0} site का है – वह site आपको नहीं दी गई है."
+"This QR code is for site {0} – that site is not given to you.": "यह QR code {0} site का है – वह site आपको नहीं दी गई है.",
+"RCL ERP {0} is ready": "RCL ERP {0} तैयार है",
+"Tap to update the app.": "App update करने के लिए दबाएँ.",
+"Calls": "कॉल",
+"App updates": "App के update",
+"Site {0} could not be opened – open it from Home (Change site).": "{0} site नहीं खुली – Home से (Change site) उसे खोलें.",
+"Approved – saved: {0}": "मंज़ूर – save हुआ: {0}",
+"Rejected – not saved: {0}": "अस्वीकार – save नहीं हुआ: {0}",
+"Reminder from {0} – {1} waits for your approval": "{0} की याद – {1} आपकी मंज़ूरी का इंतज़ार कर रहा है"
 }

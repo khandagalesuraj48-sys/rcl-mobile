@@ -8,10 +8,13 @@
  * (an Android alarm – Android decides the exact moment; it may wait longer when the phone saves battery). What was told is kept on the
  * phone, so nothing is told twice too soon. */
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'api.dart';
+import 'lang.dart' show tr;
+import 'push.dart' show PushNote;
 
 /// What to tell now, from Mechanical's Approvals answer [d]. [seen]: what was told and when (ms) – changed in place.
 List<(int, String, String)> alertsFrom(Map d, Map<String, int> seen, int now) {
@@ -54,6 +57,9 @@ List<(int, String, String)> alertsFrom(Map d, Map<String, int> seen, int now) {
 class Alerts {
   static final _n = FlutterLocalNotificationsPlugin();
   static bool _ready = false;
+  /// (3.42.0) a notification pressed while the app runs (push.dart PushTap); and Decline of a ring with the app closed (main.dart)
+  static void Function(NotificationResponse r)? onTap;
+  static DidReceiveBackgroundNotificationResponseCallback? onBackgroundTap;
 
   /// [ask]: ask the person to allow notifications (Android 13 and later), once.
   static Future<void> init({bool ask = false}) async {
@@ -64,7 +70,7 @@ class Alerts {
           iOS: DarwinInitializationSettings(),
           // (3.19.0) the computer app: Windows' own notifications (while the app is open)
           windows: WindowsInitializationSettings(appName: 'RCL ERP', appUserModelId: 'Rachana.RCLERP', guid: '50cd3324-31ea-41a6-8f01-f79497e4d3f0'),
-        ));
+        ), onDidReceiveNotificationResponse: (r) => onTap?.call(r), onDidReceiveBackgroundNotificationResponse: onBackgroundTap);
         _ready = true;
       }
       if (ask) await _n.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
@@ -77,6 +83,44 @@ class Alerts {
       await _n.show(id, title, body,
           const NotificationDetails(android: AndroidNotificationDetails('rcl_approvals', 'Approvals', channelDescription: 'Entries waiting for your approval, and entries sent back to you', importance: Importance.high, priority: Priority.high), iOS: DarwinNotificationDetails(), windows: WindowsNotificationDetails()));
     } catch (_) {/* see init */}
+  }
+
+  /* (3.42.0) the notifications that come through Firebase (push.dart): a call rings with the phone's ringtone until it is answered,
+   * declined or it stops (60 s) – Answer opens the app, Decline is said to the caller; a missed call; approvals (the channel above –
+   * told once: a notification with the same number is replaced, not shown again); a new version of the app. */
+  static AndroidNotificationDetails _android(PushNote n) => switch (n.channel) {
+        'rcl_calls' => AndroidNotificationDetails('rcl_calls', tr('Calls'), channelDescription: 'A call to you – also when the app is closed',
+            importance: Importance.max, priority: Priority.max, category: AndroidNotificationCategory.call, fullScreenIntent: true, ongoing: true, autoCancel: false,
+            timeoutAfter: 60000, sound: const UriAndroidNotificationSound('content://settings/system/ringtone'), audioAttributesUsage: AudioAttributesUsage.notificationRingtone,
+            additionalFlags: Int32List.fromList(<int>[4]), // FLAG_INSISTENT: the ringtone goes on until it is answered / stops
+            actions: <AndroidNotificationAction>[
+              AndroidNotificationAction('answer', tr('Answer'), showsUserInterface: true, cancelNotification: true),
+              AndroidNotificationAction('decline', tr('Decline'), cancelNotification: true),
+            ]),
+        'rcl_calls_missed' => AndroidNotificationDetails('rcl_calls_missed', tr('Missed calls'), channelDescription: 'A call you did not answer', importance: Importance.high, priority: Priority.high),
+        'rcl_updates' => AndroidNotificationDetails('rcl_updates', tr('App updates'), channelDescription: 'A new version of RCL ERP is ready', importance: Importance.high, priority: Priority.high),
+        _ => AndroidNotificationDetails('rcl_approvals', 'Approvals', channelDescription: 'Entries waiting for your approval, and entries sent back to you', importance: Importance.high, priority: Priority.high,
+            onlyAlertOnce: true, styleInformation: BigTextStyleInformation(n.body)),
+      };
+
+  static Future<void> note(PushNote n) async {
+    try {
+      await init();
+      if (n.cancel >= 0) await _n.cancel(n.cancel);
+      if (n.id < 0) return;
+      await _n.show(n.id, n.title, n.body, NotificationDetails(android: _android(n), iOS: const DarwinNotificationDetails()), payload: n.payload);
+    } catch (_) {/* see init */}
+  }
+
+  /// (3.42.0) the notification the app was opened with (pressed while the app was closed)
+  static Future<NotificationResponse?> launchedWith() async {
+    try {
+      await init();
+      final d = await _n.getNotificationAppLaunchDetails();
+      return d != null && d.didNotificationLaunchApp ? d.notificationResponse : null;
+    } catch (_) {
+      return null;
+    }
   }
 }
 

@@ -24,7 +24,8 @@ def manifest(s):
              # (3.26.0) calls with the web: the notification "Call is on" (CallService.kt), the network's state
              'android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_MICROPHONE', 'android.permission.FOREGROUND_SERVICE_CAMERA',
              'android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION', 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.CHANGE_NETWORK_STATE',
-             'android.permission.USE_BIOMETRIC']      # (3.27.0) the app lock
+             'android.permission.USE_BIOMETRIC',      # (3.27.0) the app lock
+             'android.permission.USE_FULL_SCREEN_INTENT']      # (3.42.0) a call's notification rings on the locked phone too
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
     s = re.sub(r'android:label="[^"]*"', 'android:label="RCL ERP"', s, count=1)

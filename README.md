@@ -15,6 +15,24 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.42.0 (26-10-2026 – "mala app war pratek gostich realtime notification jayla haw app band aso ki chalu app updet pasun te
+sagle kahi"):** the notifications come AT ONCE through Google Firebase (FCM), whether the app is open or closed (Android): a call –
+its ringtone with **Answer** (the app opens at the call's site and answers) and **Decline** (said to the caller); answered on another
+device – the ring stops; a missed call; verification and approvals (waiting for you, the next level, approved / rejected, sent back,
+answered, sent again, a reminder – pressed: Approvals at that site); and every phone with the app is told **"RCL ERP <version> is
+ready"** when a version is released (the topic `rcl-app-update` – `release.yml` → `tool/fcm_topic.sh`, the GitHub secret
+`FCM_SERVICE_ACCOUNT_JSON`). Shown in the app's language. `core/push.dart` (what each message shows – tested without the plugins;
+the phone given to Mechanical at a site once a day – `fcmSave`, Mechanical update-161 keeps it at the first site so every site
+reaches it; taken off FIRST at Sign out – `fcmOff`), `core/push_fcm.dart` (Firebase: start, the open app's messages, pressed
+notifications), `main.dart` (`pushInBackground`, `pushActionInBackground` – the app closed), `alerts.dart` (the call / missed /
+update channels; an approval uses the SAME number as the 15-minute check, which stays – one thing is never told twice). A pressed
+notification waits in `ScanLink` like a QR code: after the sign-in, the fingerprint, at its site (another of his sites opened by
+itself). While the app is open: the open site's ring on the app's own ring screen (asked at once), a new version on Home's Update.
+Firebase's settings (`android/app/google-services.json`) are written by the build from the GitHub secret `GOOGLE_SERVICES_JSON`
+(never in git – `.gitignore`); without them the app is built as before (the Gradle plugin `com.google.gms.google-services` 4.5.0 is
+applied only when the file is there); a release checks the file is for `in.rachana.rcl.rcl_mobile` and that the APK carries it.
+`USE_FULL_SCREEN_INTENT` (the ring on a locked phone). iPhone: not yet (needs the Apple account's push key).
+
 **Version 3.41.0 (25-10-2026 – "google scanner mobile scanner madhun jari scann kel adhi app kade jaw app nasel tr browser kade ok
 ani complete process zal shiway madhech cut hou naye"):** the QR code of "Scan with Mobile" (Log Book attachments on the computer,
 Mechanical update-160: `…/scan?cap=<code>&site=<site>`) opens in THIS app whoever reads it – the phone's camera, Google Lens or the

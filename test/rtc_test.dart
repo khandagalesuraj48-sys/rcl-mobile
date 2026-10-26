@@ -82,6 +82,27 @@ void main() {
     expect((srv.sent('here').single['d'] as Map)['dev'], rtc.dev, reason: 'every note says which device wrote it');
   });
 
+  test('(3.42.0) "Answer" pressed on the ring\'s notification (the app was closed): the ring of THAT call is answered by itself when it comes; too late (90 s) or another call: it only rings', () async {
+    Rtc.autoAnswer = 'c42';
+    Rtc.autoAt = DateTime.now().millisecondsSinceEpoch;
+    rtc.inbox({'r': 30, 'top': 30, 'm': [note('r1', 'ring', 'u-web', 'c42', {'sdp': 'v=0 web-offer', 'mode': 'voice', 'dev': 'dW'})]});
+    for (var i = 0; i < 10 && srv.sent('answer').isEmpty; i++) {
+      await flush();
+    }
+    expect(srv.sent('answer').single['call'], 'c42');
+    expect([Rtc.autoAnswer, rtc.ring], ['', null], reason: 'answered once – nothing kept');
+    final srv2 = Server(), r2 = Rtc(srv2.rpc, FakeKit());
+    Rtc.autoAnswer = 'c43';
+    Rtc.autoAt = DateTime.now().millisecondsSinceEpoch - 91000;
+    r2.inbox({'r': 31, 'top': 31, 'm': [note('r2', 'ring', 'u-web', 'c43', {'sdp': 'v=0', 'mode': 'voice', 'dev': 'dW'})]});
+    Rtc.autoAnswer = 'c99';
+    Rtc.autoAt = DateTime.now().millisecondsSinceEpoch;
+    await flush();
+    expect([r2.ring?.call, srv2.sent('answer')], ['c43', isEmpty], reason: 'too late / another call: it rings, he answers himself');
+    Rtc.autoAnswer = '';
+    r2.close();
+  });
+
   test('a call of the WEB comes in (its screen): rings → Accept → the answer with every way → connected; its screen big, its face and mine at the side; chat; low data; Leave', () async {
     final offer = {'sdp': 'v=0 web-offer', 'people': ['App User'], 'mode': 'screen', 'dev': 'dW'};
     rtc.inbox({'r': 20, 'top': 20, 'm': [note('r1', 'ring', 'u-web', 'c1', offer)]});

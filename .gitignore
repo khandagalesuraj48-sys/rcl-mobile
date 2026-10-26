@@ -11,6 +11,9 @@ build/
 *.jks
 *.keystore
 key.properties
+# (3.42.0) Firebase's settings: put in by the build from the GitHub secret GOOGLE_SERVICES_JSON – never in git
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 android/local.properties
 # golden pictures made by a test run (the checked ones sit in test/goldens/)
 test/failures/
