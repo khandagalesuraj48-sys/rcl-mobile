@@ -1349,6 +1349,50 @@ class FakeServer {
           maintCalls.add({'fn': action, 'mime': RegExp(r'^data:([^;]+);').firstMatch('${up['data']}')?.group(1) ?? ''});
           if (!aiOn) return _j({'result': {'off': true}});
           return _j({'result': maintRead});
+        // (3.53.0, Mechanical update-173) the old log book imported as it is – as the server: only an Own machinery on the site now;
+        // a bill's date a real one up to today; a ₹0 line without its kind kept as FOC; a bill already there (the same machinery,
+        // date and party, its total to ₹1) – and the same bill twice in the file – left out; Check saves nothing
+        case 'checkMaintImport' || 'importMaint':
+          final x = (a[0] as Map).cast<String, dynamic>(), bills = [for (final b in (x['bills'] as List? ?? const [])) (b as Map).cast<String, dynamic>()];
+          maintCalls.add({'fn': action, 'no': x['no'], 'bills': bills.length});
+          final m = _master.where((m) => m['id'] == x['no']).firstOrNull;
+          if (m == null || m['ownership'] != 'Own' || m['status'] == 'Inactive') return _j({'error': '${x['no']} is not an Own machinery on this site now (Asset Master) – the old log book is imported only for those.'}, 500);
+          if (bills.isEmpty) return _j({'error': 'The file has no bill for ${x['no']}.'}, 500);
+          num r2(num v) => (v * 100).round() / 100;
+          num lineTot(Map l) => r2((l['amount'] is num ? l['amount'] as num : 0) + 2 * r2((l['amount'] is num ? l['amount'] as num : 0) * (l['gst'] is num ? l['gst'] as num : 0) / 200));
+          final have = [for (final r in maint) if (r['no'] == x['no']) (date: '${r['date']}', garage: '${r['garage']}'.toUpperCase(), total: (r['billTotal'] ?? r['total']) as num)];
+          final errors = <Map<String, dynamic>>[], fresh = <Map<String, dynamic>>[];
+          var same = 0;
+          for (final (n, b) in bills.indexed) {
+            final where = '${b['rows'] ?? 'Bill ${n + 1}'}', d = '${b['date'] ?? ''}';
+            if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(d) || d.compareTo('2026-10-14') > 0) {
+              errors.add({'rows': where, 'msg': 'Maintenance bill: the date "$d" is not a date up to today.'});
+              continue;
+            }
+            final ls = [for (final l in (b['lines'] as List? ?? const [])) {...(l as Map).cast<String, dynamic>(), if ('${l['type'] ?? ''}'.isEmpty && (l['amount'] ?? 0) == 0) 'type': 'FOC'}];
+            if (ls.isEmpty) {
+              errors.add({'rows': where, 'msg': 'Type at least one work / part line of the bill.'});
+              continue;
+            }
+            final tot = r2(ls.fold<num>(0, (t, l) => t + (l['type'] == 'FOC' ? 0 : lineTot(l)))), g = '${b['garage'] ?? ''}'.toUpperCase();
+            if (have.any((h) => h.date == d && h.garage == g && (h.total - tot).abs() <= 1)) {
+              same++;
+              continue;
+            }
+            have.add((date: d, garage: g, total: tot));
+            fresh.add({'date': d, 'garage': '${b['garage'] ?? ''}', 'km': b['km'] ?? '', 'lines': ls, 'total': tot});
+          }
+          final days = [for (final v in fresh) '${v['date']}']..sort();
+          final report = {'ok': errors.isEmpty, 'no': x['no'], 'errors': errors, 'errorCount': errors.length, 'fresh': fresh.length, 'same': same, 'sameList': <Map>[],
+            'lines': fresh.fold<int>(0, (t, v) => t + (v['lines'] as List).length), 'total': r2(fresh.fold<num>(0, (t, v) => t + (v['total'] as num))), 'from': days.isEmpty ? '' : days.first, 'to': days.isEmpty ? '' : days.last};
+          if (errors.isNotEmpty || action == 'checkMaintImport') return _j({'result': report});
+          final ids = <String>[];
+          for (final v in fresh) {
+            final id = 'MT-${'${maint.length + 1}'.padLeft(6, '0')}';
+            maint.insert(0, {'id': id, 'no': x['no'], 'billNo': '', 'service': false, 'remark': '', 'enteredBy': 'Sujit Mule', 'updatedBy': '', 'billTotal': v['total'], 'files': [], ...v});
+            ids.add(id);
+          }
+          return _j({'result': {...report, 'added': ids.length, 'first': ids.isEmpty ? '' : ids.first, 'last': ids.isEmpty ? '' : ids.last}});
         case 'maintLog':
           final f = (a[0] as Map).cast<String, dynamic>();
           maintCalls.add({'fn': action, 'x': f});

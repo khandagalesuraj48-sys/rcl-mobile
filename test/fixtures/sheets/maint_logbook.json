@@ -1,0 +1,223 @@
+{
+ "xlsx": "0.18.5",
+ "today": "2026-10-27",
+ "master": [
+  {
+   "id": "RL-173",
+   "name": "Roller No.03",
+   "ownership": "Own",
+   "status": "Active",
+   "activeFrom": "2025-09-01"
+  },
+  {
+   "id": "MH-12-XW-0169",
+   "name": "Hycross",
+   "ownership": "Own",
+   "status": "Active"
+  },
+  {
+   "id": "JCB-173",
+   "name": "JCB 3DX",
+   "ownership": "Rental",
+   "status": "Active"
+  },
+  {
+   "id": "OLD-5",
+   "name": "Old Roller",
+   "ownership": "Own",
+   "status": "Inactive",
+   "inactiveFrom": "2025-01-01"
+  }
+ ],
+ "own": [
+  "RL-173",
+  "MH-12-XW-0169"
+ ],
+ "sheets": [
+  {
+   "sheet": "Roller 03",
+   "label": "ROLLER NO-03",
+   "no": "RL-173",
+   "bills": [
+    {
+     "date": "2022-12-02",
+     "garage": "Store",
+     "km": "",
+     "lines": [
+      {
+       "work": "AD BLUE",
+       "qty": 20,
+       "uom": "Ltr",
+       "rate": 59,
+       "amount": 1180,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 5"
+    },
+    {
+     "date": "2023-01-05",
+     "garage": "Store",
+     "km": 500,
+     "lines": [
+      {
+       "work": "FUEL FILTER",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 650,
+       "amount": 650,
+       "gst": 18
+      },
+      {
+       "work": "FUEL WATER SEPRETOR",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 425,
+       "amount": 425,
+       "gst": 18
+      },
+      {
+       "work": "ENGINE OIL FILTER",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 930,
+       "amount": 930,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 6–8"
+    },
+    {
+     "date": "2024-01-29",
+     "garage": "Ganesh Motors",
+     "km": 1745,
+     "lines": [
+      {
+       "work": "DRUM OIL",
+       "qty": 25,
+       "uom": "Ltr",
+       "rate": 0,
+       "amount": 0,
+       "gst": ""
+      },
+      {
+       "work": "HYDROLIC OIL L&T",
+       "qty": 78,
+       "uom": "Ltr",
+       "rate": 133,
+       "amount": 10374,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 9–10"
+    },
+    {
+     "date": "2023-12-30",
+     "garage": "Store",
+     "km": "",
+     "lines": [
+      {
+       "work": "Cotton West",
+       "qty": 0.5,
+       "uom": "Kg",
+       "rate": 33,
+       "amount": 16.5,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 11"
+    },
+    {
+     "date": "later",
+     "garage": "Store",
+     "km": "",
+     "lines": [
+      {
+       "work": "Bulb",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 40,
+       "amount": 40,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 12"
+    }
+   ],
+   "rows": 8,
+   "fileTotal": 16066.32,
+   "total": 16066.3,
+   "bad": [
+    "Line 12: the date \"later\""
+   ],
+   "res": null,
+   "done": null
+  },
+  {
+   "sheet": "MH12XW0169",
+   "label": "Hycross MH12XW0169",
+   "no": "MH-12-XW-0169",
+   "bills": [
+    {
+     "date": "2026-02-10",
+     "garage": "Navnit Motors",
+     "km": 13153,
+     "lines": [
+      {
+       "work": "Wiper blade",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 310,
+       "amount": 310,
+       "gst": 18
+      },
+      {
+       "work": "Labour",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 1200,
+       "amount": 1200,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 4–5"
+    }
+   ],
+   "rows": 2,
+   "fileTotal": 1781.8,
+   "total": 1781.8,
+   "bad": [],
+   "res": null,
+   "done": null
+  },
+  {
+   "sheet": "JCB",
+   "label": "JCB 3DX",
+   "no": "",
+   "bills": [
+    {
+     "date": "2023-03-03",
+     "garage": "Store",
+     "km": 800,
+     "lines": [
+      {
+       "work": "Grease",
+       "qty": 2,
+       "uom": "Kg",
+       "rate": 180,
+       "amount": 360,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 4"
+    }
+   ],
+   "rows": 1,
+   "fileTotal": 424.8,
+   "total": 424.8,
+   "bad": [],
+   "res": null,
+   "done": null
+  }
+ ]
+}

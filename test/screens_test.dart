@@ -3017,6 +3017,7 @@ void main() {
     expect(find.byKey(const Key('mt-r-MT-000002')), findsOneWidget);
     expect(find.byKey(const Key('mt-r-MT-000001')), findsOneWidget);
     expect(find.textContaining('· 2 · ₹ 8,660'), findsOneWidget);
+    expect(find.byKey(const Key('mt-import')), findsNothing, reason: '(3.53.0) the old log book is imported by the Admin only');
     // a new bill: the car, a PDF, "Read the bill (AI)"
     await t.tap(find.byKey(const Key('mt-add')));
     await net(t);
@@ -3107,6 +3108,95 @@ void main() {
     expect(find.text('Amount With GST'), findsWidgets);
     expect(find.textContaining('Fuel – 2 fill(s) (by card ₹2,100'), findsOneWidget);
   });
+
+  /// (3.53.0) the Admin at the page Maintenance, his old log book's file ready to be picked (RL-173 "Roller No.03" and MH-12-XW-0169
+  /// Own, JCB-173 rented)
+  Future<FakeServer> mliOpen(WidgetTester t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..superAdmin = true
+      ..perms.addAll({'Maintenance': 'Edit'});
+    srv.master.addAll([
+      {'id': 'RL-173', 'no': '', 'name': 'Roller No.03', 'type': 'Roller', 'owner': 'RCL', 'ownership': 'Own', 'status': 'Active', 'activeFrom': '2025-09-01', 'modes': ['Hrs'], 'worksOn': ['Hrs'], 'unit': 'Hrs'},
+      {'id': 'MH-12-XW-0169', 'no': 'MH-12-XW-0169', 'name': 'Hycross', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM'},
+      {'id': 'JCB-173', 'no': '', 'name': 'JCB 3DX', 'type': 'Backhoe', 'owner': 'Patil', 'ownership': 'Rental', 'status': 'Active', 'modes': ['Hrs'], 'worksOn': ['Hrs'], 'unit': 'Hrs'},
+    ]);
+    pickThis('All Machinery Maintenance Logbook.xlsx', File('test/fixtures/sheets/maint_logbook.xlsx').readAsBytesSync());
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    return srv;
+  }
+
+  testWidgets('(3.53.0 – Mechanical update-173) the Admin imports the old maintenance log book (Excel) as it is: a card a sheet – its machinery found among the Own ones on the site (a rented one not); Check (nothing saved) – a sheet with a mistake is not imported; "– not imported –"; Import asks first, then importMaint; the same file again – the bill already there is left out', (t) async {
+    final srv = await mliOpen(t);
+    String st(int i) => '${(t.widget(find.byKey(Key('mli-st-$i'))) as dynamic).data}';
+    bool on(String k) => (t.widget(find.byKey(Key(k))) as ButtonStyleButton).onPressed != null;
+    await tapK(t, 'mt-import');
+    await net(t);
+    expect(find.text('All Machinery Maintenance Logbook.xlsx – 3 sheet(s)'), findsOneWidget);
+    expect([for (var i = 0; i < 3; i++) (t.widget(find.byKey(Key('mli-no-$i'))) as PickField).value], ['RL-173', 'MH-12-XW-0169', ''], reason: 'ROLLER NO-03 = Roller No.03; MH12XW0169; the JCB is rented – not imported');
+    expect((t.widget(find.byKey(const Key('mli-no-0'))) as PickField).items, unorderedEquals(['Sany 210 (No.1)', 'RL-173', 'MH-12-XW-0169']), reason: 'only the Own machinery on the site today (not OLD-9, Inactive)');
+    expect(find.text('Name in the file: ROLLER NO-03'), findsOneWidget);
+    expect(st(0), '1 row(s) without a date – Line 12: the date "later"');
+    expect([st(1), st(2)], ['Press Check', 'not imported']);
+    expect([on('mli-check'), on('mli-go')], [true, false]);
+    expect(srv.maintCalls.where((x) => '${x['fn']}'.contains('Import')), isEmpty, reason: 'nothing sent before Check');
+    // Check: nothing saved; the roller's "later" is a mistake – nothing of that sheet goes
+    final n0 = srv.maint.length;
+    await tapK(t, 'mli-check');
+    await net(t);
+    expect([for (final x in srv.maintCalls.where((x) => '${x['fn']}'.contains('Import'))) x], [{'fn': 'checkMaintImport', 'no': 'RL-173', 'bills': 5}, {'fn': 'checkMaintImport', 'no': 'MH-12-XW-0169', 'bills': 1}]);
+    expect(st(0), startsWith('✗ 1 mistake(s) – nothing of this sheet is imported:\nLine 12: '));
+    expect(st(1), '✓ 1 new bill(s), 2 line(s), ₹1,781.8 (10-02-2026 – 10-02-2026)');
+    expect(srv.maint.length, n0, reason: 'Check saves nothing');
+    expect(on('mli-go'), false, reason: 'a sheet with a mistake – Import waits');
+    // the roller: not imported now
+    await t.tap(find.byKey(const Key('mli-no-0')));
+    await settle(t, 600);
+    await t.tap(find.text('– not imported –').last);
+    await settle(t, 600);
+    expect([st(0), on('mli-go')], ['not imported', true]);
+    await tapK(t, 'mli-go');
+    await settle(t, 600);
+    expect(find.text('Import the old log book?'), findsOneWidget);
+    expect(find.text('MH-12-XW-0169: 1 bill(s), ₹1,781.8'), findsOneWidget);
+    await tapK(t, 'ask-yes');
+    await net(t);
+    expect(srv.maintCalls.last, {'fn': 'importMaint', 'no': 'MH-12-XW-0169', 'bills': 1});
+    expect(find.text('1 bill(s) imported.'), findsOneWidget);
+    expect(st(1), '✓ 1 bill(s) imported (MT-000003)');
+    final b = srv.maint.firstWhere((r) => r['id'] == 'MT-000003');
+    expect([b['no'], b['date'], b['garage'], b['km'], (b['lines'] as List).length, b['total']], ['MH-12-XW-0169', '2026-02-10', 'Navnit Motors', 13153, 2, 1781.8]);
+    expect([on('mli-check'), on('mli-go')], [false, false], reason: 'imported – nothing left to do');
+    // the same file again: the bill is already there – left out
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'mt-import');
+    await net(t);
+    await t.tap(find.byKey(const Key('mli-no-0')));
+    await settle(t, 600);
+    await t.tap(find.text('– not imported –').last);
+    await settle(t, 600);
+    await tapK(t, 'mli-check');
+    await net(t);
+    expect(st(1), '✓ 0 new bill(s), 0 line(s), ₹0\n1 bill(s) already there – left out');
+    expect(srv.maint.length, n0 + 1);
+  });
+
+  testWidgets('(3.53.0) Picture: the old log book\'s import after Check – a sheet with a mistake, one to import, one rented (not imported)', (t) async {
+    await mliOpen(t);
+    await tapK(t, 'mt-import');
+    await net(t);
+    await tapK(t, 'mli-check');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/63_maint_import.png'));
+  }, tags: ['golden']);
 
   testWidgets('(3.49.0 – Mechanical update-168) a bill as his: every line with its kind (Paid / Warranty / FOC / Service Plan), Qty, Rate, Disc % and ₹; the free lines ₹ 0 with their worth; the car from the bill\'s number; an insurance claim – we paid the rest; the list, the sheet, Change and the car\'s log book; the kinds in मराठी', (t) async {
     phone(t);

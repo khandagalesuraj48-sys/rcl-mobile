@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.53.0 (28-10-2026 – "jewde active aahet own rachana vehicle te mala import karaych aahe as it is jas asel tr", with
+Mechanical update-173):** the Admin's **Maintenance** has **"Import the old log book (Excel)"** – his "All Machinery Maintenance
+Logbook" file read as the web reads it (a sheet a machinery, its name above the heading; a bill = the rows of one date and party, a
+merged date the row's above, a reading on the bill's first row; each line as it is – Qty, Uom, Rate, Amount and its GST % from its GST
+Amount; a ₹0 line kept as FOC): a card a sheet with its machinery (found among the **Own** ones on the site today; it can be changed or
+set to "– not imported –"), rows, bills, the file's total and the total as it will be kept; **Check** (nothing saved – each mistake with
+its row), then **Import** (asked first; one machinery all of it or nothing; a bill already there – the same machinery, date and party,
+its total to ₹1 – is left out, so the same file can be given again). The same server actions as the web (checkMaintImport /
+importMaint). The web's help and words taken again.
+
 **Version 3.52.0 (27-10-2026 – "pdf print keli ki gst raw madhe ka dakhawat aahe heading madhe aahet gst tr", with Mechanical
 update-172):** the car's **Maintenance Log Book** (screen, Excel, PDF) shows no GST row: a bill saved before 3.51.0 with its taxes as lines
 of their own ("CGST @ 9%", "SGST @ 9%", "GST 18%" or "IGST 18%" – one rate) has them on its items – by the tax's % when that makes the
