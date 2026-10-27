@@ -6866,5 +6866,20 @@
 "The same file is given twice – remove one.": "एक ही file दो बार दी है – एक हटाएँ.",
 "The file could not be read – add it again.": "File नहीं पढ़ी जा सकी – फिर से जोड़ें.",
 "View only – you can see the bills, their files and the car log books here, but you cannot add or change them. Ask Admin for Edit access.": "सिर्फ़ देखना – यहाँ बिल, उनकी files और गाड़ियों की log book देख सकते हैं, पर जोड़ या बदल नहीं सकते. Edit access के लिए Admin से पूछें.",
-"You have View access only for Maintenance. Ask Admin for Edit access.": "Maintenance के लिए आपके पास सिर्फ़ View access है. Edit access के लिए Admin से पूछें."
+"You have View access only for Maintenance. Ask Admin for Edit access.": "Maintenance के लिए आपके पास सिर्फ़ View access है. Edit access के लिए Admin से पूछें.",
+"Card {0}: that is the whole card number – it is never kept. Type only its LAST 4 digits (and the customer / account ID of the card programme, not the card number).": "Card {0}: यह card का पूरा नंबर है – यह कभी नहीं रखा जाता। केवल आखिरी 4 अंक डालें (और card programme का customer / account ID, card नंबर नहीं)।",
+"Card {0}: the bank / company is up to 60 letters.": "Card {0}: bank / कंपनी ज़्यादा से ज़्यादा 60 अक्षर।",
+"Card {0}: the customer / account ID is up to 40 letters.": "Card {0}: customer / account ID ज़्यादा से ज़्यादा 40 अक्षर।",
+"Card {0}: the expiry is its month and year (e.g. 08/2029).": "Card {0}: expiry यानी महीना और साल (जैसे 08/2029)।",
+"Card {0}: the name on the card is up to 60 letters.": "Card {0}: card पर नाम ज़्यादा से ज़्यादा 60 अक्षर।",
+"Bank / company": "Bank / कंपनी",
+"Customer / Account ID": "Customer / Account ID (ग्राहक क्रमांक)",
+"e.g. HDFC Bank, IOCL, BPCL": "जैसे HDFC Bank, IOCL, BPCL",
+"Expired {0}": "मियाद खत्म {0}",
+"Expiry": "मियाद (Expiry)",
+"Expiry (month / year)": "मियाद (महीना / साल)",
+"Name on the card": "Card पर नाम",
+"of the card programme – not the card number": "card programme का – card नंबर नहीं",
+"person or company": "व्यक्ति या कंपनी",
+"Expires {0}": "मियाद {0} को खत्म"
 }

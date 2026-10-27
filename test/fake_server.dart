@@ -26,7 +26,9 @@ class FakeServer {
   bool card = false;
   final cards = <Map<String, dynamic>>[
     {'name': 'HDFC FUEL', 'last4': '4321', 'type': 'Fuel card', 'cars': <String>[], 'opening': 20000, 'openDate': '2026-10-01', 'active': true, 'paid': 5000, 'spent': 3200, 'balance': 21800, 'fills': 2, 'payments': 1, 'lastFill': '2026-10-13', 'used': true},
-    {'name': 'SBI CREDIT', 'last4': '9876', 'type': 'Credit card', 'cars': ['MH-12-HO-1163'], 'opening': 1000, 'openDate': '2026-10-01', 'active': true, 'paid': 0, 'spent': 1500, 'balance': -500, 'fills': 1, 'payments': 0, 'lastFill': '2026-10-12', 'used': true},
+    {'name': 'SBI CREDIT', 'last4': '9876', 'type': 'Credit card', 'cars': ['MH-12-HO-1163'], 'opening': 1000, 'openDate': '2026-10-01', 'active': true, 'paid': 0, 'spent': 1500, 'balance': -500, 'fills': 1, 'payments': 0, 'lastFill': '2026-10-12', 'used': true,
+      // (3.47.0, Mechanical update-166) its details; it ends this month (17 days to its last day from 14-10-2026)
+      'issuer': 'SBI Card', 'holder': 'Rachana Construction Ltd', 'expiry': '2026-10', 'custId': 'SBI-44120', 'expDays': 17},
     {'name': 'OLD CARD', 'last4': '1111', 'type': 'Debit card', 'cars': <String>[], 'opening': 0, 'openDate': '2026-09-01', 'active': false, 'paid': 0, 'spent': 0, 'balance': 0, 'fills': 0, 'payments': 0, 'lastFill': '', 'used': false},
   ];
   final cardCalls = <Map<String, dynamic>>[];
