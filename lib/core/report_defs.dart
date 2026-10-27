@@ -733,56 +733,85 @@ final kAvgReport = ReportDef(
  * mlogRender: the same server action maintLog, the same tables, columns and totals). Opened from the Maintenance screen. */
 final kMaintLog = ReportDef(
   key: 'mlog',
-  label: 'Maintenance Log Book of a car',
-  mr: 'गाडीचे मेंटेनन्स लॉग बुक',
+  label: 'Maintenance Log Book',
+  mr: 'मेंटेनन्स लॉग बुक',
   fn: 'maintLog',
   pic: 'wrench',
   perm: 'Maintenance',
   portrait: false,
   filters: const ['machine', 'range'],
-  note: 'Every fill (Diesel Issue, with its card or Cash) and every maintenance bill of the car, by date – and its costs: fuel, maintenance, all together, the KM of its Log Book and ₹ per KM.',
+  note: 'Every maintenance bill of a machinery, line by line, by date – the party, its reading, each part with its Qty, Uom, rate, amount and GST. At a site on fuel cards also its fills, the costs and ₹ per KM.',
+  // (3.50.0, Mechanical update-170) his format – the Maintenance Log Book of Roller No-03: a row a line of a bill (Date, Party Name and
+  // Current Reading on its first row); a tax line's ₹ in GST Amount; the insurance's part of a claim its own row (minus); the free lines
+  // at ₹ 0 with their kind. At a site on fuel cards its fills follow (3.46.0), then "by work / part" – as the web.
   build: (d) {
     final m = mapOf(d['machine']), t = mapOf(d['total']), fu = mapOf(t['fuel']), mn = mapOf(t['maint']), ls = listOf(d['lines']), by = listOf(t['byWork']), last = mapOf(d['lastService']);
-    final u = m['unit'] == 'kg' ? 'kg' : 'L';
-    // (3.49.0, Mechanical update-168) a free line with its kind; a claim: the bill and the insurance; the worth of the free lines – as the web
-    String what(Map<String, dynamic> x) {
-      if (x['kind'] == 'Fuel') return 'Fuel – ${m['fuel'] ?? ''}';
-      final ins = mapOf(x['insurance']), free = nOf(x['free']);
-      final ls = [for (final l in listOf(x['lines'])) '${l['type'] ?? ''}'.isNotEmpty && l['type'] != 'Paid' ? '${l['work']} (${l['type']})' : '${l['work']} ₹${money(l['amount'])}'];
-      return 'Bill${blankV(x['billNo']) ? '' : ' ${x['billNo']}'} – ${ls.join('; ')}${x['service'] == true ? ' · Service' : ''}'
-          '${ins.isEmpty ? '' : ' · bill ₹${money(x['billTotal'])}, insurance ₹${money(ins['paid'])}${blankV(ins['company']) ? '' : ' (${ins['company']})'}'}${free > 0 ? ' · free worth ₹${money(free)}' : ''}';
+    final u = m['unit'] == 'kg' ? 'kg' : 'L', card = d['card'] == true, meter = '${m['meter'] ?? ''}';
+    final ru = meter == 'KM' || meter == 'KM + Hrs' ? 'km' : meter == 'Hrs' ? 'hrs' : '';
+    final tax = RegExp(r'^\s*(?:maharashtra\s+)?(?:cgst|sgst|igst|utgst|gst|cess|tax|vat)\b', caseSensitive: false);
+    const blank = RCell('', n: true);
+    final rows = <RRow>[];
+    num sa = 0, sg = 0, sw = 0;
+    var sr = 0;
+    for (final x in ls.where((x) => x['kind'] != 'Fuel')) {
+      final ins = mapOf(x['insurance']), its = <Map<String, dynamic>>[];
+      for (final l in listOf(x['lines'])) {
+        final paid = blankV(l['type']) || l['type'] == 'Paid', isTax = paid && tax.hasMatch('${l['work'] ?? ''}'), a = paid ? nOf(l['amount']) : 0;
+        its.add({'part': '${l['work'] ?? ''}${paid ? '' : ' (${l['type']})'}', 'qty': l['qty'], 'uom': '${l['uom'] ?? ''}', 'rate': l['rate'], 'amount': isTax ? null : a, 'gst': isTax ? a : null, 'with': a});
+      }
+      if (ins.isNotEmpty && nOf(ins['paid']) > 0) {
+        its.add({'part': 'Paid by the insurance${blankV(ins['company']) ? '' : ' – ${ins['company']}'}${blankV(ins['claimNo']) ? '' : ' (claim no. ${ins['claimNo']})'}', 'uom': '', 'with': -nOf(ins['paid']), 'ins': true});
+      }
+      if (its.isEmpty) its.add({'part': '', 'uom': '', 'with': nOf(x['amount'])});
+      final party = [if (!blankV(x['party'] ?? x['garage'])) '${x['party'] ?? x['garage']}', if (!blankV(x['billNo'])) 'Bill ${x['billNo']}'].join(' · ');
+      for (final (j, l) in its.indexed) {
+        sr++;
+        if (l['amount'] != null) sa += l['amount'] as num;
+        if (l['gst'] != null) sg += l['gst'] as num;
+        sw += l['with'] as num;
+        rows.add(RRow([sc(sr), tc(j == 0 ? dmy(x['date']) : ''), tc(j == 0 ? party : ''), j == 0 ? nc(x['km']) : blank, tc(l['part'], tone: l['ins'] == true ? 'info' : ''), nc(l['qty']), tc(l['uom']),
+          blankV(l['rate']) ? blank : mc(l['rate']), l['amount'] == null ? blank : mc(l['amount']), l['gst'] == null ? blank : mc(l['gst']), mc(l['with']), mc(l['with'])]));
+      }
     }
-    final insT = nOf(mn['insurance']), freeT = nOf(mn['free']);
+    final fills = ls.where((x) => x['kind'] == 'Fuel').toList();
+    final lastK = ('Last service', last.isEmpty ? '–' : '${dmy(last['date'])}${blankV(last['km']) ? '' : ' · ${fmt(last['km'])}${ru.isEmpty ? '' : ' $ru'}'}');
     return RDoc(
       title: '${d['title'] ?? 'Maintenance Log Book'}',
       period: _period(d),
       file: _file('Maintenance_Log_Book_${'${m['id'] ?? ''}'.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')}', d),
       meta: _meta(d, [m['id'], m['name'], m['type'], m['fuel']].where((x) => '${x ?? ''}'.isNotEmpty).join(' · ')),
       portrait: false,
-      kpis: [
-        ('Fuel', '${fmt(fu['qty'])} $u · ₹${money(fu['amount'])}'), ('Maintenance', '₹${money(mn['amount'])}'), ('All costs', '₹${money(t['all'])}'), ('KM (Log Book)', fmt(t['km'])),
-        ('₹ per KM', blankV(t['perKm']) ? '–' : '₹${money(t['perKm'])}'),
-        ('Last service', last.isEmpty ? '–' : '${dmy(last['date'])}${blankV(last['km']) ? '' : ' · ${fmt(last['km'])} km'}'),
-      ],
+      kpis: card
+          ? [
+              ('Fuel', '${fmt(fu['qty'])} $u · ₹${money(fu['amount'])}'), ('Maintenance', '₹${money(mn['amount'])}'), ('All costs', '₹${money(t['all'])}'), ('KM (Log Book)', fmt(t['km'])),
+              ('₹ per KM', blankV(t['perKm']) ? '–' : '₹${money(t['perKm'])}'), lastK,
+            ]
+          : [('Maintenance', '₹${money(mn['amount'])}'), lastK],
       blocks: [
-        RTable(sheet: 'Log Book', head: ['Sr', 'Date', 'Entry', 'What', 'Fuel ($u)', 'KM', 'Paid by / Garage', 'Amount (₹)'], numCols: const {4, 5, 7}, empty: 'No fill and no bill of this car in these dates.', rows: [
-          for (var i = 0; i < ls.length; i++)
-            RRow([sc(i + 1), tc(dmy(ls[i]['date'])), tc(ls[i]['id']), tc(what(ls[i])), ls[i]['kind'] == 'Fuel' ? RCell('${fmt(ls[i]['qty'])} $u', n: true, value: nOf(ls[i]['qty'])) : const RCell('', n: true), nc(ls[i]['km']),
-              tc(ls[i]['kind'] == 'Fuel' ? ls[i]['paidBy'] : ls[i]['garage']), mc(ls[i]['amount'])]),
-        ], foot: [
-          RRow([RCell('Fuel – ${fu['fills'] ?? 0} fill(s) (by card ₹${money(fu['card'])}, cash ₹${money(fu['cash'])})', bold: true, span: 4), RCell('${fmt(fu['qty'])} $u', n: true, bold: true, value: nOf(fu['qty'])), const RCell(''), const RCell(''), mc(fu['amount'], bold: true)], kind: RKind.sub),
-          RRow([RCell('Maintenance – ${mn['bills'] ?? 0} bill(s)${insT > 0 ? ' – we paid (bills ₹${money(mn['billTotal'])}, insurance ₹${money(insT)})' : ''}${freeT > 0 ? ' · free lines worth ₹${money(freeT)}' : ''}', bold: true, span: 7), mc(mn['amount'], bold: true)], kind: RKind.sub),
-          RRow([const RCell('All costs', bold: true, span: 7), mc(t['all'], bold: true)], kind: RKind.grand),
+        RTable(sheet: 'Log Book', head: const ['Sr No', 'Date', 'Party Name', 'Current Reading', 'Particulars', 'Qty', 'Uom', 'Basic Rate', 'Amount', 'GST Amount', 'Amount With GST', 'Total'], numCols: const {3, 5, 7, 8, 9, 10, 11},
+          empty: 'No maintenance bill of this machinery in these dates.', rows: rows, foot: [
+          RRow([RCell('Total – ${mn['bills'] ?? 0} bill(s)', bold: true, span: 8), mc(r2(sa), bold: true), mc(r2(sg), bold: true), mc(r2(sw), bold: true), mc(r2(sw), bold: true)], kind: RKind.grand),
+          if (nOf(mn['free']) > 0) RRow([const RCell('Free lines (warranty / FOC / service plan) – not paid, worth', span: 10), RCell(money(mn['free']), n: true, span: 2, value: nOf(mn['free']))], kind: RKind.sub),
         ]),
+        if (card) ...[
+          const RNote('Fuel', heading: true),
+          RTable(sheet: 'Fuel', head: ['Sr', 'Date', 'Entry', 'Fuel ($u)', 'KM', 'Paid by', 'Amount (₹)'], numCols: const {3, 4, 6}, empty: 'No fill of this car in these dates.', rows: [
+            for (var i = 0; i < fills.length; i++)
+              RRow([sc(i + 1), tc(dmy(fills[i]['date'])), tc(fills[i]['id']), RCell('${fmt(fills[i]['qty'])} $u', n: true, value: nOf(fills[i]['qty'])), nc(fills[i]['km']), tc(fills[i]['paidBy']), mc(fills[i]['amount'])]),
+          ], foot: [
+            RRow([RCell('Fuel – ${fu['fills'] ?? 0} fill(s) (by card ₹${money(fu['card'])}, cash ₹${money(fu['cash'])})', bold: true, span: 3), RCell('${fmt(fu['qty'])} $u', n: true, bold: true, value: nOf(fu['qty'])), const RCell(''), const RCell(''), mc(fu['amount'], bold: true)], kind: RKind.sub),
+            RRow([const RCell('All costs (fuel + maintenance)', bold: true, span: 6), mc(t['all'], bold: true)], kind: RKind.grand),
+          ]),
+        ],
         const RNote('Maintenance by work / part', heading: true),
         RTable(sheet: 'By work', head: const ['Sr', 'Work / part', 'Times', 'Amount (₹)'], numCols: const {2, 3}, empty: 'No maintenance bill in these dates.', rows: [
           for (var i = 0; i < by.length; i++) RRow([sc(i + 1), tc(by[i]['work']), nc(by[i]['n']), mc(by[i]['amount'])]),
         ], foot: [
-          if (insT > 0) ...[
+          if (nOf(mn['insurance']) > 0) ...[
             RRow([const RCell('Paid lines of the bills', bold: true, span: 3), mc(mn['billTotal'], bold: true)], kind: RKind.sub),
-            RRow([const RCell('Paid by the insurance', bold: true, span: 3), mc(-insT, bold: true)], kind: RKind.sub),
+            RRow([const RCell('Paid by the insurance', bold: true, span: 3), mc(-nOf(mn['insurance']), bold: true)], kind: RKind.sub),
           ],
-          RRow([RCell(insT > 0 ? 'We paid' : 'Total', bold: true, span: 3), mc(mn['amount'], bold: true)], kind: RKind.grand),
+          RRow([RCell(nOf(mn['insurance']) > 0 ? 'We paid' : 'Total', bold: true, span: 3), mc(mn['amount'], bold: true)], kind: RKind.grand),
         ]),
       ],
     );

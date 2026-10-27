@@ -2998,9 +2998,9 @@ void main() {
     });
     final pdf = Uint8List.fromList(utf8.encode('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n'));
     pickAttFiles = (how, room) async => [(name: 'bill.pdf', bytes: pdf)];
-    // a site not on fuel cards: no Maintenance (even when given)
-    final s0 = await ready(t, FakeServer()..perms['Maintenance'] = 'Edit');
-    expect([for (final p in startPagesFor(s0)) p.$1], isNot(contains('mnt')));
+    // (3.50.0, Mechanical update-170) a site not on fuel cards: Maintenance too when given (3.46.0: only on fuel cards); Fuel Cards not
+    final s0 = await ready(t, FakeServer()..perms.addAll({'Maintenance': 'Edit', 'Fuel Cards': 'Edit'}));
+    expect([for (final p in startPagesFor(s0)) p.$1], allOf(contains('mnt'), isNot(contains('cards'))));
     final srv = FakeServer()
       ..perms.addAll({'Fuel Cards': 'Edit', 'Maintenance': 'Edit'})
       ..card = true
@@ -3049,7 +3049,7 @@ void main() {
     final x = Map<String, dynamic>.from(srv.maintCalls[sv]['x'] as Map);
     expect((x.remove('files') as List).length, 1);
     // (3.49.0, update-168) every line with its kind, Qty, Rate, Disc % (blank: none on the bill); no insurance part
-    const paidLine = {'type': 'Paid', 'qty': '', 'rate': '', 'disc': ''};
+    const paidLine = {'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': ''};      // (3.50.0: its Uom)
     expect(x, {'date': '2026-10-13', 'no': 'MH-12-HO-1163', 'garage': 'Maruti Service', 'billNo': 'MS-77', 'km': 46100, 'service': true, 'remark': '',
       'lines': [{'work': 'Service charge', ...paidLine, 'amount': 2500}, {'work': 'Coolant', ...paidLine, 'amount': 600}, {'work': 'GST 18%', ...paidLine, 'amount': 540}], 'insurance': null});
     expect(find.byKey(const Key('mt-r-MT-000003')), findsOneWidget);
@@ -3101,7 +3101,10 @@ void main() {
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-1163'}, reason: 'no fuel sent');
     expect(find.widgetWithText(DropdownButtonFormField<String>, 'Fuel'), findsNothing);
     expect(find.text('Maintenance Log Book – MH-12-HO-1163'), findsWidgets);
-    expect(find.textContaining('Bill TS-101 – Engine oil ₹1,200'), findsOneWidget);
+    // (3.50.0, update-170) his format: a row a line, the party (and bill no.) on the bill's first row; the fills apart (a site on fuel cards)
+    expect(find.text('Toyota Service · Bill TS-101'), findsOneWidget);
+    expect(find.text('Engine oil'), findsWidgets);
+    expect(find.text('Amount With GST'), findsWidgets);
     expect(find.textContaining('Fuel – 2 fill(s) (by card ₹2,100'), findsOneWidget);
   });
 
@@ -3184,6 +3187,10 @@ void main() {
     expect(find.byKey(const Key('mf-worth-4')), findsNothing);
     await pick(4, 'FOC');
     expect([kind(4).value, box('mf-a-4'), txt('mf-worth-4'), txt('mf-total')], ['FOC', '0', 'worth ₹250', '₹ 2,821']);
+    // (3.50.0, update-170) a line's Uom typed
+    await t.ensureVisible(find.byKey(const Key('mf-u-2')));
+    await t.enterText(find.byKey(const Key('mf-u-2')), 'Ltr');
+    await settle(t, 300);
     await t.ensureVisible(find.byKey(const Key('mf-wepaid')));
     await settle(t, 300);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/66_mnt_bill_insurance.png'));
@@ -3193,9 +3200,9 @@ void main() {
     final ls = [for (final l in x['lines'] as List) Map<String, dynamic>.from(l as Map)];
     expect(x['no'], 'MH-12-HO-2163');
     expect([for (final l in ls) l['type']], ['Paid', 'Paid', 'Service Plan', 'Warranty', 'FOC', 'Paid', 'Paid', 'Paid']);
-    expect(ls[1], {'work': 'Wheel alignment', 'type': 'Paid', 'qty': 1, 'rate': 600, 'disc': 0, 'amount': 600});
-    expect(ls[2], {'work': 'Engine oil', 'type': 'Service Plan', 'qty': 4.5, 'rate': 520, 'disc': 100, 'amount': 0});
-    expect(ls[5], {'work': 'CGST 9%', 'type': 'Paid', 'qty': '', 'rate': '', 'disc': 0, 'amount': 210.6});
+    expect(ls[1], {'work': 'Wheel alignment', 'type': 'Paid', 'qty': 1, 'uom': '', 'rate': 600, 'disc': 0, 'amount': 600});
+    expect(ls[2], {'work': 'Engine oil', 'type': 'Service Plan', 'qty': 4.5, 'uom': 'Ltr', 'rate': 520, 'disc': 100, 'amount': 0}, reason: '(3.50.0) the Uom typed');
+    expect(ls[5], {'work': 'CGST 9%', 'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': 0, 'amount': 210.6});
     expect(x['insurance'], {'company': ins, 'claimNo': 'CLM-168', 'paid': 2000});
     expect(find.textContaining('(We paid ₹821 of ₹2,821.)'), findsOneWidget, reason: 'the message says what we paid of the bill');
     // the list: what we paid, the bill and the insurance, the free lines' worth
@@ -3230,8 +3237,8 @@ void main() {
     await settle(t, 300);
     // the car's log book: "we paid" with the bills and the insurance, the free lines' worth (as the web)
     srv.maintLogAnswer = {'title': 'Maintenance Log Book – MH-12-HO-2163', 'from': '2026-10-01', 'to': '2026-10-14', 'generated': '14-10-2026 10:00', 'company': 'Rachana Construction Limited',
-      'machine': {'id': 'MH-12-HO-2163', 'name': 'Innova', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr'},
-      'lines': [{'date': '2026-10-13', 'kind': 'Maintenance', 'id': 'MT-000003', 'no': 'MH-12-HO-2163', 'garage': 'Test Toyota', 'billNo': '07668, 02040', 'km': 61234, 'amount': 821, 'total': 821, 'billTotal': 2821, 'free': 2940,
+      'machine': {'id': 'MH-12-HO-2163', 'name': 'Innova', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr', 'meter': 'KM'}, 'card': false,
+      'lines': [{'date': '2026-10-13', 'kind': 'Maintenance', 'id': 'MT-000003', 'no': 'MH-12-HO-2163', 'garage': 'Test Toyota', 'party': 'Test Toyota', 'billNo': '07668, 02040', 'km': 61234, 'amount': 821, 'total': 821, 'billTotal': 2821, 'free': 2940,
         'insurance': {'company': ins, 'claimNo': 'CLM-168', 'paid': 2000}, 'service': true, 'files': 1, 'lines': [{'work': 'Wheel alignment', 'type': 'Paid', 'amount': 600}, {'work': 'Oil filter', 'type': 'Warranty', 'amount': 0, 'qty': 1, 'rate': 350}]}],
       'total': {'fuel': {'qty': 0, 'amount': 0, 'card': 0, 'cash': 0, 'fills': 0}, 'maint': {'amount': 821, 'bills': 1, 'billTotal': 2821, 'insurance': 2000, 'free': 2940}, 'all': 821, 'km': 0, 'perKm': null,
         'byWork': [{'work': 'Wheel alignment', 'amount': 600, 'n': 1}]},
@@ -3243,8 +3250,11 @@ void main() {
     await tapK(t, 'mt-log');
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-2163'});
-    expect(find.textContaining('Bill 07668, 02040 – Wheel alignment ₹600.00; Oil filter (Warranty) · Service · bill ₹2,821.00, insurance ₹2,000.00 ($ins)'), findsOneWidget);
-    expect(find.textContaining('Maintenance – 1 bill(s) – we paid (bills ₹2,821.00, insurance ₹2,000.00) · free lines worth ₹2,940.00'), findsOneWidget);
+    // (3.50.0, update-170) his format: the bill's lines, the free one with its kind, the insurance's row, the total of the lines; by work: we paid
+    for (final w in ['Test Toyota · Bill 07668, 02040', 'Wheel alignment', 'Oil filter (Warranty)', 'Paid by the insurance – $ins (claim no. CLM-168)', 'Total – 1 bill(s)', 'Free lines (warranty / FOC / service plan) – not paid, worth']) {
+      expect(find.text(w), findsWidgets, reason: w);
+    }
+    expect(find.textContaining('Fuel – '), findsNothing, reason: 'not a site on fuel cards here: no fuel table');
     for (final w in ['Paid lines of the bills', 'Paid by the insurance', 'We paid']) {
       expect(find.text(w), findsWidgets, reason: w);
     }

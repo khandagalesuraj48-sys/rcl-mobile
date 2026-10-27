@@ -1000,5 +1000,8 @@
 "This bill is a service": "यह बिल सर्विस का है",
 "(PDF / photos) · up to {0}": "(PDF / फोटो) · ज़्यादा से ज़्यादा {0}",
 "e.g. 08/2029": "जैसे 08/2029",
-"Free lines worth": "मुफ़्त लाइनों की क़ीमत"
+"Free lines worth": "मुफ़्त लाइनों की क़ीमत",
+"Every bill of a machinery, line by line – party, reading, Qty, Uom, rate, GST": "मशिनरी का हर बिल, लाइन दर लाइन – party, reading, Qty, Uom, दर, GST",
+"The bills of a machinery, their files, its log book": "मशिनरी के बिल, उनकी files, उसकी log book",
+"A bill of a machinery: its work / parts and its ₹, with the bill PDF or photo.": "मशिनरी का बिल: उसके काम / पार्ट्स और ₹, बिल की PDF या photo के साथ."
 }

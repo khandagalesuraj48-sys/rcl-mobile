@@ -735,7 +735,7 @@ Future<void> openHelp(BuildContext context) async {
     ('diesel', 'Diesel Issue', 'fuel_pump'),
     if (!s.cardSite) ...[('inward', 'Diesel Inward', 'inbox_tray'), ('transfer', 'Diesel Transfer', 'left-right_arrow')],
     if (s.cardSite && s.canSee('Fuel Cards')) ('cards', 'Fuel Cards', 'ledger'),
-    if (s.cardSite && s.canSee('Maintenance')) ('mnt', 'Maintenance', 'wrench'),      // (3.46.0)
+    if (s.canSee('Maintenance')) ('mnt', 'Maintenance', 'wrench'),      // (3.46.0; 3.50.0: at every site)
     ('log', 'Log Book', 'notebook'), ('brk', 'Breakdown', 'wrench'), ('approvals', 'Approvals', 'clipboard'), ('settings', 'My settings', 'gear'),
   ];
   final pick = await showModalBottomSheet<String>(
