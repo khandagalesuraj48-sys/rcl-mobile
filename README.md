@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.47.0 (27-10-2026 – "fuel card number / details takayla option nahiye te baanaw", with Mechanical update-166):** a fuel
+card's **details** – Bank / company, Name on the card, **Expiry** (month / year, typed as 08/2029), Customer / Account ID – in the card's
+form (Fuel Cards → a card → Change card, or + Card); the tile shows its bank / company and a mark **"Expires 31-10-2026"** (amber –
+within 30 days of its last good day) or **"Expired 08/2026"** (red), also on the Dashboard's cards; its sheet shows every detail. The
+number stays **only its last 4 digits** (his choice) – the server refuses a whole card number typed into any box. `FuelCard.issuer`
+/ `holder` / `expiry` / `custId` / `expDays` (the server's days to its last good day), `cardExpNote`.
+
 **Version 3.46.0 (27-10-2026 – step 2 of HO, the Maintenance Log Book, with Mechanical update-165):** at a site on fuel cards the page
 **Maintenance** (its own screens, `screens/maintenance.dart`; access: the Portal's page "Maintenance" – Edit / View, blank = none):
 the bills of the dates (and of one car) with their total; **one bill of a car** – date, car, garage, bill number, KM, **Service** (its

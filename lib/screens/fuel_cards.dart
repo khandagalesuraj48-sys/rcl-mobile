@@ -26,6 +26,17 @@ const kCardTypes = ['Fuel card', 'Credit card', 'Debit card'];
 /// A card's balance as the app shows it everywhere
 String rupees(num? n) => '₹ ${fmtNum(n ?? 0)}';
 
+/// (3.47.0, Mechanical update-166) a card's expiry mark, as the web: "Expired 08/2026" (red), or "Expires 31-10-2026" (amber) within 30
+/// days of its last good day; null = no mark (no expiry, or further away)
+({String text, Color fg, Color bg})? cardExpNote(FuelCard c) {
+  final d = c.expDays;
+  if (c.expiry.isEmpty || d == null) return null;
+  if (d < 0) return (text: 'Expired ${c.expiryMY}', fg: C.red, bg: C.redSoft);
+  if (d > 30) return null;
+  final last = DateTime(int.parse(c.expiry.substring(0, 4)), int.parse(c.expiry.substring(5, 7)) + 1, 0);
+  return (text: 'Expires ${showDate(dateKey(last))}', fg: C.amber, bg: C.amberSoft);
+}
+
 class FuelCardsScreen extends StatefulWidget {
   const FuelCardsScreen({super.key});
   @override
@@ -132,13 +143,20 @@ class _FuelCardsScreenState extends State<FuelCardsScreen> {
   Future<void> _cardSheet(FuelCard c, bool can) async {
     final v = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,      // (3.47.0) its details too: it scrolls on a short screen
       builder: (bc) => SafeArea(
-        child: Padding(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(bc).size.height * .85),
+          child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(c.name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
             InfoRow('Kind', [c.type, if (c.last4.isNotEmpty) '···· ${c.last4}', if (!c.active) 'Inactive'].join(' · ')),
+            if (c.issuer.isNotEmpty) InfoRow('Bank / company', c.issuer),
+            if (c.holder.isNotEmpty) InfoRow('Name on the card', c.holder),
+            if (c.expiry.isNotEmpty) InfoRow('Expiry', cardExpNote(c)?.text ?? c.expiryMY, tone: cardExpNote(c)?.fg ?? C.ink),
+            if (c.custId.isNotEmpty) InfoRow('Customer / Account ID', c.custId),
             InfoRow('Cars', c.cars.isEmpty ? tr('every car') : c.cars.join(', ')),
             InfoRow('Opening', '${rupees(c.opening)} · ${showDate(c.openDate)}'),
             InfoRow('Paid in', rupees(c.paid)),
@@ -151,6 +169,7 @@ class _FuelCardsScreenState extends State<FuelCardsScreen> {
               OutlinedButton.icon(key: const Key('fc-edit'), onPressed: () => Navigator.pop(bc, 'edit'), icon: const Icon(Icons.edit_rounded), label: Text('Change card')),
             ],
           ]),
+        ),
         ),
       ),
     );
@@ -232,7 +251,8 @@ class CardTile extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              Text([c.type, if (c.last4.isNotEmpty) '···· ${c.last4}', if (!c.active) 'Inactive', if (c.lastFill.isNotEmpty) 'last fill ${showDate(c.lastFill)}'].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+              Text([c.type, if (c.last4.isNotEmpty) '···· ${c.last4}', if (c.issuer.isNotEmpty) c.issuer, if (!c.active) 'Inactive', if (c.lastFill.isNotEmpty) 'last fill ${showDate(c.lastFill)}'].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+              if (cardExpNote(c) case final ex?) Padding(padding: const EdgeInsets.only(top: 4), child: Pill(ex.text, key: Key('fc-exp-${c.name}'), color: ex.fg, bg: ex.bg)),
             ])),
             Text(rupees(c.balance), key: Key('fc-bal-${c.name}'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: c.balance < 0 ? C.red : C.greenDark)),
           ]),
@@ -250,6 +270,8 @@ class CardForm extends StatefulWidget {
 
 class _CardFormState extends State<CardForm> {
   final name = TextEditingController(), last4 = TextEditingController(), opening = TextEditingController();
+  // (3.47.0) its details: bank / company, the name on it, its expiry (month / year), the customer / account ID
+  final issuer = TextEditingController(), holder = TextEditingController(), expiry = TextEditingController(), custId = TextEditingController();
   String type = kCardTypes.first, openDate = '', err = '';
   bool active = true, busy = false;
   final cars = <String>{};
@@ -266,6 +288,10 @@ class _CardFormState extends State<CardForm> {
       openDate = c.openDate;
       active = c.active;
       cars.addAll(c.cars);
+      issuer.text = c.issuer;
+      holder.text = c.holder;
+      expiry.text = c.expiryMY;
+      custId.text = c.custId;
     }
   }
 
@@ -277,9 +303,9 @@ class _CardFormState extends State<CardForm> {
 
   @override
   void dispose() {
-    name.dispose();
-    last4.dispose();
-    opening.dispose();
+    for (final x in [name, last4, opening, issuer, holder, expiry, custId]) {
+      x.dispose();
+    }
     super.dispose();
   }
 
@@ -290,7 +316,8 @@ class _CardFormState extends State<CardForm> {
       err = '';
     });
     try {
-      final r = (await s.api.call('saveCard', [{'was': widget.card?.name ?? '', 'name': name.text.trim(), 'type': type, 'last4': last4.text.trim(), 'opening': asNum(opening.text) ?? '', 'openDate': openDate, 'active': active, 'cars': cars.toList()}], true) as Map).cast<String, dynamic>();
+      final r = (await s.api.call('saveCard', [{'was': widget.card?.name ?? '', 'name': name.text.trim(), 'type': type, 'last4': last4.text.trim(), 'opening': asNum(opening.text) ?? '', 'openDate': openDate, 'active': active, 'cars': cars.toList(),
+        'issuer': issuer.text.trim(), 'holder': holder.text.trim(), 'expiry': expiry.text.trim(), 'custId': custId.text.trim()}], true) as Map).cast<String, dynamic>();
       s.setCards(r['cards']);
       if (r['stock'] != null) s.setStock(r['stock']);
       if (!mounted) return;
@@ -316,6 +343,14 @@ class _CardFormState extends State<CardForm> {
         PickField(key: const Key('cf-type'), label: 'Kind', value: type, items: kCardTypes, onChanged: (v) => setState(() => type = v)),
         const SizedBox(height: 10),
         TextBox(key: const Key('cf-last4'), label: 'Last 4 digits', controller: last4, kb: TextInputType.number, hint: 'never the whole number'),
+        const SizedBox(height: 10),
+        TextBox(key: const Key('cf-issuer'), label: 'Bank / company', controller: issuer, hint: 'e.g. HDFC Bank, IOCL, BPCL'),
+        const SizedBox(height: 10),
+        TextBox(key: const Key('cf-holder'), label: 'Name on the card', controller: holder, hint: 'person or company'),
+        const SizedBox(height: 10),
+        TextBox(key: const Key('cf-exp'), label: 'Expiry (month / year)', controller: expiry, kb: TextInputType.datetime, hint: 'e.g. 08/2029'),
+        const SizedBox(height: 10),
+        TextBox(key: const Key('cf-cust'), label: 'Customer / Account ID', controller: custId, hint: 'of the card programme – not the card number'),
         const SizedBox(height: 10),
         TextBox(key: const Key('cf-open'), label: 'Opening balance (₹)', controller: opening, kb: const TextInputType.numberWithOptions(decimal: true)),
         const SizedBox(height: 10),

@@ -2947,6 +2947,47 @@ void main() {
     expect(find.textContaining('Fuel Petrol 30 L · CNG 12 kg · ₹ 4,300 (by card ₹ 3,200, cash ₹ 1,100)'), findsOneWidget, reason: 'each fuel on its own');
   });
 
+  testWidgets('(3.47.0 – Mechanical update-166) a fuel card\'s details: bank / company, the name on it, its expiry (a mark when it ends within 30 days), the customer ID – shown on the tile and its sheet, sent with the card; the number stays its last 4 digits', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit'})
+      ..card = true;
+    final s = await ready(t, srv);
+    final sbi = s.card('SBI CREDIT')!;
+    expect([sbi.issuer, sbi.holder, sbi.expiry, sbi.expiryMY, sbi.custId, sbi.expDays], ['SBI Card', 'Rachana Construction Ltd', '2026-10', '10/2026', 'SBI-44120', 17]);
+    expect(s.card('HDFC FUEL')!.expDays, isNull, reason: 'no expiry given: no mark');
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Fuel Cards');
+    await net(t);
+    expect((t.widget(find.byKey(const Key('fc-exp-SBI CREDIT'))) as dynamic).text, 'Expires 31-10-2026', reason: 'it ends this month – its last good day, amber');
+    expect(find.byKey(const Key('fc-exp-HDFC FUEL')), findsNothing);
+    expect(find.textContaining('Credit card · ···· 9876 · SBI Card'), findsOneWidget);
+    await t.tap(find.byKey(const Key('fc-c-SBI CREDIT')));
+    await settle(t, 800);
+    expect(find.text('SBI Card'), findsOneWidget);
+    expect(find.text('Rachana Construction Ltd'), findsOneWidget);
+    expect(find.text('SBI-44120'), findsOneWidget);
+    await t.tapAt(const Offset(20, 100));
+    await settle(t, 800);
+    // a card changed with its details
+    await t.tap(find.byKey(const Key('fc-c-HDFC FUEL')));
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('fc-edit')));
+    await net(t);
+    await t.enterText(find.byKey(const Key('cf-issuer')), 'HDFC Bank');
+    await t.enterText(find.byKey(const Key('cf-holder')), 'Sujit Mule');
+    await t.enterText(find.byKey(const Key('cf-exp')), '08/2029');
+    await t.enterText(find.byKey(const Key('cf-cust')), 'CUST 778899');
+    await settle(t, 300);
+    await tapK(t, 'cf-save');
+    await net(t);
+    final x = srv.cardCalls.lastWhere((c) => c['fn'] == 'saveCard')['x'] as Map;
+    expect([x['was'], x['name'], x['last4'], x['issuer'], x['holder'], x['expiry'], x['custId']], ['HDFC FUEL', 'HDFC FUEL', '4321', 'HDFC Bank', 'Sujit Mule', '08/2029', 'CUST 778899'], reason: 'the server checks and keeps them (yyyy-MM)');
+  });
+
   testWidgets('(3.46.0 – Mechanical update-165) Maintenance at a site on fuel cards (HO): the bills of the month; a bill with a PDF – "Read the bill (AI)" fills the empty boxes (blue), a line typed over, the file sent with maintFile, then saveMaint; the same bill again asks first; its files; Delete; the car\'s Maintenance Log Book (no fuel choice)', (t) async {
     phone(t);
     final p0 = pickAttFiles, c0 = attCompute;
