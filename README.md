@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.52.0 (27-10-2026 – "pdf print keli ki gst raw madhe ka dakhawat aahe heading madhe aahet gst tr", with Mechanical
+update-172):** the car's **Maintenance Log Book** (screen, Excel, PDF) shows no GST row: a bill saved before 3.51.0 with its taxes as lines
+of their own ("CGST @ 9%", "SGST @ 9%", "GST 18%" or "IGST 18%" – one rate) has them on its items – by the tax's % when that makes the
+bill's tax, else in the items' proportion – each item its CGST / SGST in the heading's columns; the bill's total stays what was saved.
+A line's name is written without its kind after it ("Oil filter", not "Oil filter (Warranty)") – Paid by is its own column. "By work /
+part" (the server's) has no CGST / SGST work either. The web's help and words taken again.
+
 **Version 3.51.0 (27-10-2026 – "gst row madhe nko heading madhe ghe 9 9 18 … koni paid kel insurance claim aahe nahi service ch
 bill ahe ka as sagle hawa entry krtana pn ani log print madhe pn", with Mechanical update-171):** each line of a maintenance bill
 has its **GST %** (one number – CGST and SGST are half each) – the card shows its GST ₹ and its amount with GST, the bill total is

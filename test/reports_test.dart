@@ -158,4 +158,37 @@ void main() {
     expect(c.tables.single.rows.single.cells.last.value, 8, reason: 'the numbers stay as they are');
     expect(fuelDoc(d, 'Petrol').title, 'Petrol Cost Report');
   });
+
+  // (3.52.0, Mechanical update-172) a bill of before with its taxes as lines of their own: no GST row in the log book – each tax on the
+  // bill's items (by its %, else in their proportion), the name of a line without its kind (Paid by is its column)
+  test('the Maintenance Log Book: a bill of before – its CGST / SGST lines on its items, no GST row; a line\'s name without its kind', () {
+    final b = <Map<String, dynamic>>[
+      {'work': 'Filter – engine oil element', 'type': 'Service Plan', 'qty': 1, 'rate': 1966.56, 'amount': 0},
+      {'work': 'Fluid – diesel exhaust', 'type': 'Paid', 'qty': 1, 'rate': 5610.42, 'amount': 5610.42},
+      {'work': 'Battery – additional, L', 'type': 'Paid', 'qty': 1, 'rate': 724.59, 'amount': 724.59},
+      {'work': 'CGST @ 9%', 'type': 'Paid', 'amount': 570.15}, {'work': 'SGST @ 9%', 'type': 'Paid', 'amount': 570.15},
+      {'work': 'Adjustment', 'type': 'Paid', 'amount': -0.31},
+    ];
+    final s = maintSpread(b);
+    expect([for (final l in s) l['work']], ['Filter – engine oil element', 'Fluid – diesel exhaust', 'Battery – additional, L', 'Adjustment']);
+    expect([s[1]['tax'], s[2]['tax'], s[1]['taxRate']], [{'c': 504.94, 's': 504.94, 'i': 0}, {'c': 65.21, 's': 65.21, 'i': 0}, 18]);
+    // a tax that does not fit its %: in the items' proportion; "GST 18%": half CGST, half SGST; IGST: the GST column; as saved: two rates, a cess
+    expect([for (final l in maintSpread([{'work': 'A', 'amount': 1000}, {'work': 'B', 'amount': 333}, {'work': 'CGST 9%', 'amount': 60}, {'work': 'SGST 9%', 'amount': 60}])) l['tax']],
+        [{'c': 45.01, 's': 45.01, 'i': 0}, {'c': 14.99, 's': 14.99, 'i': 0}]);
+    expect([for (final l in maintSpread([{'work': 'Engine oil', 'amount': 1200}, {'work': 'Labour', 'amount': 500}, {'work': 'GST 18%', 'amount': 306}])) l['tax']],
+        [{'c': 108, 's': 108, 'i': 0}, {'c': 45, 's': 45, 'i': 0}]);
+    expect(maintSpread([{'work': 'Tyre', 'amount': 10000}, {'work': 'IGST 28%', 'amount': 2800}]).single['tax'], {'c': 0, 's': 0, 'i': 2800});
+    expect(maintSpread([{'work': 'Oil', 'amount': 1000}, {'work': 'CGST 9%', 'amount': 90}, {'work': 'CGST 14%', 'amount': 28}]).length, 3);
+    expect(maintSpread([{'work': 'Oil', 'amount': 1000}, {'work': 'Cess 1%', 'amount': 10}]).length, 2);
+    // the log book of that bill: 4 rows, CGST 9% / SGST 9% in the heading, each item its part; the Total as the bill
+    final doc = kMaintLog.build({'title': 'Maintenance Log Book – DD-01-G-0169', 'from': '2025-08-01', 'to': '2026-10-27', 'machine': {'id': 'DD-01-G-0169', 'meter': 'KM'}, 'card': false,
+      'lines': [{'date': '2025-09-12', 'kind': 'Maintenance', 'garage': 'Navnit Motors Pvt Ltd', 'billNo': 'S2526NMM2-04590', 'km': 13153, 'service': true, 'amount': 7475, 'lines': b}],
+      'total': {'maint': {'amount': 7475, 'bills': 1, 'billTotal': 7475, 'insurance': 0, 'free': 1966.56}, 'byWork': []}});
+    final t = doc.tables.first;
+    expect(t.head, ['Sr No', 'Date', 'Party Name', 'Current Reading', 'Particulars', 'Qty', 'Uom', 'Basic Rate', 'Amount', 'CGST 9%', 'SGST 9%', 'GST 18%', 'Amount With GST', 'Paid by', 'Insurance claim', 'Service', 'Total']);
+    expect([for (final r in t.rows) r.cells[4].text], ['Filter – engine oil element', 'Fluid – diesel exhaust', 'Battery – additional, L', 'Adjustment'], reason: 'no CGST / SGST row; no "(Service Plan)" after the name');
+    expect([for (final c in t.rows[1].cells.sublist(8)) c.text], ['5,610.42', '504.94', '504.94', '1,009.88', '6,620.30', 'RCL', 'No', 'Yes', '6,620.30']);
+    expect([for (final c in t.rows[0].cells.sublist(12, 14)) c.text], ['0.00', 'Service Plan']);
+    expect([for (final c in t.foot.first.cells) c.text], ['Total – 1 bill(s)', '6,334.70', '570.15', '570.15', '1,140.30', '7,475.00', '', '', '', '7,475.00']);
+  });
 }

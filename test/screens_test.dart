@@ -3252,9 +3252,11 @@ void main() {
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-2163'});
     // (3.50.0, update-170) his format: the bill's lines, the free one with its kind, the insurance's row, the total of the lines; by work: we paid
-    for (final w in ['Test Toyota · Bill 07668, 02040', 'Wheel alignment', 'Oil filter (Warranty)', 'Paid by the insurance – $ins (claim no. CLM-168)', 'Total – 1 bill(s)', 'Free lines (warranty / FOC / service plan) – not paid, worth']) {
+    // (3.52.0) a line's name without its kind after it – Paid by is its column
+    for (final w in ['Test Toyota · Bill 07668, 02040', 'Wheel alignment', 'Oil filter', 'Warranty', 'Paid by the insurance – $ins (claim no. CLM-168)', 'Total – 1 bill(s)', 'Free lines (warranty / FOC / service plan) – not paid, worth']) {
       expect(find.text(w), findsWidgets, reason: w);
     }
+    expect(find.text('Oil filter (Warranty)'), findsNothing);
     expect(find.textContaining('Fuel – '), findsNothing, reason: 'not a site on fuel cards here: no fuel table');
     for (final w in ['Paid lines of the bills', 'Paid by the insurance', 'We paid']) {
       expect(find.text(w), findsWidgets, reason: w);
