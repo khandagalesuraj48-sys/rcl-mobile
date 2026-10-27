@@ -31,7 +31,7 @@ import 'package:rcl_mobile/screens/attach_box.dart' show pickAttFiles, CaptureSc
 import 'package:image/image.dart' as img;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
-import 'package:rcl_mobile/ui/fields.dart' show TextBox;
+import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
@@ -3048,8 +3048,10 @@ void main() {
     expect(fi >= 0 && sv > fi, true, reason: 'the file is sent first (maintFile), then the bill');
     final x = Map<String, dynamic>.from(srv.maintCalls[sv]['x'] as Map);
     expect((x.remove('files') as List).length, 1);
+    // (3.49.0, update-168) every line with its kind, Qty, Rate, Disc % (blank: none on the bill); no insurance part
+    const paidLine = {'type': 'Paid', 'qty': '', 'rate': '', 'disc': ''};
     expect(x, {'date': '2026-10-13', 'no': 'MH-12-HO-1163', 'garage': 'Maruti Service', 'billNo': 'MS-77', 'km': 46100, 'service': true, 'remark': '',
-      'lines': [{'work': 'Service charge', 'amount': 2500}, {'work': 'Coolant', 'amount': 600}, {'work': 'GST 18%', 'amount': 540}]});
+      'lines': [{'work': 'Service charge', ...paidLine, 'amount': 2500}, {'work': 'Coolant', ...paidLine, 'amount': 600}, {'work': 'GST 18%', ...paidLine, 'amount': 540}], 'insurance': null});
     expect(find.byKey(const Key('mt-r-MT-000003')), findsOneWidget);
     // the same bill number of the same garage for the car again: asked first
     await t.tap(find.byKey(const Key('mt-add')));
@@ -3102,6 +3104,151 @@ void main() {
     expect(find.textContaining('Bill TS-101 – Engine oil ₹1,200'), findsOneWidget);
     expect(find.textContaining('Fuel – 2 fill(s) (by card ₹2,100'), findsOneWidget);
   });
+
+  testWidgets('(3.49.0 – Mechanical update-168) a bill as his: every line with its kind (Paid / Warranty / FOC / Service Plan), Qty, Rate, Disc % and ₹; the free lines ₹ 0 with their worth; the car from the bill\'s number; an insurance claim – we paid the rest; the list, the sheet, Change and the car\'s log book; the kinds in मराठी', (t) async {
+    phone(t);
+    final p0 = pickAttFiles, c0 = attCompute;
+    attCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);
+    addTearDown(() {
+      pickAttFiles = p0;
+      attCompute = c0;
+    });
+    final pdf = Uint8List.fromList(utf8.encode('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n% 168\n'));
+    pickAttFiles = (how, room) async => [(name: 'bill168.pdf', bytes: pdf)];
+    const ins = 'Test General Insurance';
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true
+      ..aiOn = true
+      // what the server gives from the AI's short lines (maintAnswer_): every line with its kind; the insurance = the bill less what we paid
+      ..maintRead = {'date': '2026-10-13', 'billNo': '07668, 02040', 'garage': 'Test Toyota', 'vehicle': 'MH12HO2163', 'km': 61234, 'service': true, 'total': 2761, 'check': '',
+        'lines': [
+          {'work': 'Periodic maintenance labour', 'type': 'Paid', 'amount': 1800, 'qty': 1, 'rate': 1800, 'disc': 0},
+          {'work': 'Wheel alignment', 'type': 'Paid', 'amount': 540, 'qty': 1, 'rate': 600, 'disc': 10},
+          {'work': 'Engine oil', 'type': 'Service Plan', 'amount': 0, 'qty': 4.5, 'rate': 520, 'disc': 100},
+          {'work': 'Oil filter', 'type': 'Warranty', 'amount': 0, 'qty': 1, 'rate': 350, 'disc': 0},
+          {'work': 'Car wash', 'type': 'FOC', 'amount': 0, 'qty': 1, 'rate': 250, 'disc': 0},
+          {'work': 'CGST 9%', 'type': 'Paid', 'amount': 210.6, 'disc': 0},
+          {'work': 'SGST 9%', 'type': 'Paid', 'amount': 210.6, 'disc': 0},
+          {'work': 'Round off', 'type': 'Paid', 'amount': -0.2, 'disc': 0},
+        ],
+        'insurance': {'company': ins, 'claimNo': 'CLM-168', 'paid': 2000}};
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    await t.tap(find.byKey(const Key('mt-add')));
+    await net(t);
+    // no car picked: the bill's number gives it
+    await tapK(t, 'att-pdf');
+    await net(t);
+    await tapK(t, 'mf-read');
+    await net(t);
+    String box(String k) => (t.widget(find.byKey(Key(k))) as TextBox).controller.text;
+    PickField kind(int i) => t.widget(find.byKey(Key('mf-t-$i'))) as PickField;
+    String txt(String k) => '${(t.widget(find.byKey(Key(k))) as dynamic).data}';
+    expect(find.descendant(of: find.byKey(const Key('mf-car')), matching: find.textContaining('MH-12-HO-2163')), findsOneWidget, reason: 'the car of the bill\'s vehicle number');
+    expect([for (var i = 0; i < 8; i++) kind(i).value], ['Paid', 'Paid', 'Service Plan', 'Warranty', 'FOC', 'Paid', 'Paid', 'Paid']);
+    expect(kind(0).items, ['Paid', 'Warranty', 'FOC', 'Service Plan']);
+    expect([box('mf-q-1'), box('mf-r-1'), box('mf-d-1'), box('mf-a-1')], ['1', '600', '10', '540']);
+    expect([box('mf-q-2'), box('mf-r-2'), box('mf-d-2'), box('mf-a-2')], ['4.5', '520', '100', '0']);
+    expect([for (final i in [2, 3, 4]) (t.widget(find.byKey(Key('mf-a-$i'))) as TextBox).enabled], [false, false, false], reason: 'a free line is ₹ 0 – not typed');
+    expect([for (final i in [2, 3, 4]) txt('mf-worth-$i')], ['worth ₹2,340', 'worth ₹350', 'worth ₹250']);
+    expect([box('mf-a-5'), box('mf-q-5'), box('mf-r-5')], ['210.6', '', '']);
+    expect([txt('mf-total'), txt('mf-free'), txt('mf-wepaid')], ['₹ 2,761', '₹ 2,940', '₹ 761']);
+    expect((t.widget(find.byKey(const Key('mf-ins'))) as SwitchListTile).value, true);
+    expect([box('mf-insco'), box('mf-insclaim'), box('mf-inspaid')], [ins, 'CLM-168', '2000']);
+    expect(find.byWidgetPredicate((w) => w is AiBox && w.on), findsNWidgets(18), reason: 'the date, car, garage, bill no., KM, Service, the 8 lines and the insurance (its switch, company, claim no., ₹) – blue');
+    expect(find.textContaining('Read by the AI (blue) – check every value before saving.'), findsOneWidget);
+    expect(find.textContaining('check the car'), findsNothing);
+    await t.ensureVisible(find.byKey(const Key('mf-a-1')));
+    await settle(t, 300);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/65_mnt_bill_lines.png'));
+    // typed: Disc % of line 2 → 0 – its ₹ from 1 × 600; the totals with it
+    await t.enterText(find.byKey(const Key('mf-d-1')), '0');
+    await settle(t, 300);
+    expect(box('mf-a-1'), '600');
+    expect([txt('mf-total'), txt('mf-wepaid')], ['₹ 2,821', '₹ 821']);
+    // "Car wash" FOC → Paid: ₹ 250 from 1 × 250, to be typed; back to FOC: ₹ 0
+    Future<void> pick(int i, String v) async {
+      await tapK(t, 'mf-t-$i');
+      await settle(t, 600);
+      await t.tap(find.text(v).last);
+      await settle(t, 600);
+    }
+    await pick(4, 'Paid');
+    expect([kind(4).value, box('mf-a-4'), (t.widget(find.byKey(const Key('mf-a-4'))) as TextBox).enabled, txt('mf-total'), txt('mf-free')], ['Paid', '250', true, '₹ 3,071', '₹ 2,690']);
+    expect(find.byKey(const Key('mf-worth-4')), findsNothing);
+    await pick(4, 'FOC');
+    expect([kind(4).value, box('mf-a-4'), txt('mf-worth-4'), txt('mf-total')], ['FOC', '0', 'worth ₹250', '₹ 2,821']);
+    await t.ensureVisible(find.byKey(const Key('mf-wepaid')));
+    await settle(t, 300);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/66_mnt_bill_insurance.png'));
+    await tapK(t, 'mf-save');
+    await net(t);
+    final x = Map<String, dynamic>.from(srv.maintCalls.lastWhere((c) => c['fn'] == 'saveMaint')['x'] as Map);
+    final ls = [for (final l in x['lines'] as List) Map<String, dynamic>.from(l as Map)];
+    expect(x['no'], 'MH-12-HO-2163');
+    expect([for (final l in ls) l['type']], ['Paid', 'Paid', 'Service Plan', 'Warranty', 'FOC', 'Paid', 'Paid', 'Paid']);
+    expect(ls[1], {'work': 'Wheel alignment', 'type': 'Paid', 'qty': 1, 'rate': 600, 'disc': 0, 'amount': 600});
+    expect(ls[2], {'work': 'Engine oil', 'type': 'Service Plan', 'qty': 4.5, 'rate': 520, 'disc': 100, 'amount': 0});
+    expect(ls[5], {'work': 'CGST 9%', 'type': 'Paid', 'qty': '', 'rate': '', 'disc': 0, 'amount': 210.6});
+    expect(x['insurance'], {'company': ins, 'claimNo': 'CLM-168', 'paid': 2000});
+    expect(find.textContaining('(We paid ₹821 of ₹2,821.)'), findsOneWidget, reason: 'the message says what we paid of the bill');
+    // the list: what we paid, the bill and the insurance, the free lines' worth
+    expect(find.descendant(of: find.byKey(const Key('mt-r-MT-000003')), matching: find.text('₹ 821')), findsOneWidget);
+    expect(txt('mt-note-MT-000003'), 'bill ₹2,821 · insurance ₹2,000 ($ins) · free worth ₹2,940');
+    expect(find.descendant(of: find.byKey(const Key('mt-r-MT-000003')), matching: find.textContaining('Engine oil (Service Plan); Oil filter (Warranty); Car wash (FOC)')), findsOneWidget);
+    // the sheet
+    await tapK(t, 'mt-r-MT-000003');
+    await settle(t, 800);
+    expect(find.text('Service Plan · worth ₹2,340'), findsOneWidget);
+    expect(find.text('₹ 600 · 1 × 600'), findsOneWidget);
+    expect(find.text('− ₹ 2,000 · $ins · Claim no. CLM-168'), findsOneWidget);
+    expect(find.text('We paid'), findsOneWidget);
+    expect(find.text('₹ 2,940'), findsOneWidget, reason: 'the free lines\' worth');
+    // Change: everything back; saved as it is
+    await tapK(t, 'mt-edit');
+    await net(t);
+    expect([for (var i = 0; i < 8; i++) kind(i).value], ['Paid', 'Paid', 'Service Plan', 'Warranty', 'FOC', 'Paid', 'Paid', 'Paid']);
+    expect([(t.widget(find.byKey(const Key('mf-ins'))) as SwitchListTile).value, box('mf-insco'), box('mf-insclaim'), box('mf-inspaid'), txt('mf-wepaid')], [true, ins, 'CLM-168', '2000', '₹ 821']);
+    expect(find.byWidgetPredicate((w) => w is AiBox && w.on), findsNothing, reason: 'a bill opened to change: nothing blue');
+    // the kinds in मराठी – shown in Marathi, their English values kept and sent
+    await Lang.i.set('mr', read: (p) async => p.endsWith('web_mr.json') ? jsonEncode({'Service Plan': 'सर्व्हिस प्लॅन', 'Warranty': 'वॉरंटी', 'Kind': 'प्रकार'}) : '{}');
+    await settle(t, 600);
+    expect(find.text('सर्व्हिस प्लॅन'), findsWidgets);
+    expect(kind(2).value, 'Service Plan');
+    await tapK(t, 'mf-save');
+    await net(t);
+    final u = Map<String, dynamic>.from(srv.maintCalls.lastWhere((c) => c['fn'] == 'updateMaint')['x'] as Map);
+    expect([for (final l in u['lines'] as List) (l as Map)['type']], ['Paid', 'Paid', 'Service Plan', 'Warranty', 'FOC', 'Paid', 'Paid', 'Paid']);
+    expect(u['insurance'], {'company': ins, 'claimNo': 'CLM-168', 'paid': 2000});
+    await Lang.i.set('');
+    await settle(t, 300);
+    // the car's log book: "we paid" with the bills and the insurance, the free lines' worth (as the web)
+    srv.maintLogAnswer = {'title': 'Maintenance Log Book – MH-12-HO-2163', 'from': '2026-10-01', 'to': '2026-10-14', 'generated': '14-10-2026 10:00', 'company': 'Rachana Construction Limited',
+      'machine': {'id': 'MH-12-HO-2163', 'name': 'Innova', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr'},
+      'lines': [{'date': '2026-10-13', 'kind': 'Maintenance', 'id': 'MT-000003', 'no': 'MH-12-HO-2163', 'garage': 'Test Toyota', 'billNo': '07668, 02040', 'km': 61234, 'amount': 821, 'total': 821, 'billTotal': 2821, 'free': 2940,
+        'insurance': {'company': ins, 'claimNo': 'CLM-168', 'paid': 2000}, 'service': true, 'files': 1, 'lines': [{'work': 'Wheel alignment', 'type': 'Paid', 'amount': 600}, {'work': 'Oil filter', 'type': 'Warranty', 'amount': 0, 'qty': 1, 'rate': 350}]}],
+      'total': {'fuel': {'qty': 0, 'amount': 0, 'card': 0, 'cash': 0, 'fills': 0}, 'maint': {'amount': 821, 'bills': 1, 'billTotal': 2821, 'insurance': 2000, 'free': 2940}, 'all': 821, 'km': 0, 'perKm': null,
+        'byWork': [{'work': 'Wheel alignment', 'amount': 600, 'n': 1}]},
+      'lastService': {'date': '2026-10-13', 'km': 61234, 'id': 'MT-000003'}};
+    await tapK(t, 'mt-car');
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-2163').last);
+    await net(t);
+    await tapK(t, 'mt-log');
+    await net(t);
+    expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-2163'});
+    expect(find.textContaining('Bill 07668, 02040 – Wheel alignment ₹600.00; Oil filter (Warranty) · Service · bill ₹2,821.00, insurance ₹2,000.00 ($ins)'), findsOneWidget);
+    expect(find.textContaining('Maintenance – 1 bill(s) – we paid (bills ₹2,821.00, insurance ₹2,000.00) · free lines worth ₹2,940.00'), findsOneWidget);
+    for (final w in ['Paid lines of the bills', 'Paid by the insurance', 'We paid']) {
+      expect(find.text(w), findsWidgets, reason: w);
+    }
+  }, tags: ['golden']);
 
   testWidgets('(3.14.0) My settings: Log Book list shows, the page to open after sign-in, my last sign-ins, back to the usual settings', (t) async {
     phone(t);
@@ -3366,8 +3513,8 @@ void main() {
     await net(t);
     expect(find.textContaining('AI key'), findsNothing, reason: 'the AI service is set up');
     srv.aiScript.addAll([
-      {'parts': [{'functionCall': {'name': 'diesel_issues', 'args': {'from': '2026-10-14', 'to': '2026-10-14'}}}], 'model': 'gemini-test-flash'},
-      {'parts': [{'text': 'Kobelco Sk 220 and MH-25-AJ-2169 took the most today: **80 L** each. [[open:diesel|Diesel Issue]]'}], 'model': 'gemini-test-flash'},
+      {'parts': [{'functionCall': {'name': 'diesel_issues', 'args': {'from': '2026-10-14', 'to': '2026-10-14'}}}], 'model': 'claude-sonnet-5-5'},
+      {'parts': [{'text': 'Kobelco Sk 220 and MH-25-AJ-2169 took the most today: **80 L** each. [[open:diesel|Diesel Issue]]'}], 'model': 'claude-sonnet-5-5'},
     ]);
     await t.enterText(find.byKey(const Key('ai-in')), 'who took the most diesel today and why');
     await tapK(t, 'ai-send');
@@ -3402,12 +3549,18 @@ void main() {
     await net(t);
     expect(find.text('⚡ The AI service is not set up – from the app itself, now'), findsOneWidget);
     expect(find.textContaining('14-10-2026: 240 L in 4 entries.'), findsOneWidget);
-    // Admin: which model answers
+    // Admin: which model answers – (3.48.0) no key on the server: it names the Claude key
+    await tapK(t, 'ai-test');
+    await net(t);
+    expect(find.textContaining('No key on the server (ANTHROPIC_API_KEY for Claude).'), findsOneWidget);
     srv.aiOn = true;
     await tapK(t, 'ai-test');
     await net(t);
-    expect(find.textContaining('✓ gemini-3.8-flash – answered in 1.2 s'), findsOneWidget);
-    expect(find.textContaining('✗ gemini-3.7-flash – 503: The model is overloaded.'), findsOneWidget);
+    // (3.48.0, Mechanical update-167) the server's AI is Claude: the service named, each model with its time or what it said
+    expect(find.textContaining('Service: Claude'), findsOneWidget);
+    expect(find.textContaining('✓ claude-sonnet-5-5 – answered in 1.2 s'), findsOneWidget);
+    expect(find.textContaining('✗ claude-haiku-5-5 – 529: Overloaded'), findsOneWidget);
+    expect(find.textContaining('At least one model answers'), findsOneWidget);
   }, tags: ['golden']);
 
   testWidgets('(3.15.0) Ask the app by voice: he speaks, it answers aloud, it listens again; "हो" saves the entry heard; 3 silences end the talk; 🔊 of an answer', (t) async {
@@ -3487,7 +3640,7 @@ void main() {
     await settle(t, 400);
     expect(find.textContaining('What is wrong: This machinery number / name is not in the Asset Master'), findsOneWidget);
     // Ask the assistant about this: the message and the page go to the AI service
-    srv.aiScript.add({'parts': [{'text': 'Pick the machinery from the list – type part of its number.'}], 'model': 'gemini-test-flash'});
+    srv.aiScript.add({'parts': [{'text': 'Pick the machinery from the list – type part of its number.'}], 'model': 'claude-sonnet-5-5'});
     await tapK(t, 'fix-ai');
     await net(t);
     await net(t);

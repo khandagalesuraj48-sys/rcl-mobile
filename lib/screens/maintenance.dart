@@ -6,7 +6,12 @@
  *                 part with its ₹, a discount a minus line; the words typed before are offered); its files (PDF / photos, up to 10) –
  *                 "Read the bill (AI)" fills the empty boxes from the last file added (blue – the person checks every value).
  * The same server actions, checks and access as the web: getMaint, saveMaint, updateMaint, deleteMaint, maintFile, getMaintFiles,
- * readMaintBill, maintLog. */
+ * readMaintBill, maintLog.
+ * (3.49.0, Mechanical update-168, asked 27-10-2026 with 9 of his bills: "kahi material warranty madhe aste kahi paid aste kahi
+ *  discount deun aste tr sagle kahi yeyla hawa ok and type pn krta yayla hawa") a line = its work / part, its KIND (Paid / Warranty /
+ *  FOC / Service Plan), Qty, Rate, Disc % and ₹ (a Paid line: Qty × Rate − Discount, worked out as on the web; a free line: ₹ 0,
+ *  its worth shown); an insurance claim: the company, the claim no., what the insurance paid – the car's cost is what WE paid. The
+ *  AI reads every line with its kind, the car from the bill's number, the insurance. */
 import 'dart:convert';
 
 import 'package:flutter/material.dart' hide Text;
@@ -32,8 +37,28 @@ const kMaintFilesMax = 10;
 
 String _key(String v) => v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
 
-/// The lines of a bill as one short line: "Engine oil ₹1,200; Labour ₹500"
-String maintLinesText(Object? lines) => [for (final l in (lines is List ? lines : const []).whereType<Map>()) '${l['work']} ₹${fmtNum(asNum(l['amount']))}'].join('; ');
+/// (3.49.0) the kinds of a bill's line (the server's MNT_TYPES_): Paid is charged; the others are free (₹ 0)
+const kMaintKinds = ['Paid', 'Warranty', 'FOC', 'Service Plan'];
+
+bool _free(Map l) => '${l['type'] ?? ''}'.isNotEmpty && l['type'] != 'Paid';
+
+/// what a free line is worth: Qty × Rate (no Qty: 1) – as the web's mtWorth
+num maintWorth(Map l) => _free(l) ? (asNum(l['qty']) ?? 1) * (asNum(l['rate']) ?? 0) : 0;
+
+/// The lines of a bill as one short line: "Engine oil ₹1,200; Oil filter (Warranty)" – a free line with its kind (as the web's mtLinesText)
+String maintLinesText(Object? lines) => [for (final l in (lines is List ? lines : const []).whereType<Map>()) _free(l) ? '${l['work']} (${l['type']})' : '${l['work']} ₹${fmtNum(asNum(l['amount']))}'].join('; ');
+
+/// (3.49.0) under a bill's ₹ (what we paid): the bill and the insurance of a claim, the worth of its free lines (as the web's mtBillNote)
+List<String> maintBillNote(Map r) {
+  final ins = r['insurance'] is Map ? r['insurance'] as Map : null, free = asNum(r['free']) ?? 0;
+  return [
+    if (ins != null) ...['bill ₹${fmtNum(asNum(r['billTotal']))}', 'insurance ₹${fmtNum(asNum(ins['paid']))}${'${ins['company'] ?? ''}'.isNotEmpty ? ' (${ins['company']})' : ''}'],
+    if (free > 0) 'free worth ₹${fmtNum(free)}',
+  ];
+}
+
+/// a number for a box: 2 decimals at most, no ".0"
+String _n(num? v) => v == null ? '' : '${(v * 100).round() / 100}'.replaceAll(RegExp(r'\.0$'), '');
 
 class MaintScreen extends StatefulWidget {
   const MaintScreen({super.key});
@@ -111,7 +136,7 @@ class _MaintScreenState extends State<MaintScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('mt-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
-          Text('One bill of a car: each work / part with its ₹. Add the bill (PDF or photo) – the AI can read it for you; check every value, then save.', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
+          Text('One bill of a car: each work / part with its kind, Qty, Rate, Discount and ₹. Add the bill (PDF or photo) – the AI can read it for you; check every value, then save.', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
           const SizedBox(height: 10),
           if (missing) const Padding(padding: EdgeInsets.only(bottom: 10), child: InfoLine('Maintenance bills cannot be kept yet. This needs one database step first: the Admin runs sql/supabase_step1zi_maintenance.sql once in Supabase → SQL Editor.', bad: true)),
           if (!can) const Padding(padding: EdgeInsets.only(bottom: 10), child: InfoLine('View only – you can see the bills, their files and the car log books here, but you cannot add or change them. Ask Admin for Edit access.', help: false)),
@@ -183,9 +208,10 @@ class _MaintScreenState extends State<MaintScreen> {
           ]),
           Text([showDate('${r['date']}'), '${r['id']}', if ('${r['garage'] ?? ''}'.isNotEmpty) '${r['garage']}', if ('${r['billNo'] ?? ''}'.isNotEmpty) 'bill ${r['billNo']}', if (files > 0) '📎 $files'].join(' · '), style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text(maintLinesText(r['lines']), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.ink)),
+          if (maintBillNote(r).isNotEmpty) Text(maintBillNote(r).map(tr).join(' · '), key: Key('mt-note-${r['id']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
         ])),
         const SizedBox(width: 8),
-        Text(rupees(asNum(r['total'])), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: C.greenDark)),
+        Text(rupees(asNum(r['total'])), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: C.greenDark)),      // (3.49.0: what we paid)
       ]),
     );
   }
@@ -193,6 +219,7 @@ class _MaintScreenState extends State<MaintScreen> {
   Future<void> _sheet(Map<String, dynamic> r, bool can) async {
     final files = (r['files'] as List? ?? const []).length;
     final lines = [for (final l in (r['lines'] as List? ?? const []).whereType<Map>()) l];
+    final ins = r['insurance'] is Map ? r['insurance'] as Map : null;
     final v = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -210,8 +237,18 @@ class _MaintScreenState extends State<MaintScreen> {
             InfoRow('Remark', '${r['remark'] ?? ''}'),
             InfoRow('Entered by', '${r['enteredBy'] ?? ''}'),
             FormHead('Work / parts'),
-            for (final l in lines) InfoRow('${l['work']}', rupees(asNum(l['amount'])), tone: (asNum(l['amount']) ?? 0) < 0 ? C.red : C.ink),
-            InfoRow('Total', rupees(asNum(r['total'])), bold: true, tone: C.greenDark),
+            for (final l in lines)
+              _free(l)
+                  ? InfoRow('${l['work']}', '${tr('${l['type']}')} · ${tr('worth ₹${fmtNum(maintWorth(l))}')}', tone: C.greenDark)
+                  : InfoRow('${l['work']}', [rupees(asNum(l['amount'])), if (!_blank(l['qty']) && !_blank(l['rate'])) '${fmtNum(asNum(l['qty']))} × ${fmtNum(asNum(l['rate']))}${(asNum(l['disc']) ?? 0) > 0 ? ' − ${fmtNum(asNum(l['disc']))} %' : ''}'].join(' · '),
+                      tone: (asNum(l['amount']) ?? 0) < 0 ? C.red : C.ink),
+            if (ins != null) ...[
+              InfoRow('Bill total', rupees(asNum(r['billTotal']))),
+              InfoRow('Paid by the insurance', '− ${rupees(asNum(ins['paid']))}${'${ins['company'] ?? ''}'.isNotEmpty ? ' · ${ins['company']}' : ''}${'${ins['claimNo'] ?? ''}'.isNotEmpty ? ' · ${tr('Claim no.')} ${ins['claimNo']}' : ''}'),
+              InfoRow('We paid', rupees(asNum(r['total'])), bold: true, tone: C.greenDark),
+            ] else
+              InfoRow('Total', rupees(asNum(r['total'])), bold: true, tone: C.greenDark),
+            if ((asNum(r['free']) ?? 0) > 0) InfoRow('Free lines worth', rupees(asNum(r['free'])), tone: C.greenDark),
             const SizedBox(height: 12),
             if (files > 0) OutlinedButton.icon(key: const Key('mt-files'), onPressed: () => Navigator.pop(bc, 'files'), icon: const Icon(Icons.attach_file_rounded), label: Text('Bill files ($files)')),
             if (can) ...[
@@ -268,16 +305,48 @@ class AiBox extends StatelessWidget {
       );
 }
 
-/// One line of the bill being typed: its work / part and its ₹; [ai] = read by the AI (blue) until the person changes it
+/// One line of the bill being typed: its work / part, its kind, Qty, Rate, Disc % and ₹; [ai] = read by the AI (blue) until the
+/// person changes it
 class _Line {
-  _Line([String work = '', String amount = '', this.ai = false])
+  _Line({String work = '', this.type = 'Paid', String qty = '', String rate = '', String disc = '', String amount = '', this.ai = false})
       : work = TextEditingController(text: work),
+        qty = TextEditingController(text: qty),
+        rate = TextEditingController(text: rate),
+        disc = TextEditingController(text: disc),
         amount = TextEditingController(text: amount);
-  final TextEditingController work, amount;
+  /// a line of the server (a line of before has no kind: Paid)
+  factory _Line.of(Map l, {bool ai = false}) {
+    final t = kMaintKinds.contains(l['type']) ? '${l['type']}' : 'Paid';
+    return _Line(work: '${l['work'] ?? ''}', type: t, qty: _n(asNum(l['qty'])), rate: _n(asNum(l['rate'])), disc: _n(asNum(l['disc'])), amount: t == 'Paid' ? _n(asNum(l['amount'])) : '0', ai: ai);
+  }
+  final TextEditingController work, qty, rate, disc, amount;
+  String type;
   bool ai;
+  bool get free => type != 'Paid';
+  bool get empty => work.text.trim().isEmpty && amount.text.trim().isEmpty && qty.text.trim().isEmpty && rate.text.trim().isEmpty;
+  static num? _of(TextEditingController c) => asNum(c.text.replaceAll(',', ''));
+  num get worth => free ? (_of(qty) ?? 1) * (_of(rate) ?? 0) : 0;
+  /// a Paid line: its ₹ from Qty × Rate − Disc % (when Qty and Rate are there); a free line: ₹ 0 (as the web's mtRowCalc)
+  void calc() {
+    if (free) {
+      amount.text = '0';
+      return;
+    }
+    final q = _of(qty), r = _of(rate);
+    if (q != null && r != null) {
+      amount.text = _n(q * r * (1 - (_of(disc) ?? 0) / 100));
+    } else if (amount.text == '0') {
+      amount.text = '';      // (back to Paid from a free kind: its ₹ to be typed)
+    }
+  }
+  Map<String, Object> get value {
+    Object v(TextEditingController c) => _of(c) ?? c.text.trim();
+    return {'work': work.text.trim(), 'type': type, 'qty': v(qty), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount)};
+  }
   void dispose() {
-    work.dispose();
-    amount.dispose();
+    for (final c in [work, qty, rate, disc, amount]) {
+      c.dispose();
+    }
   }
 }
 
@@ -292,11 +361,13 @@ class MaintForm extends StatefulWidget {
 
 class _MaintFormState extends State<MaintForm> {
   final garage = TextEditingController(), billNo = TextEditingController(), km = TextEditingController(), remark = TextEditingController();
+  final insCo = TextEditingController(), insClaim = TextEditingController(), insPaid = TextEditingController();
   final lines = <_Line>[];
   final files = <AttFile>[];
-  final ai = <String>{};      // the boxes the AI filled (blue): date, garage, billNo, km, service
+  final ai = <String>{};      // the boxes the AI filled (blue): date, car, garage, billNo, km, service, insurance
   String date = '', err = '', readMsg = '';
   bool service = false, busy = false, reading = false, dateTyped = false, _started = false;
+  bool ins = false;      // (3.49.0) an insurance claim
   Machine? car;
 
   @override
@@ -316,8 +387,9 @@ class _MaintFormState extends State<MaintForm> {
       remark.text = '${e['remark'] ?? ''}';
       service = e['service'] == true;
       for (final l in (e['lines'] as List? ?? const []).whereType<Map>()) {
-        lines.add(_Line('${l['work']}', '${asNum(l['amount'])}'.replaceAll(RegExp(r'\.0$'), '')));
+        lines.add(_Line.of(l));
       }
+      _insPut(e['insurance']);
       if ((e['files'] as List? ?? const []).isNotEmpty) WidgetsBinding.instance.addPostFrameCallback((_) => _loadFiles());
     }
     if (lines.isEmpty) lines.add(_Line());
@@ -335,7 +407,7 @@ class _MaintFormState extends State<MaintForm> {
 
   @override
   void dispose() {
-    for (final c in [garage, billNo, km, remark]) {
+    for (final c in [garage, billNo, km, remark, insCo, insClaim, insPaid]) {
       c.dispose();
     }
     for (final l in lines) {
@@ -344,11 +416,20 @@ class _MaintFormState extends State<MaintForm> {
     super.dispose();
   }
 
-  List<Map<String, Object>> get _typed => [
-        for (final l in lines)
-          if (l.work.text.trim().isNotEmpty || l.amount.text.trim().isNotEmpty) {'work': l.work.text.trim(), 'amount': asNum(l.amount.text.replaceAll(',', '')) ?? l.amount.text.trim()},
-      ];
-  num get _total => lines.fold<num>(0, (t, l) => t + (asNum(l.amount.text.replaceAll(',', '')) ?? 0));
+  List<Map<String, Object>> get _typed => [for (final l in lines) if (!l.empty) l.value];
+  /// the bill's total: its Paid lines; what its free lines are worth; what we paid (the bill less the insurance's part)
+  num get _total => lines.fold<num>(0, (t, l) => t + (l.free ? 0 : (asNum(l.amount.text.replaceAll(',', '')) ?? 0)));
+  num get _freeWorth => lines.fold<num>(0, (t, l) => t + (l.work.text.trim().isEmpty ? 0 : l.worth));
+  num get _wePaid => _total - (ins ? (asNum(insPaid.text.replaceAll(',', '')) ?? 0) : 0);
+
+  /// the insurance part of a bill into the boxes (null: none)
+  void _insPut(Object? x) {
+    final m = x is Map ? x : null;
+    ins = m != null;
+    insCo.text = '${m?['company'] ?? ''}';
+    insClaim.text = '${m?['claimNo'] ?? ''}';
+    insPaid.text = m == null ? '' : _n(asNum(m['paid']));
+  }
 
   /// the last file added here (not one the bill kept) – what the AI reads
   AttFile? get _readable {
@@ -394,6 +475,20 @@ class _MaintFormState extends State<MaintForm> {
           ai.add('service');
           n++;
         }
+        // (3.49.0) the car of the bill's number, when it is in the Asset Master and none is picked yet
+        final vm = '${r['vehicle'] ?? ''}'.isEmpty ? null : s.machine('${r['vehicle']}');
+        if (vm != null && car == null) {
+          car = vm;
+          ai.add('car');
+          n++;
+        }
+        // an insurance claim: the company, the claim no., what it paid (blue – check it with the insurance's papers)
+        final ri = r['insurance'] is Map ? r['insurance'] as Map : null;
+        if (ri != null && '${ri['company'] ?? ''}'.isNotEmpty && !ins) {
+          _insPut(ri);
+          ai.addAll(['ins', 'insco', if (insClaim.text.isNotEmpty) 'insclaim', if (insPaid.text.isNotEmpty) 'inspaid']);
+          n++;
+        }
       });
       final got = [for (final l in (r['lines'] as List? ?? const []).whereType<Map>()) l];
       final had = _typed;
@@ -404,12 +499,13 @@ class _MaintFormState extends State<MaintForm> {
           WidgetsBinding.instance.addPostFrameCallback((_) => _drop(old));
           lines
             ..clear()
-            ..addAll([for (final l in got) _Line('${l['work']}', '${asNum(l['amount'])}'.replaceAll(RegExp(r'\.0$'), ''), true)]);
+            ..addAll([for (final l in got) _Line.of(l, ai: true)]);
           n += got.length;
         });
       }
       final v = '${r['vehicle'] ?? ''}', c = car;
-      final carNote = v.isNotEmpty && c != null && _key(v) != _key(c.id) ? ' ${tr('The bill says the vehicle $v – check the car.')}' : '';
+      final carNote = v.isNotEmpty && c != null && _key(v) != _key(c.id) ? ' ${tr('The bill says the vehicle $v – check the car.')}'
+          : v.isNotEmpty && c == null ? ' ${tr('The bill says the vehicle $v – it is not in the Asset Master: pick the car.')}' : '';
       final check = '${r['check'] ?? ''}';
       setState(() => readMsg = '${tr(n > 0 ? 'Read by the AI (blue) – check every value before saving.' : 'The AI read nothing new from this bill – type it.')}${check.isNotEmpty ? ' ${tr('Check')}: ${tr(check)}.' : ''}$carNote');
     } catch (e) {
@@ -421,7 +517,12 @@ class _MaintFormState extends State<MaintForm> {
 
   Future<void> _pickCar() async {
     final m = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: date));
-    if (m != null && mounted) setState(() => car = m);
+    if (m != null && mounted) {
+      setState(() {
+        car = m;
+        ai.remove('car');
+      });
+    }
   }
 
   Future<void> _save({bool force = false}) async {
@@ -443,9 +544,11 @@ class _MaintFormState extends State<MaintForm> {
           });
         return;
       }
-      final x = <String, Object>{
+      final x = <String, Object?>{
         'date': date, 'no': c.id, 'garage': garage.text.trim(), 'billNo': billNo.text.trim(), 'km': asNum(km.text.replaceAll(',', '')) ?? '', 'service': service, 'remark': remark.text.trim(),
-        'lines': _typed, 'files': [for (final f in files) f.ref], if (force) 'force': true,
+        'lines': _typed, 'files': [for (final f in files) f.ref],
+        'insurance': ins ? {'company': insCo.text.trim(), 'claimNo': insClaim.text.trim(), 'paid': asNum(insPaid.text.replaceAll(',', '')) ?? insPaid.text.trim()} : null,      // (3.49.0)
+        if (force) 'force': true,
       };
       final r = (await (e == null ? s.api.call('saveMaint', [x], true) : s.api.call('updateMaint', ['${e['id']}', x], true)) as Map).cast<String, dynamic>();
       if (!mounted) return;
@@ -454,7 +557,8 @@ class _MaintFormState extends State<MaintForm> {
         if (await ask(context, 'Saved before?', '${r['warning']}', yes: 'Save again')) await _save(force: true);
         return;
       }
-      toast(context, e == null ? 'Bill ${r['id']} saved – ${rupees(asNum(r['total']))}.' : 'Bill ${r['id']} saved.');
+      final paid = asNum(r['total']), bill = asNum(r['billTotal']);
+      toast(context, '${tr(e == null ? 'Bill ${r['id']} saved – ${rupees(paid)}.' : 'Bill ${r['id']} saved.')}${bill != null && bill != paid ? ' ${tr('(We paid ₹${fmtNum(paid)} of ₹${fmtNum(bill)}.)')}' : ''}');
       Navigator.pop(context, true);
     } catch (x) {
       if (!mounted) return;
@@ -480,6 +584,69 @@ class _MaintFormState extends State<MaintForm> {
   /// a box the AI filled: blue until the person changes it (always the same wrapper – the box being typed in keeps its keyboard)
   Widget _blue(bool on, Widget child) => AiBox(on: on, child: child);
 
+  /// (3.49.0) one line of the bill: its work / part (×), its kind, then Qty · Rate · Disc % · ₹ – a free line: ₹ 0 and its worth (green)
+  Widget _lineCard(int i, _Line l) {
+    void typed() => setState(() {
+          l.ai = false;
+          l.calc();
+        });
+    const nkb = TextInputType.numberWithOptions(decimal: true);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
+      decoration: BoxDecoration(color: l.free ? C.greenSoft : null, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(child: TextBox(key: Key('mf-w-$i'), label: 'Work / part', controller: l.work, options: widget.works, hint: 'e.g. Engine oil, Air filter, Labour', onChanged: (_) => setState(() => l.ai = false))),
+          IconButton(
+            key: Key('mf-x-$i'),
+            tooltip: tr('Remove'),
+            onPressed: busy
+                ? null
+                : () => setState(() {
+                      final gone = lines.removeAt(i);
+                      WidgetsBinding.instance.addPostFrameCallback((_) => _drop([gone]));
+                      if (lines.isEmpty) lines.add(_Line());
+                    }),
+            icon: const Icon(Icons.close_rounded, color: C.muted),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: PickField(key: Key('mf-t-$i'), label: 'Kind', value: l.type, items: kMaintKinds, enabled: !busy, onChanged: (v) => setState(() {
+                l.type = v.isEmpty ? 'Paid' : v;
+                l.ai = false;
+                l.calc();
+              })),
+        ),
+        const SizedBox(height: 8),
+        // two boxes a row – a phone's width keeps every name and number whole (4.5, 100, 18000)
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: Row(children: [
+            Expanded(child: TextBox(key: Key('mf-q-$i'), label: 'Qty', controller: l.qty, kb: nkb, onChanged: (_) => typed())),
+            const SizedBox(width: 8),
+            Expanded(child: TextBox(key: Key('mf-r-$i'), label: 'Rate (₹)', controller: l.rate, kb: nkb, onChanged: (_) => typed())),
+          ]),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: Row(children: [
+            Expanded(child: TextBox(key: Key('mf-d-$i'), label: 'Disc %', controller: l.disc, kb: nkb, onChanged: (_) => typed())),
+            const SizedBox(width: 8),
+            Expanded(child: TextBox(key: Key('mf-a-$i'), label: 'Amount (₹)', controller: l.amount, enabled: !l.free, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() => l.ai = false))),
+          ]),
+        ),
+        if (l.free)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, right: 8),
+            child: Text(l.worth > 0 ? 'worth ₹${fmtNum(l.worth)}' : 'free', key: Key('mf-worth-$i'), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12.5, color: C.greenDark, fontWeight: FontWeight.w600)),
+          ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), e = widget.edit, rd = _readable;
@@ -493,21 +660,24 @@ class _MaintFormState extends State<MaintForm> {
               ai.remove('date');
             }))),
         const SizedBox(height: 10),
-        Press(
-          key: const Key('mf-car'),
-          onTap: busy ? null : _pickCar,
-          radius: 16,
-          shadow: false,
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-          child: Row(children: [
-            const Icon(Icons.directions_car_rounded, color: C.blue, size: 18),
-            const SizedBox(width: 8),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${tr('Car')} *', style: const TextStyle(fontSize: 12, color: C.muted)),
-              Text(car == null ? 'Pick the car of the bill.' : [car!.id, if (car!.name.isNotEmpty && car!.name != car!.id) car!.name].join(' · '), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: car == null ? C.faint : C.ink)),
-            ])),
-            const Icon(Icons.expand_more_rounded, color: C.muted),
-          ]),
+        _blue(
+          ai.contains('car'),
+          Press(
+            key: const Key('mf-car'),
+            onTap: busy ? null : _pickCar,
+            radius: 16,
+            shadow: false,
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            child: Row(children: [
+              const Icon(Icons.directions_car_rounded, color: C.blue, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${tr('Car')} *', style: const TextStyle(fontSize: 12, color: C.muted)),
+                Text(car == null ? 'Pick the car of the bill.' : [car!.id, if (car!.name.isNotEmpty && car!.name != car!.id) car!.name].join(' · '), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: car == null ? C.faint : C.ink)),
+              ])),
+              const Icon(Icons.expand_more_rounded, color: C.muted),
+            ]),
+          ),
         ),
         const SizedBox(height: 10),
         _blue(ai.contains('garage'), TextBox(key: const Key('mf-garage'), label: 'Garage / vendor', controller: garage, options: widget.garages, hint: 'e.g. Toyota service centre', onChanged: (_) => setState(() => ai.remove('garage')))),
@@ -555,37 +725,62 @@ class _MaintFormState extends State<MaintForm> {
           )
         else if (rd != null)
           Padding(padding: const EdgeInsets.only(top: 6), child: Text('Press "Read the bill (AI)" to fill the form from it – then check every value.', style: const TextStyle(fontSize: 12.5, color: C.muted))),
-        FormHead('Work / parts of the bill', sub: 'A discount is a minus amount.'),
-        for (final (i, l) in lines.indexed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _blue(
-              l.ai,
-              Row(children: [
-                Expanded(flex: 3, child: TextBox(key: Key('mf-w-$i'), label: 'Work / part', controller: l.work, options: widget.works, hint: 'e.g. Engine oil, Air filter, Labour', onChanged: (_) => setState(() => l.ai = false))),
-                const SizedBox(width: 6),
-                Expanded(flex: 2, child: TextBox(key: Key('mf-a-$i'), label: 'Amount (₹)', controller: l.amount, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() => l.ai = false))),
-                IconButton(
-                  key: Key('mf-x-$i'),
-                  tooltip: tr('Remove'),
-                  onPressed: busy
-                      ? null
-                      : () => setState(() {
-                            final gone = lines.removeAt(i);
-                            WidgetsBinding.instance.addPostFrameCallback((_) => _drop([gone]));
-                            if (lines.isEmpty) lines.add(_Line());
-                          }),
-                  icon: const Icon(Icons.close_rounded, color: C.muted),
-                ),
-              ]),
-            ),
-          ),
+        FormHead('Work / parts of the bill', sub: 'Amount = Qty × Rate − Discount. Taxes and the round-off are lines of their own; a discount on the whole bill is a minus amount. Warranty / FOC / Service Plan: not paid (₹ 0).'),
+        for (final (i, l) in lines.indexed) Padding(padding: const EdgeInsets.only(bottom: 10), child: _blue(l.ai, _lineCard(i, l))),
         Row(children: [
           OutlinedButton.icon(key: const Key('mf-addl'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: busy ? null : () => setState(() => lines.add(_Line())), icon: const Icon(Icons.add_rounded), label: Text('+ Line')),
           const Spacer(),
-          Text('Total ', style: const TextStyle(color: C.muted)),
-          Text(rupees(_total), key: const Key('mf-total'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: C.greenDark)),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('Bill total', style: const TextStyle(fontSize: 12, color: C.muted)),
+            Text(rupees(_total), key: const Key('mf-total'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: C.greenDark)),
+          ]),
         ]),
+        if (_freeWorth > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(children: [
+              Expanded(child: Text('Free lines (warranty / FOC / service plan) – not paid, worth', style: const TextStyle(fontSize: 12.5, color: C.greenDark))),
+              Text(rupees(_freeWorth), key: const Key('mf-free'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.greenDark)),
+            ]),
+          ),
+        // (3.49.0) an insurance claim: the whole bill above, what the insurance paid, we paid the rest (the car's cost)
+        const SizedBox(height: 10),
+        _blue(
+          ai.contains('ins'),
+          SwitchListTile(
+            key: const Key('mf-ins'),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+            title: Text('Insurance claim', style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text('– the insurance paid part of this bill'),
+            value: ins,
+            onChanged: busy
+                ? null
+                : (v) => setState(() {
+                      ins = v;
+                      ai.remove('ins');
+                    }),
+          ),
+        ),
+        if (ins) ...[
+          const SizedBox(height: 8),
+          _blue(ai.contains('insco'), TextBox(key: const Key('mf-insco'), label: 'Insurance company', controller: insCo, hint: 'e.g. Tata AIG General Insurance', onChanged: (_) => setState(() => ai.remove('insco')))),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: _blue(ai.contains('insclaim'), TextBox(key: const Key('mf-insclaim'), label: 'Claim no.', controller: insClaim, onChanged: (_) => setState(() => ai.remove('insclaim'))))),
+            const SizedBox(width: 8),
+            Expanded(child: _blue(ai.contains('inspaid'), TextBox(key: const Key('mf-inspaid'), label: 'Paid by the insurance (₹)', controller: insPaid, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => ai.remove('inspaid'))))),
+          ]),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('We paid (₹)', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                Text("– the car's cost", style: const TextStyle(fontSize: 12.5, color: C.muted)),
+              ])),
+              Text(rupees(_wePaid), key: const Key('mf-wepaid'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _wePaid < 0 ? C.red : C.greenDark)),
+            ]),
+          ),
+        ],
         if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: InfoLine(err, bad: true)),
         const SizedBox(height: 18),
         FilledButton(key: const Key('mf-save'), onPressed: busy || reading ? null : _save, child: Text(busy ? 'Saving…' : e == null ? 'Save bill' : 'Save changes')),

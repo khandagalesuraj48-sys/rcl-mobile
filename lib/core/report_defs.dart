@@ -744,9 +744,15 @@ final kMaintLog = ReportDef(
   build: (d) {
     final m = mapOf(d['machine']), t = mapOf(d['total']), fu = mapOf(t['fuel']), mn = mapOf(t['maint']), ls = listOf(d['lines']), by = listOf(t['byWork']), last = mapOf(d['lastService']);
     final u = m['unit'] == 'kg' ? 'kg' : 'L';
-    String what(Map<String, dynamic> x) => x['kind'] == 'Fuel'
-        ? 'Fuel – ${m['fuel'] ?? ''}'
-        : 'Bill${blankV(x['billNo']) ? '' : ' ${x['billNo']}'} – ${[for (final l in listOf(x['lines'])) '${l['work']} ₹${money(l['amount'])}'].join('; ')}${x['service'] == true ? ' · Service' : ''}';
+    // (3.49.0, Mechanical update-168) a free line with its kind; a claim: the bill and the insurance; the worth of the free lines – as the web
+    String what(Map<String, dynamic> x) {
+      if (x['kind'] == 'Fuel') return 'Fuel – ${m['fuel'] ?? ''}';
+      final ins = mapOf(x['insurance']), free = nOf(x['free']);
+      final ls = [for (final l in listOf(x['lines'])) '${l['type'] ?? ''}'.isNotEmpty && l['type'] != 'Paid' ? '${l['work']} (${l['type']})' : '${l['work']} ₹${money(l['amount'])}'];
+      return 'Bill${blankV(x['billNo']) ? '' : ' ${x['billNo']}'} – ${ls.join('; ')}${x['service'] == true ? ' · Service' : ''}'
+          '${ins.isEmpty ? '' : ' · bill ₹${money(x['billTotal'])}, insurance ₹${money(ins['paid'])}${blankV(ins['company']) ? '' : ' (${ins['company']})'}'}${free > 0 ? ' · free worth ₹${money(free)}' : ''}';
+    }
+    final insT = nOf(mn['insurance']), freeT = nOf(mn['free']);
     return RDoc(
       title: '${d['title'] ?? 'Maintenance Log Book'}',
       period: _period(d),
@@ -765,14 +771,18 @@ final kMaintLog = ReportDef(
               tc(ls[i]['kind'] == 'Fuel' ? ls[i]['paidBy'] : ls[i]['garage']), mc(ls[i]['amount'])]),
         ], foot: [
           RRow([RCell('Fuel – ${fu['fills'] ?? 0} fill(s) (by card ₹${money(fu['card'])}, cash ₹${money(fu['cash'])})', bold: true, span: 4), RCell('${fmt(fu['qty'])} $u', n: true, bold: true, value: nOf(fu['qty'])), const RCell(''), const RCell(''), mc(fu['amount'], bold: true)], kind: RKind.sub),
-          RRow([RCell('Maintenance – ${mn['bills'] ?? 0} bill(s)', bold: true, span: 7), mc(mn['amount'], bold: true)], kind: RKind.sub),
+          RRow([RCell('Maintenance – ${mn['bills'] ?? 0} bill(s)${insT > 0 ? ' – we paid (bills ₹${money(mn['billTotal'])}, insurance ₹${money(insT)})' : ''}${freeT > 0 ? ' · free lines worth ₹${money(freeT)}' : ''}', bold: true, span: 7), mc(mn['amount'], bold: true)], kind: RKind.sub),
           RRow([const RCell('All costs', bold: true, span: 7), mc(t['all'], bold: true)], kind: RKind.grand),
         ]),
         const RNote('Maintenance by work / part', heading: true),
         RTable(sheet: 'By work', head: const ['Sr', 'Work / part', 'Times', 'Amount (₹)'], numCols: const {2, 3}, empty: 'No maintenance bill in these dates.', rows: [
           for (var i = 0; i < by.length; i++) RRow([sc(i + 1), tc(by[i]['work']), nc(by[i]['n']), mc(by[i]['amount'])]),
         ], foot: [
-          RRow([const RCell('Total', bold: true, span: 3), mc(mn['amount'], bold: true)], kind: RKind.grand),
+          if (insT > 0) ...[
+            RRow([const RCell('Paid lines of the bills', bold: true, span: 3), mc(mn['billTotal'], bold: true)], kind: RKind.sub),
+            RRow([const RCell('Paid by the insurance', bold: true, span: 3), mc(-insT, bold: true)], kind: RKind.sub),
+          ],
+          RRow([RCell(insT > 0 ? 'We paid' : 'Total', bold: true, span: 3), mc(mn['amount'], bold: true)], kind: RKind.grand),
         ]),
       ],
     );

@@ -42,6 +42,8 @@ class FakeServer {
       'lines': [{'work': 'Engine oil', 'amount': 1200}, {'work': 'Oil filter', 'amount': 300}, {'work': 'Labour', 'amount': 500}, {'work': 'GST 18%', 'amount': 360}],
       'files': [{'sha': 'a1' * 32, 'p': 'log/a1/${'a1' * 32}.pdf', 'mime': 'application/pdf', 'size': 52000, 'name': 'bill.pdf', 'at': '2026-10-05T06:00:00Z', 'by': 'Sujit Mule'}]},
   ];
+  /// (3.49.0, Mechanical update-168) what maintLog answers instead of the bill below (null: that one)
+  Map<String, dynamic>? maintLogAnswer;
   /// what "Read the bill (AI)" answers (readMaintBill)
   Map<String, dynamic> maintRead = {'date': '2026-10-13', 'billNo': 'MS-77', 'garage': 'Maruti Service', 'vehicle': 'MH12HO1163', 'km': 46100, 'service': true, 'total': 3540, 'check': '',
     'lines': [{'work': 'Service charge', 'amount': 2500}, {'work': 'Coolant', 'amount': 500}, {'work': 'GST 18%', 'amount': 540}]};
@@ -1218,12 +1220,13 @@ class FakeServer {
           ]}});
         case 'getAiReply':
           aiAsked.add((a[0] as Map).cast<String, dynamic>());
-          if (!aiOn) return _j({'error': 'The assistant is not set up yet: the Admin has to put the AI key (GEMINI_API_KEY) in the server\'s settings.'}, 500);
-          return _j({'result': aiScript.isNotEmpty ? aiScript.removeAt(0) : {'parts': [{'text': 'Nothing more to say.'}], 'model': 'gemini-test-flash'}});
+          if (!aiOn) return _j({'error': 'The assistant is not set up yet: the Admin has to put the AI key (ANTHROPIC_API_KEY – Claude) in the server\'s settings.'}, 500);
+          return _j({'result': aiScript.isNotEmpty ? aiScript.removeAt(0) : {'parts': [{'text': 'Nothing more to say.'}], 'model': 'claude-sonnet-5-5'}});
         case 'getBrief':
           return _j({'result': brief});
         case 'getAiCheck':
-          return _j({'result': {'key': aiOn, 'fixedModel': '', 'listError': '', 'tests': [{'model': 'gemini-3.8-flash', 'ok': true, 'ms': 1240}, {'model': 'gemini-3.7-flash', 'ok': false, 'code': 503, 'said': 'The model is overloaded.'}]}});
+          // (3.48.0, Mechanical update-167) the server's AI is Claude: it says which service, the models and what each said
+          return _j({'result': {'key': aiOn, if (aiOn) 'service': 'Claude', 'fixedModel': '', 'listError': '', 'tests': [{'model': 'claude-sonnet-5-5', 'ok': true, 'ms': 1240}, {'model': 'claude-haiku-5-5', 'ok': false, 'code': 529, 'said': 'Overloaded'}]}});
         case 'getMyPrefs':
           return _j({'result': {'prefs': prefs, 'logins': ['2026-10-14T03:35:00Z', '2026-10-13T12:10:00Z'], 'rules': {'backDays': '', 'announce': notice, 'dayFrom': '08:00', 'nightFrom': '20:00'}}});
         // (3.14.0) the diesel history of a machinery, the photos of a fill, a transfer's stock, the Admin's faults and backup
@@ -1304,11 +1307,22 @@ class FakeServer {
             final was = maint.firstWhere((r) => r['no'] == x['no'] && '${r['billNo']}' == '${x['billNo']}');
             return _j({'result': {'ok': false, 'warning': 'Bill ${x['billNo']} of ${x['garage']} for ${x['no']} is already saved (${was['id']}). Save it again?'}});
           }
-          final tot = ((x['lines'] as List).fold<num>(0, (t, l) => t + ((l as Map)['amount'] as num)));
+          // (3.49.0, Mechanical update-168) as the server: a line's kind; the bill = its Paid lines; a claim – the insurance's part,
+          // not more than the bill; the bill's Amount = what we paid; a free line's worth
+          const kinds = ['Paid', 'Warranty', 'FOC', 'Service Plan'];
+          final ls = [for (final l in (x['lines'] as List)) (l as Map).cast<String, dynamic>()];
+          for (final (i, l) in ls.indexed) {
+            if (l.containsKey('type') && !kinds.contains(l['type'])) return _j({'error': 'Bill line ${i + 1} (${l['work']}): its kind is Paid, Warranty, FOC or Service Plan.'}, 500);
+          }
+          final bill = ls.fold<num>(0, (t, l) => t + ((l['type'] ?? 'Paid') == 'Paid' ? (l['amount'] as num) : 0));
+          final ins = x['insurance'] is Map ? (x['insurance'] as Map).cast<String, dynamic>() : null;
+          if (ins != null && (ins['paid'] is! num || (ins['paid'] as num) > bill)) return _j({'error': 'The insurance part of the bill: the insurance paid ₹${ins['paid']} – more than the bill (₹$bill).'}, 500);
+          final tot = bill - (ins == null ? 0 : ins['paid'] as num);
+          final free = ls.fold<num>(0, (t, l) => t + ((l['type'] ?? 'Paid') == 'Paid' ? 0 : ((l['qty'] is num ? l['qty'] as num : 1) * (l['rate'] is num ? l['rate'] as num : 0))));
           final id = action == 'saveMaint' ? 'MT-00000${maint.length + 1}' : '${a[0]}';
-          final row = {'id': id, ...x, 'total': tot, 'files': [for (final f in (x['files'] as List)) {'sha': (f as Map)['sha']}]}..remove('force');
+          final row = {'id': id, ...x, 'total': tot, 'billTotal': bill, 'free': free, 'files': [for (final f in (x['files'] as List)) {'sha': (f as Map)['sha']}]}..remove('force');
           if (action == 'saveMaint') { maint.insert(0, row); } else { maint[maint.indexWhere((r) => r['id'] == id)] = row; }
-          return _j({'result': {'ok': true, 'id': id, 'total': tot}});
+          return _j({'result': {'ok': true, 'id': id, 'total': tot, 'billTotal': bill}});
         case 'deleteMaint':
           maintCalls.add({'fn': action, 'id': a[0]});
           maint.removeWhere((r) => r['id'] == a[0]);
@@ -1331,6 +1345,7 @@ class FakeServer {
         case 'maintLog':
           final f = (a[0] as Map).cast<String, dynamic>();
           maintCalls.add({'fn': action, 'x': f});
+          if (maintLogAnswer != null) return _j({'result': maintLogAnswer});
           return _j({'result': {'title': 'Maintenance Log Book – ${f['no']}', 'from': f['from'] ?? '2026-10-01', 'to': f['to'] ?? '2026-10-14', 'generated': '14-10-2026 10:00', 'company': 'Rachana Construction Limited',
             'machine': {'id': f['no'], 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr'},
             'lines': [
