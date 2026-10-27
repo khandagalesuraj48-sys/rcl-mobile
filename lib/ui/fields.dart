@@ -56,9 +56,11 @@ class DateField extends StatelessWidget {
 
 /// A pick-list ([items]: value, words shown). [blank]: a first line '' with these words.
 class PickField extends StatelessWidget {
-  const PickField({super.key, required this.label, required this.value, required this.items, required this.onChanged, this.blank, this.enabled = true});
+  const PickField({super.key, required this.label, required this.value, required this.items, required this.onChanged, this.blank, this.enabled = true, this.labels = const {}});
   final String label, value;
   final List<String> items;
+  /// (3.51.0) the words shown for some values (the value itself is what is kept): {'Paid': 'RCL'}
+  final Map<String, String> labels;
   final String? blank;
   final ValueChanged<String> onChanged;
   final bool enabled;
@@ -70,7 +72,7 @@ class PickField extends StatelessWidget {
       initialValue: all.contains(value) ? value : (all.isEmpty ? null : all.first),
       isExpanded: true,
       decoration: InputDecoration(labelText: tr(label)),
-      items: [for (final x in all) DropdownMenuItem(value: x, child: Text(x.isEmpty ? (blank ?? '') : x, maxLines: 1, overflow: TextOverflow.ellipsis))],
+      items: [for (final x in all) DropdownMenuItem(value: x, child: Text(x.isEmpty ? (blank ?? '') : labels[x] ?? x, maxLines: 1, overflow: TextOverflow.ellipsis))],
       onChanged: enabled ? (v) => onChanged(v ?? '') : null,
     );
   }

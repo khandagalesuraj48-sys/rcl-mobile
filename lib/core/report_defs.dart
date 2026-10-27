@@ -742,35 +742,80 @@ final kMaintLog = ReportDef(
   filters: const ['machine', 'range'],
   note: 'Every maintenance bill of a machinery, line by line, by date – the party, its reading, each part with its Qty, Uom, rate, amount and GST. At a site on fuel cards also its fills, the costs and ₹ per KM.',
   // (3.50.0, Mechanical update-170) his format – the Maintenance Log Book of Roller No-03: a row a line of a bill (Date, Party Name and
-  // Current Reading on its first row); a tax line's ₹ in GST Amount; the insurance's part of a claim its own row (minus); the free lines
-  // at ₹ 0 with their kind. At a site on fuel cards its fills follow (3.46.0), then "by work / part" – as the web.
+  // Current Reading on its first row); the insurance's part of a claim its own row (minus); the free lines at ₹ 0 with their kind. At a
+  // site on fuel cards its fills follow (3.46.0), then "by work / part" – as the web.
+  // (3.51.0, Mechanical update-171: "gst row madhe nko heading madhe ghe 9 9 18 … koni paid kel insurance claim aahe nahi service ch bill
+  // ahe ka") a column CGST and SGST for each GST % of the lines (the CGST / SGST lines of a bill of before go into theirs by the % in
+  // their name), then the GST of the line and its amount with GST; each line its Paid by; the bill's Insurance claim and Service on
+  // each of its lines – as the web's mlogRender.
   build: (d) {
     final m = mapOf(d['machine']), t = mapOf(d['total']), fu = mapOf(t['fuel']), mn = mapOf(t['maint']), ls = listOf(d['lines']), by = listOf(t['byWork']), last = mapOf(d['lastService']);
     final u = m['unit'] == 'kg' ? 'kg' : 'L', card = d['card'] == true, meter = '${m['meter'] ?? ''}';
     final ru = meter == 'KM' || meter == 'KM + Hrs' ? 'km' : meter == 'Hrs' ? 'hrs' : '';
     final tax = RegExp(r'^\s*(?:maharashtra\s+)?(?:cgst|sgst|igst|utgst|gst|cess|tax|vat)\b', caseSensitive: false);
+    final cs = RegExp(r'^\s*(?:maharashtra\s+)?[cs]gst\b', caseSensitive: false), cgstW = RegExp(r'^\s*(?:maharashtra\s+)?cgst\b', caseSensitive: false), sgstW = RegExp(r'^\s*(?:maharashtra\s+)?sgst\b', caseSensitive: false);
+    num taxPct(String w) => num.tryParse(RegExp(r'(\d+(?:\.\d+)?)\s*%').firstMatch(w)?.group(1) ?? '') ?? 0;
+    bool charged(Object? k) => blankV(k) || k == 'Paid' || k == 'By Insurance';
+    String paidBy(Object? k) => blankV(k) || k == 'Paid' ? 'RCL' : k == 'By Insurance' ? 'Insurance' : '$k';
     const blank = RCell('', n: true);
+    final bills = ls.where((x) => x['kind'] != 'Fuel').toList();
+    final rset = <num>{};
+    for (final x in bills) {
+      for (final l in listOf(x['lines'])) {
+        final w = '${l['work'] ?? ''}';
+        if (charged(l['type']) && nOf(l['gst']) > 0) {
+          rset.add(nOf(l['gst']));
+        } else if (charged(l['type']) && cs.hasMatch(w) && taxPct(w) > 0) {
+          rset.add(2 * taxPct(w));
+        }
+      }
+    }
+    final rates = rset.toList()..sort();
+    final nr = rates.length, ncol = 15 + 2 * nr;
     final rows = <RRow>[];
     num sa = 0, sg = 0, sw = 0;
+    final scg = List.generate(nr, (_) => <num>[0, 0]);
     var sr = 0;
-    for (final x in ls.where((x) => x['kind'] != 'Fuel')) {
+    for (final x in bills) {
       final ins = mapOf(x['insurance']), its = <Map<String, dynamic>>[];
       for (final l in listOf(x['lines'])) {
-        final paid = blankV(l['type']) || l['type'] == 'Paid', isTax = paid && tax.hasMatch('${l['work'] ?? ''}'), a = paid ? nOf(l['amount']) : 0;
-        its.add({'part': '${l['work'] ?? ''}${paid ? '' : ' (${l['type']})'}', 'qty': l['qty'], 'uom': '${l['uom'] ?? ''}', 'rate': l['rate'], 'amount': isTax ? null : a, 'gst': isTax ? a : null, 'with': a});
+        final w = '${l['work'] ?? ''}', paid = charged(l['type']), g = nOf(l['gst']), isTax = paid && !(g > 0) && tax.hasMatch(w), a = paid ? nOf(l['amount']) : 0;
+        final cg = List.generate(nr, (_) => <num?>[null, null]);
+        num? gst;
+        if (isTax) {
+          gst = a;
+          final side = sgstW.hasMatch(w) ? 1 : cgstW.hasMatch(w) ? 0 : -1, ri = rates.indexOf(2 * taxPct(w));
+          if (side > -1 && ri > -1) cg[ri][side] = a;
+        } else if (paid && g > 0) {
+          final half = r2(a * g / 200), ri = rates.indexOf(g);
+          gst = 2 * half;
+          if (ri > -1) cg[ri] = [half, half];
+        }
+        its.add({'part': '$w${paid ? '' : ' (${l['type']})'}', 'qty': l['qty'], 'uom': '${l['uom'] ?? ''}', 'rate': l['rate'], 'amount': isTax ? null : a, 'cg': cg, 'gst': gst, 'with': r2(a + (isTax ? 0 : gst ?? 0)), 'by': paidBy(l['type'])});
       }
+      List<List<num?>> none() => List.generate(nr, (_) => <num?>[null, null]);
       if (ins.isNotEmpty && nOf(ins['paid']) > 0) {
-        its.add({'part': 'Paid by the insurance${blankV(ins['company']) ? '' : ' – ${ins['company']}'}${blankV(ins['claimNo']) ? '' : ' (claim no. ${ins['claimNo']})'}', 'uom': '', 'with': -nOf(ins['paid']), 'ins': true});
+        its.add({'part': 'Paid by the insurance${blankV(ins['company']) ? '' : ' – ${ins['company']}'}${blankV(ins['claimNo']) ? '' : ' (claim no. ${ins['claimNo']})'}', 'uom': '', 'cg': none(), 'with': -nOf(ins['paid']), 'by': 'Insurance', 'ins': true});
       }
-      if (its.isEmpty) its.add({'part': '', 'uom': '', 'with': nOf(x['amount'])});
+      if (its.isEmpty) its.add({'part': '', 'uom': '', 'cg': none(), 'with': nOf(x['amount']), 'by': ''});
       final party = [if (!blankV(x['party'] ?? x['garage'])) '${x['party'] ?? x['garage']}', if (!blankV(x['billNo'])) 'Bill ${x['billNo']}'].join(' · ');
+      final claim = ins.isNotEmpty ? 'Yes' : 'No', svc = x['service'] == true ? 'Yes' : 'No';
       for (final (j, l) in its.indexed) {
         sr++;
         if (l['amount'] != null) sa += l['amount'] as num;
         if (l['gst'] != null) sg += l['gst'] as num;
         sw += l['with'] as num;
-        rows.add(RRow([sc(sr), tc(j == 0 ? dmy(x['date']) : ''), tc(j == 0 ? party : ''), j == 0 ? nc(x['km']) : blank, tc(l['part'], tone: l['ins'] == true ? 'info' : ''), nc(l['qty']), tc(l['uom']),
-          blankV(l['rate']) ? blank : mc(l['rate']), l['amount'] == null ? blank : mc(l['amount']), l['gst'] == null ? blank : mc(l['gst']), mc(l['with']), mc(l['with'])]));
+        final cg = l['cg'] as List<List<num?>>;
+        for (final (i, c) in cg.indexed) {
+          if (c[0] != null) scg[i][0] += c[0]!;
+          if (c[1] != null) scg[i][1] += c[1]!;
+        }
+        rows.add(RRow([
+          sc(sr), tc(j == 0 ? dmy(x['date']) : ''), tc(j == 0 ? party : ''), j == 0 ? nc(x['km']) : blank, tc(l['part'], tone: l['ins'] == true ? 'info' : ''), nc(l['qty']), tc(l['uom']),
+          blankV(l['rate']) ? blank : mc(l['rate']), l['amount'] == null ? blank : mc(l['amount']),
+          for (final c in cg) ...[c[0] == null ? blank : mc(c[0]), c[1] == null ? blank : mc(c[1])],
+          l['gst'] == null ? blank : mc(l['gst']), mc(l['with']), tc(l['by']), tc(claim), tc(svc), mc(l['with']),
+        ]));
       }
     }
     final fills = ls.where((x) => x['kind'] == 'Fuel').toList();
@@ -788,10 +833,18 @@ final kMaintLog = ReportDef(
             ]
           : [('Maintenance', '₹${money(mn['amount'])}'), lastK],
       blocks: [
-        RTable(sheet: 'Log Book', head: const ['Sr No', 'Date', 'Party Name', 'Current Reading', 'Particulars', 'Qty', 'Uom', 'Basic Rate', 'Amount', 'GST Amount', 'Amount With GST', 'Total'], numCols: const {3, 5, 7, 8, 9, 10, 11},
+        RTable(sheet: 'Log Book', head: [
+          'Sr No', 'Date', 'Party Name', 'Current Reading', 'Particulars', 'Qty', 'Uom', 'Basic Rate', 'Amount',
+          for (final r in rates) ...['CGST ${fmt(r / 2)}%', 'SGST ${fmt(r / 2)}%'],
+          nr == 1 ? 'GST ${fmt(rates[0])}%' : 'GST Amount', 'Amount With GST', 'Paid by', 'Insurance claim', 'Service', 'Total',
+        ], numCols: {3, 5, 7, 8, for (var i = 0; i < 2 * nr; i++) 9 + i, 9 + 2 * nr, 10 + 2 * nr, 14 + 2 * nr},
           empty: 'No maintenance bill of this machinery in these dates.', rows: rows, foot: [
-          RRow([RCell('Total – ${mn['bills'] ?? 0} bill(s)', bold: true, span: 8), mc(r2(sa), bold: true), mc(r2(sg), bold: true), mc(r2(sw), bold: true), mc(r2(sw), bold: true)], kind: RKind.grand),
-          if (nOf(mn['free']) > 0) RRow([const RCell('Free lines (warranty / FOC / service plan) – not paid, worth', span: 10), RCell(money(mn['free']), n: true, span: 2, value: nOf(mn['free']))], kind: RKind.sub),
+          RRow([
+            RCell('Total – ${mn['bills'] ?? 0} bill(s)', bold: true, span: 8), mc(r2(sa), bold: true),
+            for (final c in scg) ...[mc(r2(c[0]), bold: true), mc(r2(c[1]), bold: true)],
+            mc(r2(sg), bold: true), mc(r2(sw), bold: true), const RCell(''), const RCell(''), const RCell(''), mc(r2(sw), bold: true),
+          ], kind: RKind.grand),
+          if (nOf(mn['free']) > 0) RRow([RCell('Free lines (warranty / FOC / service plan) – not paid, worth', span: ncol - 1), mc(mn['free'])], kind: RKind.sub),
         ]),
         if (card) ...[
           const RNote('Fuel', heading: true),

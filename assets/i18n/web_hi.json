@@ -6968,5 +6968,16 @@
 "Pick the machinery of the bill.": "बिल की मशिनरी चुनें.",
 "Pick the machinery.": "मशिनरी चुनें.",
 "Total – {0} bill(s)": "कुल – {0} बिल",
-"Uom": "यूनिट"
+"Uom": "यूनिट",
+"(Insurance)": "(इंश्योरेंस)",
+"): Paid by is RCL, Insurance, Warranty, FOC or Service Plan.": "): Paid by – RCL, Insurance, Warranty, FOC या Service Plan हो.",
+"): the GST is 0 to 100 %.": "): GST 0 से 100 % हो.",
+"Amount = Qty × Rate − Discount, before GST. GST % of each item (CGST and SGST half each) – no tax lines; the round-off is a line of its own; a discount on the whole bill is a minus amount. Paid by: RCL (we paid), Insurance (the insurance paid it), Warranty / FOC / Service Plan (not paid, ₹ 0).": "रकम = Qty × Rate − Discount, GST से पहले. हर item का GST % (CGST और SGST आधा-आधा) – tax की अलग लाइनें नहीं; round-off की लाइन अलग; पूरे बिल पर छूट यानी minus रकम. Paid by: RCL (हमने भरा), Insurance (insurance ने भरा), Warranty / FOC / Service Plan (भरा नहीं, ₹ 0).",
+"Bill {0} has the GST of its lines or lines paid by the insurance – update the app to change it.": "बिल {0} में लाइनों का GST या insurance से भरी लाइनें हैं – उसे बदलने के लिए app update करें.",
+"Bill line {0} ({1}): Paid by is RCL, Insurance, Warranty, FOC or Service Plan.": "बिल की लाइन {0} ({1}): Paid by – RCL, Insurance, Warranty, FOC या Service Plan हो.",
+"Bill line {0} ({1}): the GST is 0 to 100 %.": "बिल की लाइन {0} ({1}): GST 0 से 100 % हो.",
+"By Insurance": "इंश्योरेंस से",
+"has the GST of its lines or lines paid by the insurance – update the app to change it.": "में लाइनों का GST या insurance से भरी लाइनें हैं – उसे बदलने के लिए app update करें.",
+"One bill of a machinery: each work / part with who paid it, Qty, Uom, Rate, Discount, ₹ and GST %. Add the bill (PDF or photo) – the AI can read it for you; check every value, then save.": "मशिनरी का एक बिल: हर काम / पार्ट – किसने भरा, Qty, Uom, Rate, छूट, ₹ और GST %. बिल (PDF या photo) जोड़ें – AI उसे पढ़ सकता है; हर value जाँचें, फिर save करें.",
+"With GST": "GST सहित"
 }

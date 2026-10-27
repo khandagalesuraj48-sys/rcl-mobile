@@ -6968,5 +6968,16 @@
 "Pick the machinery of the bill.": "बिलाची मशिनरी निवडा.",
 "Pick the machinery.": "मशिनरी निवडा.",
 "Total – {0} bill(s)": "एकूण – {0} बिल",
-"Uom": "युनिट"
+"Uom": "युनिट",
+"(Insurance)": "(इन्शुरन्स)",
+"): Paid by is RCL, Insurance, Warranty, FOC or Service Plan.": "): Paid by – RCL, Insurance, Warranty, FOC किंवा Service Plan असावे.",
+"): the GST is 0 to 100 %.": "): GST 0 ते 100 % असावा.",
+"Amount = Qty × Rate − Discount, before GST. GST % of each item (CGST and SGST half each) – no tax lines; the round-off is a line of its own; a discount on the whole bill is a minus amount. Paid by: RCL (we paid), Insurance (the insurance paid it), Warranty / FOC / Service Plan (not paid, ₹ 0).": "रक्कम = Qty × Rate − Discount, GST च्या आधी. प्रत्येक item चा GST % (CGST आणि SGST अर्धा-अर्धा) – tax च्या वेगळ्या ओळी नाहीत; round-off ची ओळ वेगळी; पूर्ण बिलावरची सवलत म्हणजे minus रक्कम. Paid by: RCL (आपण भरले), Insurance (insurance ने भरले), Warranty / FOC / Service Plan (भरले नाही, ₹ 0).",
+"Bill {0} has the GST of its lines or lines paid by the insurance – update the app to change it.": "बिल {0} मध्ये ओळींचा GST किंवा insurance ने भरलेल्या ओळी आहेत – ते बदलण्यासाठी app update करा.",
+"Bill line {0} ({1}): Paid by is RCL, Insurance, Warranty, FOC or Service Plan.": "बिलाची ओळ {0} ({1}): Paid by – RCL, Insurance, Warranty, FOC किंवा Service Plan असावे.",
+"Bill line {0} ({1}): the GST is 0 to 100 %.": "बिलाची ओळ {0} ({1}): GST 0 ते 100 % असावा.",
+"By Insurance": "इन्शुरन्सने",
+"has the GST of its lines or lines paid by the insurance – update the app to change it.": "मध्ये ओळींचा GST किंवा insurance ने भरलेल्या ओळी आहेत – ते बदलण्यासाठी app update करा.",
+"One bill of a machinery: each work / part with who paid it, Qty, Uom, Rate, Discount, ₹ and GST %. Add the bill (PDF or photo) – the AI can read it for you; check every value, then save.": "मशिनरीचे एक बिल: प्रत्येक काम / पार्ट – कोणी भरले, Qty, Uom, Rate, सवलत, ₹ आणि GST %. बिल (PDF किंवा photo) जोडा – AI ते वाचून देऊ शकतो; प्रत्येक value तपासा, मग save करा.",
+"With GST": "GST सह"
 }
