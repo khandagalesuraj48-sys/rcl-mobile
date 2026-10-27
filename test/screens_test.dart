@@ -3263,7 +3263,9 @@ void main() {
 
   testWidgets('(3.51.0 – Mechanical update-171) each line its GST % (CGST and SGST half each) and its Paid by (RCL / Insurance / …); lines paid by the insurance make the claim; the log book: the GST rates in its heading, Paid by, Insurance claim and Service on each line', (t) async {
     phone(t);
-    final srv = FakeServer()..perms.addAll({'Maintenance': 'Edit'});
+    final srv = FakeServer()
+      ..perms.addAll({'Maintenance': 'Edit'})
+      ..card = true;      // (the pretend server's cars are at its site on fuel cards)
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
