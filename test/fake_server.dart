@@ -32,6 +32,27 @@ class FakeServer {
     {'name': 'OLD CARD', 'last4': '1111', 'type': 'Debit card', 'cars': <String>[], 'opening': 0, 'openDate': '2026-09-01', 'active': false, 'paid': 0, 'spent': 0, 'balance': 0, 'fills': 0, 'payments': 0, 'lastFill': '', 'used': false},
   ];
   final cardCalls = <Map<String, dynamic>>[];
+  /// (3.48.0, the performance work) a BIG site: [big] machinery in the Master, and as many diesel issues and Log Book lines today
+  int big = 0;
+  /// (3.48.0) the stock now, when a test changes it (another person's issue); null = the usual one
+  Map<String, dynamic>? stockNow;
+  /// (3.48.0) an answer that comes late: the action's answer is made at once (the data of that moment) and sent after [Duration]
+  /// – once per entry (a slow network for one question)
+  final slowOnce = <String, Duration>{};
+  List<Map<String, dynamic>> get bigMaster => [
+        for (var i = 0; i < big; i++)
+          {'id': 'MH-12-BG-${1000 + i}', 'no': 'MH-12-BG-${1000 + i}', 'name': 'Tipper ${i + 1}', 'type': i % 3 == 0 ? 'Excavator' : 'Tipper', 'make': 'Tata', 'owner': 'Vendor ${i % 25}', 'ownership': i % 4 == 0 ? 'Own' : 'Rental',
+            'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': 3.5, 'hrStd': '', 'tankCap': 300, 'activeFrom': '', 'inactiveFrom': '', 'earlier': [],
+            'insuranceUpto': '2027-03-31', 'pucUpto': '2027-01-31', 'taxUpto': '2027-03-31', 'engineNo': 'E$i', 'chassisNo': 'C$i', 'enteredBy': 'Tester'},
+      ];
+  List<Map<String, dynamic>> get bigIssues => [
+        for (var i = 0; i < big; i++)
+          {'id': 'DI-${(900000 - i).toString().padLeft(6, '0')}', 'date': '2026-10-14', 'shift': i.isEven ? 'Day' : 'Night', 'no': 'MH-12-BG-${1000 + i}', 'type': 'Tipper', 'qty': 20 + i % 60, 'source': i % 3 == 0 ? 'VTR Store' : 'Dispenser', 'driver': 'Driver ${i % 40}', 'km': 15000 + i},
+      ];
+  List<Map<String, dynamic>> get bigLog => [
+        for (var i = 0; i < big; i++)
+          {'no': 'MH-12-BG-${1000 + i}', 'type': 'Tipper', 'owner': 'Vendor ${i % 25}', 'shift': 'Full Day', 'mode': 'KM', 'okm': 15000 + i, 'ckm': 15100 + i, 'wkm': 100, 'qty': 30, 'work': 'Earth carting', 'key': 'MH-12-BG-${1000 + i}|2026-10-14|Full Day'},
+      ];
   /// (3.46.0, Mechanical update-165) the maintenance bills of the cars at a site on fuel cards; [maintMissing]: step 1zi not run yet
   bool maintMissing = false;
   final maintCalls = <Map<String, dynamic>>[];
@@ -149,6 +170,7 @@ class FakeServer {
   ];
   List<Map<String, dynamic>> get _master => [
         ...master,
+        if (big > 0) ...bigMaster,
         if (fuels || card) ...[
           {'id': 'MH-12-HO-1163', 'no': 'MH-12-HO-1163', 'name': 'Hycross', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': 23, 'fuel': 'Petrol'},
           {'id': 'MH-12-HO-2163', 'no': 'MH-12-HO-2163', 'name': 'Ertiga', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': 25, 'fuel': 'CNG'},
@@ -548,6 +570,16 @@ class FakeServer {
   }
 
   late final client = MockClient((r) async {
+    final res = await _serve(r);
+    if (slowOnce.isNotEmpty && r.url.path.endsWith('/api/rpc')) {
+      final b = jsonDecode(r.body) as Map, args = b['args'] as List;
+      final d = args.length > 1 ? slowOnce.remove('${args[1]}') : null;
+      if (d != null) await Future<void>.delayed(d);
+    }
+    return res;
+  });
+
+  Future<http.Response> _serve(http.Request r) async {
     final path = r.url.path;
     if (down && path.endsWith('/api/rpc')) throw http.ClientException('no network');
     if (portalDown && path.contains('/portal/')) throw http.ClientException('no network');
@@ -698,7 +730,7 @@ class FakeServer {
         expireOnce = '';
         return _j({'error': 'SESSION_EXPIRED'}, 401);
       }
-      final stock = card ? cardStock : fuels ? {'stock': 302, 'byLoc': {'DIESEL CARD': 150, 'PETROL CARD': 100, 'PETROL CAN': 20, 'CNG CARD': 32}, 'byFuel': {'Diesel': 150, 'Petrol': 120, 'CNG': 32}} : {'stock': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}};
+      final stock = stockNow ?? (card ? cardStock : fuels ? {'stock': 302, 'byLoc': {'DIESEL CARD': 150, 'PETROL CARD': 100, 'PETROL CAN': 20, 'CNG CARD': 32}, 'byFuel': {'Diesel': 150, 'Petrol': 120, 'CNG': 32}} : {'stock': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}});
       const lockMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: this machinery is in the submitted RA Bill 9 of Rana (RCL, 01-10-2026 to 14-10-2026) – its Log Book and diesel entries of those dates cannot be added, changed or deleted without the Super Admin.';
       const apMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: it was approved on 14-10-2026 by Checker One (VF-00003) – an approved entry cannot be changed or deleted without the Super Admin. To correct it: change the entry and send it to the Super Admin for approval (the page asks) – it is saved only when he approves.';
       if (apLock && !superAdmin && action == 'updateLogRow') return _j({'error': apMsg}, 500);
@@ -1030,6 +1062,11 @@ class FakeServer {
           masterCalls.add({'fn': action, 'id': a[0]});
           tankChecks.removeWhere((x) => x['id'] == a[0]);
           return _j({'result': {'ok': true}});
+        case 'getDieselIssues' when big > 0:
+          if (a.isNotEmpty && a[0] is Map) listAsked.add({'fn': action, ...(a[0] as Map).cast<String, dynamic>()});
+          return _j({'result': {'count': big, 'totalQty': bigIssues.fold<num>(0, (t, x) => t + (x['qty'] as num)), 'rows': bigIssues, 'share': [
+            for (final i in bigIssues) {'no': i['no'], 'type': i['type'], 'owner': '', 'entries': 1, 'qty': i['qty']},
+          ]}});
         case 'getDieselIssues':
           if (a.isNotEmpty && a[0] is Map) listAsked.add({'fn': action, ...(a[0] as Map).cast<String, dynamic>()});
           return _j({'result': {'count': issues.length, 'totalQty': 240, 'rows': issues, 'share': [
@@ -1101,6 +1138,8 @@ class FakeServer {
         case 'readme':
           return _j({'result': {'html': _readme, 'adminCols': [{'col': 'email'}, {'col': 'name'}, {'col': 'password_hash'}, {'col': 'active'}, {'col': 'admin'}, {'col': 'perm_dashboard'}, {'col': 'mobile'}]}});
         // (3.8.0) Billing
+        case 'getLogBookList' when big > 0:
+          return _j({'result': {'count': big, 'rows': bigLog}});
         case 'getLogBookList' when billing && _arg(a, 'all') == true:
           billSent.add({'fn': action, 'args': a});
           return _j({'result': {'count': 6, 'rows': _billRows, 'summary': []}});
@@ -1434,5 +1473,5 @@ class FakeServer {
       return _j({'error': 'Unknown action.'}, 404);
     }
     return _j({'error': 'not found'}, 404);
-  });
+  }
 }
