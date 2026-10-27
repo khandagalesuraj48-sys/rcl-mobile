@@ -12,6 +12,7 @@ import 'boq.dart';
 import 'breakdown.dart';
 import 'compliance.dart';
 import 'fuel_cards.dart' show FuelCardsScreen;
+import 'maintenance.dart' show MaintScreen;
 import 'lb_formats.dart';
 import 'log_edit.dart';
 import 'logbook.dart';
@@ -26,6 +27,7 @@ const kStartPages = <(String, String, String)>[
   ('inward', 'Diesel Inward', 'Diesel Inward'),
   ('transfer', 'Diesel Transfer', 'Diesel Transfer'),
   ('cards', 'Fuel Cards', 'Fuel Cards'),      // (3.45.0, update-164) only at a site on fuel cards
+  ('mnt', 'Maintenance', 'Maintenance'),      // (3.46.0, update-165) only at a site on fuel cards
   ('log', 'Log Book', 'Log Book'),
   ('logedit', 'Edit Log Book', 'Log Book'),
   ('tankcheck', 'Tank Check', 'Log Book'),
@@ -52,10 +54,13 @@ const kStartPages = <(String, String, String)>[
 /// (3.45.0) the pages a site on fuel cards has not (no stock) – the web hides them from its menu
 const _noStock = {'inward', 'transfer', 'rdaily'};
 
+/// (3.46.0) the pages only a site on fuel cards has: Fuel Cards, Maintenance
+const _cardOnly = {'cards', 'mnt'};
+
 /// The start pages he may pick (the web lists the pages of his menu).
 List<(String, String, String)> startPagesFor(Session s) => [
       for (final p in kStartPages)
-        if ((s.cardSite ? !_noStock.contains(p.$1) : p.$1 != 'cards') && (p.$1 == 'approvals' || (p.$3.isEmpty ? s.admin : s.canSee(p.$3)))) p, // Approvals: for everybody (what waits for him, what he sent)
+        if ((s.cardSite ? !_noStock.contains(p.$1) : !_cardOnly.contains(p.$1)) && (p.$1 == 'approvals' || (p.$3.isEmpty ? s.admin : s.canSee(p.$3)))) p, // Approvals: for everybody (what waits for him, what he sent)
     ];
 
 /// Opens his start page after the sign-in. [entries] shows the Entries tab of a diesel page (issue / inward / transfer).
@@ -70,6 +75,8 @@ Future<void> openStartPage(BuildContext context, Session s, String page, {requir
       entries('transfer');
     case 'cards':
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen()));
+    case 'mnt':
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MaintScreen()));
     case 'log':
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()));
     case 'logedit':

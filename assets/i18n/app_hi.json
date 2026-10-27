@@ -992,5 +992,11 @@
 "Amount ÷ Qty = {0}": "रक़म ÷ Qty = {0}",
 "Fill {0} · {1} {2}": "Fuel {0} · {1} {2}",
 "Last fill {0}": "आखिरी fuel {0}",
-"How much is on the fuel cards now?": "अभी fuel cards पर कितना बकाया है?"
+"How much is on the fuel cards now?": "अभी fuel cards पर कितना बकाया है?",
+"Its fills and bills by date – fuel, maintenance, all costs, ₹ per KM": "तारीख के अनुसार उसका fuel भरना और बिल – fuel, मेंटेनेंस, कुल खर्च, ₹ प्रति KM",
+"A bill of a car: its work / parts and its ₹, with the bill PDF or photo.": "गाड़ी का बिल: उसके काम / पार्ट्स और ₹, बिल की PDF या photo के साथ.",
+"Bill files ({0})": "बिल की files ({0})",
+"Its files stay kept.": "उसकी files वैसी ही रखी जाती हैं.",
+"This bill is a service": "यह बिल सर्विस का है",
+"(PDF / photos) · up to {0}": "(PDF / फोटो) · ज़्यादा से ज़्यादा {0}"
 }

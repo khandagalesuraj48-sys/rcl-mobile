@@ -31,6 +31,8 @@ import 'package:rcl_mobile/screens/attach_box.dart' show pickAttFiles, CaptureSc
 import 'package:image/image.dart' as img;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
+import 'package:rcl_mobile/ui/fields.dart' show TextBox;
+import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
 
@@ -2943,6 +2945,121 @@ void main() {
     await t.scrollUntilVisible(find.byKey(const Key('cd-car-MH-12-HO-1163')), 200, scrollable: find.descendant(of: find.byKey(const Key('dash-cards')), matching: find.byType(Scrollable)).first);
     expect(find.byKey(const Key('cd-car-MH-12-HO-1163')), findsOneWidget);
     expect(find.textContaining('Fuel Petrol 30 L · CNG 12 kg · ₹ 4,300 (by card ₹ 3,200, cash ₹ 1,100)'), findsOneWidget, reason: 'each fuel on its own');
+  });
+
+  testWidgets('(3.46.0 – Mechanical update-165) Maintenance at a site on fuel cards (HO): the bills of the month; a bill with a PDF – "Read the bill (AI)" fills the empty boxes (blue), a line typed over, the file sent with maintFile, then saveMaint; the same bill again asks first; its files; Delete; the car\'s Maintenance Log Book (no fuel choice)', (t) async {
+    phone(t);
+    final p0 = pickAttFiles, c0 = attCompute;
+    attCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);
+    addTearDown(() {
+      pickAttFiles = p0;
+      attCompute = c0;
+    });
+    final pdf = Uint8List.fromList(utf8.encode('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n'));
+    pickAttFiles = (how, room) async => [(name: 'bill.pdf', bytes: pdf)];
+    // a site not on fuel cards: no Maintenance (even when given)
+    final s0 = await ready(t, FakeServer()..perms['Maintenance'] = 'Edit');
+    expect([for (final p in startPagesFor(s0)) p.$1], isNot(contains('mnt')));
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true
+      ..aiOn = true;
+    final s = await ready(t, srv);
+    expect([for (final p in startPagesFor(s)) p.$1], containsAll(['cards', 'mnt']));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    expect(srv.maintCalls.first, {'fn': 'getMaint', 'x': {'from': '2026-10-01', 'to': '2026-10-14', 'no': ''}}, reason: 'this month to start with');
+    expect(find.byKey(const Key('mt-r-MT-000002')), findsOneWidget);
+    expect(find.byKey(const Key('mt-r-MT-000001')), findsOneWidget);
+    expect(find.textContaining('· 2 · ₹ 8,660'), findsOneWidget);
+    // a new bill: the car, a PDF, "Read the bill (AI)"
+    await t.tap(find.byKey(const Key('mt-add')));
+    await net(t);
+    expect((t.widget(find.byKey(const Key('mf-read'))) as OutlinedButton).onPressed, isNull, reason: 'no file yet');
+    await t.tap(find.byKey(const Key('mf-car')));
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await settle(t, 600);
+    await tapK(t, 'att-pdf');
+    await net(t);
+    expect(find.text('bill.pdf'), findsOneWidget);
+    await tapK(t, 'mf-read');
+    await net(t);
+    expect(srv.maintCalls.last, {'fn': 'readMaintBill', 'mime': 'application/pdf'});
+    expect([(t.widget(find.byKey(const Key('mf-garage'))) as TextBox).controller.text, (t.widget(find.byKey(const Key('mf-billno'))) as TextBox).controller.text, (t.widget(find.byKey(const Key('mf-km'))) as TextBox).controller.text], ['Maruti Service', 'MS-77', '46100']);
+    expect((t.widget(find.byKey(const Key('mf-service'))) as SwitchListTile).value, true);
+    expect([for (var i = 0; i < 3; i++) (t.widget(find.byKey(Key('mf-w-$i'))) as TextBox).controller.text], ['Service charge', 'Coolant', 'GST 18%']);
+    expect(find.byWidgetPredicate((w) => w is AiBox && w.on), findsNWidgets(8), reason: 'the date, garage, bill no., KM, Service and the 3 lines – blue');
+    expect(find.textContaining('Read by the AI (blue) – check every value before saving.'), findsOneWidget);
+    expect(find.textContaining('check the car'), findsNothing, reason: 'the bill\'s vehicle is this car');
+    expect((t.widget(find.byKey(const Key('mf-total'))) as dynamic).data, '₹ 3,540');
+    await t.enterText(find.byKey(const Key('mf-a-1')), '600');
+    await settle(t, 400);
+    expect((t.widget(find.byKey(const Key('mf-total'))) as dynamic).data, '₹ 3,640');
+    expect(find.byWidgetPredicate((w) => w is AiBox && w.on), findsNWidgets(7), reason: 'the line typed over is no longer blue');
+    await tapK(t, 'mf-save');
+    await net(t);
+    final fi = srv.maintCalls.indexWhere((x) => x['fn'] == 'maintFile'), sv = srv.maintCalls.indexWhere((x) => x['fn'] == 'saveMaint');
+    expect(fi >= 0 && sv > fi, true, reason: 'the file is sent first (maintFile), then the bill');
+    final x = Map<String, dynamic>.from(srv.maintCalls[sv]['x'] as Map);
+    expect((x.remove('files') as List).length, 1);
+    expect(x, {'date': '2026-10-13', 'no': 'MH-12-HO-1163', 'garage': 'Maruti Service', 'billNo': 'MS-77', 'km': 46100, 'service': true, 'remark': '',
+      'lines': [{'work': 'Service charge', 'amount': 2500}, {'work': 'Coolant', 'amount': 600}, {'work': 'GST 18%', 'amount': 540}]});
+    expect(find.byKey(const Key('mt-r-MT-000003')), findsOneWidget);
+    // the same bill number of the same garage for the car again: asked first
+    await t.tap(find.byKey(const Key('mt-add')));
+    await net(t);
+    await t.tap(find.byKey(const Key('mf-car')));
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await settle(t, 600);
+    await t.enterText(find.byKey(const Key('mf-garage')), 'Toyota Service');
+    await t.enterText(find.byKey(const Key('mf-billno')), 'TS-101');
+    await t.enterText(find.byKey(const Key('mf-w-0')), 'Wash');
+    await t.enterText(find.byKey(const Key('mf-a-0')), '200');
+    await settle(t, 300);
+    await tapK(t, 'mf-save');
+    await net(t);
+    expect(find.text('Saved before?'), findsOneWidget);
+    expect(find.textContaining('is already saved (MT-000001). Save it again?'), findsOneWidget);
+    await t.tap(find.text('Save again'));
+    await net(t);
+    expect((srv.maintCalls.lastWhere((x) => x['fn'] == 'saveMaint')['x'] as Map)['force'], true);
+    // a bill's files; Delete
+    await tapK(t, 'mt-r-MT-000001');
+    await settle(t, 800);
+    expect(find.text('Oil filter'), findsOneWidget);
+    await t.tap(find.byKey(const Key('mt-files')));
+    await net(t);
+    expect(srv.maintCalls.last, {'fn': 'getMaintFiles', 'id': 'MT-000001'});
+    expect(find.text('Bill files – MT-000001'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'mt-r-MT-000002');
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('mt-del')));
+    await settle(t, 800);
+    await t.tap(find.text('Delete').last);
+    await net(t);
+    expect(srv.maintCalls.any((x) => x['fn'] == 'deleteMaint' && x['id'] == 'MT-000002'), true);
+    expect(find.byKey(const Key('mt-r-MT-000002')), findsNothing);
+    // one car, then its Maintenance Log Book: the same report as the web – no fuel to choose (its car has its own)
+    await tapK(t, 'mt-car');
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await net(t);
+    expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'getMaint')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-1163'});
+    await tapK(t, 'mt-log');
+    await net(t);
+    expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-1163'}, reason: 'no fuel sent');
+    expect(find.widgetWithText(DropdownButtonFormField<String>, 'Fuel'), findsNothing);
+    expect(find.text('Maintenance Log Book – MH-12-HO-1163'), findsWidgets);
+    expect(find.textContaining('Bill TS-101 – Engine oil ₹1,200'), findsOneWidget);
+    expect(find.textContaining('Fuel – 2 fill(s) (by card ₹2,100'), findsOneWidget);
   });
 
   testWidgets('(3.14.0) My settings: Log Book list shows, the page to open after sign-in, my last sign-ins, back to the usual settings', (t) async {

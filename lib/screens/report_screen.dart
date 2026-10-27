@@ -23,6 +23,10 @@ import '../ui/pick_file.dart' show pickSheetFile;
 import '../core/imports.dart' show readExcelRows, xlDate, Cols;
 import '../core/sheet_read.dart' show jsS, readSheets;
 
+/// (3.44.0) a report of one fuel at a site with more than one: not the Log Book Debit Statement, not (3.46.0, Mechanical update-165)
+/// a car's Maintenance Log Book (its car has its own fuel)
+bool oneFuelReport(ReportDef def) => def.key != 'ldebit' && def.key != 'mlog';
+
 Future<void> openReport(BuildContext context, ReportDef def, {String no = '', String owner = '', bool run = false}) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportScreen(def: def, no: no, owner: owner, run: run)));
 
@@ -69,7 +73,7 @@ Map<String, dynamic> reportFilters(ReportDef def, ReportPick p) {
     x['monthA'] = p.monthA;
     x['monthB'] = p.monthB;
   }
-  if (p.fuel.isNotEmpty && def.key != 'ldebit') x['fuel'] = p.fuel;      // (3.44.0, update-163) the report of one fuel
+  if (p.fuel.isNotEmpty && oneFuelReport(def)) x['fuel'] = p.fuel;      // (3.44.0, update-163) the report of one fuel
   if (f.contains('monthly')) {
     if (p.pickSome && p.picked.isEmpty) throw ArgumentError('Select at least one machinery, or choose All machinery.');
     x['source'] = p.source;
@@ -134,7 +138,7 @@ class _ReportScreenState extends State<ReportScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final s = SessionScope.read(context);
       setState(() {
-        if (s.multiFuel && def.key != 'ldebit') p.fuel = s.siteFuels.first;      // (3.44.0)
+        if (s.multiFuel && oneFuelReport(def)) p.fuel = s.siteFuels.first;      // (3.44.0)
         p.start(s.today, _places(s), def);
         if (widget.no.isNotEmpty) p.no = widget.no;
         if (widget.owner.isNotEmpty) owner.text = widget.owner;
@@ -318,7 +322,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final kids = <Widget>[];
     void gap() => kids.add(const SizedBox(height: 10));
     // (3.44.0, Mechanical update-163) a site with more than one fuel: the report of one fuel, never added together
-    if (s.multiFuel && def.key != 'ldebit') {
+    if (s.multiFuel && oneFuelReport(def)) {
       kids.add(_drop('Fuel', p.fuel, [for (final x in s.siteFuels) (x, x)], (v) => setState(() {
             p.fuel = v;
             final pl = _places(s);

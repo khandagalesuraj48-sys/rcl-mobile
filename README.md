@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.46.0 (27-10-2026 – step 2 of HO, the Maintenance Log Book, with Mechanical update-165):** at a site on fuel cards the page
+**Maintenance** (its own screens, `screens/maintenance.dart`; access: the Portal's page "Maintenance" – Edit / View, blank = none):
+the bills of the dates (and of one car) with their total; **one bill of a car** – date, car, garage, bill number, KM, **Service** (its
+KM is needed), remark, its **lines** (each work / part with its ₹, a discount a minus line, the words typed before offered) and its
+**files** (PDF / photos, up to 10 – the Log Book's attachment box, sent with `maintFile`); **"Read the bill (AI)"** reads the last
+file added (`readMaintBill`) and fills the empty boxes and the bill's date (blue – the person checks every value; lines typed already
+are replaced only when he says so; the bill's vehicle not this car is told). The same bill number of the same garage for the car is
+asked first ("Saved before?"). A bill opens with its lines and files (`getMaintFiles`), Change, Delete. **The car's Maintenance Log
+Book** (`report_defs.dart` `kMaintLog`, the server's `maintLog`): every fill (its card or Cash) and bill by date, fuel / maintenance /
+all costs, KM of its Log Book, ₹ per KM, the last service – on the screen, Excel and PDF (no fuel to choose: the car has its own).
+Entries, the start page and Help list it only at a site on fuel cards. Every other site exactly as before.
+
 **Version 3.45.0 (27-10-2026 – "ho madhe diesel stock hot nahi ek card dilelel aahet … card cha opening balance takel nantr apli
 system auto amount debit dakhwel", with Mechanical update-164):** a site on **fuel cards** (HO – the Super Admin, Portal → Sites →
 Diesel places → "Fuel cards – no stock"; Mechanical tells it in `getInit` as `fuelMode: 'card'`) keeps **no diesel stock**: Home shows
