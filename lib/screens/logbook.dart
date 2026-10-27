@@ -94,6 +94,15 @@ class LogBookScreen extends StatefulWidget {
 
 /// Kept while the app is open: the Log Book opens at once with what it showed last (then it is read again).
 final _logCache = <String, List<Map<String, dynamic>>>{};
+/// (3.48.0, the performance work) at most the last 24 days in memory – the oldest goes first (was: every day opened)
+void _logKeep(String key, List<Map<String, dynamic>> rows) {
+  _logCache.remove(key);
+  _logCache[key] = rows;
+  while (_logCache.length > 24) {
+    _logCache.remove(_logCache.keys.first);
+  }
+}
+
 Map<String, dynamic>? _pendCache;
 DateTime? _pendAt;
 String? _pendSite; // (update-155) the site the pending list is of: another site asks again
@@ -147,7 +156,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
         s.api.call('getLogBookList', [{'from': day, 'to': day, 'all': true}]).then((r) {
           final list = ((r as Map)['rows'] as List? ?? []).whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
           list.sort((a, b) => '${a['no']}'.compareTo('${b['no']}'));
-          _logCache[key] = list;
+          _logKeep(key, list);
           if (my == seq) rows = list;
         }),
       ];

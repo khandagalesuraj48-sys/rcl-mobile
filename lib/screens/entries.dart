@@ -44,6 +44,15 @@ bool Function()? entriesBack;
 
 /// Kept while the app is open: a day already seen shows at once (then it is read again).
 final _entriesCache = <String, List<Map<String, dynamic>>>{};
+/// (3.48.0, the performance work) at most the last 24 lists (a page and a day) in memory – the oldest goes first (was: every one
+/// opened)
+void _entriesKeep(String key, List<Map<String, dynamic>> rows) {
+  _entriesCache.remove(key);
+  _entriesCache[key] = rows;
+  while (_entriesCache.length > 24) {
+    _entriesCache.remove(_entriesCache.keys.first);
+  }
+}
 void _entriesForget() => _entriesCache.clear(); // (update-155) emptied at sign-out and at another site (Session.clearMemory)
 
 class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
@@ -133,7 +142,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
       if (r['stock'] != null) s.setStock(r['stock']);
       setState(() {
         rows = (r['rows'] as List? ?? []).whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
-        _entriesCache[ck] = rows;
+        _entriesKeep(ck, rows);
         loading = false;
       });
     } catch (e) {

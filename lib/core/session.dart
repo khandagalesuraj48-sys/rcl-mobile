@@ -321,13 +321,25 @@ class Session extends ChangeNotifier {
   /// He has this module of the Portal on the site open (the Store …).
   bool hasModule(String key) => site?.module(key) != null;
 
+  /// A machinery by its number, whatever its spaces and dashes (the first one of that number, as always).
+  /// (3.48.0, the performance work – measured: every look went through the whole list, each number cleaned again) the numbers
+  /// are cleaned once for each Master the server sends (a new list: made again), then found at once.
   Machine? machine(String id) {
-    final k = id.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    for (final m in machines) {
-      if (m.id.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '') == k) return m;
+    if (!identical(_byNoOf, machines)) {
+      final m = <String, Machine>{};
+      for (final x in machines) {
+        m.putIfAbsent(_noKey(x.id), () => x);
+      }
+      _byNo = m;
+      _byNoOf = machines;
     }
-    return null;
+    return _byNo[_noKey(id)];
   }
+
+  static final _notNo = RegExp(r'[^A-Z0-9]');
+  static String _noKey(String id) => id.toUpperCase().replaceAll(_notNo, '');
+  List<Machine>? _byNoOf;
+  Map<String, Machine> _byNo = const {};
 
   void _go(Stage s, [String err = '']) {
     if (s != Stage.waiting) _again?.cancel();
