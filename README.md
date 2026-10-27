@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.49.0 (27-10-2026 – "kahi material warranty madhe aste kahi paid aste kahi discount deun aste tr sagle kahi yeyla hawa
+… type pn krta yayla hawa", with Mechanical update-168):** a maintenance bill keeps EVERY line of the garage's bill: each line is a
+card with its work / part, its **kind** (Paid / Warranty / FOC / Service Plan), **Qty, Rate, Disc %** and **₹** – a Paid line's ₹
+is worked out from Qty × Rate − Disc % (and can be typed), a free line is ₹ 0 with its worth shown in green. Under the lines: the
+bill total, what the free lines are worth, and an **insurance claim** (the company, the claim no., what the insurance paid) – the
+car's cost is **what we paid**. "Read the bill (AI)" puts the car from the bill's number, every line with its kind and the
+insurance; the list, the bill's sheet, Change and the car's Maintenance Log Book show we paid / the bill / the insurance / the free
+worth, as the web. A bill with free lines or an insurance part can be changed only by this version (the server asks an older app
+to update).
+
 **Version 3.48.0 (27-10-2026 – "Claude API lawaychi aahe … all app madhla AI perfect chalayla hawa", with Mechanical
 update-167):** the server's AI is **Claude** when the Admin puts its key (ANTHROPIC_API_KEY) in Vercel – the assistant, the
 meter / pump photos and the maintenance bills go to Claude through the same server actions (the app's conversation is the same;
