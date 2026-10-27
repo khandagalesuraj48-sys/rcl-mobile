@@ -56,7 +56,11 @@ void _entriesKeep(String key, List<Map<String, dynamic>> rows) {
 void _entriesForget() => _entriesCache.clear(); // (update-155) emptied at sign-out and at another site (Session.clearMemory)
 
 class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
-  String kind = '', day = '', q = '', place = '';
+  String kind = '', day = '', place = '';
+  /// (3.48.0, the performance work – measured: each letter typed built the whole page again, its top, the days, the search box)
+  /// the search: each letter draws again only the count of the day and the list
+  final _q = ValueNotifier<String>('');
+  String get q => _q.value;
   bool loading = false;
   String err = '';
   List<Map<String, dynamic>> rows = [];
@@ -124,6 +128,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
   void dispose() {
     if (entriesBack == _back) entriesBack = null;
     _ls?.dataTick.removeListener(_live);
+    _q.dispose();
     super.dispose();
   }
 
@@ -336,26 +341,30 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
     final s = SessionScope.of(context);
     if (kind.isEmpty || !s.canSee(kindOf(kind).module) || (s.cardSite && kind != 'issue')) return _menu(s);
     final k = kindOf(kind);
-    final list = _shown;
-    final total = list.fold<num>(0, (a, r) => a + (asNum(r['qty']) ?? 0));
-    // (3.44.0, Mechanical update-163) a site with more than one fuel: the day's total of each fuel – never added together
-    final byFuel = <String, num>{};
-    if (s.multiFuel) {
-      for (final r in list) {
-        final f = s.placeFuel('${k.key == 'issue' ? r['source'] : k.key == 'inward' ? r['location'] : r['from']}');
-        byFuel[f] = (byFuel[f] ?? 0) + (asNum(r['qty']) ?? 0);
+    // the entries shown (the search, the place) and the day's total of them – worked out again for each letter typed
+    String totalOf(List<Map<String, dynamic>> list) {
+      final total = list.fold<num>(0, (a, r) => a + (asNum(r['qty']) ?? 0));
+      // (3.44.0, Mechanical update-163) a site with more than one fuel: the day's total of each fuel – never added together
+      final byFuel = <String, num>{};
+      if (s.multiFuel) {
+        for (final r in list) {
+          final f = s.placeFuel('${k.key == 'issue' ? r['source'] : k.key == 'inward' ? r['location'] : r['from']}');
+          byFuel[f] = (byFuel[f] ?? 0) + (asNum(r['qty']) ?? 0);
+        }
       }
-    }
-    // (3.45.0, Mechanical update-164) a site on fuel cards: a fill's fuel is its car's; the ₹ of the day too
-    if (s.cardSite && k.key == 'issue') {
-      byFuel.clear();
-      for (final r in list) {
-        final f = s.machine('${r['no'] ?? ''}')?.fuel ?? 'Diesel';
-        byFuel[f] = (byFuel[f] ?? 0) + (asNum(r['qty']) ?? 0);
+      // (3.45.0, Mechanical update-164) a site on fuel cards: a fill's fuel is its car's; the ₹ of the day too
+      if (s.cardSite && k.key == 'issue') {
+        byFuel.clear();
+        for (final r in list) {
+          final f = s.machine('${r['no'] ?? ''}')?.fuel ?? 'Diesel';
+          byFuel[f] = (byFuel[f] ?? 0) + (asNum(r['qty']) ?? 0);
+        }
       }
+      final rupees = s.cardSite && k.key == 'issue' ? ' · ₹ ${fmtNum(list.fold<num>(0, (a, r) => a + (asNum(r['amount']) ?? 0)))}' : '';
+      return (s.multiFuel ? [for (final e in byFuel.entries) '${e.key} ${fmtNum(e.value)} ${e.key == 'CNG' ? 'kg' : 'L'}'].join(' · ') : '${fmtNum(total)} L') + rupees;
     }
-    final rupees = s.cardSite && k.key == 'issue' ? ' · ₹ ${fmtNum(list.fold<num>(0, (a, r) => a + (asNum(r['amount']) ?? 0)))}' : '';
-    final totalText = (s.multiFuel ? [for (final e in byFuel.entries) '${e.key} ${fmtNum(e.value)} ${e.key == 'CNG' ? 'kg' : 'L'}'].join(' · ') : '${fmtNum(total)} L') + rupees;
+
+    Widget searched(Widget Function(List<Map<String, dynamic>> list) of) => ValueListenableBuilder<String>(valueListenable: _q, builder: (_, __, ___) => of(_shown));
     final today = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     final days = [for (var i = 0; i < 14; i++) today.subtract(Duration(days: i))];
     return Scaffold(
@@ -454,7 +463,13 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
                 padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 8),
                 child: Row(children: [
                   Expanded(child: Text('${showDate(day)}, ${weekDays[parseKey(day).weekday - 1]}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
-                  if (!loading) Flexible(child: Text('${list.length} ${list.length == 1 ? 'entry' : 'entries'}${totalText.isEmpty ? '' : ' · $totalText'}', textAlign: TextAlign.right, style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: k.color))),
+                  if (!loading)
+                    Flexible(
+                      child: searched((list) {
+                        final totalText = totalOf(list);
+                        return Text('${list.length} ${list.length == 1 ? 'entry' : 'entries'}${totalText.isEmpty ? '' : ' · $totalText'}', textAlign: TextAlign.right, style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: k.color));
+                      }),
+                    ),
                 ]),
               ),
             ),
@@ -464,7 +479,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
                 child: Row(children: [
                   Expanded(
                     child: TextField(
-                      onChanged: (v) => setState(() => q = v),
+                      onChanged: (v) => _q.value = v,
                       decoration: InputDecoration(hintText: tr(kind == 'issue' ? 'Search vehicle, operator, issue ID…' : 'Search…'), prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 14)),
                     ),
                   ),
@@ -488,20 +503,20 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
               SliverList.separated(itemCount: 4, separatorBuilder: (_, __) => const SizedBox(height: 10), itemBuilder: (_, __) => const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Shimmer(height: 104)))
             else if (err.isNotEmpty)
               SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(16), child: InfoLine(err, bad: true)))
-            else if (list.isEmpty)
-              SliverToBoxAdapter(
-                child: EmptyState(rows.isEmpty ? 'No ${k.en.toLowerCase()} on this day' : 'Nothing matches', rows.isEmpty ? 'Pick another day, or add a new entry.' : 'Change the search or the filter.', pic: k.pic,
-                    action: rows.isEmpty && s.canEdit(k.module) ? 'New Entry' : null, onAction: _add),
-              )
             else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 110),
-                sliver: SliverList.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => EntryCard(kind: k, r: list[i], onChanged: _load),
-                ),
-              ),
+              searched((list) => list.isEmpty
+                  ? SliverToBoxAdapter(
+                      child: EmptyState(rows.isEmpty ? 'No ${k.en.toLowerCase()} on this day' : 'Nothing matches', rows.isEmpty ? 'Pick another day, or add a new entry.' : 'Change the search or the filter.', pic: k.pic,
+                          action: rows.isEmpty && s.canEdit(k.module) ? 'New Entry' : null, onAction: _add),
+                    )
+                  : SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 110),
+                      sliver: SliverList.separated(
+                        itemCount: list.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (_, i) => EntryCard(kind: k, r: list[i], onChanged: _load),
+                      ),
+                    )),
           ]),
         ),
       ),
