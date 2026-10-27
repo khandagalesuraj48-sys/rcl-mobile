@@ -129,6 +129,7 @@ void main() {
     b.stop();
     s.removeListener(note);
     final change = countCalls(srv.calls, from), changeBuilds = b.n, changeTabs = b.tabs;
+    expect(s.stockByLoc['Dispenser'], 773, reason: 'the session has the new stock');
 
     // 4. one redraw of the whole session (any notifyListeners: a stock, a count of approvals …) – how much is built for it:
     // the same stock again (a save's answer …), then a stock that changed
@@ -183,7 +184,6 @@ void main() {
     ]);
     expect(srv.calls.where((c) => c == 'mech:sync').length, greaterThan(10), reason: 'the live sync ran in the measured minute');
     expect(shownAt, greaterThan(0), reason: 'another person\'s change is shown on Home');
-    expect(s.stockByLoc['Dispenser'], 773);
   });
 
   testWidgets('perf: a big site – 300 machinery, 300 diesel issues and 300 Log Book lines today: Home, the Entries list, its scroll', (t) async {
