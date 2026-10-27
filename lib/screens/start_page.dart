@@ -11,6 +11,7 @@ import 'billing.dart';
 import 'boq.dart';
 import 'breakdown.dart';
 import 'compliance.dart';
+import 'fuel_cards.dart' show FuelCardsScreen;
 import 'lb_formats.dart';
 import 'log_edit.dart';
 import 'logbook.dart';
@@ -24,6 +25,7 @@ const kStartPages = <(String, String, String)>[
   ('diesel', 'Diesel Issue', 'Diesel Issue'),
   ('inward', 'Diesel Inward', 'Diesel Inward'),
   ('transfer', 'Diesel Transfer', 'Diesel Transfer'),
+  ('cards', 'Fuel Cards', 'Fuel Cards'),      // (3.45.0, update-164) only at a site on fuel cards
   ('log', 'Log Book', 'Log Book'),
   ('logedit', 'Edit Log Book', 'Log Book'),
   ('tankcheck', 'Tank Check', 'Log Book'),
@@ -47,10 +49,13 @@ const kStartPages = <(String, String, String)>[
   ('approvals', 'Approvals', ''),
 ];
 
+/// (3.45.0) the pages a site on fuel cards has not (no stock) – the web hides them from its menu
+const _noStock = {'inward', 'transfer', 'rdaily'};
+
 /// The start pages he may pick (the web lists the pages of his menu).
 List<(String, String, String)> startPagesFor(Session s) => [
       for (final p in kStartPages)
-        if (p.$1 == 'approvals' || (p.$3.isEmpty ? s.admin : s.canSee(p.$3))) p, // Approvals: for everybody (what waits for him, what he sent)
+        if ((s.cardSite ? !_noStock.contains(p.$1) : p.$1 != 'cards') && (p.$1 == 'approvals' || (p.$3.isEmpty ? s.admin : s.canSee(p.$3)))) p, // Approvals: for everybody (what waits for him, what he sent)
     ];
 
 /// Opens his start page after the sign-in. [entries] shows the Entries tab of a diesel page (issue / inward / transfer).
@@ -63,6 +68,8 @@ Future<void> openStartPage(BuildContext context, Session s, String page, {requir
       entries('inward');
     case 'transfer':
       entries('transfer');
+    case 'cards':
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen()));
     case 'log':
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()));
     case 'logedit':

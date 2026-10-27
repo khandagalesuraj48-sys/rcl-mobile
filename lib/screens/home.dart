@@ -30,6 +30,7 @@ import 'admin.dart';
 import 'billing.dart';
 import 'breakdown.dart';
 import 'call.dart';
+import 'fuel_cards.dart' show FuelCardsScreen, rupees;
 import 'verify.dart';
 import 'logbook.dart';
 import 'store.dart';
@@ -69,13 +70,12 @@ const kModules = [
 List<(String, String, String, String)> reportsOf(Session s) => [
       if (s.canSee('Dashboard')) ('Dashboard', 'डॅशबोर्ड', 'dash', 'bar_chart'),
       if (s.canSee('Reports')) ...[
-        ('Daily Inward & Issue', 'दैनिक आवक व वाटप', 'rdaily', 'calendar'),
+        if (!s.cardSite) ('Daily Inward & Issue', 'दैनिक आवक व वाटप', 'rdaily', 'calendar'),      // (3.45.0) not at a site on fuel cards (no stock) – as the web
         ('Monthly Diesel Issue', 'मासिक डिझेल वाटप', 'rmonthly', 'fuel_pump'),
         ('Monthly Diesel & Average', 'मासिक डिझेल व सरासरी', 'ravg', 'clipboard'),
         ('Actual vs Standard Average', 'प्रत्यक्ष व standard सरासरी', 'rp-average', 'bar_chart'),
         ('Machinery Diesel Ledger', 'यंत्राचे डिझेल खाते', 'rp-ledger', 'ledger'),
-        ('Stock Register', 'स्टॉक रजिस्टर', 'rp-stock', 'oil_drum'),
-        ('Diesel Purchase Register', 'डिझेल खरेदी रजिस्टर', 'rp-purchase', 'receipt'),
+        if (!s.cardSite) ...[('Stock Register', 'स्टॉक रजिस्टर', 'rp-stock', 'oil_drum'), ('Diesel Purchase Register', 'डिझेल खरेदी रजिस्टर', 'rp-purchase', 'receipt')],
         ('Diesel Cost Report', 'डिझेल खर्च', 'rp-cost', 'receipt'),
         ('Machinery Cost Sheet', 'यंत्र खर्च', 'rp-mcost', 'tractor'),
         ('Owner / Vendor-wise Summary', 'मालक / vendor नुसार', 'rp-owner', 'office_building'),
@@ -470,6 +470,10 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                 ),
               ]),
               // ---------- the stock card (green) ----------
+              // (3.45.0, Mechanical update-164) a site on fuel cards (HO) keeps no stock: the cards' balances in its place
+              if (s.cardSite)
+                _HomeCards(at: at, onRefresh: () => _load(init: true))
+              else
               Padding(
                 padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
                 child: Container(
@@ -643,7 +647,9 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                         if (loading && acts.isEmpty)
                           ...List.generate(3, (_) => const Padding(padding: EdgeInsets.only(bottom: 10), child: Shimmer(height: 70)))
                         else if (acts.isEmpty)
-                          const EmptyState('No diesel entry today yet', 'Issue, Inward and Transfer of today show here.', pic: 'fuel_pump')
+                          s.cardSite
+                              ? const EmptyState('No fill today yet', 'The fills of today (card or Cash) show here.', pic: 'fuel_pump')
+                              : const EmptyState('No diesel entry today yet', 'Issue, Inward and Transfer of today show here.', pic: 'fuel_pump')
                         else
                           for (final a in acts.take(6)) _ActRow(a: a, onTap: () => widget.onOpenEntries(a.kind.key)),
                       ]),
@@ -723,7 +729,14 @@ class _HomeMenu extends StatelessWidget {
 
 /// (3.31.0) Help & Support: ask the robot, or the guide of a page (the web's "?").
 Future<void> openHelp(BuildContext context) async {
-  const pages = [('diesel', 'Diesel Issue', 'fuel_pump'), ('inward', 'Diesel Inward', 'inbox_tray'), ('transfer', 'Diesel Transfer', 'left-right_arrow'), ('log', 'Log Book', 'notebook'), ('brk', 'Breakdown', 'wrench'), ('approvals', 'Approvals', 'clipboard'), ('settings', 'My settings', 'gear')];
+  final s = SessionScope.read(context);
+  // (3.45.0) a site on fuel cards has no Inward / Transfer – its page Fuel Cards instead
+  final pages = [
+    ('diesel', 'Diesel Issue', 'fuel_pump'),
+    if (!s.cardSite) ...[('inward', 'Diesel Inward', 'inbox_tray'), ('transfer', 'Diesel Transfer', 'left-right_arrow')],
+    if (s.cardSite && s.canSee('Fuel Cards')) ('cards', 'Fuel Cards', 'ledger'),
+    ('log', 'Log Book', 'notebook'), ('brk', 'Breakdown', 'wrench'), ('approvals', 'Approvals', 'clipboard'), ('settings', 'My settings', 'gear'),
+  ];
   final pick = await showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
@@ -863,6 +876,90 @@ class _ActRow extends StatelessWidget {
           if ('${r['shift'] ?? ''}'.isNotEmpty) Pill('${r['shift']}', color: k.color, bg: k.soft),
           const Icon(Icons.chevron_right_rounded, color: C.faint),
         ]),
+      ),
+    );
+  }
+}
+
+/// (3.45.0, Mechanical update-164) Home at a site on fuel cards (HO): every card's balance now (opening + payments − fills), the total
+/// of the Active cards in big; a card short of money in red. Tap: the page Fuel Cards (when he may open it).
+class _HomeCards extends StatelessWidget {
+  const _HomeCards({required this.at, required this.onRefresh});
+  final DateTime? at;
+  final VoidCallback onRefresh;
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context);
+    final act = s.cards.where((c) => c.active).toList();
+    final total = act.fold<num>(0, (a, c) => a + c.balance);
+    final open = s.canSee('Fuel Cards') ? () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen())) : null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const Key('home-cards'),
+          borderRadius: BorderRadius.circular(24),
+          onTap: open,
+          child: Ink(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, C.greenEnd]),
+              boxShadow: [BoxShadow(color: C.green.withValues(alpha: .3), blurRadius: 22, offset: const Offset(0, 10))],
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .1), border: Border.all(color: Colors.white.withValues(alpha: .45), width: 1.5)),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.credit_card_rounded, color: Colors.white, size: 30),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('Fuel cards – balance', mr: 'फ्युएल कार्ड – शिल्लक', style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(act.isEmpty ? '–' : rupees(total), key: const Key('home-cards-total'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+                    ),
+                  ]),
+                ),
+                IconButton(
+                  tooltip: tr('Refresh'),
+                  style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: .14), fixedSize: const Size(40, 40)),
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              if (act.isEmpty)
+                const Text('No fuel card yet – add them in Fuel Cards.', mr: 'अजून fuel card नाही – Fuel Cards मध्ये भरा.', style: TextStyle(fontSize: 12.5, color: Color(0xE6FFFFFF)))
+              else
+                Wrap(spacing: 8, runSpacing: 6, children: [
+                  for (final c in act)
+                    Container(
+                      key: Key('home-card-${c.name}'),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: c.balance < 0 ? C.red : Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
+                      child: Text('${c.name}${c.last4.isEmpty ? '' : ' ••${c.last4}'}  ${rupees(c.balance)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
+                ]),
+              if (at != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(children: [
+                    const Icon(Icons.schedule_rounded, size: 13, color: Color(0xCCFFFFFF)),
+                    const SizedBox(width: 4),
+                    Text('Updated ${at!.hour % 12 == 0 ? 12 : at!.hour % 12}:${at!.minute.toString().padLeft(2, '0')} ${at!.hour < 12 ? 'AM' : 'PM'}', style: const TextStyle(fontSize: 11.5, color: Color(0xCCFFFFFF))),
+                  ]),
+                ),
+            ]),
+          ),
+        ),
       ),
     );
   }

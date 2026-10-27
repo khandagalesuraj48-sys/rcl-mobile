@@ -23,6 +23,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/print_view.dart';
 import 'compliance.dart' show openCompliance;
+import 'fuel_cards.dart' show CardTile, FuelCardsScreen, rupees;
 import 'logbook.dart' show LogForm;
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
@@ -45,6 +46,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// (3.44.0, Mechanical update-163) a site with more than one fuel: the dashboard of ONE fuel at a time ('' = a site of one fuel)
   String fuel = '';
   Map<String, dynamic>? d, led, cp;
+  /// (3.45.0, Mechanical update-164) a site on fuel cards: its own dashboard – the cards' balances, each car (getCardDash)
+  Map<String, dynamic>? cd;
   bool loading = true, daily = false;
   String err = '';
   int _seq = 0;
@@ -62,6 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final s = SessionScope.read(context);
       _ls = s..dataTick.addListener(_live);
       from = to = s.today; // (as the web: the Dashboard opens on Today)
+      if (s.cardSite) from = '${s.today.substring(0, 8)}01';      // (3.45.0) a site on fuel cards: this month to start with
       fuel = s.multiFuel ? s.siteFuels.first : '';
       final r = lbRange('month', s.today);
       lFrom = r.$1;
@@ -90,6 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _load({bool quiet = false}) async {
     final s = SessionScope.read(context), seq = ++_seq;
     if (!quiet) setState(() => loading = true);
+    if (s.cardSite) return _loadCards(seq, quiet);
     try {
       final r = (await s.api.call('getDashboard', [_fv({'from': from, 'to': to})]) as Map).cast<String, dynamic>();
       final l = (await s.api.call('getStockLedger', [_fv({'from': from, 'to': to, 'location': ledLoc})]) as Map).cast<String, dynamic>();
@@ -98,6 +103,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         d = r;
         led = l;
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (!mounted || seq != _seq) return;
+      setState(() {
+        loading = false;
+        if (!quiet) err = errText(e);
+      });
+    }
+  }
+
+  /// (3.45.0) a site on fuel cards: the cards and the cars of the dates
+  Future<void> _loadCards(int seq, bool quiet) async {
+    final s = SessionScope.read(context);
+    try {
+      final r = (await s.api.call('getCardDash', [{'from': from, 'to': to}]) as Map).cast<String, dynamic>();
+      if (!mounted || seq != _seq) return;
+      s.setCards(r['cards']);
+      setState(() {
+        cd = r;
         loading = false;
         err = '';
       });
@@ -196,7 +222,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             },
             labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
             tabs: [
-              Tab(key: const Key('dt-diesel'), child: Text('Diesel')),
+              Tab(key: const Key('dt-diesel'), child: Text(s.cardSite ? 'Fuel cards & cars' : 'Diesel')),
               Tab(
                 key: const Key('dt-log'),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [Text('Log Book'), if (pendN > 0) ...[const SizedBox(width: 6), Badge(label: Text('$pendN'))]]),
@@ -209,8 +235,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /* ================= (3.45.0, Mechanical update-164) A SITE ON FUEL CARDS ================= *
+   * Every card's balance now (red when short); for the dates (this month to start with) each car: the KM of its Log Book, the fuel
+   * filled (its unit) and its ₹ (by card / in cash), the fills, the average and the last fill – and the totals of each fuel. */
+  Widget _cards(Session s) {
+    final x = cd, which = dashWhich(from, to, s.today);
+    final cars = [for (final c in (x?['cars'] as List? ?? const []).whereType<Map>()) c.cast<String, dynamic>()];
+    final t = (x?['total'] as Map?)?.cast<String, dynamic>() ?? const {}, bf = (t['byFuel'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(key: const Key('dash-cards'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
+        Row(children: [
+          Expanded(child: Text('Fuel cards and cars', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+          Pill(rangeText(from, to), color: C.blue, bg: C.blueSoft),
+        ]),
+        const SizedBox(height: 8),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final q in const [('today', 'Today'), ('month', 'This month'), ('lastmonth', 'Last month')])
+            ChoiceChip(key: Key('dq-${q.$1}'), selected: which == q.$1, onSelected: (_) => _range(q.$1), label: Text(q.$2)),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: DateField(key: const Key('d-from'), label: 'From', value: from, clear: false, onChanged: (v) {
+            setState(() => from = v);
+            _load();
+          })),
+          const SizedBox(width: 8),
+          Expanded(child: DateField(key: const Key('d-to'), label: 'To', value: to, clear: false, onChanged: (v) {
+            setState(() => to = v);
+            _load();
+          })),
+        ]),
+        if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: InfoLine(err, bad: true)),
+        FormHead('Card balance now'),
+        if (s.cards.isEmpty) Text('No fuel card yet – add them in Fuel Cards.', style: const TextStyle(color: C.muted)),
+        for (final c in s.cards) Padding(padding: const EdgeInsets.only(bottom: 8), child: CardTile(c, onTap: s.canSee('Fuel Cards') ? () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen())) : null)),
+        if (x != null)
+          Container(
+            key: const Key('cd-total'),
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(14)),
+            child: Text('Fuel ${bf.isEmpty ? '0' : [for (final e in bf.entries) '${e.key} ${fmtNum(asNum(e.value))} ${e.key == 'CNG' ? 'kg' : 'L'}'].join(' · ')} · ${rupees(asNum(t['amount']))} (by card ${rupees(asNum(t['card']))}, cash ${rupees(asNum(t['cash']))}) · ${fmtNum(asNum(t['fills']))} fills · ${fmtNum(asNum(t['km']))} km',
+                style: const TextStyle(fontWeight: FontWeight.w600, color: C.blue, height: 1.35)),
+          ),
+        FormHead('Cars'),
+        if (loading && x == null) const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
+        if (x != null && cars.isEmpty) Text('No car on this site in these dates.', style: const TextStyle(color: C.muted)),
+        for (final c in cars)
+          Container(
+            key: Key('cd-car-${c['no']}'),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                Expanded(child: Text('${c['no']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
+                Pill('${c['fuel']}', color: C.greenDark, bg: C.greenSoft),
+              ]),
+              if ('${c['name'] ?? ''}'.isNotEmpty) Text('${c['name']}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+              const SizedBox(height: 6),
+              Wrap(spacing: 14, runSpacing: 4, children: [
+                Text('${fmtNum(asNum(c['qty']))} ${c['unit'] == 'kg' ? 'kg' : 'L'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(rupees(asNum(c['amount'])), style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text('${fmtNum(asNum(c['km']))} km'),
+                Text('${fmtNum(asNum(c['fills']))} fills'),
+                if (asNum(c['avg']) != null) Text('${fmtNum(asNum(c['avg']))} km/${c['unit'] == 'kg' ? 'kg' : 'L'}${asNum(c['std']) != null ? ' (standard ${fmtNum(asNum(c['std']))})' : ''}'),
+              ]),
+              if ((asNum(c['card']) ?? 0) > 0 || (asNum(c['cash']) ?? 0) > 0) Text('By card ${rupees(asNum(c['card']))} · cash ${rupees(asNum(c['cash']))}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+              if (c['last'] is Map) Builder(builder: (_) {
+                final l = (c['last'] as Map).cast<String, dynamic>();
+                return Text('Last fill ${showDate('${l['date']}')} · ${fmtNum(asNum(l['qty']))} ${c['unit'] == 'kg' ? 'kg' : 'L'} · ${rupees(asNum(l['amount']))} · ${l['paidBy']}${asNum(l['km']) != null ? ' · ${fmtNum(asNum(l['km']))} km' : ''}',
+                    style: const TextStyle(fontSize: 12.5, color: C.muted));
+              }),
+            ]),
+          ),
+      ]),
+    );
+  }
+
   /* ================= DIESEL ================= */
   Widget _diesel(Session s) {
+    if (s.cardSite) return _cards(s);      // (3.45.0) a site on fuel cards
     final dd = d;
     final which = dashWhich(from, to, s.today);
     return RefreshIndicator(

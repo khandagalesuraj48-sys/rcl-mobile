@@ -33,6 +33,27 @@ class SiteChoice {
   }
 }
 
+/// (3.45.0, Mechanical update-164) "Cash": a fill at a site on fuel cards paid without a card
+const kCash = 'Cash';
+
+/// (3.45.0, Mechanical update-164) a fuel card of a site on fuel cards, with its balance now
+class FuelCard {
+  FuelCard(this.m);
+  final Map<String, dynamic> m;
+  String get name => '${m['name'] ?? ''}';
+  String get last4 => '${m['last4'] ?? ''}';
+  String get type => '${m['type'] ?? 'Fuel card'}';
+  List<String> get cars => [for (final x in (m['cars'] as List? ?? const [])) '$x'];
+  num get opening => m['opening'] is num ? m['opening'] as num : 0;
+  String get openDate => '${m['openDate'] ?? ''}';
+  bool get active => m['active'] != false;
+  num get paid => m['paid'] is num ? m['paid'] as num : 0;
+  num get spent => m['spent'] is num ? m['spent'] as num : 0;
+  num get balance => m['balance'] is num ? m['balance'] as num : 0;
+  String get lastFill => '${m['lastFill'] ?? ''}';
+  bool get used => m['used'] == true;
+}
+
 class Machine {
   Machine(this.m);
   final Map<String, dynamic> m;
@@ -240,8 +261,21 @@ class Session extends ChangeNotifier {
   Map<String, String> placeFuels = {};
   String placeFuel(String place) => placeFuels[place] ?? 'Diesel';
   String placeUnit(String place) => fuelUnit(placeFuel(place));
-  /// The fuels of this site's places, in their order (one = a site as before: VTR, 18B)
-  List<String> get siteFuels { final o = <String>[]; for (final l in locations) { final f = placeFuel(l); if (!o.contains(f)) o.add(f); } return o; }
+  /// The fuels of this site's places, in their order (one = a site as before: VTR, 18B); (3.45.0) a site on fuel cards: its machinery's
+  List<String> get siteFuels {
+    if (cardSite && serverFuels.isNotEmpty) return serverFuels;
+    final o = <String>[]; for (final l in locations) { final f = placeFuel(l); if (!o.contains(f)) o.add(f); } return o;
+  }
+  /// (3.45.0, Mechanical update-164) a site on FUEL CARDS (HO – the Super Admin, Portal → Sites → Diesel places): no diesel stock; a
+  /// fill is paid by a card or in Cash with its ₹; the cards and their balances come with the stock (getStock / a save's answer)
+  String fuelMode = '';
+  bool get cardSite => fuelMode == 'card';
+  List<String> serverFuels = [];
+  List<FuelCard> cards = [];
+  FuelCard? card(String name) { final k = name.trim().toUpperCase(); for (final c in cards) { if (c.name.toUpperCase() == k) return c; } return null; }
+  /// The cards that may pay for [m] (Active; its cars – none = every car), then Cash
+  List<String> payFor(Machine? m) => [for (final c in cards) if (c.active && (c.cars.isEmpty || (m != null && c.cars.any((x) => _nk(x) == _nk(m.id))))) c.name, kCash];
+  static String _nk(String v) => v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
   bool get multiFuel => siteFuels.length > 1;
   /// A site with more than one fuel, or a machinery that is not Diesel: the fuel is checked on the phone too
   bool get fuelChecks => multiFuel || machines.any((m) => m.fuel != 'Diesel');
@@ -255,6 +289,7 @@ class Session extends ChangeNotifier {
   String fuelProblem(Machine? m, String place) {
     if (m == null || !fuelChecks) return '';
     if (m.fuel == 'Electric') return '${m.id} runs on Electric – no fuel is issued to it (Asset Master → Fuel).';
+    if (cardSite) return '';      // (3.45.0) a site on fuel cards: paid by a card or Cash – not a place of a fuel
     final pf = placeFuel(place);
     return pf == m.fuel ? '' : '$place holds $pf and ${m.id} runs on ${m.fuel} – pick a ${m.fuel} place (Asset Master → Fuel).';
   }
@@ -545,6 +580,8 @@ class Session extends ChangeNotifier {
     pumps = (d['pumps'] as List? ?? []).map((e) => e.toString()).toList();
     locations = (d['locations'] as List? ?? []).map((e) => e.toString()).toList();
     placeFuels = d['placeFuels'] is Map ? {for (final e in (d['placeFuels'] as Map).entries) '${e.key}': '${e.value}'} : {};      // (3.44.0)
+    fuelMode = '${d['fuelMode'] ?? ''}';      // (3.45.0) a site on fuel cards
+    serverFuels = d['siteFuels'] is List ? [for (final f in d['siteFuels'] as List) '$f'] : [];
     aiOn = d['ai'] is Map && (d['ai'] as Map)['on'] == true;
     _flow(d['flow']);
     _admin(d);
@@ -583,12 +620,19 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// (3.45.0) the cards as the server sent them (with the stock, a save of a card / a payment, the dashboard)
+  void setCards(dynamic l) {
+    if (l is! List) return;
+    cards = [for (final x in l.whereType<Map>()) FuelCard(x.cast<String, dynamic>())];
+  }
+
   void setStock(dynamic s) {
     if (s is! Map) return;
     final t = s['stock'];
     if (t is num) stockTotal = t;
     final by = s['byLoc'];
     if (by is Map) stockByLoc = by.map((k, v) => MapEntry(k.toString(), (v is num) ? v : 0));
+    setCards(s['cards']);      // (3.45.0) a site on fuel cards: the cards' balances
     notifyListeners();
   }
 
@@ -1027,6 +1071,9 @@ class Session extends ChangeNotifier {
     perms = {};
     dsrc = {};
     placeFuels = {};
+    fuelMode = '';
+    serverFuels = [];
+    cards = [];
     admin = false;
     superAdmin = false;
     _go(Stage.signedOut, msg);

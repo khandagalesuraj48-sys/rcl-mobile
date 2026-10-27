@@ -95,6 +95,15 @@ class _ReportsTabState extends State<ReportsTab> {
         ask('getDashboard', {'from': dateKey(m0), 'to': today, ...fv}).catchError((_) => <String, dynamic>{}),
         if (s.canSee('Log Book') || s.canSee('Dashboard')) ask('logDashboard', {'from': from, 'to': to, 'vendor': '', 'ownerships': <String>[]}).catchError((_) => <String, dynamic>{}),
       ]);
+      // (3.45.0, Mechanical update-164) a site on fuel cards has no inward bills: its cost is the ₹ of the fills (card + cash)
+      Map<String, dynamic>? cn, cp;
+      if (s.cardSite) {
+        try {
+          final c = await Future.wait([ask('getCardDash', {'from': from, 'to': to}), ask('getCardDash', {'from': pf, 'to': pt})]);
+          cn = c[0];
+          cp = c[1];
+        } catch (_) {/* the card only */}
+      }
       Map<String, dynamic>? bd;
       if (s.canSee('Breakdown')) {
         try {
@@ -105,6 +114,7 @@ class _ReportsTabState extends State<ReportsTab> {
       final d = r[0], p = r[1], trend = r[2];
       final ld = r.length > 3 ? r[3] : const <String, dynamic>{};
       num n(Map? m, String k) => asNum(m?[k]) ?? 0;
+      _Fig? cardFig(Map? now, Map? before) => now == null ? null : _Fig(n(now['total'] as Map?, 'amount'), before == null ? null : n(before['total'] as Map?, 'amount'), const []);
       final daily = mapsOf(d['daily']);
       final hist = mapsOf(bd?['history']);
       int began(String a, String b) => hist.where((x) => '${x['from']}'.compareTo(a) >= 0 && '${x['from']}'.compareTo(b) <= 0).length;
@@ -120,7 +130,9 @@ class _ReportsTabState extends State<ReportsTab> {
       const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       setState(() {
         used = _Fig(n(d['total'] as Map?, 'qty'), n(p['total'] as Map?, 'qty'), [for (final x in daily) asNum(x['qty']) ?? 0]);
-        cost = _Fig(n(d['inward'] as Map?, 'amount'), n(p['inward'] as Map?, 'amount'), [for (final x in daily) asNum(x['inQty']) ?? 0]);
+        cost = s.cardSite
+            ? cardFig(cn, cp)
+            : _Fig(n(d['inward'] as Map?, 'amount'), n(p['inward'] as Map?, 'amount'), [for (final x in daily) asNum(x['inQty']) ?? 0]);
         final k = ld['kpi'] as Map?, kp = ld['prev'] as Map?;
         running = k == null ? null : _Fig(n(k, 'worked'), kp == null ? null : n(kp, 'worked'), [for (final x in mapsOf(ld['daily'])) asNum(x['machines']) ?? 0]);
         breaks = bd == null ? null : _Fig(began(from, to), began(pf, pt), const []);
@@ -293,7 +305,7 @@ class _ReportsTabState extends State<ReportsTab> {
       FuelScope(fuel: _fuel(s), child: Row(children: [
         Expanded(child: fig('ov-used', 'fuel_pump', C.redSoft, 'Diesel Consumed', '${fmtNum(used?.now)} L', used)),
         const SizedBox(width: Sp.chips),
-        Expanded(child: fig('ov-cost', 'receipt', C.amberSoft, 'Diesel Cost', '₹${fmtNum(cost?.now)}', cost)),
+        Expanded(child: fig('ov-cost', 'receipt', C.amberSoft, s.cardSite ? 'Fuel Cost (card + cash)' : 'Diesel Cost', '₹${fmtNum(cost?.now)}', cost)),
       ])),
       const SizedBox(height: Sp.chips),
       Row(children: [

@@ -174,6 +174,18 @@ void main() {
     expect((await a.aiDraft(cmd.kind, cmd.a)).data['source'], 'Dispenser', reason: 'all Diesel: as before');
   });
 
+  test('(3.45.0, Mechanical update-164) a site on fuel cards: a fill is made in its form (its card or Cash, its ₹, the photos); the stock question gives the cards\' balances', () async {
+    final (a, _) = make('en');
+    a.cardSite = true;
+    final cmd = a.aiCommand('8511 la 60 litre diesel de, reading 148200')!;
+    expect((await a.aiDraft(cmd.kind, cmd.a)).error, 'At this site a fill is entered in the Diesel Issue form – with its card or Cash, the Amount (₹) and the photos. [[open:diesel|Diesel Issue]]');
+    final r = a.readyOf('stock');
+    expect(r.q(), 'How much is on the fuel cards now?');
+    expect(await r.run(), 'This site is on fuel cards – no diesel stock. The cards now:\n–\n[[open:cards|Fuel Cards]]');
+    a.cardSite = false;
+    expect(r.q(), 'How much diesel is in stock now?', reason: 'any other site: as before');
+  });
+
   test('The ⚡ questions on the Dashboard and the daily summary', () async {
     for (final c in fx['ready'] as List) {
       if (c['id'] == 'page') continue; // (the web's page guide was left out in node – its own test below)
