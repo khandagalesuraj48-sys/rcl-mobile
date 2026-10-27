@@ -3036,7 +3036,7 @@ void main() {
     await tapK(t, 'mt-files');
     await net(t);
     expect(srv.maintCalls.last, {'fn': 'getMaintFiles', 'id': 'MT-000001'});
-    expect(find.text('Bill files – MT-000001'), findsOneWidget);
+    expect(find.textContaining('1 / 1 · bill.pdf'), findsOneWidget, reason: 'the bill\'s file in the viewer');
     await t.pageBack();
     await net(t);
     await tapK(t, 'mt-r-MT-000002');
