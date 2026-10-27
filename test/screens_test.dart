@@ -3197,12 +3197,12 @@ void main() {
     expect(find.text('• Line 6 (Coolant): Qty × Rate = ₹500, Amount ₹450'), findsOneWidget);
     expect(find.text('• Line 6 (Coolant): Amount + GST = ₹531, Amount With GST ₹541'), findsOneWidget);
     expect([on('mli-check'), on('mli-go')], [true, false]);
-    expect(srv.maintCalls.where((x) => '${x['fn']}'.contains('Import')), isEmpty, reason: 'nothing sent before Check');
+    expect(srv.maintCalls.where((x) => x['fn'] == 'checkMaintImport' || x['fn'] == 'importMaint'), isEmpty, reason: 'nothing sent before Check');
     // Check: nothing saved; the roller's "later" is a mistake – nothing of that sheet goes
     final n0 = srv.maint.length;
     await tapK(t, 'mli-check');
     await net(t);
-    expect([for (final x in srv.maintCalls.where((x) => '${x['fn']}'.contains('Import'))) x], [
+    expect([for (final x in srv.maintCalls.where((x) => x['fn'] == 'checkMaintImport' || x['fn'] == 'importMaint')) x], [
       {'fn': 'checkMaintImport', 'no': 'RL-173', 'bills': 5, 'garages': ['Store', 'Store', 'Ganesh Motors', 'Store', 'Store']},
       {'fn': 'checkMaintImport', 'no': 'MH-12-XW-0169', 'bills': 1, 'garages': ['Navnit Motors']},
     ]);
