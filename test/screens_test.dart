@@ -3366,8 +3366,8 @@ void main() {
     await net(t);
     expect(find.textContaining('AI key'), findsNothing, reason: 'the AI service is set up');
     srv.aiScript.addAll([
-      {'parts': [{'functionCall': {'name': 'diesel_issues', 'args': {'from': '2026-10-14', 'to': '2026-10-14'}}}], 'model': 'gemini-test-flash'},
-      {'parts': [{'text': 'Kobelco Sk 220 and MH-25-AJ-2169 took the most today: **80 L** each. [[open:diesel|Diesel Issue]]'}], 'model': 'gemini-test-flash'},
+      {'parts': [{'functionCall': {'name': 'diesel_issues', 'args': {'from': '2026-10-14', 'to': '2026-10-14'}}}], 'model': 'claude-sonnet-5-5'},
+      {'parts': [{'text': 'Kobelco Sk 220 and MH-25-AJ-2169 took the most today: **80 L** each. [[open:diesel|Diesel Issue]]'}], 'model': 'claude-sonnet-5-5'},
     ]);
     await t.enterText(find.byKey(const Key('ai-in')), 'who took the most diesel today and why');
     await tapK(t, 'ai-send');
@@ -3402,12 +3402,18 @@ void main() {
     await net(t);
     expect(find.text('⚡ The AI service is not set up – from the app itself, now'), findsOneWidget);
     expect(find.textContaining('14-10-2026: 240 L in 4 entries.'), findsOneWidget);
-    // Admin: which model answers
+    // Admin: which model answers – (3.48.0) no key on the server: it names the Claude key
+    await tapK(t, 'ai-test');
+    await net(t);
+    expect(find.textContaining('No key on the server (ANTHROPIC_API_KEY for Claude).'), findsOneWidget);
     srv.aiOn = true;
     await tapK(t, 'ai-test');
     await net(t);
-    expect(find.textContaining('✓ gemini-3.8-flash – answered in 1.2 s'), findsOneWidget);
-    expect(find.textContaining('✗ gemini-3.7-flash – 503: The model is overloaded.'), findsOneWidget);
+    // (3.48.0, Mechanical update-167) the server's AI is Claude: the service named, each model with its time or what it said
+    expect(find.textContaining('Service: Claude'), findsOneWidget);
+    expect(find.textContaining('✓ claude-sonnet-5-5 – answered in 1.2 s'), findsOneWidget);
+    expect(find.textContaining('✗ claude-haiku-5-5 – 529: Overloaded'), findsOneWidget);
+    expect(find.textContaining('At least one model answers'), findsOneWidget);
   }, tags: ['golden']);
 
   testWidgets('(3.15.0) Ask the app by voice: he speaks, it answers aloud, it listens again; "हो" saves the entry heard; 3 silences end the talk; 🔊 of an answer', (t) async {
@@ -3487,7 +3493,7 @@ void main() {
     await settle(t, 400);
     expect(find.textContaining('What is wrong: This machinery number / name is not in the Asset Master'), findsOneWidget);
     // Ask the assistant about this: the message and the page go to the AI service
-    srv.aiScript.add({'parts': [{'text': 'Pick the machinery from the list – type part of its number.'}], 'model': 'gemini-test-flash'});
+    srv.aiScript.add({'parts': [{'text': 'Pick the machinery from the list – type part of its number.'}], 'model': 'claude-sonnet-5-5'});
     await tapK(t, 'fix-ai');
     await net(t);
     await net(t);

@@ -2605,7 +2605,6 @@
 "No field changed": "कोई फील्ड नहीं बदला",
 "No gaps between the entries.": "एंट्रियों के बीच कोई अंतर नहीं है.",
 "No inward entries match this filter.": "इस फिल्टर से मेल खाती इनवर्ड एंट्रियाँ नहीं हैं.",
-"No key on the server (GEMINI_API_KEY).": "सर्वर पर की नहीं है (GEMINI_API_KEY).",
 "No lines yet – pick the party and the dates and press \"Get Log Book entries\", or add a line by hand.": "अभी कोई पंक्ति नहीं – पार्टी और तारीखें चुनें और \"लॉग बुक एंट्रियाँ लाएँ\" दबाएँ, या हाथ से पंक्ति जोड़ें.",
 "No machinery for these choices.": "इन चुनावों के लिए कोई मशीनरी नहीं.",
 "No machinery for these filters.": "इन फिल्टरों के लिए कोई मशीनरी नहीं.",
@@ -3826,7 +3825,6 @@
 "The app's background part is not ready – close the app and open it again.": "ऐप का बैकग्राउंड हिस्सा तैयार नहीं है – ऐप बंद करके फिर से खोलें.",
 "The app's guide": "ऐप की गाइड",
 "The assistant has reached its limit for today for this site. It works again tomorrow.": "सहायक की इस साइट के लिए आज की सीमा पूरी हो गई. कल फिर चलेगा.",
-"The assistant is not set up yet: the Admin has to put the AI key (GEMINI_API_KEY) in the server's settings.": "सहायक अभी सेट नहीं है: एडमिन को सर्वर की सेटिंग्स में AI की (GEMINI_API_KEY) डालनी होगी.",
 "The automatic backup is running right now. Try again in a minute.": "ऑटोमैटिक बैकअप अभी चल रहा है. एक मिनट में फिर कोशिश करें.",
 "The average of this machinery's last entries with readings (": "रीडिंग वाली इस मशीनरी की पिछली एंट्रियों का एवरेज (",
 "The average of this machinery's last entries with readings ({0}). Change it if the day was different.": "रीडिंग वाली इस मशीनरी की पिछली एंट्रियों का एवरेज ({0}). अगर दिन अलग था तो बदलें.",
@@ -6881,5 +6879,11 @@
 "Name on the card": "Card पर नाम",
 "of the card programme – not the card number": "card programme का – card नंबर नहीं",
 "person or company": "व्यक्ति या कंपनी",
-"Expires {0}": "मियाद {0} को खत्म"
+"Expires {0}": "मियाद {0} को खत्म",
+"The assistant is not set up yet: the Admin has to put the AI key (ANTHROPIC_API_KEY – Claude) in the server's settings.": "सहायक अभी सेट नहीं है: एडमिन को सर्वर की सेटिंग्स में AI की (ANTHROPIC_API_KEY – Claude) डालनी होगी.",
+"No key on the server (ANTHROPIC_API_KEY for Claude).": "सर्वर पर की नहीं है (Claude के लिए ANTHROPIC_API_KEY).",
+"No model answered. Check in Claude Console that the key is active and the account has credit (Billing).": "किसी मॉडल ने जवाब नहीं दिया. Claude Console में देखें कि की चालू है और खाते में credit है (Billing).",
+"Service: {0}": "सेवा: {0}",
+"The AI service did not accept its key ({0}): the Admin has to check ANTHROPIC_API_KEY in the server's settings (Vercel → Environment Variables) and Redeploy.": "AI सेवा ने अपनी की नहीं मानी ({0}): एडमिन को सर्वर की सेटिंग्स में ANTHROPIC_API_KEY (Vercel → Environment Variables) जाँचकर Redeploy करना होगा.",
+"The AI service has no credit left (Claude): the Admin has to add funds in Claude Console → Billing. The rest of the app works as always.": "AI सेवा (Claude) में credit नहीं बचा: एडमिन को Claude Console → Billing में funds डालने होंगे. बाकी app हमेशा की तरह चलता है."
 }

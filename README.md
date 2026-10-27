@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.48.0 (27-10-2026 – "Claude API lawaychi aahe … all app madhla AI perfect chalayla hawa", with Mechanical
+update-167):** the server's AI is **Claude** when the Admin puts its key (ANTHROPIC_API_KEY) in Vercel – the assistant, the
+meter / pump photos and the maintenance bills go to Claude through the same server actions (the app's conversation is the same;
+the server puts it into Claude's words). In the app only the words changed: "Test the AI service" names the service ("Service:
+Claude") and, when no model answers, says to look at the key and the credit in Claude Console; no key on the server names
+ANTHROPIC_API_KEY; the web's help for the new messages (no credit left, a key not accepted) and its Marathi / Hindi words taken
+again. The photos the PHONE reads itself (ML Kit, 3.28.0) are not changed.
+
 **Version 3.47.0 (27-10-2026 – "fuel card number / details takayla option nahiye te baanaw", with Mechanical update-166):** a fuel
 card's **details** – Bank / company, Name on the card, **Expiry** (month / year, typed as 08/2029), Customer / Account ID – in the card's
 form (Fuel Cards → a card → Change card, or + Card); the tile shows its bank / company and a mark **"Expires 31-10-2026"** (amber –

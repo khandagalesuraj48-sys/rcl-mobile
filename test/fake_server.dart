@@ -1218,12 +1218,13 @@ class FakeServer {
           ]}});
         case 'getAiReply':
           aiAsked.add((a[0] as Map).cast<String, dynamic>());
-          if (!aiOn) return _j({'error': 'The assistant is not set up yet: the Admin has to put the AI key (GEMINI_API_KEY) in the server\'s settings.'}, 500);
-          return _j({'result': aiScript.isNotEmpty ? aiScript.removeAt(0) : {'parts': [{'text': 'Nothing more to say.'}], 'model': 'gemini-test-flash'}});
+          if (!aiOn) return _j({'error': 'The assistant is not set up yet: the Admin has to put the AI key (ANTHROPIC_API_KEY – Claude) in the server\'s settings.'}, 500);
+          return _j({'result': aiScript.isNotEmpty ? aiScript.removeAt(0) : {'parts': [{'text': 'Nothing more to say.'}], 'model': 'claude-sonnet-5-5'}});
         case 'getBrief':
           return _j({'result': brief});
         case 'getAiCheck':
-          return _j({'result': {'key': aiOn, 'fixedModel': '', 'listError': '', 'tests': [{'model': 'gemini-3.8-flash', 'ok': true, 'ms': 1240}, {'model': 'gemini-3.7-flash', 'ok': false, 'code': 503, 'said': 'The model is overloaded.'}]}});
+          // (3.48.0, Mechanical update-167) the server's AI is Claude: it says which service, the models and what each said
+          return _j({'result': {'key': aiOn, if (aiOn) 'service': 'Claude', 'fixedModel': '', 'listError': '', 'tests': [{'model': 'claude-sonnet-5-5', 'ok': true, 'ms': 1240}, {'model': 'claude-haiku-5-5', 'ok': false, 'code': 529, 'said': 'Overloaded'}]}});
         case 'getMyPrefs':
           return _j({'result': {'prefs': prefs, 'logins': ['2026-10-14T03:35:00Z', '2026-10-13T12:10:00Z'], 'rules': {'backDays': '', 'announce': notice, 'dayFrom': '08:00', 'nightFrom': '20:00'}}});
         // (3.14.0) the diesel history of a machinery, the photos of a fill, a transfer's stock, the Admin's faults and backup

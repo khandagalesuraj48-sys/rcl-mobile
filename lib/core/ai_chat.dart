@@ -296,7 +296,7 @@ class AiChat extends ChangeNotifier {
         return;
       }
       // 2. the AI service
-      if (!aiOn) throw AiStop('The assistant is not set up yet: the Admin has to put the AI key (GEMINI_API_KEY) in the server\'s settings.');
+      if (!aiOn) throw AiStop('The assistant is not set up yet: the Admin has to put the AI key (ANTHROPIC_API_KEY – Claude) in the server\'s settings.');
       _waitSays(wait, 'Thinking…');
       Map<String, Object?>? snap;
       try {
@@ -430,13 +430,16 @@ class AiChat extends ChangeNotifier {
       final d0 = await a.call('getAiCheck', const []), d = d0 is Map ? d0 : const {};
       _drop(wait);
       final tests = (d['tests'] is List ? d['tests'] as List : const []).whereType<Map>().toList();
+      // (3.48.0, Mechanical update-167) the service (Claude / Gemini) said, and what to look at when no model answers
+      final service = '${d['service'] ?? ''}';
       final body = d['key'] != true
-          ? 'No key on the server (GEMINI_API_KEY).'
+          ? 'No key on the server (ANTHROPIC_API_KEY for Claude).'
           : '${d['listError'] ?? ''}'.isNotEmpty
               ? '${d['listError']}'
-              : '${'${d['fixedModel'] ?? ''}'.isNotEmpty ? 'Model fixed in the settings: ${d['fixedModel']}\n' : 'Models offered to this key, in the order they are asked:\n'}'
+              : '${service.isNotEmpty ? 'Service: $service\n' : ''}'
+                  '${'${d['fixedModel'] ?? ''}'.isNotEmpty ? 'Model fixed in the settings: ${d['fixedModel']}\n' : 'Models offered to this key, in the order they are asked:\n'}'
                   '${tests.map((t) => '${t['ok'] == true ? '✓ ' : '✗ '}${t['model']} – ${t['ok'] == true ? 'answered in ${js((jsN(t['ms']) / 100).round() / 10)} s' : '${jsTrueS(t['code']) ? t['code'] : 'no connection'}: ${t['said'] ?? ''}'}').join('\n')}\n'
-                  '${tests.any((t) => t['ok'] == true) ? 'At least one model answers: typed questions can work now.' : 'No model answered. If they all say "high demand" / 503 or 429, the free limit of this key is the cause: turn on billing in Google AI Studio.'}';
+                  '${tests.any((t) => t['ok'] == true) ? 'At least one model answers: typed questions can work now.' : service == 'Claude' ? 'No model answered. Check in Claude Console that the key is active and the account has credit (Billing).' : 'No model answered. If they all say "high demand" / 503 or 429, the free limit of this key is the cause: turn on billing in Google AI Studio.'}';
       _add(AiMsg(AiKind.bot, '**AI service test**\n$body'));
     } catch (e) {
       _drop(wait);
