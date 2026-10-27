@@ -1309,18 +1309,25 @@ class FakeServer {
           }
           // (3.49.0, Mechanical update-168) as the server: a line's kind; the bill = its Paid lines; a claim – the insurance's part,
           // not more than the bill; the bill's Amount = what we paid; a free line's worth
-          const kinds = ['Paid', 'Warranty', 'FOC', 'Service Plan'];
+          // (3.51.0, update-171) Paid by: RCL ('Paid') / Insurance ('By Insurance') are charged; a line's GST % (CGST and SGST half each,
+          // each rounded); the lines paid by the insurance are the insurance's part of the bill
+          const kinds = ['Paid', 'By Insurance', 'Warranty', 'FOC', 'Service Plan'];
+          bool charged(Map l) => (l['type'] ?? 'Paid') == 'Paid' || l['type'] == 'By Insurance';
+          num r2(num v) => (v * 100).round() / 100;
+          num withGst(Map l) => charged(l) ? r2((l['amount'] as num) + 2 * r2((l['amount'] as num) * (l['gst'] is num ? l['gst'] as num : 0) / 200)) : 0;
           final ls = [for (final l in (x['lines'] as List)) (l as Map).cast<String, dynamic>()];
           for (final (i, l) in ls.indexed) {
-            if (l.containsKey('type') && !kinds.contains(l['type'])) return _j({'error': 'Bill line ${i + 1} (${l['work']}): its kind is Paid, Warranty, FOC or Service Plan.'}, 500);
+            if (l.containsKey('type') && !kinds.contains(l['type'])) return _j({'error': 'Bill line ${i + 1} (${l['work']}): Paid by is RCL, Insurance, Warranty, FOC or Service Plan.'}, 500);
+            if (l['gst'] is num && ((l['gst'] as num) < 0 || (l['gst'] as num) > 100)) return _j({'error': 'Bill line ${i + 1} (${l['work']}): the GST is 0 to 100 %.'}, 500);
           }
-          final bill = ls.fold<num>(0, (t, l) => t + ((l['type'] ?? 'Paid') == 'Paid' ? (l['amount'] as num) : 0));
-          final ins = x['insurance'] is Map ? (x['insurance'] as Map).cast<String, dynamic>() : null;
+          final bill = r2(ls.fold<num>(0, (t, l) => t + withGst(l))), byIns = r2(ls.fold<num>(0, (t, l) => t + (l['type'] == 'By Insurance' ? withGst(l) : 0)));
+          final ins = x['insurance'] is Map ? {...(x['insurance'] as Map).cast<String, dynamic>(), if (byIns > 0) 'paid': byIns} : null;
+          if (byIns > 0 && (ins == null || '${ins['company'] ?? ''}'.isEmpty)) return _j({'error': 'The insurance part of the bill: type the insurance company.'}, 500);
           if (ins != null && (ins['paid'] is! num || (ins['paid'] as num) > bill)) return _j({'error': 'The insurance part of the bill: the insurance paid ₹${ins['paid']} – more than the bill (₹$bill).'}, 500);
-          final tot = bill - (ins == null ? 0 : ins['paid'] as num);
-          final free = ls.fold<num>(0, (t, l) => t + ((l['type'] ?? 'Paid') == 'Paid' ? 0 : ((l['qty'] is num ? l['qty'] as num : 1) * (l['rate'] is num ? l['rate'] as num : 0))));
+          final tot = r2(bill - (ins == null ? 0 : ins['paid'] as num));
+          final free = ls.fold<num>(0, (t, l) => t + (charged(l) ? 0 : ((l['qty'] is num ? l['qty'] as num : 1) * (l['rate'] is num ? l['rate'] as num : 0))));
           final id = action == 'saveMaint' ? 'MT-00000${maint.length + 1}' : '${a[0]}';
-          final row = {'id': id, ...x, 'total': tot, 'billTotal': bill, 'free': free, 'files': [for (final f in (x['files'] as List)) {'sha': (f as Map)['sha']}]}..remove('force');
+          final row = {'id': id, ...x, 'insurance': ins, 'total': tot, 'billTotal': bill, 'free': free, 'files': [for (final f in (x['files'] as List)) {'sha': (f as Map)['sha']}]}..remove('force');
           if (action == 'saveMaint') { maint.insert(0, row); } else { maint[maint.indexWhere((r) => r['id'] == id)] = row; }
           return _j({'result': {'ok': true, 'id': id, 'total': tot, 'billTotal': bill}});
         case 'deleteMaint':

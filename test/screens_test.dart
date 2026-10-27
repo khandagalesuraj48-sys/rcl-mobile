@@ -3049,7 +3049,7 @@ void main() {
     final x = Map<String, dynamic>.from(srv.maintCalls[sv]['x'] as Map);
     expect((x.remove('files') as List).length, 1);
     // (3.49.0, update-168) every line with its kind, Qty, Rate, Disc % (blank: none on the bill); no insurance part
-    const paidLine = {'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': ''};      // (3.50.0: its Uom)
+    const paidLine = {'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': '', 'gst': ''};      // (3.50.0: its Uom; 3.51.0: its GST %)
     expect(x, {'date': '2026-10-13', 'no': 'MH-12-HO-1163', 'garage': 'Maruti Service', 'billNo': 'MS-77', 'km': 46100, 'service': true, 'remark': '',
       'lines': [{'work': 'Service charge', ...paidLine, 'amount': 2500}, {'work': 'Coolant', ...paidLine, 'amount': 600}, {'work': 'GST 18%', ...paidLine, 'amount': 540}], 'insurance': null});
     expect(find.byKey(const Key('mt-r-MT-000003')), findsOneWidget);
@@ -3155,7 +3155,8 @@ void main() {
     String txt(String k) => '${(t.widget(find.byKey(Key(k))) as dynamic).data}';
     expect(find.descendant(of: find.byKey(const Key('mf-car')), matching: find.textContaining('MH-12-HO-2163')), findsOneWidget, reason: 'the car of the bill\'s vehicle number');
     expect([for (var i = 0; i < 8; i++) kind(i).value], ['Paid', 'Paid', 'Service Plan', 'Warranty', 'FOC', 'Paid', 'Paid', 'Paid']);
-    expect(kind(0).items, ['Paid', 'Warranty', 'FOC', 'Service Plan']);
+    expect(kind(0).items, ['Paid', 'By Insurance', 'Warranty', 'FOC', 'Service Plan']);
+    expect(kind(0).labels, {'Paid': 'RCL', 'By Insurance': 'Insurance'}, reason: '(3.51.0) "Paid by": RCL / Insurance shown, the kinds kept');
     expect([box('mf-q-1'), box('mf-r-1'), box('mf-d-1'), box('mf-a-1')], ['1', '600', '10', '540']);
     expect([box('mf-q-2'), box('mf-r-2'), box('mf-d-2'), box('mf-a-2')], ['4.5', '520', '100', '0']);
     expect([for (final i in [2, 3, 4]) (t.widget(find.byKey(Key('mf-a-$i'))) as TextBox).enabled], [false, false, false], reason: 'a free line is ₹ 0 – not typed');
@@ -3182,7 +3183,7 @@ void main() {
       await t.tap(find.text(v).last);
       await settle(t, 600);
     }
-    await pick(4, 'Paid');
+    await pick(4, 'RCL');      // (3.51.0: "Paid by" – RCL)
     expect([kind(4).value, box('mf-a-4'), (t.widget(find.byKey(const Key('mf-a-4'))) as TextBox).enabled, txt('mf-total'), txt('mf-free')], ['Paid', '250', true, '₹ 3,071', '₹ 2,690']);
     expect(find.byKey(const Key('mf-worth-4')), findsNothing);
     await pick(4, 'FOC');
@@ -3200,9 +3201,9 @@ void main() {
     final ls = [for (final l in x['lines'] as List) Map<String, dynamic>.from(l as Map)];
     expect(x['no'], 'MH-12-HO-2163');
     expect([for (final l in ls) l['type']], ['Paid', 'Paid', 'Service Plan', 'Warranty', 'FOC', 'Paid', 'Paid', 'Paid']);
-    expect(ls[1], {'work': 'Wheel alignment', 'type': 'Paid', 'qty': 1, 'uom': '', 'rate': 600, 'disc': 0, 'amount': 600});
-    expect(ls[2], {'work': 'Engine oil', 'type': 'Service Plan', 'qty': 4.5, 'uom': 'Ltr', 'rate': 520, 'disc': 100, 'amount': 0}, reason: '(3.50.0) the Uom typed');
-    expect(ls[5], {'work': 'CGST 9%', 'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': 0, 'amount': 210.6});
+    expect(ls[1], {'work': 'Wheel alignment', 'type': 'Paid', 'qty': 1, 'uom': '', 'rate': 600, 'disc': 0, 'amount': 600, 'gst': ''});
+    expect(ls[2], {'work': 'Engine oil', 'type': 'Service Plan', 'qty': 4.5, 'uom': 'Ltr', 'rate': 520, 'disc': 100, 'amount': 0, 'gst': ''}, reason: '(3.50.0) the Uom typed');
+    expect(ls[5], {'work': 'CGST 9%', 'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': 0, 'amount': 210.6, 'gst': ''});
     expect(x['insurance'], {'company': ins, 'claimNo': 'CLM-168', 'paid': 2000});
     expect(find.textContaining('(We paid ₹821 of ₹2,821.)'), findsOneWidget, reason: 'the message says what we paid of the bill');
     // the list: what we paid, the bill and the insurance, the free lines' worth
@@ -3213,7 +3214,7 @@ void main() {
     await tapK(t, 'mt-r-MT-000003');
     await settle(t, 800);
     expect(find.text('Service Plan · worth ₹2,340'), findsOneWidget);
-    expect(find.text('₹ 600 · 1 × 600'), findsOneWidget);
+    expect(find.text('₹ 600 · 1 × 600 · RCL'), findsOneWidget);
     expect(find.text('− ₹ 2,000 · $ins · Claim no. CLM-168'), findsOneWidget);
     expect(find.text('We paid'), findsOneWidget);
     expect(find.text('₹ 2,940'), findsOneWidget, reason: 'the free lines\' worth');
@@ -3259,6 +3260,98 @@ void main() {
       expect(find.text(w), findsWidgets, reason: w);
     }
   }, tags: ['golden']);
+
+  testWidgets('(3.51.0 – Mechanical update-171) each line its GST % (CGST and SGST half each) and its Paid by (RCL / Insurance / …); lines paid by the insurance make the claim; the log book: the GST rates in its heading, Paid by, Insurance claim and Service on each line', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Maintenance': 'Edit'})
+      ..card = true;      // (the pretend server's cars are at its site on fuel cards)
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    await t.tap(find.byKey(const Key('mt-add')));
+    await net(t);
+    String box(String k) => (t.widget(find.byKey(Key(k))) as TextBox).controller.text;
+    String txt(String k) => '${(t.widget(find.byKey(Key(k))) as dynamic).data}';
+    Future<void> type(String k, String v) async {
+      await t.ensureVisible(find.byKey(Key(k)));
+      await settle(t, 200);
+      await t.enterText(find.byKey(Key(k)), v);
+      await settle(t, 200);
+    }
+    await t.tap(find.byKey(const Key('mf-car')));
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await settle(t, 600);
+    await type('mf-garage', 'Test Garage');
+    // a line of RCL: 1 × 1,000 at 18 % – GST ₹180 (CGST 90 + SGST 90), ₹1,180 with it
+    await type('mf-w-0', 'Battery');
+    await type('mf-q-0', '1');
+    await type('mf-r-0', '1000');
+    await type('mf-g-0', '18');
+    expect([box('mf-a-0'), txt('mf-gv-0'), txt('mf-total')], ['1000', 'GST ₹180 · With GST ₹1,180', '₹ 1,180']);
+    expect((t.widget(find.byKey(const Key('mf-ins'))) as SwitchListTile).value, false);
+    // a line paid by the insurance: the claim is on by itself, "Paid by the insurance" its ₹ with GST – not typed
+    await t.ensureVisible(find.byKey(const Key('mf-addl')));
+    await tapK(t, 'mf-addl');
+    await settle(t, 300);
+    await type('mf-w-1', 'Bumper');
+    await type('mf-q-1', '1');
+    await type('mf-r-1', '10000');
+    await type('mf-g-1', '18');
+    await settle(t, 300);
+    await t.ensureVisible(find.byKey(const Key('mf-t-1')));
+    await tapK(t, 'mf-t-1');
+    await settle(t, 600);
+    await t.tap(find.text('Insurance').last);
+    await settle(t, 600);
+    expect((t.widget(find.byKey(const Key('mf-t-1'))) as PickField).value, 'By Insurance');
+    expect([txt('mf-gv-1'), txt('mf-total')], ['GST ₹1,800 · With GST ₹11,800', '₹ 12,980']);
+    final sw = t.widget(find.byKey(const Key('mf-ins'))) as SwitchListTile;
+    expect([sw.value, sw.onChanged == null], [true, true], reason: 'the claim stays on while a line is paid by the insurance');
+    expect([box('mf-inspaid'), (t.widget(find.byKey(const Key('mf-inspaid'))) as TextBox).enabled, txt('mf-wepaid')], ['11800', false, '₹ 1,180']);
+    await type('mf-insco', 'Test Insurance');
+    await t.ensureVisible(find.byKey(const Key('mf-save')));
+    await tapK(t, 'mf-save');
+    await net(t);
+    final x = Map<String, dynamic>.from(srv.maintCalls.lastWhere((c) => c['fn'] == 'saveMaint')['x'] as Map);
+    expect(x['lines'], [
+      {'work': 'Battery', 'type': 'Paid', 'qty': 1, 'uom': '', 'rate': 1000, 'disc': '', 'amount': 1000, 'gst': 18},
+      {'work': 'Bumper', 'type': 'By Insurance', 'qty': 1, 'uom': '', 'rate': 10000, 'disc': '', 'amount': 10000, 'gst': 18},
+    ]);
+    expect(x['insurance'], {'company': 'Test Insurance', 'claimNo': '', 'paid': 11800});
+    expect(find.textContaining('(We paid ₹1,180 of ₹12,980.)'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('mt-r-MT-000003')), matching: find.textContaining('Battery ₹1,180; Bumper ₹11,800 (Insurance)')), findsOneWidget);
+    // the sheet: each line with GST and who paid it
+    await tapK(t, 'mt-r-MT-000003');
+    await settle(t, 800);
+    expect(find.text('₹ 1,180 · 1 × 1,000 · GST 18 % · RCL'), findsOneWidget);
+    expect(find.text('₹ 11,800 · 1 × 10,000 · GST 18 % · Insurance'), findsOneWidget);
+    await t.tapAt(const Offset(200, 40));
+    await settle(t, 800);
+    // the log book: one GST % → CGST 9 % and SGST 9 % in the heading, the GST column "GST 18%"; each line its Paid by, the bill's claim and service
+    srv.maintLogAnswer = {'title': 'Maintenance Log Book – MH-12-HO-1163', 'from': '2026-10-01', 'to': '2026-10-14', 'generated': '14-10-2026 10:00', 'company': 'Rachana Construction Limited',
+      'machine': {'id': 'MH-12-HO-1163', 'name': 'Roller', 'type': 'Roller', 'fuel': 'Diesel', 'unit': 'Ltr', 'meter': 'Hrs'}, 'card': false,
+      'lines': [{'date': '2026-10-13', 'kind': 'Maintenance', 'id': 'MT-000003', 'no': 'MH-12-HO-1163', 'garage': 'Test Garage', 'party': 'Test Garage', 'billNo': '', 'km': '', 'amount': 1180, 'total': 1180, 'billTotal': 12980, 'free': 0,
+        'insurance': {'company': 'Test Insurance', 'claimNo': '', 'paid': 11800}, 'service': false, 'files': 0, 'lines': x['lines']}],
+      'total': {'fuel': {'qty': 0, 'amount': 0, 'card': 0, 'cash': 0, 'fills': 0}, 'maint': {'amount': 1180, 'bills': 1, 'billTotal': 12980, 'insurance': 11800, 'free': 0}, 'all': 1180, 'km': 0, 'perKm': null,
+        'byWork': [{'work': 'Battery', 'amount': 1180, 'n': 1}]},
+      'lastService': null};
+    await tapK(t, 'mt-car');
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await net(t);
+    await tapK(t, 'mt-log');
+    await net(t);
+    for (final w in ['CGST 9%', 'SGST 9%', 'GST 18%', 'Amount With GST', 'Paid by', 'Insurance claim', 'Service', 'RCL', 'Insurance', 'Yes', 'No', '90.00', '900.00', '1,800.00', '11,800.00', '990.00', '1,980.00', '-11,800.00']) {
+      expect(find.text(w), findsWidgets, reason: w);
+    }
+    expect(find.text('GST Amount'), findsNothing, reason: 'one GST % – its rate in the heading');
+  });
 
   testWidgets('(3.14.0) My settings: Log Book list shows, the page to open after sign-in, my last sign-ins, back to the usual settings', (t) async {
     phone(t);

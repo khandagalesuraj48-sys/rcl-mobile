@@ -14,7 +14,11 @@
  *  AI reads every line with its kind, the car from the bill's number, the insurance.
  * (3.50.0, Mechanical update-170, asked 27-10-2026 with the Maintenance Log Book of Roller No-03: "mala log book as hawa aahe ya
  *  format madhe") at EVERY site, for every machinery: the party of a direct bill, the current reading (KM / Hrs), each line its Uom;
- *  the log book in his format (report_defs.dart kMaintLog). */
+ *  the log book in his format (report_defs.dart kMaintLog).
+ * (3.51.0, Mechanical update-171: "gst row madhe nko heading madhe ghe 9 9 18 … koni paid kel insurance claim aahe nahi service ch bill ahe
+ *  ka") each line its GST % (one number – CGST and SGST half each, each rounded) and its Paid by: RCL ('Paid'), Insurance ('By
+ *  Insurance' – its ₹ is the insurance's part of the bill), Warranty, FOC, Service Plan; the log book: the GST rates in its heading,
+ *  Paid by, Insurance claim, Service on every line. */
 import 'dart:convert';
 
 import 'package:flutter/material.dart' hide Text;
@@ -41,18 +45,28 @@ const kMaintFilesMax = 10;
 String _key(String v) => v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
 
 /// (3.49.0) the kinds of a bill's line (the server's MNT_TYPES_): Paid is charged; the others are free (₹ 0)
-const kMaintKinds = ['Paid', 'Warranty', 'FOC', 'Service Plan'];
+/// (3.51.0) "Paid by": RCL ('Paid'), Insurance ('By Insurance' – charged, paid by the insurance), Warranty, FOC, Service Plan
+const kMaintKinds = ['Paid', 'By Insurance', 'Warranty', 'FOC', 'Service Plan'];
+const kMaintPaidBy = {'Paid': 'RCL', 'By Insurance': 'Insurance'};
+String maintPaidBy(Object? t) => kMaintPaidBy['${t ?? ''}'.isEmpty ? 'Paid' : '$t'] ?? '$t';
+bool maintCharged(Object? t) => '${t ?? ''}'.isEmpty || t == 'Paid' || t == 'By Insurance';
+
+/// (3.51.0) a line's GST: its CGST and its SGST, each half its GST % and each rounded – as the bills print them (the server's maintGstOf_)
+num maintGst(num? amount, num? gst) => 2 * (((amount ?? 0) * (gst ?? 0) / 200) * 100).round() / 100;
 
 /// (3.50.0) the usual units of a line, offered (as the web's list): any other can be typed
 const kMaintUoms = ['Nos', 'Ltr', 'Kg', 'Set', 'Bkt', 'Mtr', 'Pair', 'Gram', 'Box'];
 
-bool _free(Map l) => '${l['type'] ?? ''}'.isNotEmpty && l['type'] != 'Paid';
+bool _free(Map l) => !maintCharged(l['type']);
 
 /// what a free line is worth: Qty × Rate (no Qty: 1) – as the web's mtWorth
 num maintWorth(Map l) => _free(l) ? (asNum(l['qty']) ?? 1) * (asNum(l['rate']) ?? 0) : 0;
 
 /// The lines of a bill as one short line: "Engine oil ₹1,200; Oil filter (Warranty)" – a free line with its kind (as the web's mtLinesText)
-String maintLinesText(Object? lines) => [for (final l in (lines is List ? lines : const []).whereType<Map>()) _free(l) ? '${l['work']} (${l['type']})' : '${l['work']} ₹${fmtNum(asNum(l['amount']))}'].join('; ');
+String maintLinesText(Object? lines) => [
+      for (final l in (lines is List ? lines : const []).whereType<Map>())
+        _free(l) ? '${l['work']} (${l['type']})' : '${l['work']} ₹${fmtNum((asNum(l['amount']) ?? 0) + maintGst(asNum(l['amount']), asNum(l['gst'])))}${l['type'] == 'By Insurance' ? ' (Insurance)' : ''}',
+    ].join('; ');
 
 /// (3.49.0) under a bill's ₹ (what we paid): the bill and the insurance of a claim, the worth of its free lines (as the web's mtBillNote)
 List<String> maintBillNote(Map r) {
@@ -246,7 +260,7 @@ class _MaintScreenState extends State<MaintScreen> {
             for (final l in lines)
               _free(l)
                   ? InfoRow('${l['work']}', '${tr('${l['type']}')} · ${tr('worth ₹${fmtNum(maintWorth(l))}')}', tone: C.greenDark)
-                  : InfoRow('${l['work']}', [rupees(asNum(l['amount'])), if (!_blank(l['qty']) && !_blank(l['rate'])) '${fmtNum(asNum(l['qty']))}${_blank(l['uom']) ? '' : ' ${l['uom']}'} × ${fmtNum(asNum(l['rate']))}${(asNum(l['disc']) ?? 0) > 0 ? ' − ${fmtNum(asNum(l['disc']))} %' : ''}'].join(' · '),
+                  : InfoRow('${l['work']}', [rupees((asNum(l['amount']) ?? 0) + maintGst(asNum(l['amount']), asNum(l['gst']))), if (!_blank(l['qty']) && !_blank(l['rate'])) '${fmtNum(asNum(l['qty']))}${_blank(l['uom']) ? '' : ' ${l['uom']}'} × ${fmtNum(asNum(l['rate']))}${(asNum(l['disc']) ?? 0) > 0 ? ' − ${fmtNum(asNum(l['disc']))} %' : ''}', if ((asNum(l['gst']) ?? 0) > 0) 'GST ${fmtNum(asNum(l['gst']))} %', tr(maintPaidBy(l['type']))].join(' · '),
                       tone: (asNum(l['amount']) ?? 0) < 0 ? C.red : C.ink),
             if (ins != null) ...[
               InfoRow('Bill total', rupees(asNum(r['billTotal']))),
@@ -314,8 +328,9 @@ class AiBox extends StatelessWidget {
 /// One line of the bill being typed: its work / part, its kind, Qty, Rate, Disc % and ₹; [ai] = read by the AI (blue) until the
 /// person changes it
 class _Line {
-  _Line({String work = '', this.type = 'Paid', String qty = '', String uom = '', String rate = '', String disc = '', String amount = '', this.ai = false})
-      : work = TextEditingController(text: work),
+  _Line({String work = '', this.type = 'Paid', String qty = '', String uom = '', String rate = '', String disc = '', String amount = '', String gst = '', this.ai = false})
+      : gst = TextEditingController(text: gst),
+        work = TextEditingController(text: work),
         qty = TextEditingController(text: qty),
         uom = TextEditingController(text: uom),
         rate = TextEditingController(text: rate),
@@ -324,12 +339,15 @@ class _Line {
   /// a line of the server (a line of before has no kind: Paid)
   factory _Line.of(Map l, {bool ai = false}) {
     final t = kMaintKinds.contains(l['type']) ? '${l['type']}' : 'Paid';
-    return _Line(work: '${l['work'] ?? ''}', type: t, qty: _n(asNum(l['qty'])), uom: _blank(l['uom']) ? '' : '${l['uom']}', rate: _n(asNum(l['rate'])), disc: _n(asNum(l['disc'])), amount: t == 'Paid' ? _n(asNum(l['amount'])) : '0', ai: ai);
+    return _Line(work: '${l['work'] ?? ''}', type: t, qty: _n(asNum(l['qty'])), uom: _blank(l['uom']) ? '' : '${l['uom']}', rate: _n(asNum(l['rate'])), disc: _n(asNum(l['disc'])), gst: _n(asNum(l['gst'])), amount: maintCharged(t) ? _n(asNum(l['amount'])) : '0', ai: ai);
   }
-  final TextEditingController work, qty, uom, rate, disc, amount;
+  final TextEditingController work, qty, uom, rate, disc, amount, gst;
   String type;
   bool ai;
-  bool get free => type != 'Paid';
+  bool get free => !maintCharged(type);
+  /// (3.51.0) its GST ₹ and its amount with GST (a free line: 0)
+  num get gstAmt => free ? 0 : maintGst(_of(amount), _of(gst));
+  num get withGst => free ? 0 : (_of(amount) ?? 0) + gstAmt;
   bool get empty => work.text.trim().isEmpty && amount.text.trim().isEmpty && qty.text.trim().isEmpty && rate.text.trim().isEmpty && uom.text.trim().isEmpty;
   static num? _of(TextEditingController c) => asNum(c.text.replaceAll(',', ''));
   num get worth => free ? (_of(qty) ?? 1) * (_of(rate) ?? 0) : 0;
@@ -348,10 +366,10 @@ class _Line {
   }
   Map<String, Object> get value {
     Object v(TextEditingController c) => _of(c) ?? c.text.trim();
-    return {'work': work.text.trim(), 'type': type, 'qty': v(qty), 'uom': uom.text.trim(), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount)};
+    return {'work': work.text.trim(), 'type': type, 'qty': v(qty), 'uom': uom.text.trim(), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount), 'gst': v(gst)};
   }
   void dispose() {
-    for (final c in [work, qty, uom, rate, disc, amount]) {
+    for (final c in [work, qty, uom, rate, disc, amount, gst]) {
       c.dispose();
     }
   }
@@ -425,9 +443,21 @@ class _MaintFormState extends State<MaintForm> {
 
   List<Map<String, Object>> get _typed => [for (final l in lines) if (!l.empty) l.value];
   /// the bill's total: its Paid lines; what its free lines are worth; what we paid (the bill less the insurance's part)
-  num get _total => lines.fold<num>(0, (t, l) => t + (l.free ? 0 : (asNum(l.amount.text.replaceAll(',', '')) ?? 0)));
+  num get _total => lines.fold<num>(0, (t, l) => t + l.withGst);      // (3.51.0) with the GST of its lines
+  /// (3.51.0) the lines paid by the insurance: the insurance's part of the bill (with their GST) – the claim on, its ₹ not typed
+  num get _byIns => lines.fold<num>(0, (t, l) => t + (l.type == 'By Insurance' ? l.withGst : 0));
   num get _freeWorth => lines.fold<num>(0, (t, l) => t + (l.work.text.trim().isEmpty ? 0 : l.worth));
   num get _wePaid => _total - (ins ? (asNum(insPaid.text.replaceAll(',', '')) ?? 0) : 0);
+
+  /// (3.51.0) lines paid by the insurance: the claim is on and "Paid by the insurance" is theirs, not typed (as the web's mtTotal) –
+  /// called after every change of the lines
+  void _syncIns() {
+    final b = _byIns;
+    if (b <= 0) return;
+    ins = true;
+    final t = _n(b);
+    if (insPaid.text != t) insPaid.text = t;
+  }
 
   /// the insurance part of a bill into the boxes (null: none)
   void _insPut(Object? x) {
@@ -508,6 +538,7 @@ class _MaintFormState extends State<MaintForm> {
             ..clear()
             ..addAll([for (final l in got) _Line.of(l, ai: true)]);
           n += got.length;
+          _syncIns();
         });
       }
       final v = '${r['vehicle'] ?? ''}', c = car;
@@ -596,11 +627,12 @@ class _MaintFormState extends State<MaintForm> {
     void typed() => setState(() {
           l.ai = false;
           l.calc();
+          _syncIns();
         });
     const nkb = TextInputType.numberWithOptions(decimal: true);
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 4, 10),
-      decoration: BoxDecoration(color: l.free ? C.greenSoft : null, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
+      decoration: BoxDecoration(color: l.free ? C.greenSoft : l.type == 'By Insurance' ? const Color(0xFFEFF6FF) : null, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Expanded(child: TextBox(key: Key('mf-w-$i'), label: 'Work / part', controller: l.work, options: widget.works, hint: 'e.g. Engine oil, Air filter, Labour', onChanged: (_) => setState(() => l.ai = false))),
@@ -613,6 +645,7 @@ class _MaintFormState extends State<MaintForm> {
                       final gone = lines.removeAt(i);
                       WidgetsBinding.instance.addPostFrameCallback((_) => _drop([gone]));
                       if (lines.isEmpty) lines.add(_Line());
+                      _syncIns();
                     }),
             icon: const Icon(Icons.close_rounded, color: C.muted),
           ),
@@ -620,10 +653,12 @@ class _MaintFormState extends State<MaintForm> {
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.only(right: 6),
-          child: PickField(key: Key('mf-t-$i'), label: 'Kind', value: l.type, items: kMaintKinds, enabled: !busy, onChanged: (v) => setState(() {
+          // (3.51.0) who paid it: RCL, Insurance, Warranty, FOC, Service Plan (the kinds kept in English)
+          child: PickField(key: Key('mf-t-$i'), label: 'Paid by', value: l.type, items: kMaintKinds, labels: kMaintPaidBy, enabled: !busy, onChanged: (v) => setState(() {
                 l.type = v.isEmpty ? 'Paid' : v;
                 l.ai = false;
                 l.calc();
+                _syncIns();
               })),
         ),
         const SizedBox(height: 8),
@@ -647,10 +682,26 @@ class _MaintFormState extends State<MaintForm> {
           ]),
         ),
         const SizedBox(height: 8),
+        // (3.51.0) its ₹ before GST and its GST % (CGST and SGST half each)
         Padding(
           padding: const EdgeInsets.only(right: 6),
-          child: TextBox(key: Key('mf-a-$i'), label: 'Amount (₹)', controller: l.amount, enabled: !l.free, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() => l.ai = false)),
+          child: Row(children: [
+            Expanded(child: TextBox(key: Key('mf-a-$i'), label: 'Amount (₹)', controller: l.amount, enabled: !l.free, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() {
+                  l.ai = false;
+                  _syncIns();
+                }))),
+            const SizedBox(width: 8),
+            Expanded(child: TextBox(key: Key('mf-g-$i'), label: 'GST %', controller: l.gst, enabled: !l.free, kb: nkb, onChanged: (_) => setState(() {
+                  l.ai = false;
+                  _syncIns();
+                }))),
+          ]),
         ),
+        if (!l.free && l.amount.text.trim().isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, right: 8),
+            child: Text('${l.gstAmt != 0 ? '${tr('GST')} ₹${fmtNum(l.gstAmt)} · ' : ''}${tr('With GST')} ₹${fmtNum(l.withGst)}', key: Key('mf-gv-$i'), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
+          ),
         if (l.free)
           Padding(
             padding: const EdgeInsets.only(top: 4, right: 8),
@@ -738,7 +789,7 @@ class _MaintFormState extends State<MaintForm> {
           )
         else if (rd != null)
           Padding(padding: const EdgeInsets.only(top: 6), child: Text('Press "Read the bill (AI)" to fill the form from it – then check every value.', style: const TextStyle(fontSize: 12.5, color: C.muted))),
-        FormHead('Work / parts of the bill', sub: 'Amount = Qty × Rate − Discount. Taxes and the round-off are lines of their own; a discount on the whole bill is a minus amount. Warranty / FOC / Service Plan: not paid (₹ 0).'),
+        FormHead('Work / parts of the bill', sub: 'Amount = Qty × Rate − Discount, before GST. GST % of each item (CGST and SGST half each) – no tax lines; the round-off is a line of its own; a discount on the whole bill is a minus amount. Paid by: RCL (we paid), Insurance (the insurance paid it), Warranty / FOC / Service Plan (not paid, ₹ 0).'),
         for (final (i, l) in lines.indexed) Padding(padding: const EdgeInsets.only(bottom: 10), child: _blue(l.ai, _lineCard(i, l))),
         Row(children: [
           OutlinedButton.icon(key: const Key('mf-addl'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: busy ? null : () => setState(() => lines.add(_Line())), icon: const Icon(Icons.add_rounded), label: Text('+ Line')),
@@ -766,7 +817,7 @@ class _MaintFormState extends State<MaintForm> {
             title: Text('Insurance claim', style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text('– the insurance paid part of this bill'),
             value: ins,
-            onChanged: busy
+            onChanged: busy || _byIns > 0      // (3.51.0) lines paid by the insurance: the claim stays on
                 ? null
                 : (v) => setState(() {
                       ins = v;
@@ -781,7 +832,7 @@ class _MaintFormState extends State<MaintForm> {
           Row(children: [
             Expanded(child: _blue(ai.contains('insclaim'), TextBox(key: const Key('mf-insclaim'), label: 'Claim no.', controller: insClaim, onChanged: (_) => setState(() => ai.remove('insclaim'))))),
             const SizedBox(width: 8),
-            Expanded(child: _blue(ai.contains('inspaid'), TextBox(key: const Key('mf-inspaid'), label: 'Paid by the insurance (₹)', controller: insPaid, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => ai.remove('inspaid'))))),
+            Expanded(child: _blue(ai.contains('inspaid'), TextBox(key: const Key('mf-inspaid'), label: 'Paid by the insurance (₹)', controller: insPaid, enabled: _byIns <= 0, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => ai.remove('inspaid'))))),
           ]),
           Padding(
             padding: const EdgeInsets.only(top: 10),

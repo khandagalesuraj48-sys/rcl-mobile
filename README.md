@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.51.0 (27-10-2026 – "gst row madhe nko heading madhe ghe 9 9 18 … koni paid kel insurance claim aahe nahi service ch
+bill ahe ka as sagle hawa entry krtana pn ani log print madhe pn", with Mechanical update-171):** each line of a maintenance bill
+has its **GST %** (one number – CGST and SGST are half each) – the card shows its GST ₹ and its amount with GST, the bill total is
+with GST; no tax lines any more. Each line says **Paid by**: RCL, Insurance, Warranty, FOC or Service Plan – a line paid by the
+insurance turns the insurance claim on by itself and "Paid by the insurance" is those lines with their GST (not typed). The
+**Maintenance Log Book** has the GST rates in its heading (CGST 9% · SGST 9% … for each rate), then "GST 18%" (or GST Amount when
+there are several rates), Amount With GST, and on every line **Paid by · Insurance claim (Yes / No) · Service (Yes / No)** · Total;
+the tax lines of the bills of before go into their CGST / SGST column. A bill with GST or lines paid by the insurance can be
+changed only by this version (the server asks an older app to update).
+
 **Version 3.50.0 (27-10-2026 – "mala log book as hawa aahe ya format madhe … party name … jr direct bill marle tr party ch name yeil",
 with Mechanical update-170):** Maintenance is at **every site**, for every machinery (when the page is given): a bill's **Party
 name** (the garage / shop of a direct bill), its **Current reading** (KM / Hrs), each line its **Uom** (Nos, Ltr, Kg … offered).
