@@ -620,16 +620,22 @@ class _MaintFormState extends State<MaintForm> {
               })),
         ),
         const SizedBox(height: 8),
+        // two boxes a row – a phone's width keeps every name and number whole (4.5, 100, 18000)
         Padding(
           padding: const EdgeInsets.only(right: 6),
           child: Row(children: [
-            Expanded(flex: 4, child: TextBox(key: Key('mf-q-$i'), label: 'Qty', controller: l.qty, kb: nkb, onChanged: (_) => typed())),
-            const SizedBox(width: 6),
-            Expanded(flex: 5, child: TextBox(key: Key('mf-r-$i'), label: 'Rate (₹)', controller: l.rate, kb: nkb, onChanged: (_) => typed())),
-            const SizedBox(width: 6),
-            Expanded(flex: 4, child: TextBox(key: Key('mf-d-$i'), label: 'Disc %', controller: l.disc, kb: nkb, onChanged: (_) => typed())),
-            const SizedBox(width: 6),
-            Expanded(flex: 6, child: TextBox(key: Key('mf-a-$i'), label: 'Amount (₹)', controller: l.amount, enabled: !l.free, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() => l.ai = false))),
+            Expanded(child: TextBox(key: Key('mf-q-$i'), label: 'Qty', controller: l.qty, kb: nkb, onChanged: (_) => typed())),
+            const SizedBox(width: 8),
+            Expanded(child: TextBox(key: Key('mf-r-$i'), label: 'Rate (₹)', controller: l.rate, kb: nkb, onChanged: (_) => typed())),
+          ]),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: Row(children: [
+            Expanded(child: TextBox(key: Key('mf-d-$i'), label: 'Disc %', controller: l.disc, kb: nkb, onChanged: (_) => typed())),
+            const SizedBox(width: 8),
+            Expanded(child: TextBox(key: Key('mf-a-$i'), label: 'Amount (₹)', controller: l.amount, enabled: !l.free, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() => l.ai = false))),
           ]),
         ),
         if (l.free)
