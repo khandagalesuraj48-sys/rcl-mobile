@@ -199,7 +199,7 @@ class _MaintScreenState extends State<MaintScreen> {
       builder: (bc) => SafeArea(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: MediaQuery.of(bc).size.height * .85),
-          child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(20, 4, 20, 20), children: [
+          child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 4, 20, 20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('${r['id']} · ${rupees(asNum(r['total']))}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             InfoRow('Car', '${r['no']}'),
             InfoRow('Date', showDate('${r['date']}')),
@@ -220,7 +220,7 @@ class _MaintScreenState extends State<MaintScreen> {
               const SizedBox(height: 8),
               OutlinedButton.icon(key: const Key('mt-del'), style: OutlinedButton.styleFrom(foregroundColor: C.red), onPressed: () => Navigator.pop(bc, 'del'), icon: const Icon(Icons.delete_outline_rounded), label: Text('Delete')),
             ],
-          ]),
+          ])),
         ),
       ),
     );
@@ -264,7 +264,7 @@ class AiBox extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(color: on ? C.blueSoft : null, borderRadius: BorderRadius.circular(18), border: Border.all(color: on ? C.blue.withValues(alpha: .55) : Colors.transparent, width: 1.5)),
-        child: child,
+        child: Material(type: MaterialType.transparency, child: child),      // (the switch's row draws on it, over the colour)
       );
 }
 
@@ -486,7 +486,7 @@ class _MaintFormState extends State<MaintForm> {
     final canRead = rd != null && !reading && !busy;
     return Scaffold(
       appBar: AppBar(title: TwoLang(e == null ? 'Maintenance bill' : 'Change bill ${e['id']}', 'मेंटेनन्स बिल', size: 18, weight: FontWeight.w700)),
-      body: ListView(key: const Key('mf-list'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      body: SingleChildScrollView(key: const Key('mf-list'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _blue(ai.contains('date'), DateField(key: const Key('mf-date'), label: 'Bill date', value: date, clear: false, last: s.today.isEmpty ? null : parseKey(s.today), onChanged: (v) => setState(() {
               date = v;
               dateTyped = true;
@@ -589,7 +589,7 @@ class _MaintFormState extends State<MaintForm> {
         if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: InfoLine(err, bad: true)),
         const SizedBox(height: 18),
         FilledButton(key: const Key('mf-save'), onPressed: busy || reading ? null : _save, child: Text(busy ? 'Saving…' : e == null ? 'Save bill' : 'Save changes')),
-      ]),
+      ])),
     );
   }
 }

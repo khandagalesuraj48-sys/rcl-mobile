@@ -3033,7 +3033,7 @@ void main() {
     await tapK(t, 'mt-r-MT-000001');
     await settle(t, 800);
     expect(find.text('Oil filter'), findsOneWidget);
-    await t.tap(find.byKey(const Key('mt-files')));
+    await tapK(t, 'mt-files');
     await net(t);
     expect(srv.maintCalls.last, {'fn': 'getMaintFiles', 'id': 'MT-000001'});
     expect(find.text('Bill files – MT-000001'), findsOneWidget);
@@ -3041,7 +3041,7 @@ void main() {
     await net(t);
     await tapK(t, 'mt-r-MT-000002');
     await settle(t, 800);
-    await t.tap(find.byKey(const Key('mt-del')));
+    await tapK(t, 'mt-del');
     await settle(t, 800);
     await t.tap(find.text('Delete').last);
     await net(t);
