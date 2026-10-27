@@ -581,7 +581,7 @@ class _MaintFormState extends State<MaintForm> {
             ),
           ),
         Row(children: [
-          OutlinedButton.icon(key: const Key('mf-addl'), onPressed: busy ? null : () => setState(() => lines.add(_Line())), icon: const Icon(Icons.add_rounded), label: Text('+ Line')),
+          OutlinedButton.icon(key: const Key('mf-addl'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: busy ? null : () => setState(() => lines.add(_Line())), icon: const Icon(Icons.add_rounded), label: Text('+ Line')),
           const Spacer(),
           Text('Total ', style: const TextStyle(color: C.muted)),
           Text(rupees(_total), key: const Key('mf-total'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: C.greenDark)),
