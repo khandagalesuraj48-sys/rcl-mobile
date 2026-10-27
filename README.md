@@ -15,6 +15,21 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.44.0 (26-10-2026 – "petrol cng he field banaw ani ha electric ha pn thew future madhe ya gadya pn yenar aahet", with
+Mechanical update-163):** **fuel** – every machinery has one (Asset Master → **Fuel**: Diesel / Petrol / CNG / Electric; none =
+Diesel – also "Multiple machinery", the Excel import, its card and details) and every diesel place holds one (the Super Admin, Portal
+→ Sites → Diesel places; Mechanical tells them in `getInit` as `placeFuels`). A **Diesel Issue** offers only the places of the
+machinery's fuel (both "Multiple entries" too; a site with more than one fuel always shows "Fuel from"); an **Electric** machinery
+gets no fuel (a red line); a **Transfer**'s To is of the From's fuel (also its grid rows); CNG in **kg** ("Kg", the stock, the
+balances, the cards). The Excel checks: "runs on Petrol – not at DIESEL CARD", "From Petrol, To Diesel – not the same fuel". **Never
+added together:** Home shows the first fuel in big and the others under it; the lists' day totals per fuel; the **Dashboard** and
+every **report** of a site with more than one fuel have a **Fuel** choice – one fuel at a time, in its own words and unit (`FuelScope`
+in `ui/t.dart` turns "Diesel" into its name and the litres into kg for CNG; `fuelDoc` does the same for a report's print and Excel);
+the Daily report shows each fuel's stock, received and issued one after another; Reports → Overview's diesel figures (consumed,
+cost, the trend) are Diesel's only. The assistant's diesel entry takes a place of the
+machinery's fuel. A site whose places are all Diesel (VTR, 18B) looks exactly as before. `core/fuel.dart`; `Session.placeFuels` /
+`placeFuel` / `siteFuels` / `multiFuel` / `fuelPlaces` / `fuelProblem` / `transferTos`; `Machine.fuel`. The web's help taken again.
+
 **Version 3.43.0 (26-10-2026 – "user wise konala konte source cha access deycha … jya user la jyacha access asel to tyach madhun
 issue kru shakel same transfer la pn … inward la nko", with Mechanical update-162):** his **diesel sources** – the places the Super
 Admin gave him in the Portal (Users & Access → Pages → Diesel sources; Mechanical tells them in `getInit` / `sync` as `user.dsrc`).

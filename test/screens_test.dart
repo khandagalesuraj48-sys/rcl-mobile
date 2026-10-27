@@ -2731,6 +2731,108 @@ void main() {
     expect(chip('VTR Store'), findsOneWidget);
   });
 
+  testWidgets('(3.44.0, Mechanical update-163) fuel: Home shows each fuel on its own; Diesel Issue offers the places of the car\'s fuel (CNG in kg, Electric: none); Transfer To of the From\'s fuel; the Dashboard of one fuel', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Diesel Transfer': 'Edit', 'Dashboard': 'View'})
+      ..fuels = true;
+    final s = await ready(t, srv);
+    expect([s.multiFuel, s.siteFuels, s.placeFuel('PETROL CAN'), s.machine('MH-12-HO-2163')?.fuel, s.machine('MH-25-AJ-2169')?.fuel], [true, ['Diesel', 'Petrol', 'CNG'], 'Petrol', 'CNG', 'Diesel']);
+    expect(s.fuelPlaces(s.locations, s.machine('MH-12-HO-1163')), ['PETROL CARD', 'PETROL CAN']);
+    expect(s.fuelProblem(s.machine('MH-12-HO-1163'), 'DIESEL CARD'), 'DIESEL CARD holds Diesel and MH-12-HO-1163 runs on Petrol – pick a Petrol place (Asset Master → Fuel).');
+    expect(s.fuelProblem(s.machine('MH-12-HO-3163'), 'PETROL CARD'), 'MH-12-HO-3163 runs on Electric – no fuel is issued to it (Asset Master → Fuel).');
+    expect([fuelText('Diesel stock 40 L (Ltr)', 'CNG'), fuelText('डिझेल साठा', 'Petrol'), fuelText('Diesel summary', 'Diesel')], ['CNG stock 40 kg (kg)', 'पेट्रोल साठा', 'Diesel summary']);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    // Home: Diesel in big, Petrol and CNG under it – never added together
+    expect((t.widget(find.byKey(const Key('home-stock'))) as dynamic).data, '150 L');
+    expect((t.widget(find.descendant(of: find.byKey(const Key('home-fuel-Petrol')), matching: find.byType(Text))) as dynamic).data, 'Petrol 120 L');
+    expect((t.widget(find.descendant(of: find.byKey(const Key('home-fuel-CNG')), matching: find.byType(Text))) as dynamic).data, 'CNG 32 kg');
+    Finder chip(String l) => find.widgetWithText(ChoiceChip, l);
+    Future<void> newEntry(String page) async {
+      await t.tap(find.byKey(Key('entries-$page')));
+      await net(t);
+      await t.tap(find.text('New Entry').last);
+      await net(t);
+    }
+    // back from the form (its own back arrow) to the list
+    Future<void> formBack() async {
+      await t.tap(find.byIcon(Icons.arrow_back_rounded).first);
+      await net(t);
+    }
+    // from the list to the grid
+    Future<void> toGrid() async {
+      await t.tap(find.byTooltip('All entries'));
+      await net(t);
+    }
+    Future<void> pick(String no) async {
+      await t.tap(find.byKey(const Key('d-machine')));
+      await settle(t, 800);
+      await t.tap(find.text(no).last);
+      await net(t);
+    }
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await newEntry('Diesel Issue');
+    expect(find.text('Fuel from'), findsOneWidget, reason: 'a site with more than one fuel: the source is always shown');
+    await pick('MH-12-HO-1163');
+    expect([chip('PETROL CARD'), chip('PETROL CAN')].every((f) => f.evaluate().length == 1), true);
+    expect(chip('DIESEL CARD'), findsNothing);
+    expect(chip('CNG CARD'), findsNothing);
+    expect(t.widget<ChoiceChip>(chip('PETROL CARD')).selected, true);
+    expect(srv.issueBal.last.last, 'PETROL CARD', reason: 'the stock of the Petrol place');
+    await pick('MH-12-HO-2163');
+    expect(chip('CNG CARD'), findsOneWidget);
+    expect(chip('PETROL CARD'), findsNothing);
+    expect(t.widget<ChoiceChip>(chip('CNG CARD')).selected, true);
+    expect(find.text('Kg'), findsOneWidget, reason: 'CNG in kg');
+    expect(find.text('kg'), findsWidgets);
+    await pick('MH-12-HO-3163');
+    expect(find.text('MH-12-HO-3163 runs on Electric – no fuel is issued to it (Asset Master → Fuel).'), findsWidgets);
+    await formBack();
+    await toGrid();
+    // Transfer: the To follows the From's fuel
+    await newEntry('Transfer');
+    await t.tap(chip('PETROL CARD').first);
+    await net(t);
+    expect(chip('PETROL CARD'), findsNWidgets(2), reason: 'From and To');
+    expect(chip('PETROL CAN'), findsNWidgets(2), reason: 'From and To');
+    expect(chip('DIESEL CARD'), findsOneWidget, reason: 'From only');
+    expect(chip('CNG CARD'), findsOneWidget, reason: 'From only');
+    expect(t.widget<ChoiceChip>(chip('PETROL CAN').last).selected, true, reason: 'To: the other Petrol place');
+    await formBack();
+    await more(t, 'en-many');
+    await t.tap(find.byKey(const Key('tm-from-0')));
+    await settle(t, 600);
+    await t.tap(find.text('PETROL CARD').last);
+    await net(t);
+    final t0 = t.widget(find.byKey(const Key('tm-to-0'))) as dynamic;
+    expect([t0.items, t0.value], [['PETROL CARD', 'PETROL CAN'], 'PETROL CAN']);
+    await t.pageBack();
+    await net(t);
+    await toGrid();
+    // the Dashboard: a Fuel chip each; the dashboard of one fuel – its words and unit; the site's stock is not changed by it
+    srv.dashAsked.clear();
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel')));
+    await net(t);
+    await t.tap(find.text('Dashboard'));
+    await net(t);
+    Iterable<dynamic> dashArgs() => srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first);
+    expect(dashArgs(), contains(equals({'from': '2026-10-01', 'to': '2026-10-14', 'fuel': 'Diesel'})), reason: 'Reports → Overview: the Diesel figures only');
+    expect(dashArgs(), contains(equals({'from': '2026-10-14', 'to': '2026-10-14', 'fuel': 'Diesel'})), reason: 'the Dashboard opens on Diesel');
+    expect(find.byKey(const Key('dfuel-CNG')), findsOneWidget);
+    await t.tap(find.byKey(const Key('dfuel-CNG')));
+    await net(t);
+    expect(dashArgs().last, {'from': '2026-10-14', 'to': '2026-10-14', 'fuel': 'CNG'});
+    expect((srv.dashAsked.lastWhere((x) => x['fn'] == 'getStockLedger')['args'] as List).first['fuel'], 'CNG');
+    expect(find.text('CNG summary – all locations'), findsOneWidget);
+    expect(find.text('19,895 kg'), findsOneWidget, reason: 'CNG: in kg');
+    expect(find.text('19,895 Ltr'), findsNothing);
+    expect(s.stockByLoc.keys.toList(), ['DIESEL CARD', 'PETROL CARD', 'PETROL CAN', 'CNG CARD'], reason: 'the site\'s stock stays every place');
+  });
+
   testWidgets('(3.14.0) My settings: Log Book list shows, the page to open after sign-in, my last sign-ins, back to the usual settings', (t) async {
     phone(t);
     final srv = FakeServer();

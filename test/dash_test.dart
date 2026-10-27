@@ -140,6 +140,25 @@ void main() {
     expect(html, contains('1,000 → 1,008'));
     expect(html, contains('<b>Bucket 8 hr</b> Excavation'));
     expect(html, contains('worked 1 · idle 0 · holiday 0 · breakdown 0'));
+    expect(html, contains('1. Diesel stock'), reason: 'one fuel: as before');
+    expect(html, isNot(contains('dr-fuel">')));
+    // (3.44.0, Mechanical update-163) a site with more than one fuel: the stock, received and issued of EACH fuel on its own
+    final two = dailyReportHtml(
+      day: '2026-10-16', company: 'Rachana Construction Limited', site: 'HO', madeAt: '16-10-2026 12:00', madeBy: 'Tester',
+      dash: const {},
+      issues: [{'no': 'CAR-P', 'type': 'Car', 'qty': 30, 'shift': 'Day', 'source': 'PETROL CARD'}, {'no': 'CAR-C', 'type': 'Car', 'qty': 8, 'shift': 'Day', 'source': 'CNG CARD'}],
+      inwards: [{'location': 'PETROL CARD', 'pump': 'Card', 'qty': 150, 'rate': 100, 'amount': 15000}, {'location': 'CNG CARD', 'pump': 'Card', 'qty': 40, 'rate': 90, 'amount': 3600}],
+      logs: const [], breakdowns: const {}, activeMachines: const [],
+      fuelDash: {'Petrol': {'locations': [{'loc': 'PETROL CARD', 'opening': 0, 'inward': 150, 'issued': 30, 'closing': 120}]}, 'CNG': {'locations': [{'loc': 'CNG CARD', 'opening': 0, 'inward': 40, 'issued': 8, 'closing': 32}]}},
+      placeFuels: const {'PETROL CARD': 'Petrol', 'CNG CARD': 'CNG'},
+    );
+    expect(two, contains('1. Fuel stock'));
+    expect(two, contains('<h4 class="dr-fuel">Petrol</h4>'));
+    expect(two, contains('<h4 class="dr-fuel">CNG</h4>'));
+    expect(two, contains('<b>120 L</b><span>Petrol stock at close</span>'));
+    expect(two, contains('<b>32 kg</b><span>CNG stock at close</span>'));
+    expect(two, contains('<b>8 kg</b><span>CNG issued (1)</span>'));
+    expect(two, contains('Qty (kg)'));
   });
 
   test('Tank check: what was found, measured or by filling to full; the difference and when to ask why', () {

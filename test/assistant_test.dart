@@ -157,6 +157,23 @@ void main() {
     expect((await a.aiDraft(cmd.kind, cmd.a)).data['source'], 'Dispenser', reason: 'nothing chosen for him: as before');
   });
 
+  test('(3.44.0, Mechanical update-163) the diesel entry of a Petrol car takes a Petrol place; an Electric car gets no fuel; a site of Diesel only as before', () async {
+    final (a, _) = make('en');
+    final m0 = a.master.firstWhere((m) => '${m['id']}'.contains('8511'));
+    a.locations = ['Dispenser', 'VTR Store'];
+    a.placeFuels = {'Dispenser': 'Diesel', 'VTR Store': 'Petrol'};
+    a.master = [for (final m in a.master) identical(m, m0) ? {...m, 'fuel': 'Petrol'} : m];
+    var cmd = a.aiCommand('8511 la 60 litre diesel de, reading 148200')!;
+    expect((await a.aiDraft(cmd.kind, cmd.a)).data['source'], 'VTR Store', reason: 'the Petrol place');
+    a.master = [for (final m in a.master) '${m['id']}' == '${m0['id']}' ? {...m, 'fuel': 'Electric'} : m];
+    cmd = a.aiCommand('8511 la 60 litre diesel de, reading 148200')!;
+    expect((await a.aiDraft(cmd.kind, cmd.a)).error, contains('runs on Electric – no fuel is issued to it'));
+    a.master = [for (final m in a.master) '${m['id']}' == '${m0['id']}' ? {...m, 'fuel': 'Diesel'} : m];
+    a.placeFuels = const {};
+    cmd = a.aiCommand('8511 la 60 litre diesel de, reading 148200')!;
+    expect((await a.aiDraft(cmd.kind, cmd.a)).data['source'], 'Dispenser', reason: 'all Diesel: as before');
+  });
+
   test('The ⚡ questions on the Dashboard and the daily summary', () async {
     for (final c in fx['ready'] as List) {
       if (c['id'] == 'page') continue; // (the web's page guide was left out in node – its own test below)

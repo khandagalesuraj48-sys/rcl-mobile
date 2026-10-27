@@ -191,6 +191,8 @@ class Assistant {
   List<String> locations;
   /// (3.43.0, Mechanical update-162) his own diesel sources for a Diesel Issue when the Super Admin gave him some (null = every place)
   List<String>? ownSources;
+  /// (3.44.0, Mechanical update-163) the fuel of each diesel place: a fill is drafted from a place of the machinery's fuel
+  Map<String, String> placeFuels = const {};
   Map prefs;
   final bool Function(String module) canEdit;
   final bool Function(Map<String, dynamic> m)? onSite;
@@ -738,7 +740,12 @@ class Assistant {
       final src = a['source'] == null ? '' : js(a['source']).toLowerCase();
       // (3.43.0, the web's aiOwnSource_) a source he names stays as he said (the server then says it is not his); none named: his
       // usual place – of his own sources when he was given some
-      final own = ownSources, usual = jsTrue(prefs['loc']) ? '${prefs['loc']}' : null;
+      // (3.44.0, update-163) of the places of its fuel (a site of Diesel only, a Diesel machinery: as before)
+      final mf = const ['Diesel', 'Petrol', 'CNG', 'Electric'].contains('${m['fuel'] ?? ''}') ? '${m['fuel']}' : 'Diesel';
+      if (mf == 'Electric') return AiDraft(error: aiL({'en': '$id runs on Electric – no fuel is issued to it (Asset Master → Fuel).', 'mr': '$id Electric वर चालते – तिला इंधन दिले जात नाही (Asset Master → Fuel).', 'hi': '$id Electric पर चलती है – उसे ईंधन नहीं दिया जाता (Asset Master → Fuel)।'}));
+      final checks = mf != 'Diesel' || placeFuels.values.any((f) => f != 'Diesel');
+      List<String> ofFuel(List<String> l) { final x = l.where((p) => (placeFuels[p] ?? 'Diesel') == mf).toList(); return x.isEmpty ? l : x; }
+      final own = ownSources == null ? (checks ? ofFuel(locations) : null) : (checks ? ofFuel(ownSources!) : ownSources), usual = jsTrue(prefs['loc']) ? '${prefs['loc']}' : null;
       final source = locations.where((l) => l.toLowerCase() == src).firstOrNull ?? (own == null ? usual : (own.contains(usual) ? usual : own.firstOrNull)) ?? locations.firstOrNull ?? 'Dispenser';
       final km = aiN(a['km_reading']), hr = aiN(a['hr_reading']), debit = m['supply'] == 'Debit Basis', notes = <String>[];
       Object? stock = '';

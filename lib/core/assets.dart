@@ -176,14 +176,16 @@ List<String> ownersNotVendors(Iterable<Map<String, dynamic>> base) => {
 String autoOwnership(String owner) => RegExp(r'^rachana construction', caseSensitive: false).hasMatch(owner.trim()) ? 'Own' : 'Rental';
 
 const kMasterDiff = [
-  ('no', 'Machinery Number'), ('name', 'Machinery Name'), ('type', 'Type of Machinery'), ('make', 'Make'), ('worksOn', 'Works on'),
+  ('no', 'Machinery Number'), ('name', 'Machinery Name'), ('type', 'Type of Machinery'), ('make', 'Make'), ('fuel', 'Fuel'), ('worksOn', 'Works on'),
   ('kmStd', 'Standard Average (KM/Ltr)'), ('hrStd', 'Standard Average (Ltr/Hr)'), ('owner', 'Owner Name'), ('ownership', 'Ownership'),
   ('supply', 'Diesel Supply'), ('status', 'Status'), ('activeFrom', 'Active From'), ('inactiveFrom', 'Inactive From'),
 ];
 
 /// What an edit changes: [field, now, new] – the same lines as the web's "Update …?" (and the earlier periods, came back / never left).
 List<(String, String, String)> masterChanges(Map<String, dynamic> before, Map<String, dynamic> after) {
-  final b = {...before, 'worksOn': worksOf(before).join(', ')};
+  // (3.44.0, update-163) its fuel: none = Diesel (a machinery of before)
+  final b = {...before, 'worksOn': worksOf(before).join(', '), 'fuel': const ['Diesel', 'Petrol', 'CNG', 'Electric'].contains('${before['fuel'] ?? ''}') ? '${before['fuel']}' : 'Diesel'};
+  if (!after.containsKey('fuel')) b.remove('fuel');
   final out = <(String, String, String)>[
     for (final f in kMasterDiff)
       if (_s(b[f.$1]).trim() != _s(after[f.$1]).trim()) (f.$2, _s(b[f.$1]), _s(after[f.$1])),
@@ -256,7 +258,7 @@ Map<String, String> meChanges(Map<String, ({bool same, String v})> common, Map<S
 }
 
 /* ---------------- several machinery at once (Add multiple) ---------------- */
-const kBulkFields = ['no', 'name', 'type', 'make', 'unit', 'kmStd', 'hrStd', 'owner', 'ownership', 'supply'];
+const kBulkFields = ['no', 'name', 'type', 'make', 'unit', 'kmStd', 'hrStd', 'owner', 'ownership', 'supply', 'fuel'];      // (3.44.0) Fuel last, as the web
 
 /* ---------------- the prints (as the web's Print list / Asset list) ---------------- */
 String _dShow(dynamic v) => docShow(v);

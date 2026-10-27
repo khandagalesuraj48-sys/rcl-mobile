@@ -127,7 +127,7 @@ class _EntryFormState extends State<EntryForm> {
       final any = s.locations.isNotEmpty ? s.locations.first : 'Dispenser';
       source = own.contains(loc) ? loc : (own.isNotEmpty ? own.first : any);
       from = trf.contains(loc) ? loc : (trf.isNotEmpty ? trf.first : any);
-      to = s.locations.firstWhere((l) => l != from, orElse: () => '');
+      to = s.transferTos(from).firstWhere((l) => l != from, orElse: () => '');      // (3.44.0) of the From's fuel
       shift = s.myShift(const ['Day', 'Night']); // (14-10-2026) his usual shift, else Day / Night by the time
       final e = ed;
       if (e != null) _fillFrom(s, e);
@@ -138,6 +138,7 @@ class _EntryFormState extends State<EntryForm> {
         if (m != null) {
           machine = m;
           way = m.debit ? '' : m.dieselWay;
+          _fuelSource(s);
         }
       }
       final pre = widget.preset;
@@ -176,6 +177,7 @@ class _EntryFormState extends State<EntryForm> {
         if (s.mySources('Diesel Transfer').contains(v('from'))) from = v('from');
         if (s.locations.contains(v('to'))) to = v('to');
         if (v('no').isNotEmpty) machine = s.machine(v('no'));
+        if (v('no').isNotEmpty && !s.fuelPlaces(s.mySources('Diesel Issue'), machine).contains(source)) _fuelSource(s);
         way = machine == null ? '' : v('way');
         qty.text = v('qty');
         km.text = v('km');
@@ -319,6 +321,8 @@ class _EntryFormState extends State<EntryForm> {
   Widget _transferLive() {
     final q = asNum(qty.text) ?? 0;
     if (from == to) return const InfoLine('From and To cannot be the same.', bad: true);
+    final s0 = SessionScope.read(context);
+    if (s0.placeFuel(from) != s0.placeFuel(to)) return InfoLine('$from holds ${s0.placeFuel(from)}, $to holds ${s0.placeFuel(to)} – a transfer goes only between places of the same fuel.', bad: true);      // (3.44.0)
     final b = tbal;
     if (b == null) return const InfoLine('Loading stock…');
     final f = (b['from'] as Map?) ?? const {}, t = (b['to'] as Map?) ?? const {};
@@ -331,7 +335,7 @@ class _EntryFormState extends State<EntryForm> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(head, style: const TextStyle(fontSize: 12, color: C.muted)),
               Text(fmt(open), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              Text('after ${fmt(after)} Ltr', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+              Text('after ${fmt(after)} $_unit', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
               if (note.isNotEmpty) Text(note, style: const TextStyle(fontSize: 12, color: C.red, fontWeight: FontWeight.w700)),
             ]),
           ),
@@ -339,7 +343,7 @@ class _EntryFormState extends State<EntryForm> {
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        side('t-from', '$from – opening ${showDate(date)} $shift', f['balance'], r2n((asNum(f['balance']) ?? 0) - q), note: short ? 'Can transfer up to ${fmt(f['available'])} Ltr' : '', bad: short),
+        side('t-from', '$from – opening ${showDate(date)} $shift', f['balance'], r2n((asNum(f['balance']) ?? 0) - q), note: short ? 'Can transfer up to ${fmt(f['available'])} $_unit' : '', bad: short),
         const Padding(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 22), child: Icon(Icons.arrow_forward_rounded, color: C.muted)),
         side('t-to', '$to – opening', t['balance'], r2n((asNum(t['balance']) ?? 0) + q)),
       ]),
@@ -410,8 +414,16 @@ class _EntryFormState extends State<EntryForm> {
       }
       machine = m;
       way = m.debit ? '' : m.dieselWay;
+      _fuelSource(SessionScope.read(context));
     });
     _hist();
+    _balance();
+  }
+
+  /// (3.44.0, Mechanical update-163) the source follows the machinery's fuel: a Petrol car from a Petrol place, CNG from a CNG place
+  void _fuelSource(Session s) {
+    final l = s.fuelPlaces(s.mySources('Diesel Issue'), machine);
+    if (l.isNotEmpty && !l.contains(source)) source = l.first;
   }
 
   Future<void> _pickMachine() async {
@@ -425,8 +437,10 @@ class _EntryFormState extends State<EntryForm> {
       }
       machine = m;
       way = m.debit ? '' : m.dieselWay;      // (3.1.8) by itself, from the Asset Master
+      _fuelSource(SessionScope.read(context));
     });
     _hist();
+    _balance();
   }
 
   // ---------- photos ----------
@@ -885,9 +899,14 @@ class _EntryFormState extends State<EntryForm> {
     if (issue && machine != null && !machine!.debit && machine!.dieselWay.isNotEmpty && way.isEmpty) way = machine!.dieselWay;
     if (k.key == 'inward' && pump.text.trim().isEmpty) return 'Enter the Pump Name.';
     if (k.key == 'transfer' && from == to) return 'From and To cannot be the same.';
-    if (!((asNum(qty.text) ?? 0) > 0)) return 'Enter the litres.';
+    // (3.44.0, update-163) a fill only from a place of its fuel; a transfer only within one fuel (the server says the same)
+    final s = SessionScope.read(context);
+    if (issue && s.fuelProblem(machine, source).isNotEmpty) return s.fuelProblem(machine, source);
+    if (k.key == 'transfer' && s.placeFuel(from) != s.placeFuel(to)) return 'A transfer goes only between places of the same fuel: $from holds ${s.placeFuel(from)}, $to holds ${s.placeFuel(to)}.';
+    if (!((asNum(qty.text) ?? 0) > 0)) return _unit == 'kg' ? 'Enter the kg.' : 'Enter the litres.';
     if (issue && bal != null && (asNum(qty.text) ?? 0) > (asNum(bal!['available']) ?? double.infinity)) {
-      return 'Not enough diesel at $source for ${showDate(date)} ($shift): you can issue up to ${fmtNum(asNum(bal!['available']))} L. Add a Diesel Inward first or reduce the litres.';
+      final w = s.placeFuel(source) == 'Diesel' ? 'diesel' : s.placeFuel(source), u = _unit == 'kg' ? 'kg' : 'L';
+      return 'Not enough $w at $source for ${showDate(date)} ($shift): you can issue up to ${fmtNum(asNum(bal!['available']))} $u. Add a ${w == 'diesel' ? 'Diesel' : w} Inward first or reduce the ${u == 'kg' ? 'kg' : 'litres'}.';
     }
     return null;
   }
@@ -1111,6 +1130,12 @@ class _EntryFormState extends State<EntryForm> {
         ]),
       );
 
+  /// (3.44.0) the unit of what is typed: kg for CNG, litres for the others
+  String get _unit {
+    final s = SessionScope.read(context);
+    return s.placeUnit(k.key == 'transfer' ? from : source);
+  }
+
   Widget _qtyField() => Container(
         padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
         decoration: BoxDecoration(color: aiPut.contains(qty) ? C.blueSoft : Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: aiPut.contains(qty) ? C.blue : C.line)),
@@ -1127,7 +1152,7 @@ class _EntryFormState extends State<EntryForm> {
               decoration: const InputDecoration(hintText: '0', border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, filled: false, contentPadding: EdgeInsets.symmetric(vertical: 10)),
             ),
           ),
-          const Text('Litre', style: TextStyle(fontSize: 16, color: C.muted, fontWeight: FontWeight.w600)),
+          Text(_unit == 'kg' ? 'kg' : 'Litre', style: const TextStyle(fontSize: 16, color: C.muted, fontWeight: FontWeight.w600)),
         ]),
       );
 
@@ -1247,16 +1272,17 @@ class _EntryFormState extends State<EntryForm> {
             // ---------- Diesel Issue ----------
             if (issue) ...[
               // (3.43.0, update-162) only his own diesel sources; given some = shown even when one (he sees where it comes from)
-              if (s.mySources('Diesel Issue').length > 1 || s.ownSources('Diesel Issue')) ...[
-                _label('Diesel from', 'डिझेल कुठून'),
+              // (3.44.0, update-163) of the machinery's fuel; a site with more than one fuel: shown even when one
+              if (s.mySources('Diesel Issue').length > 1 || s.ownSources('Diesel Issue') || s.multiFuel) ...[
+                _label(s.multiFuel ? 'Fuel from' : 'Diesel from', s.multiFuel ? 'इंधन कुठून' : 'डिझेल कुठून'),
                 if (s.mySources('Diesel Issue').isEmpty) const InfoLine(_noSource, bad: true, help: false),
-                _chips<String>([for (final l in s.mySources('Diesel Issue')) (l, l)], source, (v) {
+                _chips<String>([for (final l in s.fuelPlaces(s.mySources('Diesel Issue'), machine)) (l, l)], source, (v) {
                   setState(() => source = v);
                   _balance();
                 }),
               ],
               _label('Machinery', 'यंत्र'),
-              _machineBox(),
+              KeyedSubtree(key: const Key('d-machine'), child: _machineBox()),
               if (ed == null && !onComputer) // (3.19.0) the phone's camera reads the plate – not on a computer
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -1267,7 +1293,10 @@ class _EntryFormState extends State<EntryForm> {
                     label: Text(plateBusy ? 'Reading the number…' : 'Photo of the number plate'),
                   ),
                 ),
-              if (m != null && hist != null) Padding(padding: const EdgeInsets.only(top: 10), child: DieselHistoryCard(hist!, today: s.today)),
+              if (m != null && m.fuel == 'Electric') InfoLine(s.fuelProblem(m, source), bad: true, help: false)      // (3.44.0) no fuel for an Electric machinery
+              else if (m != null && s.fuelProblem(m, source).isNotEmpty) InfoLine(s.fuelProblem(m, source), bad: true, help: false),
+              // (3.44.0) the history of a Petrol / CNG machinery in its own words and unit
+              if (m != null && hist != null) Padding(padding: const EdgeInsets.only(top: 10), child: FuelScope(fuel: m.fuel == 'Electric' ? '' : m.fuel, child: DieselHistoryCard(hist!, today: s.today))),
               // (3.1.8) KM / Hrs / KM + Hrs by itself from the Asset Master – nothing to pick; only "Meter not working"
               if (m != null && !m.debit && m.dieselWay.isNotEmpty) ...[
                 _label('Measured by', 'मोजणी'),
@@ -1288,15 +1317,15 @@ class _EntryFormState extends State<EntryForm> {
                 _label('Hour meter', 'तास मीटर'),
                 TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read from the dashboard photo – check it') : null)),
               ],
-              _label('Litres', 'लिटर'),
+              _unit == 'kg' ? _label('Kg', 'किलो') : _label('Litres', 'लिटर'),
               _qtyField(),
               const SizedBox(height: 10),
               _chips<num>(const [(20, '20'), (50, '50'), (100, '100'), (150, '150'), (200, '200')], q, (v) => setState(() => qty.text = '$v')),
               if (bal != null)
                 InfoLine(
                   q == null || q == 0
-                      ? 'Stock at $source on ${showDate(date)} ($shift): ${fmtNum(asNum(bal!['balance']))} L'
-                      : (q > (avail ?? double.infinity) ? 'Not enough stock at $source: you can issue up to ${fmtNum(avail)} L.' : 'Stock after this issue: ${fmtNum((asNum(bal!['balance']) ?? 0) - q)} L'),
+                      ? 'Stock at $source on ${showDate(date)} ($shift): ${fmtNum(asNum(bal!['balance']))} ${_unit == 'kg' ? 'kg' : 'L'}'
+                      : (q > (avail ?? double.infinity) ? 'Not enough stock at $source: you can issue up to ${fmtNum(avail)} ${_unit == 'kg' ? 'kg' : 'L'}.' : 'Stock after this issue: ${fmtNum((asNum(bal!['balance']) ?? 0) - q)} ${_unit == 'kg' ? 'kg' : 'L'}'),
                   bad: q != null && q > (avail ?? double.infinity),
                 ),
               _label('Driver / Operator', 'चालक'),
@@ -1348,9 +1377,9 @@ class _EntryFormState extends State<EntryForm> {
                 onSelected: (v) => pump.text = v,
                 fieldViewBuilder: (c, ctl, f, sub) => TextField(controller: ctl, focusNode: f, onChanged: (v) => pump.text = v, textCapitalization: TextCapitalization.words, decoration: InputDecoration(hintText: tr('Petrol pump'), prefixIcon: Icon(Icons.local_gas_station_outlined))),
               ),
-              _label('Litres', 'लिटर'),
+              _unit == 'kg' ? _label('Kg', 'किलो') : _label('Litres', 'लिटर'),
               _qtyField(),
-              _label('Rate (₹ per litre)', 'दर'),
+              _label(_unit == 'kg' ? 'Rate (₹ per kg)' : 'Rate (₹ per litre)', 'दर'),
               TextField(
                   controller: rate,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1397,15 +1426,20 @@ class _EntryFormState extends State<EntryForm> {
               _label('From', 'कुठून'),
               if (s.mySources('Diesel Transfer').isEmpty) const InfoLine(_noSource, bad: true, help: false),
               _chips<String>([for (final l in s.mySources('Diesel Transfer')) (l, l)], from, (v) {
-                setState(() => from = v);
+                setState(() {
+                  from = v;
+                  // (3.44.0, update-163) the To: a place of the same fuel (another than the From when there is one)
+                  final tos = s.transferTos(v);
+                  if (!tos.contains(to) || to == v) to = tos.firstWhere((l) => l != v, orElse: () => tos.isNotEmpty ? tos.first : to);
+                });
                 _balance();
               }),
               _label('To', 'कुठे'),
-              _chips<String>([for (final l in s.locations) (l, l)], to, (v) {
+              _chips<String>([for (final l in s.transferTos(from)) (l, l)], to, (v) {
                 setState(() => to = v);
                 _balance();
               }),
-              _label('Litres', 'लिटर'),
+              _unit == 'kg' ? _label('Kg', 'किलो') : _label('Litres', 'लिटर'),
               _qtyField(),
               _transferLive(),
             ],

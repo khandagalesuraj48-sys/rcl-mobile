@@ -145,4 +145,17 @@ void main() {
     // all locations: no transfer columns, as before
     expect(kDailyReport.build(fx('getDailyInwardIssueReport')).blocks.whereType<RTable>().single.head.sublist(0, 4), ['Date', 'Opening stock', 'Inward (pump)', 'Issued – Own']);
   });
+
+  test('(3.44.0, Mechanical update-163) a report of one fuel in its words – the screen, the print and Excel (fuelDoc); Diesel as it is', () {
+    final d = RDoc(title: 'Diesel Cost Report', meta: 'Rate of the day', kpis: [('Total diesel', '240 Ltr')], blocks: [
+      RTable(sheet: 'Diesel', head: ['Machinery', 'Diesel (Ltr)'], rows: [const RRow([RCell('MH-12-HO-2163'), RCell('8', n: true, value: 8)])], foot: [const RRow([RCell('Total diesel'), RCell('8', n: true)])]),
+      const RNote('Every diesel issue of the dates.'),
+    ]);
+    expect(identical(fuelDoc(d, 'Diesel'), d), true);
+    final c = fuelDoc(d, 'CNG');
+    expect([c.title, c.kpis.single, c.tables.single.head, c.tables.single.foot.single.cells.first.text, (c.blocks.last as RNote).text],
+        ['CNG Cost Report', ('Total CNG', '240 kg'), ['Machinery', 'CNG (kg)'], 'Total CNG', 'Every CNG issue of the dates.']);
+    expect(c.tables.single.rows.single.cells.last.value, 8, reason: 'the numbers stay as they are');
+    expect(fuelDoc(d, 'Petrol').title, 'Petrol Cost Report');
+  });
 }

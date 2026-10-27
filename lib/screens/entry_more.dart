@@ -57,7 +57,7 @@ Future<bool> importEntries(BuildContext context, Kind k) async {
     rows = switch (k.key) {
       'inward' => readInward(tabs, s.locations),
       'transfer' => transferRows(tabs, s.locations),
-      _ => issueRows(tabs, s.locations, s.machines.map((m) => m.m), mine: s.mySources('Diesel Issue')),
+      _ => issueRows(tabs, s.locations, s.machines.map((m) => m.m), mine: s.mySources('Diesel Issue'), fuels: s.fuelChecks ? s.placeFuels : null),
     };
     if (rows.isEmpty) throw SheetError('No rows found under the heading row.');
   } on SheetError catch (e) {
@@ -106,8 +106,8 @@ class _ImportCheckScreenState extends State<ImportCheckScreen> {
 
   List<String> _problems(Session s, Map r) => switch (widget.kind.key) {
         'inward' => inwardProblems(r, _today(s), s.locations),
-        'transfer' => transferProblems(r, _today(s), s.locations, mine: s.mySources('Diesel Transfer')),
-        _ => issueProblems(r, _today(s), s.locations, s.machines.map((m) => m.m), mine: s.mySources('Diesel Issue')),
+        'transfer' => transferProblems(r, _today(s), s.locations, mine: s.mySources('Diesel Transfer'), fuels: s.fuelChecks ? s.placeFuels : null),
+        _ => issueProblems(r, _today(s), s.locations, s.machines.map((m) => m.m), mine: s.mySources('Diesel Issue'), fuels: s.fuelChecks ? s.placeFuels : null),
       };
 
   Future<void> _go() async {
@@ -558,7 +558,8 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
     // (3.43.0, update-162) From: his own diesel sources only; To: another place
     final mine = s.locations.isEmpty ? l : s.mySources('Diesel Transfer'), f0 = mine.isNotEmpty ? mine.first : l[0];
     final last = rows.isEmpty ? null : rows.last;
-    rows.add(last == null ? _TrRow(_today(s), 'Day', f0, l.firstWhere((x) => x != f0, orElse: () => l[0])) : _TrRow(last.date, last.shift, last.from, last.to));
+    final tos = s.locations.isEmpty ? l : s.transferTos(f0);      // (3.44.0) the To of the From's fuel
+    rows.add(last == null ? _TrRow(_today(s), 'Day', f0, tos.firstWhere((x) => x != f0, orElse: () => tos.isNotEmpty ? tos.first : l[0])) : _TrRow(last.date, last.shift, last.from, last.to));
   }
 
   void _reset() {
@@ -578,7 +579,7 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
       toast(context, 'Type the Qty in at least one row.', bad: true);
       return;
     }
-    final bad = list.where((r) => transferProblems(r, _today(s), s.locations, mine: s.mySources('Diesel Transfer')).isNotEmpty).toList();
+    final bad = list.where((r) => transferProblems(r, _today(s), s.locations, mine: s.mySources('Diesel Transfer'), fuels: s.fuelChecks ? s.placeFuels : null).isNotEmpty).toList();
     if (bad.isNotEmpty) {
       toast(context, 'Fix the rows in red first (row ${bad.map((r) => r['line']).join(', ')}).', bad: true);
       return;
@@ -640,7 +641,8 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
   }
 
   Widget _row(int i, _TrRow r, Map<String, Object> v, String today, List<String> locs, List<String> mine) {
-    final p = v['qty'] == '' ? const <String>[] : transferProblems(v, today, locs, mine: mine);
+    final s = SessionScope.read(context);
+    final p = v['qty'] == '' ? const <String>[] : transferProblems(v, today, locs, mine: mine, fuels: s.fuelChecks ? s.placeFuels : null);
     return Container(
       key: Key('tm-row-$i'),
       margin: const EdgeInsets.only(bottom: 10),
@@ -672,9 +674,14 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
         ]),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: PickField(key: Key('tm-from-$i'), label: 'From', value: r.from, items: mine, onChanged: (x) => setState(() => r.from = x))),
+          Expanded(child: PickField(key: Key('tm-from-$i'), label: 'From', value: r.from, items: mine, onChanged: (x) => setState(() {
+                r.from = x;
+                // (3.44.0, update-163) the To: a place of the same fuel
+                final tos = s.transferTos(x);
+                if (!tos.contains(r.to) || r.to == x) r.to = tos.firstWhere((l) => l != x, orElse: () => tos.isNotEmpty ? tos.first : r.to);
+              }))),
           const SizedBox(width: 8),
-          Expanded(child: PickField(key: Key('tm-to-$i'), label: 'To', value: r.to, items: locs, onChanged: (x) => setState(() => r.to = x))),
+          Expanded(child: PickField(key: Key('tm-to-$i'), label: 'To', value: r.to, items: s.multiFuel ? s.transferTos(r.from) : locs, onChanged: (x) => setState(() => r.to = x))),
         ]),
         const SizedBox(height: 8),
         Row(children: [
@@ -899,6 +906,13 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       await tellLines(context, 'Machinery is not active', [for (final x in inactive) 'Row ${x.$1}: ${x.$2}']);
       return;
     }
+    // (3.44.0, update-163) every row of the batch's source: of its fuel
+    final ss = SessionScope.read(context), wrong = [for (final (i, r) in dRows.indexed) if (r.m != null && ss.fuelProblem(r.m, source).isNotEmpty) (i + 1, ss.fuelProblem(r.m, source))];
+    if (wrong.isNotEmpty) {
+      setState(() => dNotes = [for (final x in wrong) (x.$1, x.$2, false)]);
+      await tellLines(context, 'Not the fuel of this source', [for (final x in wrong) 'Row ${x.$1}: ${x.$2}']);
+      return;
+    }
     final avail = asNum(bal?['available']);
     if (avail != null && total > avail) {
       await tellLines(context, 'Not enough diesel in stock', ['At $source for ${showDate(date)} ($shift) you can issue up to ${fmt(avail)} Ltr, and these rows total ${fmt(total)} Ltr. Add a Diesel Inward entry first or reduce the quantities.']);
@@ -1004,7 +1018,8 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     final q = _boxNum(r.qty.text);
     if (!(q is num && q > 0)) p.add('qty');
     if (bm != null && r.date.isNotEmpty && activeProblem(bm!.m, r.date).isNotEmpty) p.add('not active on that date');
-    if (after != null && after < 0) p.add('not enough diesel at ${r.source}');
+    if (bm != null && s.fuelProblem(bm, r.source).isNotEmpty) p.add(bm!.fuel == 'Electric' ? 'runs on Electric' : 'not a ${bm!.fuel} source');      // (3.44.0)
+    if (after != null && after < 0) p.add('not enough ${s.placeFuel(r.source) == 'Diesel' ? 'diesel' : s.placeFuel(r.source)} at ${r.source}');
     return p;
   }
 
@@ -1170,18 +1185,19 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       final q = double.tryParse(r.qty.text.trim()) ?? 0;
       final used = q > 0 || r.m != null;
       if (q > 0) run = r2(run - q);
-      final prob = r.m == null ? '' : activeProblem(r.m!.m, date);
+      final act = r.m == null ? '' : activeProblem(r.m!.m, date), fp = r.m == null || act.isNotEmpty ? '' : SessionScope.read(context).fuelProblem(r.m, source);      // (3.44.0) its fuel at this source
+      final prob = act.isNotEmpty ? act : fp;
       final notes = dNotes.where((x) => x.$1 == i + 1).toList();
       out.add(_dieselRow(
         i: i,
         r: r,
         m: r.m,
         key: 'im-row-$i',
-        head: r.m == null ? (r.typed.isNotEmpty ? '"${r.typed}" – not in Master: pick the machinery' : 'Pick machinery') : '${r.m!.id} · ${prob.isNotEmpty ? 'Inactive' : (r.m!.m['unit'] ?? '–')} · ${r.m!.owner.isEmpty ? '–' : r.m!.owner}',
+        head: r.m == null ? (r.typed.isNotEmpty ? '"${r.typed}" – not in Master: pick the machinery' : 'Pick machinery') : '${r.m!.id} · ${act.isNotEmpty ? 'Inactive' : fp.isNotEmpty ? '${r.m!.fuel} ✗' : (r.m!.m['unit'] ?? '–')} · ${r.m!.owner.isEmpty ? '–' : r.m!.owner}',
         bad: prob.isNotEmpty || notes.any((x) => !x.$3),
         warn: notes.any((x) => x.$3),
         note: [if (prob.isNotEmpty) prob, for (final x in notes) x.$2].join('\n'),
-        balance: used ? (start == null ? '…' : '${fmt(run)} Ltr') : '',
+        balance: used ? (start == null ? '…' : '${fmt(run)} ${SessionScope.read(context).placeUnit(source)}') : '',
         last: r.m == null ? '' : (dhLine(r.hist, today) ?? ''),
         onPick: () => _pickMachine(r),
         onRemove: () => setState(() {
@@ -1233,6 +1249,12 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           setState(() {
             bm = x;
             bmHist = null;
+            // (3.44.0, update-163) the sources of its fuel – the new rows' and every row's
+            final own = s.fuelPlaces(locs, x);
+            if (own.isNotEmpty && !own.contains(bmSrc)) bmSrc = own.first;
+            for (final r in mRows) {
+              if (own.isNotEmpty && !own.contains(r.source)) r.source = bmSrc;
+            }
             for (final r in mRows) {
               r.meterOff = false;
               if (!hasKm(r.wayFor(x))) r.km.clear();
@@ -1256,9 +1278,9 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           const Icon(Icons.expand_more_rounded),
         ]),
       ),
-      if (m != null && bmHist != null) Padding(padding: const EdgeInsets.only(top: 8), child: DieselHistoryCard(bmHist!, today: today)),
+      if (m != null && bmHist != null) Padding(padding: const EdgeInsets.only(top: 8), child: FuelScope(fuel: m.fuel == 'Electric' ? '' : m.fuel, child: DieselHistoryCard(bmHist!, today: today))),
       const SizedBox(height: 8),
-      PickField(key: const Key('im-msrc'), label: 'Diesel Source (new rows)', value: bmSrc, items: locs, onChanged: (v) => setState(() => bmSrc = v)),
+      PickField(key: const Key('im-msrc'), label: 'Diesel Source (new rows)', value: bmSrc, items: s.fuelPlaces(locs, m), onChanged: (v) => setState(() => bmSrc = v)),
       const SizedBox(height: 8),
       if (mErrors.isNotEmpty) ...[InfoLine(mErrors.join('\n'), bad: true), const SizedBox(height: 8)],
       for (final (i, r) in mRows.indexed)
@@ -1272,10 +1294,10 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
             head: 'Row ${i + 1}',
             bad: p.isNotEmpty,
             note: p.join(', '),
-            balance: bals[i].$2 == null ? '–' : '${fmt(bals[i].$2)} Ltr after',
+            balance: bals[i].$2 == null ? '–' : '${fmt(bals[i].$2)} ${s.placeUnit(r.source)} after',
             dateBox: true,
             today: today,
-            locs: locs,
+            locs: s.fuelPlaces(locs, m),
             onRemove: () => setState(() {
               mRows.removeAt(i);
               if (mRows.isEmpty) mRows.add(_DRow(source: bmSrc));
@@ -1290,7 +1312,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     final filled = mRows.where((r) => r.qty.text.trim().isNotEmpty).toList();
     final tot = r2(filled.fold<num>(0, (a, r) => a + (double.tryParse(r.qty.text.trim()) ?? 0)));
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      Text('Rows: ${filled.length}  Diesel: ${fmt(tot)} Ltr', key: const Key('im-msum'), style: const TextStyle(fontWeight: FontWeight.w800)),
+      Text('Rows: ${filled.length}  ${bm != null && bm!.fuel != 'Diesel' && bm!.fuel != 'Electric' ? bm!.fuel : 'Diesel'}: ${fmt(tot)} ${bm != null && bm!.fuel == 'CNG' ? 'kg' : 'Ltr'}', key: const Key('im-msum'), style: const TextStyle(fontWeight: FontWeight.w800)),
       const SizedBox(height: 6),
       Row(children: [
         OutlinedButton(

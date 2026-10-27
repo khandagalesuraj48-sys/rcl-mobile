@@ -10,7 +10,9 @@ import 'alerts.dart';
 import 'api.dart';
 import 'rtc.dart';
 import 'format.dart';
+import 'fuel.dart';
 import 'lang.dart';
+export 'fuel.dart';      // (3.44.0) kFuels, fuelUnit, fuelText – for every screen that has the session
 
 enum Stage { starting, signedOut, setPassword, pickSite, opening, ready, waiting }
 
@@ -58,6 +60,8 @@ class Machine {
     return true;
   }
   bool get debit => (m['supply'] ?? '') == 'Debit Basis'; // no readings are kept for diesel on Debit Basis
+  /// (3.44.0, Mechanical update-163) its fuel – Asset Master → Fuel: Diesel / Petrol / CNG / Electric (none = Diesel)
+  String get fuel => kFuels.contains('${m['fuel'] ?? ''}') ? '${m['fuel']}' : 'Diesel';
   List<String> _list(String k) => (m[k] is List) ? (m[k] as List).map((e) => e.toString()).toList() : <String>[];
   String get lbFormat => (m['lbFormat'] ?? 'A').toString();
 
@@ -231,6 +235,34 @@ class Session extends ChangeNotifier {
     final d = u is Map ? u['dsrc'] : null, was = dsrc.toString();
     dsrc = d is Map ? {for (final e in d.entries) if (e.value is List) '${e.key}': [for (final x in e.value as List) '$x']} : {};
     return dsrc.toString() != was;
+  }
+  /// (3.44.0, Mechanical update-163) the fuel each diesel place holds (Diesel / Petrol / CNG – Portal → Sites → Diesel places)
+  Map<String, String> placeFuels = {};
+  String placeFuel(String place) => placeFuels[place] ?? 'Diesel';
+  String placeUnit(String place) => fuelUnit(placeFuel(place));
+  /// The fuels of this site's places, in their order (one = a site as before: VTR, 18B)
+  List<String> get siteFuels { final o = <String>[]; for (final l in locations) { final f = placeFuel(l); if (!o.contains(f)) o.add(f); } return o; }
+  bool get multiFuel => siteFuels.length > 1;
+  /// A site with more than one fuel, or a machinery that is not Diesel: the fuel is checked on the phone too
+  bool get fuelChecks => multiFuel || machines.any((m) => m.fuel != 'Diesel');
+  /// The places a fill of [m] may come from, of [list] – those of its fuel (none of that fuel / Electric: all – the check says why)
+  List<String> fuelPlaces(List<String> list, Machine? m) {
+    if (m == null || !multiFuel || m.fuel == 'Electric') return list;
+    final f = m.fuel, l = list.where((x) => placeFuel(x) == f).toList();
+    return l.isEmpty ? list : l;
+  }
+  /// A fill of [m] from [place]: '' = fine; else what is wrong (the server's words)
+  String fuelProblem(Machine? m, String place) {
+    if (m == null || !fuelChecks) return '';
+    if (m.fuel == 'Electric') return '${m.id} runs on Electric – no fuel is issued to it (Asset Master → Fuel).';
+    final pf = placeFuel(place);
+    return pf == m.fuel ? '' : '$place holds $pf and ${m.id} runs on ${m.fuel} – pick a ${m.fuel} place (Asset Master → Fuel).';
+  }
+  /// The To of a transfer from [from]: the places of its fuel
+  List<String> transferTos(String from) {
+    if (!multiFuel) return locations;
+    final f = placeFuel(from);
+    return locations.where((l) => placeFuel(l) == f).toList();
   }
   num? stockTotal;
   Map<String, num> stockByLoc = {};
@@ -512,6 +544,7 @@ class Session extends ChangeNotifier {
     drivers = (d['drivers'] as List? ?? []).map((e) => e.toString()).toList();
     pumps = (d['pumps'] as List? ?? []).map((e) => e.toString()).toList();
     locations = (d['locations'] as List? ?? []).map((e) => e.toString()).toList();
+    placeFuels = d['placeFuels'] is Map ? {for (final e in (d['placeFuels'] as Map).entries) '${e.key}': '${e.value}'} : {};      // (3.44.0)
     aiOn = d['ai'] is Map && (d['ai'] as Map)['on'] == true;
     _flow(d['flow']);
     _admin(d);
@@ -993,6 +1026,7 @@ class Session extends ChangeNotifier {
     machines = [];
     perms = {};
     dsrc = {};
+    placeFuels = {};
     admin = false;
     superAdmin = false;
     _go(Stage.signedOut, msg);

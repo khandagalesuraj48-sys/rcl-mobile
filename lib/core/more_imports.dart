@@ -28,6 +28,7 @@ const kMasterImpMap = {
   'dieselsupply': 'supply', 'status': 'status', 'activefrom': 'activeFrom', 'inactivefrom': 'inactiveFrom',
   'ownernamevendor': 'owner', 'vendor': 'owner', 'vendorname': 'owner',
   'enginenumber': 'engineNo', 'engineno': 'engineNo', 'chassisnumber': 'chassisNo', 'chassisno': 'chassisNo', 'enginemake': 'engineMake',
+  'fuel': 'fuel', 'fueltype': 'fuel', // (3.44.0, update-163) Diesel / Petrol / CNG / Electric
   'taxvalidupto': 'taxUpto', 'pucvalidupto': 'pucUpto', 'permitvalidupto': 'permitUpto', 'fitnessvalidupto': 'fitnessUpto', 'insurancevalidupto': 'insuranceUpto',
 };
 String _hdrKey(Object? c) => (jsTrue(c) ? jsS(c) : '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');

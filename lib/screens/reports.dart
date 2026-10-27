@@ -64,6 +64,9 @@ class _ReportsTabState extends State<ReportsTab> {
   List<(String, num)> months = [];
   int seq = 0;
 
+  /// (3.44.0, update-163) the fuel of the Overview's diesel figures: '' on a site of one fuel (as before); else Diesel (or the first)
+  String _fuel(Session s) => !s.multiFuel ? '' : s.siteFuels.contains('Diesel') ? 'Diesel' : s.siteFuels.first;
+
   /// The same number of days just before [from]..[to].
   (String, String) _before(String from, String to) {
     final a = parseKey(from), b = parseKey(to), days = b.difference(a).inDays + 1;
@@ -83,11 +86,13 @@ class _ReportsTabState extends State<ReportsTab> {
       loadedFor = '$range|$today|${s.site?.code}';
     });
     Future<Map<String, dynamic>> ask(String fn, Map<String, dynamic> x) async => ((await s.api.call(fn, [x])) as Map).cast<String, dynamic>();
+    // (3.44.0, update-163) a site with more than one fuel: the figures of ONE fuel (never added together)
+    final fv = _fuel(s).isEmpty ? const <String, dynamic>{} : {'fuel': _fuel(s)};
     try {
       final r = await Future.wait([
-        ask('getDashboard', {'from': from, 'to': to}),
-        ask('getDashboard', {'from': pf, 'to': pt}),
-        ask('getDashboard', {'from': dateKey(m0), 'to': today}).catchError((_) => <String, dynamic>{}),
+        ask('getDashboard', {'from': from, 'to': to, ...fv}),
+        ask('getDashboard', {'from': pf, 'to': pt, ...fv}),
+        ask('getDashboard', {'from': dateKey(m0), 'to': today, ...fv}).catchError((_) => <String, dynamic>{}),
         if (s.canSee('Log Book') || s.canSee('Dashboard')) ask('logDashboard', {'from': from, 'to': to, 'vendor': '', 'ownerships': <String>[]}).catchError((_) => <String, dynamic>{}),
       ]);
       Map<String, dynamic>? bd;
@@ -285,11 +290,11 @@ class _ReportsTabState extends State<ReportsTab> {
     ];
     return [
       if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(tr(err), style: const TextStyle(color: C.red))),
-      Row(children: [
+      FuelScope(fuel: _fuel(s), child: Row(children: [
         Expanded(child: fig('ov-used', 'fuel_pump', C.redSoft, 'Diesel Consumed', '${fmtNum(used?.now)} L', used)),
         const SizedBox(width: Sp.chips),
         Expanded(child: fig('ov-cost', 'receipt', C.amberSoft, 'Diesel Cost', '₹${fmtNum(cost?.now)}', cost)),
-      ]),
+      ])),
       const SizedBox(height: Sp.chips),
       Row(children: [
         Expanded(child: fig('ov-run', 'tractor', C.blueSoft, 'Machinery Running', fmtNum(running?.now), running)),
@@ -304,7 +309,7 @@ class _ReportsTabState extends State<ReportsTab> {
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.line)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            const Expanded(child: Text('Diesel Consumption Trend', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
+            Expanded(child: FuelScope(fuel: _fuel(s), child: const Text('Diesel Consumption Trend', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)))),
             TextButton(
               key: const Key('ov-details'),
               onPressed: () => openDashboard(context),

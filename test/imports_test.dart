@@ -164,4 +164,30 @@ void main() {
     expect(transferProblems(tr(ze, 'CAMP PUMP'), '2026-10-14', locs, mine: [ze]), isEmpty, reason: 'to any place');
     expect(transferProblems(tr('CAMP PUMP', ze), '2026-10-14', locs), isEmpty, reason: 'nothing chosen: every place');
   });
+
+  test('(3.44.0, Mechanical update-163) fuel: an Excel row from a place of another fuel is marked (the web\'s diProblems / trProblems); a blank source = the first place of the car\'s fuel; a site without fuels as before', () {
+    const locs = ['DIESEL CARD', 'PETROL CARD', 'PETROL CAN', 'CNG CARD'];
+    const fuels = {'DIESEL CARD': 'Diesel', 'PETROL CARD': 'Petrol', 'PETROL CAN': 'Petrol', 'CNG CARD': 'CNG'};
+    final master = [
+      <String, dynamic>{'id': 'MH-12-HO-1163', 'status': 'Active', 'fuel': 'Petrol'},
+      <String, dynamic>{'id': 'MH-12-HO-3163', 'status': 'Active', 'fuel': 'Electric'},
+      <String, dynamic>{'id': 'TP-1', 'status': 'Active'},
+    ];
+    Map<String, Object?> iss(String no, String src) => {'line': 1, 'date': '2026-10-14', 'shift': 'Day', 'source': src, 'no': no, 'qty': 10};
+    expect(issueProblems(iss('MH-12-HO-1163', 'DIESEL CARD'), '2026-10-14', locs, master, fuels: fuels), ['runs on Petrol – not at DIESEL CARD']);
+    expect(issueProblems(iss('MH-12-HO-1163', 'PETROL CAN'), '2026-10-14', locs, master, fuels: fuels), isEmpty);
+    expect(issueProblems(iss('MH-12-HO-3163', 'PETROL CARD'), '2026-10-14', locs, master, fuels: fuels), ['runs on Electric – no fuel']);
+    expect(issueProblems(iss('TP-1', 'DIESEL CARD'), '2026-10-14', locs, master, fuels: fuels), isEmpty, reason: 'no fuel in the Master = Diesel');
+    expect(issueProblems(iss('MH-12-HO-1163', 'DIESEL CARD'), '2026-10-14', locs, master), isEmpty, reason: 'no fuels given (a site of Diesel only): as before');
+    Map<String, Object?> tr(String f, String t) => {'line': 1, 'date': '2026-10-14', 'shift': 'Day', 'from': f, 'to': t, 'qty': 10};
+    expect(transferProblems(tr('PETROL CARD', 'DIESEL CARD'), '2026-10-14', locs, fuels: fuels), ['From Petrol, To Diesel – not the same fuel']);
+    expect(transferProblems(tr('PETROL CARD', 'PETROL CAN'), '2026-10-14', locs, fuels: fuels), isEmpty);
+    expect(transferProblems(tr('PETROL CARD', 'DIESEL CARD'), '2026-10-14', locs), isEmpty, reason: 'as before');
+    final rows = issueRows([SheetTab('Diesel Issue', [
+      ['Date', 'Shift', 'Diesel Source', 'Machinery Number / Name', 'Diesel Qty (Ltr)'],
+      ['14/10/2026', 'Day', '', 'MH-12-HO-1163', 30],
+      ['14/10/2026', 'Day', '', 'TP-1', 40],
+    ])], locs, master, fuels: fuels);
+    expect([rows[0]['source'], rows[1]['source']], ['PETROL CARD', 'DIESEL CARD'], reason: 'a blank source: the first place of its fuel');
+  });
 }
