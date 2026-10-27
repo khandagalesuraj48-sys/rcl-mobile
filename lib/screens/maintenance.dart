@@ -451,7 +451,7 @@ class _MaintFormState extends State<MaintForm> {
       if (!mounted) return;
       if (r['ok'] == false && '${r['warning'] ?? ''}'.isNotEmpty) {
         setState(() => busy = false);
-        if (await ask(context, 'Saved before?', '${r['warning']}', yes: 'Save again')) return _save(force: true);
+        if (await ask(context, 'Saved before?', '${r['warning']}', yes: 'Save again')) await _save(force: true);
         return;
       }
       toast(context, e == null ? 'Bill ${r['id']} saved – ${rupees(asNum(r['total']))}.' : 'Bill ${r['id']} saved.');
