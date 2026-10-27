@@ -44,6 +44,7 @@ class Builds {
 
   void stop() => debugOnRebuildDirtyWidget = null;
   int of(Type t) => byType['$t'] ?? 0;
+  String top([int k = 6]) => (byType.entries.toList()..sort((x, y) => y.value - x.value)).take(k).map((e) => '${e.key} ${e.value}').join(', ');
   String get tabs => 'Home ${of(HomeTab)}, Entries ${of(EntriesTab)}, Reports ${of(ReportsTab)}, Me ${of(MeTab)}';
 }
 
@@ -128,15 +129,25 @@ void main() {
     b.stop();
     s.removeListener(note);
     final change = countCalls(srv.calls, from), changeBuilds = b.n, changeTabs = b.tabs;
+    expect(s.stockByLoc['Dispenser'], 773, reason: 'the session has the new stock');
 
-    // 4. one redraw of the whole session (any notifyListeners: a stock, a count of approvals …) – how much is built for it
+    // 4. one redraw of the whole session (any notifyListeners: a stock, a count of approvals …) – how much is built for it:
+    // the same stock again (a save's answer …), then a stock that changed
     b.start();
     final rw = Stopwatch()..start();
     s.setStock({'stock': s.stockTotal, 'byLoc': {...s.stockByLoc}});
     await t.pump();
     rw.stop();
     b.stop();
-    final oneBuilds = b.n, oneTabs = b.tabs;
+    final sameBuilds = b.n;
+    b.start();
+    final rw2 = Stopwatch()..start();
+    s.setStock({'stock': 1092, 'byLoc': {'Dispenser': 772, 'VTR Store': 320}});
+    await t.pump();
+    rw2.stop();
+    b.stop();
+    final oneBuilds = b.n, oneTabs = b.tabs, oneTop = b.top();
+    expect(find.text('772 L'), findsOneWidget);
 
     // 5. a new opening of the app (his sign-in kept on the phone): what is asked until Home is shown
     await t.pumpWidget(const SizedBox());
@@ -167,11 +178,12 @@ void main() {
       'shown on Home after ${shownAt < 0 ? 'NOT within 4 s' : '$shownAt ms'} (the 2 s sync)',
       'calls: ${callsText(change)}',
       'session redraws (notifyListeners): $notes · widgets built again: $changeBuilds · tabs built: $changeTabs',
-      'one session redraw alone: ${oneBuilds} widgets built again (tabs: $oneTabs) · its frame ${f1(ms(rw.elapsed))} ms',
+      'the same stock again (a save\'s answer): $sameBuilds widgets built again · its frame ${f1(ms(rw.elapsed))} ms',
+      'a stock that changed: $oneBuilds widgets built again (tabs: $oneTabs) · its frame ${f1(ms(rw2.elapsed))} ms',
+      '  most built: $oneTop',
     ]);
     expect(srv.calls.where((c) => c == 'mech:sync').length, greaterThan(10), reason: 'the live sync ran in the measured minute');
     expect(shownAt, greaterThan(0), reason: 'another person\'s change is shown on Home');
-    expect(s.stockByLoc['Dispenser'], 773);
   });
 
   testWidgets('perf: a big site – 300 machinery, 300 diesel issues and 300 Log Book lines today: Home, the Entries list, its scroll', (t) async {
@@ -188,10 +200,10 @@ void main() {
     hw.stop();
     b.stop();
     final homeBuilds = b.n;
-    // one redraw of the session on this big site
+    // one redraw of the session on this big site (a stock that changed)
     b.start();
     final rw = Stopwatch()..start();
-    s.setStock({'stock': s.stockTotal, 'byLoc': {...s.stockByLoc}});
+    s.setStock({'stock': 1092, 'byLoc': {'Dispenser': 772, 'VTR Store': 320}});
     await t.pump();
     rw.stop();
     b.stop();
@@ -226,18 +238,95 @@ void main() {
     await settle(t, 1200);
     // typing in its search box: each letter
     final typed = <double>[];
+    b.start();
     for (final q in ['M', 'MH', 'MH-1', 'MH-12-BG-11']) {
       final tw = Stopwatch()..start();
       await t.enterText(find.byType(TextField).first, q);
       await t.pump();
       typed.add(ms(tw.elapsed));
     }
+    b.stop();
+    final typedN = b.n ~/ 4, typedTop = b.top();
+    // a machinery looked up by its number (each entry card, each form, the Log Book rows …): 300 looks among the Master
+    final ids = [for (var i = 0; i < 300; i++) 'MH 12 BG ${1000 + (i * 7) % 300}'];
+    String lookOld() {
+      final w = Stopwatch()..start();
+      for (final id in ids) {
+        final k = id.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+        for (final m in s.machines) {
+          if (m.id.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '') == k) break;
+        }
+      }
+      return f1(ms(w.elapsed));
+    }
+    String lookNow() {
+      final w = Stopwatch()..start();
+      for (final id in ids) {
+        s.machine(id);
+      }
+      return f1(ms(w.elapsed));
+    }
+    final looks = 'one by one through the list (as before 3.48.0) ${lookOld()} ms · s.machine() ${lookNow()} ms';
+    for (final id in ids.take(20)) {
+      final k = id.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      expect(s.machine(id), same(s.machines.firstWhere((m) => m.id.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '') == k)), reason: 'the same machinery as before');
+    }
+    expect(s.machine('NO SUCH'), isNull);
     notice('A big site (300 machinery, 300 issues, 300 Log Book lines today)', [
       'sign-in + site: $signIn ms · Home shown in ${hw.elapsedMilliseconds} ms (with the pretend server\'s answers), $homeBuilds widgets built',
       'one session redraw: $oneBuilds widgets built again (tabs: $oneTabs), its frame ${f1(ms(rw.elapsed))} ms',
       'Entries → Diesel Issue (300): ${ew.elapsedMilliseconds} ms, $cards entry cards built (the list builds only what is seen)',
       'scroll, 120 frames: ${p50p95(times)} · $scrollCards cards built while scrolling',
-      'search, each letter: ${p50p95(typed)}',
+      'search, each letter: ${p50p95(typed)} · $typedN widgets built a letter ($typedTop)',
+      '300 machinery looked up: $looks',
+    ]);
+  });
+
+  testWidgets('perf: a big site – the Log Book of a day with 300 lines: opening it, its search, the session\'s redraw over it', (t) async {
+    phone(t);
+    final srv = FakeServer()..big = 300, b = Builds();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    // opening it: the longest frame while it opens and its list comes
+    final open = <double>[];
+    b.start();
+    await t.tap(find.byKey(const Key('entries-Log Book')));
+    for (var i = 0; i < 30; i++) {
+      if (i % 5 == 0) await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
+      final w = Stopwatch()..start();
+      await t.pump(const Duration(milliseconds: 100));
+      open.add(ms(w.elapsed));
+    }
+    b.stop();
+    final openBuilds = b.n;
+    expect(find.byType(TextField), findsWidgets);
+    // its search: each letter
+    final typed = <double>[];
+    b.start();
+    for (final q in ['M', 'MH', 'MH-1', 'MH-12-BG-11']) {
+      final w = Stopwatch()..start();
+      await t.enterText(find.byType(TextField).first, q);
+      await t.pump();
+      typed.add(ms(w.elapsed));
+    }
+    b.stop();
+    final typedN = b.n ~/ 4, typedTop = b.top(4);
+    await t.enterText(find.byType(TextField).first, '');
+    await t.pump();
+    // a redraw of the session over it (another person's diesel issue changed the stock)
+    b.start();
+    final rw = Stopwatch()..start();
+    s.setStock({'stock': 1092, 'byLoc': {'Dispenser': 772, 'VTR Store': 320}});
+    await t.pump();
+    rw.stop();
+    b.stop();
+    notice('A big site – the Log Book of a day with 300 lines', [
+      'opening: ${p50p95(open)} a frame · $openBuilds widgets built',
+      'search, each letter: ${p50p95(typed)} · $typedN widgets built a letter ($typedTop)',
+      'a session redraw over it: ${b.n} widgets built again (tabs under it: ${b.tabs}) · its frame ${f1(ms(rw.elapsed))} ms',
     ]);
   });
 
