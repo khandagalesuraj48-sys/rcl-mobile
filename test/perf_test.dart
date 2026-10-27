@@ -282,6 +282,54 @@ void main() {
     ]);
   });
 
+  testWidgets('perf: a big site – the Log Book of a day with 300 lines: opening it, its search, the session\'s redraw over it', (t) async {
+    phone(t);
+    final srv = FakeServer()..big = 300, b = Builds();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    // opening it: the longest frame while it opens and its list comes
+    final open = <double>[];
+    b.start();
+    await t.tap(find.byKey(const Key('entries-Log Book')));
+    for (var i = 0; i < 30; i++) {
+      if (i % 5 == 0) await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
+      final w = Stopwatch()..start();
+      await t.pump(const Duration(milliseconds: 100));
+      open.add(ms(w.elapsed));
+    }
+    b.stop();
+    final openBuilds = b.n;
+    expect(find.byType(TextField), findsWidgets);
+    // its search: each letter
+    final typed = <double>[];
+    b.start();
+    for (final q in ['M', 'MH', 'MH-1', 'MH-12-BG-11']) {
+      final w = Stopwatch()..start();
+      await t.enterText(find.byType(TextField).first, q);
+      await t.pump();
+      typed.add(ms(w.elapsed));
+    }
+    b.stop();
+    final typedN = b.n ~/ 4, typedTop = b.top(4);
+    await t.enterText(find.byType(TextField).first, '');
+    await t.pump();
+    // a redraw of the session over it (another person's diesel issue changed the stock)
+    b.start();
+    final rw = Stopwatch()..start();
+    s.setStock({'stock': 1092, 'byLoc': {'Dispenser': 772, 'VTR Store': 320}});
+    await t.pump();
+    rw.stop();
+    b.stop();
+    notice('A big site – the Log Book of a day with 300 lines', [
+      'opening: ${p50p95(open)} a frame · $openBuilds widgets built',
+      'search, each letter: ${p50p95(typed)} · $typedN widgets built a letter ($typedTop)',
+      'a session redraw over it: ${b.n} widgets built again (tabs under it: ${b.tabs}) · its frame ${f1(ms(rw.elapsed))} ms',
+    ]);
+  });
+
   testWidgets('(3.48.0) a hidden tab is not built again for the session\'s redraws – and shows the change the moment it is seen', (t) async {
     phone(t);
     final srv = FakeServer(), b = Builds();
