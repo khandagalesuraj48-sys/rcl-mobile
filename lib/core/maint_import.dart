@@ -134,7 +134,7 @@ MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynami
       bills.add(cur);
       from[cur] = (line, line);
     }
-    final c = cur!;
+    final c = cur;
     if (c['km'] == '' && km != '') c['km'] = km;
     from[c] = (from[c]!.$1, line);
     (c['lines'] as List<Map<String, Object>>).add(l);
