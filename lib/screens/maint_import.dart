@@ -338,6 +338,7 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     Text('${tr(_fieldName[z.f] ?? z.f)}: ${z.from}', key: Key('mlf-from-$i'), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 10),      // (the box's label above it, not over the name)
                     TextField(
                       key: Key('mlt-$i'),
                       controller: _ctl[i],
