@@ -3110,12 +3110,20 @@ void main() {
   });
 
   /// (3.53.0) the Admin at the page Maintenance, his old log book's file ready to be picked (RL-173 "Roller No.03" and MH-12-XW-0169
-  /// Own, JCB-173 rented)
+  /// Own, JCB-173 rented); the AI on – the names it finds: Ganesh Motors (GANESH MOTORS), FUEL WATER SEPRETOR
   Future<FakeServer> mliOpen(WidgetTester t) async {
     phone(t);
     final srv = FakeServer()
       ..superAdmin = true
-      ..perms.addAll({'Maintenance': 'Edit'});
+      ..aiOn = true
+      ..perms.addAll({'Maintenance': 'Edit'})
+      ..mliNames = {
+        'fixes': [
+          ['party', 'Ganesh Motors', 'GANESH MOTORS'],
+          ['work', 'FUEL WATER SEPRETOR', 'FUEL WATER SEPARATOR'],
+          ['work', 'NOT IN THE FILE', 'X'],
+        ]
+      };
     srv.master.addAll([
       {'id': 'RL-173', 'no': '', 'name': 'Roller No.03', 'type': 'Roller', 'owner': 'RCL', 'ownership': 'Own', 'status': 'Active', 'activeFrom': '2025-09-01', 'modes': ['Hrs'], 'worksOn': ['Hrs'], 'unit': 'Hrs'},
       {'id': 'MH-12-XW-0169', 'no': 'MH-12-XW-0169', 'name': 'Hycross', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM'},
@@ -3132,68 +3140,181 @@ void main() {
     return srv;
   }
 
-  testWidgets('(3.53.0 – Mechanical update-173) the Admin imports the old maintenance log book (Excel) as it is: a card a sheet – its machinery found among the Own ones on the site (a rented one not); Check (nothing saved) – a sheet with a mistake is not imported; "– not imported –"; Import asks first, then importMaint; the same file again – the bill already there is left out', (t) async {
-    final srv = await mliOpen(t);
-    String st(int i) => '${(t.widget(find.byKey(Key('mli-st-$i'))) as dynamic).data}';
-    bool on(String k) => (t.widget(find.byKey(Key(k))) as ButtonStyleButton).onPressed != null;
+  /// (3.53.0) the import's screen: a key brought into view (the list builds only what is near the screen)
+  Future<void> mliSee(WidgetTester t, String k) async {
+    final f = find.byKey(Key(k)), list = find.descendant(of: find.byKey(const Key('mli-list')), matching: find.byType(Scrollable)).first;
+    if (f.evaluate().isEmpty) {
+      await t.drag(list, const Offset(0, 4000));
+      await t.pump(const Duration(milliseconds: 300));
+      if (f.evaluate().isEmpty) await t.scrollUntilVisible(f, 250, scrollable: list);
+    }
+    await t.ensureVisible(f);
+    await t.pump(const Duration(milliseconds: 300));
+  }
+
+  /// (3.53.0) the import chosen on the Maintenance page: Excel, PDF, photo or the format
+  Future<void> mliChoose(WidgetTester t, String how) async {
     await tapK(t, 'mt-import');
+    await settle(t, 800);
+    await t.tap(find.byKey(Key('mti-$how')));
     await net(t);
+  }
+
+  testWidgets('(3.53.0 – Mechanical update-173) the Admin imports the old maintenance log book (Excel) as it is: a card a sheet – its machinery found among the Own ones on the site (a rented one not); the names the AI finds written in more than one way, nothing ticked – a ticked one goes with the bills; the lines that do not add up; Check (nothing saved) – a sheet with a mistake is not imported; Import asks first; the same file again – the bill already there is left out and listed', (t) async {
+    final srv = await mliOpen(t);
+    Future<String> st(int i) async {
+      await mliSee(t, 'mli-st-$i');
+      return '${(t.widget(find.byKey(Key('mli-st-$i'))) as dynamic).data}';
+    }
+
+    bool on(String k) => (t.widget(find.byKey(Key(k))) as ButtonStyleButton).onPressed != null;
+    expect(find.text('Import the old log book (Excel or PDF)'), findsOneWidget);
+    await mliChoose(t, 'excel');
     expect(find.text('All Machinery Maintenance Logbook.xlsx – 3 sheet(s)'), findsOneWidget);
-    expect([for (var i = 0; i < 3; i++) (t.widget(find.byKey(Key('mli-no-$i'))) as PickField).value], ['RL-173', 'MH-12-XW-0169', ''], reason: 'ROLLER NO-03 = Roller No.03; MH12XW0169; the JCB is rented – not imported');
+    expect([for (var i = 0; i < 3; i++) await () async { await mliSee(t, 'mli-no-$i'); return (t.widget(find.byKey(Key('mli-no-$i'))) as PickField).value; }()], ['RL-173', 'MH-12-XW-0169', ''], reason: 'ROLLER NO-03 = Roller No.03; MH12XW0169; the JCB is rented – not imported');
+    await mliSee(t, 'mli-no-0');
     expect((t.widget(find.byKey(const Key('mli-no-0'))) as PickField).items, unorderedEquals(['Sany 210 (No.1)', 'RL-173', 'MH-12-XW-0169']), reason: 'only the Own machinery on the site today (not OLD-9, Inactive)');
     expect(find.text('Name in the file: ROLLER NO-03'), findsOneWidget);
-    expect(st(0), '1 row(s) without a date – Line 12: the date "later"');
-    expect([st(1), st(2)], ['Press Check', 'not imported']);
+    // the names (AI): every name of the file with its rows asked once; its list – only names of the file – nothing ticked
+    final nq = srv.maintCalls.where((x) => x['fn'] == 'maintImportNames').toList();
+    expect(nq.length, 1);
+    expect((nq.first['x'] as Map)['party'], [['Store', 7], ['Ganesh Motors', 2], ['Navnit Motors', 3]]);
+    expect((nq.first['x'] as Map)['uom'], [['Ltr', 4], ['Nos', 6], ['Kg', 2]]);
+    await mliSee(t, 'mlf-0');
+    expect(find.text('Names written in more than one way (AI)'), findsOneWidget);
+    expect(['${(t.widget(find.byKey(const Key('mlf-from-0'))) as dynamic).data}', '${(t.widget(find.byKey(const Key('mlf-from-1'))) as dynamic).data}'], ['Party Name: Ganesh Motors', 'Particulars: FUEL WATER SEPRETOR']);
+    expect([(t.widget(find.byKey(const Key('mlf-0'))) as Checkbox).value, (t.widget(find.byKey(const Key('mlf-1'))) as Checkbox).value], [false, false], reason: 'he ticks what is to be changed');
+    expect((t.widget(find.byKey(const Key('mlt-0'))) as TextField).controller!.text, 'GANESH MOTORS');
+    expect(find.text('2 row(s)'), findsOneWidget);
+    expect(find.byKey(const Key('mlf-2')), findsNothing, reason: '(the server keeps only names of the file)');
+    expect(await st(0), '1 row(s) without a date – Line 12: the date "later"');
+    expect([await st(1), await st(2)], ['Press Check', 'not imported']);
+    // the lines that do not add up – shown, imported as they are
+    await mliSee(t, 'mli-warn-1');
+    expect(find.text('2 line(s) to look at – imported as they are'), findsOneWidget);
+    await t.tap(find.byKey(const Key('mli-warn-1')));
+    await settle(t, 400);
+    expect(find.text('• Line 6 (Coolant): Qty × Rate = ₹500, Amount ₹450'), findsOneWidget);
+    expect(find.text('• Line 6 (Coolant): Amount + GST = ₹531, Amount With GST ₹541'), findsOneWidget);
     expect([on('mli-check'), on('mli-go')], [true, false]);
     expect(srv.maintCalls.where((x) => '${x['fn']}'.contains('Import')), isEmpty, reason: 'nothing sent before Check');
     // Check: nothing saved; the roller's "later" is a mistake – nothing of that sheet goes
     final n0 = srv.maint.length;
     await tapK(t, 'mli-check');
     await net(t);
-    expect([for (final x in srv.maintCalls.where((x) => '${x['fn']}'.contains('Import'))) x], [{'fn': 'checkMaintImport', 'no': 'RL-173', 'bills': 5}, {'fn': 'checkMaintImport', 'no': 'MH-12-XW-0169', 'bills': 1}]);
-    expect(st(0), startsWith('✗ 1 mistake(s) – nothing of this sheet is imported:\nLine 12: '));
-    expect(st(1), '✓ 1 new bill(s), 2 line(s), ₹1,781.8 (10-02-2026 – 10-02-2026)');
+    expect([for (final x in srv.maintCalls.where((x) => '${x['fn']}'.contains('Import'))) x], [
+      {'fn': 'checkMaintImport', 'no': 'RL-173', 'bills': 5, 'garages': ['Store', 'Store', 'Ganesh Motors', 'Store', 'Store']},
+      {'fn': 'checkMaintImport', 'no': 'MH-12-XW-0169', 'bills': 1, 'garages': ['Navnit Motors']},
+    ]);
+    expect(await st(0), startsWith('✗ 1 mistake(s) – nothing of this sheet is imported:\nLine 12: '));
+    expect(await st(1), '✓ 1 new bill(s), 3 line(s), ₹2,312.8 (10-02-2026 – 10-02-2026)');
     expect(srv.maint.length, n0, reason: 'Check saves nothing');
     expect(on('mli-go'), false, reason: 'a sheet with a mistake – Import waits');
+    // a name ticked: checked again with it
+    await mliSee(t, 'mlf-0');
+    await t.tap(find.byKey(const Key('mlf-0')));
+    await settle(t, 400);
+    expect((t.widget(find.byKey(const Key('mlf-0'))) as Checkbox).value, true);
+    expect(await st(1), 'Press Check', reason: 'a name ticked: the sheets are checked again');
+    await tapK(t, 'mli-check');
+    await net(t);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'checkMaintImport').toList()[2]['garages'], ['Store', 'Store', 'GANESH MOTORS', 'Store', 'Store'], reason: 'the ticked name goes with the bills');
     // the roller: not imported now
+    await mliSee(t, 'mli-no-0');
     await t.tap(find.byKey(const Key('mli-no-0')));
     await settle(t, 600);
     await t.tap(find.text('– not imported –').last);
     await settle(t, 600);
-    expect([st(0), on('mli-go')], ['not imported', true]);
+    expect([await st(0), on('mli-go')], ['not imported', true]);
     await tapK(t, 'mli-go');
     await settle(t, 600);
     expect(find.text('Import the old log book?'), findsOneWidget);
-    expect(find.text('MH-12-XW-0169: 1 bill(s), ₹1,781.8'), findsOneWidget);
+    expect(find.text('• MH-12-XW-0169: 1 bill(s), ₹2,312.8'), findsOneWidget);
     await tapK(t, 'ask-yes');
     await net(t);
-    expect(srv.maintCalls.last, {'fn': 'importMaint', 'no': 'MH-12-XW-0169', 'bills': 1});
+    expect(srv.maintCalls.last, {'fn': 'importMaint', 'no': 'MH-12-XW-0169', 'bills': 1, 'garages': ['Navnit Motors']});
     expect(find.text('1 bill(s) imported.'), findsOneWidget);
-    expect(st(1), '✓ 1 bill(s) imported (MT-000003)');
+    expect(await st(1), '✓ 1 bill(s) imported (MT-000003)');
     final b = srv.maint.firstWhere((r) => r['id'] == 'MT-000003');
-    expect([b['no'], b['date'], b['garage'], b['km'], (b['lines'] as List).length, b['total']], ['MH-12-XW-0169', '2026-02-10', 'Navnit Motors', 13153, 2, 1781.8]);
+    expect([b['no'], b['date'], b['garage'], b['km'], (b['lines'] as List).length, b['total']], ['MH-12-XW-0169', '2026-02-10', 'Navnit Motors', 13153, 3, 2312.8]);
     expect([on('mli-check'), on('mli-go')], [false, false], reason: 'imported – nothing left to do');
-    // the same file again: the bill is already there – left out
+    // the same file again: the bill is already there – left out, and listed
     await t.pageBack();
     await net(t);
-    await tapK(t, 'mt-import');
-    await net(t);
+    await mliChoose(t, 'excel');
+    await mliSee(t, 'mli-no-0');
     await t.tap(find.byKey(const Key('mli-no-0')));
     await settle(t, 600);
     await t.tap(find.text('– not imported –').last);
     await settle(t, 600);
     await tapK(t, 'mli-check');
     await net(t);
-    expect(st(1), '✓ 0 new bill(s), 0 line(s), ₹0\n1 bill(s) already there – left out');
+    expect(await st(1), '✓ 0 new bill(s), 0 line(s), ₹0');
+    await mliSee(t, 'mli-same-1');
+    expect(find.text('1 bill(s) already there – left out'), findsOneWidget);
+    await t.tap(find.byKey(const Key('mli-same-1')));
+    await settle(t, 400);
+    expect(find.text('• Line 4–6 · 10-02-2026 · ₹2,312.8 – already saved as MT-000003'), findsOneWidget);
     expect(srv.maint.length, n0 + 1);
   });
 
-  testWidgets('(3.53.0) Picture: the old log book\'s import after Check – a sheet with a mistake, one to import, one rented (not imported)', (t) async {
-    await mliOpen(t);
-    await tapK(t, 'mt-import');
+  testWidgets('(3.53.0 – 28-10-2026) the old log book as a PDF, read by the AI 2 pages a call (a cut answer: one page) – each machinery\'s table a sheet; without the AI it says so; "Download the format (Excel)": a sheet for each Own machinery on the site, its number in row 3, the heading', (t) async {
+    final srv = await mliOpen(t);
+    final p0 = pickAttFiles;
+    addTearDown(() => pickAttFiles = p0);
+    pickAttFiles = (how, room) async => [(name: 'Old log book.pdf', bytes: Uint8List.fromList(utf8.encode('%PDF-1.4\n%%EOF\n')))];
+    final web = jsonDecode(File('test/fixtures/sheets/maint_logbook.json').readAsStringSync()) as Map<String, dynamic>, tb = web['aiTables'] as List;
+    srv
+      ..mliNames = {'fixes': []}
+      ..mliPages.addAll([
+        {'pages': 3, 'tables': [tb[0], tb[1]]},
+        'cut',
+        {'pages': 3, 'tables': [tb[2], tb[3]]},
+      ]);
+    await mliChoose(t, 'pdf');
     await net(t);
+    expect([for (final x in srv.maintCalls.where((x) => x['fn'] == 'readMaintLog')) '${x['from']}/${x['n']}/${x['kind']}'], ['1/2/application/pdf', '3/2/application/pdf', '3/1/application/pdf'], reason: 'pages 1–2; 3–4 cut off: page 3 alone');
+    expect(find.text('Old log book.pdf – 2 sheet(s)'), findsOneWidget);
+    await mliSee(t, 'mli-no-0');
+    expect([(t.widget(find.byKey(const Key('mli-no-0'))) as PickField).value, find.text('Name in the file: ROLLER NO-03').evaluate().length], ['RL-173', 1]);
+    await mliSee(t, 'mli-no-1');
+    expect((t.widget(find.byKey(const Key('mli-no-1'))) as PickField).value, 'MH-12-XW-0169');
+    await mliSee(t, 'mlf-state');
+    expect('${(t.widget(find.byKey(const Key('mlf-state'))) as dynamic).data}', '✓ The AI found no name written in more than one way.');
+    await mliSee(t, 'mli-warn-0');
+    expect(find.text('1 line(s) to look at – imported as they are'), findsOneWidget, reason: 'BULB: GST 25 % – not a usual rate');
     await tapK(t, 'mli-check');
     await net(t);
+    expect([for (final x in srv.maintCalls.where((x) => x['fn'] == 'checkMaintImport')) '${x['no']}:${x['bills']}'], ['RL-173:2', 'MH-12-XW-0169:1']);
+    // the AI not set up: said so – nothing read
+    await t.pageBack();
+    await net(t);
+    srv.aiOn = false;
+    await mliChoose(t, 'pdf');
+    await net(t);
+    expect('${(t.widget(find.byKey(const Key('mli-read-err'))) as dynamic).data}', 'The AI is not set up – a PDF or a photo cannot be read now; import the Excel instead.');
+    expect(find.byKey(const Key('mli-retry')), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // the format
+    final files = catchFiles();
+    await mliChoose(t, 'fmt');
+    expect([for (final f in files) f.$1], ['Old Maintenance Log Book – format.xlsx']);
+    final tabs = readSheets(files.first.$2);
+    expect(tabs.first.name, 'How to fill');
+    expect([for (final x in tabs) x.name], containsAll(['RL-173', 'MH-12-XW-0169', 'Sany 210 (No.1)']));
+    expect([for (final x in tabs) x.name], isNot(contains('JCB-173')), reason: 'a rented machinery: no sheet');
+    final rl = tabs.firstWhere((x) => x.name == 'RL-173').rows;
+    expect([rl[1][0], rl[2][0], rl[3].join(' · ')], ['Maintenance Log Book – Roller No.03', 'RL-173', 'Sr No · Date · Party Name · Current Reading · Particulars · Qty · Uom · Basic Rate · Amount · GST Amount · Amount With GST · Total']);
+  });
+
+  testWidgets('(3.53.0) Picture: the old log book\'s import after Check – the names (AI), a sheet with a mistake, one to import, one rented (not imported)', (t) async {
+    await mliOpen(t);
+    await mliChoose(t, 'excel');
+    await tapK(t, 'mli-check');
+    await net(t);
+    await t.drag(find.descendant(of: find.byKey(const Key('mli-list')), matching: find.byType(Scrollable)).first, const Offset(0, 4000));
+    await settle(t, 400);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/63_maint_import.png'));
   }, tags: ['golden']);

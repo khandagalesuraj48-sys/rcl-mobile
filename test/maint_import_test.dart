@@ -54,6 +54,31 @@ void main() {
     expect([for (final x in got as List) '${x['sheet']}→${x['no']}'], ['Roller 03→RL-173', 'MH12XW0169→MH-12-XW-0169', 'JCB→']);
   });
 
+  test('(28-10-2026) the lines that do not add up – Qty × Rate, Amount + GST, an odd GST % – as the web finds them', () {
+    final got = [for (final x in mliRead(tabs, master, today)) jsonDecode(jsonEncode(x.warn))];
+    expect(differ(got, [for (final x in web['sheets'] as List) x['warn']]), '');
+    expect(got[1], [
+      {'line': 6, 'work': 'Coolant', 'k': 'qr', 'a': 500, 'b': 450},
+      {'line': 6, 'work': 'Coolant', 'k': 'ag', 'a': 531, 'b': 541},
+    ]);
+  });
+
+  test('(28-10-2026) a PDF read by the AI: its tables as sheets – a table without its machinery goes on with the one before; "Line n" = its n-th row – as the web', () {
+    final got = jsonDecode(jsonEncode([for (final x in mliAiSheets('Old log book.pdf', (web['aiTables'] as List).cast<Map>(), master, today)) x.toJson()]));
+    final want = [for (final x in web['aiSheets'] as List) Map<String, dynamic>.from(x as Map)..remove('res')..remove('done')];
+    expect(differ(got, want), '');
+    expect([for (final x in got as List) '${x['sheet']}→${x['no']}:${x['rows']}'], ['ROLLER NO-03→RL-173:3', 'MH12XW0169→MH-12-XW-0169:1']);
+  });
+
+  test('(28-10-2026) the names of the file with their rows; the bills sent with the ticked names (with a name) – as the web', () {
+    final sheets = mliRead(tabs, master, today);
+    expect(differ(jsonDecode(jsonEncode(mliNamesOf(sheets))), web['names']), '');
+    final fixes = [for (final z in (web['fixes'] as List).cast<Map>()) MliFix('${z['f']}', '${z['from']}', '${z['to']}', 0)..on = z['on'] == true];
+    expect(differ(jsonDecode(jsonEncode(mliBills(sheets[0], fixes))), web['billsFixed']), '');
+    expect(sheets[0].bills[0]['garage'], 'Store', 'the file as it is stays');
+    expect(identical(mliBills(sheets[0], [MliFix('party', 'Store', 'X', 1)]), sheets[0].bills), isTrue, reason: 'nothing ticked: the bills as read');
+  });
+
   test('a name as a key: ROLLER NO-03 = ROLLER-03 = Roller No.03; MH12XW0169 = MH-12-XW-0169', () {
     expect(mliKey('ROLLER NO-03'), mliKey('ROLLER-03'));
     expect(mliKey('Roller No.03'), mliKey('ROLLER 3'));

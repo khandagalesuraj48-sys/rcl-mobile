@@ -1003,5 +1003,12 @@
 "Free lines worth": "मोफत ओळींची किंमत",
 "Every bill of a machinery, line by line – party, reading, Qty, Uom, rate, GST": "मशिनरीचे प्रत्येक बिल, ओळीनुसार – party, reading, Qty, Uom, दर, GST",
 "The bills of a machinery, their files, its log book": "मशिनरीची बिले, त्यांच्या files, तिचे log book",
-"A bill of a machinery: its work / parts and its ₹, with the bill PDF or photo.": "मशिनरीचे बिल: त्याची कामे / पार्ट्स आणि ₹, बिलाच्या PDF किंवा photo सह."
+"A bill of a machinery: its work / parts and its ₹, with the bill PDF or photo.": "मशिनरीचे बिल: त्याची कामे / पार्ट्स आणि ₹, बिलाच्या PDF किंवा photo सह.",
+"A sheet a machinery": "प्रत्येक मशिनरीची एक sheet",
+"PDF – read by the AI": "PDF – AI वाचेल",
+"Row by row": "ओळ-न-ओळ",
+"Photo of a page – read by the AI": "पानाचा photo – AI वाचेल",
+"A sheet for each Own machinery": "प्रत्येक Own मशिनरीची एक sheet",
+"{0} row(s)": "{0} ओळी",
+"Import the old log book": "जुनी log book import करा"
 }

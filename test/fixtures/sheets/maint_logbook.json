@@ -150,6 +150,7 @@
    "bad": [
     "Line 12: the date \"later\""
    ],
+   "warn": [],
    "res": null,
    "done": null
   },
@@ -178,15 +179,39 @@
        "rate": 1200,
        "amount": 1200,
        "gst": 18
+      },
+      {
+       "work": "Coolant",
+       "qty": 2,
+       "uom": "Ltr",
+       "rate": 250,
+       "amount": 450,
+       "gst": 18
       }
      ],
-     "rows": "Line 4–5"
+     "rows": "Line 4–6"
     }
    ],
-   "rows": 2,
-   "fileTotal": 1781.8,
-   "total": 1781.8,
+   "rows": 3,
+   "fileTotal": 2322.8,
+   "total": 2312.8,
    "bad": [],
+   "warn": [
+    {
+     "line": 6,
+     "work": "Coolant",
+     "k": "qr",
+     "a": 500,
+     "b": 450
+    },
+    {
+     "line": 6,
+     "work": "Coolant",
+     "k": "ag",
+     "a": 531,
+     "b": 541
+    }
+   ],
    "res": null,
    "done": null
   },
@@ -216,8 +241,338 @@
    "fileTotal": 424.8,
    "total": 424.8,
    "bad": [],
+   "warn": [],
    "res": null,
    "done": null
+  }
+ ],
+ "aiTables": [
+  {
+   "machinery": "ROLLER NO-03",
+   "rows": [
+    [
+     1,
+     "2022-12-02",
+     "Store",
+     "",
+     "AD BLUE",
+     20,
+     "Ltr",
+     59,
+     1180,
+     212.4,
+     1392.4,
+     1392.4
+    ],
+    [
+     2,
+     "2025-02-10",
+     "Store",
+     620,
+     "GREASE",
+     2,
+     "Kg",
+     180,
+     360,
+     64.8,
+     424.8,
+     424.8
+    ]
+   ]
+  },
+  {
+   "machinery": "",
+   "rows": [
+    [
+     3,
+     "",
+     "",
+     "",
+     "BULB",
+     1,
+     "Nos",
+     40,
+     40,
+     10,
+     50,
+     ""
+    ]
+   ]
+  },
+  {
+   "machinery": "MH12XW0169",
+   "rows": [
+    [
+     1,
+     "2026-02-10",
+     "Navnit Motors",
+     13153,
+     "Wiper blade",
+     1,
+     "Nos",
+     310,
+     310,
+     55.8,
+     365.8,
+     365.8
+    ]
+   ]
+  },
+  {
+   "machinery": "",
+   "rows": []
+  }
+ ],
+ "aiSheets": [
+  {
+   "sheet": "ROLLER NO-03",
+   "label": "ROLLER NO-03",
+   "no": "RL-173",
+   "bills": [
+    {
+     "date": "2022-12-02",
+     "garage": "Store",
+     "km": "",
+     "lines": [
+      {
+       "work": "AD BLUE",
+       "qty": 20,
+       "uom": "Ltr",
+       "rate": 59,
+       "amount": 1180,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 1"
+    },
+    {
+     "date": "2025-02-10",
+     "garage": "Store",
+     "km": 620,
+     "lines": [
+      {
+       "work": "GREASE",
+       "qty": 2,
+       "uom": "Kg",
+       "rate": 180,
+       "amount": 360,
+       "gst": 18
+      },
+      {
+       "work": "BULB",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 40,
+       "amount": 40,
+       "gst": 25
+      }
+     ],
+     "rows": "Line 2–3"
+    }
+   ],
+   "rows": 3,
+   "fileTotal": 1867.2,
+   "total": 1867.2,
+   "bad": [],
+   "warn": [
+    {
+     "line": 3,
+     "work": "BULB",
+     "k": "gp",
+     "a": 25,
+     "b": ""
+    }
+   ],
+   "res": null,
+   "done": null
+  },
+  {
+   "sheet": "MH12XW0169",
+   "label": "MH12XW0169",
+   "no": "MH-12-XW-0169",
+   "bills": [
+    {
+     "date": "2026-02-10",
+     "garage": "Navnit Motors",
+     "km": 13153,
+     "lines": [
+      {
+       "work": "Wiper blade",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 310,
+       "amount": 310,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 1"
+    }
+   ],
+   "rows": 1,
+   "fileTotal": 365.8,
+   "total": 365.8,
+   "bad": [],
+   "warn": [],
+   "res": null,
+   "done": null
+  }
+ ],
+ "names": {
+  "party": {
+   "Store": 7,
+   "Ganesh Motors": 2,
+   "Navnit Motors": 3
+  },
+  "work": {
+   "AD BLUE": 1,
+   "FUEL FILTER": 1,
+   "FUEL WATER SEPRETOR": 1,
+   "ENGINE OIL FILTER": 1,
+   "DRUM OIL": 1,
+   "HYDROLIC OIL L&T": 1,
+   "Cotton West": 1,
+   "Bulb": 1,
+   "Wiper blade": 1,
+   "Labour": 1,
+   "Coolant": 1,
+   "Grease": 1
+  },
+  "uom": {
+   "Ltr": 4,
+   "Nos": 6,
+   "Kg": 2
+  }
+ },
+ "fixes": [
+  {
+   "f": "party",
+   "from": "Store",
+   "to": "RCL Store",
+   "on": true
+  },
+  {
+   "f": "work",
+   "from": "AD BLUE",
+   "to": "AD BLUE (DEF)",
+   "on": false
+  },
+  {
+   "f": "uom",
+   "from": "Nos",
+   "to": "NOS",
+   "on": true
+  },
+  {
+   "f": "work",
+   "from": "DRUM OIL",
+   "to": "  ",
+   "on": true
+  }
+ ],
+ "billsFixed": [
+  {
+   "date": "2022-12-02",
+   "garage": "RCL Store",
+   "km": "",
+   "lines": [
+    {
+     "work": "AD BLUE",
+     "qty": 20,
+     "uom": "Ltr",
+     "rate": 59,
+     "amount": 1180,
+     "gst": 18
+    }
+   ],
+   "rows": "Line 5"
+  },
+  {
+   "date": "2023-01-05",
+   "garage": "RCL Store",
+   "km": 500,
+   "lines": [
+    {
+     "work": "FUEL FILTER",
+     "qty": 1,
+     "uom": "NOS",
+     "rate": 650,
+     "amount": 650,
+     "gst": 18
+    },
+    {
+     "work": "FUEL WATER SEPRETOR",
+     "qty": 1,
+     "uom": "NOS",
+     "rate": 425,
+     "amount": 425,
+     "gst": 18
+    },
+    {
+     "work": "ENGINE OIL FILTER",
+     "qty": 1,
+     "uom": "NOS",
+     "rate": 930,
+     "amount": 930,
+     "gst": 18
+    }
+   ],
+   "rows": "Line 6–8"
+  },
+  {
+   "date": "2024-01-29",
+   "garage": "Ganesh Motors",
+   "km": 1745,
+   "lines": [
+    {
+     "work": "DRUM OIL",
+     "qty": 25,
+     "uom": "Ltr",
+     "rate": 0,
+     "amount": 0,
+     "gst": ""
+    },
+    {
+     "work": "HYDROLIC OIL L&T",
+     "qty": 78,
+     "uom": "Ltr",
+     "rate": 133,
+     "amount": 10374,
+     "gst": 18
+    }
+   ],
+   "rows": "Line 9–10"
+  },
+  {
+   "date": "2023-12-30",
+   "garage": "RCL Store",
+   "km": "",
+   "lines": [
+    {
+     "work": "Cotton West",
+     "qty": 0.5,
+     "uom": "Kg",
+     "rate": 33,
+     "amount": 16.5,
+     "gst": 18
+    }
+   ],
+   "rows": "Line 11"
+  },
+  {
+   "date": "later",
+   "garage": "RCL Store",
+   "km": "",
+   "lines": [
+    {
+     "work": "Bulb",
+     "qty": 1,
+     "uom": "NOS",
+     "rate": 40,
+     "amount": 40,
+     "gst": 18
+    }
+   ],
+   "rows": "Line 12"
   }
  ]
 }

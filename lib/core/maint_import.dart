@@ -7,10 +7,17 @@
  *     merged cell – is the row's above); each line as it is: Qty, Uom, Rate, Amount and its GST % from its GST Amount (18 % when 18 % of
  *     the amount makes it to ₹1 – an old file shows whole rupees); a ₹0 line stays ₹0 (the server keeps it as FOC).
  * The server checks and imports (checkMaintImport / importMaint – one machinery a call, a bill already there left out). Proven against
- * the web's own code: test/fixtures/sheets/maint_logbook.{xlsx,json}. */
+ * the web's own code: test/fixtures/sheets/maint_logbook.{xlsx,json}.
+ * (28-10-2026, his answers: "PDF import – Claude AI वाचेल", "यादी दाखव, मी पाहून ✓ करेन") also: the lines that do not add up (warn – to
+ * look at, imported as they are); a PDF / photo read by the AI (readMaintLog – its tables as sheets, "Line n" = its n-th row); the
+ * names written in more than one way (maintImportNames – the Admin ticks; mliBills sends the ticked names). */
+import 'dart:typed_data';
+
 import 'imports.dart' show xlDate, onSiteOn;
+import 'lb_io.dart' show XSheet;
 import 'rdoc.dart' show r2;
 import 'sheet_read.dart';
+import 'xlsx.dart' show sheetsXlsx;
 
 const _cols = <(String, String)>[
   ('date', r'^date$'),
@@ -72,20 +79,26 @@ String mliMatch(String label, String sheet, List<Map<String, dynamic>> own) {
 
 /// One sheet of the file as it will be sent
 class MliSheet {
-  MliSheet({required this.sheet, required this.label, required this.no, required this.bills, required this.rows, required this.fileTotal, required this.total, required this.bad});
+  MliSheet({required this.sheet, required this.label, required this.no, required this.bills, required this.rows, required this.fileTotal, required this.total, required this.bad, this.warn = const []});
   final String sheet, label;
   String no;
   final List<Map<String, dynamic>> bills;
   final int rows;
   final num fileTotal, total;
   final List<String> bad;
+  /// (28-10-2026) the lines that do not add up: {line, work, k: 'qr' (Qty × Rate ≠ Amount) / 'ag' (Amount + GST ≠ With GST) / 'gp' (an odd GST %), a, b}
+  final List<Map<String, Object>> warn;
   Map<String, dynamic>? res, done;
   String err = '';
   bool twice = false;
-  Map<String, dynamic> toJson() => {'sheet': sheet, 'label': label, 'no': no, 'bills': bills, 'rows': rows, 'fileTotal': fileTotal, 'total': total, 'bad': bad};
+  Map<String, dynamic> toJson() => {'sheet': sheet, 'label': label, 'no': no, 'bills': bills, 'rows': rows, 'fileTotal': fileTotal, 'total': total, 'bad': bad, 'warn': warn};
 }
 
-MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynamic>> own) {
+/// The log book's heading – a PDF's rows read by the AI go under it, and the format (Excel) has it
+const mliHead = ['Sr No', 'Date', 'Party Name', 'Current Reading', 'Particulars', 'Qty', 'Uom', 'Basic Rate', 'Amount', 'GST Amount', 'Amount With GST', 'Total'];
+
+/// [ai]: rows read by the AI from a PDF / photo – "Line n" = its n-th row
+MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynamic>> own, {bool ai = false}) {
   final hi = all.indexWhere((r) {
     final n = r.map(mliNorm).toList();
     return n.any((h) => RegExp(r'^(particulars|particular)$').hasMatch(h)) && n.any((h) => RegExp(r'^(amount|basic rate)$').hasMatch(h));
@@ -104,7 +117,7 @@ MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynami
       if (t.isNotEmpty && !RegExp(r'rachana|log\s*book|limited|maint[ae]n', caseSensitive: false).hasMatch(t)) label = t;
     }
   }
-  final bills = <Map<String, dynamic>>[], bad = <String>[];
+  final bills = <Map<String, dynamic>>[], bad = <String>[], warn = <Map<String, Object>>[];
   Map<String, dynamic>? cur;
   var last = <String, Object>{'date': '', 'party': '', 'km': ''};
   num ftotal = 0;
@@ -112,7 +125,7 @@ MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynami
   final from = <Map<String, dynamic>, (int, int)>{};
   for (final (k, r) in all.skip(hi + 1).indexed) {
     Object? g(String f) => idx[f] == null || idx[f]! >= r.length ? '' : r[idx[f]!];
-    final work = _sp(g('work')), line = hi + k + 2;
+    final work = _sp(g('work')), line = ai ? k + 1 : hi + k + 2;
     if (work.isEmpty || (RegExp(r'^(grand )?total\b', caseSensitive: false).hasMatch(work) && jsS(g('date')).trim().isEmpty)) continue;      // an empty line, the total line
     var date = xlDate(g('date')), party = _sp(g('party'));
     Object km = mliNum(g('km'));
@@ -128,6 +141,13 @@ MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynami
     ftotal += wt != '' ? _n(wt) : _n(amount) + _n(gstAmt);
     if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) bad.add('Line $line: the date "${jsS(g('date'))}"');
     final l = <String, Object>{'work': work.length > 120 ? work.substring(0, 120) : work, 'qty': mliNum(g('qty')), 'uom': _cut(jsS(g('uom')).trim(), 12), 'rate': mliNum(g('rate')), 'amount': amount == '' ? 0 : amount, 'gst': mliGst(amount, gstAmt)};
+    // (28-10-2026, "full scan … sagle kahi find krun") what does not add up – shown to look at; the line is imported as it is
+    if (warn.length < 300) {
+      final w = _cut(work, 40), q = l['qty']!, rt = l['rate']!, gp = l['gst']!;
+      if (q is num && rt is num && amount is num && q > 0 && rt > 0 && (r2(q * rt) - amount).abs() > 1) warn.add({'line': line, 'work': w, 'k': 'qr', 'a': r2(q * rt), 'b': amount});
+      if (amount is num && gstAmt is num && wt0 is num && (r2(amount + gstAmt) - wt0).abs() > 1) warn.add({'line': line, 'work': w, 'k': 'ag', 'a': r2(amount + gstAmt), 'b': wt0});
+      if (gp is num && !const [5, 12, 18, 28].contains(gp)) warn.add({'line': line, 'work': w, 'k': 'gp', 'a': gp, 'b': ''});
+    }
     final same = cur != null && cur['date'] == date && '${cur['garage']}'.toUpperCase() == party.toUpperCase() && (km == '' || cur['km'] == '' || _eq(cur['km'], km));
     if (!same) {
       cur = {'date': date, 'garage': party, 'km': km, 'lines': <Map<String, Object>>[]};
@@ -149,7 +169,7 @@ MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynami
       total += _n(l['amount']!) + mtGst(l['amount']!, l['gst']!);
     }
   }
-  return MliSheet(sheet: name, label: label, no: mliMatch(label, name, own), bills: out, rows: nrows, fileTotal: r2(ftotal), total: r2(total), bad: bad);
+  return MliSheet(sheet: name, label: label, no: mliMatch(label, name, own), bills: out, rows: nrows, fileTotal: r2(ftotal), total: r2(total), bad: bad, warn: warn);
 }
 
 bool _eq(Object? a, Object? b) => a is num && b is num ? a == b : a == b;
@@ -164,3 +184,93 @@ List<MliSheet> mliRead(List<SheetTab> tabs, List<Map<String, dynamic>> master, S
   }
   return out;
 }
+
+/// (28-10-2026) The tables the AI read from a PDF / photo (readMaintLog, page after page) as sheets – the web's mliAiSheets: a table
+/// without its machinery goes on with the one before; each machinery's rows under the log book's heading, read as a sheet.
+List<MliSheet> mliAiSheets(String fileName, List<Map> tables, List<Map<String, dynamic>> master, String today) {
+  final groups = <({String key, String name, List<List<Object?>> rows})>[];
+  for (final t in tables) {
+    final m = jsS(t['machinery'] ?? ''), rows = [for (final r in (t['rows'] as List? ?? const [])) if (r is List) List<Object?>.from(r)];
+    final g = groups.isEmpty ? null : groups.last;
+    if (g != null && (m.isEmpty || mliKey(m) == g.key)) {
+      g.rows.addAll(rows);
+    } else {
+      groups.add((key: mliKey(m), name: m, rows: rows));
+    }
+  }
+  final own = mliOwn(master, today), out = <MliSheet>[];
+  for (final (i, g) in groups.where((g) => g.rows.isNotEmpty).indexed) {
+    final x = mliSheet(g.name.isNotEmpty ? g.name : '$fileName${groups.length > 1 ? ' (${i + 1})' : ''}', [[g.name], mliHead, ...g.rows], own, ai: true);
+    if (x != null && x.bills.isNotEmpty) out.add(x);
+  }
+  return out;
+}
+
+/// (28-10-2026, "यादी दाखव, मी पाहून ✓ करेन") a name the AI found written in more than one way – ticked by the Admin
+class MliFix {
+  MliFix(this.f, this.from, this.to, this.n);
+  final String f, from;      // f: party / work / uom
+  String to;
+  final int n;
+  bool on = false;
+}
+
+/// The names of the file – Party Name, Particulars, Uom – each with its rows (the web's mliNamesOf)
+Map<String, Map<String, int>> mliNamesOf(List<MliSheet> sheets) {
+  final o = <String, Map<String, int>>{'party': {}, 'work': {}, 'uom': {}};
+  void add(String f, Object? v, int n) {
+    final k = jsS(v ?? '');
+    if (k.isNotEmpty) o[f]![k] = (o[f]![k] ?? 0) + n;
+  }
+
+  for (final x in sheets) {
+    for (final b in x.bills) {
+      final ls = (b['lines'] as List).cast<Map>();
+      add('party', b['garage'], ls.length);
+      for (final l in ls) {
+        add('work', l['work'], 1);
+        add('uom', l['uom'], 1);
+      }
+    }
+  }
+  return o;
+}
+
+/// The bills as they are sent: the ticked names (with a name) in place of the file's; the rest as in the file (the web's mliBills)
+List<Map<String, dynamic>> mliBills(MliSheet x, List<MliFix> fixes) {
+  final on = [for (final z in fixes) if (z.on && z.to.trim().isNotEmpty) z];
+  if (on.isEmpty) return x.bills;
+  final map = <String, Map<String, String>>{'party': {}, 'work': {}, 'uom': {}};
+  for (final z in on) {
+    map[z.f]?[z.from] = z.to.trim();
+  }
+  return [
+    for (final b in x.bills)
+      {
+        ...b,
+        'garage': map['party']![b['garage']] ?? b['garage'],
+        'lines': [for (final l in (b['lines'] as List).cast<Map>()) {...l, 'work': map['work']![l['work']] ?? l['work'], 'uom': map['uom']![l['uom']] ?? l['uom']}],
+      },
+  ];
+}
+
+/// (28-10-2026, "Excel format (template) download") the format of the old log book – the web's mliFormat: how to fill it, then a sheet
+/// for each Own machinery on the site today, its number in row 3 (the sheet is put to it by that), the heading ready
+Uint8List mliFormatXlsx(List<Map<String, dynamic>> own, String company) => sheetsXlsx([
+      XSheet('How to fill', const [
+        ['Old Maintenance Log Book – how to fill'],
+        [''],
+        ['• One sheet = one machinery: its number is in row 3 – leave it. Delete the sheets of the machinery without an old log book.'],
+        ['• A row for each work / part / material: Date, Party Name, Current Reading (KM / Hrs), Particulars, Qty, Uom, Basic Rate, Amount, GST Amount, Amount With GST.'],
+        ['• A bill of several rows: its Date, Party Name and Current Reading on its first row (the rows under it, left empty, are the same bill).'],
+        ['• Amount = before GST; GST Amount = its CGST + SGST in ₹; a free line: Amount 0.'],
+        ['• Then: Maintenance → Import the old log book → choose this file → tick the names → Check → Import.'],
+      ]),
+      for (final m in own)
+        XSheet('${m['id']}'.replaceAll(RegExp(r'[:\\/?*\[\]]'), '-'), [
+          [company.isNotEmpty ? company : 'Rachana Construction Limited'],
+          ['Maintenance Log Book${'${m['name'] ?? ''}'.isNotEmpty && m['name'] != m['id'] ? ' – ${m['name']}' : ''}'],
+          ['${m['id']}'],
+          mliHead,
+        ], widths: const [6, 11, 24, 10, 34, 7, 7, 10, 11, 11, 13, 11], head: 4),
+    ]);
