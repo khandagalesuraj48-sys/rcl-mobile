@@ -164,8 +164,11 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     });
   }
 
+  /// (3.48.0) the number of the newest load: an older answer that comes after a newer one is not shown over it
+  int _seq = 0;
+
   Future<void> _load({bool init = false, bool quiet = false}) async {
-    final s = SessionScope.read(context);
+    final s = SessionScope.read(context), my = ++_seq;
     if (!quiet) setState(() => loading = true);
     try {
       if (init) await s.loadInit();
@@ -197,7 +200,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       }
       await Future.wait(jobs);
       got.sort((a, b) => '${b.r['id']}'.compareTo('${a.r['id']}'));
-      if (!mounted) return;
+      if (!mounted || my != _seq) return;
       setState(() {
         acts = got;
         logEntries = le;
@@ -207,7 +210,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || my != _seq) return;
       setState(() => loading = false);
       if (!quiet) toast(context, errText(e), bad: true);
     }

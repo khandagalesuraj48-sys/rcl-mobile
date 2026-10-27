@@ -189,12 +189,13 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     final reports = reportsOf(s).isNotEmpty;
     // (update-155) the tab on the screen (as "cur" below): Home and Entries load after others' changes only when they are seen
     final seen = (tab == 'entries' && diesel) || (tab == 'reports' && reports) || tab == 'me' ? tab : 'home';
+    // (3.48.0) each tab in its own keeper: a hidden one is not built again (_TabKeep)
     final pages = <String, Widget>{
       'home': HomeTab(onOpenEntries: _entries, onOpenReports: () => _go(reports ? 'reports' : 'home'), active: seen == 'home'),
       if (diesel) 'entries': EntriesTab(kind: entriesKind, open: entriesOpen, active: tab == 'entries'),
       if (reports) 'reports': ReportsTab(active: tab == 'reports'),
       'me': const MeTab(),
-    };
+    }.map((k, w) => MapEntry(k, _TabKeep(key: ValueKey('tab-$k'), on: k == seen, child: w)));
     final keys = pages.keys.toList();
     final cur = pages.containsKey(tab) ? tab : 'home';
     final meCount = s.crForMe + s.keptBad;
@@ -234,6 +235,74 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+}
+
+/* (3.48.0, the performance work – asked 27-10-2026, measured: every redraw of the session – a stock, a count of approvals –
+ * built all four tabs again, the three hidden under the IndexedStack too) A TAB THAT IS NOT SEEN IS NOT BUILT AGAIN: the
+ * session's redraws reach it only while it is the tab on the screen; one that came meanwhile is made once, the moment it is seen
+ * again. What it does by itself goes on as before (its lists still load after others' changes – ui/live.dart – and its own
+ * setState still draws it). */
+class _TabKeep extends StatefulWidget {
+  const _TabKeep({super.key, required this.on, required this.child});
+  final bool on;
+  final Widget child;
+  @override
+  State<_TabKeep> createState() => _TabKeepState();
+}
+
+class _TabKeepState extends State<_TabKeep> {
+  _Relay? _r;
+  Widget? _kept;
+  int _gen = 0;
+
+  @override
+  void didUpdateWidget(covariant _TabKeep old) {
+    super.didUpdateWidget(old);
+    final r = _r;
+    if (r != null) {
+      r.on = widget.on;
+      if (widget.on && r.missed) {
+        r.missed = false;
+        _gen++; // a redraw came while it was hidden: once now
+      }
+    }
+    if (widget.on || old.on) _kept = null; // seen – or just hidden (it is told so): built with the new one
+  }
+
+  @override
+  void dispose() {
+    _r?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.read(context);
+    final r = _r ??= _Relay(s)..on = widget.on;
+    return _kept ??= SessionScope(session: s, relay: r, gen: _gen, child: widget.child);
+  }
+}
+
+/// The session's redraws for one tab: passed on while it is seen, else only marked.
+class _Relay extends ChangeNotifier {
+  _Relay(this.s) {
+    s.addListener(_heard);
+  }
+  final Session s;
+  bool on = true, missed = false;
+  void _heard() {
+    if (on) {
+      notifyListeners();
+    } else {
+      missed = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    s.removeListener(_heard);
+    super.dispose();
   }
 }
 

@@ -18,7 +18,7 @@ class AskBot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = context.getInheritedWidgetOfExactType<SessionScope>()?.notifier;
+    final s = context.getInheritedWidgetOfExactType<SessionScope>()?.session;
     final bot = Tooltip(
       message: tr('Ask'),
       child: Material(

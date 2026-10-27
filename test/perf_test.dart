@@ -221,6 +221,9 @@ void main() {
     await settle(t, 600);
     b.stop();
     final scrollCards = b.of(EntryCard);
+    // back to the top (the search box scrolled away with the list)
+    await t.fling(find.byType(CustomScrollView).first, const Offset(0, 8000), 6000);
+    await settle(t, 1200);
     // typing in its search box: each letter
     final typed = <double>[];
     for (final q in ['M', 'MH', 'MH-1', 'MH-12-BG-11']) {
@@ -236,6 +239,54 @@ void main() {
       'scroll, 120 frames: ${p50p95(times)} · $scrollCards cards built while scrolling',
       'search, each letter: ${p50p95(typed)}',
     ]);
+  });
+
+  testWidgets('(3.48.0) a hidden tab is not built again for the session\'s redraws – and shows the change the moment it is seen', (t) async {
+    phone(t);
+    final srv = FakeServer(), b = Builds();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    // another person issues 40 L while he is on Me: Home is under it
+    srv.stockNow = {'stock': 1093, 'byLoc': {'Dispenser': 773, 'VTR Store': 320}};
+    srv.versions['stock'] = '2';
+    b.start();
+    await wait(t, 7); // (on Me the sync asks every 5 s)
+    b.stop();
+    expect(s.stockByLoc['Dispenser'], 773, reason: 'the session has the new stock');
+    final hidden = b.of(HomeTab) + b.of(EntriesTab) + b.of(ReportsTab);
+    notice('A redraw while on Me', ['tabs built: ${b.tabs} · widgets built again: ${b.n}']);
+    expect(hidden, 0, reason: 'the hidden tabs are not built again');
+    await t.tap(find.byKey(const Key('tab-home')));
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 300));
+    expect(find.text('773 L'), findsOneWidget, reason: 'Home seen again: the new stock at once');
+    expect(find.text('813 L'), findsNothing);
+  });
+
+  testWidgets('(3.48.0) Home: an older answer that comes after a newer one is not shown over it', (t) async {
+    phone(t);
+    final srv = FakeServer()..big = 5;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.textContaining(RegExp(r'^5 / ')), findsOneWidget, reason: '5 machinery worked today');
+    // 1. a Log Book entry by another person: Home asks again – this answer is slow (5 s, a weak network)
+    srv.slowOnce['getLogBookList'] = const Duration(seconds: 5);
+    srv.versions['log'] = '2';
+    await wait(t, 3);
+    // 2. two more entries: Home asks again – this answer comes at once: 7
+    srv.big = 7;
+    srv.versions['log'] = '3';
+    await wait(t, 3);
+    expect(find.textContaining(RegExp(r'^7 / ')), findsOneWidget, reason: 'the newest answer');
+    // 3. the slow, older answer (5) comes now
+    await wait(t, 3);
+    expect(find.textContaining(RegExp(r'^7 / ')), findsOneWidget, reason: 'the older answer does not take the place of the newer one');
+    expect(find.textContaining(RegExp(r'^5 / ')), findsNothing);
+    expect(s.stage, Stage.ready);
   });
 
   test('perf: the phone\'s own work on big answers – read, decode, fingerprint; an answer "the same" again', () async {

@@ -595,7 +595,8 @@ class Session extends ChangeNotifier {
     aiOn = d['ai'] is Map && (d['ai'] as Map)['on'] == true;
     _flow(d['flow']);
     _admin(d);
-    setStock(d['stock']);
+    _takeStock(d['stock']);
+    notifyListeners(); // (3.48.0) the Master, the places, the stock … – every screen once
   }
 
   /// (3.14.0) A fault of the app's own code (an exception) is sent to the server – the Admin's "Faults of the app" lists it, as the
@@ -615,9 +616,21 @@ class Session extends ChangeNotifier {
 
   /// (3.14.0) For the Admin: the Google Sheet backup's state and today's faults of the app (getInit / the live sync).
   Map<String, dynamic> backup = {}, faults = {};
-  void _admin(Map d) {
+  /// (3.48.0) true = the backup's state or the faults changed (the Admin's screen shows them)
+  bool _admin(Map d) {
+    final was = _mark([backup, faults]);
     if (d['backup'] is Map) backup = (d['backup'] as Map).cast<String, dynamic>();
     if (d['faults'] is Map) faults = (d['faults'] as Map).cast<String, dynamic>();
+    return _mark([backup, faults]) != was;
+  }
+
+  /// (3.48.0) what a value is, as text – to know whether an answer changed anything the screens show
+  static String _mark(Object? v) {
+    try {
+      return jsonEncode(v);
+    } catch (_) {
+      return '${DateTime.now().microsecondsSinceEpoch}'; // (a value that is not plain data: counted as changed)
+    }
   }
 
   /// (3.4.0) The machinery list the server sent back after a change in Asset Master (saveMaster … : "master") – every screen
@@ -631,19 +644,34 @@ class Session extends ChangeNotifier {
   }
 
   /// (3.45.0) the cards as the server sent them (with the stock, a save of a card / a payment, the dashboard)
+  /// (3.48.0) the screens are told when a balance changed (Home shows them)
   void setCards(dynamic l) {
-    if (l is! List) return;
-    cards = [for (final x in l.whereType<Map>()) FuelCard(x.cast<String, dynamic>())];
+    if (_putCards(l)) notifyListeners();
   }
 
+  bool _putCards(dynamic l) {
+    if (l is! List) return false;
+    final was = _mark([for (final c in cards) c.m]);
+    cards = [for (final x in l.whereType<Map>()) FuelCard(x.cast<String, dynamic>())];
+    return _mark([for (final c in cards) c.m]) != was;
+  }
+
+  /// (3.48.0, the performance work – measured: each redraw of the session builds the whole screen again) the screens are told
+  /// only when the stock, a place's stock or a card's balance really changed (a save's answer, the live sync, the Dashboard
+  /// bring the same stock most of the time)
   void setStock(dynamic s) {
-    if (s is! Map) return;
+    if (_takeStock(s)) notifyListeners();
+  }
+
+  bool _takeStock(dynamic s) {
+    if (s is! Map) return false;
+    final was = _mark([stockTotal, stockByLoc]);
     final t = s['stock'];
     if (t is num) stockTotal = t;
     final by = s['byLoc'];
     if (by is Map) stockByLoc = by.map((k, v) => MapEntry(k.toString(), (v is num) ? v : 0));
-    setCards(s['cards']);      // (3.45.0) a site on fuel cards: the cards' balances
-    notifyListeners();
+    final cardsNew = _putCards(s['cards']);      // (3.45.0) a site on fuel cards: the cards' balances
+    return _mark([stockTotal, stockByLoc]) != was || cardsNew;
   }
 
   /// (3.14.0) His settings have come (the start page waits for them); his last sign-ins (Settings shows them).
@@ -834,7 +862,7 @@ class Session extends ChangeNotifier {
       final r = await api.call('sync', [rtc?.beatArg() ?? <String, dynamic>{}]);
       unawaited(_markLive());
       if (r is Map && r['rtc'] != null) rtc?.inbox(r['rtc']); // (3.26.0) the notes of a call
-      if (r is Map) _admin(r);
+      final adm = r is Map && _admin(r);
       final dsNew = r is Map && r['user'] is Map && _dsrc(r['user']); // (3.43.0) his diesel sources changed in the Portal: the forms at once
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
       final first = versions.isEmpty;
@@ -853,8 +881,11 @@ class Session extends ChangeNotifier {
         if (changed.contains('flow')) await loadApprovals();
         lastChanged = changed;
         dataTick.value++;
-        notifyListeners();
-      } else if (dsNew) {
+        // (3.48.0) the screens that show the changed data load it again by themselves (dataTick); the whole screen is drawn
+        // again only for what the session itself shows – the Master (loadInit), the stock (setStock) and the approvals
+        // (takeApprovals) tell it themselves when they changed
+        if (dsNew || adm) notifyListeners();
+      } else if (dsNew || adm) {
         notifyListeners();
       }
       // (3.1.8) an entry sent back to him: asked again every 10 minutes (its notification every 30 – alerts.dart)
@@ -907,12 +938,13 @@ class Session extends ChangeNotifier {
   /// (3.2.0) The Approvals answer [d] taken: the counts, his works under verification, his entries (the Approvals screen gives
   /// every answer of a decision here too).
   void takeApprovals(Map d) {
+    final was = _mark([crWaiting, crForMe, crBack, flowMine, crMine]);
     crWaiting = (d['pending'] is num) ? (d['pending'] as num).toInt() : 0;
     crForMe = (d['forMe'] is num) ? (d['forMe'] as num).toInt() : 0;
     crBack = (d['backToMe'] is num) ? (d['backToMe'] as num).toInt() : 0;
     _flow(d['mine']);
     crMine = mineOf(d);
-    notifyListeners();
+    if (_mark([crWaiting, crForMe, crBack, flowMine, crMine]) != was) notifyListeners(); // (3.48.0) only when something changed
   }
 
   /* (3.1.11, Mechanical update-118, asked 16-10-2026: "jyan verification sathi pathwale aahe to pn direct entry wise or all send

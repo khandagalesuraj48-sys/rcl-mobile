@@ -73,19 +73,27 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     if (mounted && (_ls?.lastChanged.contains('flow') ?? false)) _load(quiet: true);
   }
 
+  /// (3.48.0) the number of the newest list: a list asked before a decision (or before a newer one) that comes after it is not
+  /// shown over it
+  int _seq = 0;
+
   Future<void> _load({bool quiet = false}) async {
-    final s = SessionScope.read(context);
+    final s = SessionScope.read(context), my = ++_seq;
     if (!quiet) setState(() => loading = true);
     try {
       final r = await s.api.call('getChangeRequests', [<String, dynamic>{}]);
       if (!mounted) return;
+      if (my != _seq) {
+        if (loading && !quiet) setState(() => loading = false);
+        return;
+      }
       _take(s, r);
       setState(() {
         loading = false;
         err = '';
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || my != _seq) return;
       setState(() {
         loading = false;
         if (!quiet) err = errText(e);
@@ -95,6 +103,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
 
   void _take(Session s, dynamic list) {
     if (list is! Map) return;
+    _seq++; // (3.48.0) this list is the newest: any asked before it is not shown over it
     d = list.cast<String, dynamic>();
     s.takeApprovals(d!);
     final can = approvalsShown(d, all: true).where((r) => r['canDecide'] == true).map((r) => '${r['id']}').toSet();
