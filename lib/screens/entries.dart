@@ -14,6 +14,7 @@ import 'diesel_photos.dart';
 import 'entry_more.dart';
 import 'forms.dart';
 import 'fuel_cards.dart' show FuelCardsScreen;
+import 'maintenance.dart' show MaintScreen;
 import 'logbook.dart';
 import 'breakdown.dart';
 import 'store.dart';
@@ -207,12 +208,14 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
           _load();
         }),
       if (s.cardSite && s.canSee('Fuel Cards')) ('Fuel Cards', 'Fuel Cards', 'फ्युएल कार्ड', 'The cards, their balance, payments and statement', C.amberSoft, 'Diesel', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen()))),
+      // (3.46.0, Mechanical update-165) the bills of the cars at a site on fuel cards – its page Maintenance
+      if (s.cardSite && s.canSee('Maintenance')) ('Maintenance', 'Maintenance', 'मेंटेनन्स', 'The bills of the cars, their files, a car\'s log book', C.blueSoft, 'Diesel', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MaintScreen()))),
       if (s.canSee('Log Book')) ('Log Book', 'Log Book', 'लॉग बुक', 'Daily running & working hours', C.purpleSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()))),
       if (s.canSee('Breakdown')) ('Breakdown', 'Breakdown', 'ब्रेकडाऊन', 'Machinery working / breakdown', C.orangeSoft, 'Machinery', () => openBreakdown(context)),
       if (tankers) ('Tanker Trips', 'Tanker Trips', 'टँकर फेऱ्या', 'Water tanker trips & challans', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: s.today)))),
       if (s.hasModule('store')) ('Store', 'Store', 'स्टोअर', 'Items inward / outward', C.amberSoft, 'Store', () => openStore(context)),
     ];
-    const pics = {'Log Book': 'notebook', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package', 'Fuel Cards': 'ledger'};
+    const pics = {'Log Book': 'notebook', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package', 'Fuel Cards': 'ledger', 'Maintenance': 'wrench'};
     final groups = ['Diesel', 'Machinery', 'Log Book', 'Store'].where((g) => items.any((x) => x.$6 == g)).toList();
     final shown = group.isEmpty || !groups.contains(group) ? items : items.where((x) => x.$6 == group).toList();
     Widget chip(String g, String label) {

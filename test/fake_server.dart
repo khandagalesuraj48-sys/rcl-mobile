@@ -30,6 +30,19 @@ class FakeServer {
     {'name': 'OLD CARD', 'last4': '1111', 'type': 'Debit card', 'cars': <String>[], 'opening': 0, 'openDate': '2026-09-01', 'active': false, 'paid': 0, 'spent': 0, 'balance': 0, 'fills': 0, 'payments': 0, 'lastFill': '', 'used': false},
   ];
   final cardCalls = <Map<String, dynamic>>[];
+  /// (3.46.0, Mechanical update-165) the maintenance bills of the cars at a site on fuel cards; [maintMissing]: step 1zi not run yet
+  bool maintMissing = false;
+  final maintCalls = <Map<String, dynamic>>[];
+  final maint = <Map<String, dynamic>>[
+    {'id': 'MT-000002', 'date': '2026-10-12', 'no': 'MH-12-HO-2163', 'garage': 'Tyre House', 'billNo': 'TH-9', 'km': '', 'total': 6300, 'service': false, 'remark': '', 'enteredBy': 'Sujit Mule', 'updatedBy': '',
+      'lines': [{'work': 'Tyre', 'amount': 6000}, {'work': 'Discount', 'amount': -100}, {'work': 'Engine oil', 'amount': 400}], 'files': []},
+    {'id': 'MT-000001', 'date': '2026-10-05', 'no': 'MH-12-HO-1163', 'garage': 'Toyota Service', 'billNo': 'TS-101', 'km': 45210, 'total': 2360, 'service': true, 'remark': 'first service', 'enteredBy': 'Sujit Mule', 'updatedBy': '',
+      'lines': [{'work': 'Engine oil', 'amount': 1200}, {'work': 'Oil filter', 'amount': 300}, {'work': 'Labour', 'amount': 500}, {'work': 'GST 18%', 'amount': 360}],
+      'files': [{'sha': 'a1' * 32, 'p': 'log/a1/${'a1' * 32}.pdf', 'mime': 'application/pdf', 'size': 52000, 'name': 'bill.pdf', 'at': '2026-10-05T06:00:00Z', 'by': 'Sujit Mule'}]},
+  ];
+  /// what "Read the bill (AI)" answers (readMaintBill)
+  Map<String, dynamic> maintRead = {'date': '2026-10-13', 'billNo': 'MS-77', 'garage': 'Maruti Service', 'vehicle': 'MH12HO1163', 'km': 46100, 'service': true, 'total': 3540, 'check': '',
+    'lines': [{'work': 'Service charge', 'amount': 2500}, {'work': 'Coolant', 'amount': 500}, {'work': 'GST 18%', 'amount': 540}]};
   final cardPays = <Map<String, dynamic>>[
     {'id': 'CP-000001', 'date': '2026-10-05', 'card': 'HDFC FUEL', 'amount': 5000, 'ref': 'UTR 1234', 'remark': 'recharge', 'photos': 1, 'enteredBy': 'Sujit Mule', 'updatedBy': ''},
   ];
@@ -1273,6 +1286,60 @@ class FakeServer {
           final raw = base64Decode(m.group(2)!), sha = crypto.sha256.convert(raw).toString(), ext = m.group(1) == 'application/pdf' ? 'pdf' : m.group(1) == 'image/png' ? 'png' : 'jpg';
           uploads.add({'sha': sha, 'mime': m.group(1), 'size': raw.length, 'name': up['name']});
           return _j({'result': {'ok': true, 'sha': sha, 'path': 'log/${sha.substring(0, 2)}/$sha.$ext', 'mime': m.group(1), 'size': raw.length, 'name': up['name'], 'dup': false}});
+        // (3.46.0, Mechanical update-165) the maintenance bills
+        case 'getMaint':
+          final f = (a[0] as Map).cast<String, dynamic>();
+          maintCalls.add({'fn': action, 'x': f});
+          if (!card) return _j({'error': 'This site is not on fuel cards – the Super Admin sets that in the Portal (Sites → Diesel places → Fuel cards).'}, 500);
+          if (maintMissing) return _j({'result': {'rows': [], 'total': 0, 'count': 0, 'works': [], 'garages': [], 'missing': true}});
+          final rs = maint.where((r) => '${f['no'] ?? ''}'.isEmpty || r['no'] == f['no']).toList();
+          return _j({'result': {'count': rs.length, 'total': rs.fold<num>(0, (t, r) => t + (r['total'] as num)), 'rows': rs, 'works': ['Engine oil', 'Discount', 'GST 18%', 'Labour', 'Oil filter', 'Tyre'], 'garages': ['Toyota Service', 'Tyre House']}});
+        case 'saveMaint' || 'updateMaint':
+          final x = ((action == 'saveMaint' ? a[0] : a[1]) as Map).cast<String, dynamic>();
+          maintCalls.add({'fn': action, if (action == 'updateMaint') 'id': a[0], 'x': x});
+          if (x['service'] == true && '${x['km']}'.isEmpty) return _j({'error': '${x['no']}: a service needs its KM reading – the next service is counted from it.'}, 500);
+          if (x['force'] != true && maint.any((r) => r['id'] != (action == 'updateMaint' ? a[0] : '') && r['no'] == x['no'] && '${r['billNo']}' == '${x['billNo']}' && '${r['garage']}' == '${x['garage']}')) {
+            final was = maint.firstWhere((r) => r['no'] == x['no'] && '${r['billNo']}' == '${x['billNo']}');
+            return _j({'result': {'ok': false, 'warning': 'Bill ${x['billNo']} of ${x['garage']} for ${x['no']} is already saved (${was['id']}). Save it again?'}});
+          }
+          final tot = ((x['lines'] as List).fold<num>(0, (t, l) => t + ((l as Map)['amount'] as num)));
+          final id = action == 'saveMaint' ? 'MT-00000${maint.length + 1}' : '${a[0]}';
+          final row = {'id': id, ...x, 'total': tot, 'files': [for (final f in (x['files'] as List)) {'sha': (f as Map)['sha']}]}..remove('force');
+          if (action == 'saveMaint') { maint.insert(0, row); } else { maint[maint.indexWhere((r) => r['id'] == id)] = row; }
+          return _j({'result': {'ok': true, 'id': id, 'total': tot}});
+        case 'deleteMaint':
+          maintCalls.add({'fn': action, 'id': a[0]});
+          maint.removeWhere((r) => r['id'] == a[0]);
+          return _j({'result': {'ok': true}});
+        case 'maintFile':
+          final up = (a[0] as Map).cast<String, dynamic>(), m = RegExp(r'^data:(image/jpeg|image/png|application/pdf);base64,(.+)$').firstMatch('${up['data']}');
+          maintCalls.add({'fn': action, 'name': up['name']});
+          if (m == null) return _j({'error': 'An attachment must be a photo (JPG or PNG) or a PDF.'}, 500);
+          final raw = base64Decode(m.group(2)!), sha = crypto.sha256.convert(raw).toString(), ext = m.group(1) == 'application/pdf' ? 'pdf' : m.group(1) == 'image/png' ? 'png' : 'jpg';
+          return _j({'result': {'ok': true, 'sha': sha, 'path': 'log/${sha.substring(0, 2)}/$sha.$ext', 'mime': m.group(1), 'size': raw.length, 'name': up['name'], 'dup': false}});
+        case 'getMaintFiles':
+          maintCalls.add({'fn': action, 'id': a[0]});
+          final r = maint.firstWhere((r) => r['id'] == a[0]);
+          return _j({'result': {'id': a[0], 'files': [for (final f in (r['files'] as List)) {...(f as Map), 'url': ''}]}});
+        case 'readMaintBill':
+          final up = (a[0] as Map).cast<String, dynamic>();
+          maintCalls.add({'fn': action, 'mime': RegExp(r'^data:([^;]+);').firstMatch('${up['data']}')?.group(1) ?? ''});
+          if (!aiOn) return _j({'result': {'off': true}});
+          return _j({'result': maintRead});
+        case 'maintLog':
+          final f = (a[0] as Map).cast<String, dynamic>();
+          maintCalls.add({'fn': action, 'x': f});
+          return _j({'result': {'title': 'Maintenance Log Book – ${f['no']}', 'from': f['from'] ?? '2026-10-01', 'to': f['to'] ?? '2026-10-14', 'generated': '14-10-2026 10:00', 'company': 'Rachana Construction Limited',
+            'machine': {'id': f['no'], 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr'},
+            'lines': [
+              {'date': '2026-10-05', 'kind': 'Fuel', 'id': 'DI-000530', 'qty': 20, 'unit': 'Ltr', 'amount': 2100, 'paidBy': 'HDFC FUEL', 'km': 45000, 'driver': 'Gupta'},
+              {'date': '2026-10-05', 'kind': 'Maintenance', 'id': 'MT-000001', 'no': f['no'], 'garage': 'Toyota Service', 'billNo': 'TS-101', 'km': 45210, 'amount': 2360, 'total': 2360, 'service': true, 'files': 1,
+                'lines': [{'work': 'Engine oil', 'amount': 1200}, {'work': 'Oil filter', 'amount': 300}, {'work': 'Labour', 'amount': 500}, {'work': 'GST 18%', 'amount': 360}]},
+              {'date': '2026-10-12', 'kind': 'Fuel', 'id': 'DI-000531', 'qty': 10, 'unit': 'Ltr', 'amount': 1050, 'paidBy': 'Cash', 'km': 45300, 'driver': ''},
+            ],
+            'total': {'fuel': {'qty': 30, 'amount': 3150, 'card': 2100, 'cash': 1050, 'fills': 2}, 'maint': {'amount': 2360, 'bills': 1}, 'all': 5510, 'km': 300, 'perKm': 18.37,
+              'byWork': [{'work': 'Engine oil', 'amount': 1200, 'n': 1}, {'work': 'Labour', 'amount': 500, 'n': 1}, {'work': 'GST 18%', 'amount': 360, 'n': 1}, {'work': 'Oil filter', 'amount': 300, 'n': 1}]},
+            'lastService': {'date': '2026-10-05', 'km': 45210, 'id': 'MT-000001'}}});
         case 'getLogAttachments':
           return _j({'result': {'key': _arg(a, 'key'), 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'max': 10, 'files': [for (final f in entryAtt) {...f, 'url': ''}]}});
         case 'capClaim':

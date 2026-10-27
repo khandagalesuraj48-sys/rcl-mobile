@@ -253,8 +253,9 @@ Future<AttFile> attMake(AttFile f) async {
   return f;
 }
 
-/// Sends the files not yet kept (one after the other); '' = all are kept, else what to tell the person.
-Future<String> attSendAll(Api api, List<AttFile> files, void Function() changed) async {
+/// Sends the files not yet kept (one after the other); '' = all are kept, else what to tell the person. [action]: the server's
+/// action that keeps a file – 'uploadAttachment' (a Log Book entry) or (3.46.0, Mechanical update-165) 'maintFile' (a maintenance bill).
+Future<String> attSendAll(Api api, List<AttFile> files, void Function() changed, {String action = 'uploadAttachment'}) async {
   for (final f in files.where((x) => x.state == 'new' || x.state == 'err')) {
     final b = f.bytes;
     if (b == null) {
@@ -266,7 +267,7 @@ Future<String> attSendAll(Api api, List<AttFile> files, void Function() changed)
     f.err = '';
     changed();
     try {
-      final r = ((await api.call('uploadAttachment', [{'data': 'data:${f.mime};base64,${base64Encode(b)}', 'name': f.name}])) as Map).cast<String, dynamic>();
+      final r = ((await api.call(action, [{'data': 'data:${f.mime};base64,${base64Encode(b)}', 'name': f.name}])) as Map).cast<String, dynamic>();
       if (f.sha.isNotEmpty && '${r['sha']}' != f.sha) throw ApiError('The file did not arrive as it was sent – add it again.');
       f.sha = '${r['sha']}';
       f.p = '${r['path'] ?? ''}';

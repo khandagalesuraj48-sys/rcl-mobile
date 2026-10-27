@@ -726,3 +726,55 @@ final kAvgReport = ReportDef(
   note: 'The monthly diesel with the opening / closing reading, the KM / Hrs run and the actual average against the standard – Good, More diesel, Bad or Check reading.',
   build: (d) => monthlyDoc(d, true),
 );
+
+/* (3.46.0, Mechanical update-165, asked 27-10-2026) THE MAINTENANCE LOG BOOK OF A CAR – at a site on fuel cards (HO): every fill (Diesel
+ * Issue, with its card or Cash) and every maintenance bill of one car in the dates, by date, and its costs – fuel, maintenance, all
+ * together, the KM of its Log Book and ₹ per KM, its last service (the web's Maintenance page → "Maintenance Log Book of a car",
+ * mlogRender: the same server action maintLog, the same tables, columns and totals). Opened from the Maintenance screen. */
+final kMaintLog = ReportDef(
+  key: 'mlog',
+  label: 'Maintenance Log Book of a car',
+  mr: 'गाडीचे मेंटेनन्स लॉग बुक',
+  fn: 'maintLog',
+  pic: 'wrench',
+  perm: 'Maintenance',
+  portrait: false,
+  filters: const ['machine', 'range'],
+  note: 'Every fill (Diesel Issue, with its card or Cash) and every maintenance bill of the car, by date – and its costs: fuel, maintenance, all together, the KM of its Log Book and ₹ per KM.',
+  build: (d) {
+    final m = mapOf(d['machine']), t = mapOf(d['total']), fu = mapOf(t['fuel']), mn = mapOf(t['maint']), ls = listOf(d['lines']), by = listOf(t['byWork']), last = mapOf(d['lastService']);
+    final u = m['unit'] == 'kg' ? 'kg' : 'L';
+    String what(Map<String, dynamic> x) => x['kind'] == 'Fuel'
+        ? 'Fuel – ${m['fuel'] ?? ''}'
+        : 'Bill${blankV(x['billNo']) ? '' : ' ${x['billNo']}'} – ${[for (final l in listOf(x['lines'])) '${l['work']} ₹${money(l['amount'])}'].join('; ')}${x['service'] == true ? ' · Service' : ''}';
+    return RDoc(
+      title: '${d['title'] ?? 'Maintenance Log Book'}',
+      period: _period(d),
+      file: _file('Maintenance_Log_Book_${'${m['id'] ?? ''}'.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')}', d),
+      meta: _meta(d, [m['id'], m['name'], m['type'], m['fuel']].where((x) => '${x ?? ''}'.isNotEmpty).join(' · ')),
+      portrait: false,
+      kpis: [
+        ('Fuel', '${fmt(fu['qty'])} $u · ₹${money(fu['amount'])}'), ('Maintenance', '₹${money(mn['amount'])}'), ('All costs', '₹${money(t['all'])}'), ('KM (Log Book)', fmt(t['km'])),
+        ('₹ per KM', blankV(t['perKm']) ? '–' : '₹${money(t['perKm'])}'),
+        ('Last service', last.isEmpty ? '–' : '${dmy(last['date'])}${blankV(last['km']) ? '' : ' · ${fmt(last['km'])} km'}'),
+      ],
+      blocks: [
+        RTable(sheet: 'Log Book', head: ['Sr', 'Date', 'Entry', 'What', 'Fuel ($u)', 'KM', 'Paid by / Garage', 'Amount (₹)'], numCols: const {4, 5, 7}, empty: 'No fill and no bill of this car in these dates.', rows: [
+          for (var i = 0; i < ls.length; i++)
+            RRow([sc(i + 1), tc(dmy(ls[i]['date'])), tc(ls[i]['id']), tc(what(ls[i])), ls[i]['kind'] == 'Fuel' ? RCell('${fmt(ls[i]['qty'])} $u', n: true, value: nOf(ls[i]['qty'])) : const RCell('', n: true), nc(ls[i]['km']),
+              tc(ls[i]['kind'] == 'Fuel' ? ls[i]['paidBy'] : ls[i]['garage']), mc(ls[i]['amount'])]),
+        ], foot: [
+          RRow([RCell('Fuel – ${fu['fills'] ?? 0} fill(s) (by card ₹${money(fu['card'])}, cash ₹${money(fu['cash'])})', bold: true, span: 4), RCell('${fmt(fu['qty'])} $u', n: true, bold: true, value: nOf(fu['qty'])), const RCell(''), const RCell(''), mc(fu['amount'], bold: true)], kind: RKind.sub),
+          RRow([RCell('Maintenance – ${mn['bills'] ?? 0} bill(s)', bold: true, span: 7), mc(mn['amount'], bold: true)], kind: RKind.sub),
+          RRow([const RCell('All costs', bold: true, span: 7), mc(t['all'], bold: true)], kind: RKind.grand),
+        ]),
+        const RNote('Maintenance by work / part', heading: true),
+        RTable(sheet: 'By work', head: const ['Sr', 'Work / part', 'Times', 'Amount (₹)'], numCols: const {2, 3}, empty: 'No maintenance bill in these dates.', rows: [
+          for (var i = 0; i < by.length; i++) RRow([sc(i + 1), tc(by[i]['work']), nc(by[i]['n']), mc(by[i]['amount'])]),
+        ], foot: [
+          RRow([const RCell('Total', bold: true, span: 3), mc(mn['amount'], bold: true)], kind: RKind.grand),
+        ]),
+      ],
+    );
+  },
+);
