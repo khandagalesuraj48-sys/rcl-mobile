@@ -1416,7 +1416,9 @@ class FakeServer {
           final x = (a[0] as Map).cast<String, dynamic>();
           maintCalls.add({'fn': action, 'x': x});
           if (!aiOn) return _j({'result': {'off': true}});
-          return _j({'result': mliNames});
+          // (as the server: only a name of the file is answered)
+          final has = {for (final f in const ['party', 'work', 'uom']) f: {for (final n in (x[f] as List? ?? const [])) '${(n as List).first}'}};
+          return _j({'result': {...mliNames, 'fixes': [for (final z in (mliNames['fixes'] as List? ?? const [])) if (has['${(z as List)[0]}']?.contains('${z[1]}') == true) z]}});
         case 'maintLog':
           final f = (a[0] as Map).cast<String, dynamic>();
           maintCalls.add({'fn': action, 'x': f});
