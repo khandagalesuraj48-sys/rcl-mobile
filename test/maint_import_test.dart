@@ -75,7 +75,7 @@ void main() {
     expect(differ(jsonDecode(jsonEncode(mliNamesOf(sheets))), web['names']), '');
     final fixes = [for (final z in (web['fixes'] as List).cast<Map>()) MliFix('${z['f']}', '${z['from']}', '${z['to']}', 0)..on = z['on'] == true];
     expect(differ(jsonDecode(jsonEncode(mliBills(sheets[0], fixes))), web['billsFixed']), '');
-    expect(sheets[0].bills[0]['garage'], 'Store', 'the file as it is stays');
+    expect(sheets[0].bills[0]['garage'], 'Store', reason: 'the file as it is stays');
     expect(identical(mliBills(sheets[0], [MliFix('party', 'Store', 'X', 1)]), sheets[0].bills), isTrue, reason: 'nothing ticked: the bills as read');
   });
 
