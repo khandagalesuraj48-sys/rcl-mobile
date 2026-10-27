@@ -337,7 +337,8 @@ class _CardFormState extends State<CardForm> {
     final list = [for (final m in s.machines) if (m.fuel != 'Electric') m.id]..sort();
     return Scaffold(
       appBar: AppBar(title: TwoLang(widget.card == null ? 'New card' : 'Change card', 'कार्ड', size: 19, weight: FontWeight.w700)),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      // (3.47.0) one scrolling column: a short form – every box built (its 4 details made it longer than a phone's screen)
+      body: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         TextBox(key: const Key('cf-name'), label: 'Card name', controller: name, hint: 'e.g. HDFC Fuel Card 1', upper: true),
         const SizedBox(height: 10),
         PickField(key: const Key('cf-type'), label: 'Kind', value: type, items: kCardTypes, onChanged: (v) => setState(() => type = v)),
@@ -363,7 +364,7 @@ class _CardFormState extends State<CardForm> {
         if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: InfoLine(err, bad: true)),
         const SizedBox(height: 18),
         FilledButton(key: const Key('cf-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save card')),
-      ]),
+      ])),
     );
   }
 }
