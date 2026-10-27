@@ -209,7 +209,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
         }),
       if (s.cardSite && s.canSee('Fuel Cards')) ('Fuel Cards', 'Fuel Cards', 'फ्युएल कार्ड', 'The cards, their balance, payments and statement', C.amberSoft, 'Diesel', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen()))),
       // (3.46.0, Mechanical update-165) the bills of the cars at a site on fuel cards – its page Maintenance
-      if (s.cardSite && s.canSee('Maintenance')) ('Maintenance', 'Maintenance', 'मेंटेनन्स', 'The bills of the cars, their files, a car\'s log book', C.blueSoft, 'Diesel', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MaintScreen()))),
+      if (s.canSee('Maintenance')) ('Maintenance', 'Maintenance', 'मेंटेनन्स', 'The bills of a machinery, their files, its log book', C.blueSoft, 'Diesel', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MaintScreen()))),
       if (s.canSee('Log Book')) ('Log Book', 'Log Book', 'लॉग बुक', 'Daily running & working hours', C.purpleSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()))),
       if (s.canSee('Breakdown')) ('Breakdown', 'Breakdown', 'ब्रेकडाऊन', 'Machinery working / breakdown', C.orangeSoft, 'Machinery', () => openBreakdown(context)),
       if (tankers) ('Tanker Trips', 'Tanker Trips', 'टँकर फेऱ्या', 'Water tanker trips & challans', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: s.today)))),

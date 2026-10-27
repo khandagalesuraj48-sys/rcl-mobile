@@ -1295,7 +1295,7 @@ class FakeServer {
         case 'getMaint':
           final f = (a[0] as Map).cast<String, dynamic>();
           maintCalls.add({'fn': action, 'x': f});
-          if (!card) return _j({'error': 'This site is not on fuel cards – the Super Admin sets that in the Portal (Sites → Diesel places → Fuel cards).'}, 500);
+          // (3.50.0, Mechanical update-170) at every site
           if (maintMissing) return _j({'result': {'rows': [], 'total': 0, 'count': 0, 'works': [], 'garages': [], 'missing': true}});
           final rs = maint.where((r) => '${f['no'] ?? ''}'.isEmpty || r['no'] == f['no']).toList();
           return _j({'result': {'count': rs.length, 'total': rs.fold<num>(0, (t, r) => t + (r['total'] as num)), 'rows': rs, 'works': ['Engine oil', 'Discount', 'GST 18%', 'Labour', 'Oil filter', 'Tyre'], 'garages': ['Toyota Service', 'Tyre House']}});
@@ -1347,10 +1347,10 @@ class FakeServer {
           maintCalls.add({'fn': action, 'x': f});
           if (maintLogAnswer != null) return _j({'result': maintLogAnswer});
           return _j({'result': {'title': 'Maintenance Log Book – ${f['no']}', 'from': f['from'] ?? '2026-10-01', 'to': f['to'] ?? '2026-10-14', 'generated': '14-10-2026 10:00', 'company': 'Rachana Construction Limited',
-            'machine': {'id': f['no'], 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr'},
+            'machine': {'id': f['no'], 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr', 'meter': 'KM'}, 'card': card,
             'lines': [
               {'date': '2026-10-05', 'kind': 'Fuel', 'id': 'DI-000530', 'qty': 20, 'unit': 'Ltr', 'amount': 2100, 'paidBy': 'HDFC FUEL', 'km': 45000, 'driver': 'Gupta'},
-              {'date': '2026-10-05', 'kind': 'Maintenance', 'id': 'MT-000001', 'no': f['no'], 'garage': 'Toyota Service', 'billNo': 'TS-101', 'km': 45210, 'amount': 2360, 'total': 2360, 'service': true, 'files': 1,
+              {'date': '2026-10-05', 'kind': 'Maintenance', 'id': 'MT-000001', 'no': f['no'], 'garage': 'Toyota Service', 'party': 'Toyota Service', 'billNo': 'TS-101', 'km': 45210, 'amount': 2360, 'total': 2360, 'service': true, 'files': 1,
                 'lines': [{'work': 'Engine oil', 'amount': 1200}, {'work': 'Oil filter', 'amount': 300}, {'work': 'Labour', 'amount': 500}, {'work': 'GST 18%', 'amount': 360}]},
               {'date': '2026-10-12', 'kind': 'Fuel', 'id': 'DI-000531', 'qty': 10, 'unit': 'Ltr', 'amount': 1050, 'paidBy': 'Cash', 'km': 45300, 'driver': ''},
             ],

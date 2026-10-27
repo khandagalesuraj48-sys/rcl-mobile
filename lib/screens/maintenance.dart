@@ -11,7 +11,10 @@
  *  discount deun aste tr sagle kahi yeyla hawa ok and type pn krta yayla hawa") a line = its work / part, its KIND (Paid / Warranty /
  *  FOC / Service Plan), Qty, Rate, Disc % and ₹ (a Paid line: Qty × Rate − Discount, worked out as on the web; a free line: ₹ 0,
  *  its worth shown); an insurance claim: the company, the claim no., what the insurance paid – the car's cost is what WE paid. The
- *  AI reads every line with its kind, the car from the bill's number, the insurance. */
+ *  AI reads every line with its kind, the car from the bill's number, the insurance.
+ * (3.50.0, Mechanical update-170, asked 27-10-2026 with the Maintenance Log Book of Roller No-03: "mala log book as hawa aahe ya
+ *  format madhe") at EVERY site, for every machinery: the party of a direct bill, the current reading (KM / Hrs), each line its Uom;
+ *  the log book in his format (report_defs.dart kMaintLog). */
 import 'dart:convert';
 
 import 'package:flutter/material.dart' hide Text;
@@ -39,6 +42,9 @@ String _key(String v) => v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
 
 /// (3.49.0) the kinds of a bill's line (the server's MNT_TYPES_): Paid is charged; the others are free (₹ 0)
 const kMaintKinds = ['Paid', 'Warranty', 'FOC', 'Service Plan'];
+
+/// (3.50.0) the usual units of a line, offered (as the web's list): any other can be typed
+const kMaintUoms = ['Nos', 'Ltr', 'Kg', 'Set', 'Bkt', 'Mtr', 'Pair', 'Gram', 'Box'];
 
 bool _free(Map l) => '${l['type'] ?? ''}'.isNotEmpty && l['type'] != 'Paid';
 
@@ -136,7 +142,7 @@ class _MaintScreenState extends State<MaintScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('mt-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
-          Text('One bill of a car: each work / part with its kind, Qty, Rate, Discount and ₹. Add the bill (PDF or photo) – the AI can read it for you; check every value, then save.', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
+          Text('One bill of a machinery: each work / part with its kind, Qty, Uom, Rate, Discount and ₹. Add the bill (PDF or photo) – the AI can read it for you; check every value, then save.', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
           const SizedBox(height: 10),
           if (missing) const Padding(padding: EdgeInsets.only(bottom: 10), child: InfoLine('Maintenance bills cannot be kept yet. This needs one database step first: the Admin runs sql/supabase_step1zi_maintenance.sql once in Supabase → SQL Editor.', bad: true)),
           if (!can) const Padding(padding: EdgeInsets.only(bottom: 10), child: InfoLine('View only – you can see the bills, their files and the car log books here, but you cannot add or change them. Ask Admin for Edit access.', help: false)),
@@ -152,8 +158,8 @@ class _MaintScreenState extends State<MaintScreen> {
               const Icon(Icons.menu_book_rounded, color: C.blue),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Maintenance Log Book of a car', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.blue)),
-                Text('Its fills and bills by date – fuel, maintenance, all costs, ₹ per KM', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                Text('Maintenance Log Book', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.blue)),
+                Text('Every bill of a machinery, line by line – party, reading, Qty, Uom, rate, GST', style: const TextStyle(fontSize: 12.5, color: C.muted)),
               ])),
               const Icon(Icons.chevron_right_rounded, color: C.blue),
             ]),
@@ -175,8 +181,8 @@ class _MaintScreenState extends State<MaintScreen> {
               const Icon(Icons.directions_car_rounded, color: C.blue, size: 18),
               const SizedBox(width: 8),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Car', style: const TextStyle(fontSize: 12, color: C.muted)),
-                Text(no.isEmpty ? 'Blank = all cars' : no, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: no.isEmpty ? C.faint : C.ink)),
+                Text('Machinery', style: const TextStyle(fontSize: 12, color: C.muted)),
+                Text(no.isEmpty ? 'Blank = all machinery' : no, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: no.isEmpty ? C.faint : C.ink)),
               ])),
               if (no.isNotEmpty)
                 IconButton(key: const Key('mt-car-x'), tooltip: tr('Clear'), onPressed: () { setState(() => no = ''); _load(); }, icon: const Icon(Icons.close_rounded, size: 18, color: C.muted)),
@@ -185,7 +191,7 @@ class _MaintScreenState extends State<MaintScreen> {
           const SizedBox(height: 6),
           if (err.isNotEmpty) InfoLine(err, bad: true),
           if (loading) const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
-          if (!loading && rows.isEmpty && err.isEmpty) const EmptyState('No maintenance bill in these dates.', 'A bill of a car: its work / parts and its ₹, with the bill PDF or photo.', pic: 'wrench'),
+          if (!loading && rows.isEmpty && err.isEmpty) const EmptyState('No maintenance bill in these dates.', 'A bill of a machinery: its work / parts and its ₹, with the bill PDF or photo.', pic: 'wrench'),
           for (final r in rows) Padding(padding: const EdgeInsets.only(top: 8), child: _tile(r, can)),
         ]),
       ),
@@ -228,11 +234,11 @@ class _MaintScreenState extends State<MaintScreen> {
           constraints: BoxConstraints(maxHeight: MediaQuery.of(bc).size.height * .85),
           child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 4, 20, 20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('${r['id']} · ${rupees(asNum(r['total']))}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            InfoRow('Car', '${r['no']}'),
+            InfoRow('Machinery', '${r['no']}'),
             InfoRow('Date', showDate('${r['date']}')),
-            InfoRow('Garage', '${r['garage'] ?? ''}'),
+            InfoRow('Party', '${r['garage'] ?? ''}'),
             InfoRow('Bill no.', '${r['billNo'] ?? ''}'),
-            InfoRow('KM', _blank(r['km']) ? '' : fmtNum(asNum(r['km']))),
+            InfoRow('Reading', _blank(r['km']) ? '' : fmtNum(asNum(r['km']))),
             InfoRow('Service', r['service'] == true ? tr('Yes') : ''),
             InfoRow('Remark', '${r['remark'] ?? ''}'),
             InfoRow('Entered by', '${r['enteredBy'] ?? ''}'),
@@ -240,7 +246,7 @@ class _MaintScreenState extends State<MaintScreen> {
             for (final l in lines)
               _free(l)
                   ? InfoRow('${l['work']}', '${tr('${l['type']}')} · ${tr('worth ₹${fmtNum(maintWorth(l))}')}', tone: C.greenDark)
-                  : InfoRow('${l['work']}', [rupees(asNum(l['amount'])), if (!_blank(l['qty']) && !_blank(l['rate'])) '${fmtNum(asNum(l['qty']))} × ${fmtNum(asNum(l['rate']))}${(asNum(l['disc']) ?? 0) > 0 ? ' − ${fmtNum(asNum(l['disc']))} %' : ''}'].join(' · '),
+                  : InfoRow('${l['work']}', [rupees(asNum(l['amount'])), if (!_blank(l['qty']) && !_blank(l['rate'])) '${fmtNum(asNum(l['qty']))}${_blank(l['uom']) ? '' : ' ${l['uom']}'} × ${fmtNum(asNum(l['rate']))}${(asNum(l['disc']) ?? 0) > 0 ? ' − ${fmtNum(asNum(l['disc']))} %' : ''}'].join(' · '),
                       tone: (asNum(l['amount']) ?? 0) < 0 ? C.red : C.ink),
             if (ins != null) ...[
               InfoRow('Bill total', rupees(asNum(r['billTotal']))),
@@ -308,22 +314,23 @@ class AiBox extends StatelessWidget {
 /// One line of the bill being typed: its work / part, its kind, Qty, Rate, Disc % and ₹; [ai] = read by the AI (blue) until the
 /// person changes it
 class _Line {
-  _Line({String work = '', this.type = 'Paid', String qty = '', String rate = '', String disc = '', String amount = '', this.ai = false})
+  _Line({String work = '', this.type = 'Paid', String qty = '', String uom = '', String rate = '', String disc = '', String amount = '', this.ai = false})
       : work = TextEditingController(text: work),
         qty = TextEditingController(text: qty),
+        uom = TextEditingController(text: uom),
         rate = TextEditingController(text: rate),
         disc = TextEditingController(text: disc),
         amount = TextEditingController(text: amount);
   /// a line of the server (a line of before has no kind: Paid)
   factory _Line.of(Map l, {bool ai = false}) {
     final t = kMaintKinds.contains(l['type']) ? '${l['type']}' : 'Paid';
-    return _Line(work: '${l['work'] ?? ''}', type: t, qty: _n(asNum(l['qty'])), rate: _n(asNum(l['rate'])), disc: _n(asNum(l['disc'])), amount: t == 'Paid' ? _n(asNum(l['amount'])) : '0', ai: ai);
+    return _Line(work: '${l['work'] ?? ''}', type: t, qty: _n(asNum(l['qty'])), uom: _blank(l['uom']) ? '' : '${l['uom']}', rate: _n(asNum(l['rate'])), disc: _n(asNum(l['disc'])), amount: t == 'Paid' ? _n(asNum(l['amount'])) : '0', ai: ai);
   }
-  final TextEditingController work, qty, rate, disc, amount;
+  final TextEditingController work, qty, uom, rate, disc, amount;
   String type;
   bool ai;
   bool get free => type != 'Paid';
-  bool get empty => work.text.trim().isEmpty && amount.text.trim().isEmpty && qty.text.trim().isEmpty && rate.text.trim().isEmpty;
+  bool get empty => work.text.trim().isEmpty && amount.text.trim().isEmpty && qty.text.trim().isEmpty && rate.text.trim().isEmpty && uom.text.trim().isEmpty;
   static num? _of(TextEditingController c) => asNum(c.text.replaceAll(',', ''));
   num get worth => free ? (_of(qty) ?? 1) * (_of(rate) ?? 0) : 0;
   /// a Paid line: its ₹ from Qty × Rate − Disc % (when Qty and Rate are there); a free line: ₹ 0 (as the web's mtRowCalc)
@@ -341,10 +348,10 @@ class _Line {
   }
   Map<String, Object> get value {
     Object v(TextEditingController c) => _of(c) ?? c.text.trim();
-    return {'work': work.text.trim(), 'type': type, 'qty': v(qty), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount)};
+    return {'work': work.text.trim(), 'type': type, 'qty': v(qty), 'uom': uom.text.trim(), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount)};
   }
   void dispose() {
-    for (final c in [work, qty, rate, disc, amount]) {
+    for (final c in [work, qty, uom, rate, disc, amount]) {
       c.dispose();
     }
   }
@@ -528,7 +535,7 @@ class _MaintFormState extends State<MaintForm> {
   Future<void> _save({bool force = false}) async {
     final s = SessionScope.read(context), e = widget.edit, c = car;
     if (c == null) {
-      setState(() => err = 'Pick the car of the bill.');
+      setState(() => err = 'Pick the machinery of the bill.');
       return;
     }
     setState(() {
@@ -626,17 +633,23 @@ class _MaintFormState extends State<MaintForm> {
           child: Row(children: [
             Expanded(child: TextBox(key: Key('mf-q-$i'), label: 'Qty', controller: l.qty, kb: nkb, onChanged: (_) => typed())),
             const SizedBox(width: 8),
-            Expanded(child: TextBox(key: Key('mf-r-$i'), label: 'Rate (₹)', controller: l.rate, kb: nkb, onChanged: (_) => typed())),
+            // (3.50.0, update-170) its unit – the usual ones offered
+            Expanded(child: TextBox(key: Key('mf-u-$i'), label: 'Uom', controller: l.uom, options: kMaintUoms, onChanged: (_) => setState(() => l.ai = false))),
           ]),
         ),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.only(right: 6),
           child: Row(children: [
-            Expanded(child: TextBox(key: Key('mf-d-$i'), label: 'Disc %', controller: l.disc, kb: nkb, onChanged: (_) => typed())),
+            Expanded(child: TextBox(key: Key('mf-r-$i'), label: 'Rate (₹)', controller: l.rate, kb: nkb, onChanged: (_) => typed())),
             const SizedBox(width: 8),
-            Expanded(child: TextBox(key: Key('mf-a-$i'), label: 'Amount (₹)', controller: l.amount, enabled: !l.free, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() => l.ai = false))),
+            Expanded(child: TextBox(key: Key('mf-d-$i'), label: 'Disc %', controller: l.disc, kb: nkb, onChanged: (_) => typed())),
           ]),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: TextBox(key: Key('mf-a-$i'), label: 'Amount (₹)', controller: l.amount, enabled: !l.free, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() => l.ai = false)),
         ),
         if (l.free)
           Padding(
@@ -672,20 +685,20 @@ class _MaintFormState extends State<MaintForm> {
               const Icon(Icons.directions_car_rounded, color: C.blue, size: 18),
               const SizedBox(width: 8),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${tr('Car')} *', style: const TextStyle(fontSize: 12, color: C.muted)),
-                Text(car == null ? 'Pick the car of the bill.' : [car!.id, if (car!.name.isNotEmpty && car!.name != car!.id) car!.name].join(' · '), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: car == null ? C.faint : C.ink)),
+                Text('${tr('Machinery')} *', style: const TextStyle(fontSize: 12, color: C.muted)),
+                Text(car == null ? 'Pick the machinery of the bill.' : [car!.id, if (car!.name.isNotEmpty && car!.name != car!.id) car!.name].join(' · '), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: car == null ? C.faint : C.ink)),
               ])),
               const Icon(Icons.expand_more_rounded, color: C.muted),
             ]),
           ),
         ),
         const SizedBox(height: 10),
-        _blue(ai.contains('garage'), TextBox(key: const Key('mf-garage'), label: 'Garage / vendor', controller: garage, options: widget.garages, hint: 'e.g. Toyota service centre', onChanged: (_) => setState(() => ai.remove('garage')))),
+        _blue(ai.contains('garage'), TextBox(key: const Key('mf-garage'), label: 'Party name', controller: garage, options: widget.garages, hint: 'e.g. East West Energy Systems', onChanged: (_) => setState(() => ai.remove('garage')))),
         const SizedBox(height: 10),
         Row(children: [
           Expanded(child: _blue(ai.contains('billNo'), TextBox(key: const Key('mf-billno'), label: 'Bill number', controller: billNo, onChanged: (_) => setState(() => ai.remove('billNo'))))),
           const SizedBox(width: 8),
-          Expanded(child: _blue(ai.contains('km'), TextBox(key: const Key('mf-km'), label: 'KM reading', controller: km, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => ai.remove('km'))))),
+          Expanded(child: _blue(ai.contains('km'), TextBox(key: const Key('mf-km'), label: 'Current reading', controller: km, hint: '(KM / Hrs)', kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => ai.remove('km'))))),
         ]),
         _blue(
           ai.contains('service'),
@@ -693,7 +706,7 @@ class _MaintFormState extends State<MaintForm> {
             key: const Key('mf-service'),
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
             title: Text('This bill is a service', style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text('(its KM is needed)'),
+            subtitle: Text('(its reading is needed)'),
             value: service,
             onChanged: (v) => setState(() {
               service = v;

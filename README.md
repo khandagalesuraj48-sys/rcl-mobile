@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.50.0 (27-10-2026 – "mala log book as hawa aahe ya format madhe … party name … jr direct bill marle tr party ch name yeil",
+with Mechanical update-170):** Maintenance is at **every site**, for every machinery (when the page is given): a bill's **Party
+name** (the garage / shop of a direct bill), its **Current reading** (KM / Hrs), each line its **Uom** (Nos, Ltr, Kg … offered).
+The **Maintenance Log Book** is in his format (Roller No-03): Sr No · Date · Party Name · Current Reading · Particulars · Qty · Uom ·
+Basic Rate · Amount · GST Amount · Amount With GST · Total – a row a line, the tax lines in GST Amount, the insurance's part its own
+row; at a site on fuel cards the fills follow, then "by work / part". The RCL Store's material comes in when the Store has its Issue.
+
 **Version 3.49.0 (27-10-2026 – "kahi material warranty madhe aste kahi paid aste kahi discount deun aste tr sagle kahi yeyla hawa
 … type pn krta yayla hawa", with Mechanical update-168):** a maintenance bill keeps EVERY line of the garage's bill: each line is a
 card with its work / part, its **kind** (Paid / Warranty / FOC / Service Plan), **Qty, Rate, Disc %** and **₹** – a Paid line's ₹
