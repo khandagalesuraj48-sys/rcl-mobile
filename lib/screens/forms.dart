@@ -75,6 +75,8 @@ class _EntryFormState extends State<EntryForm> {
   Machine? machine;
   final qty = TextEditingController(), km = TextEditingController(), hr = TextEditingController(), driver = TextEditingController(), remark = TextEditingController();
   final pump = TextEditingController(), rate = TextEditingController(), billNo = TextEditingController();
+  /// (3.45.0, Mechanical update-164) a fill at a site on fuel cards: its ₹ (its card or Cash is [source]; its rate in [rate])
+  final amount = TextEditingController();
   String billDate = '';
   Map<String, dynamic>? bal; // stock at the source for this date + shift (issue)
   Map? tbal; // (3.14.0) a transfer: the opening stock of From and To at this date + shift (getTransferBalance)
@@ -126,6 +128,7 @@ class _EntryFormState extends State<EntryForm> {
       // server refuses the save)
       final any = s.locations.isNotEmpty ? s.locations.first : 'Dispenser';
       source = own.contains(loc) ? loc : (own.isNotEmpty ? own.first : any);
+      if (issue && s.cardSite) source = s.payFor(null).first;      // (3.45.0) a card for every car, else Cash
       from = trf.contains(loc) ? loc : (trf.isNotEmpty ? trf.first : any);
       to = s.transferTos(from).firstWhere((l) => l != from, orElse: () => '');      // (3.44.0) of the From's fuel
       shift = s.myShift(const ['Day', 'Night']); // (14-10-2026) his usual shift, else Day / Night by the time
@@ -173,11 +176,11 @@ class _EntryFormState extends State<EntryForm> {
       setState(() {
         if (v('date').isNotEmpty) date = v('date');
         if (v('shift').isNotEmpty) shift = v('shift');
-        if ((k.key == 'inward' ? s.locations : s.mySources('Diesel Issue')).contains(v('source'))) source = v('source');
+        if ((k.key == 'inward' ? s.locations : s.mySources('Diesel Issue')).contains(v('source')) || (issue && s.cardSite && s.payFor(s.machine(v('no'))).contains(v('source')))) source = v('source');
         if (s.mySources('Diesel Transfer').contains(v('from'))) from = v('from');
         if (s.locations.contains(v('to'))) to = v('to');
         if (v('no').isNotEmpty) machine = s.machine(v('no'));
-        if (v('no').isNotEmpty && !s.fuelPlaces(s.mySources('Diesel Issue'), machine).contains(source)) _fuelSource(s);
+        if (v('no').isNotEmpty && !(s.cardSite ? s.payFor(machine) : s.fuelPlaces(s.mySources('Diesel Issue'), machine)).contains(source)) _fuelSource(s);
         way = machine == null ? '' : v('way');
         qty.text = v('qty');
         km.text = v('km');
@@ -186,6 +189,7 @@ class _EntryFormState extends State<EntryForm> {
         remark.text = v('remark');
         pump.text = v('pump');
         rate.text = v('rate');
+        amount.text = v('amount');
         billNo.text = v('billNo');
         billDate = v('billDate');
         for (final x in (d['shots'] as List? ?? const []).whereType<Map>()) {
@@ -202,7 +206,7 @@ class _EntryFormState extends State<EntryForm> {
 
   /// What is typed now (null = nothing yet).
   Map<String, dynamic>? _snap() {
-    final boxes = {'qty': qty, 'km': km, 'hr': hr, 'driver': driver, 'remark': remark, 'pump': pump, 'rate': rate, 'billNo': billNo};
+    final boxes = {'qty': qty, 'km': km, 'hr': hr, 'driver': driver, 'remark': remark, 'pump': pump, 'rate': rate, 'billNo': billNo, 'amount': amount};
     final typed = {for (final e in boxes.entries) if (e.value.text.trim().isNotEmpty && !(e.key == 'driver' && driverAuto)) e.key: e.value.text};
     final photos = [for (final e in shots.entries) if (e.value.path.isNotEmpty) {'k': e.key, 'p': e.value.path}];
     if (machine == null && typed.isEmpty && photos.isEmpty) return null;
@@ -229,7 +233,7 @@ class _EntryFormState extends State<EntryForm> {
       shots.clear();
       ai.clear();
       aiPut.clear();
-      for (final c in [qty, km, hr, driver, remark, rate, billNo, pump]) {
+      for (final c in [qty, km, hr, driver, remark, rate, billNo, pump, amount]) {
         c.clear();
       }
     });
@@ -256,6 +260,10 @@ class _EntryFormState extends State<EntryForm> {
         km.text = v('kmReading');
         hr.text = v('hrReading');
         driver.text = v('driver');
+        if (s.cardSite) {      // (3.45.0) its ₹
+          amount.text = v('amount');
+          rate.text = v('rate');
+        }
       case 'inward':
         source = v('location').isEmpty ? source : v('location');
         pump.text = v('pump');
@@ -271,7 +279,7 @@ class _EntryFormState extends State<EntryForm> {
   @override
   void dispose() {
     _draft?.close();
-    for (final c in [qty, km, hr, driver, remark, pump, rate, billNo]) {
+    for (final c in [qty, km, hr, driver, remark, pump, rate, billNo, amount]) {
       c.dispose();
     }
     super.dispose();
@@ -282,6 +290,7 @@ class _EntryFormState extends State<EntryForm> {
     if (!issue) return;
     final s = SessionScope.read(context), my = ++balSeq;
     setState(() => bal = null);
+    if (s.cardSite) return;      // (3.45.0) no stock at a site on fuel cards: the card's balance is in s.cards
     try {
       final r = (await s.api.call('getIssueBalance', [date, shift, editId, source]) as Map).cast<String, dynamic>();
       if (my == balSeq && mounted) setState(() => bal = r);
@@ -422,7 +431,7 @@ class _EntryFormState extends State<EntryForm> {
 
   /// (3.44.0, Mechanical update-163) the source follows the machinery's fuel: a Petrol car from a Petrol place, CNG from a CNG place
   void _fuelSource(Session s) {
-    final l = s.fuelPlaces(s.mySources('Diesel Issue'), machine);
+    final l = s.cardSite ? s.payFor(machine) : s.fuelPlaces(s.mySources('Diesel Issue'), machine);      // (3.45.0) the car's cards and Cash
     if (l.isNotEmpty && !l.contains(source)) source = l.first;
   }
 
@@ -595,6 +604,7 @@ class _EntryFormState extends State<EntryForm> {
       if (hasHr(way)) _fill(hr, r['hr']); // (3.29.0) the Hour meter photo
     } else {
       _fill(qty, r['litres']);
+      if (SessionScope.read(context).cardSite) _fill(amount, r['amount']);      // (3.45.0) the ₹ on the dispenser
     }
   }
 
@@ -616,7 +626,7 @@ class _EntryFormState extends State<EntryForm> {
         r = {'km': mr.km, 'hr': mr.hr, 'check': mr.check};
       } else {
         final pr = pumpFrom(lines);
-        r = {'litres': pr.litres, 'check': pr.check};
+        r = {'litres': pr.litres, 'check': pr.check, 'amount': pr.amount};
       }
     } catch (e) {
       r = {'error': errText(e)};
@@ -866,6 +876,7 @@ class _EntryFormState extends State<EntryForm> {
         warn.add('the litres could not be read now – type the litres');
       } else {
         if (asNum(p['litres']) != null) put.add('${fmtNum(asNum(p['litres']))} L');
+        if (SessionScope.read(context).cardSite && asNum(p['amount']) != null) put.add('₹ ${fmtNum(asNum(p['amount']))}');      // (3.45.0)
         if ('${p['check'] ?? ''}'.isNotEmpty) warn.add('litres: ${p['check']}');
         if (asNum(p['litres']) == null) warn.add('the litres could not be read clearly – type the litres');
       }
@@ -886,6 +897,7 @@ class _EntryFormState extends State<EntryForm> {
             'date': date, 'shift': shift, 'no': machine?.id ?? '', 'qty': asNum(qty.text) ?? '', 'kmReading': hasKm(way) ? (asNum(km.text) ?? '') : '', 'hrReading': hasHr(way) ? (asNum(hr.text) ?? '') : '',
             'driver': driver.text.trim(), 'remark': remark.text.trim(), 'source': source, 'force': false, 'mode': way,
             if (_photoList.isNotEmpty && ed == null) 'photos': _photoList,
+            if (SessionScope.read(context).cardSite) ...{'amount': asNum(amount.text) ?? '', 'rate': asNum(rate.text) ?? ''},      // (3.45.0) its ₹
           },
         'inward' => {
             'date': date, 'location': source, 'pump': pump.text.trim(), 'qty': asNum(qty.text) ?? '', 'rate': asNum(rate.text) ?? '', 'billNo': billNo.text.trim(), 'billDate': billDate,
@@ -904,6 +916,7 @@ class _EntryFormState extends State<EntryForm> {
     if (issue && s.fuelProblem(machine, source).isNotEmpty) return s.fuelProblem(machine, source);
     if (k.key == 'transfer' && s.placeFuel(from) != s.placeFuel(to)) return 'A transfer goes only between places of the same fuel: $from holds ${s.placeFuel(from)}, $to holds ${s.placeFuel(to)}.';
     if (!((asNum(qty.text) ?? 0) > 0)) return _unit == 'kg' ? 'Enter the kg.' : 'Enter the litres.';
+    if (issue && s.cardSite && !((asNum(amount.text) ?? 0) > 0)) return 'Enter the Amount (₹) of this fill.';      // (3.45.0)
     if (issue && bal != null && (asNum(qty.text) ?? 0) > (asNum(bal!['available']) ?? double.infinity)) {
       final w = s.placeFuel(source) == 'Diesel' ? 'diesel' : s.placeFuel(source), u = _unit == 'kg' ? 'kg' : 'L';
       return 'Not enough $w at $source for ${showDate(date)} ($shift): you can issue up to ${fmtNum(asNum(bal!['available']))} $u. Add a ${w == 'diesel' ? 'Diesel' : w} Inward first or reduce the ${u == 'kg' ? 'kg' : 'litres'}.';
@@ -994,7 +1007,7 @@ class _EntryFormState extends State<EntryForm> {
         ai.clear();
         aiPut.clear();
         _billsReset();
-        for (final c in [qty, km, hr, remark, rate, billNo]) {
+        for (final c in [qty, km, hr, remark, rate, billNo, amount]) {
           c.clear();
         }
       });
@@ -1072,7 +1085,7 @@ class _EntryFormState extends State<EntryForm> {
             const SizedBox(height: 14),
             TwoLang('${k.en} saved', 'नोंद झाली', size: 21, weight: FontWeight.w700, align: CrossAxisAlignment.center),
             const SizedBox(height: 10),
-            Text([id, if ((d['no'] ?? '').toString().isNotEmpty) d['no'].toString(), '${fmtNum(asNum(d['qty']))} L', showDate(d['date']?.toString())].where((e) => e.isNotEmpty).join('  ·  '), textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w500, color: C.muted)),
+            Text([id, if ((d['no'] ?? '').toString().isNotEmpty) d['no'].toString(), '${fmtNum(asNum(d['qty']))} ${_unit == 'kg' ? 'kg' : 'L'}', if (asNum(d['amount']) != null) '₹ ${fmtNum(asNum(d['amount']))} · ${d['source']}', showDate(d['date']?.toString())].where((e) => e.isNotEmpty).join('  ·  '), textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w500, color: C.muted)),
             if ((d['photos'] as List?)?.isNotEmpty == true)
               Padding(padding: const EdgeInsets.only(top: 6), child: Text(issue ? 'Photos: ${(d['photos'] as List).length} of 4' : '${tr('Bill copy')}: ${(d['photos'] as List).length}', style: const TextStyle(color: C.muted))),
             const SizedBox(height: 22),
@@ -1130,9 +1143,44 @@ class _EntryFormState extends State<EntryForm> {
         ]),
       );
 
+  /// (3.45.0, Mechanical update-164) a fill at a site on fuel cards: the Amount (₹), the Rate (or Amount ÷ Qty) and the card's balance
+  /// before and after it – red when short (the fill is still saved: the fuel is already in the car); Cash: no card changes
+  List<Widget> _cardPart(Session s, num? q) {
+    final c = s.card(source), a = asNum(amount.text);
+    num base = c?.balance ?? 0;
+    if (c != null && ed != null && '${ed!['source']}'.toUpperCase() == c.name.toUpperCase() && (c.openDate.isEmpty || '${ed!['date']}'.compareTo(c.openDate) >= 0)) base += asNum(ed!['amount']) ?? 0;
+    final after = base - (a ?? 0);
+    return [
+      _label('Amount (₹)', 'रक्कम (₹)'),
+      TextField(
+          key: const Key('d-amount'),
+          controller: amount,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+          onChanged: (_) => setState(() => aiPut.remove(amount)),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          decoration: InputDecoration(hintText: '0.00', prefixText: '₹ ', fillColor: aiPut.contains(amount) ? C.blueSoft : Colors.white, helperText: aiPut.contains(amount) ? tr('Read from the dispenser photo – check it') : null)),
+      _label(_unit == 'kg' ? 'Rate (₹ per kg)' : 'Rate (₹ per litre)', 'दर'),
+      TextField(
+          key: const Key('d-rate'),
+          controller: rate,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (v) => setState(() {
+                final r0 = asNum(v);
+                if (r0 != null && (q ?? 0) > 0 && (amount.text.isEmpty || aiPut.contains(amount))) amount.text = fmtNum(r0 * q!).replaceAll(',', '');
+              }),
+          decoration: InputDecoration(hintText: (q ?? 0) > 0 && (a ?? 0) > 0 ? 'Amount ÷ Qty = ${fmtNum(a! / q!)}' : tr('Optional'), prefixText: '₹ ')),
+      if (source == kCash) const InfoLine('Paid in Cash – no card balance changes.', icon: Icons.payments_outlined)
+      else if (c != null)
+        InfoLine(a == null ? 'Card ${c.name} – balance now ₹ ${fmtNum(base)}' : 'Card ${c.name} – balance now ₹ ${fmtNum(base)} → after this fill ₹ ${fmtNum(after)}${after < 0 ? ' – not enough on the card (the fill is still saved)' : ''}',
+            bad: a != null && after < 0, icon: Icons.credit_card_rounded),
+    ];
+  }
+
   /// (3.44.0) the unit of what is typed: kg for CNG, litres for the others
   String get _unit {
     final s = SessionScope.read(context);
+    if (issue && s.cardSite) return fuelUnit(machine == null || machine!.fuel == 'Electric' ? 'Diesel' : machine!.fuel);      // (3.45.0) the car's fuel
     return s.placeUnit(k.key == 'transfer' ? from : source);
   }
 
@@ -1144,6 +1192,7 @@ class _EntryFormState extends State<EntryForm> {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              key: const Key('d-qty'),
               controller: qty,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
@@ -1191,7 +1240,7 @@ class _EntryFormState extends State<EntryForm> {
         childAspectRatio: 1.35,
         children: [
           for (final pk in kPhotoKinds)
-            if (pk.key != 'hrs' || (machine != null && _both(machine!)))
+            if ((pk.key != 'hrs' || (machine != null && _both(machine!))) && !(pk.key == 'reg' && SessionScope.read(context).cardSite))      // (3.45.0) no register at a site on fuel cards
             Builder(builder: (_) {
               final sh = shots[pk.key];
               final done = sh != null && sh.path.isNotEmpty && sh.jpg != null;
@@ -1273,7 +1322,11 @@ class _EntryFormState extends State<EntryForm> {
             if (issue) ...[
               // (3.43.0, update-162) only his own diesel sources; given some = shown even when one (he sees where it comes from)
               // (3.44.0, update-163) of the machinery's fuel; a site with more than one fuel: shown even when one
-              if (s.mySources('Diesel Issue').length > 1 || s.ownSources('Diesel Issue') || s.multiFuel) ...[
+              // (3.45.0, Mechanical update-164) a site on fuel cards: paid by one of the car's cards (its balance shown) or in Cash
+              if (s.cardSite) ...[
+                _label('Paid by', 'कशाने भरले'),
+                KeyedSubtree(key: const Key('d-paid'), child: _chips<String>([for (final n in s.payFor(m)) (n, n == kCash ? tr('Cash') : '$n · ₹${fmtNum(s.card(n)?.balance ?? 0)}')], source, (v) => setState(() => source = v))),
+              ] else if (s.mySources('Diesel Issue').length > 1 || s.ownSources('Diesel Issue') || s.multiFuel) ...[
                 _label(s.multiFuel ? 'Fuel from' : 'Diesel from', s.multiFuel ? 'इंधन कुठून' : 'डिझेल कुठून'),
                 if (s.mySources('Diesel Issue').isEmpty) const InfoLine(_noSource, bad: true, help: false),
                 _chips<String>([for (final l in s.fuelPlaces(s.mySources('Diesel Issue'), machine)) (l, l)], source, (v) {
@@ -1321,6 +1374,7 @@ class _EntryFormState extends State<EntryForm> {
               _qtyField(),
               const SizedBox(height: 10),
               _chips<num>(const [(20, '20'), (50, '50'), (100, '100'), (150, '150'), (200, '200')], q, (v) => setState(() => qty.text = '$v')),
+              if (s.cardSite) ..._cardPart(s, q),      // (3.45.0) the ₹ and the card's balance
               if (bal != null)
                 InfoLine(
                   q == null || q == 0

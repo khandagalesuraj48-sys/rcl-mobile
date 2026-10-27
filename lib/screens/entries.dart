@@ -13,6 +13,7 @@ import '../ui/widgets.dart';
 import 'diesel_photos.dart';
 import 'entry_more.dart';
 import 'forms.dart';
+import 'fuel_cards.dart' show FuelCardsScreen;
 import 'logbook.dart';
 import 'breakdown.dart';
 import 'store.dart';
@@ -193,9 +194,10 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
   /// what it is for; the search of the app and the robot at the top.
   Widget _menu(Session s) {
     final tankers = s.canSee('Log Book') && s.machines.any((m) => m.onSite(s.today) && m.waterTanker);
-    const subs = {'issue': 'Issue diesel to machinery/vehicle', 'inward': 'Record diesel inward at site', 'transfer': 'Transfer between store/dispensers'};
+    final subs = {'issue': s.cardSite ? 'Fill a car – by its card or Cash' : 'Issue diesel to machinery/vehicle', 'inward': 'Record diesel inward at site', 'transfer': 'Transfer between store/dispensers'};
     final items = <(String, String, String, String, Color, String, VoidCallback)>[
-      for (final k in kKinds.where((k) => s.canSee(k.module)))
+      // (3.45.0, Mechanical update-164) a site on fuel cards keeps no stock: no Inward, no Transfer – and its page Fuel Cards
+      for (final k in kKinds.where((k) => s.canSee(k.module) && !(s.cardSite && k.key != 'issue')))
         (k.en, k.key == 'transfer' ? 'Diesel Transfer' : k.en, k.mr, subs[k.key] ?? '', k.soft, 'Diesel', () {
           setState(() {
             kind = k.key;
@@ -204,12 +206,13 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
           });
           _load();
         }),
+      if (s.cardSite && s.canSee('Fuel Cards')) ('Fuel Cards', 'Fuel Cards', 'फ्युएल कार्ड', 'The cards, their balance, payments and statement', C.amberSoft, 'Diesel', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen()))),
       if (s.canSee('Log Book')) ('Log Book', 'Log Book', 'लॉग बुक', 'Daily running & working hours', C.purpleSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()))),
       if (s.canSee('Breakdown')) ('Breakdown', 'Breakdown', 'ब्रेकडाऊन', 'Machinery working / breakdown', C.orangeSoft, 'Machinery', () => openBreakdown(context)),
       if (tankers) ('Tanker Trips', 'Tanker Trips', 'टँकर फेऱ्या', 'Water tanker trips & challans', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: s.today)))),
       if (s.hasModule('store')) ('Store', 'Store', 'स्टोअर', 'Items inward / outward', C.amberSoft, 'Store', () => openStore(context)),
     ];
-    const pics = {'Log Book': 'notebook', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package'};
+    const pics = {'Log Book': 'notebook', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package', 'Fuel Cards': 'ledger'};
     final groups = ['Diesel', 'Machinery', 'Log Book', 'Store'].where((g) => items.any((x) => x.$6 == g)).toList();
     final shown = group.isEmpty || !groups.contains(group) ? items : items.where((x) => x.$6 == group).toList();
     Widget chip(String g, String label) {
@@ -319,7 +322,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
-    if (kind.isEmpty || !s.canSee(kindOf(kind).module)) return _menu(s);
+    if (kind.isEmpty || !s.canSee(kindOf(kind).module) || (s.cardSite && kind != 'issue')) return _menu(s);
     final k = kindOf(kind);
     final list = _shown;
     final total = list.fold<num>(0, (a, r) => a + (asNum(r['qty']) ?? 0));
@@ -331,7 +334,16 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
         byFuel[f] = (byFuel[f] ?? 0) + (asNum(r['qty']) ?? 0);
       }
     }
-    final totalText = s.multiFuel ? [for (final e in byFuel.entries) '${e.key} ${fmtNum(e.value)} ${e.key == 'CNG' ? 'kg' : 'L'}'].join(' · ') : '${fmtNum(total)} L';
+    // (3.45.0, Mechanical update-164) a site on fuel cards: a fill's fuel is its car's; the ₹ of the day too
+    if (s.cardSite && k.key == 'issue') {
+      byFuel.clear();
+      for (final r in list) {
+        final f = s.machine('${r['no'] ?? ''}')?.fuel ?? 'Diesel';
+        byFuel[f] = (byFuel[f] ?? 0) + (asNum(r['qty']) ?? 0);
+      }
+    }
+    final rupees = s.cardSite && k.key == 'issue' ? ' · ₹ ${fmtNum(list.fold<num>(0, (a, r) => a + (asNum(r['amount']) ?? 0)))}' : '';
+    final totalText = (s.multiFuel ? [for (final e in byFuel.entries) '${e.key} ${fmtNum(e.value)} ${e.key == 'CNG' ? 'kg' : 'L'}'].join(' · ') : '${fmtNum(total)} L') + rupees;
     final today = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     final days = [for (var i = 0; i < 14; i++) today.subtract(Duration(days: i))];
     return Scaffold(
@@ -386,9 +398,10 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
                       PopupMenuItem(key: const Key('en-guide'), value: 'guide', child: Text('About this page')),
                       PopupMenuItem(key: const Key('en-find'), value: 'find', child: Text('All dates & Export')),
                       if (s.superAdmin && k.key == 'issue') PopupMenuItem(key: const Key('en-sdel'), value: 'sdel', child: Text('Delete entries – Super Admin')),
-                      if (s.canEdit(k.module) && k.key != 'inward') PopupMenuItem(key: const Key('en-many'), value: 'many', child: Text('Multiple entries')),
-                      if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-import'), value: 'import', child: Text('Import from Excel')),
-                      if (s.canEdit(k.module)) PopupMenuItem(key: const Key('en-template'), value: 'template', child: Text('Download template')),
+                      // (3.45.0) a site on fuel cards: one fill at a time (its card and ₹) – no many at once, no Excel
+                      if (s.canEdit(k.module) && k.key != 'inward' && !s.cardSite) PopupMenuItem(key: const Key('en-many'), value: 'many', child: Text('Multiple entries')),
+                      if (s.canEdit(k.module) && !s.cardSite) PopupMenuItem(key: const Key('en-import'), value: 'import', child: Text('Import from Excel')),
+                      if (s.canEdit(k.module) && !s.cardSite) PopupMenuItem(key: const Key('en-template'), value: 'template', child: Text('Download template')),
                     ],
                   ),
                 ]),
@@ -486,7 +499,9 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
 
 /// (3.44.0, Mechanical update-163) the unit of an entry: kg at a CNG place, L at the others (the place: the issue's source, the
 /// inward's location, the transfer's From)
-String unitOfEntry(Session s, String kindKey, Map r) => s.placeUnit('${kindKey == 'issue' ? r['source'] : kindKey == 'inward' ? r['location'] : r['from']}') == 'kg' ? 'kg' : 'L';
+String unitOfEntry(Session s, String kindKey, Map r) => s.cardSite && kindKey == 'issue'      // (3.45.0) a site on fuel cards: the car's fuel
+    ? (s.machine('${r['no'] ?? ''}')?.fuel == 'CNG' ? 'kg' : 'L')
+    : s.placeUnit('${kindKey == 'issue' ? r['source'] : kindKey == 'inward' ? r['location'] : r['from']}') == 'kg' ? 'kg' : 'L';
 
 /// One entry as a card (picture 2).
 class EntryCard extends StatelessWidget {
@@ -511,7 +526,7 @@ class EntryCard extends StatelessWidget {
   List<(IconData, String)> get _lines => switch (kind.key) {
         'issue' => [
             (Icons.receipt_long_outlined, '${r['id'] ?? ''}'),
-            (Icons.local_shipping_outlined, [r['type'], r['source']].where((e) => '${e ?? ''}'.isNotEmpty).join('  |  ')),
+            (Icons.local_shipping_outlined, [r['type'], if (asNum(r['amount']) != null) 'Paid by ${r['source']}' else r['source']].where((e) => '${e ?? ''}'.isNotEmpty).join('  |  ')),
             if ('${r['driver'] ?? ''}'.isNotEmpty) (Icons.person_outline_rounded, 'Operator: ${r['driver']}'),
           ],
         'inward' => [
@@ -561,7 +576,7 @@ class EntryCard extends StatelessWidget {
             Pill('${fmtNum(asNum(r['qty']))} $u', color: kind.color, bg: kind.soft, big: true),
             const SizedBox(height: 8),
             if ('${r['shift'] ?? ''}'.isNotEmpty) Text('${r['shift']} shift', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-            if (kind.key == 'inward' && asNum(r['amount']) != null) Text('₹ ${fmtNum(asNum(r['amount']))}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+            if ((kind.key == 'inward' || kind.key == 'issue') && asNum(r['amount']) != null) Text('₹ ${fmtNum(asNum(r['amount']))}', style: const TextStyle(fontSize: 12.5, color: C.muted)),      // (3.45.0: a card / cash fill too)
           ]),
         ]);
 
@@ -573,7 +588,8 @@ class EntryCard extends StatelessWidget {
       if (kind.key == 'issue') ...[
         ('Machinery', '${r['no'] ?? ''}'),
         ('Type / Owner', [r['type'], r['owner']].where((e) => '${e ?? ''}'.isNotEmpty).join(' · ')),
-        ('Diesel from', '${r['source'] ?? ''}'),
+        (asNum(r['amount']) != null ? 'Paid by' : 'Diesel from', '${r['source'] ?? ''}'),
+        ('Amount', asNum(r['amount']) != null ? '₹ ${fmtNum(asNum(r['amount']))}${asNum(r['rate']) != null ? ' (₹ ${fmtNum(asNum(r['rate']))} / $u)' : ''}' : ''),      // (3.45.0)
         ('Reading', [asNum(r['kmReading']) != null ? '${fmtNum(asNum(r['kmReading']))} km' : '', asNum(r['hrReading']) != null ? '${fmtNum(asNum(r['hrReading']))} hr' : '', '${r['meter'] ?? ''}'].where((e) => e.isNotEmpty).join(' · ')),
         ('Operator', '${r['driver'] ?? ''}'),
         ('Photos', (asNum(r['ph']) ?? 0) > 0 ? '${fmtNum(asNum(r['ph']))} of 4' : ''),

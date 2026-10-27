@@ -10,7 +10,7 @@
  *     (getBrief) and what is said aloud (aiSpeakable).
  * Proven against the web's own code: test/assistant_test.dart (fixtures/ai/web_ai.json – the web's functions run in node). */
 import 'format.dart' show asNum, showDate;
-import 'rdoc.dart' show fmt;
+import 'rdoc.dart' show fmt, money;
 import 'sheet_read.dart' show jsS, jsTrue;
 import 'web_help.dart';
 
@@ -193,6 +193,8 @@ class Assistant {
   List<String>? ownSources;
   /// (3.44.0, Mechanical update-163) the fuel of each diesel place: a fill is drafted from a place of the machinery's fuel
   Map<String, String> placeFuels = const {};
+  /// (3.45.0, Mechanical update-164) a site on fuel cards (HO): no diesel stock – the cards' balances; a fill is made in its form
+  bool cardSite = false;
   Map prefs;
   final bool Function(String module) canEdit;
   final bool Function(Map<String, dynamic> m)? onSite;
@@ -290,6 +292,9 @@ class Assistant {
 
   Future<Map<String, Object?>> runStock() async {
     final d = await _call('getStock');
+    if (cardSite) {
+      return {'onFuelCards': true, 'noDieselStock': true, 'cards': [for (final c in (d['cards'] is List ? d['cards'] as List : const []).whereType<Map>()) {'card': c['name'], 'balanceRupees': c['balance'], 'active': c['active'], 'lastFill': c['lastFill'] ?? ''}], 'page': 'cards'};
+    }
     return {'litresInStockNow': d['stock'], 'byLocation': d['byLoc'], 'receivedInAll': d['inward'], 'issuedInAll': d['issued'], 'page': 'dash'};
   }
 
@@ -568,8 +573,12 @@ class Assistant {
     AiReady('dieselY', const ['diesel', 'dash', 'inward', 'rp-daily'], () => aiL(const {'en': 'How much diesel was issued yesterday, and to whom?', 'mr': 'काल किती diesel दिले आणि कोणाला?', 'hi': 'कल कितना diesel दिया और किसे?'}),
         () => dieselDay(addDay(today, -1))),
     AiReady('dieselT', const ['diesel', 'dash'], () => aiL(const {'en': 'How much diesel was issued today, and to whom?', 'mr': 'आज किती diesel दिले आणि कोणाला?', 'hi': 'आज कितना diesel दिया और किसे?'}), () => dieselDay(today)),
-    AiReady('stock', const ['dash', 'diesel', 'inward', 'transfer'], () => aiL(const {'en': 'How much diesel is in stock now?', 'mr': 'आत्ता diesel stock किती आहे?', 'hi': 'अभी diesel stock कितना है?'}), () async {
+    AiReady('stock', const ['dash', 'diesel', 'inward', 'transfer', 'cards'], () => cardSite ? aiL(const {'en': 'How much is on the fuel cards now?', 'mr': 'आत्ता fuel cards वर किती शिल्लक आहे?', 'hi': 'अभी fuel cards पर कितना बकाया है?'}) : aiL(const {'en': 'How much diesel is in stock now?', 'mr': 'आत्ता diesel stock किती आहे?', 'hi': 'अभी diesel stock कितना है?'}), () async {
       final r = await runStock(), bl = r['byLocation'], tl = fmt(r['litresInStockNow']);
+      if (r['onFuelCards'] == true) {      // (3.45.0, update-164)
+        final l = [for (final c in (r['cards'] as List).whereType<Map>()) if (c['active'] != false) '${c['card']} ₹${money(c['balanceRupees'])}'];
+        return '${aiL(const {'en': 'This site is on fuel cards – no diesel stock. The cards now:', 'mr': 'ही site fuel cards वर आहे – diesel stock नाही. Cards ची शिल्लक:', 'hi': 'यह site fuel cards पर है – diesel stock नहीं। Cards का बकाया:'})}\n${l.isEmpty ? '–' : l.join(', ')}\n[[open:cards|Fuel Cards]]';
+      }
       final by = bl is Map ? jsKeys(bl.keys.map((k) => '$k')).map((k) => '$k ${fmt(bl[k])} L').join(', ') : '';
       return aiL({'en': 'Diesel in stock now: **$tl L**', 'mr': 'आत्ता diesel stock: **$tl L**', 'hi': 'अभी diesel stock: **$tl L**'}) + (by.isNotEmpty ? '\n$by' : '') + '\n[[open:dash|Dashboard]]';
     }),
@@ -734,6 +743,10 @@ class Assistant {
     if (date.compareTo(today) > 0) return AiDraft(error: aiL(const {'en': 'An entry cannot be made for a date after today.', 'mr': 'आजच्या नंतरच्या तारखेची entry करता येत नाही.', 'hi': 'आज के बाद की तारीख की entry नहीं हो सकती।'}));
     final sd = showDate(date);
     if (kind == 'diesel') {
+      // (3.45.0, update-164) a site on fuel cards: a fill needs its card or Cash, its ₹ and the photos – made in the form
+      if (cardSite) {
+        return AiDraft(error: '${aiL(const {'en': 'At this site a fill is entered in the Diesel Issue form – with its card or Cash, the Amount (₹) and the photos.', 'mr': 'या site वर fill Diesel Issue form मध्ये भरा – card किंवा Cash, Amount (₹) आणि photos सह.', 'hi': 'इस site पर fill Diesel Issue form में भरें – card या Cash, Amount (₹) और photos के साथ।'})} [[open:diesel|Diesel Issue]]');
+      }
       final qty = aiN(a['litres']);
       if (!(qty is num && qty > 0)) return AiDraft(need: aiL({'en': 'How many litres for $id?', 'mr': '$id ला किती लिटर?', 'hi': '$id को कितने लीटर?'}), partial: AiCmd(kind, {...a, 'machinery': id}));
       final shift = _ri('night').hasMatch(a['shift'] == null ? '' : js(a['shift'])) ? 'Night' : 'Day';
@@ -1042,10 +1055,11 @@ class Assistant {
     return _snap = {
       'asOf': '${two(t.hour)}:${two(t.minute)}:${two(t.second)}', 'today': today, 'yesterday': yest, 'dieselIssuedToday': slim(r[0]), 'dieselIssuedYesterday': slim(r[1]),
       'pendingLogBookToday': r[2]['notAllowed'] == null ? {'machinery': r[2]['machineryWithoutLogBook'], 'names': ((r[2]['machinery'] as List?) ?? const []).take(40).toList()} : r[2],
-      'dieselStockNow': r[3]['notAllowed'] == null ? {'litres': r[3]['litresInStockNow'], 'byLocation': r[3]['byLocation']} : r[3],
+      'dieselStockNow': r[3]['notAllowed'] == null ? (r[3]['onFuelCards'] == true ? {'onFuelCards': true, 'cards': r[3]['cards']} : {'litres': r[3]['litresInStockNow'], 'byLocation': r[3]['byLocation']}) : r[3],
     };
   }
 
   /// Marathi / Hindi digits as a phone keyboard or the listening writes them (८५११ → 8511).
   static String westernDigits(String s) => s.replaceAllMapped(RegExp('[०-९]'), (m) => '${'०१२३४५६७८९'.indexOf(m[0]!)}');
 }
+

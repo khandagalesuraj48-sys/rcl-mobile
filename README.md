@@ -15,6 +15,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.45.0 (27-10-2026 – "ho madhe diesel stock hot nahi ek card dilelel aahet … card cha opening balance takel nantr apli
+system auto amount debit dakhwel", with Mechanical update-164):** a site on **fuel cards** (HO – the Super Admin, Portal → Sites →
+Diesel places → "Fuel cards – no stock"; Mechanical tells it in `getInit` as `fuelMode: 'card'`) keeps **no diesel stock**: Home shows
+every Active card's balance (opening + payments onto it − the fills paid by it; a card short of money in red) in place of the stock;
+Entries has Diesel Issue and **Fuel Cards** – no Inward, no Transfer, no "Multiple entries" / Excel; a **Diesel Issue** is paid by one
+of the car's cards (its balance shown, the balance after the fill – short is still saved, in red) or **Cash**, with its **Amount (₹)**
+and rate (₹ read from the dispenser photo); no Register photo. The page **Fuel Cards** (its own screen, `screens/fuel_cards.dart`):
+the cards (name, kind, last 4 digits only, opening balance and date, cars – none = every car, Active), the payments / recharges onto
+a card with receipt photos, a card's statement. The **Dashboard** at such a site: the cards' balances and each car – KM, fuel and ₹
+(by card / cash), average, last fill (`getCardDash`); Reports → Overview's cost is the ₹ of the fills; no stock reports. The
+assistant: a fill is made in its form; the stock question gives the cards. `Session.cardSite` / `cards` / `card` / `payFor` / `kCash`,
+`FuelCard`. Every other site (VTR, 18B) exactly as before. The web's help and words taken again.
+
 **Version 3.44.0 (26-10-2026 – "petrol cng he field banaw ani ha electric ha pn thew future madhe ya gadya pn yenar aahet", with
 Mechanical update-163):** **fuel** – every machinery has one (Asset Master → **Fuel**: Diesel / Petrol / CNG / Electric; none =
 Diesel – also "Multiple machinery", the Excel import, its card and details) and every diesel place holds one (the Super Admin, Portal

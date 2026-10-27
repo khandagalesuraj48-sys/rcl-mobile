@@ -286,8 +286,10 @@ double? byWord(List<OcrLine> lines, List<OcrNum> ns, RegExp w, {double min = 0, 
 }
 
 class PumpRead {
-  const PumpRead(this.litres, this.check, {this.sure = false});
+  const PumpRead(this.litres, this.check, {this.sure = false, this.amount});
   final double? litres;
+  /// (3.45.0, Mechanical update-164) the ₹ of the fill on the display (a site on fuel cards puts it in its Amount box)
+  final double? amount;
   final String check;
   /// (3.29.0) litres × rate = amount agreed: the surest read
   final bool sure;
@@ -297,13 +299,13 @@ class PumpRead {
 PumpRead pumpFrom(List<OcrLine> lines) {
   final ns = numbersOf(lines);
   final t = tripleOf(lines, ns, rateMin: 50, rateMax: 200, qtyMax: 2000);
-  if (t != null) return PumpRead(_r2(t.qty), '', sure: true);
+  if (t != null) return PumpRead(_r2(t.qty), '', sure: true, amount: _r2(t.amount));
   final l = byWord(lines, ns, _litreWord, min: .1, max: 2000, not: _counterWord);
-  if (l != null) return PumpRead(_r2(l), '');
   final r = byWord(lines, ns, _rateWord, min: 50, max: 200), a = byWord(lines, ns, _amountWord, min: 1, not: _counterWord);
+  if (l != null) return PumpRead(_r2(l), '', amount: a == null ? null : _r2(a));
   if (r != null && a != null && a > r) {
     final q = _r2(a / r);
-    if (q > 0 && q <= 2000) return PumpRead(q, '');
+    if (q > 0 && q <= 2000) return PumpRead(q, '', amount: _r2(a));
   }
   return const PumpRead(null, '');
 }

@@ -21,6 +21,19 @@ class FakeServer {
   /// (3.44.0, Mechanical update-163) a site with a place per fuel card (HO): DIESEL CARD, PETROL CARD, PETROL CAN, CNG CARD with their
   /// fuel (getInit's placeFuels), and a Petrol, a CNG and an Electric car
   bool fuels = false;
+  /// (3.45.0, Mechanical update-164) a site on FUEL CARDS (HO): no diesel places, no stock – the cards with their balances (with the
+  /// stock), a fill paid by a card or in Cash with its ₹; the cars of [fuels] (Petrol, CNG, Electric) are there too
+  bool card = false;
+  final cards = <Map<String, dynamic>>[
+    {'name': 'HDFC FUEL', 'last4': '4321', 'type': 'Fuel card', 'cars': <String>[], 'opening': 20000, 'openDate': '2026-10-01', 'active': true, 'paid': 5000, 'spent': 3200, 'balance': 21800, 'fills': 2, 'payments': 1, 'lastFill': '2026-10-13', 'used': true},
+    {'name': 'SBI CREDIT', 'last4': '9876', 'type': 'Credit card', 'cars': ['MH-12-HO-1163'], 'opening': 1000, 'openDate': '2026-10-01', 'active': true, 'paid': 0, 'spent': 1500, 'balance': -500, 'fills': 1, 'payments': 0, 'lastFill': '2026-10-12', 'used': true},
+    {'name': 'OLD CARD', 'last4': '1111', 'type': 'Debit card', 'cars': <String>[], 'opening': 0, 'openDate': '2026-09-01', 'active': false, 'paid': 0, 'spent': 0, 'balance': 0, 'fills': 0, 'payments': 0, 'lastFill': '', 'used': false},
+  ];
+  final cardCalls = <Map<String, dynamic>>[];
+  final cardPays = <Map<String, dynamic>>[
+    {'id': 'CP-000001', 'date': '2026-10-05', 'card': 'HDFC FUEL', 'amount': 5000, 'ref': 'UTR 1234', 'remark': 'recharge', 'photos': 1, 'enteredBy': 'Sujit Mule', 'updatedBy': ''},
+  ];
+  Map<String, dynamic> get cardStock => {'stock': 0, 'byLoc': <String, dynamic>{}, 'cards': cards};
   final issueBal = <List>[];
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
@@ -121,7 +134,7 @@ class FakeServer {
   ];
   List<Map<String, dynamic>> get _master => [
         ...master,
-        if (fuels) ...[
+        if (fuels || card) ...[
           {'id': 'MH-12-HO-1163', 'no': 'MH-12-HO-1163', 'name': 'Hycross', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': 23, 'fuel': 'Petrol'},
           {'id': 'MH-12-HO-2163', 'no': 'MH-12-HO-2163', 'name': 'Ertiga', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': 25, 'fuel': 'CNG'},
           {'id': 'MH-12-HO-3163', 'no': 'MH-12-HO-3163', 'name': 'Nexon EV', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'supply': 'Company', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM', 'kmStd': '', 'fuel': 'Electric'},
@@ -670,7 +683,7 @@ class FakeServer {
         expireOnce = '';
         return _j({'error': 'SESSION_EXPIRED'}, 401);
       }
-      final stock = fuels ? {'stock': 302, 'byLoc': {'DIESEL CARD': 150, 'PETROL CARD': 100, 'PETROL CAN': 20, 'CNG CARD': 32}, 'byFuel': {'Diesel': 150, 'Petrol': 120, 'CNG': 32}} : {'stock': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}};
+      final stock = card ? cardStock : fuels ? {'stock': 302, 'byLoc': {'DIESEL CARD': 150, 'PETROL CARD': 100, 'PETROL CAN': 20, 'CNG CARD': 32}, 'byFuel': {'Diesel': 150, 'Petrol': 120, 'CNG': 32}} : {'stock': 1133, 'byLoc': {'Dispenser': 813, 'VTR Store': 320}};
       const lockMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: this machinery is in the submitted RA Bill 9 of Rana (RCL, 01-10-2026 to 14-10-2026) – its Log Book and diesel entries of those dates cannot be added, changed or deleted without the Super Admin.';
       const apMsg = 'Log Book entry of MH-25-AJ-2169 on 14-10-2026: it was approved on 14-10-2026 by Checker One (VF-00003) – an approved entry cannot be changed or deleted without the Super Admin. To correct it: change the entry and send it to the Super Admin for approval (the page asks) – it is saved only when he approves.';
       if (apLock && !superAdmin && action == 'updateLogRow') return _j({'error': apMsg}, 500);
@@ -845,8 +858,9 @@ class FakeServer {
         case 'getStock':
           return _j({'result': stock});
         case 'getInit':
-          return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': fuels ? ['DIESEL CARD', 'PETROL CARD', 'PETROL CAN', 'CNG CARD'] : ['Dispenser', 'VTR Store'],
-            if (fuels) 'placeFuels': {'DIESEL CARD': 'Diesel', 'PETROL CARD': 'Petrol', 'PETROL CAN': 'Petrol', 'CNG CARD': 'CNG'}, 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
+          return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': card ? <String>[] : fuels ? ['DIESEL CARD', 'PETROL CARD', 'PETROL CAN', 'CNG CARD'] : ['Dispenser', 'VTR Store'],
+            if (card) ...{'fuelMode': 'card', 'siteFuels': ['Diesel', 'Petrol', 'CNG']},
+            if (fuels && !card) 'placeFuels': {'DIESEL CARD': 'Diesel', 'PETROL CARD': 'Petrol', 'PETROL CAN': 'Petrol', 'CNG CARD': 'CNG'}, 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
             'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc},
             'master': _master, 'ai': {'on': aiOn}}});
         // (3.4.0) the masters
@@ -1289,8 +1303,61 @@ class FakeServer {
           return _j({'result': {'balance': 813, 'available': 813, 'loc': 'Dispenser'}});
         case 'dieselPhoto':
           return _j({'result': {'ok': true, 'kind': (a[0] as Map)['kind'], 'path': '2026-10/00000000-0000-0000-0000-000000000001.jpg'}});
+        // (3.45.0, Mechanical update-164) the fuel cards
+        case 'getCards':
+          return _j({'result': {'mode': card ? 'card' : 'stock', 'types': ['Fuel card', 'Credit card', 'Debit card'], 'cards': card ? cards : []}});
+        case 'getCardPayments':
+          cardCalls.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'count': cardPays.length, 'total': cardPays.fold<num>(0, (t, x) => t + (x['amount'] as num)), 'rows': cardPays}});
+        case 'saveCard':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          cardCalls.add({'fn': action, 'x': x});
+          final i = cards.indexWhere((c) => c['name'] == (x['was'] ?? x['name']));
+          final c = {'cars': <String>[], 'paid': 0, 'spent': 0, 'fills': 0, 'payments': 0, 'lastFill': '', 'used': false, ...(i < 0 ? <String, dynamic>{} : cards[i]), ...x}..remove('was');
+          c['balance'] = (c['opening'] as num? ?? 0) + (c['paid'] as num) - (c['spent'] as num);
+          if (i < 0) { cards.add(c); } else { cards[i] = c; }
+          return _j({'result': {'ok': true, 'added': i < 0, 'name': x['name'], 'summary': '${i < 0 ? 'Fuel card added: ' : 'Fuel card changed: '}${x['name']}', 'changes': '', 'cards': cards, 'stock': cardStock}});
+        case 'saveCardPayment' || 'updateCardPayment':
+          final x = ((action == 'saveCardPayment' ? a[0] : a[1]) as Map).cast<String, dynamic>();
+          cardCalls.add({'fn': action, if (action == 'updateCardPayment') 'id': a[0], 'x': x});
+          final c = cards.firstWhere((c) => c['name'] == x['card']);
+          if (action == 'saveCardPayment') {
+            c['paid'] = (c['paid'] as num) + (x['amount'] as num);
+            c['balance'] = (c['balance'] as num) + (x['amount'] as num);
+          }
+          return _j({'result': {'ok': true, 'id': action == 'saveCardPayment' ? 'CP-000002' : a[0], 'cards': cards, 'stock': cardStock}});
+        case 'deleteCardPayment':
+          cardCalls.add({'fn': action, 'id': a[0]});
+          return _j({'result': {'ok': true, 'cards': cards, 'stock': cardStock}});
+        case 'cardPhoto':
+          cardCalls.add({'fn': action});
+          return _j({'result': {'ok': true, 'path': '2026-10/00000000-0000-0000-0000-00000000c001.jpg'}});
+        case 'getCardPayPhotos':
+          return _j({'result': {'id': a[0], 'photos': []}});
+        case 'cardStatement':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          cardCalls.add({'fn': action, 'x': x});
+          return _j({'result': {'card': x['card'], 'type': 'Fuel card', 'last4': '4321', 'openDate': '2026-10-01', 'from': '2026-10-01', 'to': '2026-10-14', 'opening': 20000, 'paid': 5000, 'spent': 3200, 'closing': 21800,
+            'lines': [
+              {'date': '2026-10-05', 'kind': 'Payment', 'id': 'CP-000001', 'in': 5000, 'out': 0, 'note': 'UTR 1234 – recharge', 'balance': 25000},
+              {'date': '2026-10-13', 'kind': 'Fill', 'id': 'DI-000530', 'no': 'MH-12-HO-1163', 'qty': 30, 'unit': 'Ltr', 'driver': 'Gupta', 'km': 45210, 'out': 3200, 'in': 0, 'note': '', 'balance': 21800},
+            ]}});
+        case 'getCardDash':
+          cardCalls.add({'fn': action, 'x': a[0]});
+          return _j({'result': {'from': '2026-10-01', 'to': '2026-10-14', 'today': '2026-10-14', 'cards': cards,
+            'cars': [
+              {'no': 'MH-12-HO-1163', 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr', 'std': 23, 'km': 690, 'qty': 30, 'amount': 3200, 'card': 3200, 'cash': 0, 'fills': 1, 'avg': 23, 'last': {'date': '2026-10-13', 'qty': 30, 'amount': 3200, 'km': 45210, 'paidBy': 'HDFC FUEL'}},
+              {'no': 'MH-12-HO-2163', 'name': 'Ertiga', 'type': 'Car', 'fuel': 'CNG', 'unit': 'kg', 'std': 25, 'km': 300, 'qty': 12, 'amount': 1100, 'card': 0, 'cash': 1100, 'fills': 1, 'avg': 25, 'last': {'date': '2026-10-12', 'qty': 12, 'amount': 1100, 'km': 30100, 'paidBy': 'Cash'}},
+            ],
+            'total': {'byFuel': {'Petrol': 30, 'CNG': 12}, 'amount': 4300, 'card': 3200, 'cash': 1100, 'fills': 2, 'km': 990, 'cars': 2}}});
         case 'saveDieselIssue':
           final d = (a[0] as Map).cast<String, dynamic>();
+          if (card) {
+            saved.add(d);
+            final c = cards.where((c) => c['name'] == d['source']).firstOrNull;
+            if (c != null) c['balance'] = (c['balance'] as num) - (d['amount'] as num);
+            return _j({'result': {'ok': true, 'id': 'DI-000531', 'stock': cardStock}});
+          }
           if (d['force'] != true && (d['hrReading'] ?? '') == 1) return _j({'result': {'ok': false, 'warning': 'The Hrs reading 1 is lower than the last one (4,700). Save anyway?'}});
           saved.add(d);
           return _j({'result': {'ok': true, 'id': 'DI-000526', 'stock': {'stock': 1133 - (d['qty'] as num), 'byLoc': {'Dispenser': 813 - (d['qty'] as num), 'VTR Store': 320}}}});
