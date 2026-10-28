@@ -177,6 +177,19 @@ void main() {
       expect(bankText({}), '–');
     });
 
+    test('(3.57.0) a Material Supplier (the Store\'s import): the Type filter; kept out of the lists unless it has machinery or a BOQ', () {
+      final m = [
+        {'name': 'A', 'type': 'Material Supplier', 'machines': [], 'boqs': 0},
+        {'name': 'B', 'type': 'Material Supplier', 'machines': [{'id': 'X'}], 'boqs': 0},
+        {'name': 'D', 'type': 'Material Supplier', 'machines': [], 'boqs': 2},
+        {'name': 'C', 'type': '', 'machines': [], 'boqs': 0},
+      ];
+      expect(vendorsShown(m, '', '', ty: 'mat').map((v) => v['name']), ['A', 'B', 'D']);
+      expect(vendorsShown(m, '', '', ty: 'bill').map((v) => v['name']), ['C']);
+      expect(vendorsShown(m, '', '').length, 4);
+      expect(m.where((v) => !vendorMatOnly(v)).map((v) => v['name']), ['B', 'D', 'C']);
+    });
+
     test('A GST number: its check letter, State, the PAN inside it; a mistyped one is caught', () {
       final g14 = '27ABCDE1234F1Z';
       final g = g14 + gstCheckLetter(g14);

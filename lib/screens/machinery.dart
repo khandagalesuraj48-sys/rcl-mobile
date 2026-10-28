@@ -14,6 +14,7 @@ import '../core/assets.dart';
 import '../core/format.dart';
 import '../core/imports.dart' show onSiteOn;
 import '../core/lb_io.dart' show localeCmp;
+import '../core/masters.dart' show vendorMatOnly;
 import '../core/more_imports.dart' show kQrPerPage, masterImportRows, qrLabelsHtml, qrPrintHtml, qrSub;
 import '../core/session.dart';
 import '../core/sheet_read.dart' show readSheets, SheetError;
@@ -35,7 +36,7 @@ Future<void> openAssetMaster(BuildContext context) => Navigator.of(context).push
 Future<List<String>> vendorNames(Session s) async {
   try {
     final r = await s.api.call('getVendors');
-    return {for (final v in (r as List? ?? const []).whereType<Map>()) '${v['name'] ?? ''}'}.where((n) => n.isNotEmpty).toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return {for (final v in (r as List? ?? const []).whereType<Map>()) if (!vendorMatOnly(v)) '${v['name'] ?? ''}'}.where((n) => n.isNotEmpty).toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase())); // (3.57.0) not a material supplier
   } catch (_) {
     return [];
   }
@@ -503,7 +504,7 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
     await _run('mkvend', () async {
       final res = (await s.api.call('vendorsFromOwners', [names], true) as Map).cast<String, dynamic>();
       if (!mounted) return;
-      setState(() => vendors = {for (final v in (res['vendors'] as List? ?? const []).whereType<Map>()) '${v['name']}'}.toList()..sort());
+      setState(() => vendors = {for (final v in (res['vendors'] as List? ?? const []).whereType<Map>()) if (!vendorMatOnly(v)) '${v['name']}'}.toList()..sort());
       toast(context, '${res['count']} vendors created.');
     });
   }

@@ -2,7 +2,7 @@
  * pages a person has, the numbers as the web writes them, a report as a table (Excel / print), his GRN / Issue registers read from
  * his Excel, the requirement filters. */
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rcl_mobile/core/sheet_read.dart' show SheetTab, SheetError;
+import 'package:rcl_mobile/core/sheet_read.dart' show SheetTab;
 import 'package:rcl_mobile/screens/store_work.dart';
 
 void main() {
@@ -43,20 +43,10 @@ void main() {
     expect(storeRepDoc({'title': 'Stock statement (day / month / period) of every item', 'cols': [], 'rows': []}).tables.single.sheet.length, 31);
   });
 
-  test('his GRN register read (the web\'s importFile): the heading row found by "Material", his columns, a date of Excel as a date', () {
-    final rows = storeDocRows('grn', [
-      SheetTab('INWARD', [
-        ['RCL – VTR', '', '', ''],
-        ['GRN No', 'GRN Date', 'Invoice No.', 'Supplier Name', 'Material Description', 'Received Qty', 'UOM', 'Basic Rate', 'GST %', 'TCS'],
-        [11, 46309, 'INV-1', 'Shri Traders', 'Sugar', 5, 'Kg', 100, 5, ''],
-        ['', '', '', '', 'Hose', '', '', '', '', ''],
-        [12, '14-10-2026', '', 'Shri Traders', 'Hose', 2.5, 'Mtr', 300, 18, 10],
-      ]),
-    ]);
-    expect(rows.length, 2, reason: 'a row without its quantity is left out');
-    expect([rows[0]['line'], rows[0]['ref'], rows[0]['date'], rows[0]['party'], rows[0]['item'], rows[0]['qty'], rows[0]['rate'], rows[0]['gst_pct']], [3, '11', '2026-10-14', 'Shri Traders', 'Sugar', '5', '100', '5']);
-    expect([rows[1]['line'], rows[1]['date'], rows[1]['qty'], rows[1]['tcs']], [5, '14-10-2026', '2.5', '10']);
-    expect(() => storeDocRows('grn', [SheetTab('x', [['a', 'b']])]), throwsA(isA<SheetError>()));
+  test('(3.57.0) the GRN\'s Import format: his inward register\'s columns (the register\'s import reads them – core/grn_reg.dart)', () {
+    expect(kDocImpHead['grn'], ['Sr No', 'GRN No', 'GRN Date', 'Challan No', 'Invoice No.', 'Invoice Date', 'Vehicle No', 'Supplier Name', 'Material Description', 'Received Qty', 'UOM', 'Basic Rate', 'Taxable Amount', 'GST Amount', 'TCS', 'Gross Amount', 'Remark']);
+    expect(grnRef({'no': 1000000003, 'ref': '342-A'}), '342-A');
+    expect(grnRef({'no': 12, 'ref': null}), '12');
   });
 
   test('his Issue register read: the sub-contractor, else the party; the machinery, the returnable mark', () {

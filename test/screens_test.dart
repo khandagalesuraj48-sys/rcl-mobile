@@ -36,6 +36,8 @@ import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
 import 'package:rcl_mobile/screens/pend_print.dart' show PendPrintScreen;
+import 'package:rcl_mobile/screens/machinery.dart' show vendorNames;
+import 'package:rcl_mobile/core/grn_reg.dart';
 
 import 'fake_rtc.dart';
 import 'lock_test.dart' show FakeGate;
@@ -1314,6 +1316,41 @@ void main() {
     expect(find.text('Vendor saved: Shree Ganesh Transport'), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('(3.57.0) Vendor Master: a Material Supplier (the Store\'s import) – marked, the Type filter, its type in the form; not offered for an asset\'s owner or a BOQ', (t) async {
+    phone(t);
+    final srv = editor();
+    srv.vendors.add({'name': 'Om Hardware Bhiwandi', 'type': 'Material Supplier', 'saved': true, 'complete': false, 'machines': [], 'boqs': 0, 'gstReg': 'No', 'ver': 'v1'});
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vendor Master');
+    expect(find.textContaining('material suppliers: 1'), findsOneWidget);
+    await tapK(t, 'vt-mat');
+    await settle(t, 300);
+    expect(find.text('I E Enterprises'), findsNothing);
+    expect(find.text('Om Hardware Bhiwandi'), findsOneWidget);
+    expect(find.byKey(const Key('vms-Om Hardware Bhiwandi')), findsOneWidget, reason: 'marked Material Supplier');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/67_vendors_material.png'));
+    await tapK(t, 'vt-bill');
+    await settle(t, 300);
+    expect(find.text('Om Hardware Bhiwandi'), findsNothing);
+    expect(find.text('I E Enterprises'), findsOneWidget);
+    await tapK(t, 'vt-mat');
+    await settle(t, 300);
+    await tapK(t, 've-Om Hardware Bhiwandi');
+    await net(t);
+    expect(find.byKey(const Key('vf-type')), findsOneWidget);
+    expect(find.text('Material Supplier (Store)'), findsOneWidget);
+    await t.enterText(box('vf-pan'), 'ABCDE1234F');
+    await tapK(t, 'vf-save');
+    await net(t);
+    final v = srv.masterCalls.last['v'] as Map;
+    expect((v['name'], v['type'], v['pan']), ('Om Hardware Bhiwandi', 'Material Supplier', 'ABCDE1234F'));
+    // not offered: the owner of an asset, a BOQ (the server's parties list leaves it out too)
+    final names = await vendorNames(s);
+    expect(names, isNot(contains('Om Hardware Bhiwandi')));
+    expect(names, contains('I E Enterprises'));
+  }, tags: ['golden']);
+
   testWidgets('(3.4.0) Vendor BOQ: the list; a new BOQ – the vendor\'s machinery ticked, Per Trip with a Night trip rate – saveBoq', (t) async {
     phone(t);
     final srv = editor();
@@ -2208,6 +2245,121 @@ void main() {
     expect(find.textContaining('PO 2 of S1 saved'), findsOneWidget);
   });
 
+  testWidgets('(3.57.0) Store – Inward (GRN): his inward register – the check (a row corrected, a duplicate deleted, the AI\'s names ticked), Import in parts; the list in his columns', (t) async {
+    final srv = await openStoreWork(t);
+    final bytes = File('test/fixtures/sheets/grn_reg.xlsx').readAsBytesSync(), was = pickSheetFile;
+    pickSheetFile = () async => (name: 'INWARD_test.xlsx', bytes: bytes);
+    addTearDown(() => pickSheetFile = was);
+    // what the check must show (core/grn_reg.dart – proven against the web's code in grn_reg_test.dart), with the Store's side as the fake's
+    final rows = grnReadRows(grnPickSheet(readSheets(bytes))!), info0 = <String, dynamic>{'items': [], 'vendors': [], 'grns': [], 'next': 1};
+    final p0 = grnPlan(rows, info0, GrnChoice(), '2026-10-28');
+    Finder tileHas(String k, String v) => find.descendant(of: find.byKey(Key(k)), matching: find.text(v));
+    final regList = find.descendant(of: find.byKey(const Key('rg-list')), matching: find.byType(Scrollable)).first;
+    Future<void> top() async {
+      await t.drag(find.byKey(const Key('rg-list')), const Offset(0, 9000));
+      await settle(t, 600);
+    }
+
+    Future<void> downTo(Finder f, String what) async {
+      for (var i = 0; i < 80 && f.evaluate().isEmpty; i++) {
+        await t.drag(regList, const Offset(0, -300));
+        await t.pump(const Duration(milliseconds: 50));
+      }
+      expect(f, findsOneWidget, reason: 'scrolled down to $what');
+      await t.ensureVisible(f);
+      await settle(t, 300);
+    }
+
+    Future<void> down(String k) => downTo(find.byKey(Key(k)), '"$k"');
+
+    await tapK(t, 'sw-grn');
+    await net(t);
+    // the list in his columns: the GRN No as in the file, Challan No, Invoice No., TCS, the line's Taxable / GST / Gross / Remark
+    expect(find.textContaining('GRN 342-A · 13-10-2026'), findsOneWidget);
+    expect(find.textContaining('Challan No CH-5 · Invoice No. OH-77 · Invoice Date 12-10-2026 · Vehicle No MH04AB1234 · TCS ₹12.50'), findsOneWidget);
+    expect(find.textContaining('Taxable ₹1,000.00 · GST ₹180.00 · Gross ₹1,180.00 · Mechanical'), findsOneWidget);
+    await tapK(t, 'gr-imp');
+    await net(t);
+    expect(find.byKey(const Key('rg-list')), findsOneWidget);
+    expect(find.textContaining('sheet "MAIN SHEET INWARD1" – ${rows.length} rows (the other sheets – Summary, Binding Wire – are not the register)'), findsOneWidget);
+    expect(tileHas('rg-t-docs', '${(p0['docs'] as List).length}'), findsOneWidget);
+    expect(tileHas('rg-t-look', '${(p0['look'] as List).length}'), findsOneWidget);
+    expect(tileHas('rg-t-dups', '${(p0['dups'] as List).length}'), findsOneWidget);
+    expect(tileHas('rg-t-next', '${p0['next']}'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/68_grn_reg_check.png'));
+    // a row to look at: its quantity typed – the row goes in
+    final two = (p0['look'] as List).cast<Map>().firstWhere((l) => l['qty'] == 'two');
+    await tapK(t, 'rg-lke-${two['line']}');
+    await settle(t, 600);
+    expect(find.byKey(const Key('rge-ok')), findsOneWidget, reason: 'the row\'s box is open');
+    await t.enterText(box('rge-qty'), '2');
+    await settle(t, 300);
+    expect(t.widget<TextField>(box('rge-qty')).controller!.text, '2');
+    await tapK(t, 'rge-ok');
+    await settle(t, 800);
+    String texts(String k) => t.widgetList<Text>(find.descendant(of: find.byKey(Key(k)), matching: find.byType(Text))).map((x) => x.data).join(' | ');
+    expect(find.byKey(const Key('rge-ok')), findsNothing, reason: 'the row\'s box is closed by "Check this row again"');
+    expect(find.byKey(Key('rg-lk-${two['line']}')), findsNothing, reason: 'the row corrected is no longer to look at – GRNs tile: ${texts('rg-t-docs')} · look tile: ${texts('rg-t-look')}');
+    // (the list is built as it is scrolled: the tiles are at its top, the sections below)
+    await top();
+    expect(tileHas('rg-t-docs', '${(p0['docs'] as List).length + 1}'), findsOneWidget, reason: texts('rg-t-docs'));
+    expect(tileHas('rg-t-look', '${(p0['look'] as List).length - 1}'), findsOneWidget);
+    // a duplicate deleted (the others kept)
+    final d0 = ((p0['dups'] as List).first as Map)['line'];
+    await down('rg-dup-$d0');
+    await tapK(t, 'rg-dup-$d0');
+    await settle(t, 600);
+    await top();
+    expect(find.textContaining('${(p0['dups'] as List).length - 1} kept (imported) · 1 deleted'), findsOneWidget);
+    // the AI (its part opened): the names written differently, none ticked until he ticks; "✓ all" – the items written in two ways one item
+    final aiPart = find.byKey(const PageStorageKey<String>('rg-s-ai'));
+    await downTo(aiPart, 'the AI\'s part');
+    await t.tap(aiPart);
+    await settle(t, 600);
+    await down('rg-ai');
+    await tapK(t, 'rg-ai');
+    await net(t, 2500);
+    await net(t, 1500);
+    expect(sent(srv, 'regNames').map((x) => x['list']).toSet(), {'supplier', 'item', 'category'});
+    await down('rg-ai-item-Air Fliter 16 No');
+    expect(find.byKey(const Key('rg-ai-item-Air Fliter 16 No')), findsOneWidget);
+    expect(t.widget<CheckboxListTile>(find.byKey(const Key('rg-ai-item-Air Fliter 16 No'))).value, false);
+    final fixed = {
+      for (final n in grnNamesOf(rows)['item']!.keys)
+        if (RegExp('Hydrolic|Fliter|Bindding').hasMatch(n)) n: n.replaceAll('Hydrolic', 'Hydraulic').replaceAll('Fliter', 'Filter').replaceAll('Bindding', 'Binding'),
+    };
+    final ch = GrnChoice(gone: {d0 as int: true}, edit: {two['line'] as int: {'qty': '2'}});
+    final before = (grnPlan(rows, info0, ch, '2026-10-28')['newItems'] as List).length;
+    ch.fix['item'] = fixed;
+    final after = (grnPlan(rows, info0, ch, '2026-10-28')['newItems'] as List).length;
+    expect(after, lessThan(before));
+    await top();
+    await down('rg-aiall-item');
+    await tapK(t, 'rg-aiall-item');
+    await settle(t, 800);
+    await down('rg-ai-item-Air Fliter 16 No');
+    expect(t.widget<CheckboxListTile>(find.byKey(const Key('rg-ai-item-Air Fliter 16 No'))).value, true);
+    await top();
+    expect(tileHas('rg-t-items', '$after'), findsOneWidget, reason: 'the items written in two ways one item once ticked');
+    // Import: asked first, then the parts – suppliers, items, GRNs (the file's GRN No)
+    await tapK(t, 'rg-go');
+    await settle(t, 800);
+    expect(find.textContaining('the next new GRN: ${p0['next']}'), findsOneWidget);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t, 2500);
+    final docsSent = [for (final x in sent(srv, 'regGrns')) ...(x['docs'] as List)];
+    expect(docsSent.length, (p0['docs'] as List).length + 1);
+    expect(docsSent.any((d) => (d as Map)['ref'] == '342-A'), true);
+    expect([sent(srv, 'regVendors').length, sent(srv, 'regItems').length], [1, 1]);
+    await top();
+    expect(find.textContaining('${docsSent.length} GRN saved'), findsOneWidget);
+    expect(tileHas('rg-t-docs', '0'), findsOneWidget, reason: 'the check again: every GRN already in the Store');
+    expect(tileHas('rg-t-have', '${docsSent.length}'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/69_grn_reg_done.png'));
+  }, tags: ['golden']);
+
   testWidgets('(3.55.0) Store – Inward (GRN) against a PO (its lines still to come; more than it asked first); Issue to a machinery; a Return', (t) async {
     final srv = await openStoreWork(t);
     await tapK(t, 'sw-grn');
@@ -2215,6 +2367,14 @@ void main() {
     expect(find.byKey(const Key('gr-4')), findsOneWidget);
     await tapK(t, 'gr-new');
     await net(t);
+    // (as the web's GRN form) Clear: asked first, the form empty again
+    await t.enterText(box('grf-sup'), 'Someone Typed');
+    await tapK(t, 'grf-clear');
+    await settle(t, 600);
+    expect(find.text('Clear the form?'), findsOneWidget);
+    await t.tap(find.widgetWithText(FilledButton, 'Clear'));
+    await settle(t, 600);
+    expect(t.widget<TextField>(box('grf-sup')).controller!.text, '');
     await tapK(t, 'grf-po');
     await settle(t, 600);
     await t.tap(find.textContaining('PO 1 – Shri Traders').last);
@@ -2229,7 +2389,7 @@ void main() {
     await t.tap(find.text('Take it in'));
     await net(t);
     final gs = sent(srv, 'grnSave');
-    expect([gs.length, gs.last['confirmOver'], (gs.last['grn'] as Map)['po_no'], ((gs.last['grn'] as Map)['lines'] as List).single], [2, true, 1, {'code': 'ITM-0002', 'qty': '20', 'rate': '100', 'gst_pct': '5', 'po_line': 1}]);
+    expect([gs.length, gs.last['confirmOver'], (gs.last['grn'] as Map)['po_no'], ((gs.last['grn'] as Map)['lines'] as List).single], [2, true, 1, {'code': 'ITM-0002', 'qty': '20', 'rate': '100', 'gst_pct': '5', 'po_line': 1, 'remark': ''}]);
     expect(find.textContaining('GRN 5 saved'), findsOneWidget);
     Navigator.of(t.element(find.byKey(const Key('gr-list')))).pop();
     await net(t);

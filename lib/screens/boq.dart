@@ -65,7 +65,7 @@ class _BoqScreenState extends State<BoqScreen> {
       final d = (await s.api.call('getBoqs', [<String, dynamic>{}]) as Map).cast<String, dynamic>();
       if (!mounted) return;
       setState(() {
-        vendors = _maps(d['vendors']);
+        vendors = _maps(d['vendors']).where((v) => !vendorMatOnly(v)).toList(); // (3.57.0) not a material supplier
         boqs = _maps(d['boqs']);
         hist = _maps(d['history']);
         loading = false;

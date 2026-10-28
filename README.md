@@ -15,6 +15,25 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.57.0 (28-10-2026 – the Store's old inward register, "auto vendor and item banayla hawet … duplicate entry mala dakhaw mi
+swata delete krel … je GRN number chalu aahet tech continue hotil … ji excel diley tech column GRN / inward madhe de"; with rcl-store
+`grn-import-register` and Mechanical update-181; on top of 3.56.0; not released yet):** **Store → Work → Inward (GRN) → Import from
+Excel** (the Store Admin): his register (any sheet order – the register's sheet found, the Summary left; a GRN's details on its first
+row carried to its rows) read **word for word as the web** (`core/grn_reg.dart`, proven against the web's own `public/grnreg.js`:
+`test/fixtures/sheets/grn_reg.{xlsx,json}`, made by `tool/grnreg_fixture.js`). **The check – nothing saved** (`screens/store_reg.dart`):
+GRNs to import, already in the Store, new suppliers, new items, duplicate rows (each Delete / Undo, "Delete all", "Keep all" – kept
+when not deleted), rows to look at (each "Correct this row": GRN date, supplier, material, qty – checked again), the AI's names written
+in more than one way (ticked one by one or "✓ all"), notes, the next new GRN, **Excel of the check**; **Import** a part at a time
+(suppliers 500, items 1,000, GRNs 150 / 3,000 lines – the same actions as the web: regInfo, regNames, regVendors, regItems, regGrns);
+a stop is said, Import again goes on (never twice). What he chose is kept for the file while the app is open (the web: in that browser).
+**The GRN list in his register's columns** (GRN No as in the file – "342-A" –, Challan No, Invoice No., Invoice Date, Vehicle No, TCS,
+PO No; each material its Qty, UOM, Basic Rate, Taxable, GST, Gross, Remark); a line's **Remark** in the GRN form and the print; the
+Import format his columns. **Vendor Master** (Mechanical update-181): a **Material Supplier** (made by the Store's import) marked, the
+**Type** filter (All / Machinery & billing / Material suppliers (Store)), its **Vendor type** in the form (where the site keeps it); not
+offered for an asset's owner, a BOQ, a payment or the ledger – unless it has machinery or a BOQ. **The GRN form: Clear** (as the web's
+new GRN form of his picture, rcl-store `grn-form-look`) – asked first; a new GRN empty again, a GRN being changed back as it is saved.
+Not verified: a real phone.
+
 **Version 3.56.0 (28-10-2026 – "kahi pdf madhe heading maghe pudhe aahet tr … auto identify krun … kontya hi gadichi log book
 maintanace wala ek ek entry mala edit or delet krta yawi"; his answer: each line on its own; with Mechanical update-180; not released
 yet – as he said):** the **Maintenance Log Book** of any machinery → **Edit / delete a line** (Maintenance Edit): its bills, each with

@@ -18,10 +18,17 @@ List<Map<String, dynamic>> machinesOfVendor(Map<String, dynamic> v) => [for (fin
 }
 
 /// The vendors shown: search (name, GST, PAN) and Details (all / missing / done).
-List<Map<String, dynamic>> vendorsShown(List<Map<String, dynamic>> all, String q, String st) {
+List<Map<String, dynamic>> vendorsShown(List<Map<String, dynamic>> all, String q, String st, {String ty = ''}) {
   final qq = q.trim().toUpperCase();
-  return all.where((v) => (qq.isEmpty || [v['name'], v['gst'], v['pan']].map(_s).join(' ').toUpperCase().contains(qq)) && (st.isEmpty || (st == 'done' ? v['complete'] == true : v['complete'] != true))).toList();
+  return all.where((v) => (qq.isEmpty || [v['name'], v['gst'], v['pan']].map(_s).join(' ').toUpperCase().contains(qq)) && (st.isEmpty || (st == 'done' ? v['complete'] == true : v['complete'] != true)) &&
+      (ty.isEmpty || (ty == 'mat') == (v['type'] == kMatSup))).toList();
 }
+
+/// (3.57.0, Mechanical update-181) a Material Supplier – made by the Store's import of its old inward register: in the Vendor Master
+/// (marked, its own filter), not offered for an asset's owner, a BOQ, a bill or a payment – unless it has machinery or a BOQ here
+/// (the web's matOnly; the server's parties list the same)
+const kMatSup = 'Material Supplier';
+bool vendorMatOnly(Map v) => v['type'] == kMatSup && (v['machines'] as List? ?? const []).isEmpty && ((v['boqs'] as num?) ?? 0) == 0;
 
 String bankText(Map<String, dynamic> v) {
   final b = _s(v['bank']), a = _s(v['account']);
