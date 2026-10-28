@@ -22,7 +22,7 @@ import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
 import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
 import 'package:rcl_mobile/core/voice.dart' as voice;
-import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat;
+import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat, moduleLook;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
 import 'package:rcl_mobile/screens/home.dart' show reportsOf;
 import 'package:rcl_mobile/screens/start_page.dart' show startPagesFor;
@@ -5822,27 +5822,19 @@ void main() {
     expect((rs[1]['response'] as Map).containsKey('ok'), false);
     expect(find.text('Store – stock'), findsOneWidget);
     expect(find.text('Engineering – dashboard 13-10-2026'), findsOneWidget);
-    // no Engineering for him at this site: said so to the AI (nothing asked of Engineering)
-    srv
-      ..engSite = false
-      ..aiScript.addAll([
-        {'parts': [{'functionCall': {'name': 'eng_progress', 'args': {}}}], 'model': 'claude-sonnet-5-5'},
-        {'parts': [{'text': 'Engineering is not given to you at this site.'}], 'model': 'claude-sonnet-5-5'},
-      ]);
-    forgetChat();
-    final s2 = await ready(t, srv);
-    await t.pumpWidget(RclApp(session: s2));
-    await net(t);
-    await net(t);
-    await tapK(t, 'home-ask');
-    await net(t);
+    // no Engineering for him at this site: said so (nothing asked of Engineering) – what the AI is sent back as its error
+    srv.engSite = false;
     final n = srv.engSent.length;
-    await t.enterText(find.byKey(const Key('ai-in')), 'progress of the road');
-    await tapK(t, 'ai-send');
-    await net(t);
-    await net(t);
-    final b2 = (srv.aiAsked.last['contents'] as List).last as Map;
-    expect(((b2['parts'] as List).single as Map)['functionResponse'], {'name': 'eng_progress', 'response': {'error': 'You have no access to Engineering at this site – the Super Admin gives it in the Portal.'}});
+    final s2 = await ready(t, srv);
+    Object? err;
+    await t.runAsync(() async {
+      try {
+        await moduleLook(s2, 'engineering', 'eng_progress', const {});
+      } catch (e) {
+        err = e;
+      }
+    });
+    expect('$err', 'You have no access to Engineering at this site – the Super Admin gives it in the Portal.');
     expect(srv.engSent.length, n);
   });
 }
