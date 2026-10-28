@@ -22,6 +22,7 @@ import '../ui/ask_bot.dart';
 import '../ui/pick_file.dart' show pickSheetFile;
 import '../core/imports.dart' show readExcelRows, xlDate, Cols;
 import '../core/sheet_read.dart' show jsS, readSheets;
+import 'maint_lines.dart' show MaintLinesScreen;
 
 /// (3.44.0) a report of one fuel at a site with more than one: not the Log Book Debit Statement, not (3.46.0, Mechanical update-165)
 /// a car's Maintenance Log Book (its car has its own fuel)
@@ -132,7 +133,7 @@ class _ReportScreenState extends State<ReportScreen> {
   final owner = TextEditingController(), fixed = TextEditingController(), pump = TextEditingController(), party = TextEditingController();
   List<String> parties = [];      // (3.31.7) the Vendor Master's parties, for "Debit to"
   RDoc? doc;
-  Map<String, dynamic>? data;
+  Map<String, dynamic>? data, made;      // made: the filters the report was made with (3.56.0: the log book read again after a line's change)
   bool busy = false, open = true;
   String err = '', out = '';
 
@@ -195,6 +196,7 @@ class _ReportScreenState extends State<ReportScreen> {
       if (!mounted) return;
       setState(() {
         data = d;
+        made = f;
         doc = fuelDoc(def.build(d), '${f['fuel'] ?? ''}');      // (3.44.0) in the words of its fuel – the screen, the print and Excel
         open = false;
         busy = false;
@@ -499,6 +501,21 @@ class _ReportScreenState extends State<ReportScreen> {
                 OutlinedButton.icon(key: const Key('ldebit-rates'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: () => _ldRates(s), icon: const Icon(Icons.edit_rounded), label: const Text('Change rates')),
                 OutlinedButton.icon(key: const Key('ldebit-import'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)), onPressed: () => _ldImport(s), icon: const Icon(Icons.upload_file_rounded), label: const Text('Import party + rate (Excel)')),
               ]),
+            ),
+          // (3.56.0, Mechanical update-180, "ek ek entry mala edit or delet krta yawi") the log book's lines, each its Edit / Delete – Maintenance Edit
+          if (def.key == 'mlog' && s.canEdit('Maintenance') && data != null && made != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: OutlinedButton.icon(
+                key: const Key('mlog-lines'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MaintLinesScreen(log: data!, filter: made!)));
+                  if (mounted) await _go();      // (what was changed shown at once)
+                },
+                icon: const Icon(Icons.edit_note_rounded),
+                label: Text('Edit / delete a line'),
+              ),
             ),
           ReportView(d),
         ],

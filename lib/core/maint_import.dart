@@ -19,22 +19,117 @@ import 'rdoc.dart' show r2;
 import 'sheet_read.dart';
 import 'xlsx.dart' show sheetsXlsx;
 
-const _cols = <(String, String)>[
-  ('date', r'^date$'),
-  ('party', r'^(party name|party|garage|supplier name|supplier)$'),
-  ('km', r'^(current reading|reading|km reading|hrs reading)$'),
-  ('work', r'^(particulars|particular|work \/ part|material description|description)$'),
-  ('qty', r'^(qty|quantity)$'),
-  ('uom', r'^(uom|unit)$'),
-  ('rate', r'^(basic rate|rate)$'),
-  ('amount', r'^(amount|basic amount|taxable amount)$'),
-  ('gstAmt', r'^(gst amount|gst)$'),
-  ('withGst', r'^(amount with gst|gross amount)$'),
-  ('total', r'^total$'),
-];
-
 String _sp(Object? v) => jsS(v).replaceAll(RegExp(r'\s+'), ' ').trim();
-String mliNorm(Object? h) => jsS(h).replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase().replaceFirst(RegExp(r'[.:*\s]+$'), '');
+
+/* (3.56.0, Mechanical update-180, asked 28-10-2026: "kahi pdf madhe heading maghe pudhe aahet tr aple systeam ni auto identify krun te
+ * sagla banwayla haw") THE HEADINGS IN ANY ORDER, NAMED IN MANY WAYS – each column found by the words of its heading (Bill Date,
+ * Supplier, KM, Item Description, Taxable Value, CGST 9%, SGST 9%, Net Amount …), not by its place; a bill number, a remark, a
+ * discount, an HSN code left out. The web's mliField / mliRows (and the server's maintLogField_ / maintLogRows_, a PDF read by the AI)
+ * rule for rule – the tests run the same headings through both. */
+
+/// what a heading is: (f: sr · date · party · reading · work · qty · uom · rate · amount · gstAmt · gstPct · withGst · total, or '-' =
+/// left out; p: the part of a GST – c (CGST), s (SGST / UTGST), i (IGST) or ''); null = not known
+({String f, String p})? mliField(Object? h) {
+  final s = jsS(h ?? '')
+      .toLowerCase()
+      .replaceAll('₹', ' ')
+      .replaceAll(RegExp(r'[^a-z0-9%+]+'), ' ')
+      .replaceAll(RegExp(r'\b(rs|inr)\b'), ' ')
+      .replaceAllMapped(RegExp(r'\b([a-z]) (?=[a-z]\b)'), (x) => x[1]!)      // ("C.G.S.T" = cgst, "U.O.M" = uom)
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (s.isEmpty) return null;
+  bool m(String re) => RegExp(re).hasMatch(s);
+  ({String f, String p}) a(String f, [String p = '']) => (f: f, p: p);
+  if (m(r'\b(bill|invoice|inv|challan|voucher|job ?card|order|grn|ref|receipt|part|item)\b') && m(r'\b(no|nos|number|num|code)\b')) return a('-');
+  if (m(r'\b(remarks?|notes?|comments?|narration|sign|signature|discount|disc|hsn|sac)\b')) return a('-');
+  final part = m(r'\bcgst\b') ? 'c' : m(r'\b(sgst|utgst)\b') ? 's' : m(r'\bigst\b') ? 'i' : '';
+  if (m(r'\b(c|s|i|ut)?gst\b|\btax\b|\bvat\b')) {
+    if (m(r'\b(with|incl|including|inclusive|after|plus)\b( of)?( the)? (gst|tax|vat)\b|\+ ?(gst|tax|vat)\b|\b(gst|tax|vat) (incl|included|inclusive)\b')) return a('withGst');
+    if (m(r'%|\bpercent|\brate\b') && !m(r'\d ?%')) return a('gstPct', part);      // ("GST %", "CGST Rate" – a rate; "CGST 9%" – its ₹)
+    return a('gstAmt', part);
+  }
+  if (m(r'\bgross\b|\bnet (amount|amt|value|total|payable)\b|^net$|\b(bill|invoice) (amount|amt|value)\b|\btotal (amount|amt|value)\b|\bpayable\b|\bfinal (amount|amt)\b')) return a('withGst');
+  if (m(r'^sub ?total$')) return a('amount');
+  if (m(r'^(grand |bill |net )?total$')) return a('total');
+  if (m(r'\b(date|dt|dated)\b')) return a('date');
+  if (m(r'^(sr|s|sl|ser|serial)( no| number)?$|^(sno|srno|slno|no)$')) return a('sr');
+  if (m(r'reading|\b(km|kms|hmr|smr|hr|hrs|hours?|odometer|odo|meter)\b')) return a('reading');
+  if (m(r'\b(rate|price|mrp)\b|\bper (unit|no|nos|pc|pcs|piece|ltr|litre|kg)\b|\bunit cost\b')) return a('rate');
+  if (m(r'\b(qty|qnty|qnt|qtty|quantity|quantities)\b|^(nos|pcs)$|\bno of (nos|pcs|units|items|pieces)\b')) return a('qty');
+  if (m(r'\b(uom|units?)\b|\bmeasure')) return a('uom');
+  if (m(r'\b(amount|amt|value|taxable|cost|charges?|basic)\b')) return a('amount');
+  if (m(r'party|garage|supplier|vendor|dealer|workshop|\b(shop|mechanic|firm|agency|store|company|from|by|centre|center)\b')) return a('party');
+  if (m(r'particular|descri|\bworks?\b|\bparts?\b|\bspares?\b|material|\bitems?\b|detail|repair|\bjobs?\b|nature|\bservices?\b|product|\bgoods\b')) return a('work');
+  return null;
+}
+
+/// Every row under [head] in the log book's 12 columns (mliHead): the GST of its parts added (CGST + SGST, IGST); a GST % made ₹; a book
+/// without an Amount column: its amount with GST less the GST (or Qty × Rate when it has no amount at all); every other cell as it is
+List<List<Object?>> mliRows(List<Object?> head, List<List<Object?>> rows) {
+  final fs = [for (final h in head) mliField(h)];
+  List<int> cols(String f) => [for (final (k, x) in fs.indexed) if (x != null && x.f == f) k];
+  if (cols('amount').isEmpty && cols('withGst').length > 1) fs[cols('withGst').first] = (f: 'amount', p: '');      // (Total Amount · GST · Net Amount)
+  final am = cols('amount').isNotEmpty, wg = cols('withGst').isNotEmpty, ga = cols('gstAmt'), gp = cols('gstPct');
+  bool has(Object? v) => !(v == null || jsS(v).trim().isEmpty || RegExp(r'^null$', caseSensitive: false).hasMatch(jsS(v).trim()));
+  num? n(Object? v) {
+    if (!has(v)) return null;
+    if (v is num) return v.isFinite ? v : null;
+    final t = jsS(v).replaceAll(RegExp(r'[,₹\s%]|rs\.?', caseSensitive: false), '');
+    return RegExp(r'^[-+]?(\d+\.?\d*|\.\d+)$').hasMatch(t) ? num.tryParse(t) ?? double.tryParse(t) : null;
+  }
+  List<Object?> row(List<Object?> r) {
+    Object? at(int k) => k < r.length ? r[k] : null;
+    Object? one(String f) {
+      for (final k in cols(f)) {
+        if (has(at(k))) return at(k);
+      }
+      return '';
+    }
+    Object sum(List<int> ks) {
+      num s = 0;
+      var any = false;
+      for (final k in ks) {
+        final v = n(at(k));
+        if (v != null) {
+          s += v;
+          any = true;
+        }
+      }
+      return any ? r2(s) : '';
+    }
+    // the GST (₹ or %) of a row: its "GST" column; else its parts added; two columns of no part: added
+    Object? tax(List<int> ks) {
+      final p = [for (final k in ks) if (fs[k]!.p.isEmpty) k], q = [for (final k in ks) if (fs[k]!.p.isNotEmpty) k];
+      if (q.isNotEmpty) {
+        final v = p.isNotEmpty ? sum(p.take(1).toList()) : '';
+        return v != '' ? v : sum(q);
+      }
+      return p.length > 1 ? sum(p) : p.isNotEmpty && has(at(p.first)) ? at(p.first) : '';
+    }
+    Object? amount = one('amount'), gst = tax(ga);
+    final pct = n(tax(gp)), qty = one('qty'), rate = one('rate'), withGst = one('withGst');
+    if (!am) {
+      final w = n(withGst), g = n(gst);
+      if (wg && w != null) {
+        if (g != null) {
+          amount = r2(w - g);
+        } else if (pct != null && pct > 0) {
+          final b = r2(w / (1 + pct / 100));
+          amount = b;
+          gst = r2(w - b);
+        } else {
+          amount = w;
+        }
+      } else if (!wg && n(qty) != null && n(rate) != null) {
+        amount = r2(n(qty)! * n(rate)!);
+      }
+    }
+    if (gst == '' && pct != null && pct > 0 && n(amount) != null) gst = r2(n(amount)! * pct / 100);
+    return <Object?>[one('sr'), one('date'), one('party'), one('reading'), one('work'), qty, one('uom'), rate, amount, gst, withGst, one('total')];
+  }
+  return [for (final r in rows) row(r)];
+}
 
 /// a name as a key: capitals and digits only, "NO" before a number and the zeros before a number left out – ROLLER NO-03 = ROLLER-03
 String mliKey(Object? v) => jsS(v ?? '')
@@ -100,17 +195,14 @@ const mliHead = ['Sr No', 'Date', 'Party Name', 'Current Reading', 'Particulars'
 
 /// [ai]: rows read by the AI from a PDF / photo – "Line n" = its n-th row
 MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynamic>> own, {bool ai = false}) {
+  // (3.56.0, update-180) the heading row: the first with a Particulars column and an amount (or a rate) – by their words, in any order
   final hi = all.indexWhere((r) {
-    final n = r.map(mliNorm).toList();
-    return n.any((h) => RegExp(r'^(particulars|particular)$').hasMatch(h)) && n.any((h) => RegExp(r'^(amount|basic rate)$').hasMatch(h));
+    final f = [for (final h in r) mliField(h)?.f];
+    return f.contains('work') && ['amount', 'withGst', 'rate'].any(f.contains);
   });
   if (hi == -1) return null;
-  final idx = <String, int>{};
-  for (final (k, h) in all[hi].map(mliNorm).indexed) {
-    for (final c in _cols) {
-      if (!idx.containsKey(c.$1) && RegExp(c.$2).hasMatch(h)) idx[c.$1] = k;
-    }
-  }
+  const idx = <String, int>{'date': 1, 'party': 2, 'km': 3, 'work': 4, 'qty': 5, 'uom': 6, 'rate': 7, 'amount': 8, 'gstAmt': 9, 'withGst': 10, 'total': 11};
+  final rows = mliRows(all[hi], all.skip(hi + 1).toList());
   var label = '';
   for (final r in all.take(hi)) {
     for (final v in r) {
@@ -124,8 +216,8 @@ MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynami
   num ftotal = 0;
   var nrows = 0;
   final from = <Map<String, dynamic>, (int, int)>{};
-  for (final (k, r) in all.skip(hi + 1).indexed) {
-    Object? g(String f) => idx[f] == null || idx[f]! >= r.length ? '' : r[idx[f]!];
+  for (final (k, r) in rows.indexed) {
+    Object? g(String f) => r[idx[f]!] ?? '';
     final work = _sp(g('work')), line = ai ? k + 1 : hi + k + 2;
     if (work.isEmpty || (RegExp(r'^(grand )?total\b', caseSensitive: false).hasMatch(work) && jsS(g('date')).trim().isEmpty)) continue;      // an empty line, the total line
     var date = xlDate(g('date')), party = _sp(g('party'));

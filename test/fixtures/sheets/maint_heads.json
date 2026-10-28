@@ -1,0 +1,1173 @@
+{
+ "xlsx": "0.18.5",
+ "today": "2026-10-28",
+ "master": [
+  {
+   "id": "RL-180",
+   "name": "Roller No.18",
+   "ownership": "Own",
+   "status": "Active"
+  },
+  {
+   "id": "MH-12-XW-0180",
+   "name": "Hycross",
+   "ownership": "Own",
+   "status": "Active"
+  }
+ ],
+ "heads": [
+  "Sr No",
+  "S. No.",
+  "Sr.No",
+  "#",
+  "No.",
+  "Date",
+  "Bill Date",
+  "Invoice Dt.",
+  "Bill No",
+  "Invoice No.",
+  "Job Card No",
+  "Party Name",
+  "Supplier",
+  "Garage",
+  "Vendor Name",
+  "Workshop Name",
+  "Service Center",
+  "Done By",
+  "Purchased From",
+  "Current Reading",
+  "KM",
+  "HMR",
+  "Hrs",
+  "Reading (KM/Hrs)",
+  "Odometer",
+  "Particulars",
+  "Item Description",
+  "Description of Work",
+  "Spare Parts",
+  "Material",
+  "Item",
+  "Part No",
+  "HSN/SAC",
+  "Item Code",
+  "Qty",
+  "Quantity",
+  "Qty.",
+  "Nos",
+  "Uom",
+  "Unit",
+  "U.O.M",
+  "Basic Rate",
+  "Rate",
+  "Unit Price",
+  "Rate/Unit",
+  "MRP",
+  "Amount",
+  "Amount (Rs.)",
+  "Amt ₹",
+  "Basic Amount",
+  "Taxable Value",
+  "Labour Charges",
+  "Sub Total",
+  "Value",
+  "GST Amount",
+  "GST",
+  "Tax",
+  "VAT",
+  "GST %",
+  "GST Rate",
+  "Rate of GST",
+  "CGST",
+  "CGST 9%",
+  "CGST @ 9 %",
+  "CGST %",
+  "C.G.S.T",
+  "SGST Amt",
+  "S.G.S.T.",
+  "UTGST",
+  "IGST",
+  "IGST 18%",
+  "GST CGST",
+  "Amount With GST",
+  "Amount\nWith GST",
+  "Amount incl. GST",
+  "Total (Incl. Tax)",
+  "Amt+GST",
+  "Net Amount",
+  "Gross Amount",
+  "Total Amount",
+  "Bill Amount",
+  "Payable",
+  "Total",
+  "Grand Total",
+  "Bill Total",
+  "Remarks",
+  "Note",
+  "Discount",
+  "Disc %",
+  "Vehicle No",
+  "Name",
+  "",
+  null,
+  12,
+  "Machinery"
+ ],
+ "fields": [
+  {
+   "f": "sr",
+   "p": ""
+  },
+  {
+   "f": "sr",
+   "p": ""
+  },
+  {
+   "f": "sr",
+   "p": ""
+  },
+  null,
+  {
+   "f": "sr",
+   "p": ""
+  },
+  {
+   "f": "date",
+   "p": ""
+  },
+  {
+   "f": "date",
+   "p": ""
+  },
+  {
+   "f": "date",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "party",
+   "p": ""
+  },
+  {
+   "f": "party",
+   "p": ""
+  },
+  {
+   "f": "party",
+   "p": ""
+  },
+  {
+   "f": "party",
+   "p": ""
+  },
+  {
+   "f": "party",
+   "p": ""
+  },
+  {
+   "f": "party",
+   "p": ""
+  },
+  {
+   "f": "party",
+   "p": ""
+  },
+  {
+   "f": "party",
+   "p": ""
+  },
+  {
+   "f": "reading",
+   "p": ""
+  },
+  {
+   "f": "reading",
+   "p": ""
+  },
+  {
+   "f": "reading",
+   "p": ""
+  },
+  {
+   "f": "reading",
+   "p": ""
+  },
+  {
+   "f": "reading",
+   "p": ""
+  },
+  {
+   "f": "reading",
+   "p": ""
+  },
+  {
+   "f": "work",
+   "p": ""
+  },
+  {
+   "f": "work",
+   "p": ""
+  },
+  {
+   "f": "work",
+   "p": ""
+  },
+  {
+   "f": "work",
+   "p": ""
+  },
+  {
+   "f": "work",
+   "p": ""
+  },
+  {
+   "f": "work",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "qty",
+   "p": ""
+  },
+  {
+   "f": "qty",
+   "p": ""
+  },
+  {
+   "f": "qty",
+   "p": ""
+  },
+  {
+   "f": "qty",
+   "p": ""
+  },
+  {
+   "f": "uom",
+   "p": ""
+  },
+  {
+   "f": "uom",
+   "p": ""
+  },
+  {
+   "f": "uom",
+   "p": ""
+  },
+  {
+   "f": "rate",
+   "p": ""
+  },
+  {
+   "f": "rate",
+   "p": ""
+  },
+  {
+   "f": "rate",
+   "p": ""
+  },
+  {
+   "f": "rate",
+   "p": ""
+  },
+  {
+   "f": "rate",
+   "p": ""
+  },
+  {
+   "f": "amount",
+   "p": ""
+  },
+  {
+   "f": "amount",
+   "p": ""
+  },
+  {
+   "f": "amount",
+   "p": ""
+  },
+  {
+   "f": "amount",
+   "p": ""
+  },
+  {
+   "f": "amount",
+   "p": ""
+  },
+  {
+   "f": "amount",
+   "p": ""
+  },
+  {
+   "f": "amount",
+   "p": ""
+  },
+  {
+   "f": "amount",
+   "p": ""
+  },
+  {
+   "f": "gstAmt",
+   "p": ""
+  },
+  {
+   "f": "gstAmt",
+   "p": ""
+  },
+  {
+   "f": "gstAmt",
+   "p": ""
+  },
+  {
+   "f": "gstAmt",
+   "p": ""
+  },
+  {
+   "f": "gstPct",
+   "p": ""
+  },
+  {
+   "f": "gstPct",
+   "p": ""
+  },
+  {
+   "f": "gstPct",
+   "p": ""
+  },
+  {
+   "f": "gstAmt",
+   "p": "c"
+  },
+  {
+   "f": "gstAmt",
+   "p": "c"
+  },
+  {
+   "f": "gstAmt",
+   "p": "c"
+  },
+  {
+   "f": "gstPct",
+   "p": "c"
+  },
+  {
+   "f": "gstAmt",
+   "p": "c"
+  },
+  {
+   "f": "gstAmt",
+   "p": "s"
+  },
+  {
+   "f": "gstAmt",
+   "p": "s"
+  },
+  {
+   "f": "gstAmt",
+   "p": "s"
+  },
+  {
+   "f": "gstAmt",
+   "p": "i"
+  },
+  {
+   "f": "gstAmt",
+   "p": "i"
+  },
+  {
+   "f": "gstAmt",
+   "p": "c"
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "withGst",
+   "p": ""
+  },
+  {
+   "f": "total",
+   "p": ""
+  },
+  {
+   "f": "total",
+   "p": ""
+  },
+  {
+   "f": "total",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  {
+   "f": "-",
+   "p": ""
+  },
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+ ],
+ "cases": [
+  [
+   [
+    "Item Description",
+    "Bill Date",
+    "KM",
+    "Supplier",
+    "Qty",
+    "Rate",
+    "Taxable Value",
+    "CGST 9%",
+    "SGST 9%",
+    "Net Amount",
+    "Remarks"
+   ],
+   [
+    [
+     "ENGINE OIL",
+     "2024-01-02",
+     12345,
+     "SURAJ",
+     10,
+     "350",
+     "3,500.00",
+     315,
+     315,
+     4130,
+     "ok"
+    ],
+    [
+     "FILTER",
+     null,
+     null,
+     null,
+     1,
+     500,
+     500,
+     45,
+     45,
+     590,
+     null
+    ],
+    [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ]
+  ],
+  [
+   [
+    "Date",
+    "Particulars",
+    "Qty",
+    "Rate",
+    "GST %",
+    "Net Amount"
+   ],
+   [
+    [
+     "2024-01-02",
+     "OIL",
+     2,
+     100,
+     "18%",
+     236
+    ],
+    [
+     "2024-01-03",
+     "GREASE",
+     1,
+     50,
+     "",
+     50
+    ]
+   ]
+  ],
+  [
+   [
+    "Date",
+    "Particulars",
+    "Qty",
+    "Rate",
+    "Total Amount",
+    "GST",
+    "Net Amount"
+   ],
+   [
+    [
+     "2024-01-02",
+     "OIL",
+     2,
+     100,
+     200,
+     36,
+     236
+    ]
+   ]
+  ],
+  [
+   [
+    "Date",
+    "Particulars",
+    "Qty",
+    "Rate"
+   ],
+   [
+    [
+     "2024-01-02",
+     "OIL",
+     2,
+     100
+    ],
+    [
+     "2024-01-02",
+     "BULB",
+     "two",
+     40
+    ]
+   ]
+  ],
+  [
+   [
+    "Date",
+    "Particulars",
+    "Amount",
+    "GST %"
+   ],
+   [
+    [
+     "2024-01-02",
+     "OIL",
+     1000,
+     18
+    ],
+    [
+     "2024-01-02",
+     "CLOTH",
+     "Rs. 1,000",
+     "5 %"
+    ]
+   ]
+  ],
+  [
+   [
+    "Date",
+    "Particulars",
+    "Amount",
+    "CGST",
+    "SGST",
+    "IGST",
+    "GST Amount"
+   ],
+   [
+    [
+     "2024-01-02",
+     "A",
+     100,
+     9,
+     9,
+     "",
+     ""
+    ],
+    [
+     "2024-01-02",
+     "B",
+     100,
+     "",
+     "",
+     18,
+     ""
+    ],
+    [
+     "2024-01-02",
+     "C",
+     100,
+     9,
+     9,
+     "",
+     20
+    ]
+   ]
+  ],
+  [
+   [
+    "Date",
+    "Particulars",
+    "Amount",
+    "CGST %",
+    "SGST %"
+   ],
+   [
+    [
+     "2024-01-02",
+     "A",
+     100,
+     9,
+     9
+    ]
+   ]
+  ],
+  [
+   [
+    "Date",
+    "Particulars",
+    "Amount",
+    "Tax",
+    "VAT"
+   ],
+   [
+    [
+     "2024-01-02",
+     "A",
+     100,
+     9,
+     9
+    ]
+   ]
+  ],
+  [
+   [
+    "Sr No",
+    "Date",
+    "Party Name",
+    "Current Reading",
+    "Particulars",
+    "Qty",
+    "Uom",
+    "Basic Rate",
+    "Amount",
+    "GST Amount",
+    "Amount With GST",
+    "Total"
+   ],
+   [
+    [
+     1,
+     "2022-12-02",
+     "Store",
+     "",
+     "AD BLUE",
+     20,
+     "Ltr",
+     59,
+     1180,
+     212.4,
+     1392.4,
+     ""
+    ],
+    [
+     2,
+     "",
+     "",
+     "",
+     "BULB",
+     1,
+     "Nos",
+     40,
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "null",
+     null,
+     "X",
+     "NULL",
+     "Y",
+     -1,
+     "",
+     "",
+     -50,
+     "",
+     "",
+     ""
+    ]
+   ]
+  ],
+  [
+   [
+    "Particulars",
+    "Qty"
+   ],
+   [
+    [
+     "A"
+    ]
+   ]
+  ]
+ ],
+ "rows": [
+  [
+   [
+    "",
+    "2024-01-02",
+    "SURAJ",
+    12345,
+    "ENGINE OIL",
+    10,
+    "",
+    "350",
+    "3,500.00",
+    630,
+    4130,
+    ""
+   ],
+   [
+    "",
+    "",
+    "",
+    "",
+    "FILTER",
+    1,
+    "",
+    500,
+    500,
+    90,
+    590,
+    ""
+   ],
+   [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  ],
+  [
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "OIL",
+    2,
+    "",
+    100,
+    200,
+    36,
+    236,
+    ""
+   ],
+   [
+    "",
+    "2024-01-03",
+    "",
+    "",
+    "GREASE",
+    1,
+    "",
+    50,
+    50,
+    "",
+    50,
+    ""
+   ]
+  ],
+  [
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "OIL",
+    2,
+    "",
+    100,
+    200,
+    36,
+    236,
+    ""
+   ]
+  ],
+  [
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "OIL",
+    2,
+    "",
+    100,
+    200,
+    "",
+    "",
+    ""
+   ],
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "BULB",
+    "two",
+    "",
+    40,
+    "",
+    "",
+    "",
+    ""
+   ]
+  ],
+  [
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "OIL",
+    "",
+    "",
+    "",
+    1000,
+    180,
+    "",
+    ""
+   ],
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "CLOTH",
+    "",
+    "",
+    "",
+    "Rs. 1,000",
+    50,
+    "",
+    ""
+   ]
+  ],
+  [
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "A",
+    "",
+    "",
+    "",
+    100,
+    18,
+    "",
+    ""
+   ],
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "B",
+    "",
+    "",
+    "",
+    100,
+    18,
+    "",
+    ""
+   ],
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "C",
+    "",
+    "",
+    "",
+    100,
+    20,
+    "",
+    ""
+   ]
+  ],
+  [
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "A",
+    "",
+    "",
+    "",
+    100,
+    18,
+    "",
+    ""
+   ]
+  ],
+  [
+   [
+    "",
+    "2024-01-02",
+    "",
+    "",
+    "A",
+    "",
+    "",
+    "",
+    100,
+    18,
+    "",
+    ""
+   ]
+  ],
+  [
+   [
+    1,
+    "2022-12-02",
+    "Store",
+    "",
+    "AD BLUE",
+    20,
+    "Ltr",
+    59,
+    1180,
+    212.4,
+    1392.4,
+    ""
+   ],
+   [
+    2,
+    "",
+    "",
+    "",
+    "BULB",
+    1,
+    "Nos",
+    40,
+    "",
+    "",
+    "",
+    ""
+   ],
+   [
+    "",
+    "",
+    "X",
+    "",
+    "Y",
+    -1,
+    "",
+    "",
+    -50,
+    "",
+    "",
+    ""
+   ]
+  ],
+  [
+   [
+    "",
+    "",
+    "",
+    "",
+    "A",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  ]
+ ],
+ "sheets": [
+  {
+   "sheet": "Roller 18",
+   "label": "ROLLER NO-18",
+   "no": "RL-180",
+   "bills": [
+    {
+     "date": "2022-12-02",
+     "garage": "Store",
+     "km": "",
+     "lines": [
+      {
+       "work": "AD BLUE",
+       "qty": 20,
+       "uom": "Ltr",
+       "rate": 59,
+       "amount": 1180,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 4"
+    },
+    {
+     "date": "2023-01-05",
+     "garage": "Store",
+     "km": 500,
+     "lines": [
+      {
+       "work": "FUEL FILTER",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 650,
+       "amount": 650,
+       "gst": 18
+      },
+      {
+       "work": "ENGINE OIL FILTER",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 930,
+       "amount": 930,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 5–6"
+    }
+   ],
+   "rows": 3,
+   "fileTotal": 3256.8,
+   "total": 3256.8,
+   "bad": [],
+   "warn": [],
+   "res": null,
+   "done": null
+  },
+  {
+   "sheet": "Hycross",
+   "label": "Hycross MH12XW0180",
+   "no": "MH-12-XW-0180",
+   "bills": [
+    {
+     "date": "2026-02-10",
+     "garage": "Navnit Motors",
+     "km": 13153,
+     "lines": [
+      {
+       "work": "Wiper blade",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 310,
+       "amount": 310,
+       "gst": 18
+      },
+      {
+       "work": "Labour",
+       "qty": 1,
+       "uom": "Nos",
+       "rate": 1200,
+       "amount": 1200,
+       "gst": 18
+      }
+     ],
+     "rows": "Line 3–4"
+    },
+    {
+     "date": "2026-03-11",
+     "garage": "Navnit Motors",
+     "km": 14002,
+     "lines": [
+      {
+       "work": "Washer fluid",
+       "qty": 1,
+       "uom": "Ltr",
+       "rate": 100,
+       "amount": 100,
+       "gst": ""
+      }
+     ],
+     "rows": "Line 5"
+    }
+   ],
+   "rows": 3,
+   "fileTotal": 1881.8,
+   "total": 1881.8,
+   "bad": [],
+   "warn": [],
+   "res": null,
+   "done": null
+  }
+ ]
+}
