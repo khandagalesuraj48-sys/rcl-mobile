@@ -5695,7 +5695,10 @@ void main() {
     expect([v['name'], v.containsKey('owner'), v.containsKey('docs')], ['Before 1zj Traders', false, false]);
     // step 1zj run: the Owner Name; the PAN added (a PDF) – sent first (vendorDoc), saved with the vendor with its kind
     srv.vdocsOn = true;
-    await openMaster(t, s, 'Vendor Master');
+    await t.pageBack();      // (the Vendor Master opened again: it asks again whether the site keeps them)
+    await net(t);
+    await t.tap(find.byKey(const Key('mp-Vendor Master')));
+    await net(t);
     await t.tap(find.byKey(const Key('v-new')));
     await net(t);
     await t.enterText(box('vf-name'), 'Test Earthmovers');
