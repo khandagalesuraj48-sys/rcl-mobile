@@ -563,7 +563,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
             if (m.keptId != 0)
               OutlinedButton(
                 key: Key('ai-unkeep-${m.keptId.abs()}'),
-                style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12), foregroundColor: C.red),
+                style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    minimumSize: const Size(0, 34),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    foregroundColor: C.red),
                 onPressed: m.keptId > 0 ? () => _unkeep(m) : null,
                 child: mt.Text(m.button, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
               ),
@@ -681,9 +686,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
       appBar: AppBar(
         title: const TwoLang('Assistant', 'सहाय्यक', size: 20, weight: FontWeight.w700),
         actions: [
-          // (3.61.0, Mechanical update-186) his chats and what it remembers about him – only his, only this site
-          IconButton(key: const Key('ai-hist'), tooltip: tr('History'), onPressed: c.busy ? null : _history, icon: const Icon(Icons.history_rounded)),
-          IconButton(key: const Key('ai-mem'), tooltip: tr('Memory'), onPressed: c.busy ? null : _memory, icon: const Icon(Icons.psychology_alt_outlined)),
           TextButton.icon(key: const Key('ai-new'), onPressed: c.busy ? null : () => c.reset(), icon: const Icon(Icons.add_comment_outlined, size: 20), label: const Text('New chat')),
           const SizedBox(width: 6),
         ],
@@ -691,6 +693,25 @@ class _AssistantScreenState extends State<AssistantScreen> {
       body: SafeArea(
         top: false,
         child: Column(children: [
+          // (3.61.0, Mechanical update-186) his chats and what it remembers about him – only his, only this site
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 2, 10, 0),
+            child: Row(children: [
+              TextButton.icon(
+                  key: const Key('ai-hist'),
+                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                  onPressed: c.busy ? null : _history,
+                  icon: const Icon(Icons.history_rounded, size: 20),
+                  label: const Text('History')),
+              const SizedBox(width: 4),
+              TextButton.icon(
+                  key: const Key('ai-mem'),
+                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                  onPressed: c.busy ? null : _memory,
+                  icon: const Icon(Icons.psychology_alt_outlined, size: 20),
+                  label: const Text('Memory')),
+            ]),
+          ),
           Expanded(
             child: ListView.builder(
               key: const Key('ai-list'),
@@ -900,7 +921,9 @@ class _AiMemoryScreenState extends State<AiMemoryScreen> {
   Widget build(BuildContext context) {
     final a = widget.chat.a, notes = (r?['notes'] is List ? r!['notes'] as List : const []).whereType<Map>().toList();
     return Scaffold(
-      appBar: AppBar(title: mt.Text(a.aiL(const {'en': 'What the assistant remembers about you', 'mr': 'Assistant ला तुमच्याबद्दल काय लक्षात आहे', 'hi': 'Assistant को आपके बारे में क्या याद है'}), maxLines: 2)),
+      appBar: AppBar(
+          title: mt.Text(a.aiL(const {'en': 'What the assistant remembers about you', 'mr': 'Assistant ला तुमच्याबद्दल काय लक्षात आहे', 'hi': 'Assistant को आपके बारे में क्या याद है'}),
+              maxLines: 2, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
       body: ListView(key: const Key('ai-mem-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         mt.Text(a.aiL(_kOnly), style: const TextStyle(fontSize: 13, color: C.muted)),
         mt.Text(a.aiL(const {'en': 'Tell it "remember …" to add a note; × takes one out.', 'mr': 'नवीन नोंदीसाठी "लक्षात ठेव …" असे सांगा; × ने काढा.', 'hi': 'नई बात के लिए "याद रखो …" कहें; × से हटाएँ।'}), style: const TextStyle(fontSize: 13, color: C.muted)),
