@@ -130,6 +130,7 @@
 {"msg":"Import up to 3000 trips at a time.","rules":[134]},
 {"msg":"Inward ","rules":[]},
 {"msg":"It could not be saved: ","rules":[87]},
+{"msg":"JCB-173 is not an Own machinery (Asset Master: Ownership Own) – the old log book is imported only for those.","rules":[4,136]},
 {"msg":"JCB-173 is not an Own machinery on this site now (Asset Master) – the old log book is imported only for those.","rules":[4]},
 {"msg":"Keep the Machinery Number / Name under 60 letters.","rules":[46]},
 {"msg":"Keep the name under 80 letters.","rules":[137]},

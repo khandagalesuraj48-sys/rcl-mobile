@@ -13,7 +13,7 @@
  * names written in more than one way (maintImportNames – the Admin ticks; mliBills sends the ticked names). */
 import 'dart:typed_data';
 
-import 'imports.dart' show xlDate, onSiteOn;
+import 'imports.dart' show xlDate;
 import 'lb_io.dart' show XSheet;
 import 'rdoc.dart' show r2;
 import 'sheet_read.dart';
@@ -65,8 +65,9 @@ Object mliGst(Object a, Object g) {
   return r2(_n(g) / _n(a) * 100);
 }
 
-/// The Own machinery on the site today – the ones an old log book is imported for
-List<Map<String, dynamic>> mliOwn(List<Map<String, dynamic>> master, String today) => [for (final m in master) if (m['ownership'] == 'Own' && onSiteOn(m, today)) m];
+/// The Own machinery – the ones an old log book is imported for (28-10-2026, Mechanical update-175: on the site now or not – "फक्त Own –
+/// active असो वा नसो"; [today] kept for the screens' "(not on the site now)")
+List<Map<String, dynamic>> mliOwn(List<Map<String, dynamic>> master, String today) => [for (final m in master) if (m['ownership'] == 'Own') m];
 
 String mliMatch(String label, String sheet, List<Map<String, dynamic>> own) {
   for (final k in [label, sheet].map(mliKey).where((k) => k.isNotEmpty)) {

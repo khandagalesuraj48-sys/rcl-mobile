@@ -29,7 +29,11 @@ that do not add up** (Qty × Rate ≠ Amount, Amount + GST ≠ Amount With GST, 
 (Party Name, Particulars, Uom – the AI's list, nothing ticked: he ticks, or types another name); **Check** (nothing saved – each mistake
 with its row), then **Import** (asked first; one machinery all of it or nothing; **a bill already there** – the same machinery and date,
 its lines or its total to ₹1, whatever its party is called – is left out **and listed**). The same server actions as the web
-(readMaintLog, maintImportNames, checkMaintImport, importMaint). The web's help and words taken again.
+(readMaintLog, maintImportNames, checkMaintImport, importMaint). Then (28-10-2026, Mechanical update-175): **every Own machinery** –
+on the site now or not (marked "not on the site now") – and its bills before its Active From; the names' list goes once all is imported;
+the **Maintenance Log Book "Start to end"** (from its first bill, no limit of days) and the bills **"Start to end"** (every bill – each can
+be changed or deleted, also an old one); **"Fetch outward (Store)"** – the Store's Issue is not built yet: said so, then the log book start
+to end. The web's help and words taken again.
 
 **Version 3.52.0 (27-10-2026 – "pdf print keli ki gst raw madhe ka dakhawat aahe heading madhe aahet gst tr", with Mechanical
 update-172):** the car's **Maintenance Log Book** (screen, Excel, PDF) shows no GST row: a bill saved before 3.51.0 with its taxes as lines

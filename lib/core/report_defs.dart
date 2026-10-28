@@ -787,7 +787,7 @@ final kMaintLog = ReportDef(
   pic: 'wrench',
   perm: 'Maintenance',
   portrait: false,
-  filters: const ['machine', 'range'],
+  filters: const ['machine', 'range', 'all'],      // (3.53.0, Mechanical update-175) "Start to end"
   note: 'Every maintenance bill of a machinery, line by line, by date – the party, its reading, each part with its Qty, Uom, rate, amount and GST. At a site on fuel cards also its fills, the costs and ₹ per KM.',
   // (3.50.0, Mechanical update-170) his format – the Maintenance Log Book of Roller No-03: a row a line of a bill (Date, Party Name and
   // Current Reading on its first row); the insurance's part of a claim its own row (minus); the free lines at ₹ 0 with their kind. At a
