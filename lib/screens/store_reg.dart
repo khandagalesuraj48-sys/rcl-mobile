@@ -291,15 +291,14 @@ class _GrnRegScreenState extends State<GrnRegScreen> {
     final line = nOf(l['line']).toInt(), e = ch.edit[line] ?? const <String, String>{};
     var date = e['date'] ?? '${l['date'] ?? ''}';
     final sup = TextEditingController(text: e['party'] ?? '${l['party'] ?? ''}'), item = TextEditingController(text: e['item'] ?? '${l['item'] ?? ''}'), qty = TextEditingController(text: e['qty'] ?? '${l['qty'] ?? ''}');
-    final ok = await showModalBottomSheet<bool>(
+    final ok = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
       builder: (c) => StatefulBuilder(
-        builder: (c, set) => Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.of(c).viewInsets.bottom),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Line $line${'${l['ref'] ?? ''}'.isNotEmpty ? ' · GRN ${l['ref']}' : ''}', style: _bold),
-            Text((l['why'] as List).join(' · '), style: const TextStyle(fontSize: 13, color: C.red)),
+        builder: (c, set) => AlertDialog(
+          title: Text('Line $line${'${l['ref'] ?? ''}'.isNotEmpty ? ' · GRN ${l['ref']}' : ''}'),
+          scrollable: true,
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final w in l['why'] as List) Text('• $w', style: const TextStyle(fontSize: 13, color: C.red, height: 1.3)),
             const SizedBox(height: 10),
             DateField(key: const Key('rge-date'), label: 'GRN date', value: date, onChanged: (v) => set(() => date = v)),
             const SizedBox(height: 8),
@@ -308,16 +307,22 @@ class _GrnRegScreenState extends State<GrnRegScreen> {
             TextBox(key: const Key('rge-item'), label: 'Material', controller: item),
             const SizedBox(height: 8),
             TextBox(key: const Key('rge-qty'), label: 'Received Qty', controller: qty, kb: _dec),
-            const SizedBox(height: 12),
-            FilledButton(key: const Key('rge-ok'), onPressed: () => Navigator.pop(c, true), child: Text('Check this row again')),
           ]),
+          actions: [
+            TextButton(key: const Key('rge-no'), onPressed: () => Navigator.pop(c, false), child: Text('Cancel')),
+            FilledButton(key: const Key('rge-ok'), style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(c, true), child: Text('Check this row again')),
+          ],
         ),
       ),
     );
     if (ok == true) {
       final x = ch.edit[line] = {...e};
       void put(String key, String v, String was) {
-        if (v.trim() != was) x[key] = v.trim();
+        if (v.trim() != was) {
+          x[key] = v.trim();
+        } else {
+          x.remove(key); // typed back as the file has it
+        }
       }
 
       put('date', date, '${l['date'] ?? ''}');
@@ -459,7 +464,7 @@ class _GrnRegScreenState extends State<GrnRegScreen> {
         ..._first(look, (l) => _card(key: Key('rg-lk-${l['line']}'), children: [
               Text('Line ${l['line']}${'${l['ref'] ?? ''}'.isNotEmpty ? ' · GRN ${l['ref']}' : ''}${'${l['date'] ?? ''}'.isNotEmpty ? ' · ${dmy(l['date'])}' : ''}', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
               Text([l['party'], l['item'], if ('${l['qty'] ?? ''}'.isNotEmpty) 'Qty ${l['qty']}'].where((x) => '${x ?? ''}'.isNotEmpty).join(' · '), style: const TextStyle(fontSize: 13.5)),
-              Wrap(spacing: 4, runSpacing: 4, children: [for (final w in l['why'] as List) Pill('$w', color: C.red, bg: C.redSoft)]),
+              for (final w in l['why'] as List) Padding(padding: const EdgeInsets.only(top: 2), child: Text('• $w', style: const TextStyle(fontSize: 13, color: C.red, fontWeight: FontWeight.w600, height: 1.3))),
               Align(alignment: Alignment.centerLeft, child: _act('rg-lke-${l['line']}', 'Correct this row', () => _edit(l), color: C.blue)),
             ])),
       ], open: look.isNotEmpty),

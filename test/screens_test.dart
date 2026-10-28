@@ -1322,12 +1322,12 @@ void main() {
     srv.vendors.add({'name': 'Om Hardware Bhiwandi', 'type': 'Material Supplier', 'saved': true, 'complete': false, 'machines': [], 'boqs': 0, 'gstReg': 'No', 'ver': 'v1'});
     final s = await ready(t, srv);
     await openMaster(t, s, 'Vendor Master');
-    expect(find.byKey(const Key('vms-Om Hardware Bhiwandi')), findsOneWidget);
     expect(find.textContaining('material suppliers: 1'), findsOneWidget);
     await tapK(t, 'vt-mat');
     await settle(t, 300);
     expect(find.text('I E Enterprises'), findsNothing);
     expect(find.text('Om Hardware Bhiwandi'), findsOneWidget);
+    expect(find.byKey(const Key('vms-Om Hardware Bhiwandi')), findsOneWidget, reason: 'marked Material Supplier');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/67_vendors_material.png'));
     await tapK(t, 'vt-bill');
@@ -2274,10 +2274,16 @@ void main() {
     final two = (p0['look'] as List).cast<Map>().firstWhere((l) => l['qty'] == 'two');
     await tapK(t, 'rg-lke-${two['line']}');
     await settle(t, 600);
+    expect(find.byKey(const Key('rge-ok')), findsOneWidget, reason: 'the row\'s box is open');
     await t.enterText(box('rge-qty'), '2');
+    await settle(t, 300);
+    expect(t.widget<TextField>(box('rge-qty')).controller!.text, '2');
     await tapK(t, 'rge-ok');
     await settle(t, 800);
-    expect(tileHas('rg-t-docs', '${(p0['docs'] as List).length + 1}'), findsOneWidget);
+    String texts(String k) => t.widgetList<Text>(find.descendant(of: find.byKey(Key(k)), matching: find.byType(Text))).map((x) => x.data).join(' | ');
+    expect(find.byKey(const Key('rge-ok')), findsNothing, reason: 'the row\'s box is closed by "Check this row again"');
+    expect(find.byKey(Key('rg-lk-${two['line']}')), findsNothing, reason: 'the row corrected is no longer to look at – GRNs tile: ${texts('rg-t-docs')} · look tile: ${texts('rg-t-look')}');
+    expect(tileHas('rg-t-docs', '${(p0['docs'] as List).length + 1}'), findsOneWidget, reason: texts('rg-t-docs'));
     expect(tileHas('rg-t-look', '${(p0['look'] as List).length - 1}'), findsOneWidget);
     // a duplicate deleted (the others kept)
     final d0 = ((p0['dups'] as List).first as Map)['line'];
