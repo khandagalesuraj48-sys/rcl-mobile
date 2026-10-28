@@ -185,9 +185,13 @@ class Assistant {
     this.onSite,
     this.tabs = const [],
     this.modLook,
+    this.stream,
     DateTime Function()? now,
   }) : now = now ?? DateTime.now;
   final AiCall call;
+  /// (3.61.0, Mechanical update-186) one step of a question asked word by word (Api.aiStream: its lines to onLine, the last one back) –
+  /// null: only the answer in one piece (getAiReply)
+  final Future<Map<String, dynamic>?> Function(Map<String, dynamic> x, void Function(Map<String, dynamic> line) onLine)? stream;
   /// (3.59.0, Mechanical update-185) a look-up of the Store / Engineering of this site, asked of that module itself with his own
   /// sign-in there (module 'store' / 'engineering', the look-up's name, its args) – null: none at hand
   Future<Map<String, dynamic>> Function(String module, String name, Map args)? modLook;
@@ -439,6 +443,8 @@ class Assistant {
     'store_outward': 'Store – Issue (Outward)', 'store_consumption': 'Store – consumption', 'store_returnable': 'Store – returnable items', 'store_requirements': 'Store – requirements',
     'store_purchase_orders': 'Store – purchase orders', 'eng_my_work': 'Engineering – my work', 'eng_dashboard': 'Engineering – dashboard', 'eng_report': 'Engineering – report',
     'eng_performance': 'Engineering – performance', 'eng_progress': 'Engineering – progress',
+    // (3.61.0, Mechanical update-186) its own memory of this person – run by the server (aiLookup)
+    'remember': 'Memory – kept', 'forget': 'Memory – taken out',
   };
 
   /// "Diesel issues 01-10-2026 to 16-10-2026 · 8511" – what was looked up (shown under the answer).

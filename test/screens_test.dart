@@ -22,7 +22,7 @@ import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
 import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
 import 'package:rcl_mobile/core/voice.dart' as voice;
-import 'package:rcl_mobile/screens/assistant.dart' show AssistantScreen, forgetChat, moduleLook;
+import 'package:rcl_mobile/screens/assistant.dart' show AiHistoryScreen, AiMemoryScreen, AssistantScreen, forgetChat, moduleLook;
 import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
 import 'package:rcl_mobile/screens/home.dart' show reportsOf;
 import 'package:rcl_mobile/screens/start_page.dart' show startPagesFor;
@@ -5837,4 +5837,229 @@ void main() {
     expect('$err', 'You have no access to Engineering at this site – the Super Admin gives it in the Portal.');
     expect(srv.engSent.length, n);
   });
+
+  /* (3.61.0 – Mechanical update-186) THE ASSISTANT LIVE: the answer word by word (api/ai), said while it is written in a talk; its own
+   * memory and his chats (History, Memory) – only his, only this site. */
+  FakeServer liveSrv() {
+    final srv = FakeServer()
+      ..superAdmin = true
+      ..aiOn = true
+      ..aiStream = true;
+    srv.prefs['brief'] = false;
+    srv.aiLookupAnswers['remember'] = {'remembered': true, 'id': 3, 'note': 'He wants the answers short.'};
+    srv.aiMemory.addAll([
+      {'id': 2, 'note': 'He calls the Dispenser "the pump".', 'at': '2026-10-13T06:00:00Z'},
+      {'id': 3, 'note': 'He wants the answers short.', 'at': '2026-10-14T05:00:00Z'},
+    ]);
+    srv.aiChats['Cmgold00abc123'] = {
+      'id': 'Cmgold00abc123', 'title': 'diesel of yesterday', 'n': 1, 'at': '2026-10-13T09:00:00Z',
+      'msgs': [{'r': 'me', 't': 'diesel of yesterday'}, {'r': 'src', 't': 'Looked up: · Diesel issues 13-10-2026'}, {'r': 'bot', 't': '180 L yesterday.'}],
+    };
+    return srv;
+  }
+
+  Future<void> askLive(WidgetTester t, FakeServer srv) async {
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    await tapK(t, 'home-ask');
+    await net(t);
+    srv.aiScript.addAll([
+      {'parts': [{'functionCall': {'name': 'remember', 'args': {'note': 'He wants the answers short.'}}}], 'model': 'claude-sonnet-5-5'},
+      {'parts': [{'text': 'Noted – I will keep my answers **short**.'}], 'model': 'claude-sonnet-5-5'},
+    ]);
+    await t.enterText(find.byKey(const Key('ai-in')), 'remember that I want the answers short');
+    await tapK(t, 'ai-send');
+    await net(t);
+    await net(t);
+  }
+
+  testWidgets('(3.61.0 – Mechanical update-186) Ask word by word (api/ai): every step asked there, not in one piece, no "Thinking…", the Admin\'s "first words"; "remember …" – Memory – kept, the note shown with "Take it out"; the chat kept after the answer (aiChatSave); History – newest first, one opened again goes on as the same chat; Memory – his notes, × takes one out; a site without step 1zk says so', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = liveSrv();
+    await askLive(t, srv);
+    expect(srv.aiStreamed.length, 2, reason: 'each step asked word by word');
+    expect(srv.calls.where((c) => c == 'mech:getAiReply'), isEmpty, reason: 'nothing asked in one piece');
+    expect(srv.aiLookups, [{'name': 'remember', 'args': {'note': 'He wants the answers short.'}}]);
+    expect(find.text('Memory – kept'), findsOneWidget);
+    expect(find.textContaining('Noted – I will keep my answers short.'), findsOneWidget);
+    expect(find.textContaining('first words'), findsOneWidget, reason: 'the Admin sees when its first words came');
+    expect(find.text('Thinking…'), findsNothing);
+    expect(find.textContaining('what the server sends after the end'), findsNothing, reason: 'read no further than the last line');
+    expect(find.text('Kept in memory: He wants the answers short.'), findsOneWidget);
+    // kept after the answer – as he saw it
+    final id = srv.aiChats.keys.singleWhere((k) => k != 'Cmgold00abc123');
+    expect(RegExp(r'^C[0-9a-z]{6,30}$').hasMatch(id), true);
+    final kept = srv.aiChats[id]!, km = kept['msgs'] as List;
+    expect([kept['title'], kept['n'], km.first, km.last, km.length],
+        ['remember that I want the answers short', 1, {'r': 'me', 't': 'remember that I want the answers short'}, {'r': 'bot', 't': 'Noted – I will keep my answers short.'}, 3]);
+    expect('${(km[1] as Map)['t']}', startsWith('Looked up: · Memory – kept · claude-sonnet-5-5 · '));
+    // "Take it out" under the answer
+    await tapK(t, 'ai-unkeep-3');
+    await net(t);
+    expect(srv.aiMemory.map((m) => m['id']), [2]);
+    expect(find.text('Memory मधून काढले.'), findsOneWidget);
+    expect(find.byKey(const Key('ai-unkeep-3')), findsNothing);
+    // History: the newest first; one opened again goes on as the same chat
+    await tapK(t, 'ai-hist');
+    await net(t);
+    expect(find.byType(AiHistoryScreen), findsOneWidget);
+    expect(find.text('तुमच्या chats'), findsOneWidget);
+    expect(find.text('हे फक्त तुम्हालाच दिसते – आणि फक्त या site चे.'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('ai-chat-0')), matching: find.text('remember that I want the answers short')), findsOneWidget, reason: 'the newest first');
+    expect(find.descendant(of: find.byKey(const Key('ai-chat-1')), matching: find.text('diesel of yesterday')), findsOneWidget);
+    expect(find.textContaining('· 1 प्रश्न'), findsNWidgets(2));
+    await tapK(t, 'ai-chat-1');
+    await net(t);
+    expect(find.byType(AiHistoryScreen), findsNothing);
+    expect(find.textContaining('History मधून उघडली ('), findsOneWidget);
+    expect(find.textContaining('180 L yesterday.'), findsOneWidget);
+    expect(find.text('Diesel issues 13-10-2026'), findsOneWidget);
+    expect(find.textContaining('Noted – I will keep'), findsNothing);
+    srv.aiScript.add({'parts': [{'text': 'Yesterday **180 L** – more because of the night shift.'}], 'model': 'claude-sonnet-5-5'});
+    await t.enterText(find.byKey(const Key('ai-in')), 'why was it so much');
+    await tapK(t, 'ai-send');
+    await net(t);
+    await net(t);
+    expect(srv.aiStreamed.last['contents'], [
+      {'role': 'user', 'parts': [{'text': 'diesel of yesterday'}]},
+      {'role': 'model', 'parts': [{'text': '180 L yesterday.'}]},
+      {'role': 'user', 'parts': [{'text': 'why was it so much'}]},
+    ], reason: 'the chat goes on from its questions and answers');
+    final old = srv.aiChats['Cmgold00abc123']!;
+    expect([old['n'], [for (final m in old['msgs'] as List) (m as Map)['r']], srv.aiChats.length], [2, ['me', 'src', 'bot', 'me', 'src', 'bot'], 2]);
+    expect((old['msgs'] as List).any((m) => '${(m as Map)['t']}'.contains('History')), false, reason: 'its note is not kept');
+    // Memory: his notes, × takes one out (a save, with its number)
+    await tapK(t, 'ai-mem');
+    await net(t);
+    expect(find.byType(AiMemoryScreen), findsOneWidget);
+    expect(find.text('He calls the Dispenser "the pump".'), findsOneWidget);
+    expect(find.byKey(const Key('ai-note-3')), findsNothing, reason: 'taken out under the answer');
+    expect(find.text('नवीन नोंदीसाठी "लक्षात ठेव …" असे सांगा; × ने काढा.'), findsOneWidget);
+    await tapK(t, 'ai-forget-2');
+    await net(t);
+    expect(srv.aiMemory, isEmpty);
+    expect(srv.calls.where((c) => c == 'mech:aiMemoryDel+rid').length, 2);
+    expect(find.byKey(const Key('ai-mem-none')), findsOneWidget);
+    // a site without step 1zk: said so
+    srv.aiStep = false;
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'ai-hist');
+    await net(t);
+    expect(find.byKey(const Key('ai-hist-off')), findsOneWidget);
+    expect(find.textContaining('supabase_step1zk_ai_memory.sql'), findsOneWidget);
+  });
+
+  testWidgets('(3.61.0 – Mechanical update-186) Ask word by word – the way back: the stream cut after words → asked once more in one piece (its words gone); the service\'s own answer before a word (no credit, busy) → said, not asked twice', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = liveSrv()..aiStreamHow.addAll(['busy', 'credit', 'busy0']);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    await tapK(t, 'home-ask');
+    await net(t);
+    srv.aiScript.add({'parts': [{'text': 'In one piece after the cut.'}], 'model': 'claude-haiku-5-5'});
+    Future<void> ask(String q) async {
+      await t.enterText(find.byKey(const Key('ai-in')), q);
+      await tapK(t, 'ai-send');
+      await net(t);
+      await net(t);
+    }
+
+    await ask('who took the most diesel today and why');
+    expect(srv.calls.where((c) => c == 'mech:getAiReply').length, 1);
+    expect(find.textContaining('In one piece after the cut.'), findsOneWidget);
+    expect(find.textContaining('The first words of'), findsNothing);
+    await ask('why so much diesel today');
+    expect(find.textContaining('The AI service has no credit left (Claude'), findsWidgets);
+    await ask('why so much diesel yesterday');
+    expect(find.textContaining('The AI service is busy right now (529) – that is on its side'), findsWidgets);
+    expect(srv.calls.where((c) => c == 'mech:getAiReply').length, 1, reason: 'the service\'s own answer is not asked twice');
+    expect(srv.aiStreamed.length, 3);
+  });
+
+  testWidgets('(3.61.0 – Mechanical update-186) Talk: each sentence said while the answer is written; 🎙 while it speaks – it stops at once and listens (the talk goes on, the rest of that answer not said); then it listens again by itself; 3 silences end it', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = FakeServer()
+      ..aiOn = true
+      ..aiStream = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    final heard = <String>['why so much diesel today', 'why so much diesel yesterday', '', '', ''];
+    final said = <String>[];
+    var stops = 0;
+    final oL = voice.listenOnce, oS = voice.sayAloud, oSL = voice.stopListening, oSS = voice.stopSaying;
+    addTearDown(() {
+      voice.listenOnce = oL;
+      voice.sayAloud = oS;
+      voice.stopListening = oSL;
+      voice.stopSaying = oSS;
+    });
+    voice.listenOnce = (lang, h) async {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final w = heard.isEmpty ? '' : heard.removeAt(0);
+      h(w);
+      return w;
+    };
+    voice.sayAloud = (text, lang) async {
+      said.add(text);
+      await Future<void>.delayed(const Duration(milliseconds: 400)); // (a sentence takes a while to say)
+    };
+    voice.stopListening = () async {};
+    voice.stopSaying = () async => stops++;
+    srv.aiScript.addAll([
+      {'parts': [{'text': 'Diesel today: 240 L in 4 entries. The most went to MH-25-AJ-2169: 80 L.'}], 'model': 'claude-sonnet-5-5'},
+      {'parts': [{'text': 'Yesterday 180 L.'}], 'model': 'claude-sonnet-5-5'},
+    ]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await tapK(t, 'home-ask');
+    await net(t);
+    await t.tap(find.byKey(const Key('ai-mic')));
+    // heard → asked word by word → its first sentence said (each sentence on its own)
+    for (var i = 0; i < 60 && said.isEmpty; i++) {
+      await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await t.pump(const Duration(milliseconds: 10));
+    }
+    expect(said, ['Diesel today: 240 L in 4 entries.']);
+    expect(find.descendant(of: find.byKey(const Key('ai-live-text')), matching: find.textContaining('🎙')), findsOneWidget, reason: 'it tells him he can speak now');
+    // he presses the microphone while it speaks: it stops and listens at once
+    final n = stops;
+    await t.tap(find.byKey(const Key('ai-mic')));
+    await t.pump();
+    expect(stops, greaterThan(n));
+    for (var i = 0; i < 6; i++) {
+      await net(t);
+    }
+    expect(srv.aiStreamed.length, 2, reason: 'the talk went on: the next question heard and asked');
+    expect(said, ['Diesel today: 240 L in 4 entries.', 'Yesterday 180 L.'], reason: 'the rest of the first answer was not said');
+    expect(heard, isEmpty);
+    expect(find.byKey(const Key('ai-live')), findsNothing, reason: '3 silences: the talk ends');
+    expect(srv.calls.where((c) => c == 'mech:getAiReply'), isEmpty);
+  });
+
+  testWidgets('(3.61.0 – Mechanical update-186) pictures: the note it kept, with "Take it out"; History; Memory', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = liveSrv();
+    await askLive(t, srv);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/70_ai_kept.png'));
+    await tapK(t, 'ai-hist');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/71_ai_history.png'));
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'ai-mem');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/72_ai_memory.png'));
+  }, tags: ['golden']);
 }

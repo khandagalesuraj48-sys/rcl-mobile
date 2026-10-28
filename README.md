@@ -15,6 +15,27 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.61.0 (29-10-2026 – "mala mazya app madhe ai khup powerfull banwaych aahe user live bolu shakel sadhya ai thinking krte te
+tyan nahi kel pahiej … ai la swatachi memory asel chat history asel … live jas 2 person kas boltat tas bolu pn shaktil fast response
+currect answer … fkt aik site wise asel"; with Mechanical update-186 – it needs update-186 live: without it the answer comes in one piece,
+as before; not released yet):** **The answer word by word:** each step of a question is asked at Mechanical's new `/api/ai` (its lines
+of JSON read as they come, no further than the last one – `Api.aiStream`); the words appear in the bubble as they are written (no
+"Thinking…", at most ~15 pictures a second); a step that asks for look-ups drops what it wrote before them; the Admin's chip adds "first
+words N s". The way back is the answer in one piece (`getAiReply`), as the web: AI_NO_STREAM (Gemini, an older server – for the rest of
+the chat), a stream cut after words (`cut` – asked once more), a line lost, no connection; the service's own answer (busy before a word,
+no credit, a key) is said, not asked twice. **Talk:** each finished sentence is said while the rest is still written (the web's
+`AI_SQ` / `aiSayFeed` – proven against its own code: `web_say186.json`; . ! ? । before a space or a new line, a number's point no end,
+a page button not said, ~650 characters then "The rest is on the screen."), then it listens again by itself; **🎙 (or a tap on
+"Speaking…") while it speaks stops it and listens at once** – during a question still being answered nothing more of it is said; Stop
+ends the talk; a question typed during a talk is said too and the talk then listens again; New chat / a chat opened again cut the speech
+and the talk goes on. **Its own memory:** "remember …" / "forget …" are the server's look-ups (`aiLookup` – "Memory – kept", "Memory –
+taken out"); a note it just kept is shown under the answer – "Kept in memory: …" with **Take it out** (`aiMemoryDel`); **Memory** (top of
+the assistant) lists his notes, × takes one out. **His chats:** kept after every answer (`aiChatSave`: his questions, the answers as
+plain words, "Looked up" – not the screen's own notes); **History** lists them (`aiChats`, newest first, title, date-time, n questions);
+one opens again (`aiChatGet`) and goes on as the same chat ("Opened from History (…) – ask on; the figures are looked up again."). Only
+his, only this site; a site without step 1zk says what to run. The web's help and words again (`web_help.json`, `web_mr` / `web_hi`).
+Not verified: a real phone (its voice, how quickly it hears), iPhone, the words coming one by one through the live Vercel.
+
 **Version 3.59.0 (28-10-2026 – "auto gst ka add krt aahet kuthe 6 kuth 2.5 tr kuthe 14 as nko … old import tyat tr ajibat karu nko as it
 is rahude … kadhi kadhi ai service slow asa pn error ywto … konte vichle / asset ch maintanace log book add aahe kadhi prynt updeted aahe
 … show dable ki distey but prt hide pn krta yaw … vendor name tr tith company name … owner name … vendor che attachment … adhar pan gst

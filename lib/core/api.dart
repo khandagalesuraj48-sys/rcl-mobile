@@ -355,6 +355,55 @@ class Api {
     }
   }
 
+  /// (3.61.0, Mechanical update-186) THE ASSISTANT'S ANSWER WORD BY WORD: POST <mechanical>/api/ai { token, x, site } – each line of the
+  /// answer as it comes ({t: 'd', x: words} …, then {t: 'end', parts, model, …} or {t: 'err', e, cut}) is handed to [onLine]; gives the
+  /// last one ('end' / 'err' – read no further; null: the line was lost before the end). Every check is the server's own (aiPrepare –
+  /// getAiReply's). A refusal before the first line comes as JSON {error} (not signed in, the limits, no Claude key: "AI_NO_STREAM"); a
+  /// server without it (404, an older one): "AI_NO_STREAM".
+  Future<Map<String, dynamic>?> aiStream(Map<String, dynamic> x, void Function(Map<String, dynamic> line) onLine) async {
+    if (mechUrl.isEmpty) throw ApiError('Mechanical is not open on this site.');
+    if ((token ?? '').isEmpty) throw ApiError('SESSION_EXPIRED', status: 401);
+    final rq = http.Request('POST', Uri.parse('$mechUrl/api/ai'))
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({'token': token, 'x': x, if ((site ?? '').isNotEmpty) 'site': site});
+    http.StreamedResponse r;
+    try {
+      r = await _c.send(rq).timeout(timeout);
+    } on TimeoutException {
+      throw ApiError('The server did not answer in time – check the network and try again.', code: 'net');
+    } catch (e) {
+      if (e is ApiError) rethrow;
+      throw ApiError('No connection – check the internet and try again.', code: 'net');
+    }
+    if (!(r.headers['content-type'] ?? '').contains('ndjson')) {
+      var body = '';
+      try {
+        body = await r.stream.bytesToString().timeout(timeout);
+      } catch (_) {/* nothing readable */}
+      Map? j;
+      try {
+        final d = jsonDecode(body);
+        if (d is Map) j = d;
+      } catch (_) {/* not JSON: an older server's page */}
+      if (r.statusCode == 404 || j == null || j['error'] == null) throw ApiError('AI_NO_STREAM', status: r.statusCode);
+      throw ApiError('${j['error']}', status: r.statusCode);
+    }
+    Map<String, dynamic>? last;
+    try {
+      await for (final l in r.stream.transform(utf8.decoder).transform(const LineSplitter()).timeout(const Duration(seconds: 50))) {
+        aiStreamLine(l, (m) {
+          if (last != null) return;
+          onLine(m);
+          if (m['t'] == 'end' || m['t'] == 'err') last = m;
+        });
+        if (last != null) break; // the answer is there with its last line: what the server still does after it is not waited for
+      }
+    } catch (e) {
+      if (e is ApiError) rethrow; // (the line lost or too slow: what came is what there is – the chat asks again in one piece)
+    }
+    return last;
+  }
+
   // ---------------- the Store (3.10.0) ----------------
   String _storeCookie = '', _storeKey = '';
 
@@ -429,4 +478,17 @@ class Api {
     } catch (_) {/* it ends by itself */}
     await forget();
   }
+}
+
+
+/// (3.61.0) one line of the answer word by word (JSON) → its map; an empty or broken line is left out.
+void aiStreamLine(String l, void Function(Map<String, dynamic> m) on) {
+  if (l.trim().isEmpty) return;
+  Object? j;
+  try {
+    j = jsonDecode(l);
+  } catch (_) {
+    return;
+  }
+  if (j is Map) on(j.cast<String, dynamic>());
 }

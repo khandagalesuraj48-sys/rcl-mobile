@@ -7250,5 +7250,21 @@
 "Engineering – report": "Engineering – रिपोर्ट",
 "Engineering – performance": "Engineering – प्रदर्शन",
 "Engineering – progress": "Engineering – प्रगति",
-"the Store": "स्टोर"
+"the Store": "स्टोर",
+"History": "इतिहास (History)",
+"Memory": "याद (Memory)",
+"Start a new conversation (this one stays in History)": "नई बातचीत शुरू करें (यह History में रहती है)",
+"Your earlier chats with the assistant – only you see them": "Assistant के साथ आपकी पिछली chats – सिर्फ़ आपको दिखती हैं",
+"What the assistant remembers about you – only you see it": "Assistant को आपके बारे में क्या याद है – सिर्फ़ आपको दिखता है",
+"Memory – kept": "Memory – याद रखा",
+"Memory – taken out": "Memory – हटाया",
+"The assistant's memory and its chats need one database step first: the Admin runs sql/supabase_step1zk_ai_memory.sql once in Supabase → SQL Editor (in every site).": "Assistant की memory और chats के लिए पहले एक database step चाहिए: Admin sql/supabase_step1zk_ai_memory.sql एक बार Supabase → SQL Editor में चलाए (हर site में)।",
+"The memory of the assistant is full for you (60 notes) – take out some notes first (Memory in the assistant).": "Assistant की आपके बारे में memory भर गई है (60 बातें) – पहले कुछ बातें हटाएँ (Assistant में Memory)।",
+"Say what the assistant should remember.": "Assistant को क्या याद रखना है वह बताएँ।",
+"Say which note to take out (its number).": "कौन सी बात हटानी है वह बताएँ (उसका नंबर)।",
+"Note {0} is not in the memory of the assistant for you.": "बात {0} assistant की आपके बारे में memory में नहीं है।",
+"This chat is not there.": "यह chat नहीं है।",
+"The assistant's own memory and its chats (step 1zk)": "Assistant की अपनी memory और chats (step 1zk)",
+"· first words {0} s": "· पहले शब्द {0} s",
+"The rest is on the screen.": "बाकी screen पर है।"
 }
