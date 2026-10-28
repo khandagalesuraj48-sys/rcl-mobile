@@ -2254,6 +2254,17 @@ void main() {
     final rows = grnReadRows(grnPickSheet(readSheets(bytes))!), info0 = <String, dynamic>{'items': [], 'vendors': [], 'grns': [], 'next': 1};
     final p0 = grnPlan(rows, info0, GrnChoice(), '2026-10-28');
     Finder tileHas(String k, String v) => find.descendant(of: find.byKey(Key(k)), matching: find.text(v));
+    final regList = find.descendant(of: find.byKey(const Key('rg-list')), matching: find.byType(Scrollable)).first;
+    Future<void> top() async {
+      await t.drag(find.byKey(const Key('rg-list')), const Offset(0, 9000));
+      await settle(t, 600);
+    }
+
+    Future<void> down(String k) async {
+      await t.scrollUntilVisible(find.byKey(Key(k)), 300, scrollable: regList);
+      await settle(t, 300);
+    }
+
     await tapK(t, 'sw-grn');
     await net(t);
     // the list in his columns: the GRN No as in the file, Challan No, Invoice No., TCS, the line's Taxable / GST / Gross / Remark
@@ -2283,18 +2294,27 @@ void main() {
     String texts(String k) => t.widgetList<Text>(find.descendant(of: find.byKey(Key(k)), matching: find.byType(Text))).map((x) => x.data).join(' | ');
     expect(find.byKey(const Key('rge-ok')), findsNothing, reason: 'the row\'s box is closed by "Check this row again"');
     expect(find.byKey(Key('rg-lk-${two['line']}')), findsNothing, reason: 'the row corrected is no longer to look at – GRNs tile: ${texts('rg-t-docs')} · look tile: ${texts('rg-t-look')}');
+    // (the list is built as it is scrolled: the tiles are at its top, the sections below)
+    await top();
     expect(tileHas('rg-t-docs', '${(p0['docs'] as List).length + 1}'), findsOneWidget, reason: texts('rg-t-docs'));
     expect(tileHas('rg-t-look', '${(p0['look'] as List).length - 1}'), findsOneWidget);
     // a duplicate deleted (the others kept)
     final d0 = ((p0['dups'] as List).first as Map)['line'];
+    await down('rg-dup-$d0');
     await tapK(t, 'rg-dup-$d0');
     await settle(t, 600);
+    await top();
     expect(find.textContaining('${(p0['dups'] as List).length - 1} kept (imported) · 1 deleted'), findsOneWidget);
-    // the AI: the names written differently, none ticked until he ticks; "✓ all" – the items written in two ways one item
+    // the AI (its part opened): the names written differently, none ticked until he ticks; "✓ all" – the items written in two ways one item
+    await down('rg-s-ai');
+    await tapK(t, 'rg-s-ai');
+    await settle(t, 600);
+    await down('rg-ai');
     await tapK(t, 'rg-ai');
     await net(t, 2500);
     await net(t, 1500);
     expect(sent(srv, 'regNames').map((x) => x['list']).toSet(), {'supplier', 'item', 'category'});
+    await down('rg-ai-item-Air Fliter 16 No');
     expect(find.byKey(const Key('rg-ai-item-Air Fliter 16 No')), findsOneWidget);
     expect(t.widget<CheckboxListTile>(find.byKey(const Key('rg-ai-item-Air Fliter 16 No'))).value, false);
     final fixed = {
@@ -2306,9 +2326,13 @@ void main() {
     ch.fix['item'] = fixed;
     final after = (grnPlan(rows, info0, ch, '2026-10-28')['newItems'] as List).length;
     expect(after, lessThan(before));
+    await top();
+    await down('rg-aiall-item');
     await tapK(t, 'rg-aiall-item');
     await settle(t, 800);
+    await down('rg-ai-item-Air Fliter 16 No');
     expect(t.widget<CheckboxListTile>(find.byKey(const Key('rg-ai-item-Air Fliter 16 No'))).value, true);
+    await top();
     expect(tileHas('rg-t-items', '$after'), findsOneWidget, reason: 'the items written in two ways one item once ticked');
     // Import: asked first, then the parts – suppliers, items, GRNs (the file's GRN No)
     await tapK(t, 'rg-go');
@@ -2320,6 +2344,7 @@ void main() {
     expect(docsSent.length, (p0['docs'] as List).length + 1);
     expect(docsSent.any((d) => (d as Map)['ref'] == '342-A'), true);
     expect([sent(srv, 'regVendors').length, sent(srv, 'regItems').length], [1, 1]);
+    await top();
     expect(find.textContaining('${docsSent.length} GRN saved'), findsOneWidget);
     expect(tileHas('rg-t-docs', '0'), findsOneWidget, reason: 'the check again: every GRN already in the Store');
     expect(tileHas('rg-t-have', '${docsSent.length}'), findsOneWidget);
