@@ -2116,6 +2116,8 @@ void main() {
     expect(asked.map((x) => x['fn']), ['logPending']);
     expect((asked.single['args'] as List).first, {'from': day, 'to': day});
     expect(files.single.$1, 'Pending_Log_Book_${day}_$day.xlsx');
+  });
+
   /* ---------------- (3.55.0) the Store's work – the app's own screens (rcl-store api/work) ---------------- */
   Future<FakeServer> openStoreWork(WidgetTester t, {FakeServer? server}) async {
     phone(t);
