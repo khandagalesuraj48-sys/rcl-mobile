@@ -15,6 +15,25 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.55.0 (28-10-2026 – the Store's step 2, "sagle banwayla chalu kr"; with rcl-store `store-work`, the Portal and Mechanical
+update-178):** **Home → Store** has a **Work** tab – the pages of the Store's work he was given (as the web's menu): **Material
+Requirements** (the filters Open / Waiting for me / Pending / Approved / …; Approve – one or the ticked –, Reject with why, Details,
+Change, Cancel, Close; a new one: date, needed by, for site work / a machinery / office, its items with the stock now),
+**Purchase – every site** (HO Purchase – "Store Purchase": the approved lines still to order of every site, ticked → that site's
+PO; the POs of every site), **Purchase Orders** (this site's; only what is still to come), **Inward (GRN)** (against a PO – its lines
+still to come – or direct; supplier, invoice, challan, vehicle, TCS; more than the PO asked first), **Issue & Return** (to site work, a
+sub-contractor, a machinery with its reading – into its maintenance log book –, the office; location, side, use for, receiver,
+returnable and serial no, on debit with GST; a Return of what is still out), **Stock & Reports** (stock, statement, item ledger,
+GRN / issue registers, consumption, returnable out, requirements, purchase orders – shown, Excel, print), **Opening stock &
+Numbers** (the Store Admin). A party's name nearly one written before is asked ("Use …"). Prints of a PO (its site's company on top),
+a GRN and an issue. The Store Admin imports his GRN / Issue registers (Excel – checked row by row first). The Dashboard shows the
+work's figures (stock value, below min stock, waiting for my approval, POs open, GRN / issues today, the recent ones). Everything
+through the Store's own server (`api/work` – `Api.store(…, path: 'work')`), the same checks and access as the web; `screens/
+store_work.dart`. Super Admin → a user's Store pages: the new pages, **Approves requirements** (Level 1 – 5) and **Store Purchase**
+– these two also for a Store Admin; the Portal's warning when the Store was not told who approves. Maintenance → **Fetch outward
+(Store)** says how many issues of the RCL Store are in the log book (a site without the Store's step 2: said so). Not verified: a
+real phone; the live Store (its database step 2 is run by him).
+
 **Version 3.54.0 (28-10-2026 – "pending log book je aahet te mala period wise print krta yawet dashboard warun pn ani log book netry
 madhun jith diste pending tithun pn", with Mechanical update-179):** the **Pending Log Book printed for a period** – **Dashboard → Log
 Book → Pending Log Book → Print** (its From / To, Ownership and Vendor taken over) and **Log Book → "N machinery without Log Book" →

@@ -295,6 +295,98 @@ class FakeServer {
   // (3.10.0) the Store: its sign-in (a ticket), the Item Master of the site; what was sent
   final storeSent = <Map<String, dynamic>>[];
   int storeSessions = 0;
+  // (3.55.0, the Store's step 2) the pages the Store gives (as its pagesOf: a Store Admin every page, Store Purchase when given); its work
+  bool storeAdmin = true;
+  Map<String, dynamic> storePages = {'dashboard': 'View', 'items': 'Edit', 'req': 'Edit', 'grn': 'Edit', 'issue': 'Edit', 'reports': 'View', 'po': 'View', 'purchase': 'None'};
+  final storeWork = <Map<String, dynamic>>[];
+  final storeReqs = <Map<String, dynamic>>[
+    {'no': 2, 'date': '2026-10-14', 'need_by': '2026-10-20', 'for_kind': 'Machinery', 'for_text': 'Sany 210 (No.1)', 'status': 'Pending', 'level': 1, 'approvals': [], 'created_by': 'amol@rcl.test', 'created_name': 'Amol Patil',
+      'lines': [{'line': 1, 'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'qty': 12, 'note': '', 'ordered': 0, 'left': 0}], 'mayApprove': true, 'mine': false, 'waitFor': ['Sujit Mule']},
+    {'no': 1, 'date': '2026-10-12', 'need_by': null, 'for_kind': 'Site work', 'for_text': 'Ch 540+450 toe wall', 'status': 'Approved', 'level': 0, 'approvals': [{'level': 1, 'name': 'Sujit Mule', 'at': '2026-10-12T06:00:00Z', 'ok': true}], 'created_by': 'amol@rcl.test', 'created_name': 'Amol Patil',
+      'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 50, 'note': 'canteen', 'ordered': 20, 'left': 30}], 'mayApprove': false, 'mine': false, 'waitFor': []},
+  ];
+  static const storePo = {'no': 1, 'site': 'S1', 'siteName': 'S1', 'date': '2026-10-13', 'vendor': 'Shri Traders', 'vendor_gst': '27ABCDE1234F1Z5', 'status': 'Open', 'state': 'Part received', 'taxable': 2000, 'gst': 100, 'total': 2100, 'created_name': 'Sujit Mule',
+    'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 20, 'rate': 100, 'gst_pct': 5, 'taxable': 2000, 'gst': 100, 'total': 2100, 'req_no': 1, 'req_line': 1, 'received': 5, 'left': 15}]};
+  static const storeIssue = {'no': 7, 'date': '2026-10-14', 'to_kind': 'Machinery', 'machinery': 'Sany 210 (No.1)', 'party': '', 'reading': 4712, 'location': '540+450', 'side': 'LHS', 'use_for': 'Breakdown', 'receiver': 'Gupta', 'debit': false, 'amount': 1200, 'created_name': 'Sujit Mule',
+    'lines': [{'id': 71, 'line': 1, 'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'qty': 4, 'rate': 300, 'amount': 1200, 'gst': 0, 'returnable': true, 'serial': '', 'back': 1}], 'returns': [{'no': 1, 'date': '2026-10-14', 'lines': []}]};
+
+  http.Response _work(Map<String, dynamic> b) {
+    List<Map<String, dynamic>> brief() => [for (final i in storeItems) {'code': i['code'], 'name': i['name'], 'unit': i['unit'], 'category': i['category'], 'gst_pct': i['gst_pct'], 'min_stock': i['min_stock'], 'status': i['status']}];
+    final rep = {'title': 'Stock', 'sub': 'As on 14-10-2026', 'cols': [{'h': 'Code'}, {'h': 'Item'}, {'h': 'Stock', 'n': true}, {'h': 'Value ₹', 'n': true}], 'rows': [['ITM-0001', 'Hydraulic Hose 1/2 inch', 25, 2500], ['ITM-0002', 'Sugar', 10.5, 1050]], 'total': ['', 'Total (2 items)', '', 3550]};
+    switch (b['action']) {
+      case 'boot':
+        return _j({'site': 'S1', 'today': '2026-10-14', 'items': brief(), 'stock': {'ITM-0001': 25, 'ITM-0002': 10.5}, 'avg': {'ITM-0001': 100, 'ITM-0002': 100},
+          'machinery': [{'no': 'MH-25-AJ-2169', 'name': 'Tipper', 'own': 'Rental'}, {'no': 'Sany 210 (No.1)', 'name': 'Excavator', 'own': 'Own'}],
+          'names': {'suppliers': ['Shri Traders'], 'subs': ['Ganesh Contractor'], 'vendors': ['Shri Traders'], 'gst': {'Shri Traders': '27ABCDE1234F1Z5'}},
+          'levels': [{'level': 1, 'people': ['Sujit Mule']}], 'myLevels': [1], 'kinds': {'for': ['Site work', 'Machinery', 'Office', 'Other'], 'to': ['Site work', 'Sub-contractor', 'Machinery', 'Office'], 'sides': ['LHS', 'RHS', 'Both']}});
+      case 'dash':
+        return _j({'today': '2026-10-14', 'stock': {'value': 3550, 'below': 1, 'items': 3}, 'req': {'pending': 1, 'mine': 1, 'approved': 1}, 'po': {'open': 1},
+          'grn': {'today': 1, 'todayValue': 525, 'month': 2, 'monthValue': 2625, 'recent': [{'no': 4, 'date': '2026-10-14', 'supplier': 'Shri Traders', 'gross': 525}]},
+          'issue': {'today': 1, 'todayValue': 1200, 'month': 1, 'monthValue': 1200, 'recent': [{'no': 7, 'date': '2026-10-14', 'to_kind': 'Machinery', 'machinery': 'Sany 210 (No.1)', 'party': '', 'amount': 1200}]}});
+      case 'reqList':
+        return _j({'reqs': storeReqs, 'levels': [{'level': 1, 'people': ['Sujit Mule']}]});
+      case 'reqSave':
+        return _j({'ok': true, 'no': 3, 'status': 'Pending', 'level': 1});
+      case 'reqDecide':
+        final nos = [for (final n in (b['nos'] as List? ?? [b['no']])) n];
+        for (final r in storeReqs) {
+          if (nos.contains(r['no'])) {
+            r['status'] = b['ok'] == true ? 'Approved' : 'Rejected';
+            r['mayApprove'] = false;
+          }
+        }
+        return _j({'ok': true, 'done': [for (final n in nos) {'no': n, 'status': b['ok'] == true ? 'Approved' : 'Rejected', 'level': 0}], 'left': []});
+      case 'reqCancel' || 'reqClose' || 'poCancel' || 'poClose' || 'grnDelete' || 'issueDelete' || 'retDelete':
+        return _j({'ok': true});
+      case 'purPending':
+        return _j({'sites': [
+          {'site': 'S1', 'name': 'VTR Site – NH 848', 'reqs': [storeReqs.firstWhere((r) => r['no'] == 1)], 'open': 1},
+          {'site': 'T2', 'name': '18B Kolhapur', 'reqs': [], 'error': 'The Store\'s step 2 is not run in this site\'s database yet.'},
+        ]});
+      case 'purItems':
+        return _j({'site': b['site'], 'items': brief(), 'vendors': ['Shri Traders'], 'gst': {'Shri Traders': '27ABCDE1234F1Z5'}});
+      case 'poList':
+        return _j({'pos': [storePo]});
+      case 'poGet':
+        return _j({'po': storePo, 'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5'}});
+      case 'poSave':
+        final po = (b['po'] as Map).cast<String, dynamic>();
+        if (po['vendor'] == 'Shree Traders' && b['confirmParty'] != true) {
+          return _j({'error': 'Please confirm: "Shri Traders" is already there – is "Shree Traders" another vendor?', 'code': 'party', 'near': ['Shri Traders'], 'field': 'vendor', 'typed': 'Shree Traders'}, 409);
+        }
+        return _j({'ok': true, 'site': b['site'], 'no': 2, 'total': 1575});
+      case 'grnList':
+        return _j({'from': b['from'], 'to': b['to'], 'grns': [
+          {'no': 4, 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': 'MH15AB1', 'po_no': 1, 'tcs': 0, 'gross': 525, 'created_name': 'Sujit Mule',
+            'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 5, 'rate': 100, 'gst_pct': 5, 'taxable': 500, 'gst': 25, 'gross': 525, 'po_line': 1}]},
+        ]});
+      case 'poOpen':
+        return _j({'pos': [storePo]});
+      case 'grnSave':
+        final g = (b['grn'] as Map).cast<String, dynamic>();
+        final over = g['po_no'] != null && (g['lines'] as List).any((l) => (num.tryParse('${(l as Map)['qty']}') ?? 0) > 15);
+        if (over && b['confirmOver'] != true) return _j({'error': 'More than PO 1 still has to come – Sugar: 20 Kg (PO still has 15). Take it in anyway?', 'code': 'over', 'over': ['Sugar: 20 Kg (PO still has 15)']}, 409);
+        return _j({'ok': true, 'no': 5, 'gross': 2100});
+      case 'issueList':
+        return _j({'from': b['from'], 'to': b['to'], 'issues': [storeIssue]});
+      case 'issueSave':
+        return _j({'ok': true, 'no': 8, 'amount': 500});
+      case 'retSave':
+        return _j({'ok': true, 'no': 2});
+      case 'report':
+        return _j(rep);
+      case 'openingList':
+        return _j({'rows': [{'code': 'ITM-0001', 'qty': 20, 'rate': 100, 'date': '2026-10-01'}]});
+      case 'openingSave':
+        return _j({'ok': true, 'rows': (b['rows'] as List).length});
+      case 'numbers' || 'numbersSave':
+        return _j({'next': {'GRN': 5, 'OUT': 8}, 'used': {'GRN': 4, 'OUT': 7}, if (b['action'] == 'numbersSave') 'ok': true});
+      case 'importDocs':
+        if (b['check'] == true) return _j({'rows': [{'line': 2, 'ref': '11', 'item': 'Sugar', 'status': 'ok', 'msg': 'GRN of 14-10-2026 – 1 item(s)', 'code': 'ITM-0002'}], 'docs': 1, 'errors': 0});
+        return _j({'ok': true, 'saved': 1, 'nos': [6], 'rows': [], 'docs': 1, 'errors': 0});
+    }
+    return _j({'error': 'Unknown action.'}, 404);
+  }
   final storeItems = <Map<String, dynamic>>[
     {'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'category': 'Spare Parts', 'hsn': '40092100', 'gst_pct': 18, 'min_stock': 10, 'status': 'Active', 'similar_note': null, 'created_by': 'sujit@rcl.test', 'created_at': '2026-10-02T06:00:00Z'},
     {'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'category': 'Canteen', 'hsn': '', 'gst_pct': 5, 'min_stock': null, 'status': 'Active', 'similar_note': null, 'created_by': 'sujit@rcl.test', 'created_at': '2026-10-10T06:00:00Z'},
@@ -364,6 +456,9 @@ class FakeServer {
   static const kStorePages = [
     {'key': 'dashboard', 'label': 'Dashboard', 'opts': ['View', 'None']},
     {'key': 'items', 'label': 'Item Master', 'opts': ['Edit', 'View', 'None']},
+    {'key': 'req', 'label': 'Material Requirements', 'opts': ['None', 'View', 'Edit']},
+    {'key': 'approve', 'label': 'Approves requirements', 'opts': ['None', 'L1', 'L2', 'L3', 'L4', 'L5'], 'admin': true},
+    {'key': 'purchase', 'label': 'Store Purchase – every site (HO)', 'opts': ['None', 'Edit'], 'admin': true},
   ];
 
   http.Response _no(String msg, [int code = 400, String c = '']) => _j({'error': msg, if (c.isNotEmpty) 'code': c}, code);
@@ -428,9 +523,10 @@ class FakeServer {
         {
           final y = acc(email, site, 'store');
           if (y == null) return _no('First give him the Store on this site (Admin or User), then his pages.', 400, 'noaccess');
-          if (y['role'] == 'admin') return _no('A Store Admin has every page. To give single pages, make him User first.', 400, 'admin');
-          y['pages'] = x['pages'];
-          return _j({'ok': true, 'pages': x['pages']});
+          // (3.55.0, as the Portal with the Store's step 2) a Store Admin: only who approves and Store Purchase
+          final pg = ((x['pages'] as Map?) ?? const {}).cast<String, dynamic>();
+          y['pages'] = y['role'] == 'admin' ? {for (final k in const ['approve', 'purchase']) if (pg.containsKey(k)) k: pg[k]} : pg;
+          return _j({'ok': true, 'pages': y['pages']});
         }
       case 'placesGet':
         {
@@ -626,7 +722,7 @@ class FakeServer {
       storeSent.add({'fn': 'sso', 'ticket': b['ticket']});
       if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the Store page.'}, 403);
       storeSessions++;
-      return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': true}, 'pages': {'dashboard': 'View', 'items': 'Edit'}, 'site': 'S1', 'siteName': 'VTR Site – NH 848'}, 200,
+      return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': storeAdmin}, 'pages': storePages, 'site': 'S1', 'siteName': 'VTR Site – NH 848'}, 200,
           {'set-cookie': 'rcl_store=S1.store$storeSessions-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; Path=/; HttpOnly; SameSite=Lax'});
     }
     if (path.endsWith('/store/api/items')) {
@@ -685,6 +781,12 @@ class FakeServer {
           return _j({'ok': true, 'added': added, 'exists': rep['exists']});
       }
       return _j({'error': 'Unknown action.'}, 404);
+    }
+    if (path.endsWith('/store/api/work')) {
+      final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      storeWork.add(b);
+      if (!'${r.headers['Cookie']}'.startsWith('rcl_store=S1.store')) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      return _work(b);
     }
     if (path.endsWith('/api/rpc')) {
       final b = jsonDecode(r.body) as Map;
