@@ -15,6 +15,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.58.0 (28-10-2026 – "admin or super admin gadich log book maintanace ch delet pn karu shakel as de … new requirement
+banwatana brand ha option asawa material specification asaw … new grn kartana new grn number auto yeil ok ani manually pn edit krta
+yeil"; with Mechanical update-182 and the Store's step 4 – rcl-store `store-grn-list-brand`; on top of 3.57.0; not released
+yet):** **Maintenance Log Book → "Delete this log book"** (red; the Admin / Super Admin only): all the maintenance bills of that machinery
+in the dates shown (or Start to end) – asked with their number and ₹, the machinery number typed to confirm (a wrong one: "Not
+deleted"); the server deletes only when it still has as many bills as shown; each bill in the Activity Log; the Store's issues and the
+fuel stay (`deleteMaintLog`, as the web). **Store:** each item of a **Material Requirement** and of a **PO** its **Brand** and **Material
+specification** (a PO made from a requirement takes them; shown in the lists and printed on the PO). **New GRN: the GRN No** comes by
+itself (the next – `grnNext`) and can be changed by hand where the site has the Store's step 4 (a number already used: refused, the next
+free one back in its box; before step 4 it stays the next); Clear brings the next again. The help of the web again (`web_help.json`: the
+update-182 rule at the end). The phone keeps its own list of the maintenance bills (the web took its list out – the bills are in its log
+book).
+
 **Version 3.57.0 (28-10-2026 – the Store's old inward register, "auto vendor and item banayla hawet … duplicate entry mala dakhaw mi
 swata delete krel … je GRN number chalu aahet tech continue hotil … ji excel diley tech column GRN / inward madhe de"; with rcl-store
 `grn-import-register` and Mechanical update-181; on top of 3.56.0; not released yet):** **Store → Work → Inward (GRN) → Import from

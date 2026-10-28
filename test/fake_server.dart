@@ -313,6 +313,8 @@ class FakeServer {
   Map<String, dynamic> storePages = {'dashboard': 'View', 'items': 'Edit', 'req': 'Edit', 'grn': 'Edit', 'issue': 'Edit', 'reports': 'View', 'po': 'View', 'purchase': 'None'};
   final storeWork = <Map<String, dynamic>>[];
   bool regStep3 = true;
+  // (3.58.0) a new GRN's GRN No: the next by itself (grnNext); typed by hand where the Store's step 4 is run (else only the next)
+  bool storeStep4 = true;
   final regGrnsSaved = <(String, String, int, String, String)>[]; // (key, GRN No, no, date, supplier) of the register's GRNs saved
   final storeReqs = <Map<String, dynamic>>[
     {'no': 2, 'date': '2026-10-14', 'need_by': '2026-10-20', 'for_kind': 'Machinery', 'for_text': 'Sany 210 (No.1)', 'status': 'Pending', 'level': 1, 'approvals': [], 'created_by': 'amol@rcl.test', 'created_name': 'Amol Patil',
@@ -379,11 +381,18 @@ class FakeServer {
         ]});
       case 'poOpen':
         return _j({'pos': [storePo]});
+      case 'grnNext':
+        return _j({'next': 5, 'step4': storeStep4});
       case 'grnSave':
         final g = (b['grn'] as Map).cast<String, dynamic>();
         final over = g['po_no'] != null && (g['lines'] as List).any((l) => (num.tryParse('${(l as Map)['qty']}') ?? 0) > 15);
         if (over && b['confirmOver'] != true) return _j({'error': 'More than PO 1 still has to come – Sugar: 20 Kg (PO still has 15). Take it in anyway?', 'code': 'over', 'over': ['Sugar: 20 Kg (PO still has 15)']}, 409);
-        return _j({'ok': true, 'no': 5, 'gross': 2100});
+        // (3.58.0) as the Store's server: a GRN No already used – refused, the next free one said; typed by hand before step 4 – refused
+        final ref = '${g['ref'] ?? ''}'.trim();
+        if (b['no'] == null && ref.isNotEmpty && ['4', '342-A'].contains(ref.toUpperCase())) return _j({'error': 'GRN No $ref is already used by another GRN – the next free number is 5. Nothing was saved.', 'code': 'refused', 'next': 5}, 409);
+        if (b['no'] == null && ref.isNotEmpty && ref != '5' && !storeStep4) return _j({'error': 'A GRN No typed by hand needs the Store\'s database step 4 at this site: the Admin runs sql/store_step4_grn_no.sql once in Supabase → SQL Editor (in every site). Until then the GRN gets the next number by itself – leave its GRN No as it comes.', 'code': 'sql'}, 400);
+        final no = b['no'] ?? (RegExp(r'^\d{1,9}$').hasMatch(ref) ? int.parse(ref) : ref.isEmpty ? 5 : 1000000002);
+        return _j({'ok': true, 'no': no, 'ref': b['no'] != null ? '${b['no']}' : (ref.isEmpty ? '5' : ref), 'gross': 2100});
       case 'issueList':
         return _j({'from': b['from'], 'to': b['to'], 'issues': [storeIssue]});
       case 'issueSave':
@@ -1594,6 +1603,15 @@ class FakeServer {
             mlogLines[i] = {for (final e in l.entries) if (e.value != '') e.key: e.value};
           }
           return _j({'result': {'ok': true, 'id': a[0], 'total': _mlogTotal, 'billTotal': _mlogTotal, 'lines': mlogLines.length}});
+        // (3.58.0, Mechanical update-182) the Admin's "Delete this log book" – as the server: as many bills as shown, else refused (nothing deleted)
+        case 'deleteMaintLog':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          maintCalls.add({'fn': action, 'x': x});
+          final n = mlogLines.isEmpty ? 0 : 1;
+          if (n == 0) return _j({'error': 'No maintenance bill of ${x['no']} in these dates – nothing to delete.'}, 500);
+          if (x['count'] != n) return _j({'error': 'The log book of ${x['no']} was changed meanwhile ($n bill(s) now, ${x['count']} shown) – show it again, then delete. Nothing was deleted.'}, 500);
+          mlogLines.clear();
+          return _j({'result': {'ok': true, 'no': x['no'], 'n': n, 'total': 0, 'all': x['all'] == true, 'ids': ['MT-000001']}});
         case 'getLogAttachments':
           return _j({'result': {'key': _arg(a, 'key'), 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'max': 10, 'files': [for (final f in entryAtt) {...f, 'url': ''}]}});
         case 'capClaim':

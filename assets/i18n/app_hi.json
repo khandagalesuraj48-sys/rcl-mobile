@@ -1199,5 +1199,15 @@
 "Clear": "खाली करें",
 "Clear the form?": "फ़ॉर्म खाली करें?",
 "The GRN comes back as it is saved – what is typed here goes. Nothing saved is changed.": "GRN जैसा save था वैसा वापस आएगा – यहाँ टाइप किया हुआ जाएगा। save किया हुआ कुछ नहीं बदलता।",
-"What is typed here goes. Nothing saved is changed.": "यहाँ टाइप किया हुआ जाएगा। save किया हुआ कुछ नहीं बदलता।"
+"What is typed here goes. Nothing saved is changed.": "यहाँ टाइप किया हुआ जाएगा। save किया हुआ कुछ नहीं बदलता।",
+"GRN No": "GRN नंबर",
+"the next number": "अगला नंबर",
+"Brand": "ब्रांड",
+"Material specification": "मटेरियल स्पेसिफिकेशन",
+"Type {0} to confirm": "पुष्टि के लिए {0} टाइप करें",
+"Type the machinery number.": "मशीनरी का नंबर टाइप करें.",
+"All {0} maintenance bill(s) of {1} from its first bill to today – ₹{2} – are deleted. What the RCL Store issued and the fuel stay. Each bill is written in the Activity Log.": "{1} के सभी {0} maintenance bill (पहले bill से आज तक) – ₹{2} – delete होते हैं. RCL Store के issue और fuel की एंट्री वैसी ही रहती हैं. हर bill Activity Log में लिखा जाता है.",
+"All {0} maintenance bill(s) of {1} {2} to {3} – ₹{4} – are deleted. What the RCL Store issued and the fuel stay. Each bill is written in the Activity Log.": "{1} के सभी {0} maintenance bill ({2} से {3}) – ₹{4} – delete होते हैं. RCL Store के issue और fuel की एंट्री वैसी ही रहती हैं. हर bill Activity Log में लिखा जाता है.",
+"GRN No {0} is already used by another GRN – the next free number is {1}. Nothing was saved.": "GRN नंबर {0} पहले से दूसरे GRN में इस्तेमाल हुआ है – अगला खाली नंबर {1} है. कुछ भी save नहीं हुआ.",
+"A GRN No typed by hand needs the Store's database step 4 at this site: the Admin runs sql/store_step4_grn_no.sql once in Supabase → SQL Editor (in every site). Until then the GRN gets the next number by itself – leave its GRN No as it comes.": "हाथ से टाइप किए GRN नंबर के लिए इस साइट पर Store का database step 4 चाहिए: Admin sql/store_step4_grn_no.sql एक बार Supabase → SQL Editor में चलाएँ (हर साइट में). तब तक GRN को अगला नंबर अपने आप मिलता है – GRN नंबर जैसा आता है वैसा ही रखें."
 }

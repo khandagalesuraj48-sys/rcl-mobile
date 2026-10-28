@@ -2209,19 +2209,27 @@ void main() {
     await t.enterText(box('rql-q-0'), '5');
     await settle(t, 300);
     expect(find.textContaining('stock now 10.5 Kg'), findsOneWidget);
+    // (3.58.0) each item its Brand and Material specification
+    await t.ensureVisible(box('rql-b-0'));
+    await t.enterText(box('rql-b-0'), 'Madhur');
+    await t.ensureVisible(box('rql-sp-0'));
+    await t.enterText(box('rql-sp-0'), 'Refined, 50 kg bags');
+    await settle(t, 300);
     await tapK(t, 'rq-save');
     await net(t);
     final r = sent(srv, 'reqSave').single['req'] as Map;
-    expect([r['date'], r['for_kind'], r['lines']], ['2026-10-14', 'Site work', [{'code': 'ITM-0002', 'qty': '5', 'note': ''}]]);
+    expect([r['date'], r['for_kind'], r['lines']], ['2026-10-14', 'Site work', [{'code': 'ITM-0002', 'qty': '5', 'brand': 'Madhur', 'spec': 'Refined, 50 kg bags', 'note': ''}]]);
     expect(find.textContaining('Requirement 3 saved – it waits for Level 1.'), findsOneWidget);
   }, tags: ['golden']);
 
   testWidgets('(3.55.0) Store – Purchase (every site): the ticked lines of a site → its PO; a vendor nearly one written before asked ("Use")', (t) async {
     final srv = FakeServer()..storePages = {...FakeServer().storePages, 'purchase': 'Edit'};
+    ((srv.storeReqs[1]['lines'] as List)[0] as Map)['brand'] = 'Madhur';      // (3.58.0) the requirement's brand – carried to the PO
     await openStoreWork(t, server: srv);
     await tapK(t, 'sw-purchase');
     await net(t);
     expect(find.textContaining("The Store's step 2 is not run in this site's database yet."), findsOneWidget, reason: 'a site without it said so');
+    expect(find.text('REQ 1 · Sugar – Madhur – to order 30 Kg'), findsOneWidget, reason: '(3.58.0) the brand after the item');
     await tapK(t, 'pu-t-S1-1-1');
     await t.pump();
     await tapK(t, 'pu-mk-S1');
@@ -2240,7 +2248,7 @@ void main() {
     final ps = sent(srv, 'poSave');
     expect(ps.length, 2);
     expect((ps.last['po'] as Map)['vendor'], 'Shri Traders');
-    expect((ps.last['po'] as Map)['lines'], [{'code': 'ITM-0002', 'qty': '30', 'rate': '50', 'gst_pct': '5', 'req_no': 1, 'req_line': 1}]);
+    expect((ps.last['po'] as Map)['lines'], [{'code': 'ITM-0002', 'qty': '30', 'rate': '50', 'gst_pct': '5', 'req_no': 1, 'req_line': 1, 'brand': 'Madhur', 'spec': ''}]);
     expect(ps.last['site'], 'S1');
     expect(find.textContaining('PO 2 of S1 saved'), findsOneWidget);
   });
@@ -2359,6 +2367,57 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/69_grn_reg_done.png'));
   }, tags: ['golden']);
+
+  testWidgets('(3.58.0 – the Store\'s step 4) a new GRN: its GRN No by itself (the next), changed by hand – one already used: refused, the next free one back in its box; "77" typed: saved with it; Clear: the next again; before step 4: the next, not to be changed', (t) async {
+    final srv = await openStoreWork(t);
+    await tapK(t, 'sw-grn');
+    await net(t);
+    await tapK(t, 'gr-new');
+    await net(t);
+    TextField refBox() => t.widget<TextField>(box('grf-ref'));
+    expect([refBox().controller!.text, refBox().enabled], ['5', true], reason: 'the next GRN No; step 4 there – it can be changed');
+    expect(sent(srv, 'grnNext').length, 1);
+    await t.enterText(box('grf-sup'), 'Shri Traders');
+    await tapK(t, 'grl-add');
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('pick-ITM-0002 · Sugar (Kg)')));
+    await settle(t, 600);
+    await t.enterText(box('grl-q-0'), '2');
+    await t.enterText(box('grl-r-0'), '100');
+    await t.enterText(box('grf-ref'), '342-A');
+    await settle(t, 300);
+    await tapK(t, 'gr-save');
+    await net(t);
+    expect(find.textContaining('GRN No 342-A is already used by another GRN – the next free number is 5. Nothing was saved.'), findsOneWidget);
+    expect(refBox().controller!.text, '5', reason: 'the next free one in its box');
+    await settle(t, 4000);
+    // Clear: the next number again (as the web's form drawn again)
+    await t.enterText(box('grf-ref'), '90');
+    await tapK(t, 'grf-clear');
+    await settle(t, 600);
+    await t.tap(find.widgetWithText(FilledButton, 'Clear'));
+    await net(t);
+    expect([refBox().controller!.text, sent(srv, 'grnNext').length], ['5', 2]);
+    await t.enterText(box('grf-sup'), 'Shri Traders');
+    await tapK(t, 'grl-add');
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('pick-ITM-0002 · Sugar (Kg)')));
+    await settle(t, 600);
+    await t.enterText(box('grl-q-0'), '2');
+    await t.enterText(box('grl-r-0'), '100');
+    await t.enterText(box('grf-ref'), '77');
+    await settle(t, 300);
+    await tapK(t, 'gr-save');
+    await net(t);
+    expect((sent(srv, 'grnSave').last['grn'] as Map)['ref'], '77');
+    expect(find.textContaining('GRN 77 saved'), findsOneWidget);
+    // a site before the Store's step 4: the next number, not to be changed
+    srv.storeStep4 = false;
+    await settle(t, 4000);
+    await tapK(t, 'gr-new');
+    await net(t);
+    expect([refBox().controller!.text, refBox().enabled], ['5', false]);
+  });
 
   testWidgets('(3.55.0) Store – Inward (GRN) against a PO (its lines still to come; more than it asked first); Issue to a machinery; a Return', (t) async {
     final srv = await openStoreWork(t);
@@ -5282,11 +5341,12 @@ void main() {
   });
 
   /// (3.56.0) a car's Maintenance Log Book opened as the test of 3.46.0 does it (a site on fuel cards; Fuel Cards: the Entries tab)
-  Future<FakeServer> mlogOpen(WidgetTester t, String perm) async {
+  Future<FakeServer> mlogOpen(WidgetTester t, String perm, {bool admin = false}) async {
     phone(t);
     final srv = FakeServer()
       ..perms.addAll({'Fuel Cards': 'Edit', 'Maintenance': perm})
-      ..card = true;
+      ..card = true
+      ..superAdmin = admin;
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
@@ -5308,10 +5368,38 @@ void main() {
     await mlogOpen(t, 'View');
     expect(find.text('Maintenance Log Book – MH-12-HO-1163'), findsWidgets);
     expect(find.byKey(const Key('mlog-lines')), findsNothing);
+    expect(find.byKey(const Key('mlog-delall')), findsNothing, reason: '(3.58.0) Delete this log book: the Admin / Super Admin only');
+  });
+
+  testWidgets('(3.58.0 – Mechanical update-182) "Delete this log book": not for a user with Maintenance Edit; the Admin / Super Admin – asked with its bills, ₹ and dates, the machinery number typed: a wrong one – nothing deleted; the right one (typed another way) – deleteMaintLog with the dates shown and the count; the log book shown again', (t) async {
+    final srv = await mlogOpen(t, 'Edit', admin: true);
+    await tapK(t, 'mlog-delall');
+    await settle(t, 800);
+    expect(find.text('Delete the log book of MH-12-HO-1163?'), findsOneWidget);
+    expect((t.widget(find.byKey(const Key('mlog-delall-say'))) as dynamic).data,
+        'All 1 maintenance bill(s) of MH-12-HO-1163 01-10-2026 to 14-10-2026 – ₹2,360.00 – are deleted. What the RCL Store issued and the fuel stay. Each bill is written in the Activity Log.');
+    expect(find.text('This cannot be undone – press "Export to Excel" first to keep a copy.'), findsOneWidget);
+    expect(find.text('Type MH-12-HO-1163 to confirm'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('note-box')), 'MH-12-HO-1164');
+    await tapK(t, 'note-ok');
+    await net(t);
+    expect(find.textContaining('Not deleted – type the machinery number as it is (MH-12-HO-1163).'), findsOneWidget);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'deleteMaintLog'), isEmpty, reason: 'nothing sent');
+    await settle(t, 4000);
+    await tapK(t, 'mlog-delall');
+    await settle(t, 800);
+    await t.enterText(find.byKey(const Key('note-box')), 'mh 12 ho 1163');
+    await tapK(t, 'note-ok');
+    await net(t);
+    expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'deleteMaintLog'), {'fn': 'deleteMaintLog', 'x': {'no': 'MH-12-HO-1163', 'from': '2026-10-01', 'to': '2026-10-14', 'count': 1}});
+    expect(find.textContaining('1 bill(s) of MH-12-HO-1163 deleted.'), findsOneWidget);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'maintLog').length, greaterThanOrEqualTo(2), reason: 'the log book read again');
+    expect(find.byKey(const Key('mlog-delall')), findsNothing, reason: 'no maintenance bill left in it');
   });
 
   testWidgets('(3.56.0 – Mechanical update-180) the Maintenance Log Book of a machinery: each line of a bill on its own – Edit (its box, its ₹ from Qty × Rate) and Delete, the rest of the bill as it is; changed meanwhile: said in the box; the only line: the whole bill (said first)', (t) async {
     final srv = await mlogOpen(t, 'Edit');
+    expect(find.byKey(const Key('mlog-delall')), findsNothing, reason: '(3.58.0) Delete this log book: not for a user (not the Admin)');
     await tapK(t, 'mlog-lines');
     await net(t);
     expect(find.text('Edit / delete a line – MH-12-HO-1163'), findsOneWidget);
