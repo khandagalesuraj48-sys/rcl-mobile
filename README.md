@@ -15,6 +15,20 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.53.0 (28-10-2026 – "jewde active aahet own rachana vehicle te mala import karaych aahe as it is jas asel tr"; then "aple
+app madhe powerful Claude AI aahe so import kartana full scan duplicate sagle kahi find krun import kasel name correction …", with
+Mechanical update-173):** the Admin's **Maintenance** has **"Import the old log book (Excel or PDF)"**: his **Excel** (a sheet a
+machinery, read as the web reads it – a bill = the rows of one date and party, a merged date the row's above, a reading on the bill's
+first row, each line as it is with its GST % from its GST Amount, a ₹0 line kept as FOC), a **PDF or a photo of a page read by the AI**
+row by row (2 pages a call, one page when its answer was cut; each machinery's table a sheet), or **"Download the format (Excel)"** (a
+sheet for each Own machinery on the site, its number in row 3, the heading). A card a sheet with its machinery (the **Own** ones on the
+site today; it can be changed or set to "– not imported –"), rows, bills, the file's total and the total as it will be kept, **the lines
+that do not add up** (Qty × Rate ≠ Amount, Amount + GST ≠ Amount With GST, an odd GST %); **the names written in more than one way**
+(Party Name, Particulars, Uom – the AI's list, nothing ticked: he ticks, or types another name); **Check** (nothing saved – each mistake
+with its row), then **Import** (asked first; one machinery all of it or nothing; **a bill already there** – the same machinery and date,
+its lines or its total to ₹1, whatever its party is called – is left out **and listed**). The same server actions as the web
+(readMaintLog, maintImportNames, checkMaintImport, importMaint). The web's help and words taken again.
+
 **Version 3.52.0 (27-10-2026 – "pdf print keli ki gst raw madhe ka dakhawat aahe heading madhe aahet gst tr", with Mechanical
 update-172):** the car's **Maintenance Log Book** (screen, Excel, PDF) shows no GST row: a bill saved before 3.51.0 with its taxes as lines
 of their own ("CGST @ 9%", "SGST @ 9%", "GST 18%" or "IGST 18%" – one rate) has them on its items – by the tax's % when that makes the

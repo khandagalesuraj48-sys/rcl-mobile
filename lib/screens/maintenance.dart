@@ -34,7 +34,12 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import 'attach_box.dart' show AttachStrip, AttViewer;
+import '../core/maint_import.dart' show MliSheet, mliRead, mliOwn, mliFormatXlsx;
+import '../core/sheet_read.dart' show readSheets, SheetError;
+import '../ui/pick_file.dart';
+import '../ui/outputs.dart' show shareXlsx;
+import 'attach_box.dart' show AttachStrip, AttViewer, pickAttFiles;
+import 'maint_import.dart' show MaintImportScreen;
 import 'forms.dart' show MachinePicker;
 import 'fuel_cards.dart' show rupees;
 import 'report_screen.dart' show openReport;
@@ -144,6 +149,63 @@ class _MaintScreenState extends State<MaintScreen> {
     _load();
   }
 
+  /// (3.53.0, Mechanical update-173) the old log book of the machinery imported as it is (the Admin) – the web's "Import the old log
+  /// book (Excel or PDF)": its Excel, its PDF / a photo of a page (read by the AI on the import's screen), or the format to fill
+  Future<void> _importChoice() async {
+    final how = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: TwoLang('Import the old log book', 'जुनी log book import करा', size: 17, weight: FontWeight.w700)),
+          ListTile(key: const Key('mti-excel'), leading: const Icon(Icons.grid_on_rounded, color: C.green), title: Text('Excel file'), subtitle: Text('A sheet a machinery'), onTap: () => Navigator.pop(c, 'excel')),
+          ListTile(key: const Key('mti-pdf'), leading: const Icon(Icons.picture_as_pdf_rounded, color: C.red), title: Text('PDF – read by the AI'), subtitle: Text('Row by row'), onTap: () => Navigator.pop(c, 'pdf')),
+          ListTile(key: const Key('mti-photo'), leading: const Icon(Icons.photo_rounded, color: C.blue), title: Text('Photo of a page – read by the AI'), onTap: () => Navigator.pop(c, 'photo')),
+          ListTile(key: const Key('mti-fmt'), leading: const Icon(Icons.download_rounded, color: C.muted), title: Text('Download the format (Excel)'), subtitle: Text('A sheet for each Own machinery'), onTap: () => Navigator.pop(c, 'fmt')),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (how == null || !mounted) return;
+    final s = SessionScope.read(context);
+    if (how == 'fmt') {
+      final own = mliOwn([for (final m in s.machines) m.m], s.today);
+      if (own.isEmpty) {
+        toast(context, 'No Own machinery is on this site today (Asset Master) – the format has a sheet for each.', bad: true);
+        return;
+      }
+      await shareXlsx(mliFormatXlsx(own, s.company), 'Old Maintenance Log Book – format.xlsx');
+      return;
+    }
+    if (how == 'excel') return _importOld();
+    final f = await pickAttFiles(how == 'pdf' ? 'pdf' : 'gallery', 1);
+    if (f.isEmpty || !mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MaintImportScreen(name: f.first.name, file: f.first.bytes)));
+    if (mounted) _load();
+  }
+
+  Future<void> _importOld() async {
+    final s = SessionScope.read(context);
+    final f = await pickSheetFile();
+    if (f == null || !mounted) return;
+    List<MliSheet> sheets;
+    try {
+      sheets = mliRead(readSheets(f.bytes), [for (final m in s.machines) m.m], s.today);
+    } on SheetError catch (e) {
+      toast(context, e.message, bad: true);
+      return;
+    } catch (_) {
+      toast(context, 'Could not read the file.', bad: true);
+      return;
+    }
+    if (sheets.isEmpty) {
+      toast(context, "No sheet of this file has the log book's heading (Date · Particulars · Qty · Amount …).", bad: true);
+      return;
+    }
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MaintImportScreen(name: f.name, sheets: sheets)));
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), can = s.canEdit('Maintenance');
@@ -178,6 +240,10 @@ class _MaintScreenState extends State<MaintScreen> {
               const Icon(Icons.chevron_right_rounded, color: C.blue),
             ]),
           ),
+          if (s.admin && !missing) ...[      // (3.53.0) the old log book's import – the Admin
+            const SizedBox(height: 8),
+            OutlinedButton.icon(key: const Key('mt-import'), onPressed: _importChoice, icon: const Icon(Icons.upload_file_rounded), label: Text('Import the old log book (Excel or PDF)')),
+          ],
           FormHead('Maintenance bills', sub: '${showDate(from)} – ${showDate(to)} · $count · ${rupees(total)}'),
           Row(children: [
             Expanded(child: DateField(key: const Key('mt-from'), label: 'From', value: from, clear: false, onChanged: (v) { setState(() => from = v); _load(); })),
