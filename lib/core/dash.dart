@@ -558,7 +558,7 @@ RDoc pendPrintDoc({required List items, required String kind, required String fr
   final by = <String, ({Map<String, String> m, List<String> dates})>{};
   for (final x in items) {
     final n = x is List ? _s(x.isNotEmpty ? x[0] : '') : x is Map ? _s(x['no']) : '', date = x is List ? _s(x.length > 1 ? x[1] : '') : x is Map ? _s(x['date']) : '';
-    if (n.isEmpty || date.length < 10) continue;
+    if (n.isEmpty || date.length < 10 || date.compareTo(from) < 0 || date.compareTo(to) > 0) continue; // only the period asked (a server before update-179 gives its own)
     final i = info(n), m = {'id': i?['id'] ?? n, 'name': i?['name'] ?? '', 'type': i?['type'] ?? (x is Map ? _s(x['type']) : ''), 'owner': (i?['owner'] ?? (x is Map ? _s(x['owner']) : '')).trim(), 'own': i?['ownership'] ?? ''};
     if (owns.isNotEmpty && !owns.contains(m['own'])) continue;
     if (ven.isNotEmpty && m['owner']!.toUpperCase() != ven) continue;

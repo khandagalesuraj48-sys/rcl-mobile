@@ -139,6 +139,7 @@ void main() {
     expect(pendPrintDoc(items: items, kind: 'period', from: '2026-10-01', to: '2026-10-28', upTo: '2026-10-28', own: 'Rental,Hired', info: of).tables.single.rows.length, 2);
     expect(pendPrintDoc(items: items, kind: 'period', from: '2026-10-01', to: '2026-10-28', upTo: '2026-10-28', vendor: 'shree travels', info: of).tables.single.rows.single.cells[1].text, 'R-1 Bolero');
     expect(pendPrintDoc(items: items, kind: 'period', from: '2026-10-01', to: '2026-10-28', upTo: '2026-10-28', no: 'h1', info: of).tables.single.rows.single.cells[5].text, '3');
+    expect(pendPrintDoc(items: items, kind: 'date', from: '2026-10-02', to: '2026-10-02', upTo: '2026-10-02', info: of).tables.single.rows.map((r) => r.cells[1].text), ['R-1 Bolero', 'H-1'], reason: 'only the days of the period asked');
     final one = pendPrintDoc(items: [for (final x in items) if (x[1] == '2026-10-01') x], kind: 'date', from: '2026-10-01', to: '2026-10-01', upTo: '2026-10-01', info: of);
     expect([one.title, one.period, one.tables.single.rows.length], ['Pending Log Book – 01-10-2026', 'Date: 01-10-2026', 2]);
     final none = pendPrintDoc(items: const [], kind: 'month', from: '2026-10-01', to: '2026-10-31', upTo: '2026-10-28', own: 'Own', info: of);
