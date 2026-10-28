@@ -7,6 +7,7 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../core/api.dart' show ApiError;
 import '../core/format.dart';
+import '../core/grn_reg.dart';
 import '../core/lb_io.dart' show XSheet;
 import '../core/more_imports.dart' show generalText;
 import '../core/rdoc.dart';
@@ -21,6 +22,8 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+
+part 'store_reg.dart';
 
 /// One action of the Store's work (POST <store>/api/work { action, … }).
 typedef StoreCall = Future<Map<String, dynamic>> Function(String action, [Map<String, dynamic>? x]);
@@ -477,7 +480,7 @@ class StoreDashWork extends StatelessWidget {
         if (g.isNotEmpty) tile('sd-grn', 'GRN today', '${g['today'] ?? 0}', '${rs(g['todayValue'])} · month ${g['month'] ?? 0}', C.greenDark, C.greenSoft),
         if (iss.isNotEmpty) tile('sd-iss', 'Issues today', '${iss['today'] ?? 0}', '${rs(iss['todayValue'])} · month ${iss['month'] ?? 0}', C.blue, C.blueSoft),
       ]),
-      if (g.isNotEmpty) recent('Recent GRN', listOf(g['recent']), (x) => 'GRN ${x['no']} · ${dmy(x['date'])} · ${x['supplier'] ?? ''} · ${rs(x['gross'])}'),
+      if (g.isNotEmpty) recent('Recent GRN', listOf(g['recent']), (x) => 'GRN ${grnRef(x)} · ${dmy(x['date'])} · ${x['supplier'] ?? ''} · ${rs(x['gross'])}'),
       if (iss.isNotEmpty) recent('Recent issues', listOf(iss['recent']), (x) => 'Outward ${x['no']} · ${dmy(x['date'])} · ${storeToWho(x)} · ${rs(x['amount'])}'),
     ]);
   }
@@ -1195,11 +1198,14 @@ class _PoListScreenState extends State<PoListScreen> {
 
 /* ======================== INWARD (GRN) ======================== */
 /// A GRN as its paper (the web's GRN print).
+/// (3.57.0) the GRN No as shown: an old register's GRN No ("342-A") – else its number
+String grnRef(Map g) => '${g['ref'] ?? ''}'.isNotEmpty ? '${g['ref']}' : '${g['no']}';
+
 RDoc grnDoc(Map<String, dynamic> g) {
   final lines = listOf(g['lines']);
   return RDoc(
-    title: 'Goods Received Note – GRN ${g['no']}',
-    file: 'GRN_${g['no']}',
+    title: 'Goods Received Note – GRN ${grnRef(g)}',
+    file: 'GRN_${grnRef(g).replaceAll(RegExp(r'[^A-Za-z0-9-]+'), '_')}',
     meta: [
       dmy(g['date']),
       'Supplier: ${g['supplier'] ?? ''}',
@@ -1212,16 +1218,16 @@ RDoc grnDoc(Map<String, dynamic> g) {
     ].where((x) => x.isNotEmpty).join('\n'),
     blocks: [
       RTable(
-        sheet: 'GRN ${g['no']}',
-        head: const ['#', 'Material', 'Received Qty', 'UOM', 'Basic Rate', 'Taxable', 'GST %', 'GST', 'Gross'],
+        sheet: 'GRN ${grnRef(g)}',
+        head: const ['#', 'Material', 'Received Qty', 'UOM', 'Basic Rate', 'Taxable', 'GST %', 'GST', 'Gross', 'Remark'],
         numCols: const {2, 4, 5, 6, 7, 8},
         rows: [
           for (final (i, l) in lines.indexed)
-            RRow([sc(i + 1), tc(l['name']), RCell(q3(l['qty']), n: true, value: nOf(l['qty'])), tc(l['unit']), mc(l['rate']), mc(l['taxable']), RCell(q3(l['gst_pct']), n: true, value: nOf(l['gst_pct'])), mc(l['gst']), mc(l['gross'])]),
+            RRow([sc(i + 1), tc(l['name']), RCell(q3(l['qty']), n: true, value: nOf(l['qty'])), tc(l['unit']), mc(l['rate']), mc(l['taxable']), RCell(q3(l['gst_pct']), n: true, value: nOf(l['gst_pct'])), mc(l['gst']), mc(l['gross']), tc(l['remark'] ?? '')]),
         ],
         foot: [
-          if (nOf(g['tcs']) != 0) RRow([RCell('TCS', span: 8), mc(g['tcs'])]),
-          RRow([RCell('Gross', bold: true, span: 8), mc(g['gross'], bold: true)], kind: RKind.grand),
+          if (nOf(g['tcs']) != 0) RRow([RCell('TCS', span: 8), mc(g['tcs']), tc('')]),
+          RRow([RCell('Gross', bold: true, span: 8), mc(g['gross'], bold: true), tc('')], kind: RKind.grand),
         ],
       ),
       if ('${g['remark'] ?? ''}'.isNotEmpty) RNote('${g['remark']}'),
@@ -1291,11 +1297,11 @@ class _GrnListScreenState extends State<GrnListScreen> {
   }
 
   Future<void> _delete(Map g) async {
-    if (!await ask(context, 'Delete GRN ${g['no']}?', bi('Its material goes out of the stock (refused if it was issued already).', 'हा GRN डिलीट होईल.'), yes: 'Delete', danger: true)) return;
+    if (!await ask(context, 'Delete GRN ${grnRef(g)}?', bi('Its material goes out of the stock (refused if it was issued already).', 'हा GRN डिलीट होईल.'), yes: 'Delete', danger: true)) return;
     try {
       await k.call('grnDelete', {'no': g['no']});
       if (!mounted) return;
-      toast(context, 'GRN ${g['no']} deleted.');
+      toast(context, 'GRN ${grnRef(g)} deleted.');
       await k.boot().catchError((_) {});
       await _load();
     } catch (e) {
@@ -1303,20 +1309,30 @@ class _GrnListScreenState extends State<GrnListScreen> {
     }
   }
 
+  /// (3.57.0, "ji excel diley tech column mala GRN / inward madhe de") a GRN in the columns of his inward register: GRN No, GRN Date,
+  /// Challan No, Invoice No., Invoice Date, Vehicle No, Supplier Name; each material its Received Qty, UOM, Basic Rate, Taxable Amount,
+  /// GST Amount, Gross Amount, Remark; TCS, PO No
   Widget _tile(Map<String, dynamic> g) {
     final no = nOf(g['no']).toInt();
     return _card(key: Key('gr-$no'), children: [
-      Row(children: [Expanded(child: Text('GRN $no · ${dmy(g['date'])}', style: _bold)), Text(rs(g['gross']), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800))]),
+      Row(children: [Expanded(child: Text('GRN ${grnRef(g)} · ${dmy(g['date'])}', style: _bold)), Text(rs(g['gross']), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800))]),
       Text('${g['supplier'] ?? ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       Text(
           [
-            if ('${g['invoice_no'] ?? ''}'.isNotEmpty) 'Invoice ${g['invoice_no']}${'${g['invoice_date'] ?? ''}'.isNotEmpty ? ' · ${dmy(g['invoice_date'])}' : ''}',
-            if ('${g['challan_no'] ?? ''}'.isNotEmpty) 'Challan ${g['challan_no']}',
-            if ('${g['vehicle_no'] ?? ''}'.isNotEmpty) 'Vehicle ${g['vehicle_no']}',
-            if (g['po_no'] != null) 'PO ${g['po_no']}',
+            if ('${g['challan_no'] ?? ''}'.isNotEmpty) 'Challan No ${g['challan_no']}',
+            if ('${g['invoice_no'] ?? ''}'.isNotEmpty) 'Invoice No. ${g['invoice_no']}',
+            if ('${g['invoice_date'] ?? ''}'.isNotEmpty) 'Invoice Date ${dmy(g['invoice_date'])}',
+            if ('${g['vehicle_no'] ?? ''}'.isNotEmpty) 'Vehicle No ${g['vehicle_no']}',
+            if (nOf(g['tcs']) != 0) 'TCS ${rs(g['tcs'])}',
+            if (g['po_no'] != null) 'PO No ${g['po_no']}',
           ].join(' · '),
           style: _faint),
-      for (final l in listOf(g['lines'])) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']} @ ${q3(l['rate'])}', style: const TextStyle(fontSize: 13.5)),
+      for (final l in listOf(g['lines']))
+        Padding(
+          padding: const EdgeInsets.only(top: 3),
+          child: Text('• ${l['name']} – ${q3(l['qty'])} ${l['unit']} @ ${q3(l['rate'])} · Taxable ${rs(l['taxable'])} · GST ${rs(l['gst'])} · Gross ${rs(l['gross'])}${'${l['remark'] ?? ''}'.isNotEmpty ? ' · ${l['remark']}' : ''}',
+              style: const TextStyle(fontSize: 13.5)),
+        ),
       Wrap(spacing: 2, children: [
         _act('gr-print-$no', 'Print', () => printDoc(context, SessionScope.read(context), grnDoc(g)), color: C.blue),
         if (k.admin) ...[_act('gr-edit-$no', 'Change', () => _form(g), color: C.blue), _act('gr-del-$no', 'Delete', () => _delete(g), color: C.red)],
@@ -1343,7 +1359,7 @@ class _GrnListScreenState extends State<GrnListScreen> {
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   _small('gr-xl', 'GRN register (Excel)', () => storeExcel(context, k, {'kind': 'grn', 'from': from, 'to': to})),
                   if (k.admin) ...[
-                    _small('gr-imp', 'Import from Excel', () => storeDocImport(context, k, 'grn', _load), icon: Icons.upload_file_rounded),
+                    _small('gr-imp', 'Import from Excel', () => storeRegImport(context, k, _load), icon: Icons.upload_file_rounded), // (3.57.0) his inward register – the check first
                     _small('gr-tpl', 'Import format', () => storeDocTemplate(context, 'grn'), icon: Icons.download_rounded),
                   ],
                 ]),
@@ -1379,7 +1395,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
     super.initState();
     for (final l in listOf(widget.grn?['lines'])) {
       final pl = l['po_line'] == null ? null : nOf(l['po_line']).toInt();
-      lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), poLine: pl, info: pl == null ? '' : 'PO line $pl'));
+      lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), note: '${l['remark'] ?? ''}', poLine: pl, info: pl == null ? '' : 'PO line $pl'));
     }
     _load();
   }
@@ -1417,7 +1433,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
     if (g != null && '${g['po_no'] ?? ''}' == v) {
       for (final l in listOf(g['lines'])) {
         final pl = l['po_line'] == null ? null : nOf(l['po_line']).toInt();
-        lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), poLine: pl, info: pl == null ? '' : 'PO line $pl'));
+        lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), note: '${l['remark'] ?? ''}', poLine: pl, info: pl == null ? '' : 'PO line $pl'));
       }
     } else if (p != null) {
       for (final l in listOf(p['lines'])) {
@@ -1445,7 +1461,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
           'vehicle_no': veh.text,
           'tcs': tcs.text,
           'remark': rem.text,
-          'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'rate': l.rate.text, 'gst_pct': l.gst.text, if (l.poLine != null) 'po_line': l.poLine}],
+          'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'rate': l.rate.text, 'gst_pct': l.gst.text, if (l.poLine != null) 'po_line': l.poLine, 'remark': l.note.text}],
         },
       };
       final r = await storeSaveAsk(context, widget.k.call, 'grnSave', x);
@@ -1467,7 +1483,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
         '${p['no']}': 'PO ${p['no']} – ${p['vendor'] ?? ''}${listOf(p['lines']).isEmpty ? '' : ' (${listOf(p['lines']).where((l) => nOf(l['left']) > 0).map((l) => '${l['name']} ${q3(l['left'])}').join(', ')})'}',
     };
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text(widget.grn != null ? 'Change GRN ${widget.grn!['no']}' : 'New GRN')),
+      appBar: AppBar(actions: withAsk(), title: Text(widget.grn != null ? 'Change GRN ${grnRef(widget.grn!)}' : 'New GRN')),
       bottomNavigationBar: loading ? null : _saveBar('gr-save', 'Save GRN', busy, _save),
       body: loading
           ? _loading()
@@ -1498,7 +1514,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
               const SizedBox(height: 14),
               Text('Items', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              SLinesEditor(k: widget.k, lines: lines, tag: 'grl', qtyLabel: 'Received Qty *', rateLabel: 'Basic Rate ₹', gst: true, gstFill: true, money: true, onChanged: () => setState(() {})),
+              SLinesEditor(k: widget.k, lines: lines, tag: 'grl', qtyLabel: 'Received Qty *', rateLabel: 'Basic Rate ₹', gst: true, gstFill: true, money: true, noteLabel: 'Remark', onChanged: () => setState(() {})),
               const SizedBox(height: 10),
               Text('Taxable ${rs(m.t)} · GST ${rs(m.g)}${t != 0 ? ' · TCS ${rs(t)}' : ''} · Gross ${rs(r2(m.all + t))}', key: const Key('grf-total'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
             ]),
@@ -1896,16 +1912,11 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
 }
 
 /* ======================== EXCEL IMPORT (the Store Admin): his INWARD / OUTWORD columns ======================== */
-const kDocImpHead = {
-  'grn': ['GRN No', 'GRN Date', 'Challan No', 'Invoice No.', 'Invoice Date', 'Vehicle No', 'Supplier Name', 'Material Description', 'Received Qty', 'UOM', 'Basic Rate', 'GST %', 'TCS', 'Remark'],
+const kDocImpHead = <String, List<String>>{
+  'grn': grnRegHead, // (3.57.0) his inward register's columns – read by the register's import (store_reg.dart)
   'issue': ['Date', 'Outward No', 'Party Name', 'Sub Contractor Name', 'Machinery', 'Reading', 'Material', 'Qty', 'UOM', 'Location', 'Side', 'Use For', 'Receiver Name', 'Returnable', 'Serial No', 'Remark'],
 };
 final _kDocImpMap = <String, Map<String, RegExp>>{
-  'grn': {
-    'ref': RegExp(r'^grn\s*no'), 'date': RegExp(r'^grn\s*date|^date$'), 'challan_no': RegExp('challan'), 'invoice_no': RegExp(r'^invoice\s*no'), 'invoice_date': RegExp(r'^invoice\s*date|^invoive'),
-    'vehicle_no': RegExp('vehicle'), 'party': RegExp('supplier|party'), 'item': RegExp('material|item'), 'qty': RegExp(r'received\s*qty|^qty|inward\s*qty'), 'rate': RegExp(r'basic\s*rate|^rate'),
-    'gst_pct': RegExp(r'gst\s*%|gst\s*rate'), 'tcs': RegExp('^tcs'), 'remark': RegExp('remark'),
-  },
   'issue': {
     'date': RegExp(r'^date$|issue\s*date'), 'ref': RegExp(r'out\s*w(o|a)rd\s*no|outward\s*no'), 'party': RegExp(r'sub\s*contractor'), 'party0': RegExp('^party'), 'machinery': RegExp('machinery|vehicle'),
     'reading': RegExp('reading'), 'item': RegExp(r'^material|item'), 'qty': RegExp(r'^qty|issued?\s*qty'), 'location': RegExp('location'), 'side': RegExp('^side'), 'use_for': RegExp(r'use\s*for|work\s*desc'),

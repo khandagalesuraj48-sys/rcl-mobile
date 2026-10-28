@@ -7,6 +7,7 @@ import 'package:flutter/material.dart' hide Text;
 import '../core/bill_reports.dart';
 import '../core/format.dart';
 import '../core/lb_print.dart' show n2;
+import '../core/masters.dart' show vendorMatOnly;
 import '../core/rdoc.dart' show RDoc;
 import '../core/session.dart';
 import '../ui/fields.dart';
@@ -242,7 +243,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     final s = SessionScope.read(context);
     try {
       final v = await s.api.call('getVendors');
-      if (mounted) setState(() => vendors = [for (final x in (v as List? ?? const []).whereType<Map>()) '${x['name']}']);
+      if (mounted) setState(() => vendors = [for (final x in (v as List? ?? const []).whereType<Map>()) if (!vendorMatOnly(x)) '${x['name']}']); // (3.57.0) not a material supplier
     } catch (_) {/* the vendors stay empty */}
     await _load();
   }
@@ -528,7 +529,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
       final s = SessionScope.read(context);
       try {
         final v = await s.api.call('getVendors');
-        if (mounted) setState(() => vendors = [for (final x in (v as List? ?? const []).whereType<Map>()) '${x['name']}']);
+        if (mounted) setState(() => vendors = [for (final x in (v as List? ?? const []).whereType<Map>()) if (!vendorMatOnly(x)) '${x['name']}']); // (3.57.0) not a material supplier
       } catch (_) {/* the vendors stay empty */}
       if (vendor.isNotEmpty) _load();
     });

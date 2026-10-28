@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:rcl_mobile/core/grn_reg.dart' show grnDocKey;
 
 class FakeServer {
   final calls = <String>[];
@@ -311,6 +312,8 @@ class FakeServer {
   bool storeAdmin = true;
   Map<String, dynamic> storePages = {'dashboard': 'View', 'items': 'Edit', 'req': 'Edit', 'grn': 'Edit', 'issue': 'Edit', 'reports': 'View', 'po': 'View', 'purchase': 'None'};
   final storeWork = <Map<String, dynamic>>[];
+  bool regStep3 = true;
+  final regGrnsSaved = <(String, String, int, String, String)>[]; // (key, GRN No, no, date, supplier) of the register's GRNs saved
   final storeReqs = <Map<String, dynamic>>[
     {'no': 2, 'date': '2026-10-14', 'need_by': '2026-10-20', 'for_kind': 'Machinery', 'for_text': 'Sany 210 (No.1)', 'status': 'Pending', 'level': 1, 'approvals': [], 'created_by': 'amol@rcl.test', 'created_name': 'Amol Patil',
       'lines': [{'line': 1, 'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'qty': 12, 'note': '', 'ordered': 0, 'left': 0}], 'mayApprove': true, 'mine': false, 'waitFor': ['Sujit Mule']},
@@ -369,8 +372,10 @@ class FakeServer {
         return _j({'ok': true, 'site': b['site'], 'no': 2, 'total': 1575});
       case 'grnList':
         return _j({'from': b['from'], 'to': b['to'], 'grns': [
-          {'no': 4, 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': 'MH15AB1', 'po_no': 1, 'tcs': 0, 'gross': 525, 'created_name': 'Sujit Mule',
-            'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 5, 'rate': 100, 'gst_pct': 5, 'taxable': 500, 'gst': 25, 'gross': 525, 'po_line': 1}]},
+          {'no': 4, 'ref': '4', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': 'MH15AB1', 'po_no': 1, 'tcs': 0, 'gross': 525, 'created_name': 'Sujit Mule',
+            'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 5, 'rate': 100, 'gst_pct': 5, 'taxable': 500, 'gst': 25, 'gross': 525, 'po_line': 1, 'remark': ''}]},
+          {'no': 1000000001, 'ref': '342-A', 'date': '2026-10-13', 'supplier': 'Om Hardware Bhiwandi', 'invoice_no': 'OH-77', 'invoice_date': '2026-10-12', 'challan_no': 'CH-5', 'vehicle_no': 'MH04AB1234', 'po_no': null, 'tcs': 12.5, 'gross': 1192.5, 'created_name': 'Sujit Mule',
+            'lines': [{'line': 1, 'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'qty': 4, 'rate': 250, 'gst_pct': 18, 'taxable': 1000, 'gst': 180, 'gross': 1180, 'po_line': null, 'remark': 'Mechanical'}]},
         ]});
       case 'poOpen':
         return _j({'pos': [storePo]});
@@ -393,6 +398,27 @@ class FakeServer {
         return _j({'ok': true, 'rows': (b['rows'] as List).length});
       case 'numbers' || 'numbersSave':
         return _j({'next': {'GRN': 5, 'OUT': 8}, 'used': {'GRN': 4, 'OUT': 7}, if (b['action'] == 'numbersSave') 'ok': true});
+      // (3.57.0) the old inward register's import (rcl-store api/work.js regInfo / regNames / regVendors / regItems / regGrns)
+      case 'regInfo':
+        return _j({'step3': regStep3, 'ai': true, 'today': '2026-10-28', 'units': ['Nos', 'Kg', 'Ltr'], 'next': regGrnsSaved.isEmpty ? 1 : 8031, 'items': [], 'vendors': [],
+          'grns': [for (final d in regGrnsSaved) [d.$1, d.$2, d.$3, d.$4, d.$5]]});
+      case 'regNames':
+        final fx = [
+          for (final n in (b['names'] as List).whereType<List>())
+            if (RegExp('Hydrolic|Fliter|Bindding').hasMatch('${n[0]}')) ['${n[0]}', '${n[0]}'.replaceAll('Hydrolic', 'Hydraulic').replaceAll('Fliter', 'Filter').replaceAll('Bindding', 'Binding')],
+        ];
+        return _j({'fixes': fx});
+      case 'regVendors':
+        return _j({'added': (b['names'] as List).length, 'have': 0});
+      case 'regItems':
+        return _j({'added': [for (final (i, x) in (b['items'] as List).indexed) ['ITM-${(i + 1).toString().padLeft(4, '0')}', (x as Map)['name']]], 'have': 0, 'bad': []});
+      case 'regGrns':
+        final saved = [];
+        for (final d in (b['docs'] as List).whereType<Map>()) {
+          regGrnsSaved.add((grnDocKey(d['ref'], d['date'], d['supplier'], d['invoice_no']), '${d['ref']}', regGrnsSaved.length + 1, '${d['date']}', '${d['supplier']}'));
+          saved.add({'no': regGrnsSaved.length, 'ref': d['ref']});
+        }
+        return _j({'saved': saved, 'skipped': [], 'errors': []});
       case 'importDocs':
         if (b['check'] == true) return _j({'rows': [{'line': 2, 'ref': '11', 'item': 'Sugar', 'status': 'ok', 'msg': 'GRN of 14-10-2026 – 1 item(s)', 'code': 'ITM-0002'}], 'docs': 1, 'errors': 0});
         return _j({'ok': true, 'saved': 1, 'nos': [6], 'rows': [], 'docs': 1, 'errors': 0});

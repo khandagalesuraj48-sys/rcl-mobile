@@ -3,7 +3,9 @@
  * owners as vendors", each vendor's assets, mobile, GST, PAN, bank, BOQs and how complete its details are; the form (Vendor Name –
  * a rename moves everything of the vendor, asked first –, Mobile, Email, Aadhaar, GST registered / GST Number – its check letter,
  * State and the PAN inside it –, PAN, Bank, Branch, Account, IFSC – the bank and branch looked up –, Address, Remark), Delete
- * details. Server: getVendors, saveVendor, deleteVendor, vendorsFromOwners. */
+ * details. Server: getVendors, saveVendor, deleteVendor, vendorsFromOwners.
+ * (3.57.0, Mechanical update-181) a Material Supplier (made by the Store's import of its old inward register): marked by its name, the
+ * Type filter (All / Machinery & billing / Material suppliers (Store)), the count; its type in the form – where this site keeps it. */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
@@ -32,7 +34,7 @@ class VendorMasterScreen extends StatefulWidget {
 class _VendorMasterScreenState extends State<VendorMasterScreen> {
   List<Map<String, dynamic>> all = [];
   bool loading = true;
-  String err = '', q = '', st = '', busy = '';
+  String err = '', q = '', st = '', ty = '', busy = '';
   late final qc = TextEditingController(text: widget.find);
 
   @override
@@ -76,7 +78,7 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     final can = s.canEdit('Vendor Master');
-    final list = vendorsShown(all, q, st);
+    final list = vendorsShown(all, q, st, ty: ty), nMat = all.where((v) => v['type'] == kMatSup).length;
     final unsaved = [for (final v in all) if (v['saved'] != true) '${v['name']}'];
     return Scaffold(
       appBar: AppBar(
@@ -96,8 +98,12 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
           Wrap(spacing: 8, children: [
             for (final x in const [('', 'All'), ('missing', 'Not filled / incomplete'), ('done', 'Complete')]) ChoiceChip(key: Key('vf-${x.$1.isEmpty ? 'all' : x.$1}'), selected: st == x.$1, onSelected: (_) => setState(() => st = x.$1), label: Text(x.$2)),
           ]),
+          const SizedBox(height: 4),
+          Wrap(spacing: 8, children: [
+            for (final x in const [('', 'All'), ('bill', 'Machinery & billing'), ('mat', 'Material suppliers (Store)')]) ChoiceChip(key: Key('vt-${x.$1.isEmpty ? 'all' : x.$1}'), selected: ty == x.$1, onSelected: (_) => setState(() => ty = x.$1), label: Text(x.$2)),
+          ]),
           const SizedBox(height: 6),
-          Text('Vendors: ${list.length} · details complete: ${all.where((v) => v['complete'] == true).length} of ${all.length}', key: const Key('v-sum'), style: const TextStyle(fontSize: 13, color: C.muted)),
+          Text('Vendors: ${list.length} · details complete: ${all.where((v) => v['complete'] == true).length} of ${all.length}${nMat > 0 ? ' · material suppliers: $nMat' : ''}', key: const Key('v-sum'), style: const TextStyle(fontSize: 13, color: C.muted)),
           if (unsaved.isNotEmpty && can)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -128,6 +134,7 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
           Expanded(child: Text(name, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800))),
           Pill(stt.$1, color: toneOf(stt.$2), bg: softOf(stt.$2)),
         ]),
+        if (v['type'] == kMatSup) Padding(padding: const EdgeInsets.only(top: 4), child: Pill('Material Supplier', key: Key('vms-$name'), color: C.slate, bg: C.slateSoft)),
         if ('${v['ownership'] ?? ''}'.isNotEmpty) Text('${v['ownership']}', style: const TextStyle(fontSize: 13, color: C.muted)),
         const SizedBox(height: 6),
         Text('${ms.length} asset${ms.length == 1 ? '' : 's'}${ms.isEmpty ? '' : ': ${ms.take(3).map((m) => m['id']).join(', ')}${ms.length > 3 ? '…' : ''}'}', style: const TextStyle(fontSize: 13.5)),
@@ -162,7 +169,7 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
       await _view(v);
       return;
     }
-    final res = await Navigator.of(context).push<dynamic>(MaterialPageRoute(builder: (_) => VendorFormScreen(vendor: v)));
+    final res = await Navigator.of(context).push<dynamic>(MaterialPageRoute(builder: (_) => VendorFormScreen(vendor: v, typeOn: all.any((x) => x['type'] == kMatSup))));
     if (res is List && mounted) setState(() => _take(res));
     if (mounted) _load(quiet: true);
   }
@@ -178,6 +185,7 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
             for (final x in [
               ('Ownership', v['ownership']), ('Mobile Number', v['phone']), ('Email', v['email']), ('GST registered?', v['gstReg']), ('GST Number', v['gst']), ('PAN Number', v['pan']),
               ('Bank Name', v['bank']), ('Branch', v['branch']), ('Account Number', bankText(v) == '–' ? '' : bankText(v)), ('IFSC Code', v['ifsc']), ('Address', v['address']), ('Remark', v['remark']),
+              if (v['type'] == kMatSup) ('Vendor type', 'Material Supplier (Store)'),
             ])
               InfoRow(x.$1, '${x.$2 ?? ''}'),
             const SizedBox(height: 8),
@@ -219,8 +227,11 @@ class _VendorMasterScreenState extends State<VendorMasterScreen> {
 
 /* ---------------- the form ---------------- */
 class VendorFormScreen extends StatefulWidget {
-  const VendorFormScreen({super.key, this.vendor});
+  const VendorFormScreen({super.key, this.vendor, this.typeOn = false});
   final Map<String, dynamic>? vendor;
+
+  /// (3.57.0) this site keeps a vendor's type (a material supplier is there): the type is in the form
+  final bool typeOn;
   @override
   State<VendorFormScreen> createState() => _VendorFormScreenState();
 }
@@ -229,6 +240,8 @@ class _VendorFormScreenState extends State<VendorFormScreen> {
   static const keys = ['name', 'phone', 'email', 'aadhaar', 'gst', 'pan', 'bank', 'branch', 'account', 'ifsc', 'address', 'remark'];
   late final t = <String, TextEditingController>{for (final k in keys) k: TextEditingController(text: '${widget.vendor?[k] ?? ''}')};
   late String gstReg = widget.vendor?['gstReg'] == 'Yes' ? 'Yes' : 'No';
+  late String vtype = widget.vendor?['type'] == kMatSup ? kMatSup : '';
+  bool get typeShown => widget.typeOn || widget.vendor?['type'] == kMatSup;
   String gstHint = '', ifscHint = '';
   bool gstBad = false, ifscBad = false, panAuto = false, bankAuto = false, busy = false;
   String err = '', ifscAsked = '';
@@ -337,6 +350,7 @@ class _VendorFormScreenState extends State<VendorFormScreen> {
       final body = {
         'oldName': renaming ? was : '', 'name': g('name'), 'gstReg': gstReg, 'gst': g('gst'), 'gstPct': '${v?['gstPct'] ?? ''}', 'pan': g('pan'), 'tds': '${v?['tds'] ?? ''}', 'bank': g('bank'),
         'branch': g('branch'), 'account': g('account'), 'ifsc': g('ifsc'), 'phone': g('phone'), 'address': g('address'), 'remark': g('remark'), 'aadhaar': g('aadhaar'), 'email': g('email'),
+        if (typeShown) 'type': vtype, // (3.57.0) only when shown – the server keeps it as it is otherwise
       };
       if (saved) body['ver'] = '${v?['ver'] ?? ''}'; // (update-156) the version it had when it was opened
       final res = (await s.api.call('saveVendor', [body, saved ? 'edit' : 'add'], true) as Map).cast<String, dynamic>();
@@ -420,6 +434,10 @@ class _VendorFormScreenState extends State<VendorFormScreen> {
         TextBox(key: const Key('vf-address'), label: 'Address', controller: t['address']!, maxLines: 2),
         gap(),
         TextBox(key: const Key('vf-remark'), label: 'Remark', controller: t['remark']!),
+        if (typeShown) ...[
+          gap(),
+          PickField(key: const Key('vf-type'), label: 'Vendor type', value: vtype, blank: 'Machinery / billing vendor', items: const [kMatSup], labels: const {kMatSup: 'Material Supplier (Store)'}, onChanged: (x) => setState(() => vtype = x)),
+        ],
         if (err.isNotEmpty) InfoLine(err, bad: true),
         const SizedBox(height: 16),
         FilledButton(key: const Key('vf-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save vendor')),

@@ -7116,5 +7116,13 @@
 "Line saved – bill {0} is now ₹{1}.": "पंक्ति save हुई – बिल {0} अब ₹{1}.",
 "Not paid – ₹ 0 in the bill.": "भुगतान नहीं – बिल में ₹ 0.",
 "The other lines of the bill stay as they are.": "बिल की बाकी पंक्तियाँ जैसी हैं वैसी ही रहती हैं.",
-"This is the only line of bill {0} – delete the whole bill instead.": "यह बिल {0} की इकलौती पंक्ति है – इसके बदले पूरा बिल डिलीट करें."
+"This is the only line of bill {0} – delete the whole bill instead.": "यह बिल {0} की इकलौती पंक्ति है – इसके बदले पूरा बिल डिलीट करें.",
+"· material suppliers:": "· मटेरियल सप्लायर्स:",
+"Machinery / billing vendor": "मशीनरी / बिलिंग वेंडर",
+"Machinery & billing": "मशीनरी और बिलिंग",
+"Material Supplier": "मटेरियल सप्लायर",
+"Material Supplier (Store)": "मटेरियल सप्लायर (Store)",
+"Material suppliers (Store)": "मटेरियल सप्लायर्स (Store)",
+"Vendor type": "वेंडर प्रकार",
+"Vendor Type": "वेंडर प्रकार"
 }
