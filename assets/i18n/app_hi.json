@@ -1195,5 +1195,9 @@
 "into the Vendor Master (Material Supplier)": "Vendor Master में (Material Supplier)",
 "Importing … (keep this screen open)": "Import हो रहा है … (यह screen खुला रखें)",
 "Imported": "Import हुआ",
-"Stopped": "रुका"
+"Stopped": "रुका",
+"Clear": "खाली करें",
+"Clear the form?": "फ़ॉर्म खाली करें?",
+"The GRN comes back as it is saved – what is typed here goes. Nothing saved is changed.": "GRN जैसा save था वैसा वापस आएगा – यहाँ टाइप किया हुआ जाएगा। save किया हुआ कुछ नहीं बदलता।",
+"What is typed here goes. Nothing saved is changed.": "यहाँ टाइप किया हुआ जाएगा। save किया हुआ कुछ नहीं बदलता।"
 }

@@ -1384,20 +1384,50 @@ class GrnFormScreen extends StatefulWidget {
 
 class _GrnFormScreenState extends State<GrnFormScreen> {
   List<Map<String, dynamic>> pos = [];
-  late String po = widget.grn?['po_no'] == null ? '' : '${widget.grn!['po_no']}', date = '${widget.grn?['date'] ?? widget.k.today}', invDate = '${widget.grn?['invoice_date'] ?? ''}';
-  late final sup = TextEditingController(text: '${widget.grn?['supplier'] ?? ''}'), ch = TextEditingController(text: '${widget.grn?['challan_no'] ?? ''}'), inv = TextEditingController(text: '${widget.grn?['invoice_no'] ?? ''}');
-  late final veh = TextEditingController(text: '${widget.grn?['vehicle_no'] ?? ''}'), tcs = TextEditingController(text: plainN(widget.grn?['tcs'])), rem = TextEditingController(text: '${widget.grn?['remark'] ?? ''}');
+  String po = '', date = '', invDate = '';
+  final sup = TextEditingController(), ch = TextEditingController(), inv = TextEditingController(), veh = TextEditingController(), tcs = TextEditingController(), rem = TextEditingController();
   final lines = <SLine>[];
   bool busy = false, loading = true;
 
   @override
   void initState() {
     super.initState();
-    for (final l in listOf(widget.grn?['lines'])) {
+    _fill();
+    _load();
+  }
+
+  /// the form as it opens: a new GRN empty, a GRN being changed as it is saved (also what Clear does)
+  void _fill() {
+    final g = widget.grn;
+    po = g?['po_no'] == null ? '' : '${g!['po_no']}';
+    date = '${g?['date'] ?? widget.k.today}';
+    invDate = '${g?['invoice_date'] ?? ''}';
+    sup.text = '${g?['supplier'] ?? ''}';
+    ch.text = '${g?['challan_no'] ?? ''}';
+    inv.text = '${g?['invoice_no'] ?? ''}';
+    veh.text = '${g?['vehicle_no'] ?? ''}';
+    tcs.text = plainN(g?['tcs']);
+    rem.text = '${g?['remark'] ?? ''}';
+    final old = [...lines];
+    lines.clear();
+    for (final l in listOf(g?['lines'])) {
       final pl = l['po_line'] == null ? null : nOf(l['po_line']).toInt();
       lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), note: '${l['remark'] ?? ''}', poLine: pl, info: pl == null ? '' : 'PO line $pl'));
     }
-    _load();
+    if (old.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        for (final l in old) {
+          l.dispose();
+        }
+      });
+    }
+  }
+
+  /// (28-10-2026, as the web's GRN form) Clear: asked first when something is typed; nothing saved is changed
+  Future<void> _clear() async {
+    final typed = lines.isNotEmpty || sup.text.trim().isNotEmpty;
+    if (typed && !await ask(context, 'Clear the form?', bi(widget.grn != null ? 'The GRN comes back as it is saved – what is typed here goes. Nothing saved is changed.' : 'What is typed here goes. Nothing saved is changed.', 'फॉर्म मध्ये टाइप केलेले जाईल – save केलेले काहीही बदलत नाही.'), yes: 'Clear')) return;
+    if (mounted) setState(_fill);
   }
 
   @override
@@ -1483,7 +1513,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
         '${p['no']}': 'PO ${p['no']} – ${p['vendor'] ?? ''}${listOf(p['lines']).isEmpty ? '' : ' (${listOf(p['lines']).where((l) => nOf(l['left']) > 0).map((l) => '${l['name']} ${q3(l['left'])}').join(', ')})'}',
     };
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text(widget.grn != null ? 'Change GRN ${grnRef(widget.grn!)}' : 'New GRN')),
+      appBar: AppBar(actions: withAsk([IconButton(key: const Key('grf-clear'), tooltip: tr('Clear'), onPressed: loading || busy ? null : _clear, icon: const Icon(Icons.restart_alt_rounded))]), title: Text(widget.grn != null ? 'Change GRN ${grnRef(widget.grn!)}' : 'New GRN')),
       bottomNavigationBar: loading ? null : _saveBar('gr-save', 'Save GRN', busy, _save),
       body: loading
           ? _loading()

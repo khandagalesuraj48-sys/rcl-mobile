@@ -2367,6 +2367,14 @@ void main() {
     expect(find.byKey(const Key('gr-4')), findsOneWidget);
     await tapK(t, 'gr-new');
     await net(t);
+    // (as the web's GRN form) Clear: asked first, the form empty again
+    await t.enterText(box('grf-sup'), 'Someone Typed');
+    await tapK(t, 'grf-clear');
+    await settle(t, 600);
+    expect(find.text('Clear the form?'), findsOneWidget);
+    await t.tap(find.widgetWithText(FilledButton, 'Clear'));
+    await settle(t, 600);
+    expect(t.widget<TextField>(box('grf-sup')).controller!.text, '');
     await tapK(t, 'grf-po');
     await settle(t, 600);
     await t.tap(find.textContaining('PO 1 – Shri Traders').last);

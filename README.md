@@ -30,7 +30,9 @@ a stop is said, Import again goes on (never twice). What he chose is kept for th
 PO No; each material its Qty, UOM, Basic Rate, Taxable, GST, Gross, Remark); a line's **Remark** in the GRN form and the print; the
 Import format his columns. **Vendor Master** (Mechanical update-181): a **Material Supplier** (made by the Store's import) marked, the
 **Type** filter (All / Machinery & billing / Material suppliers (Store)), its **Vendor type** in the form (where the site keeps it); not
-offered for an asset's owner, a BOQ, a payment or the ledger – unless it has machinery or a BOQ. Not verified: a real phone.
+offered for an asset's owner, a BOQ, a payment or the ledger – unless it has machinery or a BOQ. **The GRN form: Clear** (as the web's
+new GRN form of his picture, rcl-store `grn-form-look`) – asked first; a new GRN empty again, a GRN being changed back as it is saved.
+Not verified: a real phone.
 
 **Version 3.56.0 (28-10-2026 – "kahi pdf madhe heading maghe pudhe aahet tr … auto identify krun … kontya hi gadichi log book
 maintanace wala ek ek entry mala edit or delet krta yawi"; his answer: each line on its own; with Mechanical update-180; not released
