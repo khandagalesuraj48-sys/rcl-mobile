@@ -528,3 +528,77 @@ Future<NumDetail> numDetail(String kind, Map<String, dynamic> d, String from, St
     none: list.isEmpty ? (kind == 'today' ? 'No diesel issued today.' : 'No diesel issued in this period.') : '',
   );
 }
+
+/* ---------------- (3.54.0, Mechanical update-179) the Pending Log Book printed for a period ---------------- */
+String _pk(String v) => v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+int _dU(String d) => DateTime.utc(int.parse(d.substring(0, 4)), int.parse(d.substring(5, 7)), int.parse(d.substring(8, 10))).millisecondsSinceEpoch;
+
+/// The dates as runs: 01-10 → 05-10 (5), 08-10 – with the year when the period is in more than one ([year]).
+String pendRuns(List<String> ds, {bool year = false}) {
+  String dd(String d) => year ? showDate(d) : showDate(d).substring(0, 5);
+  final out = <List<String>>[];
+  for (final d in ds) {
+    if (out.isNotEmpty && _dU(d) - _dU(out.last[1]) == 86400000) {
+      out.last[1] = d;
+    } else {
+      out.add([d, d]);
+    }
+  }
+  return out.map((r) => r[0] == r[1] ? dd(r[0]) : '${dd(r[0])} → ${dd(r[1])} (${((_dU(r[1]) - _dU(r[0])) / 86400000).round() + 1})').join(', ');
+}
+
+const _kMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+String monthLong(String ym) => '${_kMonths[int.parse(ym.substring(5, 7)) - 1]} ${ym.substring(0, 4)}';
+
+/// The Pending Log Book printed (the web's pendPrint): for one date ([kind] 'date'), a month or a period; Ownership ([own] –
+/// "Own", "Rental,Hired" …), an Owner / Vendor, one machinery ([no]). [items]: the server's list ({no, date} or [no, date]); [upTo]:
+/// the last day counted (today at the most); [info]: a machinery of the Asset Master (id, name, type, owner, ownership).
+RDoc pendPrintDoc({required List items, required String kind, required String from, required String to, required String upTo, String own = '', String vendor = '', String no = '', required Map<String, String>? Function(String no) info}) {
+  final owns = own.isEmpty ? const <String>[] : own.split(','), ven = vendor.trim().toUpperCase(), one = _pk(no);
+  final by = <String, ({Map<String, String> m, List<String> dates})>{};
+  for (final x in items) {
+    final n = x is List ? _s(x.isNotEmpty ? x[0] : '') : x is Map ? _s(x['no']) : '', date = x is List ? _s(x.length > 1 ? x[1] : '') : x is Map ? _s(x['date']) : '';
+    if (n.isEmpty || date.length < 10) continue;
+    final i = info(n), m = {'id': i?['id'] ?? n, 'name': i?['name'] ?? '', 'type': i?['type'] ?? (x is Map ? _s(x['type']) : ''), 'owner': (i?['owner'] ?? (x is Map ? _s(x['owner']) : '')).trim(), 'own': i?['ownership'] ?? ''};
+    if (owns.isNotEmpty && !owns.contains(m['own'])) continue;
+    if (ven.isNotEmpty && m['owner']!.toUpperCase() != ven) continue;
+    if (one.isNotEmpty && _pk(n) != one) continue;
+    by.putIfAbsent(_pk(n), () => (m: m, dates: <String>[])).dates.add(date);
+  }
+  const ord = {'Own': 0, 'Rental': 1, 'Hired': 2};
+  final l = by.values.toList();
+  for (final x in l) {
+    x.dates.sort();
+  }
+  l.sort((a, b) {
+    final o = (ord[a.m['own']] ?? 9) - (ord[b.m['own']] ?? 9);
+    if (o != 0) return o;
+    final w = a.m['owner']!.compareTo(b.m['owner']!);
+    return w != 0 ? w : a.m['id']!.compareTo(b.m['id']!);
+  });
+  final days = l.fold<int>(0, (a, x) => a + x.dates.length), year = from.substring(0, 4) != upTo.substring(0, 4);
+  final filt = [if (own.isNotEmpty) own.replaceAll(',', ' + '), if (vendor.trim().isNotEmpty) vendor.trim(), if (no.isNotEmpty) no].join(' · ');
+  final title = kind == 'date' ? 'Pending Log Book – ${showDate(from)}' : kind == 'month' ? 'Pending Log Book – ${monthLong(from.substring(0, 7))}' : 'Pending Log Book – ${showDate(from)} to ${showDate(to)}';
+  return RDoc(
+    title: title,
+    file: 'Pending_Log_Book_${from}_$to',
+    period: kind == 'date' ? 'Date: ${showDate(from)}' : 'Period: ${showDate(from)} to ${showDate(to)}',
+    meta: [
+      '${l.length} machinery · $days day${days == 1 ? '' : 's'} pending${filt.isEmpty ? '' : ' · $filt'}',
+      'Active machinery with no Log Book entry (in any shift) for a day it was on the site. Debit-basis parties and Ownership "Other" need no Log Book.${upTo.compareTo(to) < 0 ? ' Counted up to today (${showDate(upTo)}).' : ''}',
+    ].join('\n'),
+    blocks: [
+      RTable(
+        sheet: 'Pending Log Book',
+        head: const ['#', 'Machinery', 'Type', 'Owner / Vendor', 'Ownership', 'Pending days', 'Dates pending'],
+        numCols: const {0, 5},
+        empty: '✔ Nothing pending${filt.isEmpty ? '' : ' for $filt'} in these dates.',
+        rows: [
+          for (final (i, x) in l.indexed)
+            RRow([sc(i + 1), RCell('${x.m['id']}${x.m['name']!.isNotEmpty && x.m['name'] != x.m['id'] ? ' ${x.m['name']}' : ''}', bold: true), tc(x.m['type']), tc(x.m['owner']), tc(x.m['own']), RCell('${x.dates.length}', n: true, bold: true, value: x.dates.length), tc(pendRuns(x.dates, year: year))]),
+        ],
+        foot: l.isEmpty ? const [] : [RRow([RCell('Total – ${l.length} machinery', bold: true, span: 5), RCell('$days', n: true, bold: true, value: days), const RCell('')], kind: RKind.grand)],
+      ),
+    ],
+  );
+}

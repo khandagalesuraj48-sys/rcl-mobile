@@ -35,6 +35,7 @@ import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
+import 'package:rcl_mobile/screens/pend_print.dart' show PendPrintScreen;
 
 import 'fake_rtc.dart';
 import 'lock_test.dart' show FakeGate;
@@ -2050,6 +2051,70 @@ void main() {
     }
     await settle(t, 300);
   }
+
+  // (3.54.0, Mechanical update-179) the Pending Log Book printed for a period – from the Dashboard and from the Log Book screen
+  List<List<Object?>> sheetRows(Uint8List b) => readSheets(b).first.rows;
+
+  testWidgets('(3.54.0 – Mechanical update-179) Pending Log Book – Print / Excel from the Dashboard: its period, Ownership, Vendor; each machinery with its days', (t) async {
+    phone(t);
+    final srv = editor()..perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel')));
+    await net(t);
+    await t.tap(find.text('Dashboard'));
+    await net(t);
+    await t.tap(find.byKey(const Key('dt-log')));
+    await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('lb-pprint')), 600, scrollable: find.descendant(of: find.byKey(const Key('dash-log')), matching: find.byType(Scrollable)).first);
+    await tapK(t, 'lb-pprint');
+    await net(t);
+    expect(find.byType(PendPrintScreen), findsOneWidget);
+    expect((t.widget(find.byKey(const Key('pp-kind'))) as PickField).value, 'period');
+    expect((t.widget(find.byKey(const Key('pp-from'))) as DateField).value, '2026-09-01', reason: 'the list\'s period');
+    final to = (t.widget(find.byKey(const Key('pp-to'))) as DateField).value;
+    expect(to.length, 10);
+    final files = catchFiles();
+    final before = srv.dashAsked.length;
+    await tapK(t, 'pp-xl');
+    await net(t);
+    final asked = srv.dashAsked.sublist(before);
+    expect(asked.map((x) => x['fn']), ['pendingLog'], reason: 'the Dashboard\'s list (its access)');
+    expect((asked.single['args'] as List).first, {'from': '2026-09-01', 'to': to});
+    expect(files.single.$1, 'Pending_Log_Book_2026-09-01_$to.xlsx');
+    final rows = sheetRows(files.single.$2);
+    expect(rows.any((r) => r.length > 1 && '${r[0]}' == '#' && '${r[1]}' == 'Machinery'), true);
+    final mh = rows.firstWhere((r) => r.length > 6 && '${r[1]}'.startsWith('MH-15-AB-0001'));
+    expect([mh[5], '${mh[6]}'.startsWith('01-10')], [16, true], reason: 'its 16 pending days, the first on 01-10');
+  });
+
+  testWidgets('(3.54.0 – Mechanical update-179) Pending Log Book – Print / Excel from the Log Book screen: that date (logPending – Log Book access)', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook').last);
+    await net(t);
+    await t.tap(find.text('2 machinery without Log Book'));
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('lb-pend-print')));
+    await net(t);
+    expect(find.byType(PendPrintScreen), findsOneWidget);
+    expect((t.widget(find.byKey(const Key('pp-kind'))) as PickField).value, 'date');
+    final day = (t.widget(find.byKey(const Key('pp-date'))) as DateField).value;
+    final files = catchFiles();
+    final before = srv.dashAsked.length;
+    await tapK(t, 'pp-xl');
+    await net(t);
+    final asked = srv.dashAsked.sublist(before);
+    expect(asked.map((x) => x['fn']), ['logPending']);
+    expect((asked.single['args'] as List).first, {'from': day, 'to': day});
+    expect(files.single.$1, 'Pending_Log_Book_${day}_$day.xlsx');
+  });
 
   Future<void> more(WidgetTester t, String item) async {
     await t.tap(find.byKey(const Key('en-more')));

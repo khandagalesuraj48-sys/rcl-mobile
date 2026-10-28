@@ -110,6 +110,44 @@ void main() {
     expect(pendingCards(p, q: 'ex-200', ownOf: (_) => 'Own').cards.single.no, 'EX-200');
   });
 
+  test('(3.54.0, Mechanical update-179) the Pending Log Book printed for a period: Own, Rental, Hired; the dates as runs; the filters', () {
+    expect(pendRuns(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-08', '2026-10-10', '2026-10-11']), '01-10 → 05-10 (5), 08-10, 10-10 → 11-10 (2)');
+    expect(pendRuns(['2026-12-31', '2027-01-01'], year: true), '31-12-2026 → 01-01-2027 (2)');
+    final info = {
+      'R-1': {'id': 'R-1', 'name': 'Bolero', 'type': 'Bolero', 'owner': 'Shree Travels', 'ownership': 'Rental'},
+      'OWN-1': {'id': 'OWN-1', 'name': 'OWN-1', 'type': 'JCB', 'owner': 'Rachana Construction Limited', 'ownership': 'Own'},
+      'H-1': {'id': 'H-1', 'name': '', 'type': 'Tipper', 'owner': 'Amol Patil', 'ownership': 'Hired'},
+    };
+    final items = [
+      ['R-1', '2026-10-02'], ['R-1', '2026-10-01'], ['OWN-1', '2026-10-03'], ['H-1', '2026-10-01'], ['H-1', '2026-10-02'], ['H-1', '2026-10-03'],
+    ];
+    Map<String, String>? of(String n) => info[n];
+    final d = pendPrintDoc(items: items, kind: 'period', from: '2026-10-01', to: '2026-10-31', upTo: '2026-10-28', info: of);
+    expect(d.title, 'Pending Log Book – 01-10-2026 to 31-10-2026');
+    expect(d.period, 'Period: 01-10-2026 to 31-10-2026');
+    expect(d.meta, startsWith('3 machinery · 6 days pending\n'));
+    expect(d.meta, endsWith('Counted up to today (28-10-2026).'));
+    final t = d.tables.single;
+    expect(t.head, ['#', 'Machinery', 'Type', 'Owner / Vendor', 'Ownership', 'Pending days', 'Dates pending']);
+    expect([for (final r in t.rows) r.cells.map((c) => c.text).toList()], [
+      ['1', 'OWN-1', 'JCB', 'Rachana Construction Limited', 'Own', '1', '03-10'],
+      ['2', 'R-1 Bolero', 'Bolero', 'Shree Travels', 'Rental', '2', '01-10 → 02-10 (2)'],
+      ['3', 'H-1', 'Tipper', 'Amol Patil', 'Hired', '3', '01-10 → 03-10 (3)'],
+    ], reason: 'Own, Rental, Hired; the dates sorted');
+    expect(t.foot.single.cells.map((c) => c.text), ['Total – 3 machinery', '6', '']);
+    // the filters: Rental + Hired; a vendor; one machinery; a date; nothing
+    expect(pendPrintDoc(items: items, kind: 'period', from: '2026-10-01', to: '2026-10-28', upTo: '2026-10-28', own: 'Rental,Hired', info: of).tables.single.rows.length, 2);
+    expect(pendPrintDoc(items: items, kind: 'period', from: '2026-10-01', to: '2026-10-28', upTo: '2026-10-28', vendor: 'shree travels', info: of).tables.single.rows.single.cells[1].text, 'R-1 Bolero');
+    expect(pendPrintDoc(items: items, kind: 'period', from: '2026-10-01', to: '2026-10-28', upTo: '2026-10-28', no: 'h1', info: of).tables.single.rows.single.cells[5].text, '3');
+    final one = pendPrintDoc(items: [for (final x in items) if (x[1] == '2026-10-01') x], kind: 'date', from: '2026-10-01', to: '2026-10-01', upTo: '2026-10-01', info: of);
+    expect([one.title, one.period, one.tables.single.rows.length], ['Pending Log Book – 01-10-2026', 'Date: 01-10-2026', 2]);
+    final none = pendPrintDoc(items: const [], kind: 'month', from: '2026-10-01', to: '2026-10-31', upTo: '2026-10-28', own: 'Own', info: of);
+    expect([none.title, none.tables.single.rows.length, none.tables.single.foot.length, none.tables.single.empty], ['Pending Log Book – October 2026', 0, 0, '✔ Nothing pending for Own in these dates.']);
+    // the Dashboard's list ({no, date, type, owner}) – a machinery not in the Asset Master here: the list's own type and owner
+    final dsh = pendPrintDoc(items: [{'no': 'X-9', 'date': '2026-10-05', 'type': 'Crane', 'owner': 'Somebody'}], kind: 'period', from: '2026-10-01', to: '2026-10-05', upTo: '2026-10-05', info: (_) => null);
+    expect(dsh.tables.single.rows.single.cells.map((c) => c.text), ['1', 'X-9', 'Crane', 'Somebody', '', '1', '05-10']);
+  });
+
   test('Own vehicle papers: expired and due within 30 days, the soonest first', () {
     final l = ownPapersDue({
       'docs': ['Tax', 'PUC'],

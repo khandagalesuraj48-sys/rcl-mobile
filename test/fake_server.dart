@@ -1276,6 +1276,7 @@ class FakeServer {
         case 'getMeterReading':
           return _j({'result': (a[0] as Map)['kind'] == 'dash' ? {'hr': 4712.5, 'check': ''} : {'litres': 60}});
         case 'logPending':
+          dashAsked.add({'fn': action, 'args': a}); // (3.54.0) what was asked: a period for its Print
           return _j({'result': {'items': [['OLD-9', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-13']]}});
         case 'getLogRowPrefill':
           final no = a[0] as String, askAdd = a.length > 3 && a[3] is Map && (a[3] as Map)['add'] == 1;      // (3.31.2: the app asks for the "add" answer)
