@@ -210,7 +210,9 @@ String _numText(dynamic v) {
 
 /* ================= VEHICLE COMPLIANCE ================= */
 const kCmpChips = [('attention', 'Needs attention'), ('expired', 'Expired'), ('due', 'Due in 30 days'), ('missing', 'Not entered'), ('all', 'All machinery')];
-const kCmpOwn = [('', 'Own + Rental + Hired'), ('Own', 'Own only'), ('Rental,Hired', 'Rental + Hired')];
+/// (3.59.0, Mechanical update-184: "asset master madhe papers fkt own mhanje rachana che ghenar mi je rental debit or other aahet tyanche
+/// atatchment nko") the papers only of Own machinery – the server gives only those; no ownership choice any more (as the web's cp_own)
+const kCmpOwn = [('', 'Own')];
 
 List<String> cmpDocs(Map<String, dynamic> d) => [for (final x in (d['docs'] as List? ?? const [])) '$x'];
 Map<String, dynamic> cmpDoc(Map<String, dynamic> m, String k) => ((m['docs'] as Map?)?[k] as Map?)?.cast<String, dynamic>() ?? const {'s': 'notreq', 'v': '', 'days': ''};

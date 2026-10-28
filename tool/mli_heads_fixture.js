@@ -1,4 +1,4 @@
-// (update-180 / app 3.56.0) what the web's own code (App.html mliField / mliRows / mliSheet, SheetJS 0.18.5) makes of headings in any
+// (update-180 / app 3.56.0; update-183 / app 3.59.0: a line its GST ₹ as read – mtHasGa / mtLineGst) what the web's own code (App.html mliField / mliRows / mliSheet, SheetJS 0.18.5) makes of headings in any
 // order – the app's core/maint_import.dart must make exactly the same (test/maint_import_test.dart).
 //   APP_HTML=<rclerp>/app/App.html NODE_PATH=<folder with xlsx 0.18.5> node tool/mli_heads_fixture.js test/fixtures/sheets
 const fs = require('fs'), vm = require('vm'), XLSX = require('xlsx');
@@ -7,7 +7,7 @@ const take = re => { const i = L.findIndex(l => re.test(l)); for (let k = i; k <
 const master = [{ id: 'RL-180', name: 'Roller No.18', ownership: 'Own', status: 'Active' }, { id: 'MH-12-XW-0180', name: 'Hycross', ownership: 'Own', status: 'Active' }];
 const ctx = vm.createContext({ XLSX, S: { master, today: '2026-10-28' } }); ctx.window = ctx;
 vm.runInContext(['const isoDate = d => d.toISOString().slice(0, 10);', take(/^\s*const r2 = /), take(/^\s*const mtGst = /), take(/^\s*function xlDate\(/), take(/^\s*function mliField\(/), take(/^\s*function mliRows\(/),
-  take(/^\s*const mliKey = /), take(/^\s*const mliOwn = /), take(/^\s*const mliNum = /), take(/^\s*const mliGst = /), take(/^\s*function mliMatch\(/), take(/^\s*function mliSheet\(/),
+  take(/^\s*const mliKey = /), take(/^\s*const mliOwn = /), take(/^\s*const mliNum = /), take(/^\s*const mtHasGa = /), take(/^\s*const mtLineGst = /), take(/^\s*function mliMatch\(/), take(/^\s*function mliSheet\(/),
   'globalThis.T = { mliField, mliRows, mliSheet };'].join('\n'), ctx);
 const heads = ['Sr No', 'S. No.', 'Sr.No', '#', 'No.', 'Date', 'Bill Date', 'Invoice Dt.', 'Bill No', 'Invoice No.', 'Job Card No', 'Party Name', 'Supplier', 'Garage', 'Vendor Name', 'Workshop Name', 'Service Center', 'Done By', 'Purchased From',
   'Current Reading', 'KM', 'HMR', 'Hrs', 'Reading (KM/Hrs)', 'Odometer', 'Particulars', 'Item Description', 'Description of Work', 'Spare Parts', 'Material', 'Item', 'Part No', 'HSN/SAC', 'Item Code',

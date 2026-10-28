@@ -4,8 +4,9 @@
  * Uom · Basic Rate · Amount · GST Amount · Amount With GST · Total.
  *   – its machinery found among the Own ones on the site today by that name, or the sheet's (ROLLER NO-03 = ROLLER-03 = Roller No.03);
  *   – a bill = the rows one under another of one date and party (a reading only on its first row is the bill's; a date left empty – a
- *     merged cell – is the row's above); each line as it is: Qty, Uom, Rate, Amount and its GST % from its GST Amount (18 % when 18 % of
- *     the amount makes it to ₹1 – an old file shows whole rupees); a ₹0 line stays ₹0 (the server keeps it as FOC).
+ *     merged cell – is the row's above); each line as it is: Qty, Uom, Rate, Amount and (3.59.0, Mechanical update-183: "old import tyat
+ *     tr ajibat karu nko as it is rahude") its GST Amount in ₹ AS IN THE FILE (gstAmt – no GST % made from it); a ₹0 line stays ₹0 (the
+ *     server keeps it as FOC).
  * The server checks and imports (checkMaintImport / importMaint – one machinery a call, a bill already there left out). Proven against
  * the web's own code: test/fixtures/sheets/maint_logbook.{xlsx,json}.
  * (28-10-2026, his answers: "PDF import – Claude AI वाचेल", "यादी दाखव, मी पाहून ✓ करेन") also: the lines that do not add up (warn – to
@@ -151,13 +152,17 @@ num _n(Object v) => v is num ? v : 0;
 /// a line's GST (CGST and SGST each rounded – the web's mtGst)
 num mtGst(Object a, Object g) => 2 * r2(_n(a) * _n(g) / 200);
 
-/// its GST % from its GST Amount: a usual rate when it makes it to ₹1, else the % itself
-Object mliGst(Object a, Object g) {
-  if (_n(a) == 0 || _n(g) == 0) return '';
-  for (final r in const [5, 12, 18, 28]) {
-    if ((mtGst(a, r) - _n(g)).abs() <= 1) return r;
-  }
-  return r2(_n(g) / _n(a) * 100);
+/// (3.59.0, Mechanical update-183, asked 28-10-2026: "auto gst ka add krt aahet kuthe 6 kuth 2.5 tr kuthe 14 as nko … old import tyat tr
+/// ajibat karu nko as it is rahude") a line of the old log book keeps its GST in ₹ as in the file (gstAmt) – no GST % is made from it; a
+/// line with its GST % typed: as before (the web's mtHasGa / mtLineGst, the server's maintHasGa_ / maintGstOf_)
+bool mtHasGa(Map l) {
+  final g = l['gstAmt'], p = l['gst'];
+  return g != null && g != '' && !((p is num ? p : num.tryParse('${p ?? ''}') ?? 0) > 0);
+}
+
+num mtLineGst(Map l) {
+  final g = l['gstAmt'];
+  return mtHasGa(l) ? r2(g is num ? g : num.tryParse('$g') ?? 0) : mtGst(l['amount'] ?? 0, l['gst'] ?? 0);
 }
 
 /// The Own machinery – the ones an old log book is imported for (28-10-2026, Mechanical update-175: on the site now or not – "फक्त Own –
@@ -182,7 +187,7 @@ class MliSheet {
   final int rows;
   final num fileTotal, total;
   final List<String> bad;
-  /// (28-10-2026) the lines that do not add up: {line, work, k: 'qr' (Qty × Rate ≠ Amount) / 'ag' (Amount + GST ≠ With GST) / 'gp' (an odd GST %), a, b}
+  /// (28-10-2026) the lines that do not add up: {line, work, k: 'qr' (Qty × Rate ≠ Amount) / 'ag' (Amount + GST ≠ With GST), a, b}
   final List<Map<String, Object>> warn;
   Map<String, dynamic>? res, done;
   String err = '';
@@ -233,13 +238,13 @@ MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynami
     nrows++;
     ftotal += wt != '' ? _n(wt) : _n(amount) + _n(gstAmt);
     if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) bad.add('Line $line: the date "${jsS(g('date'))}"');
-    final l = <String, Object>{'work': work.length > 120 ? work.substring(0, 120) : work, 'qty': mliNum(g('qty')), 'uom': _cut(jsS(g('uom')).trim(), 12), 'rate': mliNum(g('rate')), 'amount': amount == '' ? 0 : amount, 'gst': mliGst(amount, gstAmt)};
+    // (3.59.0, Mechanical update-183, "old import tyat tr ajibat karu nko as it is rahude") its GST ₹ as in the file – no GST % made from it
+    final l = <String, Object>{'work': work.length > 120 ? work.substring(0, 120) : work, 'qty': mliNum(g('qty')), 'uom': _cut(jsS(g('uom')).trim(), 12), 'rate': mliNum(g('rate')), 'amount': amount == '' ? 0 : amount, if (gstAmt != '' && gstAmt != 0) 'gstAmt': gstAmt};
     // (28-10-2026, "full scan … sagle kahi find krun") what does not add up – shown to look at; the line is imported as it is
     if (warn.length < 300) {
-      final w = _cut(work, 40), q = l['qty']!, rt = l['rate']!, gp = l['gst']!;
+      final w = _cut(work, 40), q = l['qty']!, rt = l['rate']!;
       if (q is num && rt is num && amount is num && q > 0 && rt > 0 && (r2(q * rt) - amount).abs() > 1) warn.add({'line': line, 'work': w, 'k': 'qr', 'a': r2(q * rt), 'b': amount});
       if (amount is num && gstAmt is num && wt0 is num && (r2(amount + gstAmt) - wt0).abs() > 1) warn.add({'line': line, 'work': w, 'k': 'ag', 'a': r2(amount + gstAmt), 'b': wt0});
-      if (gp is num && !const [5, 12, 18, 28].contains(gp)) warn.add({'line': line, 'work': w, 'k': 'gp', 'a': gp, 'b': ''});
     }
     final same = cur != null && cur['date'] == date && '${cur['garage']}'.toUpperCase() == party.toUpperCase() && (km == '' || cur['km'] == '' || _eq(cur['km'], km));
     if (!same) {
@@ -259,7 +264,7 @@ MliSheet? mliSheet(String name, List<List<Object?>> all, List<Map<String, dynami
   num total = 0;
   for (final b in out) {
     for (final l in b['lines'] as List<Map<String, Object>>) {
-      total += _n(l['amount']!) + mtGst(l['amount']!, l['gst']!);
+      total += _n(l['amount']!) + mtLineGst(l);
     }
   }
   return MliSheet(sheet: name, label: label, no: mliMatch(label, name, own), bills: out, rows: nrows, fileTotal: r2(ftotal), total: r2(total), bad: bad, warn: warn);

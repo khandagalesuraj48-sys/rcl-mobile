@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -98,6 +99,8 @@ class Api {
     answers.clear(); // (update-155) signed out: no answer is kept
     _storeCookie = '';
     _storeKey = '';
+    _engCookie = '';
+    _engKey = '';
     for (final k in [kCookie, kToken, kSite, 'mech_url', 'alerts_seen', 'live_at']) {
       await keep.write(k, null);
     }
@@ -115,6 +118,21 @@ class Api {
     } catch (_) {
       return null;
     }
+  }
+
+  /// (3.59.0, Mechanical update-184) a kept file from its short link (a vendor's document – Download / Print): its bytes. Only the
+  /// file's own link is asked (https; no sign-in is sent with it).
+  Future<Uint8List> fileBytes(String url) async {
+    final u = Uri.tryParse(url);
+    if (u == null || u.scheme != 'https') throw ApiError('This file has no link now – open the documents again.');
+    final http.Response r;
+    try {
+      r = await _c.get(u).timeout(timeout);
+    } catch (_) {
+      throw ApiError('The file could not be downloaded now – check the network and try again.', code: 'net');
+    }
+    if (r.statusCode != 200) throw ApiError('The file could not be downloaded – its link works for 15 minutes: open the documents again.');
+    return r.bodyBytes;
   }
 
   // ---------------- the Portal ----------------
@@ -366,6 +384,37 @@ class Api {
       if (r.statusCode >= 400 || j['error'] != null) {
         throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString(), data: {...j}..remove('error'));
       }
+      return j;
+    }
+  }
+
+  // ---------------- Engineering (3.59.0) ----------------
+  String _engCookie = '', _engKey = '';
+
+  /// (3.59.0, Mechanical update-185) Engineering's sign-in on [siteCode] – as the Store's: a ticket of the Portal for the module
+  /// 'engineering', POST <eng>/api/sso { ticket } → its cookie rcl_eng.
+  Future<Map<String, dynamic>> engOpen(String siteCode, String engUrl) async {
+    final t = await ticket(siteCode, 'engineering');
+    final r = await _send(() => _c.post(Uri.parse('$engUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
+    final j = _json(r, 'Engineering');
+    if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
+    final m = RegExp(r'rcl_eng=([^;]*)').firstMatch(r.headers['set-cookie'] ?? '');
+    _engCookie = m == null ? '' : 'rcl_eng=${m.group(1)}';
+    _engKey = '$siteCode|$engUrl';
+    return j;
+  }
+
+  /// POST <eng>/api/eng { action, … } with his Engineering sign-in of this site – a new sign-in when it has ended (once).
+  Future<Map<String, dynamic>> eng(String siteCode, String engUrl, Map<String, dynamic> body) async {
+    for (var tryNo = 1;; tryNo++) {
+      if (_engCookie.isEmpty || _engKey != '$siteCode|$engUrl') await engOpen(siteCode, engUrl);
+      final r = await _send(() => _c.post(Uri.parse('$engUrl/api/eng'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _engCookie}, body: jsonEncode(body)));
+      final j = _json(r, 'Engineering');
+      if (r.statusCode == 401 && j['code'] == 'session' && tryNo == 1) {
+        _engCookie = '';
+        continue;
+      }
+      if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
       return j;
     }
   }

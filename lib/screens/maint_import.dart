@@ -4,7 +4,12 @@
  * its machinery (Own, on the site – it can be changed; "– not imported –"), rows, bills, the file's total and the total as it will be
  * kept, the lines to look at; the names written in more than one way (maintImportNames – the Admin ticks; asked 28-10-2026: "यादी दाखव,
  * मी पाहून ✓ करेन"); Check (checkMaintImport – nothing saved), then Import (importMaint, one machinery at a time – a bill already
- * there is left out and listed). The same server actions, checks and access as the web. */
+ * there is left out and listed). The same server actions, checks and access as the web.
+ * (3.59.0, Mechanical update-183, asked 28-10-2026: "kadhi kadhi ai service slow asa pn error ywto te pn fix krun de") A PAGE IN PARTS, ASKED
+ * AGAIN BY ITSELF – as the web's mliReadAi: the AI writes out at most 25 rows an answer (then the rows after the last one it gave), so an
+ * answer never runs out of the server's time; too slow or busy: the same part asked again of the quicker model, then again after a short
+ * wait (8 s, then 20 s), a part the AI could not finish asked in fewer rows. A page that still cannot be read now: what was read is kept
+ * – "Continue reading (from page N)" goes on from there. The names: asked again by itself once (the quicker model) when too slow. */
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -40,6 +45,8 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
   // the names (AI): null = not asked yet; 'busy' / 'off' / 'err' / 'done'
   String? fixState;
   String fixErr = '';
+  /// (3.59.0) a PDF / photo the AI could not finish now: the page it stopped at, the tables read before it, the headings of the page before
+  ({int page, List<Map> tables, List? head})? resume;
   List<MliFix> fixes = [];
   final _ctl = <TextEditingController>[];
   final _open = <String>{};
@@ -58,15 +65,20 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
     super.dispose();
   }
 
-  Future<void> _start() async {
+  Future<void> _start({bool more = false}) async {
     if (!mounted) return;
     if (widget.file != null) {
+      final from = more ? resume : null;
       setState(() {
         reading = true;
         readErr = '';
+        resume = null;
       });
       try {
-        await _readAi();
+        await _readAi(from);
+      } on _Stop catch (e) {
+        readErr = e.message;
+        resume = e.at;
       } catch (e) {
         readErr = errText(e);
       }
@@ -77,35 +89,80 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
     await _names();
   }
 
-  /// The web's mliReadAi: the pages one after the other, the tables as sheets
-  Future<void> _readAi() async {
+  /// The web's mliReadAi: the pages one after the other, each in parts (at most 25 rows an answer), the tables as sheets; [from]: go on
+  /// from the page it stopped at ("Continue reading")
+  Future<void> _readAi(({int page, List<Map> tables, List? head})? from) async {
     final s = SessionScope.read(context), b = widget.file!, n = widget.name;
     final kind = RegExp(r'\.pdf$', caseSensitive: false).hasMatch(n) ? 'application/pdf' : RegExp(r'\.png$', caseSensitive: false).hasMatch(n) ? 'image/png' : 'image/jpeg';
     if (b.length > 3 * 1024 * 1024) throw ApiError('This log book file is too big (more than 3 MB) – give it in parts (a PDF of fewer pages).');
-    final data = 'data:$kind;base64,${base64Encode(b)}', pdf = kind == 'application/pdf', tables = <Map>[];
-    var from = 1, pages = 0;
-    List? head;      // (3.56.0, Mechanical update-180) the headings of the page before: a table going on without its own heading is read in them
-    for (var guard = 0; guard < 500; guard++) {
-      if (mounted) setState(() => say = pdf ? 'Reading with the AI… page $from${pages > 0 ? ' of $pages' : ''}' : 'Reading with the AI…');
+    final data = 'data:$kind;base64,${base64Encode(b)}', pdf = kind == 'application/pdf', tables = <Map>[...?from?.tables];
+    List? head = from?.head;      // (3.56.0, Mechanical update-180) the headings of the page before: a table going on without its own heading is read in them
+    void tell(String t) {
+      if (mounted) setState(() => say = t);
+    }
+
+    // one part: too slow or busy – asked again of the quicker model, then after 8 s and 20 s (a part the AI could not finish: fewer rows)
+    Future<Map> ask(Map<String, Object?> args, int page) async {
       Map? r;
-      if (pdf) {
+      Object? err;
+      var max = 25;
+      for (final (fast, wait) in const [(0, 0), (1, 0), (1, 8000), (1, 20000)]) {
+        if (wait > 0) {
+          tell('The AI service is slow – page $page asked again in ${wait ~/ 1000} s…');
+          await Future<void>.delayed(Duration(milliseconds: wait));
+          if (!mounted) throw ApiError('The import was closed.');
+        }
         try {
-          r = await s.api.call('readMaintLog', [{'data': data, 'from': from, 'n': 2, if (head != null) 'head': head}]) as Map;
-        } catch (_) {
-          r = null;      // (too slow: one page)
+          r = await s.api.call('readMaintLog', [{...args, 'n': 1, 'fast': fast, 'max': max}]) as Map;
+          err = null;
+          if (r['off'] == true || r['again'] != true) break;
+          max = (max / 2).round() < 8 ? 8 : (max / 2).round();
+        } catch (e) {
+          err = e;
+          r = null;
         }
       }
-      if (r == null || r['again'] == true) r = await s.api.call('readMaintLog', [{'data': data, 'from': from, 'n': 1, if (head != null) 'head': head}]) as Map;
-      if (r['head'] is List && (r['head'] as List).isNotEmpty) head = r['head'] as List;
-      if (r['off'] == true) throw ApiError('The AI is not set up – a PDF or a photo cannot be read now; import the Excel instead.');
-      if (r['again'] == true) throw ApiError('The AI could not read page $from of the log book – try again, or give a PDF of fewer pages.');
-      final got = (r['tables'] as List? ?? const []).whereType<Map>().toList();
+      if (err != null) throw err;
+      final res = r!;
+      if (res['off'] == true) throw _Off();
+      if (res['again'] == true) throw ApiError('The AI could not read page $page of the log book – try again, or give a PDF of fewer pages.');
+      return res;
+    }
+
+    // one page, part after part (the next goes on after the last row given)
+    Future<(List<Map>, Map)> readPage(Map<String, Object?> args, int page, int pages) async {
+      final got = <Map>[];
+      List? after;
+      Map r = const {};
+      for (var part = 1; part <= 40; part++) {
+        tell(pdf ? 'Reading with the AI… page $page${pages > 0 ? ' of $pages' : ''}${part > 1 ? ' (part $part)' : ''}' : 'Reading with the AI…${part > 1 ? ' (part $part)' : ''}');
+        r = await ask({...args, if (after != null) 'after': after, if (head != null) 'head': head}, page);
+        got.addAll((r['tables'] as List? ?? const []).whereType<Map>());
+        if (r['head'] is List && (r['head'] as List).isNotEmpty) head = r['head'] as List;
+        final last = r['last'];
+        if (r['more'] != true || last is! List || last.isEmpty || jsonEncode(last) == jsonEncode(after)) break;
+        after = last;
+      }
+      return (got, r);
+    }
+
+    var at = from?.page ?? 1, pages = 0;
+    for (var guard = 0; guard < 500; guard++) {
+      final (List<Map>, Map) x;
+      try {
+        x = await readPage({'data': data, 'from': at}, at, pages);
+      } on _Off {
+        throw ApiError('The AI is not set up – a PDF or a photo cannot be read now; import the Excel instead.');
+      } catch (e) {
+        throw _Stop('${errText(e)} – the pages before page $at are read and kept: press "Continue reading" to go on from page $at.', (page: at, tables: [...tables], head: head));
+      }
+      final (got, r) = x;
       tables.addAll(got);
       final p = (asNum(r['pages']) ?? 0).toInt();
       if (p > 0) pages = p;
-      final to = (asNum(r['to']) ?? from).toInt();
-      if (!pdf || !(pages > 0 ? to < pages : got.isNotEmpty)) break;
-      from = to + 1;
+      final to = (asNum(r['to']) ?? at).toInt();
+      if (!pdf || !(pages > 0 ? to < pages : (r['tables'] as List? ?? const []).isNotEmpty)) break;
+      at = to + 1;
     }
     sheets = mliAiSheets(n, tables, [for (final m in s.machines) m.m], s.today);
     if (sheets.isEmpty) throw ApiError('The AI found no table of a log book in this file.');
@@ -118,8 +175,20 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
       fixState = 'busy';
       fixes = [];
     });
+    final q = <String, Object?>{for (final f in o.keys) f: [for (final e in o[f]!.entries) [e.key, e.value]]};
+    // (3.59.0, Mechanical update-183) the AI too slow or busy for the names: asked again by itself once, after a short wait (the quicker model)
+    Future<Map> names() async {
+      try {
+        return await s.api.call('maintImportNames', [q]) as Map;
+      } catch (e) {
+        if (!RegExp('too slow|busy|try again', caseSensitive: false).hasMatch(errText(e))) rethrow;
+        await Future<void>.delayed(const Duration(seconds: 6));
+        return await s.api.call('maintImportNames', [{...q, 'fast': true}]) as Map;
+      }
+    }
+
     try {
-      final r = await s.api.call('maintImportNames', [{for (final f in o.keys) f: [for (final e in o[f]!.entries) [e.key, e.value]]}]) as Map;
+      final r = await names();
       if (r['off'] == true) {
         fixState = 'off';
       } else {
@@ -228,7 +297,7 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
   }
 
   /// a line that does not add up, as the web says it
-  static String warnText(Map w) => 'Line ${w['line']} (${w['work']}): ${w['k'] == 'qr' ? 'Qty × Rate = ₹${fmtNum(asNum(w['a']))}, Amount ₹${fmtNum(asNum(w['b']))}' : w['k'] == 'ag' ? 'Amount + GST = ₹${fmtNum(asNum(w['a']))}, Amount With GST ₹${fmtNum(asNum(w['b']))}' : 'GST ${fmtNum(asNum(w['a']))} % – not a usual rate'}';
+  static String warnText(Map w) => 'Line ${w['line']} (${w['work']}): ${w['k'] == 'qr' ? 'Qty × Rate = ₹${fmtNum(asNum(w['a']))}, Amount ₹${fmtNum(asNum(w['b']))}' : 'Amount + GST = ₹${fmtNum(asNum(w['a']))}, Amount With GST ₹${fmtNum(asNum(w['b']))}'}';      // (3.59.0: no "odd GST %" – the GST ₹ is kept as it is)
 
   /// (28-10-2026, "duplicate entry import nahi honar ts to show pn krel") the bills left out: its rows, date, ₹ and the bill it is
   static List<String> sameLines(Map r) => [
@@ -401,10 +470,17 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
             ),
           if (readErr.isNotEmpty) ...[
             Text(readErr, key: const Key('mli-read-err'), style: const TextStyle(fontSize: 13.5, color: C.red, height: 1.35)),
-            Align(alignment: Alignment.centerLeft, child: TextButton(key: const Key('mli-retry'), onPressed: _start, child: Text('Try again'))),
+            // (3.59.0) stopped at a page: go on from there – the pages before it are kept
+            if (resume != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: FilledButton.icon(key: const Key('mli-more'), onPressed: () => _start(more: true), icon: const Icon(Icons.play_arrow_rounded), label: Text('Continue reading (from page ${resume!.page})')),
+              )
+            else
+              Align(alignment: Alignment.centerLeft, child: TextButton(key: const Key('mli-retry'), onPressed: _start, child: Text('Try again'))),
           ],
           if (!reading && readErr.isEmpty) ...[
-            Text('Total (₹) = the lines with their GST as they will be kept; the file total is its "Amount With GST" (whole rupees in an old file).', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
+            Text('Total (₹) = the lines with their GST ₹ as in the file (no GST % is made); the file total is its "Amount With GST".', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
             const SizedBox(height: 10),
             // (28-10-2026, "import zale nantr pn aahe as rahte") the names' list goes once everything is imported
             if (fixState != null && !(sheets.any((x) => x.done != null) && !sheets.any((x) => x.no.isNotEmpty && x.done == null))) _namesCard(),
@@ -426,4 +502,14 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
       ),
     );
   }
+}
+
+/// (3.59.0) the AI is not set up – said as it is (nothing to go on with)
+class _Off implements Exception {}
+
+/// (3.59.0) a page the AI could not finish now: what was read and where to go on from
+class _Stop implements Exception {
+  _Stop(this.message, this.at);
+  final String message;
+  final ({int page, List<Map> tables, List? head}) at;
 }

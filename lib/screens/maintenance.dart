@@ -18,7 +18,10 @@
  * (3.51.0, Mechanical update-171: "gst row madhe nko heading madhe ghe 9 9 18 … koni paid kel insurance claim aahe nahi service ch bill ahe
  *  ka") each line its GST % (one number – CGST and SGST half each, each rounded) and its Paid by: RCL ('Paid'), Insurance ('By
  *  Insurance' – its ₹ is the insurance's part of the bill), Warranty, FOC, Service Plan; the log book: the GST rates in its heading,
- *  Paid by, Insurance claim, Service on every line. */
+ *  Paid by, Insurance claim, Service on every line.
+ * (3.59.0, Mechanical update-183: "auto gst ka add krt aahet kuthe 6 kuth 2.5 tr kuthe 14 as nko … old import tyat tr ajibat karu nko as
+ *  it is rahude") a line of the old log book keeps its GST in ₹ as in the file (gstAmt – maintLineGst); in the bill's form such a line
+ *  keeps it ("GST ₹ as in the old log book") until a GST % is typed on it – then its GST is from the %. */
 import 'dart:convert';
 
 import 'package:flutter/material.dart' hide Text;
@@ -34,12 +37,13 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
-import '../core/maint_import.dart' show MliSheet, mliRead, mliOwn, mliFormatXlsx;
+import '../core/maint_import.dart' show MliSheet, mliRead, mliOwn, mliFormatXlsx, mtHasGa, mtLineGst;
 import '../core/sheet_read.dart' show readSheets, SheetError;
 import '../ui/pick_file.dart';
 import '../ui/outputs.dart' show shareXlsx;
 import 'attach_box.dart' show AttachStrip, AttViewer, pickAttFiles;
 import 'maint_import.dart' show MaintImportScreen;
+import 'maint_status.dart' show MaintStatusScreen;
 import 'forms.dart' show MachinePicker;
 import 'fuel_cards.dart' show rupees;
 import 'report_screen.dart' show openReport;
@@ -59,6 +63,10 @@ bool maintCharged(Object? t) => '${t ?? ''}'.isEmpty || t == 'Paid' || t == 'By 
 /// (3.51.0) a line's GST: its CGST and its SGST, each half its GST % and each rounded – as the bills print them (the server's maintGstOf_)
 num maintGst(num? amount, num? gst) => 2 * (((amount ?? 0) * (gst ?? 0) / 200) * 100).round() / 100;
 
+/// (3.59.0, Mechanical update-183) a line's GST ₹: its GST ₹ as in the old log book (gstAmt, no GST %), else from its GST % (the server's
+/// maintGstOf_)
+num maintLineGst(Map l) => mtHasGa(l) ? mtLineGst(l) : maintGst(asNum(l['amount']), asNum(l['gst']));
+
 /// (3.50.0) the usual units of a line, offered (as the web's list): any other can be typed
 const kMaintUoms = ['Nos', 'Ltr', 'Kg', 'Set', 'Bkt', 'Mtr', 'Pair', 'Gram', 'Box'];
 
@@ -70,7 +78,7 @@ num maintWorth(Map l) => _free(l) ? (asNum(l['qty']) ?? 1) * (asNum(l['rate']) ?
 /// The lines of a bill as one short line: "Engine oil ₹1,200; Oil filter (Warranty)" – a free line with its kind (as the web's mtLinesText)
 String maintLinesText(Object? lines) => [
       for (final l in (lines is List ? lines : const []).whereType<Map>())
-        _free(l) ? '${l['work']} (${l['type']})' : '${l['work']} ₹${fmtNum((asNum(l['amount']) ?? 0) + maintGst(asNum(l['amount']), asNum(l['gst'])))}${l['type'] == 'By Insurance' ? ' (Insurance)' : ''}',
+        _free(l) ? '${l['work']} (${l['type']})' : '${l['work']} ₹${fmtNum((asNum(l['amount']) ?? 0) + maintLineGst(l))}${l['type'] == 'By Insurance' ? ' (Insurance)' : ''}',
     ].join('; ');
 
 /// (3.49.0) under a bill's ₹ (what we paid): the bill and the insurance of a claim, the worth of its free lines (as the web's mtBillNote)
@@ -265,7 +273,11 @@ class _MaintScreenState extends State<MaintScreen> {
               const Icon(Icons.chevron_right_rounded, color: C.blue),
             ]),
           ),
-          Align(alignment: Alignment.centerLeft, child: TextButton.icon(key: const Key('mt-out'), onPressed: _fetchOut, icon: const Icon(Icons.move_to_inbox_rounded, size: 18), label: Text('Fetch outward (Store)'))),
+          Wrap(children: [
+            TextButton.icon(key: const Key('mt-out'), onPressed: _fetchOut, icon: const Icon(Icons.move_to_inbox_rounded, size: 18), label: Text('Fetch outward (Store)')),
+            // (3.59.0, Mechanical update-183) whose log book is in, up to which date – and whose is not added yet
+            TextButton.icon(key: const Key('mt-status'), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MaintStatusScreen())), icon: const Icon(Icons.fact_check_rounded, size: 18), label: Text('Log book status')),
+          ]),
           if (can && !missing) ...[      // (3.53.0) the old log book's import; ("user la pn disu de") everyone with Maintenance Edit
             const SizedBox(height: 8),
             OutlinedButton.icon(key: const Key('mt-import'), onPressed: _importChoice, icon: const Icon(Icons.upload_file_rounded), label: Text('Import the old log book (Excel or PDF)')),
@@ -354,7 +366,7 @@ class _MaintScreenState extends State<MaintScreen> {
             for (final l in lines)
               _free(l)
                   ? InfoRow('${l['work']}', '${tr('${l['type']}')} · ${tr('worth ₹${fmtNum(maintWorth(l))}')}', tone: C.greenDark)
-                  : InfoRow('${l['work']}', [rupees((asNum(l['amount']) ?? 0) + maintGst(asNum(l['amount']), asNum(l['gst']))), if (!_blank(l['qty']) && !_blank(l['rate'])) '${fmtNum(asNum(l['qty']))}${_blank(l['uom']) ? '' : ' ${l['uom']}'} × ${fmtNum(asNum(l['rate']))}${(asNum(l['disc']) ?? 0) > 0 ? ' − ${fmtNum(asNum(l['disc']))} %' : ''}', if ((asNum(l['gst']) ?? 0) > 0) 'GST ${fmtNum(asNum(l['gst']))} %', tr(maintPaidBy(l['type']))].join(' · '),
+                  : InfoRow('${l['work']}', [rupees((asNum(l['amount']) ?? 0) + maintLineGst(l)), if (!_blank(l['qty']) && !_blank(l['rate'])) '${fmtNum(asNum(l['qty']))}${_blank(l['uom']) ? '' : ' ${l['uom']}'} × ${fmtNum(asNum(l['rate']))}${(asNum(l['disc']) ?? 0) > 0 ? ' − ${fmtNum(asNum(l['disc']))} %' : ''}', if ((asNum(l['gst']) ?? 0) > 0) 'GST ${fmtNum(asNum(l['gst']))} %' else if (mtHasGa(l)) 'GST ₹${fmtNum(maintLineGst(l))}', tr(maintPaidBy(l['type']))].join(' · '),
                       tone: (asNum(l['amount']) ?? 0) < 0 ? C.red : C.ink),
             if (ins != null) ...[
               InfoRow('Bill total', rupees(asNum(r['billTotal']))),
@@ -422,7 +434,7 @@ class AiBox extends StatelessWidget {
 /// One line of the bill being typed: its work / part, its kind, Qty, Rate, Disc % and ₹; [ai] = read by the AI (blue) until the
 /// person changes it
 class _Line {
-  _Line({String work = '', this.type = 'Paid', String qty = '', String uom = '', String rate = '', String disc = '', String amount = '', String gst = '', this.ai = false})
+  _Line({String work = '', this.type = 'Paid', String qty = '', String uom = '', String rate = '', String disc = '', String amount = '', String gst = '', this.ai = false, this.ga})
       : gst = TextEditingController(text: gst),
         work = TextEditingController(text: work),
         qty = TextEditingController(text: qty),
@@ -433,14 +445,20 @@ class _Line {
   /// a line of the server (a line of before has no kind: Paid)
   factory _Line.of(Map l, {bool ai = false}) {
     final t = kMaintKinds.contains(l['type']) ? '${l['type']}' : 'Paid';
-    return _Line(work: '${l['work'] ?? ''}', type: t, qty: _n(asNum(l['qty'])), uom: _blank(l['uom']) ? '' : '${l['uom']}', rate: _n(asNum(l['rate'])), disc: _n(asNum(l['disc'])), gst: _n(asNum(l['gst'])), amount: maintCharged(t) ? _n(asNum(l['amount'])) : '0', ai: ai);
+    return _Line(work: '${l['work'] ?? ''}', type: t, qty: _n(asNum(l['qty'])), uom: _blank(l['uom']) ? '' : '${l['uom']}', rate: _n(asNum(l['rate'])), disc: _n(asNum(l['disc'])), gst: _n(asNum(l['gst'])), amount: maintCharged(t) ? _n(asNum(l['amount'])) : '0', ai: ai,
+        ga: mtHasGa(l) ? mtLineGst(l) : null);
   }
   final TextEditingController work, qty, uom, rate, disc, amount, gst;
   String type;
   bool ai;
+  /// (3.59.0, Mechanical update-183) its GST ₹ as in the old log book (null: none) – kept until a GST % is typed on the line (as the web's
+  /// row data-ga)
+  num? ga;
   bool get free => !maintCharged(type);
+  /// its GST ₹ is the one of the old log book
+  bool get asIs => ga != null && gst.text.trim().isEmpty;
   /// (3.51.0) its GST ₹ and its amount with GST (a free line: 0)
-  num get gstAmt => free ? 0 : maintGst(_of(amount), _of(gst));
+  num get gstAmt => free ? 0 : asIs ? ga! : maintGst(_of(amount), _of(gst));
   num get withGst => free ? 0 : (_of(amount) ?? 0) + gstAmt;
   bool get empty => work.text.trim().isEmpty && amount.text.trim().isEmpty && qty.text.trim().isEmpty && rate.text.trim().isEmpty && uom.text.trim().isEmpty;
   static num? _of(TextEditingController c) => asNum(c.text.replaceAll(',', ''));
@@ -460,7 +478,8 @@ class _Line {
   }
   Map<String, Object> get value {
     Object v(TextEditingController c) => _of(c) ?? c.text.trim();
-    return {'work': work.text.trim(), 'type': type, 'qty': v(qty), 'uom': uom.text.trim(), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount), 'gst': v(gst)};
+    // (3.59.0) 'gstAmt' always sent (the server keeps a line's GST ₹ of the old log book only from an app that sends it)
+    return {'work': work.text.trim(), 'type': type, 'qty': v(qty), 'uom': uom.text.trim(), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount), 'gst': v(gst), 'gstAmt': asIs ? ga! : ''};
   }
   void dispose() {
     for (final c in [work, qty, uom, rate, disc, amount, gst]) {
@@ -785,12 +804,18 @@ class _MaintFormState extends State<MaintForm> {
                   _syncIns();
                 }))),
             const SizedBox(width: 8),
-            Expanded(child: TextBox(key: Key('mf-g-$i'), label: 'GST %', controller: l.gst, enabled: !l.free, kb: nkb, onChanged: (_) => setState(() {
+            Expanded(child: TextBox(key: Key('mf-g-$i'), label: 'GST %', controller: l.gst, enabled: !l.free, kb: nkb, onChanged: (v) => setState(() {
                   l.ai = false;
+                  if (v.trim().isNotEmpty) l.ga = null;      // (3.59.0) a GST % typed takes the place of the GST ₹ of the old log book
                   _syncIns();
                 }))),
           ]),
         ),
+        if (!l.free && l.asIs)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, right: 8),
+            child: Text('GST ₹ as in the old log book – a GST % typed takes its place', key: Key('mf-ga-$i'), textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, color: C.blue)),
+          ),
         if (!l.free && l.amount.text.trim().isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4, right: 8),

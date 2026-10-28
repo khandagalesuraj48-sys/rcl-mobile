@@ -139,7 +139,7 @@
 {"msg":"Log Book for ","rules":[]},
 {"msg":"MH-01 (01-09-2026, Full Day): Idle is the whole shift – it cannot be one of two rows of the same shift. Keep one row for it (or make one Day and the other Night).","rules":[107]},
 {"msg":"MH-01 (01-09-2026, Full Day): row 2 of 01-09-2026 is the same as row 1 (the same trips, challan, chainage and work) – the same work is not saved twice.","rules":[106,119]},
-{"msg":"MH-12-HO-1163: \"XYZ\" is not a fuel card of this site (Fuel Cards) – pick a card or Cash.","rules":[0]},
+{"msg":"MH-12-HO-1163: \"XYZ\" is not a fuel card of this site (Fuel Cards) – pick a card or Cash.","rules":[0,142]},
 {"msg":"MH-12-HO-1163: a service needs its KM reading – the next service is counted from it.","rules":[3,114]},
 {"msg":"MH-12-HO-1163: card HDFC FUEL starts on 01-10-2026 (its opening balance) – a fill of 30-09-2026 cannot be on it.","rules":[0]},
 {"msg":"MH-12-HO-1163: card OLD CARD is Inactive (Fuel Cards) – pick another card or Cash.","rules":[0,99]},

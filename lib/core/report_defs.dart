@@ -735,11 +735,14 @@ final kAvgReport = ReportDef(
 /// half SGST – or "IGST 18%", one rate): the lines without them, each item (its RCL / Insurance lines above ₹0, not a round-off /
 /// adjustment) with 'tax' {c, s, i} and 'taxRate' – by the tax's % when that makes the bill's tax to ₹1, else in the items' proportion,
 /// the paisa left over on the biggest item. Another tax (cess, VAT …) or two rates: as saved. The same as the web's mlogSpread.
+/// (3.59.0, Mechanical update-183) a line of the old log book keeps its GST ₹ as in the file (gstAmt, no GST %) – the web's mtHasGa
+bool maintHasGa(Map l) => !blankV(l['gstAmt']) && !(nOf(l['gst']) > 0);
+
 List<Map<String, dynamic>> maintSpread(List<Map<String, dynamic>> lines) {
   final ls = [for (final l in lines) Map<String, dynamic>.from(l)];
   bool charged(Object? k) => blankV(k) || k == 'Paid' || k == 'By Insurance';
   final taxW = RegExp(r'^\s*(?:maharashtra\s+)?(?:cgst|sgst|igst|utgst|gst|cess|tax|vat)\b', caseSensitive: false);
-  bool isTax(Map l) => charged(l['type']) && !(nOf(l['gst']) > 0) && taxW.hasMatch('${l['work'] ?? ''}');
+  bool isTax(Map l) => charged(l['type']) && !(nOf(l['gst']) > 0) && !maintHasGa(l) && taxW.hasMatch('${l['work'] ?? ''}');
   num pct(String w) => num.tryParse(RegExp(r'(\d+(?:\.\d+)?)\s*%').firstMatch(w)?.group(1) ?? '') ?? 0;
   String kind(String w) {
     for (final (k, re) in [('c', r'cgst'), ('s', r'sgst'), ('i', r'igst'), ('g', r'gst')]) {
@@ -750,7 +753,7 @@ List<Map<String, dynamic>> maintSpread(List<Map<String, dynamic>> lines) {
   final tx = ls.where(isTax).toList();
   num full(Map t) => ('ig'.contains(kind('${t['work']}')) ? 1 : 2) * pct('${t['work']}');
   if (tx.isEmpty || tx.any((t) => kind('${t['work']}').isEmpty || !(pct('${t['work']}') > 0)) || tx.map(full).toSet().length > 1) return ls;
-  final items = ls.where((l) => !isTax(l) && charged(l['type']) && !(nOf(l['gst']) > 0) && nOf(l['amount']) > 0 && !RegExp(r'round|adjust', caseSensitive: false).hasMatch('${l['work'] ?? ''}')).toList();
+  final items = ls.where((l) => !isTax(l) && charged(l['type']) && !(nOf(l['gst']) > 0) && !maintHasGa(l) && nOf(l['amount']) > 0 && !RegExp(r'round|adjust', caseSensitive: false).hasMatch('${l['work'] ?? ''}')).toList();
   if (items.isEmpty) return ls;
   final total = items.fold<num>(0, (a, l) => a + nOf(l['amount']));
   var big = items.first;
@@ -799,6 +802,8 @@ final kMaintLog = ReportDef(
   // (3.52.0, Mechanical update-172: "gst raw madhe ka dakhawat aahe heading madhe aahet gst tr") a bill of before with its taxes as lines of
   // their own (CGST / SGST / GST / IGST of one rate): no GST row – each tax on the bill's items, as the web's mlogSpread; a line's name
   // without its kind after it (Paid by is its column).
+  // (3.59.0, Mechanical update-183: "auto gst ka add krt aahet kuthe 6 kuth 2.5 tr kuthe 14 as nko") a line of the old log book (its GST ₹
+  // as in the file): no rate column for it – its ₹ in "GST Amount" only.
   build: (d) {
     final m = mapOf(d['machine']), t = mapOf(d['total']), fu = mapOf(t['fuel']), mn = mapOf(t['maint']), ls = listOf(d['lines']), by = listOf(t['byWork']), last = mapOf(d['lastService']);
     final u = m['unit'] == 'kg' ? 'kg' : 'L', card = d['card'] == true, meter = '${m['meter'] ?? ''}';
@@ -812,10 +817,13 @@ final kMaintLog = ReportDef(
     final bills = ls.where((x) => x['kind'] != 'Fuel').toList();
     final spread = [for (final x in bills) maintSpread(listOf(x['lines']))];      // (3.52.0)
     final rset = <num>{};
+    var asIs = false;
     for (final sl in spread) {
       for (final l in sl) {
         final w = '${l['work'] ?? ''}', tx = l['tax'] is Map ? l['tax'] as Map : null;
-        if (charged(l['type']) && nOf(l['gst']) > 0) {
+        if (charged(l['type']) && maintHasGa(l)) {
+          asIs = true;
+        } else if (charged(l['type']) && nOf(l['gst']) > 0) {
           rset.add(nOf(l['gst']));
         } else if (tx != null && (nOf(tx['c']) != 0 || nOf(tx['s']) != 0)) {
           rset.add(nOf(l['taxRate']));
@@ -833,10 +841,12 @@ final kMaintLog = ReportDef(
     for (final (bi, x) in bills.indexed) {
       final ins = mapOf(x['insurance']), its = <Map<String, dynamic>>[];
       for (final l in spread[bi]) {
-        final w = '${l['work'] ?? ''}', paid = charged(l['type']), g = nOf(l['gst']), isTax = paid && !(g > 0) && tax.hasMatch(w), a = paid ? nOf(l['amount']) : 0;
+        final w = '${l['work'] ?? ''}', paid = charged(l['type']), g = nOf(l['gst']), isTax = paid && !(g > 0) && !maintHasGa(l) && tax.hasMatch(w), a = paid ? nOf(l['amount']) : 0;
         final cg = List.generate(nr, (_) => <num?>[null, null]);
         num? gst;
-        if (isTax) {
+        if (paid && maintHasGa(l)) {
+          gst = r2(nOf(l['gstAmt']));      // (3.59.0) as in the old log book
+        } else if (isTax) {
           gst = a;
           final side = sgstW.hasMatch(w) ? 1 : cgstW.hasMatch(w) ? 0 : -1, ri = rates.indexOf(2 * taxPct(w));
           if (side > -1 && ri > -1) cg[ri][side] = a;
@@ -894,7 +904,7 @@ final kMaintLog = ReportDef(
         RTable(sheet: 'Log Book', head: [
           'Sr No', 'Date', 'Party Name', 'Current Reading', 'Particulars', 'Qty', 'Uom', 'Basic Rate', 'Amount',
           for (final r in rates) ...['CGST ${fmt(r / 2)}%', 'SGST ${fmt(r / 2)}%'],
-          nr == 1 ? 'GST ${fmt(rates[0])}%' : 'GST Amount', 'Amount With GST', 'Paid by', 'Insurance claim', 'Service', 'Total',
+          nr == 1 && !asIs ? 'GST ${fmt(rates[0])}%' : 'GST Amount', 'Amount With GST', 'Paid by', 'Insurance claim', 'Service', 'Total',
         ], numCols: {3, 5, 7, 8, for (var i = 0; i < 2 * nr; i++) 9 + i, 9 + 2 * nr, 10 + 2 * nr, 14 + 2 * nr},
           empty: 'No maintenance bill of this machinery in these dates.', rows: rows, foot: [
           RRow([

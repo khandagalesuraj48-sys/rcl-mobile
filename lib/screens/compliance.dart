@@ -1,5 +1,5 @@
 /* VEHICLE COMPLIANCE – the app's own screens (3.4.0), the same as the web's page: Tax, PUC, Permit, Fitness and Insurance of
- * every active Own / Rental / Hired machinery. The four counts (expired, due in 30 days, not entered, valid), the chips (needs
+ * every active Own machinery (3.59.0, Mechanical update-184: only Own – "papers fkt own mhanje rachana che"). The four counts (expired, due in 30 days, not entered, valid), the chips (needs
  * attention / expired / due / not entered / all), ownership and search; each machinery with its papers – tap a paper to renew it
  * (the new date goes into Asset Master, the old one into the history); "Papers per type" (which papers a type needs); Export
  * Excel (what is on the screen, the same file the web gives); the renewal history.
@@ -137,7 +137,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
-          Text('Tax, PUC, Permit, Fitness and Insurance of every active Own / Rental / Hired machinery. Tap a paper to renew it – the new date goes into Asset Master and the old one is kept in the history.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
+          Text('Tax, PUC, Permit, Fitness and Insurance of every active Own machinery. Tap a paper to renew it – the new date goes into Asset Master and the old one is kept in the history.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
           if (err.isNotEmpty) InfoLine(err, bad: true),
           const SizedBox(height: 12),
           if (loading && dd == null)
@@ -173,10 +173,6 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
                   ),
               ]),
             ),
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(child: PickField(key: const Key('cp-own'), label: 'Ownership', value: own, items: [for (final o in kCmpOwn.skip(1)) o.$1], blank: kCmpOwn.first.$2, onChanged: (v) => setState(() => own = v))),
-            ]),
             const SizedBox(height: 8),
             TextField(key: const Key('cp-q'), controller: qc, onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Search machinery / owner…'), prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 12))),
             if ((asNum(dd['noPapers']) ?? 0) > 0)
@@ -339,11 +335,14 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
         return;
       }
       final n = (asNum(chk['changes']) ?? 0).toInt(), preview = [for (final x in (chk['preview'] as List? ?? const [])) '$x'];
+      // (3.59.0, Mechanical update-184) papers only of Own machinery – the others of the file left out (said)
+      final skipped = [for (final x in (chk['skipped'] as List? ?? const [])) '$x'];
+      final skip = skipped.isEmpty ? '' : '${skipped.length} machinery left out – not Own (papers are kept only for Own machinery): ${skipped.take(12).join(', ')}${skipped.length > 12 ? ' …' : ''}';
       if (n == 0) {
-        toast(context, 'Nothing to import – the file matches Asset Master.');
+        toast(context, 'Nothing to import – the file matches Asset Master.${skipped.isEmpty ? '' : ' (${skipped.length} machinery left out – not Own.)'}');
         return;
       }
-      if (!await askLines(context, 'Import $n date${n == 1 ? '' : 's'}?', [...preview, if (n > preview.length) '… and ${n - preview.length} more.'],
+      if (!await askLines(context, 'Import $n date${n == 1 ? '' : 's'}?', [if (skip.isNotEmpty) skip, ...preview, if (n > preview.length) '… and ${n - preview.length} more.'],
           note: '$n paper date(s) on ${chk['machines']} machinery will be saved in Asset Master; the old dates go into the history.', yes: 'Import')) {
         return;
       }

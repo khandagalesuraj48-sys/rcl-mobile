@@ -51,7 +51,7 @@
        "uom": "Ltr",
        "rate": 59,
        "amount": 1180,
-       "gst": 18
+       "gstAmt": 212.4
       }
      ],
      "rows": "Line 5"
@@ -67,7 +67,7 @@
        "uom": "Nos",
        "rate": 650,
        "amount": 650,
-       "gst": 18
+       "gstAmt": 117
       },
       {
        "work": "FUEL WATER SEPRETOR",
@@ -75,7 +75,7 @@
        "uom": "Nos",
        "rate": 425,
        "amount": 425,
-       "gst": 18
+       "gstAmt": 76.5
       },
       {
        "work": "ENGINE OIL FILTER",
@@ -83,7 +83,7 @@
        "uom": "Nos",
        "rate": 930,
        "amount": 930,
-       "gst": 18
+       "gstAmt": 167.4
       }
      ],
      "rows": "Line 6–8"
@@ -98,8 +98,7 @@
        "qty": 25,
        "uom": "Ltr",
        "rate": 0,
-       "amount": 0,
-       "gst": ""
+       "amount": 0
       },
       {
        "work": "HYDROLIC OIL L&T",
@@ -107,7 +106,7 @@
        "uom": "Ltr",
        "rate": 133,
        "amount": 10374,
-       "gst": 18
+       "gstAmt": 1867.32
       }
      ],
      "rows": "Line 9–10"
@@ -123,7 +122,7 @@
        "uom": "Kg",
        "rate": 33,
        "amount": 16.5,
-       "gst": 18
+       "gstAmt": 3
       }
      ],
      "rows": "Line 11"
@@ -139,7 +138,7 @@
        "uom": "Nos",
        "rate": 40,
        "amount": 40,
-       "gst": 18
+       "gstAmt": 7.2
       }
      ],
      "rows": "Line 12"
@@ -147,7 +146,7 @@
    ],
    "rows": 8,
    "fileTotal": 16066.32,
-   "total": 16066.3,
+   "total": 16066.32,
    "bad": [
     "Line 12: the date \"later\""
    ],
@@ -171,7 +170,7 @@
        "uom": "Nos",
        "rate": 310,
        "amount": 310,
-       "gst": 18
+       "gstAmt": 55.8
       },
       {
        "work": "Labour",
@@ -179,7 +178,7 @@
        "uom": "Nos",
        "rate": 1200,
        "amount": 1200,
-       "gst": 18
+       "gstAmt": 216
       },
       {
        "work": "Coolant",
@@ -187,7 +186,7 @@
        "uom": "Ltr",
        "rate": 250,
        "amount": 450,
-       "gst": 18
+       "gstAmt": 81
       }
      ],
      "rows": "Line 4–6"
@@ -232,7 +231,7 @@
        "uom": "Kg",
        "rate": 180,
        "amount": 360,
-       "gst": 18
+       "gstAmt": 64.8
       }
      ],
      "rows": "Line 4"
@@ -341,7 +340,7 @@
        "uom": "Ltr",
        "rate": 59,
        "amount": 1180,
-       "gst": 18
+       "gstAmt": 212.4
       }
      ],
      "rows": "Line 1"
@@ -357,7 +356,7 @@
        "uom": "Kg",
        "rate": 180,
        "amount": 360,
-       "gst": 18
+       "gstAmt": 64.8
       },
       {
        "work": "BULB",
@@ -365,7 +364,7 @@
        "uom": "Nos",
        "rate": 40,
        "amount": 40,
-       "gst": 25
+       "gstAmt": 10
       }
      ],
      "rows": "Line 2–3"
@@ -375,15 +374,7 @@
    "fileTotal": 1867.2,
    "total": 1867.2,
    "bad": [],
-   "warn": [
-    {
-     "line": 3,
-     "work": "BULB",
-     "k": "gp",
-     "a": 25,
-     "b": ""
-    }
-   ],
+   "warn": [],
    "res": null,
    "done": null
   },
@@ -403,7 +394,7 @@
        "uom": "Nos",
        "rate": 310,
        "amount": 310,
-       "gst": 18
+       "gstAmt": 55.8
       }
      ],
      "rows": "Line 1"
@@ -482,7 +473,7 @@
      "uom": "Ltr",
      "rate": 59,
      "amount": 1180,
-     "gst": 18
+     "gstAmt": 212.4
     }
    ],
    "rows": "Line 5"
@@ -498,7 +489,7 @@
      "uom": "NOS",
      "rate": 650,
      "amount": 650,
-     "gst": 18
+     "gstAmt": 117
     },
     {
      "work": "FUEL WATER SEPRETOR",
@@ -506,7 +497,7 @@
      "uom": "NOS",
      "rate": 425,
      "amount": 425,
-     "gst": 18
+     "gstAmt": 76.5
     },
     {
      "work": "ENGINE OIL FILTER",
@@ -514,7 +505,7 @@
      "uom": "NOS",
      "rate": 930,
      "amount": 930,
-     "gst": 18
+     "gstAmt": 167.4
     }
    ],
    "rows": "Line 6–8"
@@ -529,8 +520,7 @@
      "qty": 25,
      "uom": "Ltr",
      "rate": 0,
-     "amount": 0,
-     "gst": ""
+     "amount": 0
     },
     {
      "work": "HYDROLIC OIL L&T",
@@ -538,7 +528,7 @@
      "uom": "Ltr",
      "rate": 133,
      "amount": 10374,
-     "gst": 18
+     "gstAmt": 1867.32
     }
    ],
    "rows": "Line 9–10"
@@ -554,7 +544,7 @@
      "uom": "Kg",
      "rate": 33,
      "amount": 16.5,
-     "gst": 18
+     "gstAmt": 3
     }
    ],
    "rows": "Line 11"
@@ -570,7 +560,7 @@
      "uom": "NOS",
      "rate": 40,
      "amount": 40,
-     "gst": 18
+     "gstAmt": 7.2
     }
    ],
    "rows": "Line 12"
