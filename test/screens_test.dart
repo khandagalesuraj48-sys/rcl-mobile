@@ -2240,7 +2240,13 @@ void main() {
     await t.enterText(box('pol-r-0'), '50');
     await settle(t, 300);
     // (3.58.0) the line is taller now (its Brand and Material specification) – each total read by its own key
-    expect([for (final k in ['pol-m-0', 'pof-total']) (t.widget(find.byKey(Key(k))) as dynamic).data], ['Taxable ₹1,500.00 · GST ₹75.00 · Total ₹1,575.00', 'Taxable ₹1,500.00 · GST ₹75.00 · Total ₹1,575.00'], reason: 'the line and the PO');
+    final pof = find.descendant(of: find.byKey(const Key('pof')), matching: find.byType(Scrollable)).first;
+    final totals = <String>[];
+    for (final k in ['pol-m-0', 'pof-total']) {
+      await t.dragUntilVisible(find.byKey(Key(k)), pof, const Offset(0, -120));
+      totals.add((t.widget(find.byKey(Key(k))) as dynamic).data as String);
+    }
+    expect(totals, ['Taxable ₹1,500.00 · GST ₹75.00 · Total ₹1,575.00', 'Taxable ₹1,500.00 · GST ₹75.00 · Total ₹1,575.00'], reason: 'the line and the PO');
     await tapK(t, 'po-save');
     await net(t);
     expect(find.text('The same vendor?'), findsOneWidget);
