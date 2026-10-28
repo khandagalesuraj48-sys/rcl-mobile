@@ -27,7 +27,7 @@ typedef StoreCall = Future<Map<String, dynamic>> Function(String action, [Map<St
 
 /// The pages of the Store's work, as the web's menu: key, name, Marathi, what it is, icon.
 const kWorkPages = <(String, String, String, String, IconData)>[
-  ('req', 'Material Requirements', 'मटेरियल मागणी', 'What the site needs – approved level by level', Icons.playlist_add_check_rounded),
+  ('req', 'Requirements', 'मटेरियल मागणी', 'Material Requirements – approved level by level', Icons.playlist_add_check_rounded),
   ('purchase', 'Purchase – every site', 'खरेदी – सर्व साइट', 'HO Purchase: approved requirements → purchase orders', Icons.shopping_cart_rounded),
   ('po', 'Purchase Orders', 'खरेदी ऑर्डर', 'The POs of this site and what has come', Icons.receipt_long_rounded),
   ('grn', 'Inward (GRN)', 'आवक (GRN)', 'Material received – against a PO or direct', Icons.move_to_inbox_rounded),
@@ -410,7 +410,7 @@ class StoreWorkTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = dash ?? const <String, dynamic>{}, rq = mapOf(d['req']);
     final pages = [for (final p in kWorkPages) if (k.can(p.$1)) p];
-    return ListView(key: const Key('st-work'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
+    return ListView(key: const Key('st-work'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 90), children: [
       if (err.isNotEmpty) InfoLine(err, bad: true),
       for (final p in pages)
         Padding(
@@ -653,7 +653,7 @@ class _ReqListScreenState extends State<ReqListScreen> {
     final rows = reqs.where((x) => reqIn(x, filter)).toList();
     final tickable = rows.any((x) => x['mayApprove'] == true);
     return Scaffold(
-      appBar: _bar('Material Requirements', 'मटेरियल मागणी', refresh: _load),
+      appBar: _bar('Requirements', 'मटेरियल मागणी', refresh: _load),
       floatingActionButton: !loading && k.edit('req') ? _fab('rq-new', 'New requirement', () => _form(null)) : null,
       body: loading
           ? _loading()

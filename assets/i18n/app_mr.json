@@ -1169,5 +1169,6 @@
 "Everything of outward {0} has come back.": "outward {0} चे सगळे परत आले आहे.",
 "The same {0}?": "तोच {0}?",
 "{0} requirement(s)": "{0} मागण्या",
-"Approve the ticked ({0})": "✓ केलेल्या मंजूर करा ({0})"
+"Approve the ticked ({0})": "✓ केलेल्या मंजूर करा ({0})",
+"Material Requirements – approved level by level": "मटेरियल मागणी – level प्रमाणे मंजूर"
 }

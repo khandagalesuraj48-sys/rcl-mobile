@@ -265,16 +265,27 @@ class _StoreScreenState extends State<StoreScreen> {
                   for (final t in tabs) Tab(key: Key('st-tab-$t'), child: Text(t == 'dashboard' ? 'Dashboard' : t == 'work' ? 'Work' : 'Item Master')),
                 ]),
         ),
-        floatingActionButton: me != null && pg['items'] == 'Edit' ? FloatingActionButton.extended(
-                key: const Key('st-new'),
-                onPressed: () => _form(),
-                backgroundColor: C.green,
-                foregroundColor: Colors.white,
-                elevation: 3,
-                shape: const StadiumBorder(),
-                icon: const Icon(Icons.add_rounded, size: 26),
-                label: const Text('Add item', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              ) : null,
+        // (3.55.0) "Add item" – not on the Work tab (its pages have their own)
+        floatingActionButton: me != null && pg['items'] == 'Edit'
+            ? Builder(builder: (c) {
+                final tc = DefaultTabController.of(c);
+                return AnimatedBuilder(
+                  animation: tc,
+                  builder: (_, __) => tc.index < tabs.length && tabs[tc.index] == 'work'
+                      ? const SizedBox.shrink()
+                      : FloatingActionButton.extended(
+                          key: const Key('st-new'),
+                          onPressed: () => _form(),
+                          backgroundColor: C.green,
+                          foregroundColor: Colors.white,
+                          elevation: 3,
+                          shape: const StadiumBorder(),
+                          icon: const Icon(Icons.add_rounded, size: 26),
+                          label: const Text('Add item', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        ),
+                );
+              })
+            : null,
         body: loading
             ? const Center(child: CircularProgressIndicator())
             : me == null || tabs.isEmpty
