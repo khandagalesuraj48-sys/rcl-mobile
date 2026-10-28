@@ -2340,6 +2340,7 @@ void main() {
     await net(t);
     // Purchase Orders of this site: one waiting again – Approve; his name after it
     srv.po1Appr = {'appr': 'Waiting', 'appr_name': null, 'appr_note': null};
+    await reach(t, 'sw-po', 'st-work');      // (the Work tab's list was scrolled by the page opened before)
     await tapK(t, 'sw-po');
     await net(t);
     expect(data('po-appr-S1-1'), 'Waiting approval – Sujit Mule');
@@ -2351,6 +2352,7 @@ void main() {
     Navigator.of(t.element(find.byKey(const Key('pol-list')))).pop();
     await net(t);
     // the requirement's Purchase Requisition Form
+    await reach(t, 'sw-req', 'st-work');      // (the Work tab's list was scrolled by the page opened before)
     await tapK(t, 'sw-req');
     await net(t);
     await tapK(t, 'rq-print-1');
@@ -2362,6 +2364,7 @@ void main() {
     Navigator.of(t.element(find.byKey(const Key('rq-list')))).pop();
     await net(t);
     // the papers of the site (Store Admin)
+    await reach(t, 'sw-settings', 'st-work');      // (the Work tab's list was scrolled by the page opened before)
     await tapK(t, 'sw-settings');
     await net(t);
     await tapK(t, 'pp-open');
@@ -2381,6 +2384,7 @@ void main() {
     srv.storeStep5 = false;
     Navigator.of(t.element(find.byKey(const Key('op-list')))).pop();
     await net(t);
+    await reach(t, 'sw-purchase', 'st-work');
     await tapK(t, 'sw-purchase');
     await net(t);
     await tapK(t, 'pu-t-S1-1-1');
