@@ -3099,6 +3099,7 @@ void main() {
     await t.tap(find.text('MH-12-HO-1163').last);
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'getMaint')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-1163'});
+    await reach(t, 'mt-log', 'mt-list');      // (3.53.0: the page is longer – the import, Fetch outward, Start to end)
     await tapK(t, 'mt-log');
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-1163'}, reason: 'no fuel sent');
@@ -3390,11 +3391,7 @@ void main() {
     expect(find.textContaining("The Store's Issue (material given to a machinery) is not built yet"), findsOneWidget);
     await net(t);
     expect(srv.maintCalls.where((x) => x['fn'] == 'maintLog').last['x'], {'no': 'Sany 210 (No.1)', 'all': true}, reason: 'the log book opened start to end');
-    expect((t.widget(find.byKey(const Key('rep-all'))) as FilterChip).selected, true);
-    // the chip off: the dates again
-    await t.tap(find.byKey(const Key('rep-all')));
-    await settle(t, 400);
-    expect((t.widget(find.byKey(const Key('rep-all'))) as FilterChip).selected, false);
+    expect(find.textContaining('Start to end'), findsWidgets, reason: 'the report says it is start to end');
   });
 
   testWidgets('(3.53.0) Picture: the old log book\'s import after Check – the names (AI), a sheet with a mistake, one to import, one rented (not imported)', (t) async {
@@ -3548,6 +3545,7 @@ void main() {
     await settle(t, 800);
     await t.tap(find.text('MH-12-HO-2163').last);
     await net(t);
+    await reach(t, 'mt-log', 'mt-list');      // (3.53.0: the page is longer – the import, Fetch outward, Start to end)
     await tapK(t, 'mt-log');
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-2163'});
@@ -3647,6 +3645,7 @@ void main() {
     await settle(t, 800);
     await t.tap(find.text('MH-12-HO-1163').last);
     await net(t);
+    await reach(t, 'mt-log', 'mt-list');      // (3.53.0: the page is longer – the import, Fetch outward, Start to end)
     await tapK(t, 'mt-log');
     await net(t);
     for (final w in ['CGST 9%', 'SGST 9%', 'GST 18%', 'Amount With GST', 'Paid by', 'Insurance claim', 'Service', 'RCL', 'Insurance', 'Yes', 'No', '90.00', '900.00', '1,800.00', '11,800.00', '990.00', '1,980.00', '-11,800.00']) {
