@@ -2088,7 +2088,9 @@ void main() {
     final rows = sheetRows(files.single.$2);
     expect(rows.any((r) => r.length > 1 && '${r[0]}' == '#' && '${r[1]}' == 'Machinery'), true);
     final mh = rows.firstWhere((r) => r.length > 6 && '${r[1]}'.startsWith('MH-15-AB-0001'));
-    expect([mh[5], '${mh[6]}'.startsWith('01-10')], [16, true], reason: 'its 16 pending days, the first on 01-10');
+    final fx = (jsonDecode(File('test/fixtures/dash/pendingLog.json').readAsStringSync()) as Map)['items'] as List;
+    final n = fx.where((x) => x['no'] == 'MH-15-AB-0001' && '${x['date']}'.compareTo(to) <= 0).length;
+    expect([mh[5], '${mh[6]}'.startsWith('01-10')], [n, true], reason: 'its pending days up to the To date, the first on 01-10');
   });
 
   testWidgets('(3.54.0 – Mechanical update-179) Pending Log Book – Print / Excel from the Log Book screen: that date (logPending – Log Book access)', (t) async {
