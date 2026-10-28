@@ -854,15 +854,16 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   subtitle: Text('${r['for_kind'] ?? ''}${'${r['for_text'] ?? ''}'.isNotEmpty ? ' – ${r['for_text']}' : ''} · ${dmy(r['date'])}${'${r['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(r['need_by'])}' : ''} · asked ${q3(l['qty'])}, ordered ${q3(l['ordered'])}', style: _faint),
                 ),
               ),
-        Row(children: [
-          Expanded(child: Text(nOf(st['open']) > 0 ? '${st['open']} PO(s) open' : '', style: _muted)),
-          FilledButton(
+        if (nOf(st['open']) > 0) Text('${st['open']} PO(s) open', style: _muted),
+        Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 4),
+          child: FilledButton(
             key: Key('pu-mk-$site'),
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 14)),
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
             onPressed: () => _make(st),
-            child: Text(reqs.isEmpty ? 'Make a PO for $site' : 'Make a PO for $site (the ticked lines)'),
+            child: Text(reqs.isEmpty ? 'Make a PO for $site' : 'Make a PO for $site (the ticked lines)', textAlign: TextAlign.center),
           ),
-        ]),
+        ),
       ],
     ]);
   }

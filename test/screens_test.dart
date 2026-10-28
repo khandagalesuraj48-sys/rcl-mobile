@@ -2287,17 +2287,20 @@ void main() {
     await net(t);
     await tapK(t, 'sw-settings');
     await net(t);
+    // the numbers (on top)
+    await t.enterText(box('nm-grn'), '101');
+    await tapK(t, 'nm-save');
+    await net(t);
+    expect(sent(srv, 'numbersSave').single, {'action': 'numbersSave', 'GRN': '101', 'OUT': '8'});
+    // the opening stock: only the changed rows
     expect((t.widget<TextField>(box('op-q-ITM-0001')).controller!).text, '20');
+    await reach(t, 'op-q-ITM-0002', 'op-list');
     await t.enterText(box('op-q-ITM-0002'), '4');
     await t.enterText(box('op-r-ITM-0002'), '95');
     await tapK(t, 'op-save');
     await net(t);
     expect(sent(srv, 'openingSave').single, {'action': 'openingSave', 'date': '2026-10-01', 'rows': [{'code': 'ITM-0002', 'qty': '4', 'rate': '95', 'date': '2026-10-01'}]});
     expect(find.text('Opening stock saved – 1 item(s).'), findsOneWidget);
-    await t.enterText(box('nm-grn'), '101');
-    await tapK(t, 'nm-save');
-    await net(t);
-    expect(sent(srv, 'numbersSave').single, {'action': 'numbersSave', 'GRN': '101', 'OUT': '8'});
   });
 
   Future<void> more(WidgetTester t, String item) async {
