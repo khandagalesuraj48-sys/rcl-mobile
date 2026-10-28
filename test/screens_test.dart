@@ -5688,6 +5688,7 @@ void main() {
     expect(find.textContaining('sql/supabase_step1zj_vendor_papers.sql'), findsOneWidget);
     expect([find.byKey(const Key('vfd-PAN')).evaluate().length, find.byKey(const Key('vfd-a-PAN')).evaluate().length], [1, 0]);
     await t.enterText(box('vf-name'), 'Before 1zj Traders');
+    await settle(t, 600);      // (the box's "show the caret" scroll done first)
     await tapK(t, 'vf-save');
     await net(t);
     var v = srv.masterCalls.lastWhere((c) => c['fn'] == 'saveVendor')['v'] as Map;
@@ -5699,6 +5700,7 @@ void main() {
     await net(t);
     await t.enterText(box('vf-name'), 'Test Earthmovers');
     await t.enterText(box('vf-owner'), 'Ramesh Patil');
+    await settle(t, 600);
     await tapK(t, 'vfd-a-PAN');
     await net(t);
     await tapK(t, 'att-pdf');
