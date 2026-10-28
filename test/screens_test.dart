@@ -5121,32 +5121,37 @@ void main() {
     expect(find.text('MH-25-AJ-2169 · 14-10-2026 · Day'), findsOneWidget);
   });
 
-  testWidgets('(3.56.0 – Mechanical update-180) the Maintenance Log Book of a machinery: each line of a bill on its own – Edit (its box, its ₹ from Qty × Rate) and Delete, the rest of the bill as it is; changed meanwhile: said in the box; the only line: the whole bill (said first); View only: none', (t) async {
+  /// (3.56.0) a car's Maintenance Log Book opened as the test of 3.46.0 does it (a site on fuel cards; Fuel Cards: the Entries tab)
+  Future<FakeServer> mlogOpen(WidgetTester t, String perm) async {
     phone(t);
-    Future<FakeServer> open(String perm) async {
-      final srv = FakeServer()      // (its cars: a site on fuel cards, as the test of 3.46.0)
-        ..perms.addAll({'Maintenance': perm, 'Fuel Cards': 'View'})      // (the Entries tab, as the test of 3.46.0)
-        ..card = true;
-      final s = await ready(t, srv);
-      await t.pumpWidget(RclApp(session: s));
-      await net(t);
-      await t.tap(find.text('Entries'));
-      await net(t);
-      await tapK(t, 'entries-Maintenance');
-      await net(t);
-      await tapK(t, 'mt-car');
-      await settle(t, 800);
-      await t.tap(find.text('MH-12-HO-1163').last);
-      await net(t);
-      await reach(t, 'mt-log', 'mt-list');
-      await tapK(t, 'mt-log');
-      await net(t);
-      return srv;
-    }
-    await open('View');
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Maintenance': perm})
+      ..card = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    await tapK(t, 'mt-car');
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await net(t);
+    await reach(t, 'mt-log', 'mt-list');
+    await tapK(t, 'mt-log');
+    await net(t);
+    return srv;
+  }
+
+  testWidgets('(3.56.0 – Mechanical update-180) the Maintenance Log Book with Maintenance View only: no Edit / Delete of a line', (t) async {
+    await mlogOpen(t, 'View');
     expect(find.text('Maintenance Log Book – MH-12-HO-1163'), findsWidgets);
-    expect(find.byKey(const Key('mlog-lines')), findsNothing, reason: 'View only: no Edit / Delete');
-    final srv = await open('Edit');
+    expect(find.byKey(const Key('mlog-lines')), findsNothing);
+  });
+
+  testWidgets('(3.56.0 – Mechanical update-180) the Maintenance Log Book of a machinery: each line of a bill on its own – Edit (its box, its ₹ from Qty × Rate) and Delete, the rest of the bill as it is; changed meanwhile: said in the box; the only line: the whole bill (said first)', (t) async {
+    final srv = await mlogOpen(t, 'Edit');
     await tapK(t, 'mlog-lines');
     await net(t);
     expect(find.text('Edit / delete a line – MH-12-HO-1163'), findsOneWidget);
