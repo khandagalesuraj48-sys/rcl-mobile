@@ -48,12 +48,24 @@ class FakeServer {
   Map<String, dynamic> mliNames = {'fixes': []};
   /// (3.49.0, Mechanical update-168) what maintLog answers instead of the bill below (null: that one)
   Map<String, dynamic>? maintLogAnswer;
+  /// (3.56.0, Mechanical update-180) the lines of MT-000001 in the log book below – changed / taken out by updateMaintLine / deleteMaintLine
+  final mlogLines = <Map<String, dynamic>>[
+    {'work': 'Engine oil', 'amount': 1200},
+    {'work': 'Oil filter', 'amount': 300},
+    {'work': 'Labour', 'amount': 500},
+    {'work': 'GST 18%', 'amount': 360},
+  ];
   /// what "Read the bill (AI)" answers (readMaintBill)
   Map<String, dynamic> maintRead = {'date': '2026-10-13', 'billNo': 'MS-77', 'garage': 'Maruti Service', 'vehicle': 'MH12HO1163', 'km': 46100, 'service': true, 'total': 3540, 'check': '',
     'lines': [{'work': 'Service charge', 'amount': 2500}, {'work': 'Coolant', 'amount': 500}, {'work': 'GST 18%', 'amount': 540}]};
   final cardPays = <Map<String, dynamic>>[
     {'id': 'CP-000001', 'date': '2026-10-05', 'card': 'HDFC FUEL', 'amount': 5000, 'ref': 'UTR 1234', 'remark': 'recharge', 'photos': 1, 'enteredBy': 'Sujit Mule', 'updatedBy': ''},
   ];
+  /// the bill of [mlogLines]: its lines with their GST (a free line ₹ 0)
+  num get _mlogTotal => mlogLines.fold<num>(0, (t, l) {
+        final a = l['amount'] is num ? l['amount'] as num : 0, g = l['gst'] is num ? l['gst'] as num : 0, paid = (l['type'] ?? 'Paid') == 'Paid' || l['type'] == 'By Insurance';
+        return paid ? ((t + a + 2 * ((a * g / 200) * 100).round() / 100) * 100).round() / 100 : t;
+      });
   Map<String, dynamic> get cardStock => {'stock': 0, 'byLoc': <String, dynamic>{}, 'cards': cards};
   final issueBal = <List>[];
   final saved = <Map<String, dynamic>>[];
@@ -1531,13 +1543,31 @@ class FakeServer {
             'machine': {'id': f['no'], 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr', 'meter': 'KM'}, 'card': card,
             'lines': [
               {'date': '2026-10-05', 'kind': 'Fuel', 'id': 'DI-000530', 'qty': 20, 'unit': 'Ltr', 'amount': 2100, 'paidBy': 'HDFC FUEL', 'km': 45000, 'driver': 'Gupta'},
-              {'date': '2026-10-05', 'kind': 'Maintenance', 'id': 'MT-000001', 'no': f['no'], 'garage': 'Toyota Service', 'party': 'Toyota Service', 'billNo': 'TS-101', 'km': 45210, 'amount': 2360, 'total': 2360, 'service': true, 'files': 1,
-                'lines': [{'work': 'Engine oil', 'amount': 1200}, {'work': 'Oil filter', 'amount': 300}, {'work': 'Labour', 'amount': 500}, {'work': 'GST 18%', 'amount': 360}]},
+              if (mlogLines.isNotEmpty) {'date': '2026-10-05', 'kind': 'Maintenance', 'id': 'MT-000001', 'no': f['no'], 'garage': 'Toyota Service', 'party': 'Toyota Service', 'billNo': 'TS-101', 'km': 45210, 'amount': _mlogTotal, 'total': _mlogTotal, 'service': true, 'files': 1,
+                'lines': [for (final l in mlogLines) {...l}]},
               {'date': '2026-10-12', 'kind': 'Fuel', 'id': 'DI-000531', 'qty': 10, 'unit': 'Ltr', 'amount': 1050, 'paidBy': 'Cash', 'km': 45300, 'driver': ''},
             ],
             'total': {'fuel': {'qty': 30, 'amount': 3150, 'card': 2100, 'cash': 1050, 'fills': 2}, 'maint': {'amount': 2360, 'bills': 1}, 'all': 5510, 'km': 300, 'perKm': 18.37,
               'byWork': [{'work': 'Engine oil', 'amount': 1200, 'n': 1}, {'work': 'Labour', 'amount': 500, 'n': 1}, {'work': 'GST 18%', 'amount': 360, 'n': 1}, {'work': 'Oil filter', 'amount': 300, 'n': 1}]},
             'lastService': {'date': '2026-10-05', 'km': 45210, 'id': 'MT-000001'}}});
+        // (3.56.0, Mechanical update-180) one line of a bill changed / taken out – as the server: the line as it was shown (its work, ₹
+        // and the bill's date), else refused; the only line of a bill is not taken out
+        case 'updateMaintLine' || 'deleteMaintLine':
+          final x = (a[1] as Map).cast<String, dynamic>(), i = (x['i'] as num).toInt(), w = (x['was'] as Map).cast<String, dynamic>();
+          maintCalls.add({'fn': action, 'id': a[0], 'x': x});
+          if (a[0] != 'MT-000001') return _j({'error': 'Maintenance bill ${a[0]} was not found.'}, 500);
+          if (i < 0 || i >= mlogLines.length || mlogLines[i]['work'] != w['work'] || mlogLines[i]['amount'] != w['amount'] || x['date'] != '2026-10-05') {
+            return _j({'error': 'Bill ${a[0]} was changed meanwhile – show the log book again, then change its line.'}, 500);
+          }
+          if (action == 'deleteMaintLine') {
+            if (mlogLines.length == 1) return _j({'error': 'This is the only line of bill ${a[0]} – delete the whole bill instead.'}, 500);
+            mlogLines.removeAt(i);
+          } else {
+            final l = (x['line'] as Map).cast<String, dynamic>();
+            if ('${l['work'] ?? ''}'.trim().isEmpty) return _j({'error': 'Bill line ${i + 1}: type the work / part (e.g. Engine oil, Labour).'}, 500);
+            mlogLines[i] = {for (final e in l.entries) if (e.value != '') e.key: e.value};
+          }
+          return _j({'result': {'ok': true, 'id': a[0], 'total': _mlogTotal, 'billTotal': _mlogTotal, 'lines': mlogLines.length}});
         case 'getLogAttachments':
           return _j({'result': {'key': _arg(a, 'key'), 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'max': 10, 'files': [for (final f in entryAtt) {...f, 'url': ''}]}});
         case 'capClaim':

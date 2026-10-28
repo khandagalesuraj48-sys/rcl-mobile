@@ -5120,4 +5120,89 @@ void main() {
     expect(find.byType(CaptureScreen), findsOneWidget);
     expect(find.text('MH-25-AJ-2169 · 14-10-2026 · Day'), findsOneWidget);
   });
+
+  testWidgets('(3.56.0 – Mechanical update-180) the Maintenance Log Book of a machinery: each line of a bill on its own – Edit (its box, its ₹ from Qty × Rate) and Delete, the rest of the bill as it is; changed meanwhile: said in the box; the only line: the whole bill (said first); View only: none', (t) async {
+    phone(t);
+    Future<FakeServer> open(String perm) async {
+      final srv = FakeServer()..perms.addAll({'Maintenance': perm});
+      final s = await ready(t, srv);
+      await t.pumpWidget(RclApp(session: s));
+      await net(t);
+      await t.tap(find.text('Entries'));
+      await net(t);
+      await tapK(t, 'entries-Maintenance');
+      await net(t);
+      await tapK(t, 'mt-car');
+      await settle(t, 800);
+      await t.tap(find.text('MH-12-HO-1163').last);
+      await net(t);
+      await reach(t, 'mt-log', 'mt-list');
+      await tapK(t, 'mt-log');
+      await net(t);
+      return srv;
+    }
+    await open('View');
+    expect(find.text('Maintenance Log Book – MH-12-HO-1163'), findsWidgets);
+    expect(find.byKey(const Key('mlog-lines')), findsNothing, reason: 'View only: no Edit / Delete');
+    final srv = await open('Edit');
+    await tapK(t, 'mlog-lines');
+    await net(t);
+    expect(find.text('Edit / delete a line – MH-12-HO-1163'), findsOneWidget);
+    expect([for (var i = 0; i < 5; i++) find.byKey(Key('ml-e-MT-000001-$i')).evaluate().length], [1, 1, 1, 1, 0], reason: 'each line of the bill (its 4) its Edit; the fills are not bills');
+    expect(find.byKey(const Key('ml-d-MT-000001-0')), findsOneWidget);
+    // Edit of the oil filter: its box; Qty 2 × Rate 175 → its ₹ 350; saved – only that line
+    await tapK(t, 'ml-e-MT-000001-1');
+    await net(t);
+    expect(find.text('Change this line – MH-12-HO-1163'), findsOneWidget);
+    expect(find.text('Bill MT-000001 · 05-10-2026 · Toyota Service · bill no. TS-101 – line 2 of 4. The other lines of the bill stay as they are.'), findsOneWidget);
+    expect([for (final k in ['mlf-w', 'mlf-q', 'mlf-r', 'mlf-a', 'mlf-g']) (t.widget(find.byKey(Key(k))) as TextBox).controller.text], ['Oil filter', '', '', '300', '']);
+    await t.enterText(find.byKey(const Key('mlf-q')), '2');
+    await t.enterText(find.byKey(const Key('mlf-r')), '175');
+    await t.enterText(find.byKey(const Key('mlf-g')), '18');
+    await settle(t, 400);
+    expect((t.widget(find.byKey(const Key('mlf-a'))) as TextBox).controller.text, '350', reason: 'Qty × Rate');
+    expect((t.widget(find.byKey(const Key('mlf-sum'))) as dynamic).data, 'GST ₹63.00 · Amount with GST ₹413.00');
+    await tapK(t, 'mlf-save');
+    await net(t);
+    expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'updateMaintLine'), {
+      'fn': 'updateMaintLine', 'id': 'MT-000001',
+      'x': {'i': 1, 'date': '2026-10-05', 'was': {'work': 'Oil filter', 'amount': 300}, 'line': {'work': 'Oil filter', 'type': 'Paid', 'qty': 2, 'uom': '', 'rate': 175, 'disc': '', 'amount': 350, 'gst': 18}},
+    });
+    expect(find.byKey(const Key('mlf-save')), findsNothing, reason: 'back on the lines');
+    expect(find.text('2 × 175 · GST 18 % · RCL'), findsOneWidget, reason: 'the log book read again');
+    expect(srv.mlogLines.map((l) => '${l['work']}:${l['amount']}').toList(), ['Engine oil:1200', 'Oil filter:350', 'Labour:500', 'GST 18%:360']);
+    // a line changed by someone else meanwhile: said in the box, nothing saved
+    srv.mlogLines[0]['amount'] = 1250;
+    await tapK(t, 'ml-e-MT-000001-0');
+    await net(t);
+    await tapK(t, 'mlf-save');
+    await net(t);
+    expect(find.textContaining('Bill MT-000001 was changed meanwhile – show the log book again, then change its line.'), findsOneWidget);
+    expect(find.byKey(const Key('mlf-save')), findsOneWidget, reason: 'the box stays');
+    await t.pageBack();
+    await net(t);
+    // a line deleted (asked first)
+    await tapK(t, 'ml-d-MT-000001-2');
+    await settle(t, 800);
+    expect(find.text('Delete this line?'), findsOneWidget);
+    expect(find.textContaining('Labour – ₹ 500'), findsOneWidget);
+    await t.tap(find.text('Delete').last);
+    await net(t);
+    expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'deleteMaintLine'), {'fn': 'deleteMaintLine', 'id': 'MT-000001', 'x': {'i': 2, 'date': '2026-10-05', 'was': {'work': 'Labour', 'amount': 500}}});
+    expect([for (var i = 0; i < 4; i++) find.byKey(Key('ml-e-MT-000001-$i')).evaluate().length], [1, 1, 1, 0], reason: 'the other lines as they were');
+    // the only line of a bill: the whole bill (said first)
+    srv.mlogLines.removeRange(1, srv.mlogLines.length);
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'mlog-lines');
+    await net(t);
+    await tapK(t, 'ml-d-MT-000001-0');
+    await settle(t, 800);
+    expect(find.text('Delete bill MT-000001?'), findsOneWidget);
+    expect(find.textContaining('"Engine oil" is the only line of this bill – the whole bill is deleted.'), findsOneWidget);
+    await t.tap(find.text('Delete the bill'));
+    await net(t);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'deleteMaint').map((x) => x['id']).toList(), ['MT-000001']);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'deleteMaintLine').length, 1, reason: 'not a line: the bill');
+  });
 }

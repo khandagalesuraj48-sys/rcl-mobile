@@ -13,6 +13,13 @@ import 'package:rcl_mobile/core/sheet_read.dart';
 
 const dir = 'test/fixtures/sheets';
 final web = jsonDecode(File('$dir/maint_logbook.json').readAsStringSync()) as Map<String, dynamic>;
+/// (3.56.0, Mechanical update-180) headings in any order, named in many ways: maint_heads.json is what the web's own code (App.html
+/// mliField / mliRows / mliSheet, SheetJS 0.18.5) makes of them and of maint_heads.xlsx (made by tool/mli_heads_fixture.js)
+final heads = jsonDecode(File('$dir/maint_heads.json').readAsStringSync()) as Map<String, dynamic>;
+Map<String, String>? _field(Object? h) {
+  final f = mliField(h);
+  return f == null ? null : {'f': f.f, 'p': f.p};
+}
 
 /// The first place two JSON values differ ('' = the same): numbers by value, a text is not a number, '' is not null.
 String differ(Object? a, Object? b, [String at = r'$']) {
@@ -40,6 +47,29 @@ void main() {
   final master = [for (final m in web['master'] as List) (m as Map).cast<String, dynamic>()];
   final today = '${web['today']}';
   final tabs = readSheets(Uint8List.fromList(File('$dir/maint_logbook.xlsx').readAsBytesSync()));
+
+  test('(3.56.0, Mechanical update-180) each heading by its words – Bill Date, Supplier, KM, Item Description, Taxable Value, CGST 9%, Net Amount … – exactly as the web', () {
+    expect(differ([for (final h in heads['heads'] as List) _field(h)], heads['fields']), '');
+    expect([for (final h in ['Item Description', 'Bill Date', 'Supplier', 'KM', 'Taxable Value', 'CGST 9%', 'GST %', 'Net Amount', 'Remarks', 'Vehicle No']) mliField(h)?.f],
+        ['work', 'date', 'party', 'reading', 'amount', 'gstAmt', 'gstPct', 'withGst', '-', null]);
+  });
+
+  test('(3.56.0) every row in the log book\'s 12 columns – CGST + SGST added, a GST % made ₹, no Amount column worked out – exactly as the web', () {
+    final cases = heads['cases'] as List, want = heads['rows'] as List;
+    for (final (i, c) in cases.indexed) {
+      final got = jsonDecode(jsonEncode(mliRows(List<Object?>.from(c[0] as List), [for (final r in c[1] as List) List<Object?>.from(r as List)])));
+      expect(differ(got, want[i]), '', reason: 'case $i: ${c[0]}');
+    }
+    expect(mliRows(mliHead, [[1, '2022-12-02', 'Store', '', 'AD BLUE', 20, 'Ltr', 59, 1180, 212.4, 1392.4, '']]).single, [1, '2022-12-02', 'Store', '', 'AD BLUE', 20, 'Ltr', 59, 1180, 212.4, 1392.4, ''], reason: 'his own format: as it is');
+  });
+
+  test('(3.56.0) his Excel with its headings in other orders: the same bills as the web', () {
+    final hm = [for (final m in heads['master'] as List) (m as Map).cast<String, dynamic>()];
+    final got = jsonDecode(jsonEncode([for (final x in mliRead(readSheets(Uint8List.fromList(File('$dir/maint_heads.xlsx').readAsBytesSync())), hm, '${heads['today']}')) x.toJson()]));
+    final want = [for (final x in heads['sheets'] as List) Map<String, dynamic>.from(x as Map)..remove('res')..remove('done')];
+    expect(differ(got, want), '');
+    expect([for (final x in got as List) '${x['sheet']}→${x['no']}:${(x['bills'] as List).length}:${x['total']}'], ['Roller 18→RL-180:2:3256.8', 'Hycross→MH-12-XW-0180:2:1881.8']);
+  });
 
   test('the Own machinery on the site today – as the web', () {
     expect([for (final m in mliOwn(master, today)) m['id']], web['own']);

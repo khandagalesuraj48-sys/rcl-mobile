@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.56.0 (28-10-2026 – "kahi pdf madhe heading maghe pudhe aahet tr … auto identify krun … kontya hi gadichi log book
+maintanace wala ek ek entry mala edit or delet krta yawi"; his answer: each line on its own; with Mechanical update-180; not released
+yet – as he said):** the **Maintenance Log Book** of any machinery → **Edit / delete a line** (Maintenance Edit): its bills, each with
+its lines; each line its **Edit** (its own screen: Particulars, Paid by, Qty, Uom, Rate, Disc %, Amount, GST % – a Paid line's ₹ from
+Qty × Rate − Disc %, a free line ₹ 0; the rest of the bill stays as it is) and **Delete** (asked first; the only line of a bill: the
+whole bill, said first); a line changed by someone meanwhile is refused by the server – said on the screen (`screens/maint_lines.dart`,
+`updateMaintLine` / `deleteMaintLine` – the same server actions and checks as the web). **The old log book's import**: an Excel with
+its headings in any order and named in many ways (Bill Date, Supplier, KM, Item Description, Taxable Value, CGST 9%, SGST 9%, Net
+Amount …) read by their words – the web's rules word for word (`core/maint_import.dart` `mliField` / `mliRows`, proven against the web's
+own code: `test/fixtures/sheets/maint_heads.{xlsx,json}`); a PDF read by the AI sends the headings of the page before with the next
+page. The web's help (the new messages) taken into the app. Not verified: a real phone.
+
 **Version 3.55.0 (28-10-2026 – the Store's step 2, "sagle banwayla chalu kr"; with rcl-store `store-work`, the Portal and Mechanical
 update-178):** **Home → Store** has a **Work** tab – the pages of the Store's work he was given (as the web's menu): **Material
 Requirements** (the filters Open / Waiting for me / Pending / Approved / …; Approve – one or the ticked –, Reject with why, Details,

@@ -7101,5 +7101,20 @@
 "✔ Nothing pending{0} in these dates.": "✔ या तारखांमध्ये{0} काहीही बाकी नाही.",
 "{0} issue(s) of the RCL Store to this machinery are in this log book (Party \"RCL Store\").": "RCL Store ची या मशिनरीला दिलेली {0} issue(s) या log book मध्ये आहेत (Party \"RCL Store\").",
 "No issue of the RCL Store to this machinery in these dates.": "या तारखांमध्ये RCL Store ने या मशिनरीला काही दिलेले नाही.",
-"The Store's work is not set up at this site yet (its database step 2) – there is no outward to fetch. When it is, what the Store issues to this machinery comes into its log book by itself.": "या site वर Store चे काम अजून set up झालेले नाही (त्याची database step 2) – आणायला outward नाही. ते झाल्यावर Store या मशिनरीला जे देईल ते तिच्या log book मध्ये आपोआप येईल."
+"The Store's work is not set up at this site yet (its database step 2) – there is no outward to fetch. When it is, what the Store issues to this machinery comes into its log book by itself.": "या site वर Store चे काम अजून set up झालेले नाही (त्याची database step 2) – आणायला outward नाही. ते झाल्यावर Store या मशिनरीला जे देईल ते तिच्या log book मध्ये आपोआप येईल.",
+"{0} – line {1} of {2}. The other lines of the bill stay as they are.": "{0} – {2} पैकी ओळ {1}. बिलाच्या बाकी ओळी आहेत तशाच राहतात.",
+"\"{0}\" is the only line of this bill – the whole bill is deleted.": "\"{0}\" ही या बिलाची एकमेव ओळ आहे – पूर्ण बिल डिलीट होते.",
+"Bill {0} · {1}": "बिल {0} · {1}",
+"· bill no. {0}": "· बिल नं. {0}",
+"Bill {0} was changed meanwhile – show the log book again, then change its line.": "बिल {0} मध्येच बदलले गेले – log book पुन्हा दाखवा, मग त्याची ओळ बदला.",
+"Change this line – {0}": "ही ओळ बदला – {0}",
+"Delete bill {0}?": "बिल {0} डिलीट करायचे?",
+"Delete the bill": "बिल डिलीट करा",
+"Delete this line?": "ही ओळ डिलीट करायची?",
+"GST ₹{0} · Amount with GST ₹{1}": "GST ₹{0} · GST सह रक्कम ₹{1}",
+"Line deleted – bill {0} is now ₹{1}.": "ओळ डिलीट केली – बिल {0} आता ₹{1}.",
+"Line saved – bill {0} is now ₹{1}.": "ओळ save झाली – बिल {0} आता ₹{1}.",
+"Not paid – ₹ 0 in the bill.": "दिलेले नाही – बिलात ₹ 0.",
+"The other lines of the bill stay as they are.": "बिलाच्या बाकी ओळी आहेत तशाच राहतात.",
+"This is the only line of bill {0} – delete the whole bill instead.": "ही बिल {0} ची एकमेव ओळ आहे – त्याऐवजी पूर्ण बिल डिलीट करा."
 }

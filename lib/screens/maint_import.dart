@@ -84,17 +84,19 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
     if (b.length > 3 * 1024 * 1024) throw ApiError('This log book file is too big (more than 3 MB) – give it in parts (a PDF of fewer pages).');
     final data = 'data:$kind;base64,${base64Encode(b)}', pdf = kind == 'application/pdf', tables = <Map>[];
     var from = 1, pages = 0;
+    List? head;      // (3.56.0, Mechanical update-180) the headings of the page before: a table going on without its own heading is read in them
     for (var guard = 0; guard < 500; guard++) {
       if (mounted) setState(() => say = pdf ? 'Reading with the AI… page $from${pages > 0 ? ' of $pages' : ''}' : 'Reading with the AI…');
       Map? r;
       if (pdf) {
         try {
-          r = await s.api.call('readMaintLog', [{'data': data, 'from': from, 'n': 2}]) as Map;
+          r = await s.api.call('readMaintLog', [{'data': data, 'from': from, 'n': 2, if (head != null) 'head': head}]) as Map;
         } catch (_) {
           r = null;      // (too slow: one page)
         }
       }
-      if (r == null || r['again'] == true) r = await s.api.call('readMaintLog', [{'data': data, 'from': from, 'n': 1}]) as Map;
+      if (r == null || r['again'] == true) r = await s.api.call('readMaintLog', [{'data': data, 'from': from, 'n': 1, if (head != null) 'head': head}]) as Map;
+      if (r['head'] is List && (r['head'] as List).isNotEmpty) head = r['head'] as List;
       if (r['off'] == true) throw ApiError('The AI is not set up – a PDF or a photo cannot be read now; import the Excel instead.');
       if (r['again'] == true) throw ApiError('The AI could not read page $from of the log book – try again, or give a PDF of fewer pages.');
       final got = (r['tables'] as List? ?? const []).whereType<Map>().toList();
