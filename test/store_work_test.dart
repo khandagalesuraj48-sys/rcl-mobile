@@ -24,6 +24,10 @@ void main() {
     final l = SLine(qty: '30', rate: '50', gst: '5'), m = l.money();
     expect([m.t, m.g, m.all], [1500, 75, 1575]);
     expect(linesMoney([l, SLine(qty: '2', rate: '10.555', gst: '18')]).all, closeTo(1599.91, 1e-9), reason: 'each line rounded to paise, as the web');
+    // (3.62.0) a PO's line less its Disc. % (the web's lineMoney: qty × rate, less the Disc. %, then the GST on it)
+    final d = SLine(qty: '30', rate: '50', disc: '10', gst: '5').money();
+    expect([d.t, d.g, d.all], [1350, 67.5, 1417.5]);
+    expect(SLine(qty: '3', rate: '33.33', disc: '12.5', gst: '18').money().all, closeTo(103.24, 1e-9), reason: '99.99 less 12.5 % = 87.49, its GST 15.75');
   });
 
   test('a report of the Store → a table: number columns as numbers, the total line, the sheet\'s name', () {
