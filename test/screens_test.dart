@@ -5125,7 +5125,7 @@ void main() {
     phone(t);
     Future<FakeServer> open(String perm) async {
       final srv = FakeServer()      // (its cars: a site on fuel cards, as the test of 3.46.0)
-        ..perms.addAll({'Maintenance': perm})
+        ..perms.addAll({'Maintenance': perm, 'Fuel Cards': 'View'})      // (the Entries tab, as the test of 3.46.0)
         ..card = true;
       final s = await ready(t, srv);
       await t.pumpWidget(RclApp(session: s));
