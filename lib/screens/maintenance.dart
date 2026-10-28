@@ -187,7 +187,8 @@ class _MaintScreenState extends State<MaintScreen> {
   }
 
   /// (3.53.0, Mechanical update-175, "fetch outward … dable ki systeam outward fetch krel"; his answer: "Store module चे Issue झाल्यावर") the
-  /// log book read again with what the Store issued to the machinery – the Store's Issue is not built yet: said so; then its log book
+  /// log book read again with what the Store issued to the machinery – how many issues of the Store are in it (3.55.0, update-178: the
+  /// Store's Issue is built); a site without the Store's step 2: said so; then its log book
   Future<void> _fetchOut() async {
     if (no.isEmpty) await _pickCar();
     if (no.isEmpty || !mounted) return;
@@ -195,7 +196,13 @@ class _MaintScreenState extends State<MaintScreen> {
     try {
       final d = (await s.api.call('maintLog', [{'no': no, 'all': true}]) as Map).cast<String, dynamic>(), st = (d['store'] as Map?) ?? const {};
       if (!mounted) return;
-      toast(context, st['on'] == true ? '${st['lines'] ?? 0} line(s) of the Store\'s outward in this log book.' : "The Store's Issue (material given to a machinery) is not built yet – there is no outward to fetch. When it is, what the Store gives to this machinery comes into its log book by itself.");
+      // (3.55.0, Mechanical update-178) the Store's Issue is built: what it issued to this machinery is in its log book (Party "RCL Store")
+      final n = (asNum(st['lines']) ?? 0).toInt();
+      toast(context, st['on'] != true
+          ? "The Store's work is not set up at this site yet (its database step 2) – there is no outward to fetch. When it is, what the Store issues to this machinery comes into its log book by itself."
+          : n > 0
+              ? '$n issue(s) of the RCL Store to this machinery are in this log book (Party "RCL Store").'
+              : 'No issue of the RCL Store to this machinery in these dates.');
       await openReport(context, kMaintLog, no: no, run: true, all: true);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);

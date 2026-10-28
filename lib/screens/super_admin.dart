@@ -48,7 +48,9 @@ String portalMsg(Object e) {
 }
 
 const kRoleWord = {'': 'No access', 'user': 'User', 'admin': 'Admin'};
-const kPageWord = {'Edit': 'Edit', 'View': 'View', 'None': 'No access'};
+/// (3.55.0, the Store's step 2) as the Portal's note under the Store's pages
+const kStoreExtraNote = 'Approves requirements: Level 1 approves first, then Level 2 … (any one person of a level; nobody his own; he sees the Requirements to approve them). Store Purchase: makes the purchase orders of every site.';
+const kPageWord = {'Edit': 'Edit', 'View': 'View', 'None': 'No access', 'L1': 'Level 1', 'L2': 'Level 2', 'L3': 'Level 3', 'L4': 'Level 4', 'L5': 'Level 5'};
 
 /// The Portal's fail(): his sign-in ended – the sign-in screen, with the Marathi line; else false.
 bool portalSignInEnded(BuildContext context, Object e) {
@@ -486,17 +488,21 @@ class _SaUserScreenState extends State<SaUserScreen> {
     final c = widget.console, api = c.api, site = widget.site, e = mail;
     setState(() => busy = true);
     final cur = d.user(e) ?? const {};
+    var warn = '';
     final ok = await c.run(() async {
       await api.admin({'action': 'userSave', 'isNew': isNew, 'email': e, 'name': isNew ? name.text : cur['name'], 'active': active, 'newPassword': pw.text});
       for (final m in widget.mods) {
         final k = '${m['key']}', was = d.roleOf(e, site, k);
-        if (site.isNotEmpty && roles[k] != was) await api.admin({'action': 'accessSet', 'email': e, 'site': site, 'module': k, 'role': roles[k]});
+        if (site.isNotEmpty && roles[k] != was) {
+          final r = await api.admin({'action': 'accessSet', 'email': e, 'site': site, 'module': k, 'role': roles[k]});
+          if ('${r['warn'] ?? ''}'.isNotEmpty) warn = '${r['warn']}'; // (3.55.0) the Store not told who approves – said
+        }
       }
     });
     if (!mounted) return;
     setState(() => busy = false);
     if (!ok) return;
-    c.say('${isNew ? 'User added: ' : 'Saved: '}$e${pw.text.isNotEmpty ? ' – tell him the one-time password.' : ''}');
+    c.say(warn.isNotEmpty ? warn : '${isNew ? 'User added: ' : 'Saved: '}$e${pw.text.isNotEmpty ? ' – tell him the one-time password.' : ''}');
     Navigator.pop(context);
   }
 
@@ -692,12 +698,38 @@ class _SaStorePagesScreenState extends State<SaStorePagesScreen> {
 
   Future<void> _save() async {
     setState(() => busy = true);
-    final ok = await widget.console.run(() => widget.console.api.admin({'action': 'storePagesSave', 'site': widget.site, 'email': widget.email, 'pages': pages}));
+    // (3.55.0, the Store's step 2) a Store Admin: only the pages given to an Admin too (who approves, Store Purchase)
+    final admin = widget.console.d!.roleOf(widget.email, widget.site, 'store') == 'admin';
+    final send = admin ? {for (final p in widget.console.d!.storePages) if (p['admin'] == true) '${p['key']}': pages['${p['key']}']} : pages;
+    Map<String, dynamic> r = const {};
+    final ok = await widget.console.run(() async => r = await widget.console.api.admin({'action': 'storePagesSave', 'site': widget.site, 'email': widget.email, 'pages': send}));
     if (!mounted) return;
     setState(() => busy = false);
     if (!ok) return;
-    widget.console.say('Store pages saved.');
+    widget.console.say('${r['warn'] ?? ''}'.isNotEmpty ? '${r['warn']}' : 'Store pages saved.');
     Navigator.pop(context);
+  }
+
+  /// (3.55.0) one page's choice: a row of buttons; more than three choices (who approves: No access, Level 1 … 5) a pick-list
+  Widget _page(Map p) {
+    final opts = [for (final o in (p['opts'] as List? ?? const [])) '$o'], k = '${p['key']}';
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        mt.Text(tr('${p['label']}'), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        if (opts.length > 3)
+          PickField(key: Key('sa-spg-$k'), label: '${p['label']}', value: pages[k] ?? opts.first, items: opts, labels: {for (final o in opts) o: kPageWord[o] ?? o}, onChanged: (v) => setState(() => pages[k] = v))
+        else
+          SegmentedButton<String>(
+            key: Key('sa-spg-$k'),
+            showSelectedIcon: false,
+            segments: [for (final o in opts) ButtonSegment(value: o, label: Text(kPageWord[o] ?? o))],
+            selected: {pages[k] ?? ''},
+            onSelectionChanged: (v) => setState(() => pages[k] = v.first),
+          ),
+      ]),
+    );
   }
 
   @override
@@ -705,30 +737,25 @@ class _SaStorePagesScreenState extends State<SaStorePagesScreen> {
     final d = widget.console.d!, u = d.user(widget.email) ?? {'name': widget.email}, admin = d.roleOf(widget.email, widget.site, 'store') == 'admin';
     return Scaffold(
       appBar: AppBar(actions: withAsk(), title: mt.Text('${tr('Pages in the Store')} – ${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
-      bottomNavigationBar: admin
+      bottomNavigationBar: admin && !d.storePages.any((p) => p['admin'] == true)
           ? null
           : SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('sa-spg-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save pages')))),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 30), children: [
         Text('${d.siteName(widget.site)} (${widget.site}) · Item Master: Edit = add items · View = see and export · No access = page hidden', style: const TextStyle(fontSize: 13, color: C.muted)),
         const SizedBox(height: 10),
-        if (admin)
-          const Text('Store Admin has every page (and changes, deletes, imports items). To give single pages, make him User above and save, then open Pages again.', style: TextStyle(fontSize: 14.5, height: 1.4))
-        else ...[
-          for (final p in d.storePages)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                mt.Text('${p['label']}', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                SegmentedButton<String>(
-                  key: Key('sa-spg-${p['key']}'),
-                  showSelectedIcon: false,
-                  segments: [for (final o in (p['opts'] as List? ?? const [])) ButtonSegment(value: '$o', label: Text(kPageWord['$o'] ?? '$o'))],
-                  selected: {pages['${p['key']}'] ?? ''},
-                  onSelectionChanged: (v) => setState(() => pages['${p['key']}'] = v.first),
-                ),
-              ]),
-            ),
+        if (admin) ...[
+          const Text('Store Admin has every page (and changes, deletes, imports items). To give single pages, make him User above and save, then open Pages again.', style: TextStyle(fontSize: 14.5, height: 1.4)),
+          // (3.55.0, the Store's step 2) what an Admin too gets only when given: who approves the requirements, Store Purchase
+          if (d.storePages.any((p) => p['admin'] == true)) ...[
+            const SizedBox(height: 8),
+            const Text(kStoreExtraNote, style: TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
+            for (final p in d.storePages) if (p['admin'] == true) _page(p),
+            const SizedBox(height: 12),
+            const Text('He gets these at his next opening of the Store.', style: TextStyle(fontSize: 13, color: C.muted)),
+          ],
+        ] else ...[
+          if (d.storePages.any((p) => p['admin'] == true)) const Text(kStoreExtraNote, style: TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
+          for (final p in d.storePages) _page(p),
           const SizedBox(height: 12),
           const Text('He gets these at his next opening of the Store.', style: TextStyle(fontSize: 13, color: C.muted)),
         ],

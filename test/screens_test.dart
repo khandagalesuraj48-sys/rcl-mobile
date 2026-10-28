@@ -2116,6 +2116,186 @@ void main() {
     expect(asked.map((x) => x['fn']), ['logPending']);
     expect((asked.single['args'] as List).first, {'from': day, 'to': day});
     expect(files.single.$1, 'Pending_Log_Book_${day}_$day.xlsx');
+  /* ---------------- (3.55.0) the Store's work – the app's own screens (rcl-store api/work) ---------------- */
+  Future<FakeServer> openStoreWork(WidgetTester t, {FakeServer? server}) async {
+    phone(t);
+    final srv = server ?? FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.ensureVisible(find.text('Store'));
+    await settle(t, 400);
+    await t.tap(find.text('Store'));
+    await net(t);
+    await t.tap(find.byKey(const Key('st-tab-work')));
+    await net(t);
+    return srv;
+  }
+
+  List<Map<String, dynamic>> sent(FakeServer srv, String action) => srv.storeWork.where((x) => x['action'] == action).toList();
+
+  testWidgets('(3.55.0) Store – the Work tab: the pages he was given; the Dashboard\'s figures; Material Requirements – approve one waiting for me, a new one saved', (t) async {
+    final srv = await openStoreWork(t);
+    for (final k in ['req', 'po', 'grn', 'issue', 'reports', 'settings']) {
+      expect(find.byKey(Key('sw-$k')), findsOneWidget, reason: 'a Store Admin: $k');
+    }
+    expect(find.byKey(const Key('sw-purchase')), findsNothing, reason: 'Store Purchase only when given');
+    expect(find.byKey(const Key('sw-req-mine')), findsOneWidget, reason: 'one waiting for my approval');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/33b_store_work.png'));
+    await t.tap(find.byKey(const Key('st-tab-dashboard')));
+    await net(t);
+    expect(find.byKey(const Key('st-dwork')), findsOneWidget);
+    expect(find.text('Waiting for my approval'), findsOneWidget);
+    await t.tap(find.byKey(const Key('st-tab-work')));
+    await net(t);
+    await tapK(t, 'sw-req');
+    await net(t);
+    expect(sent(srv, 'boot').isNotEmpty, true);
+    expect(find.byKey(const Key('rq-2')), findsOneWidget);
+    expect(find.byKey(const Key('rq-1')), findsOneWidget, reason: 'open: pending and approved with some still to order');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/33c_store_req.png'));
+    await tapK(t, 'rq-ok-2');
+    await net(t);
+    expect(sent(srv, 'reqDecide').single, {'action': 'reqDecide', 'nos': [2], 'ok': true});
+    expect(find.text('Requirement 2 approved.'), findsOneWidget);
+    // a new requirement: an item picked, its quantity
+    await tapK(t, 'rq-new');
+    await net(t);
+    await tapK(t, 'rql-add');
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('pick-ITM-0002 · Sugar (Kg)')));
+    await settle(t, 600);
+    await t.enterText(box('rql-q-0'), '5');
+    await settle(t, 300);
+    expect(find.textContaining('stock now 10.5 Kg'), findsOneWidget);
+    await tapK(t, 'rq-save');
+    await net(t);
+    final r = sent(srv, 'reqSave').single['req'] as Map;
+    expect([r['date'], r['for_kind'], r['lines']], ['2026-10-14', 'Site work', [{'code': 'ITM-0002', 'qty': '5', 'note': ''}]]);
+    expect(find.textContaining('Requirement 3 saved – it waits for Level 1.'), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.55.0) Store – Purchase (every site): the ticked lines of a site → its PO; a vendor nearly one written before asked ("Use")', (t) async {
+    final srv = FakeServer()..storePages = {...FakeServer().storePages, 'purchase': 'Edit'};
+    await openStoreWork(t, server: srv);
+    await tapK(t, 'sw-purchase');
+    await net(t);
+    expect(find.textContaining("The Store's step 2 is not run in this site's database yet."), findsOneWidget, reason: 'a site without it said so');
+    await tapK(t, 'pu-t-S1-1-1');
+    await t.pump();
+    await tapK(t, 'pu-mk-S1');
+    await net(t);
+    expect(sent(srv, 'purItems').single['site'], 'S1');
+    expect((t.widget<TextField>(box('pol-q-0')).controller!).text, '30', reason: 'what is still to order');
+    await t.enterText(box('pof-ven'), 'Shree Traders');
+    await t.enterText(box('pol-r-0'), '50');
+    await settle(t, 300);
+    expect(find.text('Taxable ₹1,500.00 · GST ₹75.00 · Total ₹1,575.00'), findsNWidgets(2), reason: 'the line and the PO');
+    await tapK(t, 'po-save');
+    await net(t);
+    expect(find.text('The same vendor?'), findsOneWidget);
+    await t.tap(find.byKey(const Key('swc-Shri Traders')));
+    await net(t);
+    final ps = sent(srv, 'poSave');
+    expect(ps.length, 2);
+    expect((ps.last['po'] as Map)['vendor'], 'Shri Traders');
+    expect((ps.last['po'] as Map)['lines'], [{'code': 'ITM-0002', 'qty': '30', 'rate': '50', 'gst_pct': '5', 'req_no': 1, 'req_line': 1}]);
+    expect(ps.last['site'], 'S1');
+    expect(find.textContaining('PO 2 of S1 saved'), findsOneWidget);
+  });
+
+  testWidgets('(3.55.0) Store – Inward (GRN) against a PO (its lines still to come; more than it asked first); Issue to a machinery; a Return', (t) async {
+    final srv = await openStoreWork(t);
+    await tapK(t, 'sw-grn');
+    await net(t);
+    expect(find.byKey(const Key('gr-4')), findsOneWidget);
+    await tapK(t, 'gr-new');
+    await net(t);
+    await tapK(t, 'grf-po');
+    await settle(t, 600);
+    await t.tap(find.textContaining('PO 1 – Shri Traders').last);
+    await settle(t, 600);
+    expect((t.widget<TextField>(box('grl-q-0')).controller!).text, '15', reason: 'what is still to come of PO 1');
+    expect((t.widget<TextField>(box('grf-sup')).controller!).text, 'Shri Traders');
+    await t.enterText(box('grl-q-0'), '20');
+    await settle(t, 300);
+    await tapK(t, 'gr-save');
+    await net(t);
+    expect(find.text('More than the PO'), findsOneWidget);
+    await t.tap(find.text('Take it in'));
+    await net(t);
+    final gs = sent(srv, 'grnSave');
+    expect([gs.length, gs.last['confirmOver'], (gs.last['grn'] as Map)['po_no'], ((gs.last['grn'] as Map)['lines'] as List).single], [2, true, 1, {'code': 'ITM-0002', 'qty': '20', 'rate': '100', 'gst_pct': '5', 'po_line': 1}]);
+    expect(find.textContaining('GRN 5 saved'), findsOneWidget);
+    Navigator.of(t.element(find.byKey(const Key('gr-list')))).pop();
+    await net(t);
+    // Issue to a machinery, a returnable line
+    await tapK(t, 'sw-issue');
+    await net(t);
+    await tapK(t, 'is-new');
+    await net(t);
+    await tapK(t, 'isf-kind');
+    await settle(t, 600);
+    await t.tap(find.text('Machinery').last);
+    await settle(t, 600);
+    await tapK(t, 'isf-mach');
+    await settle(t, 600);
+    await t.tap(find.text('Sany 210 (No.1) – Excavator').last);
+    await settle(t, 600);
+    await tapK(t, 'isl-add');
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('pick-ITM-0001 · Hydraulic Hose 1/2 inch (Mtr)')));
+    await settle(t, 600);
+    await t.enterText(box('isl-q-0'), '2');
+    await tapK(t, 'isl-ret-0');
+    await t.pump();
+    await tapK(t, 'is-save');
+    await net(t);
+    final iss = sent(srv, 'issueSave').single['issue'] as Map;
+    expect([iss['to_kind'], iss['machinery'], iss['party'], iss['debit']], ['Machinery', 'Sany 210 (No.1)', '', false]);
+    expect((iss['lines'] as List).single, {'code': 'ITM-0001', 'qty': '2', 'returnable': true, 'serial': '', 'rate': '', 'gst_pct': '', 'remark': ''});
+    expect(find.textContaining('Outward 8 saved'), findsOneWidget);
+    // a return of outward 7 (3 of 4 still out)
+    await tapK(t, 'is-ret-7');
+    await net(t);
+    expect(find.textContaining('still out 3'), findsOneWidget);
+    await t.enterText(box('rt-q-0'), '1');
+    await tapK(t, 'rt-save');
+    await net(t);
+    expect((sent(srv, 'retSave').single['ret'] as Map)['lines'], [{'issue_line': 71, 'qty': '1', 'remark': ''}]);
+    expect(find.text('Return 2 saved.'), findsOneWidget);
+  });
+
+  testWidgets('(3.55.0) Store – Stock & Reports (shown, Excel); Opening stock (only the changed rows) and the numbers', (t) async {
+    final srv = await openStoreWork(t);
+    final files = catchFiles();
+    await tapK(t, 'sw-reports');
+    await net(t);
+    expect(sent(srv, 'report').first, {'action': 'report', 'kind': 'stock', 'date': '2026-10-14', 'cat': '', 'below': false, 'all': false});
+    expect(find.text('Hydraulic Hose 1/2 inch'), findsOneWidget);
+    expect(find.text('3,550'), findsOneWidget, reason: 'the total');
+    await tapK(t, 'sr-xl');
+    await net(t);
+    expect(files.single.$1, startsWith('Stock_'));
+    final rows = readSheets(files.single.$2).first.rows;
+    expect(rows.any((r) => r.length > 3 && r[0] == 'ITM-0002' && r[2] == 10.5), true, reason: 'numbers as numbers');
+    Navigator.of(t.element(find.byKey(const Key('sr-list')))).pop();
+    await net(t);
+    await tapK(t, 'sw-settings');
+    await net(t);
+    expect((t.widget<TextField>(box('op-q-ITM-0001')).controller!).text, '20');
+    await t.enterText(box('op-q-ITM-0002'), '4');
+    await t.enterText(box('op-r-ITM-0002'), '95');
+    await tapK(t, 'op-save');
+    await net(t);
+    expect(sent(srv, 'openingSave').single, {'action': 'openingSave', 'date': '2026-10-01', 'rows': [{'code': 'ITM-0002', 'qty': '4', 'rate': '95', 'date': '2026-10-01'}]});
+    expect(find.text('Opening stock saved – 1 item(s).'), findsOneWidget);
+    await t.enterText(box('nm-grn'), '101');
+    await tapK(t, 'nm-save');
+    await net(t);
+    expect(sent(srv, 'numbersSave').single, {'action': 'numbersSave', 'GRN': '101', 'OUT': '8'});
   });
 
   Future<void> more(WidgetTester t, String item) async {
@@ -3455,7 +3635,7 @@ void main() {
     await t.tap(find.text('Sany 210 (No.1)').last);
     await net(t);
     expect(srv.maintCalls.where((x) => x['fn'] == 'maintLog').first['x'], {'no': 'Sany 210 (No.1)', 'all': true});
-    expect(find.textContaining("The Store's Issue (material given to a machinery) is not built yet"), findsOneWidget);
+    expect(find.textContaining("The Store's work is not set up at this site yet (its database step 2)"), findsOneWidget, reason: '(3.55.0) a site without the Store\'s step 2');
     await net(t);
     expect(srv.maintCalls.where((x) => x['fn'] == 'maintLog').last['x'], {'no': 'Sany 210 (No.1)', 'all': true}, reason: 'the log book opened start to end');
     expect(find.textContaining('Start to end'), findsWidgets, reason: 'the report says it is start to end');
@@ -4218,11 +4398,20 @@ void main() {
     await net(t);
     expect(saves(srv).last, {'action': 'mechPagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'perms': {'diesel': 'Edit', 'log': 'Edit', 'reports': 'None'}});
     expect(find.text('Pages saved in Mechanical.'), findsOneWidget);
-    // the Store: he is its Admin now – every page, nothing to give
+    // the Store: he is its Admin now – every page; (3.55.0, the Store's step 2) only who approves and Store Purchase are given to him
     await tapK(t, 'sa-pages-store');
     await net(t);
     expect(find.textContaining('Store Admin has every page'), findsOneWidget);
-    expect(find.byKey(const Key('sa-spg-save')), findsNothing);
+    expect(find.byKey(const Key('sa-spg-items')), findsNothing, reason: 'an Admin has the pages');
+    expect(find.byKey(const Key('sa-spg-purchase')), findsOneWidget);
+    await tapK(t, 'sa-spg-approve');
+    await settle(t, 600);
+    await t.tap(find.text('Level 2').last);
+    await settle(t, 400);
+    await tapK(t, 'sa-spg-save');
+    await net(t);
+    expect(saves(srv).last, {'action': 'storePagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'pages': {'approve': 'L2', 'purchase': 'None'}});
+    expect(find.text('Store pages saved.'), findsOneWidget);
   }, tags: ['golden']);
 
   testWidgets('(3.17.0) Super Admin – Sites: a site\'s diesel places; New site – the checklist until Ready (the SQL copied); a closed site deleted with its code typed', (t) async {
