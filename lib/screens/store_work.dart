@@ -285,14 +285,18 @@ Future<Map<String, dynamic>?> pickStoreItem(BuildContext context, List<Map<Strin
 
 /* ---------------- the LINES of a paper (the web's Lines): a card each, "+ Add item" ---------------- */
 class SLine {
-  SLine({this.code = '', this.name = '', this.unit = '', String qty = '', String rate = '', String gst = '', String note = '', String serial = '', this.returnable = false, this.reqNo, this.reqLine, this.poLine, this.info = ''})
+  SLine({this.code = '', this.name = '', this.unit = '', String qty = '', String rate = '', String gst = '', String note = '', String serial = '', String brand = '', String spec = '', this.returnable = false, this.reqNo, this.reqLine, this.poLine, this.info = ''})
       : qty = TextEditingController(text: qty),
         rate = TextEditingController(text: rate),
         gst = TextEditingController(text: gst),
         note = TextEditingController(text: note),
-        serial = TextEditingController(text: serial);
+        serial = TextEditingController(text: serial),
+        brand = TextEditingController(text: brand),
+        spec = TextEditingController(text: spec);
   final String code, name, unit, info;
-  final TextEditingController qty, rate, gst, note, serial;
+
+  /// (3.58.0, the web's 28-10-2026) a requirement's / PO's line: its Brand and Material specification
+  final TextEditingController qty, rate, gst, note, serial, brand, spec;
   bool returnable;
   final int? reqNo, reqLine, poLine;
 
@@ -303,7 +307,7 @@ class SLine {
   }
 
   void dispose() {
-    for (final c in [qty, rate, gst, note, serial]) {
+    for (final c in [qty, rate, gst, note, serial, brand, spec]) {
       c.dispose();
     }
   }
@@ -320,7 +324,7 @@ class SLine {
 }
 
 class SLinesEditor extends StatelessWidget {
-  const SLinesEditor({super.key, required this.k, required this.lines, required this.onChanged, this.items, this.tag = 'ln', this.qtyLabel = 'Qty *', this.rateLabel = '', this.gst = false, this.gstFill = false, this.noteLabel = '', this.returnable = false, this.serial = false, this.stock = false, this.money = false});
+  const SLinesEditor({super.key, required this.k, required this.lines, required this.onChanged, this.items, this.tag = 'ln', this.qtyLabel = 'Qty *', this.rateLabel = '', this.gst = false, this.gstFill = false, this.noteLabel = '', this.returnable = false, this.serial = false, this.stock = false, this.money = false, this.brandSpec = false});
   final StoreKit k;
   final List<SLine> lines;
   final VoidCallback onChanged;
@@ -328,7 +332,7 @@ class SLinesEditor extends StatelessWidget {
   /// the items to pick from (another site's for its PO); null: this site's active items
   final List<Map<String, dynamic>>? items;
   final String tag, qtyLabel, rateLabel, noteLabel;
-  final bool gst, gstFill, returnable, serial, stock, money;
+  final bool gst, gstFill, returnable, serial, stock, money, brandSpec;
 
   Future<void> _add(BuildContext context) async {
     final i = await pickStoreItem(context, items ?? k.active);
@@ -371,6 +375,10 @@ class SLinesEditor extends StatelessWidget {
             ]),
           ),
           if (serial) Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: TextBox(key: Key('$tag-s-$i'), label: 'Serial No (tyre / battery)', controller: l.serial)),
+          if (brandSpec) ...[
+            Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: TextBox(key: Key('$tag-b-$i'), label: 'Brand', controller: l.brand)),
+            Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: TextBox(key: Key('$tag-sp-$i'), label: 'Material specification', controller: l.spec, maxLines: 2)),
+          ],
           if (noteLabel.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: TextBox(key: Key('$tag-n-$i'), label: noteLabel, controller: l.note)),
           if (returnable)
             CheckboxListTile(
@@ -499,6 +507,12 @@ Future<void> openStoreWork(BuildContext context, StoreKit k, String page) {
   return Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => w));
 }
 
+/// (3.58.0) a line's Brand and Material specification after its item (the web's bsOf)
+String bsOf(Map l) {
+  final x = ['${l['brand'] ?? ''}', '${l['spec'] ?? ''}'].where((v) => v.trim().isNotEmpty).join(' · ');
+  return x.isEmpty ? '' : ' – $x';
+}
+
 /* ======================== MATERIAL REQUIREMENTS ======================== */
 const _kReqF = [('open', 'Open (pending + to order)'), ('mine', 'Waiting for me'), ('Pending', 'Pending'), ('Approved', 'Approved'), ('Rejected', 'Rejected'), ('Closed', 'Closed'), ('Cancelled', 'Cancelled'), ('all', 'All')];
 
@@ -616,6 +630,8 @@ class _ReqListScreenState extends State<ReqListScreen> {
             for (final l in listOf(x['lines']))
               _card(children: [
                 Text('${l['name']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                if ('${l['brand'] ?? ''}'.isNotEmpty) InfoRow('Brand', '${l['brand']}'),
+                if ('${l['spec'] ?? ''}'.isNotEmpty) InfoRow('Material specification', '${l['spec']}'),
                 InfoRow('Asked', '${q3(l['qty'])} ${l['unit']}'),
                 InfoRow('Ordered', q3(l['ordered'] ?? 0)),
                 InfoRow('To order', q3(l['left'] ?? 0)),
@@ -638,7 +654,7 @@ class _ReqListScreenState extends State<ReqListScreen> {
         statePill(st),
       ]),
       Text('For: ${x['for_kind'] ?? ''}${'${x['for_text'] ?? ''}'.isNotEmpty ? ' – ${x['for_text']}' : ''}${'${x['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(x['need_by'])}' : ''}', style: const TextStyle(fontSize: 13.5)),
-      for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${st == 'Approved' && nOf(l['left']) < nOf(l['qty']) ? ' (ordered ${q3(l['ordered'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
+      for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${bsOf(l)}${st == 'Approved' && nOf(l['left']) < nOf(l['qty']) ? ' (ordered ${q3(l['ordered'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
       if (st == 'Pending') Text('Level ${x['level']}${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600)),
       Text('Asked by ${x['created_name'] ?? x['created_by'] ?? ''}', style: _faint),
       Wrap(spacing: 2, children: [
@@ -716,7 +732,7 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
   void initState() {
     super.initState();
     for (final l in listOf(widget.req?['lines'])) {
-      lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), note: '${l['note'] ?? ''}'));
+      lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), note: '${l['note'] ?? ''}', brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}'));
     }
   }
 
@@ -736,7 +752,7 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
     try {
       final r = await widget.k.call('reqSave', {
         if (widget.req != null) 'no': widget.req!['no'],
-        'req': {'date': date, 'need_by': need, 'for_kind': kind, 'for_text': kind == 'Machinery' ? mach : which.text, 'remark': rem.text, 'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'note': l.note.text}]},
+        'req': {'date': date, 'need_by': need, 'for_kind': kind, 'for_text': kind == 'Machinery' ? mach : which.text, 'remark': rem.text, 'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'brand': l.brand.text, 'spec': l.spec.text, 'note': l.note.text}]},
       });
       if (!mounted) return;
       toast(context, 'Requirement ${r['no']} saved – ${r['status'] == 'Approved' ? 'approved (no approver set for this site).' : 'it waits for Level ${r['level']}.'}');
@@ -772,7 +788,7 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
         const SizedBox(height: 14),
         Text('Items', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
-        SLinesEditor(k: k, lines: lines, tag: 'rql', stock: true, noteLabel: 'Note', onChanged: () => setState(() {})),
+        SLinesEditor(k: k, lines: lines, tag: 'rql', stock: true, brandSpec: true, noteLabel: 'Note', onChanged: () => setState(() {})),
       ]),
     );
   }
@@ -853,7 +869,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   controlAffinity: ListTileControlAffinity.leading,
                   value: ticks.contains('$site|${r['no']}|${l['line']}'),
                   onChanged: (v) => setState(() => v == true ? ticks.add('$site|${r['no']}|${l['line']}') : ticks.remove('$site|${r['no']}|${l['line']}')),
-                  title: Text('REQ ${r['no']} · ${l['name']} – to order ${q3(l['left'])} ${l['unit']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  title: Text('REQ ${r['no']} · ${l['name']}${bsOf(l)} – to order ${q3(l['left'])} ${l['unit']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                   subtitle: Text('${r['for_kind'] ?? ''}${'${r['for_text'] ?? ''}'.isNotEmpty ? ' – ${r['for_text']}' : ''} · ${dmy(r['date'])}${'${r['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(r['need_by'])}' : ''} · asked ${q3(l['qty'])}, ordered ${q3(l['ordered'])}', style: _faint),
                 ),
               ),
@@ -919,7 +935,7 @@ class PoCard extends StatelessWidget {
         statePill('${p['state'] ?? p['status']}'),
       ]),
       Text('${p['vendor'] ?? ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-      for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${nOf(l['received']) > 0 ? ' (came ${q3(l['received'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
+      for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${bsOf(l)}${nOf(l['received']) > 0 ? ' (came ${q3(l['received'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
       Text('Total ${rs(p['total'])}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
       Wrap(spacing: 2, children: [
         _act('po-print-$site-$no', 'Print', () => run(() async {
@@ -972,13 +988,13 @@ RDoc poDoc(Map<String, dynamic> p, Map<String, dynamic> h) {
     blocks: [
       RTable(
         sheet: 'PO ${p['no']}',
-        head: const ['#', 'Item', 'Qty', 'Unit', 'Rate ₹', 'Taxable ₹', 'GST %', 'GST ₹', 'Total ₹'],
-        numCols: const {2, 4, 5, 6, 7, 8},
+        head: const ['#', 'Item', 'Brand', 'Material specification', 'Qty', 'Unit', 'Rate ₹', 'Taxable ₹', 'GST %', 'GST ₹', 'Total ₹'],
+        numCols: const {4, 6, 7, 8, 9, 10},
         rows: [
           for (final (i, l) in lines.indexed)
-            RRow([sc(i + 1), tc(l['name']), RCell(q3(l['qty']), n: true, value: nOf(l['qty'])), tc(l['unit']), mc(l['rate']), mc(l['taxable']), RCell(q3(l['gst_pct']), n: true, value: nOf(l['gst_pct'])), mc(l['gst']), mc(l['total'])]),
+            RRow([sc(i + 1), tc(l['name']), tc(l['brand'] ?? ''), tc(l['spec'] ?? ''), RCell(q3(l['qty']), n: true, value: nOf(l['qty'])), tc(l['unit']), mc(l['rate']), mc(l['taxable']), RCell(q3(l['gst_pct']), n: true, value: nOf(l['gst_pct'])), mc(l['gst']), mc(l['total'])]),
         ],
-        foot: [RRow([RCell('Total', bold: true, span: 5), mc(p['taxable'], bold: true), const RCell(''), mc(p['gst'], bold: true), mc(p['total'], bold: true)], kind: RKind.grand)],
+        foot: [RRow([RCell('Total', bold: true, span: 7), mc(p['taxable'], bold: true), const RCell(''), mc(p['gst'], bold: true), mc(p['total'], bold: true)], kind: RKind.grand)],
       ),
       if ('${p['terms'] ?? ''}'.isNotEmpty) RNote('Terms: ${p['terms']}'),
       if ('${p['remark'] ?? ''}'.isNotEmpty) RNote('${p['remark']}'),
@@ -1038,12 +1054,12 @@ class _PoFormScreenState extends State<PoFormScreen> {
         if (widget.po != null) {
           for (final l in listOf(widget.po!['lines'])) {
             final rq = l['req_no'] == null ? null : nOf(l['req_no']).toInt();
-            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), reqNo: rq, reqLine: l['req_line'] == null ? null : nOf(l['req_line']).toInt(), info: rq == null ? '' : 'REQ $rq'));
+            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', reqNo: rq, reqLine: l['req_line'] == null ? null : nOf(l['req_line']).toInt(), info: rq == null ? '' : 'REQ $rq'));
           }
         } else {
           for (final p in widget.picked) {
             final r = mapOf(p['req']), l = mapOf(p['line']), it = items.where((i) => i['code'] == l['code']).firstOrNull ?? const <String, dynamic>{};
-            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), gst: plainN(it['gst_pct']), reqNo: nOf(r['no']).toInt(), reqLine: nOf(l['line']).toInt(), info: 'REQ ${r['no']}'));
+            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), gst: plainN(it['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', reqNo: nOf(r['no']).toInt(), reqLine: nOf(l['line']).toInt(), info: 'REQ ${r['no']}'));
           }
         }
         loading = false;
@@ -1072,7 +1088,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
           'deliver_by': deliver,
           'terms': terms.text,
           'remark': rem.text,
-          'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'rate': l.rate.text, 'gst_pct': l.gst.text, if (l.reqNo != null) 'req_no': l.reqNo, if (l.reqLine != null) 'req_line': l.reqLine}],
+          'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'rate': l.rate.text, 'gst_pct': l.gst.text, if (l.reqNo != null) 'req_no': l.reqNo, if (l.reqLine != null) 'req_line': l.reqLine, 'brand': l.brand.text, 'spec': l.spec.text}],
         },
       };
       final r = await storeSaveAsk(context, widget.k.call, 'poSave', x);
@@ -1121,7 +1137,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
               const SizedBox(height: 14),
               Text('Items', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              SLinesEditor(k: widget.k, lines: lines, items: items, tag: 'pol', rateLabel: 'Rate ₹ *', gst: true, gstFill: true, money: true, onChanged: () => setState(() {})),
+              SLinesEditor(k: widget.k, lines: lines, items: items, tag: 'pol', rateLabel: 'Rate ₹ *', gst: true, gstFill: true, money: true, brandSpec: true, onChanged: () => setState(() {})),
               const SizedBox(height: 10),
               Text('Taxable ${rs(m.t)} · GST ${rs(m.g)} · Total ${rs(m.all)}', key: const Key('pof-total'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
             ]),
@@ -1386,6 +1402,10 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
   List<Map<String, dynamic>> pos = [];
   String po = '', date = '', invDate = '';
   final sup = TextEditingController(), ch = TextEditingController(), inv = TextEditingController(), veh = TextEditingController(), tcs = TextEditingController(), rem = TextEditingController();
+
+  /// (3.58.0, the web's 28-10-2026) a new GRN's GRN No: the next by itself (grnNext), changed by hand where the site has the Store's step 4
+  final ref = TextEditingController();
+  bool step4 = false, refTyped = false;
   final lines = <SLine>[];
   bool busy = false, loading = true;
 
@@ -1408,6 +1428,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
     veh.text = '${g?['vehicle_no'] ?? ''}';
     tcs.text = plainN(g?['tcs']);
     rem.text = '${g?['remark'] ?? ''}';
+    if (g != null) ref.text = grnRef(g);
     final old = [...lines];
     lines.clear();
     for (final l in listOf(g?['lines'])) {
@@ -1427,12 +1448,17 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
   Future<void> _clear() async {
     final typed = lines.isNotEmpty || sup.text.trim().isNotEmpty;
     if (typed && !await ask(context, 'Clear the form?', bi(widget.grn != null ? 'The GRN comes back as it is saved – what is typed here goes. Nothing saved is changed.' : 'What is typed here goes. Nothing saved is changed.', 'फॉर्म मध्ये टाइप केलेले जाईल – save केलेले काहीही बदलत नाही.'), yes: 'Clear')) return;
-    if (mounted) setState(_fill);
+    if (!mounted) return;
+    setState(_fill);
+    if (widget.grn == null) {      // (3.58.0, as the web's form drawn again) the next GRN No again
+      refTyped = false;
+      await _next();
+    }
   }
 
   @override
   void dispose() {
-    for (final c in [sup, ch, inv, veh, tcs, rem]) {
+    for (final c in [sup, ch, inv, veh, tcs, rem, ref]) {
       c.dispose();
     }
     for (final l in lines) {
@@ -1448,12 +1474,25 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
     } catch (_) {/* no open PO to pick */}
     final g = widget.grn;
     if (g != null && g['po_no'] != null && !l.any((p) => nOf(p['no']) == nOf(g['po_no']))) l.add({'no': g['po_no'], 'vendor': g['supplier'], 'lines': const []});
+    if (g == null) await _next();
     if (mounted) {
       setState(() {
         pos = l;
         loading = false;
       });
     }
+  }
+
+  /// the next GRN No (a new GRN) – not when he typed one
+  Future<void> _next() async {
+    try {
+      final r = await widget.k.call('grnNext');
+      if (!mounted || refTyped) return;
+      setState(() {
+        ref.text = '${r['next'] ?? ''}';
+        step4 = r['step4'] == true;
+      });
+    } catch (_) {/* the server gives the number when it is left empty */}
   }
 
   /// another PO picked: its lines still to come (the GRN being changed: its own lines)
@@ -1482,6 +1521,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
       final x = <String, dynamic>{
         if (widget.grn != null) 'no': widget.grn!['no'],
         'grn': <String, dynamic>{
+          if (widget.grn == null) 'ref': ref.text.trim(),
           if (po.isNotEmpty) 'po_no': int.tryParse(po) ?? po,
           'date': date,
           'supplier': sup.text,
@@ -1496,9 +1536,14 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
       };
       final r = await storeSaveAsk(context, widget.k.call, 'grnSave', x);
       if (r == null || !mounted) return;
-      toast(context, 'GRN ${r['no']} saved – ${rs(r['gross'])}.');
+      toast(context, 'GRN ${r['ref'] ?? r['no']} saved – ${rs(r['gross'])}.');
       Navigator.pop(context, true);
     } catch (e) {
+      // (3.58.0) a GRN No already used: the next free one in its box (the server says it)
+      if (e is ApiError && e.code == 'refused' && e.data['next'] != null && mounted) {
+        ref.text = '${e.data['next']}';
+        refTyped = false;
+      }
       if (mounted) toast(context, errText(e), bad: true);
     } finally {
       if (mounted) setState(() => busy = false);
@@ -1521,10 +1566,19 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
               PickField(key: const Key('grf-po'), label: 'Against PO', value: po, items: poLabels.keys.toList(), labels: poLabels, blank: 'Direct (no PO)', onChanged: _pickPo),
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(child: DateField(key: const Key('grf-date'), label: 'GRN date *', value: date, clear: false, onChanged: (v) => setState(() => date = v))),
+                Expanded(
+                    child: TextBox(
+                        key: const Key('grf-ref'),
+                        label: 'GRN No',
+                        controller: ref,
+                        enabled: widget.grn == null && step4,
+                        hint: widget.grn == null && !step4 ? 'the next number' : '',
+                        onChanged: (_) => refTyped = true)),
                 const SizedBox(width: 8),
-                Expanded(child: DateField(key: const Key('grf-invd'), label: 'Invoice date', value: invDate, onChanged: (v) => setState(() => invDate = v))),
+                Expanded(child: DateField(key: const Key('grf-date'), label: 'GRN date *', value: date, clear: false, onChanged: (v) => setState(() => date = v))),
               ]),
+              const SizedBox(height: 8),
+              DateField(key: const Key('grf-invd'), label: 'Invoice date', value: invDate, onChanged: (v) => setState(() => invDate = v)),
               const SizedBox(height: 8),
               TextBox(key: const Key('grf-sup'), label: 'Supplier *', controller: sup, options: widget.k.names('suppliers')),
               const SizedBox(height: 8),

@@ -22,7 +22,7 @@ import '../ui/ask_bot.dart';
 import '../ui/pick_file.dart' show pickSheetFile;
 import '../core/imports.dart' show readExcelRows, xlDate, Cols;
 import '../core/sheet_read.dart' show jsS, readSheets;
-import 'maint_lines.dart' show MaintLinesScreen;
+import 'maint_lines.dart' show MaintLinesScreen, maintLineBills;
 
 /// (3.44.0) a report of one fuel at a site with more than one: not the Log Book Debit Statement, not (3.46.0, Mechanical update-165)
 /// a car's Maintenance Log Book (its car has its own fuel)
@@ -517,6 +517,19 @@ class _ReportScreenState extends State<ReportScreen> {
                 label: Text('Edit / delete a line'),
               ),
             ),
+          // (3.58.0, Mechanical update-182, "admin or super admin gadich log book maintanace ch delet pn karu shakel as de") the Admin / Super
+          // Admin: the whole Maintenance Log Book shown (its dates, or start to end) deleted – the machinery number typed to confirm
+          if (def.key == 'mlog' && s.admin && data != null && made != null && maintLineBills(data!).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: OutlinedButton.icon(
+                key: const Key('mlog-delall'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: C.red, side: const BorderSide(color: C.redSoft)),
+                onPressed: busy ? null : () => _mlogDelete(s),
+                icon: const Icon(Icons.delete_forever_rounded),
+                label: Text('Delete this log book'),
+              ),
+            ),
           ReportView(d),
         ],
       ]),
@@ -530,6 +543,53 @@ class _ReportScreenState extends State<ReportScreen> {
         if (p.location.isNotEmpty) p.location,
         if (def.filters.contains('owns') && p.owns.length < kOwns.length) p.owns.join(', '),
       ].join('  ·  ');
+
+  /// (3.58.0, Mechanical update-182) the Admin / Super Admin deletes the Maintenance Log Book shown: its maintenance bills of these dates (or
+  /// start to end) – the Store's issues and the fuel stay. Asked with the bills and ₹, the machinery number typed; the server deletes only
+  /// when it still has as many bills as shown (deleteMaintLog – the same action, checks and access as the web's "Delete this log book").
+  Future<void> _mlogDelete(Session s) async {
+    final d = data, f = made;
+    if (d == null || f == null) return;
+    final m = (d['machine'] as Map?) ?? const {}, no = '${m['id'] ?? f['no'] ?? ''}', bills = maintLineBills(d), all = f['all'] == true;
+    if (bills.isEmpty) {
+      toast(context, tr('No maintenance bill of $no in these dates – nothing to delete.'), bad: true);
+      return;
+    }
+    num sum = 0;
+    for (final b in bills) {
+      sum += asNum(b['amount']) ?? 0;
+    }
+    final from = '${d['from'] ?? f['from'] ?? ''}', to = '${d['to'] ?? f['to'] ?? ''}';
+    final key = (String v) => v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final typed = await askNote(context, tr('Delete the log book of $no?'),
+        danger: true,
+        ok: tr('Delete ${bills.length} bill(s)'),
+        max: 40,
+        label: tr('Type $no to confirm'),
+        neededMsg: 'Type the machinery number.',
+        body: [
+          Text('All ${bills.length} maintenance bill(s) of $no ${all ? 'from its first bill to today' : '${showDate(from)} to ${showDate(to)}'} – ₹${money(sum)} – are deleted. What the RCL Store issued and the fuel stay. Each bill is written in the Activity Log.',
+              key: const Key('mlog-delall-say'), style: const TextStyle(fontSize: 14.5, height: 1.4)),
+          const SizedBox(height: 8),
+          Text('This cannot be undone – press "Export to Excel" first to keep a copy.', style: const TextStyle(fontSize: 14, color: C.red, height: 1.4)),
+        ]);
+    if (typed == null || !mounted) return;
+    if (key(typed) != key(no)) {
+      toast(context, tr('Not deleted – type the machinery number as it is ($no).'), bad: true);
+      return;
+    }
+    setState(() => busy = true);
+    try {
+      final r = (await s.api.call('deleteMaintLog', [all ? {'no': no, 'all': true, 'count': bills.length} : {'no': no, 'from': from, 'to': to, 'count': bills.length}], true) as Map).cast<String, dynamic>();
+      s.dataTick.value++;
+      if (mounted) toast(context, tr('${r['n'] ?? bills.length} bill(s) of $no deleted.'));
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: !isSent(e));
+    }
+    if (!mounted) return;
+    setState(() => busy = false);
+    await _go();      // (the log book shown again)
+  }
 
   /// (3.31.7) the Log Book Debit Statement: the rate of an entry (one, or one rate for all shown) – an entry in a Debit Note keeps its rate.
   Future<void> _ldRates(Session s) async {
