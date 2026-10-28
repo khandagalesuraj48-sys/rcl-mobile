@@ -2239,7 +2239,8 @@ void main() {
     await t.enterText(box('pof-ven'), 'Shree Traders');
     await t.enterText(box('pol-r-0'), '50');
     await settle(t, 300);
-    expect(find.text('Taxable ₹1,500.00 · GST ₹75.00 · Total ₹1,575.00'), findsNWidgets(2), reason: 'the line and the PO');
+    // (3.58.0) the line is taller now (its Brand and Material specification) – each total read by its own key
+    expect([for (final k in ['pol-m-0', 'pof-total']) (t.widget(find.byKey(Key(k))) as dynamic).data], ['Taxable ₹1,500.00 · GST ₹75.00 · Total ₹1,575.00', 'Taxable ₹1,500.00 · GST ₹75.00 · Total ₹1,575.00'], reason: 'the line and the PO');
     await tapK(t, 'po-save');
     await net(t);
     expect(find.text('The same vendor?'), findsOneWidget);
