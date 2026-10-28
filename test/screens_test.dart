@@ -5124,7 +5124,9 @@ void main() {
   testWidgets('(3.56.0 – Mechanical update-180) the Maintenance Log Book of a machinery: each line of a bill on its own – Edit (its box, its ₹ from Qty × Rate) and Delete, the rest of the bill as it is; changed meanwhile: said in the box; the only line: the whole bill (said first); View only: none', (t) async {
     phone(t);
     Future<FakeServer> open(String perm) async {
-      final srv = FakeServer()..perms.addAll({'Maintenance': perm});
+      final srv = FakeServer()      // (its cars: a site on fuel cards, as the test of 3.46.0)
+        ..perms.addAll({'Maintenance': perm})
+        ..card = true;
       final s = await ready(t, srv);
       await t.pumpWidget(RclApp(session: s));
       await net(t);
