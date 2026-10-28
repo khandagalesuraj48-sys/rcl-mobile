@@ -2242,8 +2242,11 @@ void main() {
     await tapK(t, 'pu-mk-S1');
     await net(t);
     expect(sent(srv, 'purItems').single['site'], 'S1');
-    expect((t.widget<TextField>(box('pol-q-0')).controller!).text, '30', reason: 'what is still to order');
     await t.enterText(box('pof-ven'), 'Shree Traders');
+    // (3.62.0) the PO's own fields above the items now – each line reached first
+    await reach(t, 'pol-q-0', 'pof');
+    expect((t.widget<TextField>(box('pol-q-0')).controller!).text, '30', reason: 'what is still to order');
+    await reach(t, 'pol-r-0', 'pof');
     await t.enterText(box('pol-r-0'), '50');
     await settle(t, 300);
     // (3.58.0) the line is taller now (its Brand and Material specification) – each total read by its own key
