@@ -17,7 +17,9 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 
 **Version 3.53.0 (28-10-2026 – "jewde active aahet own rachana vehicle te mala import karaych aahe as it is jas asel tr"; then "aple
 app madhe powerful Claude AI aahe so import kartana full scan duplicate sagle kahi find krun import kasel name correction …", with
-Mechanical update-173):** the Admin's **Maintenance** has **"Import the old log book (Excel or PDF)"**: his **Excel** (a sheet a
+Mechanical update-173; "he admin la fkt nahi user la pn disu de", update-174):** **Maintenance** has, for everyone with Maintenance
+Edit (not only the Admin), **"Import the old log book (Excel or PDF)"** (a person whose Maintenance is under verification: his import is
+sent, said as sent): his **Excel** (a sheet a
 machinery, read as the web reads it – a bill = the rows of one date and party, a merged date the row's above, a reading on the bill's
 first row, each line as it is with its GST % from its GST Amount, a ₹0 line kept as FOC), a **PDF or a photo of a page read by the AI**
 row by row (2 pages a call, one page when its answer was cut; each machinery's table a sheet), or **"Download the format (Excel)"** (a

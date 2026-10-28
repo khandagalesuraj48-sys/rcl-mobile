@@ -240,7 +240,7 @@ class _MaintScreenState extends State<MaintScreen> {
               const Icon(Icons.chevron_right_rounded, color: C.blue),
             ]),
           ),
-          if (s.admin && !missing) ...[      // (3.53.0) the old log book's import – the Admin
+          if (can && !missing) ...[      // (3.53.0) the old log book's import; ("user la pn disu de") everyone with Maintenance Edit
             const SizedBox(height: 8),
             OutlinedButton.icon(key: const Key('mt-import'), onPressed: _importChoice, icon: const Icon(Icons.upload_file_rounded), label: Text('Import the old log book (Excel or PDF)')),
           ],

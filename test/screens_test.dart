@@ -3017,7 +3017,7 @@ void main() {
     expect(find.byKey(const Key('mt-r-MT-000002')), findsOneWidget);
     expect(find.byKey(const Key('mt-r-MT-000001')), findsOneWidget);
     expect(find.textContaining('· 2 · ₹ 8,660'), findsOneWidget);
-    expect(find.byKey(const Key('mt-import')), findsNothing, reason: '(3.53.0) the old log book is imported by the Admin only');
+    expect(find.byKey(const Key('mt-import')), findsOneWidget, reason: '(3.53.0, "user la pn disu de") everyone with Maintenance Edit imports the old log book');
     // a new bill: the car, a PDF, "Read the bill (AI)"
     await t.tap(find.byKey(const Key('mt-add')));
     await net(t);
@@ -3306,6 +3306,47 @@ void main() {
     expect([for (final x in tabs) x.name], isNot(contains('JCB-173')), reason: 'a rented machinery: no sheet');
     final rl = tabs.firstWhere((x) => x.name == 'RL-173').rows;
     expect([rl[1][0], rl[2][0], rl[3].join(' · ')], ['Maintenance Log Book – Roller No.03', 'RL-173', 'Sr No · Date · Party Name · Current Reading · Particulars · Qty · Uom · Basic Rate · Amount · GST Amount · Amount With GST · Total']);
+  });
+
+  testWidgets('(3.53.0 – "he admin la fkt nahi user la pn disu de") the import for a user with Maintenance Edit (not the Admin); View only: not shown; his Maintenance under verification: the import is sent, said as sent', (t) async {
+    phone(t);
+    final v = FakeServer()..perms.addAll({'Maintenance': 'View'});
+    final sv = await ready(t, v);
+    expect(sv.admin, false);
+    await t.pumpWidget(RclApp(session: sv));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    expect(find.byKey(const Key('mt-import')), findsNothing, reason: 'View only');
+    final srv = FakeServer()
+      ..aiOn = true
+      ..perms.addAll({'Maintenance': 'Edit'})
+      ..flowFor = 'importMaint';
+    srv.master.add({'id': 'MH-12-XW-0169', 'no': 'MH-12-XW-0169', 'name': 'Hycross', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM'});
+    pickThis('All Machinery Maintenance Logbook.xlsx', File('test/fixtures/sheets/maint_logbook.xlsx').readAsBytesSync());
+    final s = await ready(t, srv);
+    expect([s.admin, s.canEdit('Maintenance')], [false, true]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    await mliChoose(t, 'excel');
+    expect(find.text('All Machinery Maintenance Logbook.xlsx – 3 sheet(s)'), findsOneWidget);
+    await mliSee(t, 'mli-no-1');
+    expect((t.widget(find.byKey(const Key('mli-no-1'))) as PickField).value, 'MH-12-XW-0169');
+    await tapK(t, 'mli-check');
+    await net(t);
+    await tapK(t, 'mli-go');
+    await settle(t, 600);
+    await tapK(t, 'ask-yes');
+    await net(t);
+    await mliSee(t, 'mli-st-1');
+    expect('${(t.widget(find.byKey(const Key('mli-st-1'))) as dynamic).data}', 'Sent for verification to Checker One – VF-00007. It is saved when it is approved; nothing is saved until then.');
+    expect(srv.maint.any((r) => r['no'] == 'MH-12-XW-0169'), false, reason: 'nothing saved until it is approved');
   });
 
   testWidgets('(3.53.0) Picture: the old log book\'s import after Check – the names (AI), a sheet with a mistake, one to import, one rented (not imported)', (t) async {

@@ -186,6 +186,12 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
         x.done = (await s.api.call('importMaint', [{'no': x.no, 'bills': mliBills(x, fixes)}], true) as Map).cast<String, dynamic>();
         added += (asNum(x.done!['added']) ?? 0).toInt();
         any = true;
+      } on ApiError catch (e) {
+        if (e.code == 'sent') {
+          x.done = {'added': 0, 'same': 0, 'sent': e.message};      // (sent for verification – saved when it is approved)
+        } else {
+          x.err = errText(e);
+        }
       } catch (e) {
         x.err = errText(e);
       }
@@ -193,12 +199,14 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
     }
     if (!mounted) return;
     setState(() => busy = false);
-    toast(context, '$added bill(s) imported.');
+    final sent = todo.where((x) => x.done?['sent'] != null).firstOrNull;
+    toast(context, sent != null ? '${sent.done!['sent']}' : '$added bill(s) imported.');
   }
 
   /// What a sheet is now – the web's mliState, word for word
   (String, Color) _state(MliSheet x) {
     final d = x.done;
+    if (d != null && d['sent'] != null) return ('${d['sent']}', C.greenDark);      // sent for verification
     if (d != null) {
       final first = '${d['first'] ?? ''}', last = '${d['last'] ?? ''}', n = asNum(d['added']) ?? 0;
       return ('✓ ${fmtNum(n)} bill(s) imported${n > 0 ? ' ($first${last != first ? ' – $last' : ''})' : ''}', C.greenDark);
