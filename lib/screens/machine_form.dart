@@ -293,8 +293,12 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
         TextBox(key: const Key('mf-chassis'), label: 'Chassis Number', controller: t['chassisNo']!, upper: true),
         gap(),
         TextBox(key: const Key('mf-engmake'), label: 'Engine Make (company)', controller: t['engineMake']!, options: uniqOf(s.machines, 'engineMake'), hint: 'e.g. Cummins, Tata'),
-        FormHead('Papers – valid upto', sub: 'Tick N/A where it does not apply to this asset'),
-        for (final d in kDocs) _doc(d.$1, d.$2),
+        // (3.59.0, Mechanical update-184, "asset master madhe papers fkt own mhanje rachana che ghenar") the papers only for Own machinery –
+        // another one's dates stay as they were (not shown, not changed)
+        if (ownership == 'Own') ...[
+          FormHead('Papers – valid upto', sub: 'Tick N/A where it does not apply to this asset'),
+          for (final d in kDocs) _doc(d.$1, d.$2),
+        ],
         if (err.isNotEmpty) InfoLine(err, bad: true),
         gap(16),
         FilledButton(key: const Key('mf-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : widget.edit == null ? 'Save machinery' : 'Update machinery')),

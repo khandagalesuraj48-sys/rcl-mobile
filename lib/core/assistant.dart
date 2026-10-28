@@ -397,13 +397,27 @@ class Assistant {
         'diesel_watch' => runWatch(a),
         'activity' => runActivity(a),
         'app_guide' => runGuide(a),
-        _ => Future.value(<String, Object?>{'error': 'There is no such look-up.'}),
+        // (3.59.0, Mechanical update-185) a look-up the app does not run itself (maintenance, bills, payments, vendors, BOQ, papers,
+        // breakdowns, fuel cards, inward, transfer, machinery cost): the server runs it – with his own access to that page (aiLookup)
+        _ => runServer(name, a),
       };
+
+  /// (3.59.0) the server's look-up (the web's rawCall('aiLookup', {name, args})): its answer as it gives it; a refusal is thrown (the
+  /// chat sends it back as {error}, as the other look-ups)
+  Future<Map<String, Object?>> runServer(String name, Map a) async {
+    final r = await call('aiLookup', [{'name': name, 'args': a}]);
+    return r is Map ? r.cast<String, Object?>() : <String, Object?>{'result': r};
+  }
 
   static const kAiNames = {
     'prepare_diesel_issue': 'Diesel Issue – prepared', 'prepare_log_entry': 'Log Book entry – prepared', 'diesel_issues': 'Diesel issues', 'log_book': 'Log Book',
     'pending_log_book': 'Pending Log Book', 'diesel_stock': 'Diesel stock', 'machinery': 'Asset Master', 'diesel_average': 'Actual vs standard average', 'diesel_watch': 'Diesel Watch',
     'activity': 'Activity Log', 'app_guide': 'The app\'s guide',
+    // (3.59.0, Mechanical update-185) the look-ups the server runs
+    'maintenance_bills': 'Maintenance bills', 'maintenance_log_book': 'Maintenance Log Book', 'maintenance_status': 'Log book status', 'vendor_bills': 'Saved Bills',
+    'payments': 'Machinery Payments', 'vendor_ledger': 'Vendor Ledger', 'vendor_outstanding': 'Vendor Outstanding', 'vendors': 'Vendor Master', 'vendor_boq': 'Vendor BOQ',
+    'compliance': 'Vehicle Compliance', 'breakdowns': 'Breakdown', 'fuel_cards': 'Fuel Cards', 'diesel_inward': 'Diesel Inward', 'diesel_transfers': 'Diesel Transfer',
+    'machinery_cost': 'Machinery Cost Sheet',
   };
 
   /// "Diesel issues 01-10-2026 to 16-10-2026 · 8511" – what was looked up (shown under the answer).
@@ -414,7 +428,11 @@ class Assistant {
           : jsTrue(a['date'])
               ? ' ${showDate('${a['date']}')}'
               : '') +
-      (jsTrue(a['machinery']) || jsTrue(a['query']) || jsTrue(a['text']) ? ' · ${js(jsTrue(a['machinery']) ? a['machinery'] : jsTrue(a['query']) ? a['query'] : a['text'])}' : '');
+      // (3.59.0, update-185: also the vendor / the card asked about – the web's a.machinery || a.vendor || a.card || a.query || a.text)
+      (() {
+        final v = [a['machinery'], a['vendor'], a['card'], a['query'], a['text']].firstWhere(jsTrue, orElse: () => null);
+        return v == null ? '' : ' · ${js(v)}';
+      })();
 
   /* ---------------- words ---------------- */
   static String aiList(List a, int n) => a.take(n).map(js).join(', ') + (a.length > n ? ' … (+${a.length - n})' : '');

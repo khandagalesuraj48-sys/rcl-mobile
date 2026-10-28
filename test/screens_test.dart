@@ -1181,6 +1181,12 @@ void main() {
     expect(find.text('Rental'), findsWidgets, reason: 'Ownership picked by itself from the vendor');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/19_machine_form.png'));
+    // (3.59.0, Mechanical update-184: "asset master madhe papers fkt own mhanje rachana che ghenar") a Rental one: no papers
+    expect(find.byKey(const Key('mna-permit')), findsNothing, reason: 'the papers only for Own machinery');
+    await tapK(t, 'mf-ownership');
+    await settle(t, 400);
+    await t.tap(find.text('Own').last);
+    await settle(t, 400);
     await tapK(t, 'mna-permit');
     await settle(t, 300);
     await tapK(t, 'mf-save');
@@ -1190,7 +1196,7 @@ void main() {
     final m = c['m'] as Map;
     expect(m['no'], 'MH-12-AB-1234');
     expect((m['worksOn'], m['unit'], m['kmStd'], m['hrStd']), ('KM', 'KM', 3.2, ''));
-    expect((m['ownership'], m['supply'], m['status']), ('Rental', 'Company', 'Active'));
+    expect((m['ownership'], m['supply'], m['status']), ('Own', 'Company', 'Active'));
     expect((m['permitUpto'], m['taxUpto']), ('NA', ''));
     expect(m.containsKey('earlier'), false, reason: 'a new machinery has no earlier periods');
     expect(s.machine('MH-12-AB-1234'), isNotNull, reason: 'the app has the new list at once');
@@ -3528,7 +3534,7 @@ void main() {
     final x = Map<String, dynamic>.from(srv.maintCalls[sv]['x'] as Map);
     expect((x.remove('files') as List).length, 1);
     // (3.49.0, update-168) every line with its kind, Qty, Rate, Disc % (blank: none on the bill); no insurance part
-    const paidLine = {'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': '', 'gst': ''};      // (3.50.0: its Uom; 3.51.0: its GST %)
+    const paidLine = {'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': '', 'gst': '', 'gstAmt': ''};      // (3.50.0: its Uom; 3.51.0: its GST %; 3.59.0: gstAmt always sent)
     expect(x, {'date': '2026-10-13', 'no': 'MH-12-HO-1163', 'garage': 'Maruti Service', 'billNo': 'MS-77', 'km': 46100, 'service': true, 'remark': '',
       'lines': [{'work': 'Service charge', ...paidLine, 'amount': 2500}, {'work': 'Coolant', ...paidLine, 'amount': 600}, {'work': 'GST 18%', ...paidLine, 'amount': 540}], 'insurance': null});
     expect(find.byKey(const Key('mt-r-MT-000003')), findsOneWidget);
@@ -3741,7 +3747,7 @@ void main() {
     expect(srv.maint.length, n0 + 1);
   });
 
-  testWidgets('(3.53.0 – 28-10-2026) the old log book as a PDF, read by the AI 2 pages a call (a cut answer: one page) – each machinery\'s table a sheet; without the AI it says so; "Download the format (Excel)": a sheet for each Own machinery on the site, its number in row 3, the heading', (t) async {
+  testWidgets('(3.53.0 – 28-10-2026; 3.59.0) the old log book as a PDF, read by the AI a page a call in parts of 25 rows (a cut answer: asked again of the quicker model in fewer rows) – each machinery\'s table a sheet; without the AI it says so; "Download the format (Excel)": a sheet for each Own machinery on the site, its number in row 3, the heading', (t) async {
     final srv = await mliOpen(t);
     final p0 = pickAttFiles;
     addTearDown(() => pickAttFiles = p0);
@@ -3753,10 +3759,12 @@ void main() {
         {'pages': 3, 'tables': [tb[0], tb[1]]},
         'cut',
         {'pages': 3, 'tables': [tb[2], tb[3]]},
+        {'pages': 3, 'tables': []},
       ]);
     await mliChoose(t, 'pdf');
     await net(t);
-    expect([for (final x in srv.maintCalls.where((x) => x['fn'] == 'readMaintLog')) '${x['from']}/${x['n']}/${x['kind']}'], ['1/2/application/pdf', '3/2/application/pdf', '3/1/application/pdf'], reason: 'pages 1–2; 3–4 cut off: page 3 alone');
+    expect([for (final x in srv.maintCalls.where((x) => x['fn'] == 'readMaintLog')) '${x['from']}/${x['n']}/${x['max']}/${x['fast']}/${x['kind']}'],
+        ['1/1/25/0/application/pdf', '2/1/25/0/application/pdf', '2/1/13/1/application/pdf', '3/1/25/0/application/pdf'], reason: 'a page a call, at most 25 rows; page 2 cut off: asked again of the quicker model, 13 rows');
     expect(find.text('Old log book.pdf – 2 sheet(s)'), findsOneWidget);
     await mliSee(t, 'mli-no-0');
     expect([(t.widget(find.byKey(const Key('mli-no-0'))) as PickField).value, find.text('Name in the file: ROLLER NO-03').evaluate().length], ['RL-173', 1]);
@@ -3764,8 +3772,7 @@ void main() {
     expect((t.widget(find.byKey(const Key('mli-no-1'))) as PickField).value, 'MH-12-XW-0169');
     await mliSee(t, 'mlf-state');
     expect('${(t.widget(find.byKey(const Key('mlf-state'))) as dynamic).data}', '✓ The AI found no name written in more than one way.');
-    await mliSee(t, 'mli-warn-0');
-    expect(find.text('1 line(s) to look at – imported as they are'), findsOneWidget, reason: 'BULB: GST 25 % – not a usual rate');
+    expect(find.byKey(const Key('mli-warn-0')), findsNothing, reason: '(3.59.0) BULB keeps its GST ₹10 as in the file – no "odd GST %" any more');
     await tapK(t, 'mli-check');
     await net(t);
     expect([for (final x in srv.maintCalls.where((x) => x['fn'] == 'checkMaintImport')) '${x['no']}:${x['bills']}'], ['RL-173:2', 'MH-12-XW-0169:1']);
@@ -3976,9 +3983,9 @@ void main() {
     final ls = [for (final l in x['lines'] as List) Map<String, dynamic>.from(l as Map)];
     expect(x['no'], 'MH-12-HO-2163');
     expect([for (final l in ls) l['type']], ['Paid', 'Paid', 'Service Plan', 'Warranty', 'FOC', 'Paid', 'Paid', 'Paid']);
-    expect(ls[1], {'work': 'Wheel alignment', 'type': 'Paid', 'qty': 1, 'uom': '', 'rate': 600, 'disc': 0, 'amount': 600, 'gst': ''});
-    expect(ls[2], {'work': 'Engine oil', 'type': 'Service Plan', 'qty': 4.5, 'uom': 'Ltr', 'rate': 520, 'disc': 100, 'amount': 0, 'gst': ''}, reason: '(3.50.0) the Uom typed');
-    expect(ls[5], {'work': 'CGST 9%', 'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': 0, 'amount': 210.6, 'gst': ''});
+    expect(ls[1], {'work': 'Wheel alignment', 'type': 'Paid', 'qty': 1, 'uom': '', 'rate': 600, 'disc': 0, 'amount': 600, 'gst': '', 'gstAmt': ''});
+    expect(ls[2], {'work': 'Engine oil', 'type': 'Service Plan', 'qty': 4.5, 'uom': 'Ltr', 'rate': 520, 'disc': 100, 'amount': 0, 'gst': '', 'gstAmt': ''}, reason: '(3.50.0) the Uom typed');
+    expect(ls[5], {'work': 'CGST 9%', 'type': 'Paid', 'qty': '', 'uom': '', 'rate': '', 'disc': 0, 'amount': 210.6, 'gst': '', 'gstAmt': ''});
     expect(x['insurance'], {'company': ins, 'claimNo': 'CLM-168', 'paid': 2000});
     expect(find.textContaining('(We paid ₹821 of ₹2,821.)'), findsOneWidget, reason: 'the message says what we paid of the bill');
     // the list: what we paid, the bill and the insurance, the free lines' worth
@@ -4098,8 +4105,8 @@ void main() {
     await net(t);
     final x = Map<String, dynamic>.from(srv.maintCalls.lastWhere((c) => c['fn'] == 'saveMaint')['x'] as Map);
     expect(x['lines'], [
-      {'work': 'Battery', 'type': 'Paid', 'qty': 1, 'uom': '', 'rate': 1000, 'disc': '', 'amount': 1000, 'gst': 18},
-      {'work': 'Bumper', 'type': 'By Insurance', 'qty': 1, 'uom': '', 'rate': 10000, 'disc': '', 'amount': 10000, 'gst': 18},
+      {'work': 'Battery', 'type': 'Paid', 'qty': 1, 'uom': '', 'rate': 1000, 'disc': '', 'amount': 1000, 'gst': 18, 'gstAmt': ''},
+      {'work': 'Bumper', 'type': 'By Insurance', 'qty': 1, 'uom': '', 'rate': 10000, 'disc': '', 'amount': 10000, 'gst': 18, 'gstAmt': ''},
     ]);
     expect(x['insurance'], {'company': 'Test Insurance', 'claimNo': '', 'paid': 11800});
     expect(find.textContaining('(We paid ₹1,180 of ₹12,980.)'), findsOneWidget);
@@ -5428,7 +5435,7 @@ void main() {
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'updateMaintLine'), {
       'fn': 'updateMaintLine', 'id': 'MT-000001',
-      'x': {'i': 1, 'date': '2026-10-05', 'was': {'work': 'Oil filter', 'amount': 300}, 'line': {'work': 'Oil filter', 'type': 'Paid', 'qty': 2, 'uom': '', 'rate': 175, 'disc': '', 'amount': 350, 'gst': 18}},
+      'x': {'i': 1, 'date': '2026-10-05', 'was': {'work': 'Oil filter', 'amount': 300}, 'line': {'work': 'Oil filter', 'type': 'Paid', 'qty': 2, 'uom': '', 'rate': 175, 'disc': '', 'amount': 350, 'gst': 18, 'gstAmt': ''}},
     });
     expect(find.byKey(const Key('mlf-save')), findsNothing, reason: 'back on the lines');
     expect(find.text('2 × 175 · GST 18 % · RCL'), findsOneWidget, reason: 'the log book read again');
@@ -5466,5 +5473,313 @@ void main() {
     await net(t);
     expect(srv.maintCalls.where((x) => x['fn'] == 'deleteMaint').map((x) => x['id']).toList(), ['MT-000001']);
     expect(srv.maintCalls.where((x) => x['fn'] == 'deleteMaintLine').length, 1, reason: 'not a line: the bill');
+  });
+
+
+  // ---------------- (3.59.0 – Mechanical update-183 / update-184) ----------------
+  /// (3.59.0) the Maintenance screen at a site on fuel cards (as the 3.51.0 test)
+  Future<FakeServer> mtOpen59(WidgetTester t, FakeServer srv) async {
+    phone(t);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    return srv;
+  }
+
+  testWidgets('(3.59.0 – Mechanical update-183, "old import tyat tr ajibat karu nko as it is rahude") a bill of the old log book keeps each line\'s GST ₹ as in the file: the list, the bill, its form ("GST ₹ as in the old log book") – saved with it (gstAmt); a GST % typed takes its place', (t) async {
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true;
+    srv.maint.insert(0, {'id': 'MT-000003', 'date': '2026-10-13', 'no': 'MH-12-HO-1163', 'garage': 'Store', 'billNo': '', 'km': 500, 'total': 1561.4, 'billTotal': 1561.4, 'service': false, 'remark': '', 'enteredBy': 'Sujit Mule', 'updatedBy': '',
+      'lines': [{'work': 'AD BLUE', 'type': 'Paid', 'qty': 20, 'uom': 'Ltr', 'rate': 59, 'amount': 1180, 'gstAmt': 212.4}, {'work': 'BULB', 'type': 'Paid', 'qty': 4, 'uom': 'Nos', 'rate': 40, 'amount': 160, 'gstAmt': 9}], 'files': []});
+    await mtOpen59(t, srv);
+    String txt(String k) => '${(t.widget(find.byKey(Key(k))) as dynamic).data}';
+    await reach(t, 'mt-r-MT-000003', 'mt-list');
+    expect(find.descendant(of: find.byKey(const Key('mt-r-MT-000003')), matching: find.textContaining('AD BLUE ₹1,392.4; BULB ₹169')), findsOneWidget, reason: 'each line with its GST ₹ as in the file');
+    await tapK(t, 'mt-r-MT-000003');
+    await settle(t, 800);
+    expect(find.text('₹ 1,392.4 · 20 Ltr × 59 · GST ₹212.4 · RCL'), findsOneWidget, reason: 'no GST % made from it');
+    await tapK(t, 'mt-edit');
+    await net(t);
+    expect([find.byKey(const Key('mf-ga-0')).evaluate().length, find.byKey(const Key('mf-ga-1')).evaluate().length], [1, 1]);
+    expect([txt('mf-gv-0'), txt('mf-gv-1'), txt('mf-total')], ['GST ₹212.4 · With GST ₹1,392.4', 'GST ₹9 · With GST ₹169', '₹ 1,561.4']);
+    await t.ensureVisible(find.byKey(const Key('mf-save')));
+    await tapK(t, 'mf-save');
+    await net(t);
+    var x = srv.maintCalls.lastWhere((c) => c['fn'] == 'updateMaint')['x'] as Map;
+    expect(x['lines'], [
+      {'work': 'AD BLUE', 'type': 'Paid', 'qty': 20, 'uom': 'Ltr', 'rate': 59, 'disc': '', 'amount': 1180, 'gst': '', 'gstAmt': 212.4},
+      {'work': 'BULB', 'type': 'Paid', 'qty': 4, 'uom': 'Nos', 'rate': 40, 'disc': '', 'amount': 160, 'gst': '', 'gstAmt': 9},
+    ], reason: 'each line keeps its GST ₹ (the server refuses a change that does not send it)');
+    // a GST % typed on BULB: its GST from the % – no more the GST ₹ of the old log book
+    await reach(t, 'mt-r-MT-000003', 'mt-list');
+    await tapK(t, 'mt-r-MT-000003');
+    await settle(t, 800);
+    await tapK(t, 'mt-edit');
+    await net(t);
+    await t.ensureVisible(find.byKey(const Key('mf-g-1')));
+    await t.enterText(find.byKey(const Key('mf-g-1')), '18');
+    await settle(t, 400);
+    expect(find.byKey(const Key('mf-ga-1')), findsNothing);
+    expect([txt('mf-gv-1'), txt('mf-total')], ['GST ₹28.8 · With GST ₹188.8', '₹ 1,581.2']);
+    await t.ensureVisible(find.byKey(const Key('mf-save')));
+    await tapK(t, 'mf-save');
+    await net(t);
+    x = srv.maintCalls.lastWhere((c) => c['fn'] == 'updateMaint')['x'] as Map;
+    expect([for (final l in x['lines'] as List) '${l['work']}:${l['gst']}:${l['gstAmt']}'], ['AD BLUE::212.4', 'BULB:18:']);
+  });
+
+  testWidgets('(3.59.0 – Mechanical update-183) the Maintenance Log Book of the old log book: "GST Amount" – no CGST / SGST % for it; a line\'s Edit: "GST ₹ (as in the old log book)" kept, changed only by typing it, a GST % takes its place; "Hide log book"', (t) async {
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true;
+    srv.mlogLines
+      ..clear()
+      ..addAll([
+        {'work': 'AD BLUE', 'qty': 20, 'uom': 'Ltr', 'rate': 59, 'amount': 1180, 'gstAmt': 212.4},
+        {'work': 'BULB', 'qty': 4, 'uom': 'Nos', 'rate': 40, 'amount': 160, 'gstAmt': 9},
+      ]);
+    await mtOpen59(t, srv);
+    String txt(String k) => '${(t.widget(find.byKey(Key(k))) as dynamic).data}';
+    await tapK(t, 'mt-car');
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await net(t);
+    await reach(t, 'mt-log', 'mt-list');
+    await tapK(t, 'mt-log');
+    await net(t);
+    expect(find.text('GST Amount'), findsWidgets, reason: 'the GST ₹ of each line in "GST Amount"');
+    expect(find.textContaining('CGST'), findsNothing, reason: 'no GST % made – no rate column for it');
+    for (final w in ['212.40', '1,392.40', '9.00', '169.00', '221.40', '1,561.40']) {
+      expect(find.text(w), findsWidgets, reason: w);
+    }
+    await tapK(t, 'mlog-lines');
+    await net(t);
+    expect(find.text('20 Ltr × 59 · GST ₹212.4 · RCL'), findsOneWidget);
+    await tapK(t, 'ml-e-MT-000001-0');
+    await net(t);
+    expect((t.widget(find.byKey(const Key('mlf-ga'))) as TextBox).controller.text, '212.4');
+    expect(txt('mlf-sum'), 'GST ₹212.40 · Amount with GST ₹1,392.40');
+    await t.enterText(find.byKey(const Key('mlf-ga')), '213');
+    await settle(t, 400);
+    expect(txt('mlf-sum'), 'GST ₹213.00 · Amount with GST ₹1,393.00');
+    await tapK(t, 'mlf-save');
+    await net(t);
+    expect((srv.maintCalls.lastWhere((x) => x['fn'] == 'updateMaintLine')['x'] as Map)['line'], {'work': 'AD BLUE', 'type': 'Paid', 'qty': 20, 'uom': 'Ltr', 'rate': 59, 'disc': '', 'amount': 1180, 'gst': '', 'gstAmt': 213});
+    expect(find.text('20 Ltr × 59 · GST ₹213 · RCL'), findsOneWidget, reason: 'the log book read again');
+    // BULB: a GST % typed – its GST ₹ box off, the GST from the %
+    await tapK(t, 'ml-e-MT-000001-1');
+    await net(t);
+    await t.enterText(find.byKey(const Key('mlf-g')), '18');
+    await settle(t, 400);
+    expect((t.widget(find.byKey(const Key('mlf-ga'))) as TextBox).enabled, false);
+    expect(txt('mlf-sum'), 'GST ₹28.80 · Amount with GST ₹188.80');
+    await tapK(t, 'mlf-save');
+    await net(t);
+    expect((srv.maintCalls.lastWhere((x) => x['fn'] == 'updateMaintLine')['x'] as Map)['line'], {'work': 'BULB', 'type': 'Paid', 'qty': 4, 'uom': 'Nos', 'rate': 40, 'disc': '', 'amount': 160, 'gst': 18, 'gstAmt': ''});
+    expect(find.text('4 Nos × 40 · GST 18 % · RCL'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // "Hide log book": the log book shown hidden again – the filters to show it again
+    await tapK(t, 'mlog-hide');
+    await settle(t, 600);
+    expect(find.byKey(const Key('mlog-hide')), findsNothing);
+    expect(find.text('GST Amount'), findsNothing);
+    expect(find.byKey(const Key('rep-go')), findsOneWidget);
+  });
+
+  testWidgets('(3.59.0 – Mechanical update-183, "kadhi kadhi ai service slow asa pn error ywto te pn fix krun de") a PDF page read in parts (25 rows, then after the last row given); the AI busy – asked again by itself (the quicker model, after 8 s and 20 s); still busy: stopped – "Continue reading (from page 2)" goes on there, the pages before kept; the names asked again by itself', (t) async {
+    final srv = await mliOpen(t);
+    final p0 = pickAttFiles;
+    addTearDown(() => pickAttFiles = p0);
+    pickAttFiles = (how, room) async => [(name: 'Old log book.pdf', bytes: Uint8List.fromList(utf8.encode('%PDF-1.4\n%%EOF\n')))];
+    final web = jsonDecode(File('test/fixtures/sheets/maint_logbook.json').readAsStringSync()) as Map<String, dynamic>, tb = web['aiTables'] as List;
+    final last = ((tb[0] as Map)['rows'] as List).last;
+    srv
+      ..mliNames = {'fixes': []}
+      ..mliNamesBusy = 1
+      ..mliPages.addAll([
+        {'pages': 2, 'tables': [tb[0]], 'more': true, 'last': last},
+        {'pages': 2, 'tables': [tb[1]]},
+        'busy', 'busy', 'busy', 'busy',
+      ]);
+    String txt(String k) => '${(t.widget(find.byKey(Key(k))) as dynamic).data}';
+    await mliChoose(t, 'pdf');
+    await net(t);
+    expect(txt('mli-reading'), 'The AI service is slow – page 2 asked again in 8 s…');
+    await settle(t, 8500);
+    await net(t);
+    expect(txt('mli-reading'), 'The AI service is slow – page 2 asked again in 20 s…');
+    await settle(t, 20500);
+    await net(t);
+    final rc = srv.maintCalls.where((x) => x['fn'] == 'readMaintLog').toList();
+    expect([for (final x in rc) '${x['from']}/${x['max']}/${x['fast']}/${x['after'] != null}'], ['1/25/0/false', '1/25/0/true', '2/25/0/false', '2/25/1/false', '2/25/1/false', '2/25/1/false'],
+        reason: 'page 1 in two parts (the second after the last row given); page 2 busy: asked again of the quicker model, then after 8 s and 20 s');
+    expect(rc[1]['after'], last);
+    expect(txt('mli-read-err'), 'The AI service is busy now – the log book – try again in a minute. – the pages before page 2 are read and kept: press "Continue reading" to go on from page 2.');
+    expect(find.text('Continue reading (from page 2)'), findsOneWidget);
+    expect(find.byKey(const Key('mli-retry')), findsNothing);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'maintImportNames'), isEmpty, reason: 'not read yet – no names asked');
+    // "Continue reading": page 2 now – the pages before kept; the names: too slow once – asked again by itself (the quicker model)
+    srv.mliPages.add({'pages': 2, 'tables': [tb[2]]});
+    await tapK(t, 'mli-more');
+    await net(t);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'readMaintLog').skip(6).map((x) => '${x['from']}').toList(), ['2'], reason: 'from page 2 – page 1 not asked again');
+    await settle(t, 6500);
+    await net(t);
+    final nq = srv.maintCalls.where((x) => x['fn'] == 'maintImportNames').toList();
+    expect([nq.length, (nq.last['x'] as Map)['fast']], [2, true]);
+    expect(find.text('Old log book.pdf – 2 sheet(s)'), findsOneWidget, reason: 'the roller (page 1, two parts) and the car (page 2)');
+    await mliSee(t, 'mlf-state');
+    expect(txt('mlf-state'), '✓ The AI found no name written in more than one way.');
+  });
+
+  testWidgets('(3.59.0 – Mechanical update-183, "konte vichle / asset ch maintanace log book add aahe kadhi prynt updeted aahe konte ch baki aahe") Log book status: every Own machinery – not added yet first, the others up to their last bill (a rented one without bills not listed); Show: Not added yet / Added; a machinery opens its log book Start to end', (t) async {
+    final srv = await mtOpen59(t, FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true);
+    await reach(t, 'mt-status', 'mt-list');
+    await tapK(t, 'mt-status');
+    await net(t);
+    String txt(String k) => '${(t.widget(find.byKey(Key(k))) as dynamic).data}';
+    expect(srv.maintCalls.last, {'fn': 'maintStatus'});
+    expect(txt('mst-sum'), '2 added · 3 not added yet (Own machinery of the Asset Master)');
+    expect([txt('mst-st-MH-12-HO-3163'), txt('mst-st-MH-12-HO-1163'), txt('mst-st-MH-12-HO-2163')], ['Not added yet', '✓ Up to 05-10-2026', '✓ Up to 12-10-2026']);
+    expect(find.byKey(const Key('mst-MH-25-AJ-2169')), findsNothing, reason: 'rented, no bill');
+    expect(t.getTopLeft(find.byKey(const Key('mst-MH-12-HO-3163'))).dy < t.getTopLeft(find.byKey(const Key('mst-MH-12-HO-1163'))).dy, true, reason: 'not added yet first');
+    expect(find.textContaining('(not on the site now)'), findsOneWidget, reason: 'OLD-9');
+    await tapK(t, 'mst-f-none');
+    await settle(t, 400);
+    expect([find.byKey(const Key('mst-MH-12-HO-3163')).evaluate().length, find.byKey(const Key('mst-MH-12-HO-1163')).evaluate().length], [1, 0]);
+    await tapK(t, 'mst-f-added');
+    await settle(t, 400);
+    expect([find.byKey(const Key('mst-MH-12-HO-3163')).evaluate().length, find.byKey(const Key('mst-MH-12-HO-2163')).evaluate().length], [0, 1]);
+    await tapK(t, 'mst-MH-12-HO-2163');
+    await net(t);
+    final f = srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'] as Map;
+    expect([f['no'], f['all']], ['MH-12-HO-2163', true], reason: 'its log book Start to end');
+    expect(find.text('Maintenance Log Book – MH-12-HO-2163'), findsWidgets);
+  });
+
+  testWidgets('(3.59.0 – Mechanical update-184) Vendor Master: the Company Name and its Owner Name; a site without step 1zj – said what to run, the vendor saved as before; with it – each kind its documents (a PDF) sent with vendorDoc and saved with the vendor; the list: Documents (1) – opened, printed, downloaded', (t) async {
+    phone(t);
+    final p0 = pickAttFiles, c0 = attCompute;
+    attCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);
+    addTearDown(() {
+      pickAttFiles = p0;
+      attCompute = c0;
+    });
+    final pdf = Uint8List.fromList(utf8.encode('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n'));
+    pickAttFiles = (how, room) async => [(name: 'pan card.pdf', bytes: pdf)];
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vendor Master');
+    expect(srv.calls.contains('mech:getBoqs'), true, reason: 'whether the site keeps the Owner Name and the documents (vdocsOn)');
+    // step 1zj not run: "Company Name", no Owner Name, the documents say what to run (no Add); the vendor saved as before
+    await t.tap(find.byKey(const Key('v-new')));
+    await net(t);
+    expect(find.text('Company Name *'), findsOneWidget);
+    expect(find.byKey(const Key('vf-owner')), findsNothing);
+    await t.ensureVisible(find.byKey(const Key('vf-docs-note')));
+    expect(find.textContaining('sql/supabase_step1zj_vendor_papers.sql'), findsOneWidget);
+    expect([find.byKey(const Key('vfd-PAN')).evaluate().length, find.byKey(const Key('vfd-a-PAN')).evaluate().length], [1, 0]);
+    await t.enterText(box('vf-name'), 'Before 1zj Traders');
+    await tapK(t, 'vf-save');
+    await net(t);
+    var v = srv.masterCalls.lastWhere((c) => c['fn'] == 'saveVendor')['v'] as Map;
+    expect([v['name'], v.containsKey('owner'), v.containsKey('docs')], ['Before 1zj Traders', false, false]);
+    // step 1zj run: the Owner Name; the PAN added (a PDF) – sent first (vendorDoc), saved with the vendor with its kind
+    srv.vdocsOn = true;
+    await openMaster(t, s, 'Vendor Master');
+    await t.tap(find.byKey(const Key('v-new')));
+    await net(t);
+    await t.enterText(box('vf-name'), 'Test Earthmovers');
+    await t.enterText(box('vf-owner'), 'Ramesh Patil');
+    await tapK(t, 'vfd-a-PAN');
+    await net(t);
+    await tapK(t, 'att-pdf');
+    await net(t);
+    expect(find.text('pan card.pdf'), findsOneWidget);
+    await tapK(t, 'vfk-done');
+    await settle(t, 800);
+    expect('${(t.widget(find.byKey(const Key('vfd-n-PAN'))) as dynamic).data}', '1 file(s)');
+    expect('${(t.widget(find.byKey(const Key('vfd-n-Aadhaar'))) as dynamic).data}', 'none');
+    await tapK(t, 'vf-save');
+    await net(t);
+    final up = srv.masterCalls.indexWhere((c) => c['fn'] == 'vendorDoc'), sv = srv.masterCalls.lastIndexWhere((c) => c['fn'] == 'saveVendor');
+    expect([srv.masterCalls[up]['name'], up < sv], ['pan card.pdf', true], reason: 'the document sent first, then the vendor');
+    v = srv.masterCalls[sv]['v'] as Map;
+    expect([v['name'], v['owner'], (v['docs'] as List).length, (v['docs'] as List).single['kind'], '${(v['docs'] as List).single['sha']}'.length], ['Test Earthmovers', 'Ramesh Patil', 1, 'PAN', 64]);
+    // the list: Documents (1) – its window: the Owner Name, PAN; Download – the file itself
+    await t.enterText(find.byKey(const Key('v-search')), 'Test Earth');
+    await settle(t, 600);
+    expect(find.text('Documents (1)'), findsOneWidget);
+    await tapK(t, 'vdocs-Test Earthmovers');
+    await net(t);
+    expect(srv.masterCalls.last, {'fn': 'getVendorDocs', 'name': 'Test Earthmovers'});
+    expect(find.text('Documents – Test Earthmovers'), findsOneWidget);
+    expect(find.text('Ramesh Patil'), findsOneWidget);
+    expect(find.text('pan card.pdf'), findsOneWidget);
+    final sha = '${(v['docs'] as List).single['sha']}';
+    expect([for (final w in ['open', 'print', 'download']) find.byKey(Key('vdv-$w-$sha')).evaluate().length], [1, 1, 1]);
+    final files = catchFiles();
+    await tapK(t, 'vdv-download-$sha');
+    await net(t);
+    expect(srv.fileGets, ['https://files.test/$sha']);
+    expect([files.single.$1, files.single.$2], ['pan card.pdf', pdf]);
+  });
+
+  testWidgets('(3.59.0 – Mechanical update-184, "papers fkt own mhanje rachana che") Vehicle Compliance: only Own machinery – no ownership choice; the import says which machinery were left out (not Own)', (t) async {
+    phone(t);
+    final srv = editor()..cmpSkipped = ['MH-04-J-9844', 'JCB-173'];
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vehicle Compliance');
+    expect(find.byKey(const Key('cp-own')), findsNothing);
+    expect(find.textContaining('of every active Own machinery.'), findsOneWidget);
+    pickThis('papers.csv', utf8.encode('Machinery No,Type,PUC Valid Upto,Permit,Status (not imported)\nMH-25-AJ-2169,Tipper,30-09-2027,NA,Expired\n,,,,\n'));
+    await t.tap(find.byKey(const Key('cp-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('cp-import')));
+    await net(t);
+    expect(find.text('• 2 machinery left out – not Own (papers are kept only for Own machinery): MH-04-J-9844, JCB-173'), findsOneWidget);
+  });
+
+  testWidgets('(3.59.0 – Mechanical update-185) Ask: a look-up the app does not run itself (maintenance bills …) goes to the server (aiLookup) and its answer back to the AI; a refusal goes back as its error; "Looked up" says what, with the machinery / vendor', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = FakeServer()
+      ..superAdmin = true
+      ..aiOn = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    await tapK(t, 'home-ask');
+    await net(t);
+    srv.aiScript.addAll([
+      {'parts': [{'functionCall': {'name': 'maintenance_bills', 'args': {'from': '2026-10-01', 'to': '2026-10-14', 'machinery': 'MH-12-HO-1163'}}}, {'functionCall': {'name': 'vendor_ledger', 'args': {'vendor': 'Nobody Traders'}}}], 'model': 'claude-sonnet-5-5'},
+      {'parts': [{'text': 'One maintenance bill this month: **₹2,360**.'}], 'model': 'claude-sonnet-5-5'},
+    ]);
+    await t.enterText(find.byKey(const Key('ai-in')), 'maintenance of MH-12-HO-1163 this month and the ledger of Nobody Traders');
+    await tapK(t, 'ai-send');
+    await net(t);
+    await net(t);
+    expect(srv.aiLookups, [
+      {'name': 'maintenance_bills', 'args': {'from': '2026-10-01', 'to': '2026-10-14', 'machinery': 'MH-12-HO-1163'}},
+      {'name': 'vendor_ledger', 'args': {'vendor': 'Nobody Traders'}},
+    ]);
+    final back = (srv.aiAsked.last['contents'] as List).last as Map;
+    final rs = [for (final p in back['parts'] as List) (p as Map)['functionResponse'] as Map];
+    expect([rs[0]['name'], rs[0]['response'], rs[1]['name'], rs[1]['response']],
+        ['maintenance_bills', srv.aiLookupAnswers['maintenance_bills'], 'vendor_ledger', {'error': '"Nobody Traders" is not a vendor of this site – say which one.'}]);
+    expect(find.text('Looked up:'), findsOneWidget);
+    expect(find.text('Maintenance bills 01-10-2026 to 14-10-2026 · MH-12-HO-1163'), findsOneWidget);
+    expect(find.text('Vendor Ledger · Nobody Traders'), findsOneWidget);
+    expect(find.textContaining('One maintenance bill this month: ₹2,360.'), findsOneWidget);
   });
 }

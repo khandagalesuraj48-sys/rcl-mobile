@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -115,6 +116,21 @@ class Api {
     } catch (_) {
       return null;
     }
+  }
+
+  /// (3.59.0, Mechanical update-184) a kept file from its short link (a vendor's document – Download / Print): its bytes. Only the
+  /// file's own link is asked (https; no sign-in is sent with it).
+  Future<Uint8List> fileBytes(String url) async {
+    final u = Uri.tryParse(url);
+    if (u == null || u.scheme != 'https') throw ApiError('This file has no link now – open the documents again.');
+    final http.Response r;
+    try {
+      r = await _c.get(u).timeout(timeout);
+    } catch (_) {
+      throw ApiError('The file could not be downloaded now – check the network and try again.', code: 'net');
+    }
+    if (r.statusCode != 200) throw ApiError('The file could not be downloaded – its link works for 15 minutes: open the documents again.');
+    return r.bodyBytes;
   }
 
   // ---------------- the Portal ----------------

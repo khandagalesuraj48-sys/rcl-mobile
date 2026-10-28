@@ -530,6 +530,23 @@ class _ReportScreenState extends State<ReportScreen> {
                 label: Text('Delete this log book'),
               ),
             ),
+          // (3.59.0, Mechanical update-183, "show dable ki distey but prt hide pn krta yaw") the log book shown hidden again
+          if (def.key == 'mlog')
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: OutlinedButton.icon(
+                key: const Key('mlog-hide'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                onPressed: () => setState(() {
+                  doc = null;
+                  data = null;
+                  made = null;
+                  open = true;
+                }),
+                icon: const Icon(Icons.visibility_off_rounded),
+                label: Text('Hide log book'),
+              ),
+            ),
           ReportView(d),
         ],
       ]),

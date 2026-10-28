@@ -1077,7 +1077,7 @@
        "uom": "Ltr",
        "rate": 59,
        "amount": 1180,
-       "gst": 18
+       "gstAmt": 212.4
       }
      ],
      "rows": "Line 4"
@@ -1093,7 +1093,7 @@
        "uom": "Nos",
        "rate": 650,
        "amount": 650,
-       "gst": 18
+       "gstAmt": 117
       },
       {
        "work": "ENGINE OIL FILTER",
@@ -1101,7 +1101,7 @@
        "uom": "Nos",
        "rate": 930,
        "amount": 930,
-       "gst": 18
+       "gstAmt": 167.4
       }
      ],
      "rows": "Line 5–6"
@@ -1131,7 +1131,7 @@
        "uom": "Nos",
        "rate": 310,
        "amount": 310,
-       "gst": 18
+       "gstAmt": 55.8
       },
       {
        "work": "Labour",
@@ -1139,7 +1139,7 @@
        "uom": "Nos",
        "rate": 1200,
        "amount": 1200,
-       "gst": 18
+       "gstAmt": 216
       }
      ],
      "rows": "Line 3–4"
@@ -1154,8 +1154,7 @@
        "qty": 1,
        "uom": "Ltr",
        "rate": 100,
-       "amount": 100,
-       "gst": ""
+       "amount": 100
       }
      ],
      "rows": "Line 5"

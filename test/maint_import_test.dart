@@ -84,7 +84,7 @@ void main() {
     expect([for (final x in got as List) '${x['sheet']}→${x['no']}'], ['Roller 03→RL-173', 'MH12XW0169→MH-12-XW-0169', 'JCB→']);
   });
 
-  test('(28-10-2026) the lines that do not add up – Qty × Rate, Amount + GST, an odd GST % – as the web finds them', () {
+  test('(28-10-2026) the lines that do not add up – Qty × Rate, Amount + GST – as the web finds them (3.59.0: no "odd GST %" any more – the GST ₹ is kept as it is)', () {
     final got = [for (final x in mliRead(tabs, master, today)) jsonDecode(jsonEncode(x.warn))];
     expect(differ(got, [for (final x in web['sheets'] as List) x['warn']]), '');
     expect(got[1], [
@@ -116,13 +116,16 @@ void main() {
     expect(mliKey('NOVA 1'), isNot(mliKey('VA 1')));
   });
 
-  test('a line\'s GST % from its GST Amount: 18 % when it makes it to ₹1 (whole rupees), else the % itself; none when ₹0', () {
-    expect(mliGst(1180, 212), 18);
-    expect(mliGst(1180, 212.4), 18);
-    expect(mliGst(1000, 50), 5);
-    expect(mliGst(1000, 33), 3.3);
-    expect(mliGst(0, 0), '');
-    expect(mliGst(500, ''), '');
+  test('(3.59.0, Mechanical update-183) a line of the old log book keeps its GST ₹ as in the file – no GST % made; a GST % typed goes before it', () {
+    final got = mliRead(tabs, master, today);
+    expect([for (final l in got[0].bills[0]['lines'] as List) [l['gst'], l['gstAmt']]], [[null, 212.4]], reason: 'AD BLUE: its GST ₹212.4, no GST %');
+    expect(mtHasGa({'amount': 1180, 'gstAmt': 212.4}), isTrue);
+    expect(mtLineGst({'amount': 1180, 'gstAmt': 212.4}), 212.4);
+    expect(mtLineGst({'amount': 1180, 'gstAmt': 212.4, 'gst': 18}), 212.4, reason: 'a GST % typed: 18 % of 1180 = 106.2 + 106.2');
+    expect(mtHasGa({'amount': 1180, 'gstAmt': 212.4, 'gst': 18}), isFalse);
+    expect(mtLineGst({'amount': 1000, 'gst': 5}), 50);
+    expect(mtLineGst({'amount': 1000, 'gstAmt': ''}), 0);
+    expect(mtLineGst({'amount': 160, 'gstAmt': 9}), 9, reason: 'BULB ₹160 with its GST ₹9 – not 5.625 %');
     expect(mliNum('1,180.50'), 1180.5);
     expect(mliNum('₹ 59'), 59);
     expect(mliNum('—'), '');

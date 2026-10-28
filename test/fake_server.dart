@@ -45,8 +45,18 @@ class FakeServer {
   ];
   /// (3.53.0, Mechanical update-173, 28-10-2026) what the AI reads of an old log book (readMaintLog – one a call, in order: a Map, or
   /// 'cut' – an answer cut off) and the names it finds written in more than one way (maintImportNames)
+  /// (3.59.0, Mechanical update-183) also: 'busy' – the AI busy (an error, asked again by the app); a Map may carry 'more' / 'last'
+  /// (a part of the page – the next part is asked after its last row)
   final mliPages = <Object>[];
   Map<String, dynamic> mliNames = {'fixes': []};
+  /// (3.59.0) maintImportNames answers "busy" this many times first
+  int mliNamesBusy = 0;
+  /// (3.59.0, Mechanical update-184) the site keeps the vendor's Owner Name and documents (step 1zj run); the documents' files (sha → its
+  /// record and bytes); the files the app downloaded (their links); importCompliance's machinery left out (not Own)
+  bool vdocsOn = false;
+  final vendorFiles = <String, Map<String, dynamic>>{};
+  final fileGets = <String>[];
+  List<String> cmpSkipped = [];
   /// (3.49.0, Mechanical update-168) what maintLog answers instead of the bill below (null: that one)
   Map<String, dynamic>? maintLogAnswer;
   /// (3.56.0, Mechanical update-180) the lines of MT-000001 in the log book below – changed / taken out by updateMaintLine / deleteMaintLine
@@ -65,8 +75,11 @@ class FakeServer {
   /// the bill of [mlogLines]: its lines with their GST (a free line ₹ 0)
   num get _mlogTotal => mlogLines.fold<num>(0, (t, l) {
         final a = l['amount'] is num ? l['amount'] as num : 0, g = l['gst'] is num ? l['gst'] as num : 0, paid = (l['type'] ?? 'Paid') == 'Paid' || l['type'] == 'By Insurance';
-        return paid ? ((t + a + 2 * ((a * g / 200) * 100).round() / 100) * 100).round() / 100 : t;
+        final gv = _hasGa(l) ? l['gstAmt'] as num : 2 * ((a * g / 200) * 100).round() / 100;      // (3.59.0, Mechanical update-183) its GST ₹ as in the old log book
+        return paid ? ((t + a + gv) * 100).round() / 100 : t;
       });
+  /// (3.59.0) as the server's maintHasGa_: a line's GST ₹ as in the old log book (no GST %)
+  static bool _hasGa(Map l) => l['gstAmt'] is num && !((l['gst'] is num ? l['gst'] as num : 0) > 0);
   Map<String, dynamic> get cardStock => {'stock': 0, 'byLoc': <String, dynamic>{}, 'cards': cards};
   final issueBal = <List>[];
   final saved = <Map<String, dynamic>>[];
@@ -138,6 +151,11 @@ class FakeServer {
   bool aiOn = false;
   final aiAsked = <Map<String, dynamic>>[];
   final aiScript = <Map<String, dynamic>>[];
+  /// (3.59.0, Mechanical update-185) the look-ups the server runs (aiLookup): what was asked, and what each answers
+  final aiLookups = <Map<String, dynamic>>[];
+  Map<String, Object> aiLookupAnswers = {
+    'maintenance_bills': {'from': '2026-10-01', 'to': '2026-10-14', 'bills': [{'id': 'MT-000001', 'date': '2026-10-05', 'no': 'MH-12-HO-1163', 'garage': 'Toyota Service', 'total': 2360}], 'count': 1, 'totalRupees': 2360, 'page': 'mnt'},
+  };
   Map<String, dynamic> brief = {
     'name': 'Sujit Mule', 'day': '2026-10-13',
     'sections': {
@@ -760,6 +778,13 @@ class FakeServer {
       tickets++;
       return _j({'ticket': 'tk$tickets'});
     }
+    // (3.59.0) a kept file from its short link (a vendor's document)
+    if (r.url.host == 'files.test') {
+      fileGets.add(r.url.toString());
+      final f = vendorFiles[r.url.pathSegments.isEmpty ? '' : r.url.pathSegments.last];
+      if (f == null) return http.Response('Not Found', 404);
+      return http.Response.bytes(f['bytes'] as List<int>, 200, headers: {'content-type': '${f['mime']}'});
+    }
     if (r.url.host == 'ifsc.razorpay.com') {
       calls.add('ifsc:${r.url.path}');
       return r.url.path == '/SBIN0001234' ? _j({'BANK': 'State Bank of India', 'BRANCH': 'Nashik Road', 'CITY': 'Nashik', 'STATE': 'Maharashtra'}) : _j('Not Found', 404);
@@ -1037,7 +1062,7 @@ class FakeServer {
         case 'getVendors':
           return _j({'result': vendors});
         case 'getBoqs':
-          return _j({'result': {'vendors': vendors, 'boqs': boqs, 'history': boqHist}});
+          return _j({'result': {'vendors': vendors, 'boqs': boqs, 'history': boqHist, 'vdocsOn': vdocsOn}});
         case 'saveMaster':
           final m = (a[0] as Map).cast<String, dynamic>();
           masterCalls.add({'fn': action, 'm': m, 'mode': a[1], 'id': a.length > 2 ? a[2] : null});
@@ -1114,9 +1139,40 @@ class FakeServer {
           bdSent.add({'fn': action, 'date': a[0]});
           bdSaved = null;
           return _j({'result': {'ok': true, 'date': a[0], 'deleted': true}});
+        // (3.59.0, Mechanical update-184) one document of a vendor sent (as the server's uploadAttachment_ 'Vendor Master'); a vendor's
+        // documents with their links (getVendorDocs – 15 minutes)
+        case 'vendorDoc':
+          final up = (a[0] as Map).cast<String, dynamic>(), m = RegExp(r'^data:(image/jpeg|image/png|application/pdf);base64,(.+)$').firstMatch('${up['data']}');
+          masterCalls.add({'fn': action, 'name': up['name']});
+          if (!vdocsOn) return _j({'error': 'The documents of the vendor cannot be kept yet. This needs one database step first: the Admin runs sql/supabase_step1zj_vendor_papers.sql once in Supabase → SQL Editor (in every site).'}, 500);
+          if (m == null) return _j({'error': 'An attachment must be a photo (JPG or PNG) or a PDF.'}, 500);
+          final raw = base64Decode(m.group(2)!), sha = crypto.sha256.convert(raw).toString(), ext = m.group(1) == 'application/pdf' ? 'pdf' : m.group(1) == 'image/png' ? 'png' : 'jpg';
+          vendorFiles[sha] = {'name': up['name'], 'mime': m.group(1), 'size': raw.length, 'bytes': raw, 'p': 'vendor/${sha.substring(0, 2)}/$sha.$ext'};
+          return _j({'result': {'ok': true, 'sha': sha, 'path': 'vendor/${sha.substring(0, 2)}/$sha.$ext', 'mime': m.group(1), 'size': raw.length, 'name': up['name'], 'dup': false}});
+        case 'getVendorDocs':
+          masterCalls.add({'fn': action, 'name': a[0]});
+          final v = vendors.where((x) => x['name'] == a[0] && x['saved'] == true).firstOrNull;
+          if (v == null) return _j({'error': 'Vendor ${a[0]} is not saved in the Vendor Master yet – save its details first.'}, 500);
+          return _j({'result': {'name': v['name'], 'owner': v['owner'] ?? '', 'on': vdocsOn, 'docs': [
+            for (final d in (v['docs'] as List? ?? const []).whereType<Map>()) {...d, 'p': vendorFiles['${d['sha']}']?['p'] ?? 'vendor/${'${d['sha']}'.substring(0, 2)}/${d['sha']}', 'url': 'https://files.test/${d['sha']}'},
+          ]}});
         case 'saveVendor':
-          final v = (a[0] as Map).cast<String, dynamic>();
-          masterCalls.add({'fn': action, 'v': v, 'mode': a[1]});
+          final v = {...(a[0] as Map).cast<String, dynamic>()};
+          masterCalls.add({'fn': action, 'v': {...v}, 'mode': a[1]});
+          // (3.59.0, Mechanical update-184) as the server: the Owner Name and the documents only where the site keeps them; a new document
+          // must have been sent (vendorDoc) – each kept with its kind
+          if (!vdocsOn && ('${v['owner'] ?? ''}'.isNotEmpty || (v['docs'] is List && (v['docs'] as List).isNotEmpty))) {
+            return _j({'error': 'The documents of the vendor cannot be kept yet. This needs one database step first: the Admin runs sql/supabase_step1zj_vendor_papers.sql once in Supabase → SQL Editor (in every site).'}, 500);
+          }
+          if (v['docs'] is List) {
+            final kept = <Map<String, dynamic>>[];
+            for (final d in (v['docs'] as List).whereType<Map>()) {
+              final f = vendorFiles['${d['sha']}'];
+              if (f == null) return _j({'error': 'A vendor document was not added by you in the last 6 hours – add it again.'}, 500);
+              kept.add({'sha': d['sha'], 'kind': d['kind'], 'name': f['name'], 'mime': f['mime'], 'size': f['size'], 'at': '2026-10-14T06:00:00Z', 'by': 'Sujit Mule'});
+            }
+            v['docs'] = kept;
+          }
           final was = '${v['oldName']}'.isNotEmpty ? '${v['oldName']}' : '${v['name']}';
           final i = vendors.indexWhere((x) => x['name'] == was);
           if (i > -1) {
@@ -1146,7 +1202,7 @@ class FakeServer {
         // (3.13.0) Vehicle Compliance – Import Excel: checked (save false), then saved
         case 'importCompliance':
           masterCalls.add({'fn': action, 'rows': a[0], 'save': a[1]});
-          return _j({'result': {'errors': [], 'changes': 2, 'machines': 1, 'preview': ['MH-25-AJ-2169 – PUC: 01-10-2026 → 30-09-2027', 'MH-25-AJ-2169 – Permit: – → N/A']}});
+          return _j({'result': {'errors': [], 'changes': 2, 'machines': 1, 'preview': ['MH-25-AJ-2169 – PUC: 01-10-2026 → 30-09-2027', 'MH-25-AJ-2169 – Permit: – → N/A'], 'skipped': cmpSkipped}});
         case 'renewDoc':
           masterCalls.add({'fn': action, 'x': a[0]});
           return _j({'result': {'ok': true}});
@@ -1371,6 +1427,15 @@ class FakeServer {
               {'no': 'MH-12-AB-1001', 'type': 'Water Tanker', 'owner': 'Patil Water Supply', 'date': '2026-10-13', 'shift': 'Night', 'unit': 'Trip', 'mode': 'Trip', 'trip': 1, 'challan': 'P-7', 'key': 'MH-12-AB-1001|2026-10-13|Night',
                 'itemWork': {'_trips': [{'c': 'P-7', 'a': '21:10', 'b': '21:40', 'u': 'Curing'}]}},
           ]}});
+        // (3.59.0, Mechanical update-185) a look-up of the assistant run by the server – as aiLookup_: an unknown one or a vendor not of
+        // the site refused (its words)
+        case 'aiLookup':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          aiLookups.add(x);
+          if ('${(x['args'] as Map?)?['vendor'] ?? ''}'.isNotEmpty && !vendors.any((v) => v['name'] == (x['args'] as Map)['vendor'])) return _j({'error': '"${(x['args'] as Map)['vendor']}" is not a vendor of this site – say which one.'}, 500);
+          final ans = aiLookupAnswers['${x['name']}'];
+          if (ans == null) return _j({'error': 'There is no such look-up.'}, 500);
+          return _j({'result': ans});
         case 'getAiReply':
           aiAsked.add((a[0] as Map).cast<String, dynamic>());
           if (!aiOn) return _j({'error': 'The assistant is not set up yet: the Admin has to put the AI key (ANTHROPIC_API_KEY – Claude) in the server\'s settings.'}, 500);
@@ -1468,8 +1533,13 @@ class FakeServer {
           const kinds = ['Paid', 'By Insurance', 'Warranty', 'FOC', 'Service Plan'];
           bool charged(Map l) => (l['type'] ?? 'Paid') == 'Paid' || l['type'] == 'By Insurance';
           num r2(num v) => (v * 100).round() / 100;
-          num withGst(Map l) => charged(l) ? r2((l['amount'] as num) + 2 * r2((l['amount'] as num) * (l['gst'] is num ? l['gst'] as num : 0) / 200)) : 0;
+          // (3.59.0, Mechanical update-183) a line's GST ₹ as in the old log book (gstAmt, no GST %)
+          num withGst(Map l) => charged(l) ? r2((l['amount'] as num) + (_hasGa(l) ? l['gstAmt'] as num : 2 * r2((l['amount'] as num) * (l['gst'] is num ? l['gst'] as num : 0) / 200))) : 0;
           final ls = [for (final l in (x['lines'] as List)) (l as Map).cast<String, dynamic>()];
+          // (as the server: a page / an app of before – no gstAmt sent – may not change a bill whose lines keep their GST ₹ of the old log book)
+          if (action == 'updateMaint' && ls.isNotEmpty && ls.every((l) => !l.containsKey('gstAmt')) && [for (final l in (maint.firstWhere((r) => r['id'] == a[0])['lines'] as List)) l as Map].any(_hasGa)) {
+            return _j({'error': 'Bill ${a[0]} keeps the GST amounts of the old log book as they are – update the app to change it.'}, 500);
+          }
           for (final (i, l) in ls.indexed) {
             if (l.containsKey('type') && !kinds.contains(l['type'])) return _j({'error': 'Bill line ${i + 1} (${l['work']}): Paid by is RCL, Insurance, Warranty, FOC or Service Plan.'}, 500);
             if (l['gst'] is num && ((l['gst'] as num) < 0 || (l['gst'] as num) > 100)) return _j({'error': 'Bill line ${i + 1} (${l['work']}): the GST is 0 to 100 %.'}, 500);
@@ -1513,7 +1583,7 @@ class FakeServer {
           if (m == null || m['ownership'] != 'Own' || m['status'] == 'Inactive') return _j({'error': '${x['no']} is not an Own machinery on this site now (Asset Master) – the old log book is imported only for those.'}, 500);
           if (bills.isEmpty) return _j({'error': 'The file has no bill for ${x['no']}.'}, 500);
           num r2(num v) => (v * 100).round() / 100;
-          num lineTot(Map l) => r2((l['amount'] is num ? l['amount'] as num : 0) + 2 * r2((l['amount'] is num ? l['amount'] as num : 0) * (l['gst'] is num ? l['gst'] as num : 0) / 200));
+          num lineTot(Map l) => r2((l['amount'] is num ? l['amount'] as num : 0) + (_hasGa(l) ? l['gstAmt'] as num : 2 * r2((l['amount'] is num ? l['amount'] as num : 0) * (l['gst'] is num ? l['gst'] as num : 0) / 200)));      // (3.59.0: its GST ₹ as in the old log book)
           // (28-10-2026) already there = the same machinery and date, its total to ₹1 (above ₹0) – whatever its party is called
           final have = [for (final r in maint) if (r['no'] == x['no']) (date: '${r['date']}', id: '${r['id']}', total: (r['billTotal'] ?? r['total']) as num)];
           final sameList = <Map<String, dynamic>>[];
@@ -1554,21 +1624,53 @@ class FakeServer {
         // (28-10-2026) the AI reads the pages of an old log book; the names written in more than one way
         case 'readMaintLog':
           final x = (a[0] as Map).cast<String, dynamic>();
-          maintCalls.add({'fn': action, 'from': x['from'], 'n': x['n'], 'kind': RegExp(r'^data:([^;]+);').firstMatch('${x['data']}')?.group(1) ?? ''});
+          maintCalls.add({'fn': action, 'from': x['from'], 'n': x['n'], 'kind': RegExp(r'^data:([^;]+);').firstMatch('${x['data']}')?.group(1) ?? '', if (x.containsKey('max')) 'max': x['max'], if (x.containsKey('fast')) 'fast': x['fast'], if (x['after'] != null) 'after': x['after']});
           if (!RegExp(r'^data:(image/jpeg|image/png|application/pdf);base64,').hasMatch('${x['data']}')) return _j({'error': 'An old log book must be a PDF or a photo (JPG or PNG).'}, 500);
           if (!aiOn) return _j({'result': {'off': true}});
           final pdf = '${x['data']}'.startsWith('data:application/pdf'), from = pdf ? (x['from'] as num).toInt() : 1, n = pdf ? (x['n'] as num).toInt() : 1;
           final p = mliPages.isEmpty ? {'pages': 1, 'tables': []} : mliPages.removeAt(0);
           if (p == 'cut') return _j({'result': {'from': from, 'to': from + n - 1, 'pages': 0, 'tables': [], 'again': true}});
+          if (p == 'busy') return _j({'error': 'The AI service is busy now – the log book – try again in a minute.'}, 500);      // (3.59.0)
           final pm = (p as Map).cast<String, dynamic>(), pages = (pm['pages'] as num? ?? 0).toInt();
-          return _j({'result': {'from': from, 'to': pdf ? (pages > 0 && from + n - 1 > pages ? pages : from + n - 1) : 1, 'pages': pdf ? pages : 1, 'tables': pm['tables'] ?? []}});
+          return _j({'result': {'from': from, 'to': pdf ? (pages > 0 && from + n - 1 > pages ? pages : from + n - 1) : 1, 'pages': pdf ? pages : 1, 'tables': pm['tables'] ?? [],
+            if (x.containsKey('max')) ...{'more': pm['more'] == true, 'last': pm['last']}}});
         case 'maintImportNames':
           final x = (a[0] as Map).cast<String, dynamic>();
           maintCalls.add({'fn': action, 'x': x});
           if (!aiOn) return _j({'result': {'off': true}});
+          if (mliNamesBusy > 0) {      // (3.59.0)
+            mliNamesBusy--;
+            return _j({'error': 'The AI is too slow to answer now – the names stay as in the file; try again in a minute.'}, 500);
+          }
           // (as the server: only a name of the file is answered)
           final has = {for (final f in const ['party', 'work', 'uom']) f: {for (final n in (x[f] as List? ?? const [])) '${(n as List).first}'}};
           return _j({'result': {...mliNames, 'fixes': [for (final z in (mliNames['fixes'] as List? ?? const [])) if (has['${(z as List)[0]}']?.contains('${z[1]}') == true) z]}});
+        // (3.59.0, Mechanical update-183) the log book status – as the server's maintStatus_: each Own machinery of the Asset Master (and any
+        // other with a bill), its bills, from, up to, ₹; not added yet first
+        case 'maintStatus':
+          maintCalls.add({'fn': action});
+          if (maintMissing) return _j({'result': {'today': '2026-10-14', 'rows': [], 'missing': true}});
+          final by = <String, Map<String, dynamic>>{};
+          for (final r in maint) {
+            final k = '${r['no']}', d = '${r['date']}', x = by[k] ??= {'bills': 0, 'from': d, 'upTo': d, 'amount': 0};
+            x['bills'] = (x['bills'] as int) + 1;
+            if (d.compareTo('${x['from']}') < 0) x['from'] = d;
+            if (d.compareTo('${x['upTo']}') > 0) x['upTo'] = d;
+            x['amount'] = (((x['amount'] as num) + (r['total'] as num)) * 100).round() / 100;
+          }
+          final rows = <Map<String, dynamic>>[], seen = <String>{};
+          for (final m in _master) {
+            final k = '${m['id']}', x = by[k];
+            if (seen.contains(k) || (m['ownership'] != 'Own' && x == null)) continue;
+            seen.add(k);
+            rows.add({'no': k, 'name': m['name'] ?? '', 'type': m['type'] ?? '', 'ownership': m['ownership'] ?? '', 'onSite': m['status'] != 'Inactive', 'bills': x?['bills'] ?? 0, 'from': x?['from'] ?? '', 'upTo': x?['upTo'] ?? '', 'amount': x?['amount'] ?? 0});
+          }
+          for (final e in by.entries) {
+            if (!seen.contains(e.key)) rows.add({'no': e.key, 'name': '', 'type': '', 'ownership': '', 'onSite': false, ...e.value, 'notInMaster': true});
+          }
+          int had(Map r) => (r['bills'] as num) > 0 ? 1 : 0;
+          rows.sort((p, q) => had(p) != had(q) ? had(p) - had(q) : '${p['no']}'.compareTo('${q['no']}'));
+          return _j({'result': {'today': '2026-10-14', 'rows': rows, 'added': rows.where((r) => (r['bills'] as num) > 0).length, 'none': rows.where((r) => (r['bills'] as num) == 0).length}});
         case 'maintLog':
           final f = (a[0] as Map).cast<String, dynamic>();
           maintCalls.add({'fn': action, 'x': f});
@@ -1600,6 +1702,8 @@ class FakeServer {
           } else {
             final l = (x['line'] as Map).cast<String, dynamic>();
             if ('${l['work'] ?? ''}'.trim().isEmpty) return _j({'error': 'Bill line ${i + 1}: type the work / part (e.g. Engine oil, Labour).'}, 500);
+            // (3.59.0, as the server) a line whose GST ₹ is kept as in the old log book: an app that does not send gstAmt may not change it
+            if (_hasGa(mlogLines[i]) && !l.containsKey('gstAmt') && !((l['gst'] is num ? l['gst'] as num : 0) > 0)) return _j({'error': 'Bill ${a[0]}: this line keeps its GST amount as in the old log book – update the app to change it.'}, 500);
             mlogLines[i] = {for (final e in l.entries) if (e.value != '') e.key: e.value};
           }
           return _j({'result': {'ok': true, 'id': a[0], 'total': _mlogTotal, 'billTotal': _mlogTotal, 'lines': mlogLines.length}});

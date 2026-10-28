@@ -7,7 +7,9 @@
  *   MaintLineForm    – one line: Particulars, Paid by, Qty, Uom, Rate, Disc %, Amount, GST % (as a line of the bill's form: a Paid line's
  *                      ₹ from Qty × Rate − Disc %, a free line ₹ 0) → updateMaintLine; the rest of the bill stays as it is.
  * Delete → deleteMaintLine; the only line of a bill: the whole bill is deleted (deleteMaint), said first. The same server actions, checks
- * and access as the web – the server checks the line is still the one shown (changed by someone meanwhile: refused). */
+ * and access as the web – the server checks the line is still the one shown (changed by someone meanwhile: refused).
+ * (3.59.0, Mechanical update-183) a line of the old log book (its GST ₹ as in the file, no GST %): "GST ₹ (as in the old log book)" – kept
+ * as it is (changed only by typing it); a GST % typed takes its place (as the web's mll_ga). */
 import 'package:flutter/material.dart' hide Text;
 
 import '../core/format.dart';
@@ -19,7 +21,8 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'fuel_cards.dart' show rupees;
-import 'maintenance.dart' show kMaintKinds, kMaintPaidBy, kMaintUoms, maintCharged, maintGst, maintPaidBy;
+import '../core/maint_import.dart' show mtHasGa, mtLineGst;
+import 'maintenance.dart' show kMaintKinds, kMaintPaidBy, kMaintUoms, maintCharged, maintGst, maintLineGst, maintPaidBy;
 
 /// The bills of a log book (maintLog) with lines of their own: its Maintenance bills (not the Store's issues, not the fuel)
 List<Map<String, dynamic>> maintLineBills(Map<String, dynamic> log) => [
@@ -28,7 +31,7 @@ List<Map<String, dynamic>> maintLineBills(Map<String, dynamic> log) => [
     ];
 
 /// A line in words: its ₹ with GST (a free line: its kind) – as the web's mlLineSay
-String maintLineSay(Map l) => '${l['work']} – ${maintCharged(l['type']) ? rupees((asNum(l['amount']) ?? 0) + maintGst(asNum(l['amount']), asNum(l['gst']))) : tr(maintPaidBy(l['type']))}';
+String maintLineSay(Map l) => '${l['work']} – ${maintCharged(l['type']) ? rupees((asNum(l['amount']) ?? 0) + maintLineGst(l)) : tr(maintPaidBy(l['type']))}';
 
 /// A bill in words: "Bill MT-000002 · 05-01-2023 · Store · bill no. B-1" – as the web's mlBillSay
 String maintBillSay(Map b) =>
@@ -139,11 +142,11 @@ class _MaintLinesScreenState extends State<MaintLinesScreen> {
   }
 
   Widget _line(Map<String, dynamic> b, int i, Map<String, dynamic> l, bool can) {
-    final free = !maintCharged(l['type']), a = asNum(l['amount']) ?? 0, g = asNum(l['gst']) ?? 0, q = asNum(l['qty']), r = asNum(l['rate']);
+    final free = !maintCharged(l['type']), a = asNum(l['amount']) ?? 0, g = asNum(l['gst']) ?? 0, q = asNum(l['qty']), r = asNum(l['rate']), ga = mtHasGa(l);
     final id = '${b['id']}';
     final what = [
       if (q != null) '${fmtNum(q)}${'${l['uom'] ?? ''}'.isEmpty ? '' : ' ${l['uom']}'}${r != null ? ' × ${fmtNum(r)}' : ''}',
-      if (g > 0) 'GST ${fmtNum(g)} %',
+      if (g > 0) 'GST ${fmtNum(g)} %' else if (ga && !free) 'GST ₹${fmtNum(maintLineGst(l))}',
       tr(maintPaidBy(l['type'])),
     ].join(' · ');
     return Container(
@@ -157,7 +160,7 @@ class _MaintLinesScreenState extends State<MaintLinesScreen> {
             Text(what, style: const TextStyle(fontSize: 12, color: C.muted)),
           ]),
         ),
-        Text(free ? '₹ 0' : rupees(a + maintGst(a, g)), style: TextStyle(fontWeight: FontWeight.w700, color: a < 0 ? C.red : C.ink)),
+        Text(free ? '₹ 0' : rupees(a + maintLineGst(l)), style: TextStyle(fontWeight: FontWeight.w700, color: a < 0 ? C.red : C.ink)),
         if (can) ...[
           IconButton(key: Key('ml-e-$id-$i'), tooltip: tr('Edit'), onPressed: busy ? null : () => _edit(b, i), icon: const Icon(Icons.edit_rounded, color: C.blue, size: 21)),
           IconButton(key: Key('ml-d-$id-$i'), tooltip: tr('Delete'), onPressed: busy ? null : () => _delete(b, i), icon: const Icon(Icons.delete_outline_rounded, color: C.red, size: 21)),
@@ -185,6 +188,9 @@ class _MaintLineFormState extends State<MaintLineForm> {
   late final work = TextEditingController(text: '${l0['work'] ?? ''}'), qty = TextEditingController(text: _n(asNum(l0['qty']))), uom = TextEditingController(text: '${l0['uom'] ?? ''}');
   late final rate = TextEditingController(text: _n(asNum(l0['rate']))), disc = TextEditingController(text: _n(asNum(l0['disc']))), gst = TextEditingController(text: _n(asNum(l0['gst'])));
   late final amount = TextEditingController(text: maintCharged(type) ? _n(asNum(l0['amount'])) : '0');
+  /// (3.59.0, Mechanical update-183) its GST ₹ as in the old log book (only for such a line)
+  late final bool hasGa = mtHasGa(l0);
+  late final ga = TextEditingController(text: hasGa ? _n(mtLineGst(l0)) : '');
   bool busy = false;
   String err = '';
 
@@ -193,7 +199,7 @@ class _MaintLineFormState extends State<MaintLineForm> {
 
   @override
   void dispose() {
-    for (final c in [work, qty, uom, rate, disc, amount, gst]) {
+    for (final c in [work, qty, uom, rate, disc, amount, gst, ga]) {
       c.dispose();
     }
     super.dispose();
@@ -216,7 +222,9 @@ class _MaintLineFormState extends State<MaintLineForm> {
   Future<void> _save() async {
     final s = SessionScope.read(context), b = widget.bill, id = '${b['id']}';
     Object v(TextEditingController c) => _of(c) ?? c.text.trim();
-    final line = {'work': work.text.replaceAll(RegExp(r'\s+'), ' ').trim(), 'type': type, 'qty': v(qty), 'uom': uom.text.trim(), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount), 'gst': v(gst)};
+    // (3.59.0) 'gstAmt' always sent – its GST ₹ of the old log book while no GST % is typed (an app that does not send it is refused)
+    final line = {'work': work.text.replaceAll(RegExp(r'\s+'), ' ').trim(), 'type': type, 'qty': v(qty), 'uom': uom.text.trim(), 'rate': v(rate), 'disc': v(disc), 'amount': free ? 0 : v(amount), 'gst': v(gst),
+      'gstAmt': hasGa && gst.text.trim().isEmpty ? v(ga) : ''};
     setState(() {
       busy = true;
       err = '';
@@ -244,7 +252,7 @@ class _MaintLineFormState extends State<MaintLineForm> {
   @override
   Widget build(BuildContext context) {
     final b = widget.bill, n = listOf(b['lines']).length;
-    final a = _of(amount), gv = free || a == null ? 0 : maintGst(a, _of(gst));
+    final a = _of(amount), asIs = hasGa && gst.text.trim().isEmpty, gv = free || a == null ? 0 : asIs ? (_of(ga) ?? 0) : maintGst(a, _of(gst));
     const nkb = TextInputType.numberWithOptions(decimal: true);
     return Scaffold(
       appBar: AppBar(actions: withAsk(), title: Text('Change this line – ${widget.no}')),
@@ -281,6 +289,10 @@ class _MaintLineFormState extends State<MaintLineForm> {
           const SizedBox(width: 8),
           Expanded(child: TextBox(key: const Key('mlf-g'), label: 'GST %', controller: gst, enabled: !busy && !free, kb: nkb, onChanged: (_) => setState(() {}))),
         ]),
+        if (hasGa) ...[      // (3.59.0) a GST % typed takes its place
+          const SizedBox(height: 10),
+          TextBox(key: const Key('mlf-ga'), label: 'GST ₹ (as in the old log book)', controller: ga, enabled: !busy && !free && gst.text.trim().isEmpty, kb: const TextInputType.numberWithOptions(decimal: true, signed: true), onChanged: (_) => setState(() {})),
+        ],
         Padding(
           padding: const EdgeInsets.only(top: 6, right: 4),
           child: Text(free ? 'Not paid – ₹ 0 in the bill.' : a == null ? '' : tr('GST ₹${money(gv)} · Amount with GST ₹${money(a + gv)}'),
