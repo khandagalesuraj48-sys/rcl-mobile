@@ -270,10 +270,9 @@ void main() {
         on(d('Kept: short answers from now on.'));
         return endOf([{'text': 'Kept: short answers from now on.'}]);
       });
-      chat
-        ..talking = true
-        ..sayPart = (w, l) => said.add(w)
-        ..sayStop = () {};
+      chat.talking = true;
+      chat.sayPart = (w, l) => said.add(w);
+      chat.sayStop = () {};
       await chat.ask('remember that I want the answers short', onlyAi: true);
       expect(srv.of('aiLookup').map((c) => c[1]), [
         {'name': 'remember', 'args': {'note': 'He wants the answers short.'}},
@@ -369,10 +368,9 @@ void main() {
         on(d('Not said. '));
         return endOf([{'text': 'Not said. At all.'}]);
       });
-      chat
-        ..talking = true
-        ..sayPart = (w, l) => said.add('$l:$w')
-        ..sayStop = () => stops++;
+      chat.talking = true;
+      chat.sayPart = (w, l) => said.add('$l:$w');
+      chat.sayStop = () => stops++;
       await chat.ask('how is the diesel going today', onlyAi: true);
       expect(said, ['en:Diesel today: 240 L.', 'en:The average is 3.08 km/L – good.'], reason: 'nothing more at the end: the page button is not said');
       expect(stops, 0);
@@ -392,16 +390,16 @@ void main() {
     test('kept only once there is an answer, as he saw it (questions, answers as plain words, "Looked up"; the screen\'s own notes left out); New chat – a new number; History opens a chat again: its turns, the note, the same number', () async {
       final srv = Srv();
       final chat = chatOf(srv, null);
-      chat.keep();
+      chat.keepChat();
       chat.msgs.add(AiMsg(AiKind.me, 'diesel of yesterday'));
-      chat.keep();
+      chat.keepChat();
       expect(srv.of('aiChatSave'), isEmpty, reason: 'no answer yet');
       chat.msgs
         ..add(AiMsg(AiKind.src, 'Looked up:', chips: const ['Diesel issues 15-10-2026']))
         ..add(AiMsg(AiKind.bot, '**180 L** yesterday. [[open:diesel|Diesel Issue]]'))
         ..add(AiMsg(AiKind.src, 'Kept in memory: x', note: true, keptId: 3))
         ..add(AiMsg(AiKind.err, 'The AI service did not answer'));
-      chat.keep();
+      chat.keepChat();
       expect(srv.of('aiChatSave').single[1], {
         'id': chat.chatId,
         'msgs': [
@@ -430,7 +428,7 @@ void main() {
         {'role': 'user', 'parts': [{'text': 'diesel of yesterday'}]},
         {'role': 'model', 'parts': [{'text': '180 L yesterday.'}]},
       ]);
-      chat.keep();
+      chat.keepChat();
       final again = srv.of('aiChatSave').last[1] as Map;
       expect(again['id'], 'Cmh9old00abc12', reason: 'it goes on as the same chat');
       expect((again['msgs'] as List).length, 3, reason: 'the note "Opened from History" is not kept');

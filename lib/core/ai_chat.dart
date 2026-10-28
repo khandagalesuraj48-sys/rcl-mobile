@@ -168,7 +168,7 @@ class AiChat extends ChangeNotifier {
     } finally {
       busy = false;
       notifyListeners();
-      keep();
+      keepChat();
     }
   }
 
@@ -457,7 +457,7 @@ class AiChat extends ChangeNotifier {
       final b = msgs.lastWhere((m) => m.kind == AiKind.bot || m.kind == AiKind.err || m.kind == AiKind.card || m.kind == AiKind.warn, orElse: () => AiMsg(AiKind.bot, ''));
       lastAnswer = b.say.isNotEmpty ? b.say : plain(b.text);
       notifyListeners();
-      keep();
+      keepChat();
     }
   }
 
@@ -536,7 +536,7 @@ class AiChat extends ChangeNotifier {
   }
 
   /// The chat kept after every answer – as he saw it (his questions, the answers, what was looked up; only his, only this site).
-  void keep() {
+  void keepChat() {
     final out = <Map<String, String>>[];
     var me = false;
     for (final m in msgs) {
