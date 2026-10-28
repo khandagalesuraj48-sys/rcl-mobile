@@ -18,8 +18,8 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 **Version 3.59.0 (28-10-2026 – "auto gst ka add krt aahet kuthe 6 kuth 2.5 tr kuthe 14 as nko … old import tyat tr ajibat karu nko as it
 is rahude … kadhi kadhi ai service slow asa pn error ywto … konte vichle / asset ch maintanace log book add aahe kadhi prynt updeted aahe
 … show dable ki distey but prt hide pn krta yaw … vendor name tr tith company name … owner name … vendor che attachment … adhar pan gst
-… udyam bank details … print or download … asset master madhe papers fkt own"; with Mechanical update-183 and update-184; on top of
-3.58.0; not released yet):** **The old log book as it is:** its import keeps each line's **GST ₹ as in the file** (`gstAmt` – no GST %
+… udyam bank details … print or download … asset master madhe papers fkt own"; with Mechanical update-183, update-184 and update-185, the
+Store's store-ask and Engineering's eng-ask; on top of 3.58.0; not released yet):** **The old log book as it is:** its import keeps each line's **GST ₹ as in the file** (`gstAmt` – no GST %
 made from it, no "odd GST %" to look at; proven against the web's own code again: `maint_logbook.json`, `maint_heads.json`); a bill of
 the old log book keeps it in the bill's form ("GST ₹ as in the old log book – a GST % typed takes its place") and in a line's Edit ("GST
 ₹ (as in the old log book)"); the log book shows **"GST Amount"** (no CGST / SGST % columns for it). **The AI slow / busy:** a PDF page
@@ -32,7 +32,11 @@ on the log book shown. **Vendor Master** (Mechanical update-184, step 1zj): **Co
 saved with the vendor; the list's **Documents (n)** – each opened, printed (a photo: the phone's printing; a PDF: the phone's PDF reader)
 or downloaded (saved / shared) – `getVendorDocs`; a site without step 1zj: the form says what to run, the vendor saved as before. **Asset
 Master:** the papers only for **Own** machinery. **Vehicle Compliance:** only Own machinery (no ownership choice); the import says which
-machinery were left out (not Own). The web's help and words again (`web_help.json`, `web_mr` / `web_hi`). Not verified: a real phone.
+machinery were left out (not Own). **Ask** (Mechanical update-185) now also answers about maintenance, bills, payments, vendors, BOQ,
+papers, breakdowns, fuel cards, inward, transfer and machinery cost (the server runs those look-ups – `aiLookup`, with his own access)
+– and the **Store** and **Engineering** of the site (store_… asked of the Store – api/work `aiLook`; eng_… of Engineering – api/eng
+`aiLook`, its own sign-in by a Portal ticket; no such module for him at the site: said so). The web's help and words again
+(`web_help.json`, `web_mr` / `web_hi`). Not verified: a real phone.
 
 **Version 3.58.0 (28-10-2026 – "admin or super admin gadich log book maintanace ch delet pn karu shakel as de … new requirement
 banwatana brand ha option asawa material specification asaw … new grn kartana new grn number auto yeil ok ani manually pn edit krta

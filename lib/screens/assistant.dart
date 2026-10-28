@@ -8,6 +8,7 @@ import 'package:flutter/material.dart' as mt show Text;
 import 'package:flutter/services.dart';
 
 import '../core/ai_chat.dart';
+import '../core/api.dart' show ApiError;
 import '../core/assistant.dart';
 import '../core/kinds.dart';
 import '../core/session.dart';
@@ -68,6 +69,7 @@ AiChat chatFor(Session s) {
       canEdit: s.canEdit,
       onSite: (m) => Machine(m).onSite(s.today),
       now: () => s.clock(),
+      modLook: (module, name, args) => moduleLook(s, module, name, args),
     ));
   }
   final c = _chat!;
@@ -83,6 +85,15 @@ AiChat chatFor(Session s) {
     ..tabs = assistantTabs(s);
   c.aiOn = s.aiOn;
   return c;
+}
+
+/// (3.59.0, Mechanical update-185) a look-up of the Store / Engineering of the site he is on, asked of that module with his own sign-in
+/// there (the Store: api/work; Engineering: api/eng – action aiLook) – the web's aiModLook; no such module for him here: said so
+Future<Map<String, dynamic>> moduleLook(Session s, String module, String name, Map args) async {
+  final site = s.site, m = site?.module(module), label = module == 'store' ? 'the Store' : 'Engineering';
+  if (site == null || m == null || m.url.isEmpty) throw ApiError('You have no access to $label at this site – the Super Admin gives it in the Portal.');
+  final body = <String, dynamic>{'action': 'aiLook', 'name': name, 'args': args};
+  return module == 'store' ? s.api.store(site.code, m.url, body, path: 'work') : s.api.eng(site.code, m.url, body);
 }
 
 /// (tests) a new conversation next time.

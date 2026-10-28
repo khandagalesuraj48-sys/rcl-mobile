@@ -9,6 +9,7 @@
  *   – the look-ups the AI service asks for (AI_RUN) run here with his own sign-in; the snapshot of the day; the daily summary
  *     (getBrief) and what is said aloud (aiSpeakable).
  * Proven against the web's own code: test/assistant_test.dart (fixtures/ai/web_ai.json – the web's functions run in node). */
+import 'api.dart' show ApiError;
 import 'format.dart' show asNum, showDate;
 import 'rdoc.dart' show fmt, money;
 import 'sheet_read.dart' show jsS, jsTrue;
@@ -183,9 +184,13 @@ class Assistant {
     this.helpLang = 'mr',
     this.onSite,
     this.tabs = const [],
+    this.modLook,
     DateTime Function()? now,
   }) : now = now ?? DateTime.now;
   final AiCall call;
+  /// (3.59.0, Mechanical update-185) a look-up of the Store / Engineering of this site, asked of that module itself with his own
+  /// sign-in there (module 'store' / 'engineering', the look-up's name, its args) – null: none at hand
+  Future<Map<String, dynamic>> Function(String module, String name, Map args)? modLook;
   String today, helpLang;
   List<Map<String, dynamic>> master;
   List<String> locations;
@@ -399,8 +404,19 @@ class Assistant {
         'app_guide' => runGuide(a),
         // (3.59.0, Mechanical update-185) a look-up the app does not run itself (maintenance, bills, payments, vendors, BOQ, papers,
         // breakdowns, fuel cards, inward, transfer, machinery cost): the server runs it – with his own access to that page (aiLookup)
+        // (3.59.0) the Store's / Engineering's own look-ups: asked of that module (its aiLook) – the web's aiModLook
+        _ when name.startsWith('store_') => runModule('store', name, a),
+        _ when name.startsWith('eng_') => runModule('engineering', name, a),
         _ => runServer(name, a),
       };
+
+  /// (3.59.0) a look-up of the Store / Engineering of this site (its answer without its 'ok'); none given to him here: said so
+  Future<Map<String, Object?>> runModule(String module, String name, Map a) async {
+    final f = modLook;
+    if (f == null) throw ApiError('You have no access to ${module == 'store' ? 'the Store' : 'Engineering'} at this site – the Super Admin gives it in the Portal.');
+    final r = await f(module, name, a);
+    return <String, Object?>{...r}..remove('ok');
+  }
 
   /// (3.59.0) the server's look-up (the web's rawCall('aiLookup', {name, args})): its answer as it gives it; a refusal is thrown (the
   /// chat sends it back as {error}, as the other look-ups)
@@ -418,6 +434,11 @@ class Assistant {
     'payments': 'Machinery Payments', 'vendor_ledger': 'Vendor Ledger', 'vendor_outstanding': 'Vendor Outstanding', 'vendors': 'Vendor Master', 'vendor_boq': 'Vendor BOQ',
     'compliance': 'Vehicle Compliance', 'breakdowns': 'Breakdown', 'fuel_cards': 'Fuel Cards', 'diesel_inward': 'Diesel Inward', 'diesel_transfers': 'Diesel Transfer',
     'machinery_cost': 'Machinery Cost Sheet',
+    // (3.59.0) the Store's and Engineering's own look-ups
+    'store_stock': 'Store – stock', 'store_statement': 'Store – stock statement', 'store_item_ledger': 'Store – item ledger', 'store_inward': 'Store – Inward (GRN)',
+    'store_outward': 'Store – Issue (Outward)', 'store_consumption': 'Store – consumption', 'store_returnable': 'Store – returnable items', 'store_requirements': 'Store – requirements',
+    'store_purchase_orders': 'Store – purchase orders', 'eng_my_work': 'Engineering – my work', 'eng_dashboard': 'Engineering – dashboard', 'eng_report': 'Engineering – report',
+    'eng_performance': 'Engineering – performance', 'eng_progress': 'Engineering – progress',
   };
 
   /// "Diesel issues 01-10-2026 to 16-10-2026 · 8511" – what was looked up (shown under the answer).

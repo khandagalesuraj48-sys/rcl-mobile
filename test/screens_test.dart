@@ -5787,4 +5787,62 @@ void main() {
     expect(find.text('Vendor Ledger · Nobody Traders'), findsOneWidget);
     expect(find.textContaining('One maintenance bill this month: ₹2,360.'), findsOneWidget);
   });
+
+  testWidgets('(3.59.0 – Mechanical update-185) Ask: a look-up of the Store (store_…) is asked of the Store itself (api/work aiLook) and one of Engineering (eng_…) of Engineering (api/eng aiLook – its sign-in by a Portal ticket, again once when it ended); no Engineering for him at this site: said so', (t) async {
+    phone(t);
+    forgetChat();
+    final srv = FakeServer()
+      ..superAdmin = true
+      ..aiOn = true
+      ..engSite = true
+      ..engEnded = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    await tapK(t, 'home-ask');
+    await net(t);
+    srv.aiScript.addAll([
+      {'parts': [{'functionCall': {'name': 'store_stock', 'args': {'item': 'oil'}}}, {'functionCall': {'name': 'eng_dashboard', 'args': {'date': '2026-10-13'}}}], 'model': 'claude-sonnet-5-5'},
+      {'parts': [{'text': 'Engine oil: **120 Ltr** in the Store; PQC 83 % done.'}], 'model': 'claude-sonnet-5-5'},
+    ]);
+    await t.enterText(find.byKey(const Key('ai-in')), 'engine oil in the store and the PQC yesterday');
+    await tapK(t, 'ai-send');
+    await net(t);
+    await net(t);
+    expect(srv.storeWork.where((b) => b['action'] == 'aiLook').toList(), [{'action': 'aiLook', 'name': 'store_stock', 'args': {'item': 'oil'}}]);
+    expect([for (final e in srv.engSent) e['fn'] ?? e['action']], ['sso', 'aiLook', 'sso', 'aiLook'], reason: 'its sign-in ended: a new one once, then asked again');
+    expect(srv.engSent.last['name'], 'eng_dashboard');
+    expect(srv.calls.where((c) => c == 'portal:go:engineering:S1').length, 2, reason: 'a Portal ticket for Engineering each time');
+    final back = (srv.aiAsked.last['contents'] as List).last as Map;
+    final rs = [for (final p in back['parts'] as List) (p as Map)['functionResponse'] as Map];
+    expect([rs[0]['name'], rs[0]['response'], rs[1]['name'], (rs[1]['response'] as Map)['works']],
+        ['store_stock', {'asOf': '14-10-2026 10:30', 'items': [{'code': 'ITM-0001', 'name': 'Engine Oil 15W40', 'unit': 'Ltr', 'stock': 120}], 'page': 'store'}, 'eng_dashboard', [{'name': 'PQC', 'unit': 'm', 'planned': 120, 'done': 100, 'pct': 83}]]);
+    expect((rs[1]['response'] as Map).containsKey('ok'), false);
+    expect(find.text('Store – stock'), findsOneWidget);
+    expect(find.text('Engineering – dashboard 13-10-2026'), findsOneWidget);
+    // no Engineering for him at this site: said so to the AI (nothing asked of Engineering)
+    srv
+      ..engSite = false
+      ..aiScript.addAll([
+        {'parts': [{'functionCall': {'name': 'eng_progress', 'args': {}}}], 'model': 'claude-sonnet-5-5'},
+        {'parts': [{'text': 'Engineering is not given to you at this site.'}], 'model': 'claude-sonnet-5-5'},
+      ]);
+    forgetChat();
+    final s2 = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s2));
+    await net(t);
+    await net(t);
+    await tapK(t, 'home-ask');
+    await net(t);
+    final n = srv.engSent.length;
+    await t.enterText(find.byKey(const Key('ai-in')), 'progress of the road');
+    await tapK(t, 'ai-send');
+    await net(t);
+    await net(t);
+    final b2 = (srv.aiAsked.last['contents'] as List).last as Map;
+    expect(((b2['parts'] as List).single as Map)['functionResponse'], {'name': 'eng_progress', 'response': {'error': 'You have no access to Engineering at this site – the Super Admin gives it in the Portal.'}});
+    expect(srv.engSent.length, n);
+  });
 }

@@ -153,6 +153,10 @@ class FakeServer {
   final aiScript = <Map<String, dynamic>>[];
   /// (3.59.0, Mechanical update-185) the look-ups the server runs (aiLookup): what was asked, and what each answers
   final aiLookups = <Map<String, dynamic>>[];
+  /// (3.59.0) Engineering at S1 for him; what reached it; its sign-ins; its sign-in ended once
+  bool engSite = false, engEnded = false;
+  final engSent = <Map<String, dynamic>>[];
+  int engSessions = 0;
   Map<String, Object> aiLookupAnswers = {
     'maintenance_bills': {'from': '2026-10-01', 'to': '2026-10-14', 'bills': [{'id': 'MT-000001', 'date': '2026-10-05', 'no': 'MH-12-HO-1163', 'garage': 'Toyota Service', 'total': 2360}], 'count': 1, 'totalRupees': 2360, 'page': 'mnt'},
   };
@@ -735,6 +739,7 @@ class FakeServer {
         return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin}, 'items': [
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
+          if (engSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'engineering', 'moduleName': 'Engineering', 'url': 'https://erp.test/engineering'},      // (3.59.0)
           {'site': 'T2', 'siteName': '18B Kolhapur', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'X9', 'siteName': 'Bad', 'company': '', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'javascript:alert(1)'},
           {'site': 'Z5', 'siteName': 'Store only', 'company': '', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
@@ -858,7 +863,31 @@ class FakeServer {
       final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
       storeWork.add(b);
       if (!'${r.headers['Cookie']}'.startsWith('rcl_store=S1.store')) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      // (3.59.0, the Store's store-ask) the assistant's look-up of the Store (lib/ailook.js): an unknown item refused in its words
+      if (b['action'] == 'aiLook') {
+        if ('${(b['args'] as Map?)?['item'] ?? ''}' == 'Unobtainium') return _j({'error': '"Unobtainium" is not an item of this site\'s Store – say which one.'}, 400);
+        return _j({'ok': true, 'asOf': '14-10-2026 10:30', 'items': [{'code': 'ITM-0001', 'name': 'Engine Oil 15W40', 'unit': 'Ltr', 'stock': 120}], 'page': 'store'});
+      }
       return _work(b);
+    }
+    // (3.59.0, Mechanical update-185 – rcl-engineering eng-ask) Engineering of the site: its sign-in (a ticket of the Portal) and its
+    // look-ups (api/eng aiLook); its sign-in ended once when [engEnded]
+    if (path.endsWith('/engineering/api/sso')) {
+      final b = jsonDecode(r.body) as Map;
+      engSent.add({'fn': 'sso', 'ticket': b['ticket']});
+      if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the Engineering page.'}, 403);
+      engSessions++;
+      return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': 'Admin'}, 'site': 'S1', 'siteName': 'VTR Site – NH 848'}, 200, {'set-cookie': 'rcl_eng=S1.eng$engSessions; Path=/; HttpOnly; SameSite=Lax'});
+    }
+    if (path.endsWith('/engineering/api/eng')) {
+      final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      engSent.add({'cookie': r.headers['Cookie'], ...b});
+      if (!'${r.headers['Cookie']}'.startsWith('rcl_eng=S1.eng') || engEnded) {
+        engEnded = false;
+        return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      }
+      if (b['action'] != 'aiLook') return _j({'error': 'Unknown action.', 'code': 'action'}, 400);
+      return _j({'ok': true, 'date': '2026-10-13', 'works': [{'name': 'PQC', 'unit': 'm', 'planned': 120, 'done': 100, 'pct': 83}], 'page': 'eng-dash'});
     }
     if (path.endsWith('/api/rpc')) {
       final b = jsonDecode(r.body) as Map;
