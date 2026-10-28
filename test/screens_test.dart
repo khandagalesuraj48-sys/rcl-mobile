@@ -2260,10 +2260,17 @@ void main() {
       await settle(t, 600);
     }
 
-    Future<void> down(String k) async {
-      await t.scrollUntilVisible(find.byKey(Key(k)), 300, scrollable: regList);
+    Future<void> downTo(Finder f, String what) async {
+      for (var i = 0; i < 80 && f.evaluate().isEmpty; i++) {
+        await t.drag(regList, const Offset(0, -300));
+        await t.pump(const Duration(milliseconds: 50));
+      }
+      expect(f, findsOneWidget, reason: 'scrolled down to $what');
+      await t.ensureVisible(f);
       await settle(t, 300);
     }
+
+    Future<void> down(String k) => downTo(find.byKey(Key(k)), '"$k"');
 
     await tapK(t, 'sw-grn');
     await net(t);
@@ -2306,8 +2313,9 @@ void main() {
     await top();
     expect(find.textContaining('${(p0['dups'] as List).length - 1} kept (imported) · 1 deleted'), findsOneWidget);
     // the AI (its part opened): the names written differently, none ticked until he ticks; "✓ all" – the items written in two ways one item
-    await down('rg-s-ai');
-    await tapK(t, 'rg-s-ai');
+    final aiPart = find.byKey(const PageStorageKey<String>('rg-s-ai'));
+    await downTo(aiPart, 'the AI\'s part');
+    await t.tap(aiPart);
     await settle(t, 600);
     await down('rg-ai');
     await tapK(t, 'rg-ai');
