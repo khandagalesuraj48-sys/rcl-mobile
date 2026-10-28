@@ -93,6 +93,8 @@ class MaintScreen extends StatefulWidget {
 
 class _MaintScreenState extends State<MaintScreen> {
   bool loading = true, missing = false;
+  /// (3.53.0, Mechanical update-175) the bills of every date ("Start to end")
+  bool all = false;
   String err = '', from = '', to = '', no = '';
   List<Map<String, dynamic>> rows = [];
   List<String> works = [], garages = [];
@@ -116,7 +118,7 @@ class _MaintScreenState extends State<MaintScreen> {
       err = '';
     });
     try {
-      final r = (await s.api.call('getMaint', [{'from': from, 'to': to, 'no': no}]) as Map).cast<String, dynamic>();
+      final r = (await s.api.call('getMaint', [{'from': all ? '' : from, 'to': all ? '' : to, 'no': no}]) as Map).cast<String, dynamic>();
       if (my != _seq || !mounted) return;
       setState(() {
         rows = [for (final x in (r['rows'] as List? ?? const []).whereType<Map>()) x.cast<String, dynamic>()];
@@ -184,6 +186,22 @@ class _MaintScreenState extends State<MaintScreen> {
     if (mounted) _load();
   }
 
+  /// (3.53.0, Mechanical update-175, "fetch outward … dable ki systeam outward fetch krel"; his answer: "Store module चे Issue झाल्यावर") the
+  /// log book read again with what the Store issued to the machinery – the Store's Issue is not built yet: said so; then its log book
+  Future<void> _fetchOut() async {
+    if (no.isEmpty) await _pickCar();
+    if (no.isEmpty || !mounted) return;
+    final s = SessionScope.read(context);
+    try {
+      final d = (await s.api.call('maintLog', [{'no': no, 'all': true}]) as Map).cast<String, dynamic>(), st = (d['store'] as Map?) ?? const {};
+      if (!mounted) return;
+      toast(context, st['on'] == true ? '${st['lines'] ?? 0} line(s) of the Store\'s outward in this log book.' : "The Store's Issue (material given to a machinery) is not built yet – there is no outward to fetch. When it is, what the Store gives to this machinery comes into its log book by itself.");
+      await openReport(context, kMaintLog, no: no, run: true, all: true);
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    }
+  }
+
   Future<void> _importOld() async {
     final s = SessionScope.read(context);
     final f = await pickSheetFile();
@@ -240,16 +258,19 @@ class _MaintScreenState extends State<MaintScreen> {
               const Icon(Icons.chevron_right_rounded, color: C.blue),
             ]),
           ),
-          if (s.admin && !missing) ...[      // (3.53.0) the old log book's import – the Admin
+          Align(alignment: Alignment.centerLeft, child: TextButton.icon(key: const Key('mt-out'), onPressed: _fetchOut, icon: const Icon(Icons.move_to_inbox_rounded, size: 18), label: Text('Fetch outward (Store)'))),
+          if (can && !missing) ...[      // (3.53.0) the old log book's import; ("user la pn disu de") everyone with Maintenance Edit
             const SizedBox(height: 8),
             OutlinedButton.icon(key: const Key('mt-import'), onPressed: _importChoice, icon: const Icon(Icons.upload_file_rounded), label: Text('Import the old log book (Excel or PDF)')),
           ],
-          FormHead('Maintenance bills', sub: '${showDate(from)} – ${showDate(to)} · $count · ${rupees(total)}'),
+          FormHead('Maintenance bills', sub: '${all ? tr('Start to end') : '${showDate(from)} – ${showDate(to)}'} · $count · ${rupees(total)}'),
           Row(children: [
-            Expanded(child: DateField(key: const Key('mt-from'), label: 'From', value: from, clear: false, onChanged: (v) { setState(() => from = v); _load(); })),
+            Expanded(child: DateField(key: const Key('mt-from'), label: 'From', value: from, clear: false, enabled: !all, onChanged: (v) { setState(() => from = v); _load(); })),
             const SizedBox(width: 8),
-            Expanded(child: DateField(key: const Key('mt-to'), label: 'To', value: to, clear: false, onChanged: (v) { setState(() => to = v); _load(); })),
+            Expanded(child: DateField(key: const Key('mt-to'), label: 'To', value: to, clear: false, enabled: !all, onChanged: (v) { setState(() => to = v); _load(); })),
           ]),
+          // (3.53.0, Mechanical update-175) every bill – the whole log book can be changed and deleted
+          Align(alignment: Alignment.centerLeft, child: FilterChip(key: const Key('mt-all'), label: Text('Start to end'), selected: all, onSelected: (v) { setState(() => all = v); _load(); })),
           const SizedBox(height: 8),
           Press(
             key: const Key('mt-car'),

@@ -27,8 +27,8 @@ import '../core/sheet_read.dart' show jsS, readSheets;
 /// a car's Maintenance Log Book (its car has its own fuel)
 bool oneFuelReport(ReportDef def) => def.key != 'ldebit' && def.key != 'mlog';
 
-Future<void> openReport(BuildContext context, ReportDef def, {String no = '', String owner = '', bool run = false}) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportScreen(def: def, no: no, owner: owner, run: run)));
+Future<void> openReport(BuildContext context, ReportDef def, {String no = '', String owner = '', bool run = false, bool all = false}) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportScreen(def: def, no: no, owner: owner, run: run, all: all)));
 
 /// The report of the web's page key ('rdaily', 'rp-ledger' …), null when it has no app screen yet.
 ReportDef? reportOfPage(String page) {
@@ -48,9 +48,13 @@ Map<String, dynamic> reportFilters(ReportDef def, ReportPick p) {
   final f = def.filters;
   final x = <String, dynamic>{};
   if (f.contains('range')) {
-    if (p.from.isEmpty || p.to.isEmpty) throw ArgumentError('Select From and To dates.');
-    x['from'] = p.from;
-    x['to'] = p.to;
+    if (f.contains('all') && p.all) {
+      x['all'] = true;      // (3.53.0, Mechanical update-175) "Start to end" – the whole log book, no dates
+    } else {
+      if (p.from.isEmpty || p.to.isEmpty) throw ArgumentError('Select From and To dates.');
+      x['from'] = p.from;
+      x['to'] = p.to;
+    }
   }
   if (f.contains('vendor')) x['owner'] = p.owner.trim();
   if (f.contains('rate')) {
@@ -93,6 +97,8 @@ class ReportPick {
   /// (3.44.0, Mechanical update-163) a site with more than one fuel: the report of ONE fuel ('' = the site's one fuel)
   String fuel = '';
   bool zero = false, pickSome = false;
+  /// (3.53.0, Mechanical update-175) "Start to end": the whole report of the machinery, no dates (filter 'all')
+  bool all = false;
   final owns = {...kOwns};
   final picked = <String>{};
 
@@ -109,8 +115,10 @@ class ReportPick {
 }
 
 class ReportScreen extends StatefulWidget {
-  const ReportScreen({super.key, required this.def, this.no = '', this.owner = '', this.run = false});
+  const ReportScreen({super.key, required this.def, this.no = '', this.owner = '', this.run = false, this.all = false});
   final ReportDef def;
+  /// (3.53.0) opened "Start to end"
+  final bool all;
 
   /// (3.14.0) opened for one machinery / owner and made at once (a scanned label's "Its diesel ledger", the search) – the web's gsLedger
   final String no, owner;
@@ -142,6 +150,7 @@ class _ReportScreenState extends State<ReportScreen> {
         p.start(s.today, _places(s), def);
         if (widget.no.isNotEmpty) p.no = widget.no;
         if (widget.owner.isNotEmpty) owner.text = widget.owner;
+        if (widget.all && def.filters.contains('all')) p.all = true;
       });
       if (widget.run) _go();
       if (def.filters.contains('party')) _parties(s);
@@ -260,6 +269,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final s = SessionScope.read(context);
     final t = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     setState(() {
+      p.all = false;
       if (w == 'yday') {
         final y = t.subtract(const Duration(days: 1));
         p.from = dateKey(y);
@@ -357,10 +367,15 @@ class _ReportScreenState extends State<ReportScreen> {
       gap();
     }
     if (f.contains('range')) {
-      kids.add(Row(children: [Expanded(child: _box('From', showDate(p.from), () => _date(true))), const SizedBox(width: 8), Expanded(child: _box('To', showDate(p.to), () => _date(false)))]));
+      final allOn = f.contains('all') && p.all;
+      kids.add(Opacity(
+        opacity: allOn ? 0.45 : 1,
+        child: Row(children: [Expanded(child: _box('From', showDate(p.from), () { if (!allOn) _date(true); })), const SizedBox(width: 8), Expanded(child: _box('To', showDate(p.to), () { if (!allOn) _date(false); }))]),
+      ));
       kids.add(Padding(
         padding: const EdgeInsets.only(top: 6),
         child: Wrap(spacing: 6, children: [
+          if (f.contains('all')) FilterChip(key: const Key('rep-all'), label: Text('Start to end'), selected: allOn, onSelected: (v) => setState(() => p.all = v)),
           ActionChip(label: Text('Yesterday'), onPressed: () => _range('yday')),
           ActionChip(label: Text('This month'), onPressed: () => _range('this')),
           ActionChip(label: Text('Last month'), onPressed: () => _range('last')),
@@ -492,7 +507,7 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   String _summary(Session s) => [
-        if (p.from.isNotEmpty && def.filters.contains('range')) '${showDate(p.from)} – ${showDate(p.to)}',
+        if (def.filters.contains('all') && p.all) tr('Start to end') else if (p.from.isNotEmpty && def.filters.contains('range')) '${showDate(p.from)} – ${showDate(p.to)}',
         if (def.filters.contains('months')) '${p.monthA} vs ${p.monthB}',
         if (p.no.isNotEmpty) p.no,
         if (p.location.isNotEmpty) p.location,

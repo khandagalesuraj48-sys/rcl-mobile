@@ -31,7 +31,7 @@ import 'package:rcl_mobile/screens/attach_box.dart' show pickAttFiles, CaptureSc
 import 'package:image/image.dart' as img;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
-import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField;
+import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
@@ -3017,7 +3017,7 @@ void main() {
     expect(find.byKey(const Key('mt-r-MT-000002')), findsOneWidget);
     expect(find.byKey(const Key('mt-r-MT-000001')), findsOneWidget);
     expect(find.textContaining('· 2 · ₹ 8,660'), findsOneWidget);
-    expect(find.byKey(const Key('mt-import')), findsNothing, reason: '(3.53.0) the old log book is imported by the Admin only');
+    expect(find.byKey(const Key('mt-import')), findsOneWidget, reason: '(3.53.0, "user la pn disu de") everyone with Maintenance Edit imports the old log book');
     // a new bill: the car, a PDF, "Read the bill (AI)"
     await t.tap(find.byKey(const Key('mt-add')));
     await net(t);
@@ -3074,6 +3074,7 @@ void main() {
     await net(t);
     expect((srv.maintCalls.lastWhere((x) => x['fn'] == 'saveMaint')['x'] as Map)['force'], true);
     // a bill's files; Delete
+    await reach(t, 'mt-r-MT-000001', 'mt-list');
     await tapK(t, 'mt-r-MT-000001');
     await settle(t, 800);
     expect(find.text('Oil filter'), findsOneWidget);
@@ -3083,6 +3084,7 @@ void main() {
     expect(find.textContaining('1 / 1 · bill.pdf'), findsOneWidget, reason: 'the bill\'s file in the viewer');
     await t.pageBack();
     await net(t);
+    await reach(t, 'mt-r-MT-000002', 'mt-list');
     await tapK(t, 'mt-r-MT-000002');
     await settle(t, 800);
     await tapK(t, 'mt-del');
@@ -3097,6 +3099,7 @@ void main() {
     await t.tap(find.text('MH-12-HO-1163').last);
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'getMaint')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-1163'});
+    await reach(t, 'mt-log', 'mt-list');      // (3.53.0: the page is longer – the import, Fetch outward, Start to end)
     await tapK(t, 'mt-log');
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-1163'}, reason: 'no fuel sent');
@@ -3173,7 +3176,8 @@ void main() {
     expect(find.text('All Machinery Maintenance Logbook.xlsx – 3 sheet(s)'), findsOneWidget);
     expect([for (var i = 0; i < 3; i++) await () async { await mliSee(t, 'mli-no-$i'); return (t.widget(find.byKey(Key('mli-no-$i'))) as PickField).value; }()], ['RL-173', 'MH-12-XW-0169', ''], reason: 'ROLLER NO-03 = Roller No.03; MH12XW0169; the JCB is rented – not imported');
     await mliSee(t, 'mli-no-0');
-    expect((t.widget(find.byKey(const Key('mli-no-0'))) as PickField).items, unorderedEquals(['Sany 210 (No.1)', 'RL-173', 'MH-12-XW-0169']), reason: 'only the Own machinery on the site today (not OLD-9, Inactive)');
+    expect((t.widget(find.byKey(const Key('mli-no-0'))) as PickField).items, unorderedEquals(['Sany 210 (No.1)', 'RL-173', 'MH-12-XW-0169', 'OLD-9']), reason: '(update-175) every Own machinery – on the site now or not (OLD-9, Inactive); not the rented ones');
+    expect((t.widget(find.byKey(const Key('mli-no-0'))) as PickField).labels['OLD-9'], 'OLD-9 (not on the site now)');
     expect(find.text('Name in the file: ROLLER NO-03'), findsOneWidget);
     // the names (AI): every name of the file with its rows asked once; its list – only names of the file – nothing ticked
     final nq = srv.maintCalls.where((x) => x['fn'] == 'maintImportNames').toList();
@@ -3235,6 +3239,7 @@ void main() {
     expect(srv.maintCalls.last, {'fn': 'importMaint', 'no': 'MH-12-XW-0169', 'bills': 1, 'garages': ['Navnit Motors']});
     expect(find.text('1 bill(s) imported.'), findsOneWidget);
     expect(await st(1), '✓ 1 bill(s) imported (MT-000003)');
+    expect(find.text('Names written in more than one way (AI)'), findsNothing, reason: '(update-175) nothing left to import: the names\' list is gone');
     final b = srv.maint.firstWhere((r) => r['id'] == 'MT-000003');
     expect([b['no'], b['date'], b['garage'], b['km'], (b['lines'] as List).length, b['total']], ['MH-12-XW-0169', '2026-02-10', 'Navnit Motors', 13153, 3, 2312.8]);
     expect([on('mli-check'), on('mli-go')], [false, false], reason: 'imported – nothing left to do');
@@ -3306,6 +3311,87 @@ void main() {
     expect([for (final x in tabs) x.name], isNot(contains('JCB-173')), reason: 'a rented machinery: no sheet');
     final rl = tabs.firstWhere((x) => x.name == 'RL-173').rows;
     expect([rl[1][0], rl[2][0], rl[3].join(' · ')], ['Maintenance Log Book – Roller No.03', 'RL-173', 'Sr No · Date · Party Name · Current Reading · Particulars · Qty · Uom · Basic Rate · Amount · GST Amount · Amount With GST · Total']);
+  });
+
+  testWidgets('(3.53.0 – "he admin la fkt nahi user la pn disu de") Maintenance View only: the import is not shown', (t) async {
+    phone(t);
+    final v = FakeServer()..perms.addAll({'Maintenance': 'View'});
+    final sv = await ready(t, v);
+    expect([sv.admin, sv.canEdit('Maintenance')], [false, false]);
+    await t.pumpWidget(RclApp(session: sv));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    expect(find.byKey(const Key('mt-import')), findsNothing, reason: 'View only');
+  });
+
+  testWidgets('(3.53.0 – "he admin la fkt nahi user la pn disu de") the import for a user with Maintenance Edit (not the Admin); his Maintenance under verification: the import is sent, said as sent', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..aiOn = true
+      ..perms.addAll({'Maintenance': 'Edit'})
+      ..flowFor = 'importMaint';
+    srv.master.add({'id': 'MH-12-XW-0169', 'no': 'MH-12-XW-0169', 'name': 'Hycross', 'type': 'Car', 'owner': 'RCL', 'ownership': 'Own', 'status': 'Active', 'modes': ['KM'], 'worksOn': ['KM'], 'unit': 'KM'});
+    pickThis('All Machinery Maintenance Logbook.xlsx', File('test/fixtures/sheets/maint_logbook.xlsx').readAsBytesSync());
+    final s = await ready(t, srv);
+    expect([s.admin, s.canEdit('Maintenance')], [false, true]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    await mliChoose(t, 'excel');
+    expect(find.text('All Machinery Maintenance Logbook.xlsx – 3 sheet(s)'), findsOneWidget);
+    await mliSee(t, 'mli-no-1');
+    expect((t.widget(find.byKey(const Key('mli-no-1'))) as PickField).value, 'MH-12-XW-0169');
+    for (final i in [0, 2]) {      // (an Own machinery of this test site matches no other sheet – only the car is imported)
+      await mliSee(t, 'mli-no-$i');
+      if ((t.widget(find.byKey(Key('mli-no-$i'))) as PickField).value.isNotEmpty) {
+        await t.tap(find.byKey(Key('mli-no-$i')));
+        await settle(t, 600);
+        await t.tap(find.text('– not imported –').last);
+        await settle(t, 600);
+      }
+    }
+    await tapK(t, 'mli-check');
+    await net(t);
+    await tapK(t, 'mli-go');
+    await settle(t, 600);
+    await tapK(t, 'ask-yes');
+    await net(t);
+    await mliSee(t, 'mli-st-1');
+    expect('${(t.widget(find.byKey(const Key('mli-st-1'))) as dynamic).data}', 'Sent for verification to Checker One – VF-00007. It is saved when it is approved; nothing is saved until then.');
+    expect(srv.maint.any((r) => r['no'] == 'MH-12-XW-0169'), false, reason: 'nothing saved until it is approved');
+  });
+
+  testWidgets('(3.53.0 – Mechanical update-175) the bills "Start to end" (every date); the Maintenance Log Book "Start to end" (no dates sent); "Fetch outward (Store)" – the Store\'s Issue is not built yet: said so, then the log book start to end', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms.addAll({'Maintenance': 'Edit'});
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Maintenance');
+    await net(t);
+    await tapK(t, 'mt-all');
+    await net(t);
+    expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'getMaint')['x'], {'from': '', 'to': '', 'no': ''}, reason: 'every date');
+    expect(find.textContaining('Start to end · 2 · '), findsOneWidget);
+    expect((t.widget(find.byKey(const Key('mt-from'))) as DateField).enabled, false);
+    // Fetch outward (Store): the machinery picked, the log book asked start to end; the Store's Issue not built: said so
+    await tapK(t, 'mt-out');
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)').last);
+    await net(t);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'maintLog').first['x'], {'no': 'Sany 210 (No.1)', 'all': true});
+    expect(find.textContaining("The Store's Issue (material given to a machinery) is not built yet"), findsOneWidget);
+    await net(t);
+    expect(srv.maintCalls.where((x) => x['fn'] == 'maintLog').last['x'], {'no': 'Sany 210 (No.1)', 'all': true}, reason: 'the log book opened start to end');
+    expect(find.textContaining('Start to end'), findsWidgets, reason: 'the report says it is start to end');
   });
 
   testWidgets('(3.53.0) Picture: the old log book\'s import after Check – the names (AI), a sheet with a mistake, one to import, one rented (not imported)', (t) async {
@@ -3459,6 +3545,7 @@ void main() {
     await settle(t, 800);
     await t.tap(find.text('MH-12-HO-2163').last);
     await net(t);
+    await reach(t, 'mt-log', 'mt-list');      // (3.53.0: the page is longer – the import, Fetch outward, Start to end)
     await tapK(t, 'mt-log');
     await net(t);
     expect(srv.maintCalls.lastWhere((x) => x['fn'] == 'maintLog')['x'], {'from': '2026-10-01', 'to': '2026-10-14', 'no': 'MH-12-HO-2163'});
@@ -3558,6 +3645,7 @@ void main() {
     await settle(t, 800);
     await t.tap(find.text('MH-12-HO-1163').last);
     await net(t);
+    await reach(t, 'mt-log', 'mt-list');      // (3.53.0: the page is longer – the import, Fetch outward, Start to end)
     await tapK(t, 'mt-log');
     await net(t);
     for (final w in ['CGST 9%', 'SGST 9%', 'GST 18%', 'Amount With GST', 'Paid by', 'Insurance claim', 'Service', 'RCL', 'Insurance', 'Yes', 'No', '90.00', '900.00', '1,800.00', '11,800.00', '990.00', '1,980.00', '-11,800.00']) {

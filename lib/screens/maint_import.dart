@@ -12,6 +12,7 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../core/api.dart' show ApiError;
 import '../core/format.dart';
+import '../core/imports.dart' show onSiteOn;
 import '../core/maint_import.dart';
 import '../core/session.dart';
 import '../ui/fields.dart';
@@ -186,6 +187,12 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
         x.done = (await s.api.call('importMaint', [{'no': x.no, 'bills': mliBills(x, fixes)}], true) as Map).cast<String, dynamic>();
         added += (asNum(x.done!['added']) ?? 0).toInt();
         any = true;
+      } on ApiError catch (e) {
+        if (e.code == 'sent') {
+          x.done = {'added': 0, 'same': 0, 'sent': e.message};      // (sent for verification – saved when it is approved)
+        } else {
+          x.err = errText(e);
+        }
       } catch (e) {
         x.err = errText(e);
       }
@@ -193,12 +200,14 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
     }
     if (!mounted) return;
     setState(() => busy = false);
-    toast(context, '$added bill(s) imported.');
+    final sent = todo.where((x) => x.done?['sent'] != null).firstOrNull;
+    toast(context, sent != null ? '${sent.done!['sent']}' : '$added bill(s) imported.');
   }
 
   /// What a sheet is now – the web's mliState, word for word
   (String, Color) _state(MliSheet x) {
     final d = x.done;
+    if (d != null && d['sent'] != null) return ('${d['sent']}', C.greenDark);      // sent for verification
     if (d != null) {
       final first = '${d['first'] ?? ''}', last = '${d['last'] ?? ''}', n = asNum(d['added']) ?? 0;
       return ('✓ ${fmtNum(n)} bill(s) imported${n > 0 ? ' ($first${last != first ? ' – $last' : ''})' : ''}', C.greenDark);
@@ -265,11 +274,11 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
         const SizedBox(height: 10),
         PickField(
           key: Key('mli-no-$i'),
-          label: 'Machinery (Active, Own)',
+          label: 'Machinery (Own)',
           value: x.no,
           items: [for (final m in own) '${m['id']}'],      // (PickField puts the blank line first)
           blank: '– not imported –',
-          labels: {for (final m in own) '${m['id']}': '${m['id']}${'${m['name'] ?? ''}'.isNotEmpty && m['name'] != m['id'] ? ' · ${m['name']}' : ''}'},
+          labels: {for (final m in own) '${m['id']}': '${m['id']}${'${m['name'] ?? ''}'.isNotEmpty && m['name'] != m['id'] ? ' · ${m['name']}' : ''}${onSiteOn(m, s.today) ? '' : ' ${tr('(not on the site now)')}'}'},
           enabled: !busy && x.done == null,
           onChanged: (v) => setState(() {
             x.no = v;
@@ -395,7 +404,8 @@ class _MaintImportScreenState extends State<MaintImportScreen> {
           if (!reading && readErr.isEmpty) ...[
             Text('Total (₹) = the lines with their GST as they will be kept; the file total is its "Amount With GST" (whole rupees in an old file).', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
             const SizedBox(height: 10),
-            if (fixState != null) _namesCard(),
+            // (28-10-2026, "import zale nantr pn aahe as rahte") the names' list goes once everything is imported
+            if (fixState != null && !(sheets.any((x) => x.done != null) && !sheets.any((x) => x.no.isNotEmpty && x.done == null))) _namesCard(),
             for (final (i, x) in sheets.indexed) _card(s, i, x, own),
           ],
         ]),

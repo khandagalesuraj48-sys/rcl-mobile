@@ -1423,7 +1423,8 @@ class FakeServer {
           final f = (a[0] as Map).cast<String, dynamic>();
           maintCalls.add({'fn': action, 'x': f});
           if (maintLogAnswer != null) return _j({'result': maintLogAnswer});
-          return _j({'result': {'title': 'Maintenance Log Book – ${f['no']}', 'from': f['from'] ?? '2026-10-01', 'to': f['to'] ?? '2026-10-14', 'generated': '14-10-2026 10:00', 'company': 'Rachana Construction Limited',
+          return _j({'result': {'title': 'Maintenance Log Book – ${f['no']}', 'from': f['all'] == true ? '2026-10-05' : f['from'] ?? '2026-10-01', 'to': f['to'] ?? '2026-10-14', 'generated': '14-10-2026 10:00', 'company': 'Rachana Construction Limited',
+            'all': f['all'] == true, 'store': {'on': false, 'lines': 0},      // (3.53.0, Mechanical update-175)
             'machine': {'id': f['no'], 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr', 'meter': 'KM'}, 'card': card,
             'lines': [
               {'date': '2026-10-05', 'kind': 'Fuel', 'id': 'DI-000530', 'qty': 20, 'unit': 'Ltr', 'amount': 2100, 'paidBy': 'HDFC FUEL', 'km': 45000, 'driver': 'Gupta'},
