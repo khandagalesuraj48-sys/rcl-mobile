@@ -1,7 +1,9 @@
 /* STORE – the app's own screens (3.10.0) of the Store module (Home → Store): its Dashboard and the Item Master of this site, by
  * the pages the Portal gave (Store Admin / Store User). The Store's own sign-in (a Portal ticket, used once) and its own server
  * (rcl-store: api/items – list, check, save, remove); the same rules: a name only once at a site, a near name asked first ("is
- * it the same item?"), a near category asked, a proper name suggested; change and delete by the Store Admin; Export to Excel. */
+ * it the same item?"), a near category asked, a proper name suggested; change and delete by the Store Admin; Export to Excel.
+ * (3.54.0, the Store's step 2) the Work tab: the pages of the Store's work (store_work.dart – api/work) as he was given them;
+ * the Dashboard shows their figures (stock value, below min stock, waiting for my approval, POs open, GRN / issues today). */
 import 'package:flutter/material.dart' hide Text;
 
 import '../core/api.dart' show ApiError;
@@ -19,6 +21,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/ask_bot.dart';
+import 'store_work.dart';
 
 /// The columns of the web's item files (Export, Import template).
 const kStoreHead = ['Item Code', 'Item Name', 'Unit', 'Category', 'HSN Code', 'GST %', 'Min Stock', 'Status'];
@@ -91,8 +94,11 @@ class _StoreScreenState extends State<StoreScreen> {
   Map<String, dynamic>? me;
   List<Map<String, dynamic>> items = [];
   List<String> units = [], cats = [];
-  String err = '', q = '', fCat = '', fSt = '';
+  String err = '', q = '', fCat = '', fSt = '', dashErr = '';
   bool loading = true, started = false;
+  /// (3.54.0) the Store's work: what he may do there, its figures
+  StoreKit? kit;
+  Map<String, dynamic>? dash;
   late final qc = TextEditingController(text: widget.find);
 
   @override
@@ -127,9 +133,13 @@ class _StoreScreenState extends State<StoreScreen> {
       err = '';
     });
     try {
-      final m = await s.api.storeOpen(_site, _url);
+      final site = _site, url = _url;
+      final m = await s.api.storeOpen(site, url);
       if (!mounted) return;
-      setState(() => me = m);
+      setState(() {
+        me = m;
+        kit = StoreKit(call: (a, [x]) => s.api.store(site, url, {'action': a, ...?x}, path: 'work'), pages: (m['pages'] as Map?) ?? const {}, admin: (m['user'] as Map?)?['admin'] == true);
+      });
       await _load();
     } catch (e) {
       if (mounted) {
@@ -144,7 +154,25 @@ class _StoreScreenState extends State<StoreScreen> {
   Map get _pages => (me?['pages'] as Map?) ?? const {'dashboard': 'View', 'items': 'Edit'};
   bool get _admin => (me?['user'] as Map?)?['admin'] == true;
 
+  /// (3.54.0) the figures of the Store's work (none while the site's database has not its step 2: said on the Dashboard)
+  Future<void> _loadDash() async {
+    final k = kit;
+    if (k == null || (!k.anyWork && _pages['dashboard'] == 'None')) return;
+    try {
+      final d = await k.call('dash');
+      if (mounted) {
+        setState(() {
+          dash = d;
+          dashErr = '';
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => dashErr = e is ApiError && e.code == 'notinstalled' ? e.message : '');
+    }
+  }
+
   Future<void> _load() async {
+    _loadDash();
     try {
       final r = await _call({'action': 'list'});
       if (!mounted) return;
@@ -223,7 +251,7 @@ class _StoreScreenState extends State<StoreScreen> {
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), pg = _pages;
-    final tabs = [if (pg['dashboard'] != 'None') 'dashboard', if (pg['items'] != 'None') 'items'];
+    final tabs = [if (pg['dashboard'] != 'None') 'dashboard', if (kit?.anyWork == true) 'work', if (pg['items'] != 'None') 'items'];
     return DefaultTabController(
       length: tabs.isEmpty ? 1 : tabs.length,
       initialIndex: (widget.find.isNotEmpty || widget.items) && tabs.contains('items') ? tabs.indexOf('items') : 0,
@@ -234,7 +262,7 @@ class _StoreScreenState extends State<StoreScreen> {
           bottom: me == null || tabs.length < 2
               ? null
               : TabBar(labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5), tabs: [
-                  for (final t in tabs) Tab(key: Key('st-tab-$t'), child: Text(t == 'dashboard' ? 'Dashboard' : 'Item Master')),
+                  for (final t in tabs) Tab(key: Key('st-tab-$t'), child: Text(t == 'dashboard' ? 'Dashboard' : t == 'work' ? 'Work' : 'Item Master')),
                 ]),
         ),
         floatingActionButton: me != null && pg['items'] == 'Edit' ? FloatingActionButton.extended(
@@ -262,7 +290,7 @@ class _StoreScreenState extends State<StoreScreen> {
                       ]),
                     ),
                     if (err.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: InfoLine(err, bad: true)),
-                    Expanded(child: TabBarView(children: [for (final t in tabs) t == 'dashboard' ? _dash() : _items()])),
+                    Expanded(child: TabBarView(children: [for (final t in tabs) t == 'dashboard' ? _dash() : t == 'work' ? StoreWorkTab(k: kit!, dash: dash, err: dashErr, back: _loadDash) : _items()])),
                   ]),
       ),
     );
@@ -283,6 +311,8 @@ class _StoreScreenState extends State<StoreScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(key: const Key('st-dash'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 90), children: [
+        if (dashErr.isNotEmpty) InfoLine(dashErr, bad: true),
+        if (dash != null) ...[StoreDashWork(dash: dash!), const SizedBox(height: 16), Text('Item Master', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)), const SizedBox(height: 6)],
         Wrap(spacing: 8, runSpacing: 8, children: [
           tile('Items', d.all, 'in the Item Master', C.ink, Colors.white),
           tile('Active', d.active, 'can be used', C.greenDark, C.greenSoft),

@@ -39,16 +39,17 @@ Future<void> shareFile(Uint8List bytes, String fileName, String mime) async {
 Future<void> shareDocXlsx(Session s, RDoc d, {bool bare = false}) => shareXlsx(reportXlsx(d, bare ? const [] : sheetTop(s, d)), '${d.file}.xlsx');
 
 /// The report / list printed: the name on top asked when the site has several, then the phone's printing.
-Future<void> printDoc(BuildContext context, Session s, RDoc d, {String? printed}) async {
-  final head = await pickPrintName(context, s.printNames, 'Print – ${d.title}');
-  if (head == null || !context.mounted) return;
+/// (3.54.0) [head] / [site]: the name on top and the site as given (a Store PO of another site: that site's company).
+Future<void> printDoc(BuildContext context, Session s, RDoc d, {String? printed, String? head, String? site}) async {
+  final top = head != null && head.isNotEmpty ? head : await pickPrintName(context, s.printNames, 'Print – ${d.title}');
+  if (top == null || !context.mounted) return;
   var logo = '';
-  if (head.toLowerCase().contains('rachana')) {
+  if (top.toLowerCase().contains('rachana')) {
     try {
       logo = 'data:image/png;base64,${base64Encode((await rootBundle.load('assets/brand/rachana_logo.png')).buffer.asUint8List())}';
     } catch (_) {/* the name only */}
   }
-  final html = reportHtml(d, company: head, site: s.siteLabel, printed: printed ?? whenText(DateTime.now().toIso8601String()), logo: logo);
+  final html = reportHtml(d, company: top, site: site != null && site.isNotEmpty ? site : s.siteLabel, printed: printed ?? whenText(DateTime.now().toIso8601String()), logo: logo);
   if (!context.mounted) return;
   await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: html, title: d.title)));
 }

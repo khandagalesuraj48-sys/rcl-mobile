@@ -7098,5 +7098,8 @@
 "Pick the month.": "महीना चुनें.",
 "Print – Pending Log Book": "Print – बाकी लॉग बुक",
 "{0} machinery · {1} day{2} pending{3}": "{0} मशिनरी · {1} दिन{2} बाकी{3}",
-"✔ Nothing pending{0} in these dates.": "✔ इन तारीखों में{0} कुछ बाकी नहीं."
+"✔ Nothing pending{0} in these dates.": "✔ इन तारीखों में{0} कुछ बाकी नहीं.",
+"{0} issue(s) of the RCL Store to this machinery are in this log book (Party \"RCL Store\").": "RCL Store की इस मशिनरी को दी गई {0} issue(s) इस log book में हैं (Party \"RCL Store\")।",
+"No issue of the RCL Store to this machinery in these dates.": "इन तारीखों में RCL Store ने इस मशिनरी को कुछ नहीं दिया।",
+"The Store's work is not set up at this site yet (its database step 2) – there is no outward to fetch. When it is, what the Store issues to this machinery comes into its log book by itself.": "इस site पर Store का काम अभी set up नहीं हुआ (उसकी database step 2) – लाने को outward नहीं है। होने पर Store इस मशिनरी को जो देगा वह उसकी log book में अपने-आप आएगा।"
 }

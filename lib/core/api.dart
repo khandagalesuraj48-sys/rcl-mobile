@@ -353,10 +353,11 @@ class Api {
   }
 
   /// POST <store>/api/items { action, … } – a new Store sign-in when it has ended (once).
-  Future<Map<String, dynamic>> store(String siteCode, String storeUrl, Map<String, dynamic> body) async {
+  /// (3.54.0, the Store's step 2) [path] 'work': the Store's work (api/work – requirements, POs, GRN, issues, returns, reports).
+  Future<Map<String, dynamic>> store(String siteCode, String storeUrl, Map<String, dynamic> body, {String path = 'items'}) async {
     for (var tryNo = 1;; tryNo++) {
       if (_storeCookie.isEmpty || _storeKey != '$siteCode|$storeUrl') await storeOpen(siteCode, storeUrl);
-      final r = await _send(() => _c.post(Uri.parse('$storeUrl/api/items'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _storeCookie}, body: jsonEncode(body)));
+      final r = await _send(() => _c.post(Uri.parse('$storeUrl/api/$path'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _storeCookie}, body: jsonEncode(body)));
       final j = _json(r, 'The Store');
       if (r.statusCode == 401 && j['code'] == 'session' && tryNo == 1) {
         _storeCookie = '';
