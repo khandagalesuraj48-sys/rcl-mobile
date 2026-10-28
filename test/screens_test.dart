@@ -31,7 +31,7 @@ import 'package:rcl_mobile/screens/attach_box.dart' show pickAttFiles, CaptureSc
 import 'package:image/image.dart' as img;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
-import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField;
+import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
