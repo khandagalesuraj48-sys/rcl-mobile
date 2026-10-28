@@ -26,6 +26,7 @@ import '../core/draft.dart';
 import 'log_edit.dart';
 import 'log_more.dart';
 import 'log_print.dart';
+import 'pend_print.dart' show openPendPrint;
 import 'tank_check.dart';
 import 'verify.dart';
 import '../ui/t.dart';
@@ -188,8 +189,20 @@ class _LogBookScreenState extends State<LogBookScreen> {
           constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * .75),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: Align(alignment: Alignment.centerLeft, child: TwoLang('No Log Book yet – ${showDate(day)}', '${list.length} यंत्रांची नोंद बाकी', size: 18, weight: FontWeight.w700)),
+              padding: const EdgeInsets.fromLTRB(20, 0, 8, 10),
+              child: Row(children: [
+                Expanded(child: TwoLang('No Log Book yet – ${showDate(day)}', '${list.length} यंत्रांची नोंद बाकी', size: 18, weight: FontWeight.w700)),
+                // (3.54.0, Mechanical update-179) Print – this date's pending machinery; another date, a month or a period can be picked there
+                TextButton.icon(
+                  key: const Key('lb-pend-print'),
+                  onPressed: () {
+                    Navigator.pop(c);
+                    openPendPrint(context, entry: true, kind: 'date', date: day);
+                  },
+                  icon: const Icon(Icons.print_rounded, size: 18),
+                  label: Text('Print'),
+                ),
+              ]),
             ),
             Flexible(
               child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [

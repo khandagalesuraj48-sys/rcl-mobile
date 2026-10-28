@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.54.0 (28-10-2026 – "pending log book je aahet te mala period wise print krta yawet dashboard warun pn ani log book netry
+madhun jith diste pending tithun pn", with Mechanical update-179):** the **Pending Log Book printed for a period** – **Dashboard → Log
+Book → Pending Log Book → Print** (its From / To, Ownership and Vendor taken over) and **Log Book → "N machinery without Log Book" →
+Print** (that date): a screen of its own (`screens/pend_print.dart`) – one date, a month or a period (from – to); all machinery or an
+Ownership, an Owner / Vendor, one machinery – then **Print** (the phone's printing / Save as PDF) or **Excel**. The print
+(`core/dash.dart` pendPrintDoc, as the web's): each machinery – Own, Rental, Hired, then its owner – with its pending days and their
+dates as runs ("23-10 → 28-10 (6), 30-10"), the totals, "counted up to today" for a period that goes past today. From the Dashboard the
+Dashboard's list (pendingLog); from the Log Book screen logPending for that period (Log Book access – the server takes a period since
+update-179). The web's new words taken again. Not verified: a real phone's printing (the build draws the screens).
+
 **Version 3.53.0 (28-10-2026 – "jewde active aahet own rachana vehicle te mala import karaych aahe as it is jas asel tr"; then "aple
 app madhe powerful Claude AI aahe so import kartana full scan duplicate sagle kahi find krun import kasel name correction …", with
 Mechanical update-173; "he admin la fkt nahi user la pn disu de", update-174):** **Maintenance** has, for everyone with Maintenance

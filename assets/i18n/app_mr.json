@@ -1010,5 +1010,8 @@
 "Photo of a page – read by the AI": "पानाचा photo – AI वाचेल",
 "A sheet for each Own machinery": "प्रत्येक Own मशिनरीची एक sheet",
 "{0} row(s)": "{0} ओळी",
-"Import the old log book": "जुनी log book import करा"
+"Import the old log book": "जुनी log book import करा",
+"Each machinery with its pending days – a day it was on the site with no Log Book entry in any shift. Debit-basis parties and Ownership \"Other\" need no Log Book.": "प्रत्येक मशिनरी आणि तिचे बाकी दिवस – ती साइटवर असताना कोणत्याही shift मध्ये Log Book entry नसलेला दिवस. Debit-basis पार्टी आणि Ownership \"Other\" ला Log Book लागत नाही.",
+"Excel": "Excel",
+"Working…": "काम चालू आहे…"
 }

@@ -25,6 +25,7 @@ import '../web/print_view.dart';
 import 'compliance.dart' show openCompliance;
 import 'fuel_cards.dart' show CardTile, FuelCardsScreen, rupees;
 import 'logbook.dart' show LogForm;
+import 'pend_print.dart' show openPendPrint;
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
 
@@ -1140,9 +1141,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _loadPend();
         })),
       ]),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton(
+      Row(children: [
+        TextButton(
           onPressed: () {
             setState(() {
               pFrom = kLbPendFrom;
@@ -1152,7 +1152,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
           child: Text('From ${showDate(kLbPendFrom)}'),
         ),
-      ),
+        const Spacer(),
+        // (3.54.0, Mechanical update-179) Print – the list's period, its Ownership and Vendor; another can be picked there
+        TextButton.icon(key: const Key('lb-pprint'), onPressed: () => openPendPrint(context, kind: 'period', from: pFrom, to: pTo.isEmpty ? s.today : pTo, own: lOwn, vendor: lVendor), icon: const Icon(Icons.print_rounded, size: 18), label: Text('Print')),
+      ]),
       TextField(key: const Key('lb-psearch'), onChanged: (v) => setState(() => pQ = v), decoration: InputDecoration(hintText: tr('Search machinery / owner…'), prefixIcon: const Icon(Icons.search_rounded), contentPadding: const EdgeInsets.symmetric(vertical: 12))),
       const SizedBox(height: 8),
       if (res == null)
