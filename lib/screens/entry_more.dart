@@ -668,7 +668,7 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
           ),
         ]),
         Row(children: [
-          Expanded(child: DateField(key: Key('tm-date-$i'), label: 'Date', value: r.date, clear: false, last: parseKey(today), onChanged: (x) => setState(() => r.date = x))),
+          Expanded(child: DateField(key: Key('tm-date-$i'), label: 'Date', value: r.date, clear: false, last: parseKey(today), first: SessionScope.read(context).entryFirst(), onChanged: (x) => setState(() => r.date = x))),
           const SizedBox(width: 8),
           Expanded(child: PickField(key: Key('tm-shift-$i'), label: 'Shift', value: r.shift, items: const ['Day', 'Night'], onChanged: (x) => setState(() => r.shift = x))),
         ]),
@@ -1153,6 +1153,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
               value: date,
               clear: false,
               last: parseKey(today),
+              first: s.entryFirst(),      // (3.62.1, update-187) a user: today only
               onChanged: (v) {
                 _setBal(() => date = v);
                 for (final r in dRows) {
@@ -1394,6 +1395,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
                 value: r.date,
                 clear: false,
                 last: parseKey(today),
+                first: SessionScope.read(context).entryFirst(),      // (3.62.1, update-187) a user: today only
                 onChanged: (v) {
                   setState(() => r.date = v);
                   _ptSoon();

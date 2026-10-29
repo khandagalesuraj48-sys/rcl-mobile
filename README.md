@@ -19,8 +19,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 zaleli disat nahi … tyachi id mi mazya phone madhe gheun ek entry keli tr lage entry diste"):** a half-filled entry brought back
 (Diesel Issue / Inward / Transfer, Log Book – 3.31.0) brings back its date and shift **only when it was typed today**; one kept from an
 earlier day comes back with today's date. Before, the old day came back unseen and every entry of that form was saved on that old day –
-not in today's list (on another phone, without that half-filled entry, the same person's entries showed). Nothing else is changed; no
-server change. Not verified: his phone itself (the cause is found in the code, not seen on his phone).
+not in today's list (on another phone, without that half-filled entry, the same person's entries showed). **Then (asked: "admin ani super
+admin fkt back dated entry kru shakto baki konich nahi … jo entry user karayla jail tyala auto aajchi date select aasel tyala date change
+krta yenar nahi … modual wise"; the Log Book "kal + aaj"; with Mechanical update-187):** a user who is not the site's Admin dates an
+entry only today – the Log Book (and its water tanker trips) also yesterday: the date pickers of Diesel Issue / Inward / Transfer, the
+many-entries screens, Tank check, the Maintenance bill and a fuel card's payment start at that day (`Session.entryFirst`); a half-filled
+entry of a day he may not use comes back with today. The Admin and the Super Admin any day, as before; the server refuses any other day
+(update-187). Rules of the site: the label says the fixed rule ("0" – the Log Book too only today). Not verified: his phone itself.
 
 **Version 3.62.0 (29-10-2026 – the Store's step 5 as the app's own screens: "he amche company che format ahet mala je po bantil
 requiremet bantil te same ya format amddhe hawet" … "PO approve karaychi payri kara"; with the Store's PR #18 and the Portal's PR #26;

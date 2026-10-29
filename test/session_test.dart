@@ -612,4 +612,23 @@ void main() {
     expect(billsForSave(isEdit: true, mode: 'loading', changed: true, paths: [b]), null);
     expect(kBillMax, 10, reason: 'as the server (BILL_MAX_)');
   });
+
+  test('(3.62.1, Mechanical update-187) the first day a person may date an entry: a user today (the Log Book also yesterday), the site\'s rule only stricter; the Admin and the Super Admin any day', () {
+    final s = make()..today = '2026-10-29';
+    expect(s.entryFirst(), DateTime(2026, 10, 29), reason: 'a user: today');
+    expect(s.entryFirst(log: true), DateTime(2026, 10, 28), reason: 'the Log Book: also yesterday');
+    expect([s.entryDayOk('2026-10-29'), s.entryDayOk('2026-10-28'), s.entryDayOk('2026-10-28', log: true), s.entryDayOk('2026-10-27', log: true)], [true, false, true, false]);
+    s.siteRules = {'backDays': 0};
+    expect(s.entryFirst(log: true), DateTime(2026, 10, 29), reason: 'the site\'s "0 days": the Log Book too only today');
+    s.siteRules = {'backDays': 5};
+    expect(s.entryFirst(log: true), DateTime(2026, 10, 28), reason: 'never more than fixed');
+    s.siteRules = {'backDays': ''};
+    expect(s.entryFirst(), DateTime(2026, 10, 29));
+    expect((make()..today = '2026-11-01').entryFirst(log: true), DateTime(2026, 10, 31), reason: 'across a month');
+    s.admin = true;
+    expect([s.entryFirst(), s.entryFirst(log: true), s.entryDayOk('2026-01-01')], [null, null, true], reason: 'the Admin: any day');
+    s.admin = false;
+    s.superAdmin = true;
+    expect(s.entryFirst(), null, reason: 'the Super Admin: any day');
+  });
 }

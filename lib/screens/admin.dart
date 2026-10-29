@@ -598,7 +598,7 @@ class _RulesScreenState extends State<RulesScreen> {
         body: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
           _note('Admin only – these apply to every user of this site.'),
           const SizedBox(height: 10),
-          TextBox(key: const Key('rule-back'), label: 'Users who are not Admin may enter / change entries of the last … days', controller: back, kb: TextInputType.number, hint: 'empty = no limit'),
+          TextBox(key: const Key('rule-back'), label: 'Users who are not Admin enter only today\'s entries, the Log Book also yesterday\'s (fixed) – 0 here: the Log Book too only today', controller: back, kb: TextInputType.number, hint: 'empty = as fixed'),      // (3.62.1, update-187)
           const SizedBox(height: 8),
           TextBox(key: const Key('rule-note'), label: 'Notice shown to everybody at the top (empty = none)', controller: note, maxLines: 2),
           const SizedBox(height: 8),

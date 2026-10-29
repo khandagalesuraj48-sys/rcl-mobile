@@ -837,7 +837,7 @@ class _MaintFormState extends State<MaintForm> {
     return Scaffold(
       appBar: AppBar(title: TwoLang(e == null ? 'Maintenance bill' : 'Change bill ${e['id']}', 'मेंटेनन्स बिल', size: 18, weight: FontWeight.w700)),
       body: SingleChildScrollView(key: const Key('mf-list'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _blue(ai.contains('date'), DateField(key: const Key('mf-date'), label: 'Bill date', value: date, clear: false, last: s.today.isEmpty ? null : parseKey(s.today), onChanged: (v) => setState(() {
+        _blue(ai.contains('date'), DateField(key: const Key('mf-date'), label: 'Bill date', value: date, clear: false, first: s.entryFirst(), last: s.today.isEmpty ? null : parseKey(s.today), onChanged: (v) => setState(() {
               date = v;
               dateTyped = true;
               ai.remove('date');

@@ -247,6 +247,23 @@ class Session extends ChangeNotifier {
   String dayFrom = '08:00', nightFrom = '20:00';
   /// (3.9.0) the rules of the site as the server gave them (backDays, announce, dayFrom, nightFrom) – Administration shows them
   Map<String, dynamic> siteRules = {};
+
+  /// (3.62.1, Mechanical update-187 – 29-10-2026: "admin ani super admin fkt back dated entry kru shakto baki konich nahi … jo entry
+  /// user karayla jail tyala auto aajchi date select aasel tyala date change krta yenar nahi"; the Log Book "kal + aaj") the first day
+  /// this person may date an entry: the Admin and the Super Admin – any day (null); a user – today, a Log Book entry also yesterday (the
+  /// site's own rule, Rules of the site, only stricter). The server refuses any other day.
+  DateTime? entryFirst({bool log = false}) {
+    if (admin || superAdmin || today.isEmpty) return null;
+    final own = log ? 1 : 0, lim = int.tryParse('${siteRules['backDays'] ?? ''}');
+    final n = lim == null || lim < 0 || lim > own ? own : lim, t = parseKey(today);
+    return DateTime(t.year, t.month, t.day - n);
+  }
+
+  /// (3.62.1) [day] (yyyy-mm-dd) is one this person may date an entry with
+  bool entryDayOk(String day, {bool log = false}) {
+    final f = entryFirst(log: log);
+    return f == null || day.length != 10 || !parseKey(day).isBefore(f);
+  }
   /// The clock (a test sets its own time).
   DateTime Function() clock = DateTime.now;
   List<Machine> machines = [];
