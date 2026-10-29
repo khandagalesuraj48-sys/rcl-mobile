@@ -628,7 +628,7 @@ class SLinesEditor extends StatelessWidget {
           if (l.poRate != null && gm != null)
             Builder(builder: (_) {
               final q = _d(l.qty.text), bill = q > 0 ? r2(gm.taxable / q) : 0.0, over = q > 0 && bill > l.poRate! + 0.009, gOther = l.poGst != null && _d(l.gst.text) != l.poGst;
-              return Text('PO Rate ${money(l.poRate)} · bill ${money(bill)}${over ? ' ⚠ more than the PO' : ''}${gOther ? ' · GST ${plainN(_d(l.gst.text))}% – PO ${plainN(l.poGst)}%' : ''}',
+              return Text('PO Rate ${rs(l.poRate)} · bill ${rs(bill)}${over ? ' ⚠ more than the PO' : ''}${gOther ? ' · GST ${plainN(_d(l.gst.text))}% – PO ${plainN(l.poGst)}%' : ''}',
                   key: Key('$tag-pr-$i'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: over || gOther ? C.red : C.muted));
             }),
           const SizedBox(height: 6),
