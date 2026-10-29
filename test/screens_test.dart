@@ -2905,7 +2905,9 @@ void main() {
     ], reason: 'as the web: every row, the typed text');
     expect([bulk.first['date'], bulk.first['shift'], bulk.first['source']], ['2026-10-14', 'Day', 'Dispenser']);
     expect(find.text('1 diesel issues saved (DI-000527 to DI-000527).'), findsOneWidget);
-    // one machinery, many dates: the next row is the next day; the KM its meter gives
+    // one machinery, many dates: the next row is the next day; the KM its meter gives (update-187: an earlier day is the Admin's – a
+    // user dates only today)
+    s.admin = true;
     await reach(t, 'im-t-mach', 'im-list');
     await tapK(t, 'im-t-mach');
     await settle(t, 500);
