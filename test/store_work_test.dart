@@ -119,5 +119,7 @@ void main() {
     expect([wfSaid('verify'), wfSaid('approve'), wfSaid('done'), wfSaid(null)], [' – it waits for its verification.', ' – it waits for its approval.', ' – it goes to Head Office.', '.']);
     expect([daysSince('2026-10-12', '2026-10-14'), daysSince('2026-10-14T05:00:00Z', '2026-10-14'), daysSince('', '2026-10-14'), daysSince('2026-10-20', '2026-10-14')], [2, 0, 0, 0]);
     expect(wfLine({'no': 4}), null, reason: 'a paper of before (no workflow): nothing shown');
+    // (the review) a bill at the PO's rate and discount is never flagged for a paisa of rounding; a real rise is
+    expect([rateOverPo(133.85, 2, 72.35 * 0.925), rateOverPo(5.19, 0.5, 10.37), rateOverPo(140, 2, 72.35 * 0.925), rateOverPo(0, 0, 10)], [false, false, true, false]);
   });
 }

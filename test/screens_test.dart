@@ -5213,12 +5213,13 @@ void main() {
     expect(find.textContaining('Store Admin has every page'), findsOneWidget);
     expect(find.byKey(const Key('sa-spg-items')), findsNothing, reason: 'an Admin has the pages');
     expect(find.byKey(const Key('sa-spg-purchase')), findsOneWidget);
+    // (3.62.0, the Store's step 5) and who approves its purchase orders – the Portal's note says what it does (read at the top: 3.71.0's
+    // longer note and more pages – scrolled to a page further down, the note is no longer built)
+    expect(find.textContaining('Approves purchase orders: a PO of this site is taken in (GRN) only after one of them approves it'), findsOneWidget);
     await tapK(t, 'sa-spg-approve');
     await settle(t, 600);
     await t.tap(find.text('Level 2').last);
     await settle(t, 400);
-    // (3.62.0, the Store's step 5) and who approves its purchase orders – the Portal's note says what it does
-    expect(find.textContaining('Approves purchase orders: a PO of this site is taken in (GRN) only after one of them approves it'), findsOneWidget);
     await tapIn(t, 'sa-spg-poapprove', 'Yes');
     await tapK(t, 'sa-spg-save');
     await net(t);

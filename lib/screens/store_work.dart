@@ -231,6 +231,10 @@ Widget? wfLine(Map x, {Key? key}) {
   return kids.isEmpty ? null : Padding(key: key, padding: const EdgeInsets.only(top: 4), child: Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: kids));
 }
 
+/// (3.71.0, as the Store's billCheck / the web's rateChk) the bill's rate above its PO line's: above the PO's rate (after its Disc. %) at 2
+/// decimals AND its amount for that quantity beyond 2 paise of rounding – a bill at the PO's rate and discount is never flagged for a paisa
+bool rateOverPo(double taxable, double q, double poExact) => q > 0 && r2(taxable / q) > r2(poExact) + 0.009 && taxable > r2(q * poExact) + 0.02;
+
 /// (3.71.0) the bill (a GRN against a PO) checked with its PO – the web's checkTxt
 String checkWords(dynamic c) {
   if (c is! Map) return '';
@@ -627,7 +631,7 @@ class SLinesEditor extends StatelessWidget {
           // (3.71.0) the PO's rate (after its Disc. %) beside the bill's (after its discounts on the Basic, before GST) – red when the bill's is more
           if (l.poRate != null && gm != null)
             Builder(builder: (_) {
-              final q = _d(l.qty.text), bill = q > 0 ? r2(gm.taxable / q) : 0.0, over = q > 0 && bill > l.poRate! + 0.009, gOther = l.poGst != null && _d(l.gst.text) != l.poGst;
+              final q = _d(l.qty.text), bill = q > 0 ? r2(gm.taxable / q) : 0.0, over = rateOverPo(gm.taxable, q, l.poRate!), gOther = l.poGst != null && _d(l.gst.text) != l.poGst;
               return Text('PO Rate ${rs(l.poRate)} · bill ${rs(bill)}${over ? ' ⚠ more than the PO' : ''}${gOther ? ' · GST ${plainN(_d(l.gst.text))}% – PO ${plainN(l.poGst)}%' : ''}',
                   key: Key('$tag-pr-$i'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: over || gOther ? C.red : C.muted));
             }),
@@ -2595,7 +2599,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
   }
 
   /// (3.71.0) a PO line's rate after its Disc. % (as the server checks the bill – billCheck)
-  static double _effRate(Map l) => r2(nOf(l['rate']) * (100 - nOf(l['disc_pct'])) / 100);
+  static double _effRate(Map l) => (nOf(l['rate']) * (100 - nOf(l['disc_pct'])) / 100).toDouble(); // (not rounded – rateOverPo; shown to 2 decimals)
 
   Map<String, dynamic>? _poLine(String po, int? line) {
     if (po.isEmpty || line == null) return null;
@@ -2674,7 +2678,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
     for (final (i, l) in lines.indexed) {
       if (l.poRate == null || i >= gm0.lines.length) continue;
       final q = _d(l.qty.text), bill = q > 0 ? r2(gm0.lines[i].taxable / q) : 0.0;
-      if (q > 0 && bill > l.poRate! + 0.009) diff.add('${l.name}: rate ${money(bill)} – PO ${money(l.poRate)}');
+      if (rateOverPo(gm0.lines[i].taxable, q, l.poRate!)) diff.add('${l.name}: rate ${money(bill)} – PO ${money(r2(l.poRate!))}');
       if (l.poGst != null && _d(l.gst.text) != l.poGst) diff.add('${l.name}: GST ${plainN(_d(l.gst.text))}% – PO ${plainN(l.poGst)}%');
     }
     if (diff.isNotEmpty && !await ask(context, 'The bill is not as per the PO', '${diff.join('\n')}\nSave it anyway? (It shows as "not as per PO" on the GRN and to Head Office.)\nबिल PO प्रमाणे नाही – तरी save करायचे का?', yes: 'Save anyway')) return;
