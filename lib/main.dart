@@ -33,6 +33,7 @@ import 'ui/scope.dart';
 import 'ui/theme.dart';
 import 'ui/t.dart';
 import 'ui/live.dart' show appRoutes;
+import 'ui/voice_box.dart' show VoiceLayer;
 
 /// The sign-in kept in the phone's own safe (Android Keystore / iOS Keychain) – never in plain files.
 class SecureKeep implements Keep {
@@ -216,7 +217,7 @@ class RclApp extends StatelessWidget {
               behavior: HitTestBehavior.translucent,
               onPointerDown: (_) => SessionScope.read(context).touch(),
               // (3.41.0) a "Scan with Mobile" QR code waiting: opened as soon as he is signed in, unlocked and at its site
-              child: LockLayer(lock: lock, nav: appNav, child: ScanLinkLayer(nav: appNav, lock: lock, child: CallLayer(nav: appNav, child: child!))),
+              child: LockLayer(lock: lock, nav: appNav, child: ScanLinkLayer(nav: appNav, lock: lock, child: CallLayer(nav: appNav, child: VoiceLayer(child: child!)))),
             );
             return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
           },

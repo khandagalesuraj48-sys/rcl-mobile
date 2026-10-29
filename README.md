@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.67.0 (29-10-2026 – "jithe jithe type krun entry hotat ata prynt app madhe kuth hi ani new kahi yenar asel … tithe voice
+mick banaw user apla voice madhe bolel … text madhe add krel … hindi english marathi"; his answers: the app and the website, words and
+numbers):** **🎙 in every box of the app** (`ui/voice_box.dart`, over every screen from `main.dart` – a box added later has it by
+itself): while a box where an entry is typed is in use and the keyboard is up (not a password, not a box only shown) a 🎙 sits above the
+keyboard on the right. Pressed, the phone's own speech recognition (`core/voice.dart`) listens in **मराठी / हिंदी / English** (chips while
+it listens; the one chosen is kept on the phone, else the app's language). What was said goes in **as if typed** (the box's own rules and
+its screen's reaction): a number box gets the **number** – "साडे तीन हजार" → 3500, "बारा पॉइंट पाच" → 12.5, "डेढ़ सौ" → 150, "twenty
+five" → 25 (`core/numwords.dart`, the same rules and cases as the web's `voice.js`); a phone box the digits said; a text box the words at
+the cursor. Not verified on a real phone yet (the build's tests use their own listening).
+
 **Version 3.66.0 (29-10-2026 – "requirement madhe attachment cha option add karaycha aahe attachment madhe material photo … multiple photos
 … app madhun photo kadhla tri laptop web madhe yeil"; his answers: the whole requirement, many photos, in the print too; with rcl-store
 step 7):** a requirement's **Photos of the material** – up to 10, from the camera or the gallery (no PDF), made ready as a Log Book photo
