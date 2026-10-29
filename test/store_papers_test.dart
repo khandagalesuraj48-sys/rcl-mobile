@@ -48,7 +48,11 @@ void main() {
     expect(plain, contains('<img src="data:image/png;base64,AAAA"'));
     expect(plain, contains('<b>Shri &lt;Traders&gt;</b>'), reason: 'no supplier from the Vendor Master: the PO\'s vendor');
     expect(plain, contains('27AAAAA0000A1Z5'), reason: 'and its GST no.');
-    final own = poPaperHtml(po(), {...heading, 'logo': 'https://example.test/logo.png'}, const {}, logo: 'data:image/png;base64,AAAA');
+    // (3.70.0, "logo ala nahi") a Rachana paper: the app's Rachana logo always – also when the Portal has a logo link; another company: its own
+    final rach = poPaperHtml(po(), {...heading, 'logo': 'https://ibb.co/abc123'}, const {}, logo: 'data:image/png;base64,AAAA');
+    expect(rach, contains('<img src="data:image/png;base64,AAAA"'));
+    expect(rach, isNot(contains('ibb.co')));
+    final own = poPaperHtml(po(), {...heading, 'company': 'Sketchline Industries', 'logo': 'https://example.test/logo.png'}, const {}, logo: 'data:image/png;base64,AAAA');
     expect(own, contains('<img src="https://example.test/logo.png"'));
     expect(own, isNot(contains('base64,AAAA')));
     expect(poPaperHtml(po(), {...heading, 'logo': 'javascript:alert(1)'}, const {}), isNot(contains('javascript:')), reason: 'only an https / data: picture');
