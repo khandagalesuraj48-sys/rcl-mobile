@@ -1267,5 +1267,10 @@
 "Load / Unload": "चढ़ाई / उतराई",
 "Yes": "हाँ",
 "Users who are not Admin enter only today's entries, the Log Book also yesterday's (fixed) – 0 here: the Log Book too only today": "Admin नहीं वाले users केवल आज की entries करते हैं, Log Book कल की भी (तय नियम) – यहाँ 0: Log Book भी केवल आज की",
-"empty = as fixed": "खाली = तय नियम के अनुसार"
+"empty = as fixed": "खाली = तय नियम के अनुसार",
+"Disc. (% or ₹)": "छूट (% या ₹)",
+"Basic": "Basic",
+"After GST": "GST के बाद",
+"Discount on the whole bill (% or ₹)": "पूरे bill पर छूट (% या ₹)",
+"A discount (on a line or on the whole bill) needs the Store's database step 6 – the Admin runs sql/store_step6_grn_discount.sql once.": "छूट (पंक्ति पर या पूरे bill पर) के लिए Store का database step 6 चाहिए – Admin एक बार sql/store_step6_grn_discount.sql चलाता है।"
 }

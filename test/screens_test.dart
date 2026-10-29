@@ -37,7 +37,7 @@ import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
 import 'package:rcl_mobile/screens/pend_print.dart' show PendPrintScreen;
 import 'package:rcl_mobile/screens/machinery.dart' show vendorNames;
-import 'package:rcl_mobile/screens/store_work.dart' show storePaperSink;
+import 'package:rcl_mobile/screens/store_work.dart' show storePaperSink, rs;
 import 'package:rcl_mobile/core/grn_reg.dart';
 
 import 'fake_rtc.dart';
@@ -2561,6 +2561,72 @@ void main() {
     await net(t);
     expect([refBox().controller!.text, refBox().enabled], ['5', false]);
   });
+
+  testWidgets('(3.63.0 – the Store\'s step 6) a GRN\'s discount on a line (10 % on Basic; ₹100 after GST) and on the whole bill (2 % on Basic) – the money as the server; the item\'s code apart; against a PO its Qty, received before, the shortage; without step 6: a note, no discount; the list shows the discount and the net rate', (t) async {
+    final srv = FakeServer()..storeStep6 = true;
+    await openStoreWork(t, server: srv);
+    await tapK(t, 'sw-grn');
+    await net(t);
+    expect(find.textContaining('Disc. ${rs(118)} · Net rate 88.2'), findsOneWidget, reason: 'the GRN of step 6 in the list: what came off, its net rate');
+    expect(find.textContaining('Bill discount 2% on Basic – ${rs(18)}'), findsOneWidget);
+    await tapK(t, 'gr-new');
+    await net(t);
+    expect([find.byKey(const Key('grf-bd')), find.byKey(const Key('grf-nodisc'))].map((f) => f.evaluate().length), [1, 0]);
+    await t.enterText(box('grf-sup'), 'Shri Traders');
+    await tapK(t, 'grl-add');
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('pick-ITM-0002 · Sugar (Kg)')));
+    await settle(t, 600);
+    expect(find.text('Item Code ITM-0002'), findsOneWidget, reason: 'the code apart from the name');
+    await t.enterText(box('grl-q-0'), '10');
+    await t.enterText(box('grl-r-0'), '100');
+    await t.enterText(box('grl-gd-0'), '10%');
+    await tapK(t, 'grl-add');
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('pick-ITM-0001 · Hydraulic Hose 1/2 inch (Mtr)')));
+    await settle(t, 600);
+    await t.enterText(box('grl-q-1'), '4');
+    await t.enterText(box('grl-r-1'), '250');
+    await t.enterText(box('grl-gd-1'), '100');
+    await t.ensureVisible(find.byKey(const Key('grl-go-1-gst')));
+    await tapK(t, 'grl-go-1-gst');
+    await t.ensureVisible(find.byKey(const Key('grf-bd')));
+    await t.enterText(box('grf-bd'), '2%');
+    await settle(t, 400);
+    // the server's checkGrn: 1000 − 10 % = 900, 1000; the bill's 2 % of 1900 = 38 shared 18 / 20 → 882 / 980; GST 44.10 / 176.40; less ₹100 after GST
+    String txt(String k) => ((t.widget(find.byKey(Key(k))) as dynamic).data as String?) ?? ''; // (the app's own Text – ui/t.dart)
+    expect(txt('grl-m-0'), 'Basic ${rs(1000)} · Disc. ${rs(118)} · Taxable ${rs(882)} · GST ${rs(44.1)} · Gross ${rs(926.1)}');
+    expect(txt('grl-m-1'), 'Basic ${rs(1000)} · Disc. ${rs(120)} · Taxable ${rs(980)} · GST ${rs(176.4)} · Gross ${rs(1056.4)}');
+    expect(txt('grf-total'), 'Basic ${rs(2000)} · Discount ${rs(238)} (the bill ${rs(38)}) · Taxable ${rs(1862)} · GST ${rs(220.5)} · Gross ${rs(1982.5)}');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/73_grn_discount.png'));
+    await tapK(t, 'gr-save');
+    await net(t);
+    final g = sent(srv, 'grnSave').last['grn'] as Map;
+    expect([g['bill_disc'], g['bill_disc_on']], ['2%', 'basic']);
+    expect([for (final l in g['lines'] as List) [(l as Map)['code'], l['disc'], l['disc_on']]], [['ITM-0002', '10%', 'basic'], ['ITM-0001', '100', 'gst']]);
+    expect(find.textContaining('GRN 5 saved'), findsOneWidget);
+    // against PO 1 (20 Kg of Sugar, 5 came before): its Qty, what came before, the shortage after this GRN
+    await settle(t, 4000);
+    await tapK(t, 'gr-new');
+    await net(t);
+    await tapK(t, 'grf-po');
+    await settle(t, 600);
+    await t.tap(find.textContaining('PO 1 – Shri Traders').last);
+    await settle(t, 600);
+    expect(txt('grl-po-0'), 'PO Qty 20 · Received before 5 · Shortage 0', reason: 'all that is still to come');
+    await t.enterText(box('grl-q-0'), '10');
+    await settle(t, 300);
+    expect(txt('grl-po-0'), 'PO Qty 20 · Received before 5 · Shortage 5 Kg', reason: '"po qty ste 10 ania ahe 5" – the PO stays open for it');
+    expect(sent(srv, 'poOpen').every((x) => x['grn'] == null), true, reason: 'a new GRN');
+    Navigator.of(t.element(find.byKey(const Key('grf')))).pop();
+    await net(t);
+    // a site without step 6: no discount (a note), nothing of it sent
+    srv.storeStep6 = false;
+    await tapK(t, 'gr-new');
+    await net(t);
+    expect([find.byKey(const Key('grf-bd')), find.byKey(const Key('grf-nodisc'))].map((f) => f.evaluate().length), [0, 1]);
+  }, tags: ['golden']);
 
   testWidgets('(3.55.0) Store – Inward (GRN) against a PO (its lines still to come; more than it asked first); Issue to a machinery; a Return', (t) async {
     final srv = await openStoreWork(t);

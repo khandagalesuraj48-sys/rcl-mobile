@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.63.0 (29-10-2026 – his GRN picture: "iteam code ani name weg wegle de … bill madh discount pn kadhi kdhi dettat mg to kadhi
+basic war asu shakto tr kadhi gst war … material ch shortage pn yet re mhanje po qty ste 10 ania ahe 5"; with the Store's step 6, rcl-store
+#21):** a Store paper's line shows **Item Code** apart from the name (every form). **A GRN's discount** on a line ("Disc. (% or ₹)", on
+**Basic** or **After GST**) and on the **whole bill** (the same choice) – the money as the Store's server works it out (`grnMoney` – its
+`checkGrn`; the unit test has its own figures): each line's Basic, Disc., Taxable, GST, Gross; the bill's Basic · Discount (the bill's) ·
+Taxable · GST · TCS · Gross. A PO line's Disc. % comes with it. **Against a PO** each line says PO Qty · Received before · Shortage after
+this GRN (`poOpen` – a GRN being changed: its own PO, what came before it). Without step 6 the discount is not offered (a note). The GRN's
+card and paper: the code, the discount and the net rate (the stock's), the bill's discount.
+
 **Version 3.62.1 (29-10-2026 – urgent: "ek user aahe jo diesel issue krtoy app madhun tyan entry tyach phone warun keli ki save
 zaleli disat nahi … tyachi id mi mazya phone madhe gheun ek entry keli tr lage entry diste"):** a half-filled entry brought back
 (Diesel Issue / Inward / Transfer, Log Book – 3.31.0) brings back its date and shift **only when it was typed today**; one kept from an

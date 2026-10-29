@@ -349,6 +349,8 @@ class FakeServer {
   bool regStep3 = true;
   // (3.58.0) a new GRN's GRN No: the next by itself (grnNext); typed by hand where the Store's step 4 is run (else only the next)
   bool storeStep4 = true;
+  // (3.63.0) the Store's step 6 at the site: a GRN's discounts (off by default – the GRNs of before)
+  bool storeStep6 = false;
   final regGrnsSaved = <(String, String, int, String, String)>[]; // (key, GRN No, no, date, supplier) of the register's GRNs saved
   // (3.62.0) the Store's step 5 at the site: a PO's own fields and its approval; the papers' settings; PO 1's approval
   bool storeStep5 = true;
@@ -426,6 +428,11 @@ class FakeServer {
         return _j({'ok': true, 'site': b['site'], 'no': 2, 'total': 1575, 'appr': storeStep5 ? 'Waiting' : 'Approved'});
       case 'grnList':
         return _j({'from': b['from'], 'to': b['to'], 'grns': [
+          // (3.63.0) with step 6: a GRN with a line's 10 % on Basic and the bill's 2 % on Basic – its net rate the stock's
+          if (storeStep6)
+            {'no': 6, 'ref': '6', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-12', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': '', 'po_no': null, 'tcs': 0, 'gross': 926.1, 'created_name': 'Sujit Mule',
+              'basic': 1000, 'disc': 118, 'bill_disc': 18, 'bill_disc_pct': 2, 'bill_disc_on': 'basic',
+              'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 10, 'rate': 100, 'gst_pct': 5, 'basic': 1000, 'disc': 100, 'disc_pct': 10, 'disc_on': 'basic', 'bill_disc': 18, 'taxable': 882, 'gst': 44.1, 'gross': 926.1, 'net_rate': 88.2, 'po_line': null, 'remark': ''}]},
           {'no': 4, 'ref': '4', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': 'MH15AB1', 'po_no': 1, 'tcs': 0, 'gross': 525, 'created_name': 'Sujit Mule',
             'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 5, 'rate': 100, 'gst_pct': 5, 'taxable': 500, 'gst': 25, 'gross': 525, 'po_line': 1, 'remark': ''}]},
           {'no': 1000000001, 'ref': '342-A', 'date': '2026-10-13', 'supplier': 'Om Hardware Bhiwandi', 'invoice_no': 'OH-77', 'invoice_date': '2026-10-12', 'challan_no': 'CH-5', 'vehicle_no': 'MH04AB1234', 'po_no': null, 'tcs': 12.5, 'gross': 1192.5, 'created_name': 'Sujit Mule',
@@ -434,7 +441,7 @@ class FakeServer {
       case 'poOpen':
         return _j({'pos': [storePo]});
       case 'grnNext':
-        return _j({'next': 5, 'step4': storeStep4});
+        return _j({'next': 5, 'step4': storeStep4, 'step6': storeStep6});
       case 'grnSave':
         final g = (b['grn'] as Map).cast<String, dynamic>();
         final over = g['po_no'] != null && (g['lines'] as List).any((l) => (num.tryParse('${(l as Map)['qty']}') ?? 0) > 15);
