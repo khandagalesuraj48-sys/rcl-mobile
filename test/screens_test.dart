@@ -2594,7 +2594,7 @@ void main() {
     await t.enterText(box('grf-bd'), '2%');
     await settle(t, 400);
     // the server's checkGrn: 1000 − 10 % = 900, 1000; the bill's 2 % of 1900 = 38 shared 18 / 20 → 882 / 980; GST 44.10 / 176.40; less ₹100 after GST
-    String txt(String k) => (t.widget<Text>(find.byKey(Key(k)))).data ?? '';
+    String txt(String k) => ((t.widget(find.byKey(Key(k))) as dynamic).data as String?) ?? ''; // (the app's own Text – ui/t.dart)
     expect(txt('grl-m-0'), 'Basic ${rs(1000)} · Disc. ${rs(118)} · Taxable ${rs(882)} · GST ${rs(44.1)} · Gross ${rs(926.1)}');
     expect(txt('grl-m-1'), 'Basic ${rs(1000)} · Disc. ${rs(120)} · Taxable ${rs(980)} · GST ${rs(176.4)} · Gross ${rs(1056.4)}');
     expect(txt('grf-total'), 'Basic ${rs(2000)} · Discount ${rs(238)} (the bill ${rs(38)}) · Taxable ${rs(1862)} · GST ${rs(220.5)} · Gross ${rs(1982.5)}');
