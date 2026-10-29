@@ -3,6 +3,8 @@
  * (each opens the app's own screen for that page), "New chat", the Admin's "Test the AI service", the daily summary once a day
  * (a red dot on Home's "Ask"). The working is the web's own (core/assistant.dart, core/ai_chat.dart); nothing is saved without
  * his Save. Opened from Home (the web's Dashboard). */
+import 'dart:async';
+
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as mt show Text;
 import 'package:flutter/services.dart';
@@ -70,6 +72,7 @@ AiChat chatFor(Session s) {
       onSite: (m) => Machine(m).onSite(s.today),
       now: () => s.clock(),
       modLook: (module, name, args) => moduleLook(s, module, name, args),
+      stream: (x, onLine) => s.api.aiStream(x, onLine), // (3.61.0, Mechanical update-186) the answer word by word
     ));
   }
   final c = _chat!;
@@ -129,6 +132,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
   String liveState = ''; // hear · think · say
   int silent = 0, sayingMsg = -1;
 
+  // (3.61.0, Mechanical update-186) the answer said while it is written: its parts one after another ([_sayGen] drops what is still
+  // queued, [_pending] – not said yet); [_sayWait] ends when all is said – or when the speech is cut (the microphone pressed to speak,
+  // New chat, a chat opened again, another question): the talk goes on – it listens again once nothing is asked or said ([_resume])
+  Future<void> _sayChain = Future.value();
+  int _sayGen = 0, _pending = 0;
+  bool _rec = false; // listening now
+  Completer<void>? _sayWait;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -136,6 +147,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
     final s = SessionScope.read(context);
     final c = _c = chatFor(s);
     c.admin = s.admin;
+    c.sayPart = _part;
+    c.sayStop = _partsStop;
+    c.talking = false;
     c.onForm = _form;
     c.onSaved = (r) {
       if (r['stock'] != null) s.setStock(r['stock']);
@@ -167,6 +181,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
     }
     _c?.removeListener(_changed);
     if (_c?.onForm == _form) _c!.onForm = null;
+    if (_c?.sayPart == _part) {
+      _c!
+        ..sayPart = null
+        ..sayStop = null
+        ..talking = false;
+    }
     input.dispose();
     scroll.dispose();
     super.dispose();
@@ -187,10 +207,45 @@ class _AssistantScreenState extends State<AssistantScreen> {
     if (t.trim().isEmpty || chat.busy) return;
     input.clear();
     HapticFeedback.selectionClick();
+    // (3.61.0) a question typed during a talk: said while it is written, as a spoken one; after its answer the talk listens again
+    final talk = live;
+    chat.talking = talk && SessionScope.read(context).prefs['voiceOut'] != false;
     await chat.ask(t);
+    chat.talking = false;
+    if (!talk || !mounted || !live) return;
+    chat.hush = false;
+    await _saidThen();
+    _resume();
   }
 
   String get _help => chat.a.helpLang;
+
+  /// (3.61.0, Mechanical update-186) History: his chats (only his, this site) – one opened again goes on.
+  Future<void> _history() async {
+    if (chat.busy) return;
+    final id = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => AiHistoryScreen(chat: chat)));
+    if (id == null || !mounted) return;
+    try {
+      await chat.openChat(id);
+    } catch (e) {
+      chat.note(aiErr(e));
+    }
+  }
+
+  /// (3.61.0) "Take it out" of a note it just kept.
+  Future<void> _unkeep(AiMsg m) async {
+    try {
+      await chat.unkeep(m);
+    } catch (e) {
+      if (mounted) toast(context, aiErr(e), bad: true);
+    }
+  }
+
+  /// (3.61.0) Memory: what the assistant remembers about him – × takes a note out.
+  Future<void> _memory() async {
+    if (chat.busy) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AiMemoryScreen(chat: chat)));
+  }
 
   /// 🔊 of an answer: said aloud in its language (Devanagari: Marathi – Hindi when his help is Hindi); pressed again: stops.
   Future<void> _sayMsg(int i) async {
@@ -212,6 +267,72 @@ class _AssistantScreenState extends State<AssistantScreen> {
     if (mounted) setState(() => liveState = st);
   }
 
+  /// A finished sentence of the answer being written: said after the ones before it.
+  void _part(String words, String lang) {
+    final g = _sayGen;
+    _pending++;
+    if (live) {
+      saying = true;
+      _liveShow('say');
+    }
+    _sayChain = _sayChain.then((_) async {
+      if (g != _sayGen) return;
+      try {
+        await sayAloud(words, lang);
+      } catch (_) {/* a phone that says nothing: the answer is on the screen */}
+      if (g == _sayGen) _pending--;
+    });
+  }
+
+  /// What is being said (and what is queued) stops; what waited for its end goes on.
+  void _partsStop() {
+    _sayGen++;
+    _pending = 0;
+    _sayChain = Future.value();
+    stopSaying();
+    final w = _sayWait;
+    if (w != null && !w.isCompleted) w.complete();
+    if (mounted && live && saying) setState(() => saying = false);
+  }
+
+  /// Until all that is being said is said – or the speech is cut.
+  Future<void> _untilSaid() {
+    if (_pending == 0) return Future.value();
+    final c = _sayWait = Completer<void>();
+    _sayChain.whenComplete(() {
+      if (!c.isCompleted) c.complete();
+    }).ignore();
+    return c.future;
+  }
+
+  /// What is still to be said of the answer, then on.
+  Future<void> _saidThen() async {
+    await _untilSaid();
+    if (mounted && saying) setState(() => saying = false);
+  }
+
+  /// (3.61.0) a talk goes on: it listens again when nothing is being asked or said.
+  void _resume() {
+    if (!mounted || !live || chat.busy || saying || _rec) return;
+    _liveShow('hear');
+    Future.delayed(const Duration(milliseconds: 300), _listen);
+  }
+
+  /// (3.61.0) he speaks while it speaks: it stops at once and listens (the talk goes on); while the question is still being answered,
+  /// nothing more of it is said ("Finding the answer…") – it listens once the answer is there.
+  void _interrupt() {
+    HapticFeedback.selectionClick();
+    chat.hush = chat.busy;
+    chat.say.stop();
+    _partsStop();
+    setState(() => saying = false);
+    if (chat.hush) {
+      _liveShow('think');
+    } else {
+      Future.delayed(const Duration(milliseconds: 150), _resume);
+    }
+  }
+
   Future<void> _liveStart() async {
     if (live) return _liveStop();
     if (chat.busy) return;
@@ -225,6 +346,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   Future<void> _liveStop([String msg = '']) async {
     final was = live || saying;
+    chat.talking = false;
+    chat.hush = false;
+    chat.say.stop();
+    _sayGen++;
+    _pending = 0;
+    _sayChain = Future.value();
+    final w = _sayWait;
+    if (w != null && !w.isCompleted) w.complete();
     setState(() {
       live = false;
       saying = false;
@@ -238,12 +367,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 
   Future<void> _listen() async {
-    if (!mounted || !live || chat.busy || saying) return;
+    if (!mounted || !live || chat.busy || saying || _rec) return;
     _liveShow('hear');
     String said;
+    _rec = true;
     try {
       said = (await listenOnce(_help, (w) => input.text = w)).trim();
     } on VoiceError catch (e) {
+      _rec = false;
       final a = chat.a;
       await _liveStop(e.code == 'mic'
           ? a.aiL(const {
@@ -253,9 +384,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
             })
           : a.aiL(const {'en': 'This phone cannot listen (it has no speech recognition).', 'mr': 'हा फोन ऐकू शकत नाही (त्यावर speech recognition नाही).', 'hi': 'यह फ़ोन सुन नहीं सकता (उस पर speech recognition नहीं है)।'}));
       return;
+    } finally {
+      _rec = false;
     }
     input.clear();
     if (!mounted || !live) return;
+    if (chat.busy) return; // (a question typed meanwhile: after its answer the talk listens again)
     if (said.isEmpty) {
       silent++;
       if (silent >= 3) return _liveStop();
@@ -265,20 +399,28 @@ class _AssistantScreenState extends State<AssistantScreen> {
     silent = 0;
     if (kAiStopWords.hasMatch(said)) return _liveStop();
     _liveShow('think');
-    await chat.ask(said);
-    if (!mounted || !live) return;
     final s = SessionScope.read(context);
-    if (s.prefs['voiceOut'] != false) {
-      _liveShow('say');
-      saying = true;
-      await sayAloud(chat.lastAnswer, chat.lastLang.isNotEmpty ? chat.lastLang : _help);
-      saying = false;
-    }
+    chat.talking = s.prefs['voiceOut'] != false; // (3.61.0) each sentence said while the answer is written
+    await chat.ask(said);
+    chat.talking = false;
     if (!mounted || !live) return;
-    _liveShow('hear');
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _listen();
+    if (chat.hush) {
+      // he pressed the microphone while it spoke: listening now (nothing more of this answer is said)
+      chat.hush = false;
+      chat.say.stop();
+      _partsStop();
+    } else if (s.prefs['voiceOut'] != false) {
+      // an answer of the app itself, or one that came in one piece: said now, as before (else: said while it was written)
+      if (chat.say.parts == 0) _part(chat.lastAnswer, chat.lastLang.isNotEmpty ? chat.lastLang : _help);
+      if (_pending > 0) {
+        saying = true;
+        _liveShow('say');
+      }
+      await _saidThen();
+    }
+    _resume();
   }
+
 
   /// "Open in the form": the app's own form with the entry in it (the web puts the date, shift, machinery and litres in the form).
   Future<void> _form(AiDraft d) async {
@@ -417,9 +559,26 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 decoration: BoxDecoration(color: C.slateSoft, borderRadius: BorderRadius.circular(10)),
                 child: mt.Text(c, style: const TextStyle(fontSize: 12, color: C.slate)),
               ),
+            // (3.61.0, Mechanical update-186) a note it just kept in its memory: taken out at once if he does not want it
+            if (m.keptId != 0)
+              OutlinedButton(
+                key: Key('ai-unkeep-${m.keptId.abs()}'),
+                style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    minimumSize: const Size(0, 34),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    foregroundColor: C.red),
+                onPressed: m.keptId > 0 ? () => _unkeep(m) : null,
+                child: mt.Text(m.button, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+              ),
           ]),
         );
       case AiKind.wait:
+        // (3.61.0) the answer being written into it, word by word
+        if (m.writing) {
+          return _bubble(_rich('${m.text} ▍'), border: C.line, key: const Key('ai-writing'));
+        }
         return Padding(
           key: const Key('ai-wait'),
           padding: const EdgeInsets.fromLTRB(6, 2, 6, 12),
@@ -534,6 +693,25 @@ class _AssistantScreenState extends State<AssistantScreen> {
       body: SafeArea(
         top: false,
         child: Column(children: [
+          // (3.61.0, Mechanical update-186) his chats and what it remembers about him – only his, only this site
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 2, 10, 0),
+            child: Row(children: [
+              TextButton.icon(
+                  key: const Key('ai-hist'),
+                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                  onPressed: c.busy ? null : _history,
+                  icon: const Icon(Icons.history_rounded, size: 20),
+                  label: const Text('History')),
+              const SizedBox(width: 4),
+              TextButton.icon(
+                  key: const Key('ai-mem'),
+                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                  onPressed: c.busy ? null : _memory,
+                  icon: const Icon(Icons.psychology_alt_outlined, size: 20),
+                  label: const Text('Memory')),
+            ]),
+          ),
           Expanded(
             child: ListView.builder(
               key: const Key('ai-list'),
@@ -567,7 +745,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   backgroundColor: C.amberSoft,
                   side: const BorderSide(color: Color(0xFFF2D49A)),
                   label: mt.Text('⚡ ${ready[i].q()}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFF6B4300))),
-                  onPressed: () => c.ready(ready[i].id),
+                  onPressed: () async {
+                    await c.ready(ready[i].id);
+                    _resume(); // (3.61.0) in a talk: it listens again once nothing is asked or said
+                  },
                 ),
               ),
             ),
@@ -581,13 +762,21 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 Icon(liveState == 'say' ? Icons.volume_up_rounded : liveState == 'think' ? Icons.hourglass_top_rounded : Icons.mic_rounded, color: liveState == 'say' ? C.blue : C.green, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: mt.Text(
+                  child: GestureDetector(
+                    key: const Key('ai-live-text'),
+                    onTap: liveState == 'say' && saying ? _interrupt : null, // (3.61.0) a tap while it speaks: it listens now
+                    child: mt.Text(
                       c.a.aiL(liveState == 'say'
-                          ? const {'en': 'Speaking… (press Stop to end)', 'mr': 'बोलतो आहे… (थांबवायला Stop दाबा)', 'hi': 'बोल रहा हूँ… (रोकने के लिए Stop दबाएँ)'}
+                          ? const {
+                              'en': 'Speaking… tap here or 🎙 to speak now · Stop ends the talk',
+                              'mr': 'बोलतो आहे… आत्ता बोलायला इथे किंवा 🎙 दाबा · Stop ने बंद',
+                              'hi': 'बोल रहा हूँ… अभी बोलने के लिए यहाँ या 🎙 दबाएँ · Stop से बंद',
+                            }
                           : liveState == 'think'
                               ? const {'en': 'Finding the answer…', 'mr': 'उत्तर शोधतो आहे…', 'hi': 'जवाब ढूँढ रहा हूँ…'}
                               : const {'en': 'Listening… speak now', 'mr': 'ऐकतो आहे… बोला', 'hi': 'सुन रहा हूँ… बोलिए'}),
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  ),
                 ),
                 TextButton(key: const Key('ai-live-stop'), onPressed: () => _liveStop(), child: const Text('Stop')),
               ]),
@@ -602,7 +791,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   key: const Key('ai-mic'),
                   tooltip: tr('Talk'),
                   style: IconButton.styleFrom(backgroundColor: live ? C.green : C.greenSoft, foregroundColor: live ? Colors.white : C.green, minimumSize: const Size(48, 48)),
-                  onPressed: c.busy && !live ? null : _liveStart,
+                  onPressed: live && saying ? _interrupt : (c.busy && !live ? null : _liveStart), // (3.61.0) while it speaks: he speaks
                   icon: Icon(live ? Icons.mic_rounded : Icons.mic_none_rounded),
                 ),
                 const SizedBox(width: 6),
@@ -630,6 +819,134 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ),
         ]),
       ),
+    );
+  }
+}
+
+
+/* ======================== (3.61.0, Mechanical update-186) HISTORY AND MEMORY – only his, only this site ======================== */
+const _kOnly = {'en': 'Only you see this – and only at this site.', 'mr': 'हे फक्त तुम्हालाच दिसते – आणि फक्त या site चे.', 'hi': 'यह सिर्फ़ आपको दिखता है – और सिर्फ़ इस site का।'};
+
+/// His chats with the assistant, the newest first – a tap opens one again (its id is given back).
+class AiHistoryScreen extends StatefulWidget {
+  const AiHistoryScreen({super.key, required this.chat});
+  final AiChat chat;
+  @override
+  State<AiHistoryScreen> createState() => _AiHistoryScreenState();
+}
+
+class _AiHistoryScreenState extends State<AiHistoryScreen> {
+  Map? r;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    widget.chat.chatList().then((v) {
+      if (mounted) setState(() => r = v);
+    }, onError: (Object e) {
+      if (mounted) setState(() => err = aiErr(e));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.chat.a, chats = (r?['chats'] is List ? r!['chats'] as List : const []).whereType<Map>().toList();
+    return Scaffold(
+      appBar: AppBar(title: mt.Text(a.aiL(const {'en': 'Your chats', 'mr': 'तुमच्या chats', 'hi': 'आपकी chats'}))),
+      body: ListView(key: const Key('ai-hist-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
+        mt.Text(a.aiL(_kOnly), style: const TextStyle(fontSize: 13, color: C.muted)),
+        const SizedBox(height: 10),
+        if (err.isNotEmpty) mt.Text(err, style: const TextStyle(color: C.red, fontWeight: FontWeight.w600)),
+        if (r == null && err.isEmpty) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+        if (r != null && r!['on'] == false) mt.Text('${r!['msg'] ?? ''}', key: const Key('ai-hist-off'), style: const TextStyle(fontSize: 14, color: C.amber, fontWeight: FontWeight.w600)),
+        if (r != null && r!['on'] != false && chats.isEmpty) mt.Text(a.aiL(const {'en': 'No chat kept yet.', 'mr': 'अजून कोणतीही chat नाही.', 'hi': 'अभी कोई chat नहीं।'}), style: const TextStyle(color: C.muted)),
+        for (final (i, c) in chats.indexed)
+          Card(
+            key: Key('ai-chat-$i'),
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              title: mt.Text('${c['title'] ?? ''}'.isEmpty ? '–' : '${c['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: mt.Text('${aiWhen('${c['at'] ?? ''}')} · ${c['n'] ?? 0} ${a.aiL(const {'en': 'question(s)', 'mr': 'प्रश्न', 'hi': 'सवाल'})}'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).pop('${c['id']}'),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+/// What the assistant remembers about him – × takes a note out (from the database too).
+class AiMemoryScreen extends StatefulWidget {
+  const AiMemoryScreen({super.key, required this.chat});
+  final AiChat chat;
+  @override
+  State<AiMemoryScreen> createState() => _AiMemoryScreenState();
+}
+
+class _AiMemoryScreenState extends State<AiMemoryScreen> {
+  Map? r;
+  String err = '';
+  int busyId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = await widget.chat.memory();
+      if (mounted) setState(() => r = v);
+    } catch (e) {
+      if (mounted) setState(() => err = aiErr(e));
+    }
+  }
+
+  Future<void> _forget(int id) async {
+    setState(() => busyId = id);
+    try {
+      await widget.chat.forget(id);
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => err = aiErr(e));
+    } finally {
+      if (mounted) setState(() => busyId = 0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.chat.a, notes = (r?['notes'] is List ? r!['notes'] as List : const []).whereType<Map>().toList();
+    return Scaffold(
+      appBar: AppBar(
+          title: mt.Text(a.aiL(const {'en': 'What the assistant remembers about you', 'mr': 'Assistant ला तुमच्याबद्दल काय लक्षात आहे', 'hi': 'Assistant को आपके बारे में क्या याद है'}),
+              maxLines: 2, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+      body: ListView(key: const Key('ai-mem-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
+        mt.Text(a.aiL(_kOnly), style: const TextStyle(fontSize: 13, color: C.muted)),
+        mt.Text(a.aiL(const {'en': 'Tell it "remember …" to add a note; × takes one out.', 'mr': 'नवीन नोंदीसाठी "लक्षात ठेव …" असे सांगा; × ने काढा.', 'hi': 'नई बात के लिए "याद रखो …" कहें; × से हटाएँ।'}), style: const TextStyle(fontSize: 13, color: C.muted)),
+        const SizedBox(height: 10),
+        if (err.isNotEmpty) mt.Text(err, style: const TextStyle(color: C.red, fontWeight: FontWeight.w600)),
+        if (r == null && err.isEmpty) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+        if (r != null && r!['on'] == false) mt.Text('${r!['msg'] ?? ''}', key: const Key('ai-mem-off'), style: const TextStyle(fontSize: 14, color: C.amber, fontWeight: FontWeight.w600)),
+        if (r != null && r!['on'] != false && notes.isEmpty) mt.Text(a.aiL(const {'en': 'Nothing yet.', 'mr': 'अजून काही नाही.', 'hi': 'अभी कुछ नहीं।'}), key: const Key('ai-mem-none'), style: const TextStyle(color: C.muted)),
+        for (final n in notes)
+          Card(
+            key: Key('ai-note-${n['id']}'),
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              title: mt.Text('${n['note'] ?? ''}', style: const TextStyle(fontSize: 15)),
+              trailing: IconButton(
+                key: Key('ai-forget-${n['id']}'),
+                tooltip: tr('Take this out'),
+                onPressed: busyId != 0 ? null : () => _forget((n['id'] as num).toInt()),
+                icon: const Icon(Icons.close_rounded, color: C.red),
+              ),
+            ),
+          ),
+      ]),
     );
   }
 }

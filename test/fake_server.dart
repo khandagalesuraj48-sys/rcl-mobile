@@ -157,6 +157,17 @@ class FakeServer {
   bool engSite = false, engEnded = false;
   final engSent = <Map<String, dynamic>>[];
   int engSessions = 0;
+  /// (3.61.0, Mechanical update-186) the answer word by word (/api/ai): on or not (off – a server without it: 404); what it was sent;
+  /// how a step ends ('end' – its parts from [aiScript]; 'busy' – cut after some words: an err line with cut; 'busy0' / 'credit' – the
+  /// service's own answer before any word: an err line without cut; 'cut' – the line lost after some words)
+  bool aiStream = false;
+  final aiStreamed = <Map<String, dynamic>>[];
+  final aiStreamHow = <String>[];
+  /// (3.61.0) his chats and the assistant's memory of him (the site's step 1zk: [aiStep])
+  bool aiStep = true;
+  final aiChats = <String, Map<String, dynamic>>{};
+  int aiSaves = 0;
+  final aiMemory = <Map<String, dynamic>>[];
   Map<String, Object> aiLookupAnswers = {
     'maintenance_bills': {'from': '2026-10-01', 'to': '2026-10-14', 'bills': [{'id': 'MT-000001', 'date': '2026-10-05', 'no': 'MH-12-HO-1163', 'garage': 'Toyota Service', 'total': 2360}], 'count': 1, 'totalRupees': 2360, 'page': 'mnt'},
   };
@@ -889,6 +900,34 @@ class FakeServer {
       if (b['action'] != 'aiLook') return _j({'error': 'Unknown action.', 'code': 'action'}, 400);
       return _j({'ok': true, 'date': '2026-10-13', 'works': [{'name': 'PQC', 'unit': 'm', 'planned': 120, 'done': 100, 'pct': 83}], 'page': 'eng-dash'});
     }
+    // (3.61.0, Mechanical update-186) the assistant's answer word by word: lines of JSON (the whole body here – the app reads it as it comes)
+    if (path.endsWith('/api/ai')) {
+      if (!aiStream) return _j({'error': 'not found'}, 404);
+      final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      if (b['token'] == null || '${b['token']}'.isEmpty) return _j({'error': 'SESSION_EXPIRED'}, 401);
+      final x = (b['x'] as Map).cast<String, dynamic>();
+      aiStreamed.add(x);
+      aiAsked.add(x);
+      if (!aiOn) return _j({'error': 'The assistant is not set up yet: the Admin has to put the AI key (ANTHROPIC_API_KEY – Claude) in the server\'s settings.'}, 500);
+      final how = aiStreamHow.isNotEmpty ? aiStreamHow.removeAt(0) : 'end';
+      final step = how == 'end'
+          ? (aiScript.isNotEmpty ? aiScript.removeAt(0) : {'parts': [{'text': 'Nothing more to say.'}], 'model': 'claude-sonnet-5-5'})
+          : how == 'busy' || how == 'cut'
+              ? {'parts': [{'text': 'The first words of '}]}
+              : {'parts': []};
+      final lines = <String>[];
+      for (final p in (step['parts'] as List).whereType<Map>()) {
+        final t = '${p['text'] ?? ''}';
+        for (var i = 0; i < t.length; i += 6) {
+          lines.add(jsonEncode({'t': 'd', 'x': t.substring(i, i + 6 > t.length ? t.length : i + 6)}));
+        }
+      }
+      if (how == 'end') lines.add(jsonEncode({'t': 'end', 'parts': step['parts'], 'model': step['model'] ?? 'claude-sonnet-5-5', 'used': 100, 'ms': 900}));
+      if (how == 'busy' || how == 'busy0') lines.add(jsonEncode({'t': 'err', 'e': 'The AI service is busy right now (529) – that is on its side, not in the app. It was asked ${how == 'busy' ? 1 : 3} time(s). Please ask again in a minute.', 'cut': how == 'busy'}));
+      if (how == 'credit') lines.add(jsonEncode({'t': 'err', 'e': 'The AI service has no credit left (Claude): the Admin has to add funds in Claude Console → Billing. The rest of the app works as always.', 'cut': false}));
+      if (how == 'end') lines.add(jsonEncode({'t': 'd', 'x': 'what the server sends after the end is not read'}));
+      return http.Response('${lines.join('\n')}\n', 200, headers: {'content-type': 'application/x-ndjson; charset=utf-8'});
+    }
     if (path.endsWith('/api/rpc')) {
       final b = jsonDecode(r.body) as Map;
       final fn = b['fn'] as String, args = b['args'] as List;
@@ -1465,6 +1504,31 @@ class FakeServer {
           final ans = aiLookupAnswers['${x['name']}'];
           if (ans == null) return _j({'error': 'There is no such look-up.'}, 500);
           return _j({'result': ans});
+        // (3.61.0, Mechanical update-186) his chats and the memory of him – only his (as aiChatSave_ / aiChats_ / aiMemory_ …)
+        case 'aiChatSave':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          if (!aiStep) return _j({'result': {'kept': false}});
+          final msgs = (x['msgs'] as List).whereType<Map>().toList(), first = msgs.where((m) => m['r'] == 'me').firstOrNull;
+          final had = aiChats['${x['id']}'];
+          if (had != null && (had['n'] as int) > msgs.where((m) => m['r'] == 'me').length) return _j({'result': {'kept': false, 'id': x['id'], 'newer': true}});
+          aiChats['${x['id']}'] = {'id': x['id'], 'title': first == null ? '' : '${first['t']}', 'msgs': msgs, 'n': msgs.where((m) => m['r'] == 'me').length, 'at': '2026-10-14T05:${30 + aiSaves++}:00Z'};
+          return _j({'result': {'kept': true, 'id': x['id']}});
+        case 'aiChats':
+          if (!aiStep) return _j({'result': {'on': false, 'chats': [], 'msg': 'The assistant\'s memory and its chats need one database step first: the Admin runs sql/supabase_step1zk_ai_memory.sql once in Supabase → SQL Editor (in every site).'}});
+          final list = aiChats.values.toList()..sort((p, q) => '${q['at']}'.compareTo('${p['at']}'));
+          return _j({'result': {'on': true, 'chats': [for (final c in list) {'id': c['id'], 'title': c['title'], 'n': c['n'], 'at': c['at']}]}});
+        case 'aiChatGet':
+          final c = aiChats['${(a[0] as Map)['id']}'];
+          if (c == null) return _j({'error': 'This chat is not there.'}, 500);
+          return _j({'result': c});
+        case 'aiMemory':
+          if (!aiStep) return _j({'result': {'on': false, 'notes': [], 'msg': 'The assistant\'s memory and its chats need one database step first: the Admin runs sql/supabase_step1zk_ai_memory.sql once in Supabase → SQL Editor (in every site).'}});
+          return _j({'result': {'on': true, 'notes': aiMemory}});
+        case 'aiMemoryDel':
+          final id = (a[0] as Map)['id'];
+          if (!aiMemory.any((m) => m['id'] == id)) return _j({'error': 'Note $id is not in the memory of the assistant for you.'}, 500);
+          aiMemory.removeWhere((m) => m['id'] == id);
+          return _j({'result': {'forgotten': true, 'id': id}});
         case 'getAiReply':
           aiAsked.add((a[0] as Map).cast<String, dynamic>());
           if (!aiOn) return _j({'error': 'The assistant is not set up yet: the Admin has to put the AI key (ANTHROPIC_API_KEY – Claude) in the server\'s settings.'}, 500);

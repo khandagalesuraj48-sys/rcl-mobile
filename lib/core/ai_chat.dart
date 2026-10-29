@@ -8,6 +8,7 @@
  *      fits) and says so; an error only when nothing at all can be said – with "Ask again".
  * The assistant never saves by itself: only his Save (or "हो") sends the entry, through the app's own save and its checks. */
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -18,8 +19,21 @@ enum AiKind { me, bot, err, src, wait, card, warn }
 
 /// One message of the conversation.
 class AiMsg {
-  AiMsg(this.kind, this.text, {this.draft, this.retry = '', this.chips = const [], this.say = '', this.small = ''});
+  AiMsg(this.kind, this.text, {this.draft, this.retry = '', this.chips = const [], this.say = '', this.small = '', this.note = false, this.keptId = 0, this.button = ''});
   final AiKind kind;
+
+  /// (3.61.0, Mechanical update-186) a note it just kept in its memory (the line "Kept in memory: …" with "Take it out"): the note's
+  /// number; below 0 while it is being taken out; 0 – none (or taken out)
+  int keptId;
+
+  /// (3.61.0) the words of its button ("Take it out" – in the question's language)
+  final String button;
+
+  /// (3.61.0) a waiting bubble whose answer is being written into it, word by word
+  bool writing = false;
+
+  /// (3.61.0) a line of the screen itself ("Opened from History …") – not kept with the chat
+  final bool note;
 
   /// The words (an answer: with **bold** and [[open:page|Label]]).
   String text;
@@ -61,6 +75,23 @@ class AiChat extends ChangeNotifier {
   final msgs = <AiMsg>[];
   final turns = <Map<String, Object?>>[];
   bool busy = false;
+
+  /// (3.61.0, Mechanical update-186) the answer word by word (false once the server said it has none – AI_NO_STREAM: Gemini, an older
+  /// server – for the rest of this conversation)
+  bool streamOn = true;
+
+  /// (3.61.0) this chat's own number: kept after every answer (aiChatSave), opened again from History; a new one at New chat
+  String chatId = newChatId();
+
+  /// (3.61.0) a talk (the screen sets it): each finished sentence is handed to [sayPart] while the answer is still being written;
+  /// [sayStop] stops what is being said
+  bool talking = false;
+  void Function(String words, String lang)? sayPart;
+  void Function()? sayStop;
+  final say = SayQueue();
+
+  /// (3.61.0) he pressed the microphone while it spoke, during this question: nothing more of it is said
+  bool hush = false;
   AiDraft? pending;
   AiCmd? partial;
   String lastAnswer = '', lastLang = '';
@@ -91,6 +122,8 @@ class AiChat extends ChangeNotifier {
 
   /// A new conversation (the web's aiReset). (The app also forgets an entry that was waiting for Save: its card is gone.)
   void reset() {
+    _sayCut();
+    chatId = newChatId();
     turns.clear();
     msgs.clear();
     pending = null;
@@ -135,6 +168,7 @@ class AiChat extends ChangeNotifier {
     } finally {
       busy = false;
       notifyListeners();
+      keepChat();
     }
   }
 
@@ -235,11 +269,12 @@ class AiChat extends ChangeNotifier {
     lastAnswer = '';
     lastLang = a.aiLangOf(text);
     busy = true;
+    _sayCut(); // (3.61.0) a new question: what was being said stops
     a.lang = a.aiLangOf(text);
     final keep = turns.length, t0 = DateTime.now(), byApp = _byApp;
     _add(AiMsg(AiKind.me, text));
     turns.add(_user(text));
-    final wait = _add(AiMsg(AiKind.wait, '…')), used = <String>[];
+    final wait = _add(AiMsg(AiKind.wait, '…')), used = <String>[], kept = <Map>[]; // (3.61.0) kept: the notes it kept in this question
     void said(String t) => turns.add(_model(t));
     try {
       // 0. an entry is waiting for its yes / no; or these words are a command (or complete one that was half said)
@@ -297,7 +332,7 @@ class AiChat extends ChangeNotifier {
       }
       // 2. the AI service
       if (!aiOn) throw AiStop('The assistant is not set up yet: the Admin has to put the AI key (ANTHROPIC_API_KEY – Claude) in the server\'s settings.');
-      _waitSays(wait, 'Thinking…');
+      _waitSays(wait, '…'); // (3.61.0, update-186) no "Thinking…": its words come as they are written
       Map<String, Object?>? snap;
       try {
         snap = await a.snapshot();
@@ -311,26 +346,39 @@ class AiChat extends ChangeNotifier {
         if (about != null) 'aboutTheMachineryInTheQuestion': about,
       };
       for (var step = 0; step < 7; step++) {
-        final r0 = await a.call('getAiReply', [{'contents': turns, 'context': ctx}]);
-        final r = r0 is Map ? r0 : const {};
+        _sayStart();
+        final r = await _step(ctx, wait);
         final parts = r['parts'] is List ? r['parts'] as List : const [];
         turns.add({'role': 'model', 'parts': r['parts']}); // exactly as it came (the service wants its own parts back)
         final calls = parts.whereType<Map>().where((p) => p['functionCall'] != null).toList();
         if (calls.isEmpty) {
           final t = parts.map((p) => p is Map && p['text'] != null ? '${p['text']}' : '').join().trim();
           _drop(wait);
+          _sayFeed(t, true);
           final asOf = snap?['asOf'];
           _add(AiMsg(
             AiKind.src,
             used.isNotEmpty
                 ? 'Looked up:'
                 : a.aiL({'en': 'From the figures of ${asOf ?? 'now'}', 'mr': '${asOf ?? 'आत्ता'} च्या आकड्यांवरून', 'hi': '${asOf ?? 'अभी'} के आँकड़ों से'}),
-            chips: [...used, if (admin) '${r['model'] ?? ''} · ${js((DateTime.now().difference(t0).inMilliseconds / 100).round() / 10)} s'],
+            chips: [
+              ...used,
+              if (admin)
+                '${r['model'] ?? ''} · ${js((DateTime.now().difference(t0).inMilliseconds / 100).round() / 10)} s${jsN(r['first']) > 0 ? ' · first words ${js((jsN(r['first']) / 100).round() / 10)} s' : ''}',
+            ],
           ));
           _add(AiMsg(AiKind.bot, t.isEmpty ? '–' : t));
+          // (3.61.0, update-186) what it just kept in its memory is shown, with "Take it out" – a note is never kept unseen (not kept
+          // with the chat)
+          for (final k in kept) {
+            _add(AiMsg(AiKind.src, '${a.aiL(const {'en': 'Kept in memory: ', 'mr': 'Memory मध्ये ठेवले: ', 'hi': 'Memory में रखा: '})}${k['note'] ?? ''}',
+                note: true, keptId: jsN(k['id']).toInt(), button: a.aiL(const {'en': 'Take it out', 'mr': 'काढा', 'hi': 'हटाएँ'})));
+          }
           return;
         }
-        // the look-ups it asks for run side by side
+        // the look-ups it asks for run side by side (what it wrote before asking for them is not the answer: taken away, not said)
+        _sayCut();
+        _writingOff(wait);
         String nameOf(Map c) => '${(c['functionCall'] as Map)['name'] ?? ''}';
         Map argsOf(Map c) => (c['functionCall'] as Map)['args'] is Map ? (c['functionCall'] as Map)['args'] as Map : const {};
         _waitSays(wait, 'Looking up: ${calls.map((c) => Assistant.aiWhat(nameOf(c), argsOf(c))).join(', ')}…');
@@ -349,6 +397,7 @@ class AiChat extends ChangeNotifier {
           } catch (e) {
             res = {'error': aiErr(e)};
           }
+          if (name == 'remember' && jsTrueS(res['remembered']) && !jsTrueS(res['already'])) kept.add(res);
           return <String, Object?>{'functionResponse': {'name': name, 'response': res}};
         }));
         turns.add({'role': 'user', 'parts': outs});
@@ -408,6 +457,174 @@ class AiChat extends ChangeNotifier {
       final b = msgs.lastWhere((m) => m.kind == AiKind.bot || m.kind == AiKind.err || m.kind == AiKind.card || m.kind == AiKind.warn, orElse: () => AiMsg(AiKind.bot, ''));
       lastAnswer = b.say.isNotEmpty ? b.say : plain(b.text);
       notifyListeners();
+      keepChat();
+    }
+  }
+
+  /* ---------- (3.61.0, Mechanical update-186) LIVE, REMEMBERING, ITS CHATS KEPT – the web's aiStep / AI_SQ / aiKeep / aiChatOpen ---------- */
+
+  /// One step of a question: word by word first – the words go into the waiting bubble as they come (about 15 pictures a second at
+  /// most) and, in a talk, each finished sentence is said; the answer in one piece (getAiReply) is the way back: AI_NO_STREAM (for the
+  /// rest of this conversation), the stream cut after some words ({t: 'err', cut: true} – asked once more), a line lost. The
+  /// service's own refusal (busy before a word, no credit, a key it did not take …) is the answer, as getAiReply says it.
+  Future<Map> _step(Map<String, Object?> ctx, AiMsg wait) async {
+    final x = <String, dynamic>{'contents': turns, 'context': ctx}, f = a.stream;
+    if (streamOn && f != null) {
+      var text = '', first = 0;
+      final t0 = DateTime.now();
+      var drawn = DateTime.fromMillisecondsSinceEpoch(0);
+      try {
+        final end = await f(x, (j) {
+          if (j['t'] != 'd' || '${j['x'] ?? ''}'.isEmpty) return;
+          final now = DateTime.now();
+          if (first == 0) {
+            first = max(1, now.difference(t0).inMilliseconds);
+            wait.writing = true;
+          }
+          text += '${j['x']}';
+          wait.text = text;
+          _sayFeed(text, false);
+          if (now.difference(drawn).inMilliseconds >= 66) {
+            drawn = now;
+            notifyListeners();
+          }
+        });
+        if (end != null && end['t'] == 'end') {
+          notifyListeners();
+          return {...end, 'first': first};
+        }
+        // the service's own answer (busy before a word, no credit, a key it did not take …) – as getAiReply says it; cut after words
+        // were already on the screen: asked once more in one piece
+        if (end != null && end['t'] == 'err' && end['cut'] != true) {
+          _writingOff(wait);
+          _sayCut();
+          throw AiStop('${end['e']}');
+        }
+      } on AiStop {
+        rethrow;
+      } catch (e) {
+        if (aiErr(e).contains('AI_NO_STREAM')) streamOn = false;
+      }
+      _writingOff(wait);
+      _sayCut();
+    }
+    final r0 = await a.call('getAiReply', [x]);
+    return r0 is Map ? r0 : const {};
+  }
+
+  void _writingOff(AiMsg w) {
+    if (!w.writing) return;
+    w.writing = false;
+    w.text = '…';
+    notifyListeners();
+  }
+
+  void _sayStart() {
+    _sayCut();
+    say.start(talking && !hush && sayPart != null, lastLang.isNotEmpty ? lastLang : a.helpLang);
+  }
+
+  void _sayCut() {
+    if (say.parts > 0) sayStop?.call();
+    say.stop();
+  }
+
+  void _sayFeed(String text, bool last) {
+    for (final p in say.feed(text, last)) {
+      sayPart?.call(p, say.lang);
+    }
+  }
+
+  /// The chat kept after every answer – as he saw it (his questions, the answers, what was looked up; only his, only this site).
+  void keepChat() {
+    final out = <Map<String, String>>[];
+    var me = false;
+    for (final m in msgs) {
+      if (m.note) continue;
+      if (m.kind == AiKind.me) {
+        me = true;
+        out.add({'r': 'me', 't': m.text});
+      } else if (!me) {
+        continue;
+      } else if (m.kind == AiKind.bot) {
+        out.add({'r': 'bot', 't': plain(m.text)});
+      } else if (m.kind == AiKind.src) {
+        out.add({'r': 'src', 't': [m.text, ...m.chips].join(' · ')});
+      }
+    }
+    if (!out.any((m) => m['r'] == 'bot')) return;
+    a.call('aiChatSave', [{'id': chatId, 'msgs': out}]).then((_) {}, onError: (_) {}); // (kept with the next answer)
+  }
+
+  /// His chats (History): the newest first – {on, chats: [{id, title, n, at}], msg}
+  Future<Map> chatList() async {
+    final r = await a.call('aiChats', const []);
+    return r is Map ? r : const {};
+  }
+
+  /// A chat opened again: its questions and answers on the screen, the conversation goes on from them (the same chat).
+  Future<void> openChat(String id) async {
+    if (busy) return;
+    final c0 = await a.call('aiChatGet', [{'id': id}]);
+    if (busy) return; // (a question asked meanwhile: not mixed up)
+    final c = c0 is Map ? c0 : const {};
+    _sayCut();
+    chatId = '${c['id'] ?? id}';
+    turns.clear();
+    msgs.clear();
+    pending = null;
+    partial = null;
+    for (final m in (c['msgs'] is List ? c['msgs'] as List : const []).whereType<Map>()) {
+      final t = '${m['t'] ?? ''}';
+      if (m['r'] == 'me') {
+        msgs.add(AiMsg(AiKind.me, t));
+        turns.add(_user(t));
+      } else if (m['r'] == 'bot') {
+        msgs.add(AiMsg(AiKind.bot, t));
+        if (turns.isNotEmpty) turns.add(_model(t));
+      } else if (m['r'] == 'src') {
+        final p = t.split(' · ');
+        msgs.add(AiMsg(AiKind.src, p.first, chips: p.skip(1).toList()));
+      }
+    }
+    final at = aiWhen('${c['at'] ?? ''}');
+    msgs.add(AiMsg(
+        AiKind.src,
+        a.aiL({
+          'en': 'Opened from History ($at) – ask on; the figures are looked up again.',
+          'mr': 'History मधून उघडली ($at) – पुढे विचारा; आकडे पुन्हा पाहिले जातील.',
+          'hi': 'History से खोली ($at) – आगे पूछें; आँकड़े फिर से देखे जाएँगे।',
+        }),
+        note: true));
+    notifyListeners();
+  }
+
+  /// What the assistant remembers about him (Memory): {on, notes: [{id, note, at}], msg}
+  Future<Map> memory() async {
+    final r = await a.call('aiMemory', const []);
+    return r is Map ? r : const {};
+  }
+
+  /// A note taken out of its memory (×).
+  Future<void> forget(int id) async {
+    await a.call('aiMemoryDel', [{'id': id}], save: true);
+  }
+
+  /// (3.61.0) "Take it out" under an answer: the note it just kept goes out of its memory; the line says so.
+  Future<void> unkeep(AiMsg m) async {
+    final id = m.keptId;
+    if (id <= 0) return;
+    m.keptId = -id;
+    notifyListeners();
+    try {
+      await forget(id);
+      m.keptId = 0;
+      m.text = a.aiL(const {'en': 'Taken out of the memory.', 'mr': 'Memory मधून काढले.', 'hi': 'Memory से हटाया।'});
+    } catch (_) {
+      m.keptId = id;
+      rethrow;
+    } finally {
+      notifyListeners();
     }
   }
 
@@ -452,3 +669,66 @@ class AiChat extends ChangeNotifier {
 }
 
 bool jsTrueS(Object? v) => !(v == null || v == false || v == '' || v == 0);
+
+/// (3.61.0) a chat's own number, as the web's: C + the time in base 36 + 6 random letters / digits
+String newChatId([Random? r]) {
+  final rnd = r ?? Random();
+  const al = '0123456789abcdefghijklmnopqrstuvwxyz';
+  return 'C${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}${List.generate(6, (_) => al[rnd.nextInt(36)]).join()}';
+}
+
+/// (3.61.0) a time of the server as the web shows it: dd-mm-yyyy, hh:mm (on this phone's clock)
+String aiWhen(String iso) {
+  final d = DateTime.tryParse(iso)?.toLocal();
+  if (d == null) return '';
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${two(d.day)}-${two(d.month)}-${d.year}, ${two(d.hour)}:${two(d.minute)}';
+}
+
+/// (3.61.0, Mechanical update-186 – the web's AI_SQ / aiSayFeed) THE ANSWER SAID WHILE IT IS WRITTEN (a talk): each finished sentence
+/// once – a sentence ends at . ! ? । before a space, or at a new line (a number's point is no end; a page button is not said; the
+/// answer's leading spaces do not count) – about the first 650 characters, then "The rest is on the screen." once.
+class SayQueue {
+  bool on = false, cut = false;
+  int said = 0, n = 0, parts = 0;
+  String lang = 'en';
+  static const kRest = {'en': 'The rest is on the screen.', 'mr': 'बाकी screen वर आहे.', 'hi': 'बाकी screen पर है।'};
+
+  void start(bool on0, String l) {
+    on = on0;
+    said = 0;
+    n = 0;
+    parts = 0;
+    cut = false;
+    lang = l;
+  }
+
+  void stop() {
+    on = false;
+    parts = 0;
+  }
+
+  /// the parts to say now (all of what is left when [last])
+  List<String> feed(String text, bool last) {
+    if (!on) return const [];
+    // (the same text whether streamed or whole: its leading spaces and new lines left out first)
+    final t = text.replaceFirst(RegExp(r'^\s+'), '').replaceAll(RegExp(r'\[\[open:[^\]]*\]\]'), '').replaceAll(RegExp(r'\[\[[^\]]*$'), '');
+    var upto = t.length;
+    if (!last) {
+      final ms = RegExp(r'[.!?।](?=\s)|\n').allMatches(t).toList();
+      upto = ms.isEmpty ? 0 : ms.last.end;
+    }
+    if (upto <= said) return const [];
+    final part = t.substring(said, upto).trim();
+    said = upto;
+    if (part.isEmpty || cut) return const [];
+    if (n > 0 && n + part.length > 650) {
+      cut = true;
+      parts++;
+      return [kRest[lang] ?? kRest['en']!];
+    }
+    n += part.length;
+    parts++;
+    return [part];
+  }
+}

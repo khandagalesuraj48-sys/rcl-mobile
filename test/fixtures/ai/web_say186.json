@@ -1,0 +1,55 @@
+{
+ "note": "update-186 App.html AI_SQ / aiSayFeed run in node (say186/gen.js): the answer fed 7 characters at a time, then whole (last); said = each part handed to aiUtter (aiSpeakable left out)",
+ "cases": [
+  {
+   "lang": "en",
+   "full": "Diesel today: **240 L** in 4 entries. The average of MH-25-AJ-8511 is 3.08 km/L!\nOpen it here: [[open:diesel|Diesel Issue]] Is that all? Yes, for now",
+   "step": 7,
+   "said": [
+    "Diesel today: **240 L** in 4 entries.",
+    "The average of MH-25-AJ-8511 is 3.08 km/L!",
+    "Open it here:  Is that all?",
+    "Yes, for now"
+   ],
+   "saidWhileWritten": 3
+  },
+  {
+   "lang": "mr",
+   "full": "आज 240 लिटर diesel दिले। काल 180.5 लिटर. बाकी ठीक आहे\n[[open:log|Log Book]]",
+   "step": 7,
+   "said": [
+    "आज 240 लिटर diesel दिले।",
+    "काल 180.5 लिटर.",
+    "बाकी ठीक आहे"
+   ],
+   "saidWhileWritten": 3
+  },
+  {
+   "lang": "hi",
+   "full": "Machinery number 1 took 40.5 litres of diesel yesterday on the road. Machinery number 2 took 41.5 litres of diesel yesterday on the road. Machinery number 3 took 42.5 litres of diesel yesterday on the road. Machinery number 4 took 43.5 litres of diesel yesterday on the road. Machinery number 5 took 44.5 litres of diesel yesterday on the road. Machinery number 6 took 45.5 litres of diesel yesterday on the road. Machinery number 7 took 46.5 litres of diesel yesterday on the road. Machinery number 8 took 47.5 litres of diesel yesterday on the road. Machinery number 9 took 48.5 litres of diesel yesterday on the road. Machinery number 10 took 49.5 litres of diesel yesterday on the road. Machinery number 11 took 50.5 litres of diesel yesterday on the road. Machinery number 12 took 51.5 litres of diesel yesterday on the road. Machinery number 13 took 52.5 litres of diesel yesterday on the road. Machinery number 14 took 53.5 litres of diesel yesterday on the road. Machinery number 15 took 54.5 litres of diesel yesterday on the road. Machinery number 16 took 55.5 litres of diesel yesterday on the road. The end.",
+   "step": 7,
+   "said": [
+    "Machinery number 1 took 40.5 litres of diesel yesterday on the road.",
+    "Machinery number 2 took 41.5 litres of diesel yesterday on the road.",
+    "Machinery number 3 took 42.5 litres of diesel yesterday on the road.",
+    "Machinery number 4 took 43.5 litres of diesel yesterday on the road.",
+    "Machinery number 5 took 44.5 litres of diesel yesterday on the road.",
+    "Machinery number 6 took 45.5 litres of diesel yesterday on the road.",
+    "Machinery number 7 took 46.5 litres of diesel yesterday on the road.",
+    "Machinery number 8 took 47.5 litres of diesel yesterday on the road.",
+    "Machinery number 9 took 48.5 litres of diesel yesterday on the road.",
+    "बाकी screen पर है।"
+   ],
+   "saidWhileWritten": 10
+  },
+  {
+   "lang": "en",
+   "full": "One line only, no end",
+   "step": 7,
+   "said": [
+    "One line only, no end"
+   ],
+   "saidWhileWritten": 0
+  }
+ ]
+}

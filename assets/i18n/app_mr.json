@@ -1227,5 +1227,6 @@
 "The file could not be downloaded – its link works for 15 minutes: open the documents again.": "फाइल download झाली नाही – तिची लिंक 15 मिनिटे चालते: कागदपत्रे पुन्हा उघडा.",
 "Tax, PUC, Permit, Fitness and Insurance of every active Own machinery. Tap a paper to renew it – the new date goes into Asset Master and the old one is kept in the history.": "प्रत्येक चालू Own मशिनरीचे Tax, PUC, Permit, Fitness आणि Insurance. नूतनीकरणासाठी कागदावर टॅप करा – नवी तारीख Asset Master मध्ये जाते आणि जुनी इतिहासात राहते.",
 "Nothing to import – the file matches Asset Master. ({0} machinery left out – not Own.)": "Import करण्यासारखे काही नाही – फाइल Asset Master शी जुळते. ({0} मशिनरी सोडल्या – Own नाहीत.)",
-"GST ₹{0}": "GST ₹{0}"
+"GST ₹{0}": "GST ₹{0}",
+"Take this out": "हे काढा"
 }
