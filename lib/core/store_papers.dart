@@ -69,8 +69,11 @@ String _page(String title, String body) =>
 /// The logo on top, as the web's logoOf: the company's own (the Portal's – https / data), else the one given (the app's own Rachana
 /// picture, a data: address – Rachana's company), else its name.
 /// (3.69.0) [mine] the look of the app's own Rachana picture (the requirement's: as his paper, bigger)
+// (3.70.0, the web's 29-10-2026: "logo ala nahi" – the Portal's logo link of the company is not a picture the print can show) a Rachana
+// company: the app's Rachana logo (the one he gave), always; another company: its own logo, else its name
 String _logo(Map h, String logo, {String mine = 'max-height:70px;max-width:100%'}) {
   final own = '${h['logo'] ?? ''}';
+  if (logo.isNotEmpty && '${h['company'] ?? ''}'.toLowerCase().contains('rachana')) return '<img src="${_e(logo)}" alt="" style="$mine">';
   if (RegExp(r'^(https://|data:image/)').hasMatch(own)) return '<img src="${_e(own)}" alt="" style="max-height:70px;max-width:100%">';
   if (logo.isNotEmpty) return '<img src="${_e(logo)}" alt="" style="$mine">';
   return '<b style="font-size:22px">${_e(h['company'])}</b>';

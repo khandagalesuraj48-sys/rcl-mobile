@@ -1719,7 +1719,7 @@ void Function(String html, String title)? storePaperSink;
 /// the Portal, else the app's own Rachana logo when the site's company is Rachana's, else its name.
 Future<void> printStorePaper(BuildContext context, Map heading, String title, String Function(String logo) html) async {
   var logo = '';
-  if ('${heading['logo'] ?? ''}'.isEmpty && '${heading['company'] ?? ''}'.toLowerCase().contains('rachana')) {
+  if ('${heading['company'] ?? ''}'.toLowerCase().contains('rachana')) { // (3.70.0) a Rachana paper: its logo always – also when the Portal has a logo link
     try {
       logo = 'data:image/png;base64,${base64Encode((await rootBundle.load('assets/brand/rachana_logo.png')).buffer.asUint8List())}';
     } catch (_) {/* the company's own logo, or its name */}
