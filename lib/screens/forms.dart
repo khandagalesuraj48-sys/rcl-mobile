@@ -174,8 +174,10 @@ class _EntryFormState extends State<EntryForm> {
       final s = SessionScope.read(context);
       String v(String key) => '${d[key] ?? ''}';
       setState(() {
-        if (v('date').isNotEmpty) date = v('date');
-        if (v('shift').isNotEmpty) shift = v('shift');
+        // (3.62.1) its date only when it was typed today – one of an earlier day: today's date (not its old day, unseen)
+        final sameDay = draftToday(v('at'), s.clock());
+        if (v('date').isNotEmpty && sameDay) date = v('date');
+        if (v('shift').isNotEmpty && sameDay) shift = v('shift');
         if ((k.key == 'inward' ? s.locations : s.mySources('Diesel Issue')).contains(v('source')) || (issue && s.cardSite && s.payFor(s.machine(v('no'))).contains(v('source')))) source = v('source');
         if (s.mySources('Diesel Transfer').contains(v('from'))) from = v('from');
         if (s.locations.contains(v('to'))) to = v('to');

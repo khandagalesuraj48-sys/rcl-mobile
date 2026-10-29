@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.62.1 (29-10-2026 – urgent: "ek user aahe jo diesel issue krtoy app madhun tyan entry tyach phone warun keli ki save
+zaleli disat nahi … tyachi id mi mazya phone madhe gheun ek entry keli tr lage entry diste"):** a half-filled entry brought back
+(Diesel Issue / Inward / Transfer, Log Book – 3.31.0) brings back its date and shift **only when it was typed today**; one kept from an
+earlier day comes back with today's date. Before, the old day came back unseen and every entry of that form was saved on that old day –
+not in today's list (on another phone, without that half-filled entry, the same person's entries showed). Nothing else is changed; no
+server change. Not verified: his phone itself (the cause is found in the code, not seen on his phone).
+
 **Version 3.62.0 (29-10-2026 – the Store's step 5 as the app's own screens: "he amche company che format ahet mala je po bantil
 requiremet bantil te same ya format amddhe hawet" … "PO approve karaychi payri kara"; with the Store's PR #18 and the Portal's PR #26;
 needs the Store's database step 5 at a site for the PO's own fields and its approval; on 3.61.0; not released yet):** **A PO in his

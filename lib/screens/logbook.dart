@@ -846,8 +846,10 @@ class _LogFormState extends State<LogForm> {
       final s = SessionScope.read(context);
       String g(String k) => '${d[k] ?? ''}';
       setState(() {
-        if (g('date').isNotEmpty) date = g('date');
-        if (kLogShifts.contains(g('shift'))) shift = g('shift');
+        // (3.62.1) its date only when it was typed today – one of an earlier day: today's date (not its old day, unseen)
+        final sameDay = draftToday(g('at'), s.clock());
+        if (g('date').isNotEmpty && sameDay) date = g('date');
+        if (kLogShifts.contains(g('shift')) && sameDay) shift = g('shift');
         half = d['half'] == true;
         machine = g('no').isEmpty ? null : s.machine(g('no'));
         draftAt = g('at');
