@@ -176,5 +176,5 @@ String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = co
 // (3.69.0) the Purchase Requisition Form's own look (his paper) – the web's RCSS word for word
 const _rcss = '.prf{border:1px solid #000;min-height:268mm;font-size:12px}.prf>table{border-left:0;border-right:0}.prf>table:first-child td{border-top:0}.prf>table td:first-child{border-left:0}.prf>table td:last-child{border-right:0}'
     '.prf .pn{font-size:25px;line-height:1.15}.prf .pa{font-size:11px;margin-top:4px}.prf .pt{text-align:center;font-size:16px;padding:5px}.prf .plogo{width:270px}'
-    '.prf .pi{border-bottom:1px solid #000}.prf .pi td{padding:4px 6px}.prf .pr{margin-top:0}.prf .pr th{background:#fff;font-weight:400;text-align:center;vertical-align:middle}.prf .pr td.m{vertical-align:middle}.prf .pr td,.prf .pr th{padding:3px 4px}'
+    '.prf .pi{border-bottom:1px solid #000}.prf .pi td{padding:4px 6px}.prf .pi td:nth-child(odd){white-space:nowrap}.prf .pr{margin-top:0}.prf .pr th{background:#fff;font-weight:400;text-align:center;vertical-align:middle}.prf .pr td.m{vertical-align:middle}.prf .pr td,.prf .pr th{padding:3px 4px}'
     '.prf .prm{margin:10px 6px}.prf .ps{margin-top:210px;padding:0 6px}.prf .ps div{min-width:170px}';
