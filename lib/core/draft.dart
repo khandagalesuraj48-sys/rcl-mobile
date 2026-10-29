@@ -84,6 +84,14 @@ class Draft {
 }
 
 /// "6:05 PM" (today) or "19-10 · 6:05 PM" – when the kept entry was typed.
+/// (3.62.1, 29-10-2026 – an urgent report: "tyach phone madhun keleli entry disat nahi") the half-filled entry was typed TODAY (the
+/// phone's day). Only then its date comes back with it; one kept from an earlier day comes back with TODAY's date – before, its old
+/// date came back unseen and every entry of that form was saved on that old day (not in today's list).
+bool draftToday(String iso, DateTime now) {
+  final t = DateTime.tryParse(iso)?.toLocal();
+  return t != null && t.year == now.year && t.month == now.month && t.day == now.day;
+}
+
 String draftTime(String iso, DateTime now) {
   final t = DateTime.tryParse(iso)?.toLocal();
   if (t == null) return '';

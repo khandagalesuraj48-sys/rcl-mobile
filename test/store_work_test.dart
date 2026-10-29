@@ -17,6 +17,13 @@ void main() {
     expect(StoreKit(call: none, pages: const {}, admin: false).anyWork, false);
   });
 
+  test('(3.62.1, 29-10-2026) a Store User dates an entry only today; the Store Admin and the Super Admin any day', () {
+    final user = StoreKit(call: none, pages: const {'grn': 'Edit'}, admin: false)..b = {'today': '2026-10-29'};
+    expect(user.entryFirst, DateTime(2026, 10, 29));
+    expect((StoreKit(call: none, pages: const {}, admin: true)..b = {'today': '2026-10-29'}).entryFirst, null, reason: 'the Store Admin');
+    expect((StoreKit(call: none, pages: const {}, admin: false, superAdmin: true)..b = {'today': '2026-10-29'}).entryFirst, null, reason: 'the Super Admin');
+  });
+
   test('numbers as the web writes them: a quantity (up to 3 decimals, Indian grouping), a box\'s number, money', () {
     expect([q3(1234567.5), q3(0.125), q3(12), q3(-1500), q3(''), q3(null)], ['12,34,567.5', '0.125', '12', '-1,500', '', '']);
     expect([plainN(12.5), plainN(100), plainN(0), plainN(null), plainN('7.250')], ['12.5', '100', '0', '', '7.25']);

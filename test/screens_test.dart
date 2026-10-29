@@ -2905,7 +2905,9 @@ void main() {
     ], reason: 'as the web: every row, the typed text');
     expect([bulk.first['date'], bulk.first['shift'], bulk.first['source']], ['2026-10-14', 'Day', 'Dispenser']);
     expect(find.text('1 diesel issues saved (DI-000527 to DI-000527).'), findsOneWidget);
-    // one machinery, many dates: the next row is the next day; the KM its meter gives
+    // one machinery, many dates: the next row is the next day; the KM its meter gives (update-187: an earlier day is the Admin's – a
+    // user dates only today)
+    s.admin = true;
     await reach(t, 'im-t-mach', 'im-list');
     await tapK(t, 'im-t-mach');
     await settle(t, 500);
@@ -3643,8 +3645,10 @@ void main() {
     await tapK(t, 'att-pdf');
     await net(t);
     expect(find.text('bill.pdf'), findsOneWidget);
+    s.admin = true; // (3.62.1, update-188) the Admin: the bill's own date of an earlier day is read too – a user's stays today (the insurance bill's test)
     await tapK(t, 'mf-read');
     await net(t);
+    s.admin = false;
     expect(srv.maintCalls.last, {'fn': 'readMaintBill', 'mime': 'application/pdf'});
     expect([(t.widget(find.byKey(const Key('mf-garage'))) as TextBox).controller.text, (t.widget(find.byKey(const Key('mf-billno'))) as TextBox).controller.text, (t.widget(find.byKey(const Key('mf-km'))) as TextBox).controller.text], ['Maruti Service', 'MS-77', '46100']);
     expect((t.widget(find.byKey(const Key('mf-service'))) as SwitchListTile).value, true);
@@ -4077,7 +4081,8 @@ void main() {
     expect([txt('mf-total'), txt('mf-free'), txt('mf-wepaid')], ['₹ 2,761', '₹ 2,940', '₹ 761']);
     expect((t.widget(find.byKey(const Key('mf-ins'))) as SwitchListTile).value, true);
     expect([box('mf-insco'), box('mf-insclaim'), box('mf-inspaid')], [ins, 'CLM-168', '2000']);
-    expect(find.byWidgetPredicate((w) => w is AiBox && w.on), findsNWidgets(18), reason: 'the date, car, garage, bill no., KM, Service, the 8 lines and the insurance (its switch, company, claim no., ₹) – blue');
+    expect(find.byWidgetPredicate((w) => w is AiBox && w.on), findsNWidgets(17), reason: 'the car, garage, bill no., KM, Service, the 8 lines and the insurance (its switch, company, claim no., ₹) – blue; '
+        'the date not: a user\'s bill is dated today (3.62.1, update-188 – the bill says 13-10-2026)');
     expect(find.textContaining('Read by the AI (blue) – check every value before saving.'), findsOneWidget);
     expect(find.textContaining('check the car'), findsNothing);
     await t.ensureVisible(find.byKey(const Key('mf-a-1')));
@@ -5162,6 +5167,45 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('lock-screen')), findsNothing, reason: 'nothing of the ERP is open before a sign-in');
     expect(g2.asked, 0);
+  });
+
+  // (3.62.1, urgent 29-10-2026: "tyach phone madhun keleli entry disat nahi") a half-filled entry of an EARLIER day brought back
+  testWidgets('(3.62.1) a half-filled Diesel Issue kept on an earlier day comes back with TODAY\'s date (its old day no longer comes back unseen – the entries went to that day); one typed today keeps the date picked', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    final key = 'draft|S1|${s.email}|issue';
+    await t.runAsync(() => s.api.keep.write(key, jsonEncode({'date': '2026-10-11', 'shift': 'Night', 'no': 'Sany 210 (No.1)', 'qty': '45', 'at': DateTime(2026, 10, 11, 18).toUtc().toIso8601String()})));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('draft-back')), findsOneWidget, reason: 'what he typed is brought back');
+    expect(find.text('Sany 210 (No.1)'), findsOneWidget);
+    expect(find.text('45'), findsOneWidget);
+    expect(find.text('14-10-2026'), findsOneWidget, reason: 'today\'s date');
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('11-10-2026'), findsNothing, reason: 'not the day it was typed');
+    await t.binding.handlePopRoute();
+    await net(t);
+    // typed today with an earlier date picked on purpose (the app closed by the camera): a user – today (update-187: he dates only
+    // today); the Admin – that date comes back
+    final draft = jsonEncode({'date': '2026-10-12', 'shift': 'Day', 'no': 'Sany 210 (No.1)', 'qty': '30', 'at': DateTime(2026, 10, 14, 9).toUtc().toIso8601String()});
+    for (final adm in [false, true]) {
+      s.admin = adm;
+      await t.runAsync(() => s.api.keep.write(key, draft));
+      await t.tap(find.byKey(const Key('tab-plus')));
+      await settle(t, 600);
+      await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+      await net(t);
+      expect(find.byKey(const Key('draft-back')), findsOneWidget);
+      expect(find.text('12-10-2026'), adm ? findsOneWidget : findsNothing, reason: adm ? 'the Admin: the day he picked' : 'a user: only today');
+      expect(find.text('Today'), adm ? findsNothing : findsOneWidget);
+      await t.binding.handlePopRoute();
+      await net(t);
+    }
   });
 
   // ---------------- (3.31.0) the new look from his picture ----------------

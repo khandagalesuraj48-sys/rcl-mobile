@@ -846,8 +846,10 @@ class _LogFormState extends State<LogForm> {
       final s = SessionScope.read(context);
       String g(String k) => '${d[k] ?? ''}';
       setState(() {
-        if (g('date').isNotEmpty) date = g('date');
-        if (kLogShifts.contains(g('shift'))) shift = g('shift');
+        // (3.62.1) its date only when it was typed today – one of an earlier day: today's date (not its old day, unseen)
+        final sameDay = draftToday(g('at'), s.clock());
+        if (g('date').isNotEmpty && sameDay && s.entryDayOk(g('date'), log: true)) date = g('date');
+        if (kLogShifts.contains(g('shift')) && sameDay) shift = g('shift');
         half = d['half'] == true;
         machine = g('no').isEmpty ? null : s.machine(g('no'));
         draftAt = g('at');
@@ -1149,7 +1151,9 @@ class _LogFormState extends State<LogForm> {
   // ---------- pickers ----------
   Future<void> _pickDate() async {
     final s = SessionScope.read(context);
-    final d = await showDatePicker(context: context, initialDate: parseKey(date), firstDate: DateTime(2024), lastDate: s.today.isNotEmpty ? parseKey(s.today) : DateTime.now());
+    // (3.62.1, update-187) a user: today or yesterday – the Admin and the Super Admin any day
+    final low = s.entryFirst(log: true) ?? DateTime(2024), top = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now(), at = parseKey(date);
+    final d = await showDatePicker(context: context, initialDate: at.isBefore(low) ? low : (at.isAfter(top) ? top : at), firstDate: low, lastDate: top);
     if (d == null) return;
     setState(() => date = dateKey(d));
     _prefill();
@@ -1955,7 +1959,8 @@ class _TankerScreenState extends State<TankerScreen> {
           Expanded(
             child: Press(
               onTap: () async {
-                final d = await showDatePicker(context: context, initialDate: parseKey(date), firstDate: DateTime(2024), lastDate: parseKey(s.today));
+                final low = s.entryFirst(log: true) ?? DateTime(2024), at = parseKey(date);      // (3.62.1, update-187) a user: today or yesterday
+                final d = await showDatePicker(context: context, initialDate: at.isBefore(low) ? low : at, firstDate: low, lastDate: parseKey(s.today));
                 if (d != null) {
                   setState(() => date = dateKey(d));
                   if (editing != null) _editEnd();

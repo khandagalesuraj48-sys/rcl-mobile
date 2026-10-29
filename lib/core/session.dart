@@ -247,6 +247,23 @@ class Session extends ChangeNotifier {
   String dayFrom = '08:00', nightFrom = '20:00';
   /// (3.9.0) the rules of the site as the server gave them (backDays, announce, dayFrom, nightFrom) – Administration shows them
   Map<String, dynamic> siteRules = {};
+
+  /// (3.62.1, Mechanical update-187 – 29-10-2026: "admin ani super admin fkt back dated entry kru shakto baki konich nahi … jo entry
+  /// user karayla jail tyala auto aajchi date select aasel tyala date change krta yenar nahi"; the Log Book "kal + aaj") the first day
+  /// this person may date an entry: the Admin and the Super Admin – any day (null); a user – today, a Log Book entry also yesterday (the
+  /// site's own rule, Rules of the site, only stricter). The server refuses any other day.
+  DateTime? entryFirst({bool log = false}) {
+    if (admin || superAdmin || today.isEmpty) return null;
+    final own = log ? 1 : 0, lim = int.tryParse('${siteRules['backDays'] ?? ''}');
+    final n = lim == null || lim < 0 || lim > own ? own : lim, t = parseKey(today);
+    return DateTime(t.year, t.month, t.day - n);
+  }
+
+  /// (3.62.1) [day] (yyyy-mm-dd) is one this person may date an entry with
+  bool entryDayOk(String day, {bool log = false}) {
+    final f = entryFirst(log: log);
+    return f == null || day.length != 10 || !parseKey(day).isBefore(f);
+  }
   /// The clock (a test sets its own time).
   DateTime Function() clock = DateTime.now;
   List<Machine> machines = [];
@@ -835,6 +852,9 @@ class Session extends ChangeNotifier {
       unawaited(_markLive());
       if (r is Map && r['rtc'] != null) rtc?.inbox(r['rtc']); // (3.26.0) the notes of a call
       if (r is Map) _admin(r);
+      // (3.62.1) the app left open past midnight: "today" moves on with the server's (a user's entry dates – Mechanical update-187)
+      final dayNew = r is Map && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch('${r['today'] ?? ''}') && '${r['today']}' != today;
+      if (dayNew) today = '${r['today']}';
       final dsNew = r is Map && r['user'] is Map && _dsrc(r['user']); // (3.43.0) his diesel sources changed in the Portal: the forms at once
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
       final first = versions.isEmpty;
@@ -854,7 +874,7 @@ class Session extends ChangeNotifier {
         lastChanged = changed;
         dataTick.value++;
         notifyListeners();
-      } else if (dsNew) {
+      } else if (dsNew || dayNew) {
         notifyListeners();
       }
       // (3.1.8) an entry sent back to him: asked again every 10 minutes (its notification every 30 – alerts.dart)

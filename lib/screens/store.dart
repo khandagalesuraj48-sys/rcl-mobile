@@ -138,7 +138,7 @@ class _StoreScreenState extends State<StoreScreen> {
       if (!mounted) return;
       setState(() {
         me = m;
-        kit = StoreKit(call: (a, [x]) => s.api.store(site, url, {'action': a, ...?x}, path: 'work'), pages: (m['pages'] as Map?) ?? const {}, admin: (m['user'] as Map?)?['admin'] == true);
+        kit = StoreKit(call: (a, [x]) => s.api.store(site, url, {'action': a, ...?x}, path: 'work'), pages: (m['pages'] as Map?) ?? const {}, admin: (m['user'] as Map?)?['admin'] == true, superAdmin: (m['user'] as Map?)?['super'] == true);
       });
       await _load();
     } catch (e) {

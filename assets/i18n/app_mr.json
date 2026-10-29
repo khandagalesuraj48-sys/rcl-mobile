@@ -1265,5 +1265,7 @@
 "PO {0} of {1} saved – {2} – it waits for its approval.": "{1} ची PO {0} सेव्ह झाली – {2} – ती मंजुरीची वाट पाहते.",
 "Freight": "भाडे",
 "Load / Unload": "चढ-उतार",
-"Yes": "हो"
+"Yes": "हो",
+"Users who are not Admin enter only today's entries, the Log Book also yesterday's (fixed) – 0 here: the Log Book too only today": "Admin नसलेले users फक्त आजच्या entries करतात, Log Book कालची पण (ठरलेला नियम) – इथे 0: Log Book पण फक्त आजची",
+"empty = as fixed": "रिकामे = ठरल्याप्रमाणे"
 }

@@ -612,4 +612,42 @@ void main() {
     expect(billsForSave(isEdit: true, mode: 'loading', changed: true, paths: [b]), null);
     expect(kBillMax, 10, reason: 'as the server (BILL_MAX_)');
   });
+
+  test('(3.62.1, Mechanical update-187) the first day a person may date an entry: a user today (the Log Book also yesterday), the site\'s rule only stricter; the Admin and the Super Admin any day', () {
+    final s = make()..today = '2026-10-29';
+    expect(s.entryFirst(), DateTime(2026, 10, 29), reason: 'a user: today');
+    expect(s.entryFirst(log: true), DateTime(2026, 10, 28), reason: 'the Log Book: also yesterday');
+    expect([s.entryDayOk('2026-10-29'), s.entryDayOk('2026-10-28'), s.entryDayOk('2026-10-28', log: true), s.entryDayOk('2026-10-27', log: true)], [true, false, true, false]);
+    s.siteRules = {'backDays': 0};
+    expect(s.entryFirst(log: true), DateTime(2026, 10, 29), reason: 'the site\'s "0 days": the Log Book too only today');
+    s.siteRules = {'backDays': 5};
+    expect(s.entryFirst(log: true), DateTime(2026, 10, 28), reason: 'never more than fixed');
+    s.siteRules = {'backDays': ''};
+    expect(s.entryFirst(), DateTime(2026, 10, 29));
+    expect((make()..today = '2026-11-01').entryFirst(log: true), DateTime(2026, 10, 31), reason: 'across a month');
+    s.admin = true;
+    expect([s.entryFirst(), s.entryFirst(log: true), s.entryDayOk('2026-01-01')], [null, null, true], reason: 'the Admin: any day');
+    s.admin = false;
+    s.superAdmin = true;
+    expect(s.entryFirst(), null, reason: 'the Super Admin: any day');
+  });
+
+  test('(3.62.1) the app left open past midnight: the live sync moves "today" on – a user\'s entry dates with it', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    final d0 = s.today;
+    await s.liveTick();
+    expect(s.today, d0, reason: 'no day given: as it was');
+    srv.syncToday = '2026-10-15';
+    var told = 0;
+    s.addListener(() => told++);
+    await s.liveTick();
+    expect(s.today, '2026-10-15');
+    expect(told, greaterThan(0), reason: 'the screens are told');
+    expect(s.admin || s.superAdmin ? null : s.entryFirst(), s.admin || s.superAdmin ? null : DateTime(2026, 10, 15));
+    srv.syncToday = 'not a day';
+    await s.liveTick();
+    expect(s.today, '2026-10-15', reason: 'only a real day');
+  });
 }

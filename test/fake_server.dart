@@ -19,6 +19,7 @@ class FakeServer {
   /// (3.43.0, Mechanical update-162) his diesel sources (getInit's user.dsrc); [userInSync]: the sync tells the user too (as Mechanical)
   Map<String, dynamic>? dsrc;
   bool userInSync = false;
+  String? syncToday; // (3.62.1) the server's today in the live sync (Mechanical's sync gives it)
   /// (3.44.0, Mechanical update-163) a site with a place per fuel card (HO): DIESEL CARD, PETROL CARD, PETROL CAN, CNG CARD with their
   /// fuel (getInit's placeFuels), and a Petrol, a CNG and an Electric car
   bool fuels = false;
@@ -993,7 +994,7 @@ class FakeServer {
           rtcBeats.add(beat['r']);
           final m = [...rtcIn];
           rtcIn.clear();
-          return _j({'result': {'versions': versions, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m},
+          return _j({'result': {'versions': versions, if (syncToday != null) 'today': syncToday, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m},
             if (userInSync) 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc}}});
         case 'rtcUsers':
           return _j({'result': {'me': 'u-sujit', 'name': 'Sujit Mule', 'users': rtcPeople, 'ice': [{'urls': ['stun:stun.l.google.com:19302']}], 'relay': false, 'max': 3}});
