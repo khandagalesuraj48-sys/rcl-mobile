@@ -207,7 +207,7 @@ class _TankCheckScreenState extends State<TankCheckScreen> {
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: C.line)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Row(children: [
-                  Expanded(child: DateField(key: const Key('tc-date'), label: 'Date *', value: date, clear: false, last: s.today.isEmpty ? null : parseKey(s.today), first: s.entryFirst(), onChanged: (v) {
+                  Expanded(child: DateField(key: const Key('tc-date'), label: 'Date *', value: date, clear: false, last: s.today.isEmpty ? null : parseKey(s.today), first: s.entryFirst(page: 'Log Book'), onChanged: (v) {
                     setState(() => date = v);
                     _system();
                   })),

@@ -361,9 +361,10 @@ class _UsersScreenState extends State<UsersScreen> {
     );
   }
 
-  Widget _access(String key, String v, bool off, ValueChanged<String> on) => SizedBox(
+  /// (3.64.0, Mechanical update-189) a page with a date ([adm] – the server's dateAdmin) offers Admin too: Edit, and its entries of an earlier day
+  Widget _access(String key, String v, bool off, ValueChanged<String> on, {bool adm = false}) => SizedBox(
         width: 150,
-        child: PickField(key: Key(key), label: '', value: kAccessWord[v] ?? 'No access', items: const ['Edit', 'View', 'No access'], enabled: !off, onChanged: (x) => on(x == 'No access' ? 'None' : x)),
+        child: PickField(key: Key(key), label: '', value: kAccessWord[v] ?? 'No access', items: adm ? const ['Admin', 'Edit', 'View', 'No access'] : const ['Edit', 'View', 'No access'], enabled: !off, onChanged: (x) => on(x == 'No access' ? 'None' : x)),
       );
 
   Widget _perms(Map e, String who) {
@@ -377,13 +378,13 @@ class _UsersScreenState extends State<UsersScreen> {
             if (_ro)
               _pill(e['admin'] == true ? 'Edit' : '${(e['perms'] as Map)[m['key']] ?? 'None'}')
             else
-              _access('ua-p-$who-${m['key']}', e['admin'] == true ? 'Edit' : '${(e['perms'] as Map)[m['key']] ?? 'None'}', e['admin'] == true, (v) => setState(() => (e['perms'] as Map)[m['key']] = v)),
+              _access('ua-p-$who-${m['key']}', e['admin'] == true ? 'Edit' : '${(e['perms'] as Map)[m['key']] ?? 'None'}', e['admin'] == true, (v) => setState(() => (e['perms'] as Map)[m['key']] = v), adm: m['dateAdmin'] == true),
           ]),
         ),
     ]);
   }
 
-  Widget _pill(String v) => Pill(kAccessWord[v] ?? v, color: v == 'Edit' ? C.greenDark : v == 'View' ? C.blue : C.muted, bg: v == 'Edit' ? C.greenSoft : v == 'View' ? C.blueSoft : C.slateSoft);
+  Widget _pill(String v) => Pill(kAccessWord[v] ?? v, color: v == 'Admin' ? C.purple : v == 'Edit' ? C.greenDark : v == 'View' ? C.blue : C.muted, bg: v == 'Admin' ? C.purpleSoft : v == 'Edit' ? C.greenSoft : v == 'View' ? C.blueSoft : C.slateSoft);
 
   Widget _userCard(Map<String, dynamic> u) {
     final email = '${u['email']}', e = _ed(u), dirty = edits.containsKey(email) && (e['active'] != (u['active'] != false) || e['admin'] != (u['admin'] == true) || jsonEncode(e['perms']) != jsonEncode({...((u['perms'] as Map?) ?? const {})}));

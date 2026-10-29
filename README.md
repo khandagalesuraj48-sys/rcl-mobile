@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.64.0 (29-10-2026 – "pratek kam madhe edit no access view ani admin ha acess haway … diesle inward issue transfer madhe je back
+dated entry karnar aahet tyanche sathi"; his answers: every page with a date; Admin = only that page's entries of an earlier day; with
+Mechanical update-189 and the Portal):** a page with a date (Diesel Inward / Issue / Transfer, Log Book – its tank check too –, Breakdown,
+Maintenance, Fuel Cards) has a 4th access **Admin** – Edit, and that page's entries of an earlier day. The date pickers of such a page
+start any day for him (`Session.entryFirst(page:)` – `pageAdmin` from Mechanical's user, changed live by the sync); another page as a
+user. Administration → Users & Access and the Super Admin's Pages (Mechanical) offer Admin on a page the server marks `dateAdmin`.
+
 **Version 3.63.0 (29-10-2026 – his GRN picture: "iteam code ani name weg wegle de … bill madh discount pn kadhi kdhi dettat mg to kadhi
 basic war asu shakto tr kadhi gst war … material ch shortage pn yet re mhanje po qty ste 10 ania ahe 5"; with the Store's step 6, rcl-store
 #21):** a Store paper's line shows **Item Code** apart from the name (every form). **A GRN's discount** on a line ("Disc. (% or ₹)", on

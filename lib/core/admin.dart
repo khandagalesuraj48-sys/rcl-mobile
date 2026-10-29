@@ -74,4 +74,4 @@ String adminSql(List cols0, {String email = '', String name = '', String pw = ''
 /// The access of a user on a page as shown: an Admin has Edit everywhere.
 String accessOf(Map u, String module) => u['admin'] == true ? 'Edit' : '${((u['perms'] as Map?) ?? const {})[module] ?? 'None'}';
 
-const kAccessWord = {'Edit': 'Edit', 'View': 'View', 'None': 'No access'};
+const kAccessWord = {'Admin': 'Admin', 'Edit': 'Edit', 'View': 'View', 'None': 'No access'}; // (3.64.0, update-189) Admin: a page with a date – Edit, and its entries of an earlier day

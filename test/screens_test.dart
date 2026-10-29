@@ -1966,7 +1966,9 @@ void main() {
     await t.enterText(box('ua-new-name'), 'New Driver');
     await tapK(t, 'ua-p-+new-Log Book');
     await settle(t, 600);
-    await t.tap(find.text('Edit').last);
+    // (3.64.0, Mechanical update-189) a page with a date offers Admin: Edit, and its entries of an earlier day
+    expect(find.text('Admin'), findsWidgets);
+    await t.tap(find.text('Admin').last);
     await settle(t, 600);
     await t.enterText(find.byKey(const Key('ua-new-pw')), 'Once#2026');
     await settle(t, 600);
@@ -1975,7 +1977,7 @@ void main() {
     await tapK(t, 'ua-add');
     await net(t);
     final x = srv.adminSent.firstWhere((c) => c['fn'] == 'saveUserAdmin')['x'] as Map;
-    expect([x['isNew'], x['email'], x['name'], x['active'], x['admin'], x['newPassword'], x['perms']], [true, 'driver@rcl.test', 'New Driver', true, false, 'Once#2026', {'Dashboard': 'None', 'Log Book': 'Edit', 'Machinery Billing': 'None'}]);
+    expect([x['isNew'], x['email'], x['name'], x['active'], x['admin'], x['newPassword'], x['perms']], [true, 'driver@rcl.test', 'New Driver', true, false, 'Once#2026', {'Dashboard': 'None', 'Log Book': 'Admin', 'Machinery Billing': 'None'}]);
     expect(srv.rids.any((r) => r.startsWith('saveUserAdmin:')), true);
     expect(find.text('3 users · 3 active'), findsOneWidget);
     await t.pageBack();
@@ -4833,9 +4835,13 @@ void main() {
     expect(find.text('Diesel Issue'), findsOneWidget);
     await tapIn(t, 'sa-pg-log', 'Edit');
     await t.pump();
+    // (3.64.0, Mechanical update-189) Diesel Issue – a page with a date: Admin (its entries of an earlier day); the Log Book here offers no Admin
+    expect(find.descendant(of: find.byKey(const Key('sa-pg-log')), matching: find.text('Admin')), findsNothing);
+    await tapIn(t, 'sa-pg-diesel', 'Admin');
+    await t.pump();
     await tapK(t, 'sa-pg-save');
     await net(t);
-    expect(saves(srv).last, {'action': 'mechPagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'perms': {'diesel': 'Edit', 'log': 'Edit', 'reports': 'None'}});
+    expect(saves(srv).last, {'action': 'mechPagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'perms': {'diesel': 'Admin', 'log': 'Edit', 'reports': 'None'}});
     expect(find.text('Pages saved in Mechanical.'), findsOneWidget);
     // the Store: he is its Admin now – every page; (3.55.0, the Store's step 2) only who approves and Store Purchase are given to him
     await tapK(t, 'sa-pages-store');

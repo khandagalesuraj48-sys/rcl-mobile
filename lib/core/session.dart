@@ -201,6 +201,9 @@ class Session extends ChangeNotifier {
   /// (14-10-2026) the Super Admin (his Portal ticket says so): he changes entries of a submitted bill; others send them for approval.
   bool superAdmin = false;
   Map<String, String> perms = {};
+
+  /// (3.64.0, Mechanical update-189) the pages where he is Admin (a page with a date): Edit, and their entries of an earlier day
+  List<String> pageAdmin = [];
   List<SiteChoice> sites = [];
   SiteChoice? site;
   String siteName = '';
@@ -252,16 +255,17 @@ class Session extends ChangeNotifier {
   /// user karayla jail tyala auto aajchi date select aasel tyala date change krta yenar nahi"; the Log Book "kal + aaj") the first day
   /// this person may date an entry: the Admin and the Super Admin – any day (null); a user – today, a Log Book entry also yesterday (the
   /// site's own rule, Rules of the site, only stricter). The server refuses any other day.
-  DateTime? entryFirst({bool log = false}) {
-    if (admin || superAdmin || today.isEmpty) return null;
+  /// (3.64.0, Mechanical update-189 – "pratek kam madhe edit no access view ani admin") [page]: the entry's page – its Admin, any day too
+  DateTime? entryFirst({bool log = false, String page = ''}) {
+    if (admin || superAdmin || today.isEmpty || (page.isNotEmpty && pageAdmin.contains(page))) return null;
     final own = log ? 1 : 0, lim = int.tryParse('${siteRules['backDays'] ?? ''}');
     final n = lim == null || lim < 0 || lim > own ? own : lim, t = parseKey(today);
     return DateTime(t.year, t.month, t.day - n);
   }
 
   /// (3.62.1) [day] (yyyy-mm-dd) is one this person may date an entry with
-  bool entryDayOk(String day, {bool log = false}) {
-    final f = entryFirst(log: log);
+  bool entryDayOk(String day, {bool log = false, String page = ''}) {
+    final f = entryFirst(log: log, page: page);
     return f == null || day.length != 10 || !parseKey(day).isBefore(f);
   }
   /// The clock (a test sets its own time).
@@ -566,6 +570,14 @@ class Session extends ChangeNotifier {
     }
   }
 
+  /// (3.64.0) his pages with Admin as the server says them – true when they changed (the live sync: the forms at once)
+  bool _pageAdmin(Map u) {
+    final n = u['pageAdmin'] is List ? [for (final x in u['pageAdmin'] as List) '$x'] : <String>[];
+    if (n.join('|') == pageAdmin.join('|')) return false;
+    pageAdmin = n;
+    return true;
+  }
+
   void _user(Map<String, dynamic> r) {
     final u = (r['user'] as Map?)?.cast<String, dynamic>();
     if (u == null) return;
@@ -575,6 +587,7 @@ class Session extends ChangeNotifier {
     superAdmin = u['super'] == true;
     final p = u['perms'];
     perms = p is Map ? p.map((k, v) => MapEntry(k.toString(), v.toString())) : {};
+    _pageAdmin(u); // (3.64.0, update-189)
     _dsrc(u);
     if ((r['siteName'] ?? '').toString().isNotEmpty) siteName = r['siteName'].toString();
   }
@@ -856,6 +869,7 @@ class Session extends ChangeNotifier {
       final dayNew = r is Map && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch('${r['today'] ?? ''}') && '${r['today']}' != today;
       if (dayNew) today = '${r['today']}';
       final dsNew = r is Map && r['user'] is Map && _dsrc(r['user']); // (3.43.0) his diesel sources changed in the Portal: the forms at once
+      final paNew = r is Map && r['user'] is Map && _pageAdmin(r['user'] as Map); // (3.64.0) his pages with Admin changed
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
       final first = versions.isEmpty;
       final changed = first ? <String>{} : v.keys.where((k) => versions[k] != v[k]).toSet();
@@ -874,7 +888,7 @@ class Session extends ChangeNotifier {
         lastChanged = changed;
         dataTick.value++;
         notifyListeners();
-      } else if (dsNew || dayNew) {
+      } else if (dsNew || dayNew || paNew) {
         notifyListeners();
       }
       // (3.1.8) an entry sent back to him: asked again every 10 minutes (its notification every 30 – alerts.dart)
@@ -1099,6 +1113,7 @@ class Session extends ChangeNotifier {
     site = null;
     machines = [];
     perms = {};
+    pageAdmin = [];
     dsrc = {};
     placeFuels = {};
     fuelMode = '';
