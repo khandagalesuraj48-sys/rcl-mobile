@@ -54,28 +54,34 @@ void main() {
     expect(poPaperHtml(po(), {...heading, 'logo': 'javascript:alert(1)'}, const {}), isNot(contains('javascript:')), reason: 'only an https / data: picture');
   });
 
-  test('the Purchase Requisition Form: Project / Sub Project / Indent No. / Date; the item code, description, specification (Brand · spec · note), Required Date; Prepared, Checked (the levels before the last), Approved By (the last)', () {
+  test('the Purchase Requisition Form (3.69.0: as his paper "REQUIREMENT OF FOUNDATION BOLT"): Project / Sub Project NA / Indent No. / Date; the item code, description, specification line by line (spec · Brand · note), Required Date; "Remark:Require For :" what it is for, its remark; Prepared, Checked (the levels before the last), Approved By (the last)', () {
     final x = {
       'no': 232, 'ref': 'RCL/VTR/PR/2026/0232', 'date': '2026-10-12', 'need_by': '2026-10-20', 'for_kind': 'Site work', 'for_text': 'Ch 540+450 toe wall', 'status': 'Approved', 'level': 0, 'remark': 'Before the rain', 'created_name': 'Amol Patil',
       'approvals': [{'level': 1, 'name': 'Ravi Pawar', 'ok': true}, {'level': 2, 'name': 'Sujit Mule', 'ok': true}],
-      'lines': [{'code': 'ITM-0101', 'name': 'Exhaust Fan 12 inch', 'brand': 'Crompton', 'spec': '1400 rpm', 'note': 'for the store room', 'unit': 'Nos', 'qty': 4}],
+      'lines': [{'code': 'ITM-0101', 'name': 'Exhaust Fan 12 inch', 'brand': 'Crompton', 'spec': '1400 rpm\nAll Dimension : MM', 'note': 'for the store room', 'unit': 'Nos', 'qty': 4}],
     };
     final h = reqPaperHtml(x, heading);
-    for (final w in ['<title>Requirement RCL/VTR/PR/2026/0232</title>', 'Purchase Requisition Form', 'Project Name :</td><td style="width:45%">VTR Site – NH 848', 'Site work – Ch 540+450 toe wall', 'RCL/VTR/PR/2026/0232', '12/10/2026',
-      '<th>Sr No</th><th>Item Code</th><th>Item Description</th><th>Item Specification</th><th>Unit</th><th>Quantity</th><th>Required Date</th>', 'ITM-0101', 'Exhaust Fan 12 inch', 'Brand: Crompton · 1400 rpm · for the store room', '4.0', '20/10/2026',
-      'Remark:Before the rain', 'Amol Patil<span>Prepared By</span>', 'Ravi Pawar<span>Checked By</span>', 'Sujit Mule<span>Approved By</span>']) {
+    for (final w in ['<title>Requirement RCL/VTR/PR/2026/0232</title>', '<tr><td class="pt">Purchase Requisition Form</td></tr></table>', 'Project Name :</td><td style="width:45%">VTR Site – NH 848', 'Sub Project :</td><td>NA</td>', 'RCL/VTR/PR/2026/0232', '12/10/2026',
+      '<th style="width:6%">Sr No</th><th style="width:11%">Item Code</th><th style="width:17%">Item Description</th><th>Item Specification</th><th style="width:7%">Unit</th><th style="width:9%">Quantity</th><th style="width:10%">Required Date</th>', 'ITM-0101', 'Exhaust Fan 12 inch',
+      '<td>1400 rpm<br>All Dimension : MM<br>Brand: Crompton<br>for the store room</td>', '4.0', '20/10/2026',
+      '<div class="prm">Remark:Require For :Site work – Ch 540+450 toe wall<br>Before the rain</div>', 'Amol Patil<span>Prepared By</span>', 'Ravi Pawar<span>Checked By</span>', 'Sujit Mule<span>Approved By</span>', '.prf{border:1px solid #000;min-height:268mm;font-size:12px}']) {
       expect(h, contains(w), reason: w);
     }
     final waiting = reqPaperHtml({...x, 'status': 'Pending', 'level': 2, 'approvals': [{'level': 1, 'name': 'Ravi Pawar', 'ok': true}], 'need_by': null}, heading);
     expect(waiting, contains('Ravi Pawar<span>Checked By</span>'));
     expect(waiting, contains('(waiting – level 2)<span>Approved By</span>'));
-    expect(waiting, contains('<td class="c">12/10/2026</td></tr>'), reason: 'no Needed by: its date');
+    expect(waiting, contains('<td class="c m">12/10/2026</td></tr>'), reason: 'no Needed by: its date');
     expect(reqPaperHtml({...x, 'status': 'Rejected', 'approvals': []}, heading), contains('(rejected)<span>Approved By</span>'));
-    // (3.65.0, "print war rachana address nahi site address nahi") the company's address and details as the PO's; the Site Address
-    final full = reqPaperHtml(x, {...heading, 'address': 'Office 2\nMumbai', 'site_address': 'Site office at Valshind\nBhiwandi'});
-    for (final w in ['Office 2<br>Mumbai', '<b>Email ID.</b>', '<b>CIN No</b>', '<b>GST No</b>', '<b>PAN No</b>', 'Site Address :</td><td colspan="3">Site office at Valshind<br>Bhiwandi']) {
+    // (3.65.0, "print war rachana address nahi site address nahi"; 3.69.0 – his answer: as his paper, the two addresses kept) the company's
+    // address under its name, the Site Address; no e-mail / CIN / GST / PAN rows (not on his paper)
+    final full = reqPaperHtml(x, {...heading, 'address': 'Office 2\nMumbai', 'site_address': 'Site office at Valshind\nBhiwandi'}, logo: 'data:image/png;base64,AAAA');
+    for (final w in ['<div class="pn">', '<div class="pa">Office 2<br>Mumbai</div>', 'Site Address :</td><td colspan="3">Site office at Valshind<br>Bhiwandi', '<img src="data:image/png;base64,AAAA" alt="" style="width:270px;max-width:92%;height:auto;vertical-align:middle">']) {
       expect(full, contains(w), reason: w);
     }
+    for (final w in ['<b>Email ID.</b>', '<b>CIN No</b>', '<b>GST No</b>', '<b>PAN No</b>']) {
+      expect(full, isNot(contains(w)), reason: 'not on his paper: $w');
+    }
+    expect(reqPaperHtml(x, heading), isNot(contains('Site Address')), reason: 'no site address: no row');
   });
 
   test('(3.66.0, "Print मध्ये photos पण") the requirement\'s photos on the pages after the form – two a row, who added each and its day in India; none: no photos page; only proper links', () {

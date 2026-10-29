@@ -68,10 +68,11 @@ String _page(String title, String body) =>
 
 /// The logo on top, as the web's logoOf: the company's own (the Portal's – https / data), else the one given (the app's own Rachana
 /// picture, a data: address – Rachana's company), else its name.
-String _logo(Map h, String logo) {
+/// (3.69.0) [mine] the look of the app's own Rachana picture (the requirement's: as his paper, bigger)
+String _logo(Map h, String logo, {String mine = 'max-height:70px;max-width:100%'}) {
   final own = '${h['logo'] ?? ''}';
   if (RegExp(r'^(https://|data:image/)').hasMatch(own)) return '<img src="${_e(own)}" alt="" style="max-height:70px;max-width:100%">';
-  if (logo.isNotEmpty) return '<img src="${_e(logo)}" alt="" style="max-height:70px;max-width:100%">';
+  if (logo.isNotEmpty) return '<img src="${_e(logo)}" alt="" style="$mine">';
   return '<b style="font-size:22px">${_e(h['company'])}</b>';
 }
 
@@ -131,6 +132,10 @@ String poPaperHtml(Map po, Map heading, Map supplier, {String logo = ''}) {
 
 /// The Purchase Requisition Form of a requirement (reqList: the requirement, its heading): Prepared By – who made it; Checked By – the
 /// levels that approved before the last; Approved By – the last.
+/// (3.69.0, the web's 29-10-2026 – his "REQUIREMENT OF FOUNDATION BOLT": "requirement format ha fix kar … logo … to pn fix kr"; his answer:
+/// as the PDF, and keep the company's and the site's address) THE FORM AS HIS PAPER, word for word the web's reqPrint: the logo | the
+/// company's name (its address under it) and "Purchase Requisition Form"; Project Name · Sub Project, Indent No. · Date (and the Site
+/// Address); the items with their specification line by line; "Remark:Require For :" what it is for, then its remark; the three names.
 String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = const []}) {
   final h = heading, lines = (x['lines'] as List? ?? const []).whereType<Map>().toList();
   final ok = (x['approvals'] as List? ?? const []).whereType<Map>().where((a) => a['ok'] == true).toList();
@@ -140,23 +145,20 @@ String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = co
   final appr = last != null ? '${last['name'] ?? ''}' : x['status'] == 'Pending' ? '(waiting – level ${x['level']})' : x['status'] == 'Rejected' ? '(rejected)' : '';
   String slash(Object? d) => paperDmy(d).replaceAll('-', '/');
   final forText = '${x['for_kind'] ?? ''}${_blank(x['for_text']) ? '' : ' – ${x['for_text']}'}';
-  // (3.65.0, as the web's 29-10-2026: "print war rachana address nahi site address nahi ani rachana logo nahiye") the company's address and
-  // details as the PO's heading, and the site's address (Store Settings → Papers → Site Address; else the Shipping Address)
-  final head = '<table><tr><td style="width:50%;text-align:center;vertical-align:middle;border-right:0">${_logo(h, logo)}</td><td style="border-left:1px solid #000"><div class="cn">${_e(h['company'])}</div>'
-      '${_blank(h['address']) ? '' : '<div class="c">${_nl(h['address'])}</div>'}<table class="nb">'
-      '<tr><td><b>Email ID.</b> : ${_e(h['email'])}</td><td><b>Contact</b> : ${_e(h['phone'])}</td></tr><tr><td><b>CIN No</b> : ${_e(h['cin'])}</td><td><b>Web</b> : ${_e(h['web'])}</td></tr>'
-      '<tr><td><b>GST No</b> : ${_e(h['gstin'])}</td><td><b>PAN No</b> : ${_e(h['pan'])}</td></tr></table></td></tr>'
-      '<tr><td colspan="2" class="ttl" style="font-size:16px">Purchase Requisition Form</td></tr></table>'
-      '<table class="nb" style="border:1px solid #000;border-top:0"><tr><td style="width:15%">Project Name :</td><td style="width:45%">${_e(h['site'])}</td><td style="width:15%">Sub Project :</td><td>${_e(forText)}</td></tr>'
-      '<tr><td>Site Address :</td><td colspan="3">${_nl(h['site_address'])}</td></tr>'
-      '<tr><td>Indent No. :</td><td>${_e(_blank(x['ref']) ? x['no'] : x['ref'])}</td><td>Date :</td><td>${slash(x['date'])}</td></tr></table>';
+  final head = '<table><tr><td rowspan="2" style="width:50%;text-align:center;vertical-align:middle">${_logo(h, logo, mine: 'width:270px;max-width:92%;height:auto;vertical-align:middle')}</td>'
+      '<td style="text-align:center;vertical-align:middle;padding:6px"><div class="pn">${_e(h['company'])}</div>${_blank(h['address']) ? '' : '<div class="pa">${_nl(h['address'])}</div>'}</td></tr>'
+      '<tr><td class="pt">Purchase Requisition Form</td></tr></table>'
+      '<table class="nb pi"><tr><td style="width:15%">Project Name :</td><td style="width:45%">${_e(h['site'])}</td><td style="width:15%">Sub Project :</td><td>NA</td></tr>'
+      '<tr><td>Indent No. :</td><td>${_e(_blank(x['ref']) ? x['no'] : x['ref'])}</td><td>Date :</td><td>${slash(x['date'])}</td></tr>'
+      '${_blank(h['site_address']) ? '' : '<tr><td>Site Address :</td><td colspan="3">${_nl(h['site_address'])}</td></tr>'}</table>';
   final rows = StringBuffer();
   for (final (i, l) in lines.indexed) {
-    final spec = [if (!_blank(l['brand'])) 'Brand: ${l['brand']}', if (!_blank(l['spec'])) '${l['spec']}', if (!_blank(l['note'])) '${l['note']}'].join(' · ');
-    rows.write('<tr><td class="c">${i + 1}</td><td class="c">${_e(l['code'])}</td><td>${_e(l['name'])}</td><td>${_e(spec)}</td><td class="c">${_e(l['unit'])}'
-        '</td><td class="r">${paperNum(l['qty'], min: 1, max: 3)}</td><td class="c">${slash(_blank(x['need_by']) ? x['date'] : x['need_by'])}</td></tr>');
+    final spec = [if (!_blank(l['spec'])) _nl(l['spec']), if (!_blank(l['brand'])) 'Brand: ${_e(l['brand'])}', if (!_blank(l['note'])) _nl(l['note'])].join('<br>');
+    rows.write('<tr><td class="c m">${i + 1}</td><td class="c m">${_e(l['code'])}</td><td class="c m">${_e(l['name'])}</td><td>$spec</td><td class="c m">${_e(l['unit'])}'
+        '</td><td class="c m">${paperNum(l['qty'], min: 1, max: 3)}</td><td class="c m">${slash(_blank(x['need_by']) ? x['date'] : x['need_by'])}</td></tr>');
   }
-  final items = '<table><thead><tr><th>Sr No</th><th>Item Code</th><th>Item Description</th><th>Item Specification</th><th>Unit</th><th>Quantity</th><th>Required Date</th></tr></thead><tbody>$rows</tbody></table>';
+  final items = '<table class="pr"><thead><tr><th style="width:6%">Sr No</th><th style="width:11%">Item Code</th><th style="width:17%">Item Description</th><th>Item Specification</th><th style="width:7%">Unit</th><th style="width:9%">Quantity</th><th style="width:10%">Required Date</th></tr></thead><tbody>$rows</tbody></table>';
+  final remark = '<div class="prm">Remark:Require For :${_e(forText)}${_blank(x['remark']) ? '' : '<br>${_nl(x['remark'])}'}</div>';
   // (3.66.0, the web's 29-10-2026: "Print मध्ये photos पण") its photos on the pages after the form
   final ph = [for (final p in photos) if (RegExp(r'^https?://').hasMatch('${p['url'] ?? ''}')) p];
   final pics = StringBuffer();
@@ -167,6 +169,12 @@ String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = co
       ? ''
       : '<div class="fm" style="page-break-before:always;border:1px solid #000;padding:6px"><div class="ttl" style="margin-bottom:6px">Photos of the material – ${_e(_blank(x['ref']) ? x['no'] : x['ref'])} (${ph.length})</div><div class="phg">$pics</div></div>';
   return _page('Requirement ${_blank(x['ref']) ? x['no'] : x['ref']}',
-      '<div class="fm" style="border:1px solid #000;min-height:260mm;padding:0">$head$items<p style="margin:6px">Remark:${_e(x['remark'])}</p>'
-      '<div class="s2"><div>${_e(x['created_name'])}<span>Prepared By</span></div><div>${_e(checked)}<span>Checked By</span></div><div>${_e(appr)}<span>Approved By</span></div></div></div>$photoPage');
+      '<style>$_rcss</style><div class="fm prf">$head$items$remark'
+      '<div class="s2 ps"><div>${_e(x['created_name'])}<span>Prepared By</span></div><div>${_e(checked)}<span>Checked By</span></div><div>${_e(appr)}<span>Approved By</span></div></div></div>$photoPage');
 }
+
+// (3.69.0) the Purchase Requisition Form's own look (his paper) – the web's RCSS word for word
+const _rcss = '.prf{border:1px solid #000;min-height:268mm;font-size:12px}.prf>table{border-left:0;border-right:0}.prf>table:first-child td{border-top:0}.prf>table td:first-child{border-left:0}.prf>table td:last-child{border-right:0}'
+    '.prf .pn{font-size:25px;line-height:1.15}.prf .pa{font-size:11px;margin-top:4px}.prf .pt{text-align:center;font-size:16px;padding:5px}.prf .plogo{width:270px}'
+    '.prf .pi{border-bottom:1px solid #000}.prf .pi td{padding:4px 6px}.prf .pi td:nth-child(odd){white-space:nowrap}.prf .pr{margin-top:0}.prf .pr th{background:#fff;font-weight:400;text-align:center;vertical-align:middle}.prf .pr td.m{vertical-align:middle}.prf .pr td,.prf .pr th{padding:3px 4px}'
+    '.prf .prm{margin:10px 6px}.prf .ps{margin-top:210px;padding:0 6px}.prf .ps div{min-width:170px}';

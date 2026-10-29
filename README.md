@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.69.0 (29-10-2026 – his "REQUIREMENT OF FOUNDATION BOLT": "requirement format ha fix kar format fkt logo dilay to pn fix kr";
+his answer: as the PDF, the company's and the site's address kept; with rcl-store's):** **the Purchase Requisition Form as his paper** –
+the Rachana logo | the company's name (its address under it) and "Purchase Requisition Form"; Project Name · Sub Project NA, Indent No. ·
+Date, the Site Address; Sr No · Item Code · Item Description · Item Specification (line by line) · Unit · Quantity · Required Date;
+"Remark:Require For :" what it is for, then its remark; Prepared By · Checked By · Approved By; one border round the page
+(`reqPaperHtml` – the web's `reqPrint` word for word). No e-mail / CIN / GST / PAN rows on it any more (not on his paper).
+
 **Version 3.68.0 (29-10-2026 – "supabase 2 second cha vishay … ERP mothi hotey … saving mahtwachi aahe but data real time disne user
 laa he pn mahtwach aahe … niyojan tu kar"; with rcl-store's live):** **the Store's lists show another person's save by themselves** –
 Requirements, Purchase (every site), Purchase Orders, Inward (GRN), Issue & Return and the Store's Dashboard figures (`StoreLive` in
