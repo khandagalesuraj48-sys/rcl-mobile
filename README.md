@@ -28,6 +28,9 @@ entry of a day he may not use comes back with today. The Admin and the Super Adm
 (update-187). Rules of the site: the label says the fixed rule ("0" – the Log Book too only today). **The Store** (its own rule, rcl-store
 #19): a Store User's requirement, PO, GRN, issue and return dates start today (`StoreKit.entryFirst`; the Super Admin from his Portal ticket
 – `superAdmin`); a requirement / PO he changes keeps its own date. Engineering has no screens in the app yet (its rule is on its server).
+**With Mechanical update-188 (his answers: a Maintenance bill's and a card payment's date "फक्त आजची तारीख"):** "Read the bill (AI)" of a
+user puts the bill's date only when it is today's (the Admin's: the bill's own date); the app left open past midnight moves "today" on
+with the live sync (`Session.liveTick` – the server's `today`), so a user's dates follow the new day.
 Not verified: his phone itself.
 
 **Version 3.62.0 (29-10-2026 – the Store's step 5 as the app's own screens: "he amche company che format ahet mala je po bantil

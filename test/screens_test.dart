@@ -3645,8 +3645,10 @@ void main() {
     await tapK(t, 'att-pdf');
     await net(t);
     expect(find.text('bill.pdf'), findsOneWidget);
+    s.admin = true; // (3.62.1, update-188) the Admin: the bill's own date of an earlier day is read too – a user's stays today (the insurance bill's test)
     await tapK(t, 'mf-read');
     await net(t);
+    s.admin = false;
     expect(srv.maintCalls.last, {'fn': 'readMaintBill', 'mime': 'application/pdf'});
     expect([(t.widget(find.byKey(const Key('mf-garage'))) as TextBox).controller.text, (t.widget(find.byKey(const Key('mf-billno'))) as TextBox).controller.text, (t.widget(find.byKey(const Key('mf-km'))) as TextBox).controller.text], ['Maruti Service', 'MS-77', '46100']);
     expect((t.widget(find.byKey(const Key('mf-service'))) as SwitchListTile).value, true);
@@ -4079,7 +4081,8 @@ void main() {
     expect([txt('mf-total'), txt('mf-free'), txt('mf-wepaid')], ['₹ 2,761', '₹ 2,940', '₹ 761']);
     expect((t.widget(find.byKey(const Key('mf-ins'))) as SwitchListTile).value, true);
     expect([box('mf-insco'), box('mf-insclaim'), box('mf-inspaid')], [ins, 'CLM-168', '2000']);
-    expect(find.byWidgetPredicate((w) => w is AiBox && w.on), findsNWidgets(18), reason: 'the date, car, garage, bill no., KM, Service, the 8 lines and the insurance (its switch, company, claim no., ₹) – blue');
+    expect(find.byWidgetPredicate((w) => w is AiBox && w.on), findsNWidgets(17), reason: 'the car, garage, bill no., KM, Service, the 8 lines and the insurance (its switch, company, claim no., ₹) – blue; '
+        'the date not: a user\'s bill is dated today (3.62.1, update-188 – the bill says 13-10-2026)');
     expect(find.textContaining('Read by the AI (blue) – check every value before saving.'), findsOneWidget);
     expect(find.textContaining('check the car'), findsNothing);
     await t.ensureVisible(find.byKey(const Key('mf-a-1')));

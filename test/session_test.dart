@@ -631,4 +631,23 @@ void main() {
     s.superAdmin = true;
     expect(s.entryFirst(), null, reason: 'the Super Admin: any day');
   });
+
+  test('(3.62.1) the app left open past midnight: the live sync moves "today" on – a user\'s entry dates with it', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    final d0 = s.today;
+    await s.liveTick();
+    expect(s.today, d0, reason: 'no day given: as it was');
+    srv.syncToday = '2026-10-15';
+    var told = 0;
+    s.addListener(() => told++);
+    await s.liveTick();
+    expect(s.today, '2026-10-15');
+    expect(told, greaterThan(0), reason: 'the screens are told');
+    expect(s.admin || s.superAdmin ? null : s.entryFirst(), s.admin || s.superAdmin ? null : DateTime(2026, 10, 15));
+    srv.syncToday = 'not a day';
+    await s.liveTick();
+    expect(s.today, '2026-10-15', reason: 'only a real day');
+  });
 }

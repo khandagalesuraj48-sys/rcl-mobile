@@ -612,7 +612,8 @@ class _MaintFormState extends State<MaintForm> {
         return true;
       }
       setState(() {
-        if (!_blank(r['date']) && (!dateTyped || date.isEmpty)) {
+        // (3.62.1, Mechanical update-188 – his answer "फक्त आजची तारीख") a user's bill: the date read from it only when it is today's
+        if (!_blank(r['date']) && (!dateTyped || date.isEmpty) && SessionScope.read(context).entryDayOk('${r['date']}')) {
           date = '${r['date']}';
           ai.add('date');
           n++;
