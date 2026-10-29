@@ -2266,6 +2266,7 @@ void main() {
     await settle(t, 600);
     await t.enterText(box('rql-q-0'), '5');
     await settle(t, 300);
+    await reach(t, 'rqf-photos', 'rqf');      // (below the items – the list builds it when it is reached)
     expect(find.text('Photos of the material'), findsOneWidget);
     expect(find.byKey(const Key('att-pdf')), findsNothing, reason: 'photos only – no PDF');
     await tapK(t, 'att-cam');

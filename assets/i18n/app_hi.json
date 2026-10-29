@@ -1311,5 +1311,8 @@
 "Requirement {0} is saved, but its photos were not kept – add them again with \"Photos\" on it.": "मांग {0} सेव हुई, पर उसकी फ़ोटो नहीं रखी गईं – उस पर \"Photos\" से फिर जोड़ें।",
 "The photos could not be opened ({0}) – try again in a moment.": "फ़ोटो नहीं खुल सकीं ({0}) – थोड़ी देर में फिर कोशिश करें।",
 "The file store did not keep the photo ({0}) – add it again.": "फ़ाइल store ने फ़ोटो नहीं रखी ({0}) – फिर से जोड़ें।",
-"Requirement {0} was changed by someone else just now – refresh and add the photos again.": "मांग {0} अभी किसी और ने बदली – refresh करके फ़ोटो फिर से जोड़ें।"
+"Requirement {0} was changed by someone else just now – refresh and add the photos again.": "मांग {0} अभी किसी और ने बदली – refresh करके फ़ोटो फिर से जोड़ें।",
+"The photos could not be opened now ({0}) – printed without them.": "फ़ोटो अभी नहीं खुल सकीं ({0}) – उनके बिना print किया।",
+"Photos were added to requirement {0} just now – it would have more than {1}. Refresh and look.": "मांग {0} में अभी फ़ोटो जोड़ी गईं – {1} से ज़्यादा हो जाएँगी। Refresh करके देखें।",
+"You sent {0} photos today – that is the most for one day. Send the rest tomorrow (if you did not send them, tell the Store Admin).": "आज आपने {0} फ़ोटो भेजीं – एक दिन की यही सीमा है। बाकी कल भेजें (अगर आपने नहीं भेजीं तो Store Admin को बताएँ)।"
 }

@@ -793,7 +793,15 @@ class _ReqListScreenState extends State<ReqListScreen> {
 
   /// (3.62.0, his format) the Purchase Requisition Form; (3.66.0) its photos on the pages after it
   Future<void> _print(Map<String, dynamic> x) => _do(() async {
-        final ph = listOf(x['photos']).isEmpty ? <AttFile>[] : await storePhotosOf(k, x['no']);
+        var ph = <AttFile>[];
+        if (listOf(x['photos']).isNotEmpty) {
+          try {
+            ph = await storePhotosOf(k, x['no']);
+          } catch (e) {
+            // (the print never waits on the file store: without the photos, said so)
+            if (mounted) toast(context, 'The photos could not be opened now (${errText(e)}) – printed without them.', bad: true);
+          }
+        }
         if (!mounted) return;
         await printStorePaper(context, heading, 'Requirement ${'${x['ref'] ?? ''}'.isEmpty ? x['no'] : x['ref']}',
             (logo) => reqPaperHtml(x, heading, logo: logo, photos: [for (final f in ph) {'url': f.url, 'by': f.by, 'at': f.at}]));
@@ -972,6 +980,8 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
         if (widget.req != null) 'no': widget.req!['no'],
         'req': {'date': date, 'need_by': need, 'for_kind': kind, 'for_text': kind == 'Machinery' ? mach : which.text, 'remark': rem.text, 'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'brand': l.brand.text, 'spec': l.spec.text, 'note': l.note.text}]},
         if (ph != null) 'photos': ph,
+        // (the Store's review) the photos it opened with: one added since (the laptop, the Store Admin) stays
+        if (ph != null && widget.req != null) 'photosWas': [for (final p in listOf(widget.req!['photos'])) '${p['sha']}'],
       });
       if (!mounted) return;
       final note = '${r['photoNote'] ?? ''}';
