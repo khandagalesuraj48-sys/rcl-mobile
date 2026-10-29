@@ -2655,7 +2655,7 @@ class _OpeningScreenState extends State<OpeningScreen> {
   final gNo = TextEditingController(), oNo = TextEditingController();
   // (3.62.0, his formats) the papers of this site: the numbers' prefix (RCL/VTR → RCL/VTR/PO/2026/0128), the heading's e-mail,
   // contact, CIN, web; what a new PO starts with – its Site Contact, Shipping Address, Terms And Conditions
-  static const _pk = ['prefix', 'email', 'phone', 'cin', 'web', 'site_contact', 'ship_to', 'terms'];
+  static const _pk = ['prefix', 'email', 'phone', 'cin', 'web', 'site_contact', 'ship_to', 'terms', 'site_address']; // (3.65.0) the site's address on the papers
   final pc = {for (final f in _pk) f: TextEditingController()};
   String prefixNow = '';
   bool step5 = true;
@@ -2866,6 +2866,8 @@ class _OpeningScreenState extends State<OpeningScreen> {
                       const SizedBox(width: 8),
                       Expanded(child: TextBox(key: const Key('pp-web'), label: 'Web', controller: pc['web']!)),
                     ]),
+                    const SizedBox(height: 8),
+                    TextBox(key: const Key('pp-saddr'), label: 'Site Address (on the papers – the requirement, the PO)', controller: pc['site_address']!, maxLines: 3), // (3.65.0)
                     const SizedBox(height: 8),
                     TextBox(key: const Key('pp-sc'), label: 'Site Contact (a new PO)', hint: 'Name : mobile', controller: pc['site_contact']!),
                     const SizedBox(height: 8),

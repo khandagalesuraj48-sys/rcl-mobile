@@ -71,5 +71,10 @@ void main() {
     expect(waiting, contains('(waiting – level 2)<span>Approved By</span>'));
     expect(waiting, contains('<td class="c">12/10/2026</td></tr>'), reason: 'no Needed by: its date');
     expect(reqPaperHtml({...x, 'status': 'Rejected', 'approvals': []}, heading), contains('(rejected)<span>Approved By</span>'));
+    // (3.65.0, "print war rachana address nahi site address nahi") the company's address and details as the PO's; the Site Address
+    final full = reqPaperHtml(x, {...heading, 'address': 'Office 2\nMumbai', 'site_address': 'Site office at Valshind\nBhiwandi'});
+    for (final w in ['Office 2<br>Mumbai', '<b>Email ID.</b>', '<b>CIN No</b>', '<b>GST No</b>', '<b>PAN No</b>', 'Site Address :</td><td colspan="3">Site office at Valshind<br>Bhiwandi']) {
+      expect(full, contains(w), reason: w);
+    }
   });
 }

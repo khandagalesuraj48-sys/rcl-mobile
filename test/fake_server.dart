@@ -466,7 +466,7 @@ class FakeServer {
       case 'openingSave':
         return _j({'ok': true, 'rows': (b['rows'] as List).length});
       case 'numbers' || 'numbersSave' || 'papersSave':
-        if (b['action'] == 'papersSave') storePapers = {for (final k in ['prefix', 'email', 'phone', 'cin', 'web', 'site_contact', 'ship_to', 'terms']) if ('${b[k] ?? ''}'.isNotEmpty) k: '${b[k]}'};
+        if (b['action'] == 'papersSave') storePapers = {for (final k in ['prefix', 'email', 'phone', 'cin', 'web', 'site_contact', 'ship_to', 'terms', 'site_address']) if ('${b[k] ?? ''}'.isNotEmpty) k: '${b[k]}'};
         final pre = '${storePapers['prefix'] ?? ''}'.isNotEmpty ? storePapers['prefix'] : 'RCL/S1';
         return _j({'next': {'GRN': 5, 'OUT': 8}, 'used': {'GRN': 4, 'OUT': 7}, 'papers': storePapers, 'prefixNow': pre, 'step5': storeStep5, if (b['action'] != 'numbers') 'ok': true});
       // (3.57.0) the old inward register's import (rcl-store api/work.js regInfo / regNames / regVendors / regItems / regGrns)

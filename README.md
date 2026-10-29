@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.65.0 (29-10-2026 – "requirement jewa mi banwato print gheto n ji print yetey tya war rachana address nahi site address nahiye ani
+rachana logo nahiye"; with rcl-store):** the Purchase Requisition Form's heading as the PO's – the logo, the company's name and address
+(Portal → Companies), Email ID / Contact / CIN / Web (Store Settings → Papers), GST / PAN – and a **Site Address** line (Papers → Site
+Address, a new box there; else the Shipping Address).
+
 **Version 3.64.0 (29-10-2026 – "pratek kam madhe edit no access view ani admin ha acess haway … diesle inward issue transfer madhe je back
 dated entry karnar aahet tyanche sathi"; his answers: every page with a date; Admin = only that page's entries of an earlier day; with
 Mechanical update-189 and the Portal):** a page with a date (Diesel Inward / Issue / Transfer, Log Book – its tank check too –, Breakdown,
