@@ -132,9 +132,15 @@ String reqPaperHtml(Map x, Map heading, {String logo = ''}) {
   final appr = last != null ? '${last['name'] ?? ''}' : x['status'] == 'Pending' ? '(waiting – level ${x['level']})' : x['status'] == 'Rejected' ? '(rejected)' : '';
   String slash(Object? d) => paperDmy(d).replaceAll('-', '/');
   final forText = '${x['for_kind'] ?? ''}${_blank(x['for_text']) ? '' : ' – ${x['for_text']}'}';
-  final head = '<table><tr><td style="width:55%;text-align:center;vertical-align:middle" rowspan="2">${_logo(h, logo)}</td><td class="cn" style="font-size:26px;font-weight:400;height:70px;vertical-align:middle">${_e(h['company'])}</td></tr>'
-      '<tr><td class="c" style="font-size:16px">Purchase Requisition Form</td></tr></table>'
+  // (3.65.0, as the web's 29-10-2026: "print war rachana address nahi site address nahi ani rachana logo nahiye") the company's address and
+  // details as the PO's heading, and the site's address (Store Settings → Papers → Site Address; else the Shipping Address)
+  final head = '<table><tr><td style="width:50%;text-align:center;vertical-align:middle;border-right:0">${_logo(h, logo)}</td><td style="border-left:1px solid #000"><div class="cn">${_e(h['company'])}</div>'
+      '${_blank(h['address']) ? '' : '<div class="c">${_nl(h['address'])}</div>'}<table class="nb">'
+      '<tr><td><b>Email ID.</b> : ${_e(h['email'])}</td><td><b>Contact</b> : ${_e(h['phone'])}</td></tr><tr><td><b>CIN No</b> : ${_e(h['cin'])}</td><td><b>Web</b> : ${_e(h['web'])}</td></tr>'
+      '<tr><td><b>GST No</b> : ${_e(h['gstin'])}</td><td><b>PAN No</b> : ${_e(h['pan'])}</td></tr></table></td></tr>'
+      '<tr><td colspan="2" class="ttl" style="font-size:16px">Purchase Requisition Form</td></tr></table>'
       '<table class="nb" style="border:1px solid #000;border-top:0"><tr><td style="width:15%">Project Name :</td><td style="width:45%">${_e(h['site'])}</td><td style="width:15%">Sub Project :</td><td>${_e(forText)}</td></tr>'
+      '<tr><td>Site Address :</td><td colspan="3">${_nl(h['site_address'])}</td></tr>'
       '<tr><td>Indent No. :</td><td>${_e(_blank(x['ref']) ? x['no'] : x['ref'])}</td><td>Date :</td><td>${slash(x['date'])}</td></tr></table>';
   final rows = StringBuffer();
   for (final (i, l) in lines.indexed) {

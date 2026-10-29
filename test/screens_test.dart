@@ -2374,13 +2374,15 @@ void main() {
     expect([txt('pp-email'), txt('pp-sc')], ['store@rcl.test', 'Store Keeper : 90000 00000']);
     await t.enterText(box('pp-prefix'), 'RCL/VTR');
     await t.enterText(box('pp-cin'), 'U00000MH0000PLC000000');
+    await reach(t, 'pp-saddr', 'op-list');
+    await t.enterText(box('pp-saddr'), 'Site office at Valshind\nBhiwandi'); // (3.65.0) the site's address on the papers
     await settle(t, 300);
     await reach(t, 'pp-nos', 'op-list');
     expect(data('pp-nos'), 'PO No: RCL/VTR/PO/2026/0001 · Indent No: RCL/VTR/PR/2026/0001');
     await tapK(t, 'pp-save');
     await net(t);
     expect(sent(srv, 'papersSave').single, {'action': 'papersSave', 'prefix': 'RCL/VTR', 'email': 'store@rcl.test', 'phone': '', 'cin': 'U00000MH0000PLC000000', 'web': '', 'site_contact': 'Store Keeper : 90000 00000', 'ship_to': 'VTR Site Store\nNH 848',
-      'terms': '1. Payment within 30 days.\n2. Material as per the specification.'});
+      'terms': '1. Payment within 30 days.\n2. Material as per the specification.', 'site_address': 'Site office at Valshind\nBhiwandi'});
     expect(find.text('The papers are saved.'), findsOneWidget);
     // a site before the Store's step 5: the PO's own fields are not asked – said why
     srv.storeStep5 = false;
