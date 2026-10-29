@@ -355,6 +355,11 @@ class FakeServer {
   // (3.66.0) the Store's step 7 at the site: a requirement's photos (each photo sent: its fingerprint → its size)
   bool storeStep7 = true;
   final storePhotos = <String, int>{};
+  // (3.70.0) the Store's step 8 at the site: the Indent No., the contact, the log book; changed after its approval, deleted (off by
+  // default – the requirements as before); the PO that has requirement 1 (deleted: none)
+  bool storeStep8 = false;
+  int? req1Po = 1;
+  final storeDeleted = <String>[];
   // (3.68.0) the Store's live: the site's last change (a test makes one: +1)
   int storeLive = 1;
   final regGrnsSaved = <(String, String, int, String, String)>[]; // (key, GRN No, no, date, supplier) of the register's GRNs saved
@@ -387,8 +392,38 @@ class FakeServer {
           'grn': {'today': 1, 'todayValue': 525, 'month': 2, 'monthValue': 2625, 'recent': [{'no': 4, 'date': '2026-10-14', 'supplier': 'Shri Traders', 'gross': 525}]},
           'issue': {'today': 1, 'todayValue': 1200, 'month': 1, 'monthValue': 1200, 'recent': [{'no': 7, 'date': '2026-10-14', 'to_kind': 'Machinery', 'machinery': 'Sany 210 (No.1)', 'party': '', 'amount': 1200}]}});
       case 'reqList':
-        return _j({'reqs': [for (final r in storeReqs) {...r, 'ref': 'RCL/VTR/PR/2026/${'${r['no']}'.padLeft(4, '0')}', 'photos': r['photos'] ?? []}], 'levels': [{'level': 1, 'people': ['Sujit Mule']}],
-          'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'email': storePapers['email'] ?? ''}, 'step7': storeStep7});
+        // (3.70.0) with step 8: the Indent No. (RCL/VTR/2026-27/M|P/0001), and what the server lets him do – as the Store's server
+        Map<String, dynamic> s8(Map<String, dynamic> r) {
+          final pos = r['no'] == 1 && req1Po != null ? [req1Po] : [];
+          return {'ref': 'RCL/VTR/2026-27/${r['for_kind'] == 'Machinery' ? 'M' : 'P'}/${'${r['no']}'.padLeft(4, '0')}', 'pos': pos, 'edit': pos.isEmpty && ['Pending', 'Approved', 'Rejected'].contains(r['status']), 'del': pos.isEmpty, 'attach': true,
+            'logbook': r['logbook'], 'contact_name': r['contact_name'] ?? '', 'contact_phone': r['contact_phone'] ?? ''};
+        }
+        return _j({'reqs': [for (final r in storeReqs) {...r, 'ref': 'RCL/VTR/PR/2026/${'${r['no']}'.padLeft(4, '0')}', 'photos': r['photos'] ?? [], if (storeStep8) ...s8(r)}], 'levels': [{'level': 1, 'people': ['Sujit Mule']}],
+          'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'email': storePapers['email'] ?? '', if (storeStep8) 'site_address': 'Site office, Valshind'}, 'step7': storeStep7,
+          if (storeStep8) 'step8': true, if (storeStep8) 'start': {'contact_name': 'Ramesh Patil', 'contact_phone': '98765 43210'}});
+      // (3.70.0) a machinery's maintenance log book; a requirement deleted, a photo taken out, its log book attached / taken out; a PO deleted
+      case 'mlogInfo':
+        return _j(b['no'] == 'Sany 210 (No.1)' ? {'no': b['no'], 'bills': 12, 'upto': '2026-10-10', 'amount': 45000} : {'no': b['no'], 'bills': 0, 'upto': '', 'amount': 0});
+      case 'reqLogbook':
+        final rqL = storeReqs.firstWhere((r) => r['no'] == b['no']);
+        rqL['logbook'] = b['attach'] == true ? {'no': rqL['for_text'], 'upto': '2026-10-10', 'bills': 12, 'by': 'Sujit Mule'} : null;
+        return _j({'ok': true, 'no': b['no'], 'logbook': rqL['logbook']});
+      case 'reqLogbookHtml':
+        final rqH = storeReqs.firstWhere((r) => r['no'] == b['no']);
+        return _j({'no': b['no'], 'html': rqH['logbook'] == null ? '' : '<div class="mlbw"><div class="mlbt">Maintenance Log Book – ${rqH['for_text']}</div><table class="mlb"><tr><td>Hydraulic oil</td></tr></table></div>', 'css': '.mlb{border-collapse:collapse}'});
+      case 'reqDelete':
+        if (b['no'] == 1 && req1Po != null) return _j({'error': 'Requirement 1 is in PO $req1Po – delete PO $req1Po first (HO Purchase), then change or delete the requirement.', 'code': 'ordered'}, 409);
+        storeReqs.removeWhere((r) => r['no'] == b['no']);
+        storeDeleted.add('REQ ${b['no']}');
+        return _j({'ok': true});
+      case 'reqPhotoDel':
+        final rqD = storeReqs.firstWhere((r) => r['no'] == b['no']);
+        rqD['photos'] = [for (final p in (rqD['photos'] as List? ?? const [])) if ((p as Map)['sha'] != b['sha']) p];
+        return _j({'ok': true, 'no': b['no'], 'photos': (rqD['photos'] as List).length});
+      case 'poDelete':
+        if (b['no'] == req1Po) req1Po = null;
+        storeDeleted.add('PO ${b['no']}');
+        return _j({'ok': true});
       // (3.66.0) a requirement's photos – as the Store's server: a JPEG only, kept under its fingerprint; its proof for the save
       case 'live':
         return _j({'v': storeLive});
@@ -413,7 +448,11 @@ class FakeServer {
         rqA['photos'] = list;
         return _j({'ok': true, 'no': b['no'], 'photos': list.length});
       case 'reqSave':
-        return _j({'ok': true, 'no': 3, 'status': 'Pending', 'level': 1});
+        if (storeStep8 && b['no'] != null) {
+          final rqS = storeReqs.firstWhere((r) => r['no'] == b['no']);
+          return _j({'ok': true, 'no': b['no'], 'status': 'Pending', 'level': 1, 'again': rqS['status'] != 'Pending' || (rqS['approvals'] as List).isNotEmpty});
+        }
+        return _j({'ok': true, 'no': 3, 'status': 'Pending', 'level': 1, if (storeStep8) 'ref': 'RCL/VTR/2026-27/M/0003'});
       case 'reqDecide':
         final nos = [for (final n in (b['nos'] as List? ?? [b['no']])) n];
         for (final r in storeReqs) {
@@ -436,7 +475,10 @@ class FakeServer {
       case 'poList':
         // (3.62.0) PO 1 waits for the approval of Sujit Mule (the one signed in) – it was made by someone else
         final wait = storeStep5 && po1Appr['appr'] == 'Waiting';
-        return _j({'pos': [{...storePo, ...(storeStep5 ? po1Appr : {'appr': 'Approved'}), 'mayApprove': wait, 'waitFor': wait ? ['Sujit Mule'] : []}]});
+        // (3.70.0) with step 8: PO 1 with nothing come yet (it may be deleted); deleted – no PO
+        if (storeStep8 && req1Po == null) return _j({'pos': []});
+        final po0 = storeStep8 ? {...storePo, 'state': 'Open', 'lines': [{...((storePo['lines'] as List).first as Map), 'received': 0, 'left': 20, 'req_ref': 'RCL/VTR/2026-27/P/0001'}]} : storePo;
+        return _j({'pos': [{...po0, ...(storeStep5 ? po1Appr : {'appr': 'Approved'}), 'mayApprove': wait, 'waitFor': wait ? ['Sujit Mule'] : []}]});
       case 'poGet':
         return _j({
           'po': {...storePo, ...po1Appr, 'ref': 'RCL/VTR/PO/2026/0001', 'words': 'Two Thousand One Hundred Rupees Only', 'credit_days': 30, 'site_contact': 'Store Keeper : 90000 00000', 'ship_to': 'VTR Site Store\nNH 848', 'freight': 0, 'load_unload': 0,
@@ -687,6 +729,9 @@ class FakeServer {
           cur['name'] = '${x['name']}'.trim();
           cur['company_id'] = '${x['company'] ?? ''}'.isEmpty ? null : x['company'];
           cur['status'] = x['status'];
+          for (final k in ['address', 'contact_name', 'contact_phone']) {
+            if (x.containsKey(k)) cur[k] = '${x[k] ?? ''}'.trim(); // (3.70.0) the site's address and contact
+          }
           return _j({'ok': true});
         }
       case 'siteSetup':

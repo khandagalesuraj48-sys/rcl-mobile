@@ -726,6 +726,9 @@ String bsOf(Map l) {
 /* ======================== MATERIAL REQUIREMENTS ======================== */
 const _kReqF = [('open', 'Open (pending + to order)'), ('mine', 'Waiting for me'), ('Pending', 'Pending'), ('Approved', 'Approved'), ('Rejected', 'Rejected'), ('Closed', 'Closed'), ('Cancelled', 'Cancelled'), ('all', 'All')];
 
+/// (3.70.0, the web's 29-10-2026) a requirement's name: its Indent No. (RCL/VTR/2026-27/M/0001) – an older server: REQ and its number
+String reqRef(Map x) => '${x['ref'] ?? ''}'.trim().isNotEmpty ? '${x['ref']}' : 'REQ ${x['no']}';
+
 /// Is a requirement in this filter (the web's reqIn)?
 bool reqIn(Map x, String f) {
   final st = '${x['status']}', lines = listOf(x['lines']);
@@ -754,6 +757,11 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
 
   /// (3.66.0) the Store's step 7 at this site: a requirement's photos
   bool step7 = false;
+
+  /// (3.70.0) the Store's step 8: the Indent No., the contact, the log book; changed after its approval, deleted – and what a new one
+  /// starts with (the site's contact, from the Portal)
+  bool step8 = false;
+  Map<String, dynamic> start = {};
   String filter = 'open', err = '';
   bool loading = true;
   final ticked = <int>{};
@@ -776,6 +784,8 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
         levels = listOf(r['levels']);
         heading = mapOf(r['heading']);
         step7 = r['step7'] == true;
+        step8 = r['step8'] == true;
+        start = mapOf(r['start']);
         ticked.removeWhere((n) => !reqs.any((x) => nOf(x['no']) == n && x['mayApprove'] == true));
         loading = false;
         err = '';
@@ -809,43 +819,60 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
       });
 
   Future<void> _reject(Map x) async {
-    final why = await askNote(context, 'Reject requirement ${x['no']}?', label: 'Say why (the person who made it sees it):', ok: 'Reject', danger: true, neededMsg: 'Say why it is rejected.');
+    final why = await askNote(context, 'Reject requirement ${reqRef(x)}?', label: 'Say why (the person who made it sees it):', ok: 'Reject', danger: true, neededMsg: 'Say why it is rejected.');
     if (why == null) return;
     await _do(() async {
       await k.call('reqDecide', {'no': x['no'], 'ok': false, 'note': why});
-      if (mounted) toast(context, 'Requirement ${x['no']} rejected.');
+      if (mounted) toast(context, 'Requirement ${reqRef(x)} rejected.');
       await _load();
     });
   }
 
   Future<void> _cancel(Map x) async {
-    if (!await ask(context, 'Cancel requirement ${x['no']}?', bi('It will not be ordered.', 'ही मागणी रद्द होईल.'), yes: 'Cancel it', no: 'No', danger: true)) return;
+    if (!await ask(context, 'Cancel requirement ${reqRef(x)}?', bi('It will not be ordered.', 'ही मागणी रद्द होईल.'), yes: 'Cancel it', no: 'No', danger: true)) return;
     await _do(() async {
       await k.call('reqCancel', {'no': x['no']});
-      if (mounted) toast(context, 'Requirement ${x['no']} cancelled.');
+      if (mounted) toast(context, 'Requirement ${reqRef(x)} cancelled.');
       await _load();
     });
   }
 
   Future<void> _close(Map x) async {
-    if (!await ask(context, 'Close requirement ${x['no']}?', 'What is still to order will not be bought.', yes: 'Close', no: 'No')) return;
+    if (!await ask(context, 'Close requirement ${reqRef(x)}?', 'What is still to order will not be bought.', yes: 'Close', no: 'No')) return;
     await _do(() async {
       await k.call('reqClose', {'no': x['no']});
-      if (mounted) toast(context, 'Requirement ${x['no']} closed.');
+      if (mounted) toast(context, 'Requirement ${reqRef(x)} closed.');
       await _load();
     });
   }
 
   Future<void> _form(Map<String, dynamic>? x) async {
-    final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => ReqFormScreen(k: k, req: x, photos: step7)));
+    final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => ReqFormScreen(k: k, req: x, photos: step7, step8: step8, start: start)));
     if (saved == true) _load();
+  }
+
+  /// (3.70.0, the web's 29-10-2026: "ekda banwaleli requirement edit delet krta yeil … po banli aahe … adhi po delet") Delete – who made it
+  /// or the Store Admin; the server says when (never while a PO has it)
+  Future<void> _delete(Map x) async {
+    if (!await ask(context, 'Delete requirement ${reqRef(x)}?', bi('It goes from the list – its photos and log book with it. (Written in the activity record.)', 'ही मागणी delete होईल.'), yes: 'Delete', no: 'No', danger: true)) return;
+    await _do(() async {
+      await k.call('reqDelete', {'no': x['no']});
+      if (mounted) toast(context, 'Requirement ${reqRef(x)} deleted.');
+      await _load();
+    });
+  }
+
+  /// (3.70.0) a machinery's requirement: its maintenance log book – up to which date it is attached; Update / Take out / Attach
+  Future<void> _logbook(Map<String, dynamic> x) async {
+    await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => ReqLogbookScreen(k: k, req: x)));
+    if (mounted) _load();
   }
 
   /// (3.66.0) photos added to a requirement made already: who made it or the Store Admin, while it waits or is approved (step 7)
   bool _phAdd(Map x) => step7 && k.edit('req') && (x['mine'] == true || k.admin) && (x['status'] == 'Pending' || x['status'] == 'Approved');
 
   Future<void> _photos(Map<String, dynamic> x) async {
-    await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => ReqPhotosScreen(k: k, req: x, canAdd: _phAdd(x))));
+    await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => ReqPhotosScreen(k: k, req: x, canAdd: _phAdd(x), canDel: x['attach'] == true)));
     if (mounted) _load();
   }
 
@@ -860,9 +887,18 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
             if (mounted) toast(context, 'The photos could not be opened now (${errText(e)}) – printed without them.', bad: true);
           }
         }
+        // (3.70.0) its machinery's maintenance log book, as the Store draws it (printed without it when it cannot be read now)
+        var lb = <String, dynamic>{};
+        if (x['logbook'] is Map) {
+          try {
+            lb = await k.call('reqLogbookHtml', {'no': x['no']});
+          } catch (e) {
+            if (mounted) toast(context, 'The log book could not be read now (${errText(e)}) – printed without it.', bad: true);
+          }
+        }
         if (!mounted) return;
-        await printStorePaper(context, heading, 'Requirement ${'${x['ref'] ?? ''}'.isEmpty ? x['no'] : x['ref']}',
-            (logo) => reqPaperHtml(x, heading, logo: logo, photos: [for (final f in ph) {'url': f.url, 'by': f.by, 'at': f.at}]));
+        await printStorePaper(context, heading, 'Requirement ${reqRef(x)}',
+            (logo) => reqPaperHtml(x, heading, logo: logo, photos: [for (final f in ph) {'url': f.url, 'by': f.by, 'at': f.at}], logbook: lb));
       });
 
   void _details(Map x) => showModalBottomSheet<void>(
@@ -871,7 +907,8 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
         builder: (c) => SizedBox(
           height: MediaQuery.of(c).size.height * .75,
           child: ListView(key: const Key('rq-det'), padding: const EdgeInsets.fromLTRB(18, 0, 18, 24), children: [
-            Text('Requirement ${x['no']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            Text('Requirement ${reqRef(x)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            if ('${x['contact_name'] ?? ''}${x['contact_phone'] ?? ''}'.isNotEmpty) Text('Contact: ${[x['contact_name'], x['contact_phone']].where((v) => '${v ?? ''}'.isNotEmpty).join(' – ')}', style: _muted),
             if ('${x['remark'] ?? ''}'.isNotEmpty) Text('${x['remark']}', style: _muted),
             const SizedBox(height: 8),
             for (final l in listOf(x['lines']))
@@ -893,24 +930,31 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
 
   Widget _tile(Map<String, dynamic> x) {
     final no = nOf(x['no']).toInt(), st = '${x['status']}', lines = listOf(x['lines']), may = x['mayApprove'] == true, mine = x['mine'] == true;
-    final wait = [for (final p in (x['waitFor'] as List? ?? const [])) '$p'], photos = listOf(x['photos']);
+    final wait = [for (final p in (x['waitFor'] as List? ?? const [])) '$p'], photos = listOf(x['photos']), pos = [for (final p in (x['pos'] as List? ?? const [])) '$p'];
+    final lb = x['logbook'] is Map ? x['logbook'] as Map : null;
+    // (3.70.0) Change / Delete as the server says (an older server: as before)
+    final mayEdit = x.containsKey('edit') ? x['edit'] == true : (mine || k.admin) && st == 'Pending' && listOf(x['approvals']).isEmpty && k.edit('req');
     return _card(key: Key('rq-$no'), color: may ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [
         if (may) Checkbox(key: Key('rq-tick-$no'), value: ticked.contains(no), onChanged: (v) => setState(() => v == true ? ticked.add(no) : ticked.remove(no))),
-        Expanded(child: Text('REQ $no · ${dmy(x['date'])}', style: _bold)),
+        Expanded(child: Text('${reqRef(x)} · ${dmy(x['date'])}', style: _bold)),
         statePill(st),
       ]),
       Text('For: ${x['for_kind'] ?? ''}${'${x['for_text'] ?? ''}'.isNotEmpty ? ' – ${x['for_text']}' : ''}${'${x['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(x['need_by'])}' : ''}', style: const TextStyle(fontSize: 13.5)),
       for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${bsOf(l)}${st == 'Approved' && nOf(l['left']) < nOf(l['qty']) ? ' (ordered ${q3(l['ordered'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
       if (photos.isNotEmpty) Text('📷 ${photos.length} photo${photos.length == 1 ? '' : 's'}', key: Key('rq-phn-$no'), style: const TextStyle(fontSize: 12.5, color: C.blue, fontWeight: FontWeight.w600)),
+      if (lb != null) Text('📕 Log book up to ${dmy(lb['upto'])}', key: Key('rq-lbn-$no'), style: const TextStyle(fontSize: 12.5, color: C.blue, fontWeight: FontWeight.w600)),
+      if (pos.isNotEmpty) Text('In PO ${pos.join(', ')}', key: Key('rq-pos-$no'), style: _faint),
       if (st == 'Pending') Text('Level ${x['level']}${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600)),
       Text('Asked by ${x['created_name'] ?? x['created_by'] ?? ''}', style: _faint),
       Wrap(spacing: 2, children: [
         if (may) ...[_act('rq-ok-$no', 'Approve', () => _approve([no])), _act('rq-no-$no', 'Reject', () => _reject(x), color: C.red)],
         _act('rq-det-$no', 'Details', () => _details(x), color: C.blue),
         if (photos.isNotEmpty || _phAdd(x)) _act('rq-ph-$no', photos.isEmpty ? 'Photos' : 'Photos (${photos.length})', () => _photos(x), color: C.blue),
+        if (x['for_kind'] == 'Machinery' && step8 && (lb != null || x['attach'] == true)) _act('rq-lb-$no', 'Log book', () => _logbook(x), color: C.blue),
         _act('rq-print-$no', 'Print', () => _print(x), color: C.blue),
-        if ((mine || k.admin) && st == 'Pending' && listOf(x['approvals']).isEmpty && k.edit('req')) _act('rq-edit-$no', 'Change', () => _form(x), color: C.blue),
+        if (mayEdit) _act('rq-edit-$no', 'Change', () => _form(x), color: C.blue),
+        if (x['del'] == true) _act('rq-del-$no', 'Delete', () => _delete(x), color: C.red),
         if ((mine || k.admin) && (st == 'Pending' || st == 'Approved') && !lines.any((l) => nOf(l['ordered']) > 0)) _act('rq-cancel-$no', 'Cancel', () => _cancel(x), color: C.red),
         if ((k.buyer || k.admin) && st == 'Approved' && lines.any((l) => nOf(l['left']) > 0)) _act('rq-close-$no', 'Close', () => _close(x), color: C.slate),
       ]),
@@ -964,12 +1008,16 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
 }
 
 class ReqFormScreen extends StatefulWidget {
-  const ReqFormScreen({super.key, required this.k, this.req, this.photos = false});
+  const ReqFormScreen({super.key, required this.k, this.req, this.photos = false, this.step8 = false, this.start = const {}});
   final StoreKit k;
   final Map<String, dynamic>? req;
 
   /// (3.66.0) its photos (the Store's step 7 at this site)
   final bool photos;
+
+  /// (3.70.0) the Store's step 8: its contact (the site's from the Portal to start with) and its machinery's maintenance log book
+  final bool step8;
+  final Map<String, dynamic> start;
   @override
   State<ReqFormScreen> createState() => _ReqFormScreenState();
 }
@@ -978,8 +1026,52 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
   late String date = '${widget.req?['date'] ?? widget.k.today}', need = '${widget.req?['need_by'] ?? ''}', kind = '${widget.req?['for_kind'] ?? 'Site work'}';
   late String mach = kind == 'Machinery' ? '${widget.req?['for_text'] ?? ''}' : '';
   late final which = TextEditingController(text: kind == 'Machinery' ? '' : '${widget.req?['for_text'] ?? ''}'), rem = TextEditingController(text: '${widget.req?['remark'] ?? ''}');
+  // (3.70.0, the web's 29-10-2026: "contact name ani number je default ahe te auto yetil but user … edit pn karta yeil")
+  late final cName = TextEditingController(text: '${(widget.req != null ? widget.req!['contact_name'] : widget.start['contact_name']) ?? ''}'),
+      cPhone = TextEditingController(text: '${(widget.req != null ? widget.req!['contact_phone'] : widget.start['contact_phone']) ?? ''}');
   final lines = <SLine>[];
   bool busy = false;
+
+  /// (3.70.0, "vehicle che maintanace log book auto requirement madhe attach hoil … update kadhi paryant ahe … nasel karaych tr te hi
+  /// option") the machinery's log book: [lbOn] – ticked (null: not shown – no machinery / no log book); [lbText] – up to which date
+  bool? lbOn;
+  String lbText = '', lbFor = '';
+  Map? get _had => widget.req?['logbook'] is Map && (widget.req!['logbook'] as Map)['no'] == mach ? widget.req!['logbook'] as Map : null;
+
+  Future<void> _lbLoad() async {
+    final no = kind == 'Machinery' ? mach : '';
+    lbFor = no;
+    if (!widget.step8 || no.isEmpty) {
+      setState(() {
+        lbOn = null;
+        lbText = '';
+      });
+      return;
+    }
+    final had = _had;
+    setState(() {
+      lbOn = widget.req == null || had != null;
+      lbText = had != null ? 'attached up to ${dmy(had['upto'])}' : 'looking…';
+    });
+    Map<String, dynamic>? got;
+    try {
+      got = await widget.k.call('mlogInfo', {'no': no});
+    } catch (_) {
+      got = null;
+    }
+    final i = got;
+    if (!mounted || lbFor != no) return;
+    setState(() {
+      if (i != null && nOf(i['bills']) == 0 && had == null) {
+        lbOn = null;
+        lbText = '$no has no maintenance log book yet.';
+      } else if (had != null) {
+        lbText = 'attached up to ${dmy(had['upto'])}${i != null && '${i['upto'] ?? ''}'.isNotEmpty && i['upto'] != had['upto'] ? ' (written now up to ${dmy(i['upto'])} – Update it from the list)' : ''}';
+      } else {
+        lbText = i == null ? '' : 'written up to ${dmy(i['upto'])} · ${q3(i['bills'])} bill(s)';
+      }
+    });
+  }
 
   /// (3.66.0) its photos: those it has (their pictures through their links) and the ones taken here; each new one's proof (sha → t)
   final photos = <AttFile>[];
@@ -995,6 +1087,7 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
       photos.add(AttFile(sha: '${p['sha']}', p: 'store', name: 'Photo ${i + 1}', size: nOf(p['size']).toInt(), by: '${p['by'] ?? ''}', at: '${p['at'] ?? ''}'));
     }
     if (widget.photos && photos.isNotEmpty) _links();
+    if (kind == 'Machinery' && mach.isNotEmpty) WidgetsBinding.instance.addPostFrameCallback((_) => _lbLoad());
   }
 
   Future<void> _links() async {
@@ -1015,6 +1108,8 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
   void dispose() {
     which.dispose();
     rem.dispose();
+    cName.dispose();
+    cPhone.dispose();
     for (final l in lines) {
       l.dispose();
     }
@@ -1036,14 +1131,19 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
       }
       final r = await widget.k.call('reqSave', {
         if (widget.req != null) 'no': widget.req!['no'],
-        'req': {'date': date, 'need_by': need, 'for_kind': kind, 'for_text': kind == 'Machinery' ? mach : which.text, 'remark': rem.text, 'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'brand': l.brand.text, 'spec': l.spec.text, 'note': l.note.text}]},
+        'req': {
+          'date': date, 'need_by': need, 'for_kind': kind, 'for_text': kind == 'Machinery' ? mach : which.text, 'remark': rem.text,
+          'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'brand': l.brand.text, 'spec': l.spec.text, 'note': l.note.text}],
+          if (widget.step8) 'contact_name': cName.text, if (widget.step8) 'contact_phone': cPhone.text, // (3.70.0)
+        },
         if (ph != null) 'photos': ph,
+        if (lbOn != null) 'logbook': lbOn, // (3.70.0) its log book: ticked / not (not shown: as it is)
         // (the Store's review) the photos it opened with: one added since (the laptop, the Store Admin) stays
         if (ph != null && widget.req != null) 'photosWas': [for (final p in listOf(widget.req!['photos'])) '${p['sha']}'],
       });
       if (!mounted) return;
-      final note = '${r['photoNote'] ?? ''}';
-      toast(context, note.isNotEmpty ? note : 'Requirement ${r['no']} saved – ${r['status'] == 'Approved' ? 'approved (no approver set for this site).' : 'it waits for Level ${r['level']}.'}', bad: note.isNotEmpty);
+      final note = '${r['photoNote'] ?? ''}', nm = '${r['ref'] ?? ''}'.isNotEmpty ? '${r['ref']}' : widget.req != null ? reqRef(widget.req!) : '${r['no']}';
+      toast(context, note.isNotEmpty ? note : 'Requirement $nm saved – ${r['status'] == 'Approved' ? 'approved (no approver set for this site).' : r['again'] == true ? 'it waits for its approval again (level ${r['level']}).' : 'it waits for Level ${r['level']}.'}', bad: note.isNotEmpty);
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
@@ -1056,22 +1156,52 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
   Widget build(BuildContext context) {
     final k = widget.k, ml = k.machLabels;
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text(widget.req != null ? 'Change requirement ${widget.req!['no']}' : 'New requirement')),
+      appBar: AppBar(actions: withAsk(), title: Text(widget.req != null ? 'Change requirement ${reqRef(widget.req!)}' : 'New requirement')),
       bottomNavigationBar: _saveBar('rq-save', 'Save requirement', busy, _save),
       body: ListView(key: const Key('rqf'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
+        // (3.70.0) approved (or rejected) before: once changed it waits for its approval again
+        if (widget.req != null && (widget.req!['status'] != 'Pending' || listOf(widget.req!['approvals']).isNotEmpty))
+          InfoLine('It was ${widget.req!['status'] == 'Pending' ? 'approved at a level' : '${widget.req!['status']}'.toLowerCase()} – once changed it waits for its approval again.'),
         Row(children: [
           Expanded(child: DateField(key: const Key('rqf-date'), label: 'Date *', value: date, clear: false, first: k.entryFirst, onChanged: (v) => setState(() => date = v))),
           const SizedBox(width: 8),
           Expanded(child: DateField(key: const Key('rqf-need'), label: 'Needed by', value: need, onChanged: (v) => setState(() => need = v))),
         ]),
         const SizedBox(height: 8),
-        PickField(key: const Key('rqf-kind'), label: 'For *', value: kind, items: k.kinds('for'), onChanged: (v) => setState(() => kind = v)),
+        PickField(key: const Key('rqf-kind'), label: 'For *', value: kind, items: k.kinds('for'), onChanged: (v) {
+          setState(() => kind = v);
+          _lbLoad();
+        }),
         const SizedBox(height: 8),
         if (kind == 'Machinery')
-          PickField(key: const Key('rqf-mach'), label: 'Machinery *', value: mach, items: ml.keys.toList(), labels: ml, blank: 'Pick…', onChanged: (v) => setState(() => mach = v))
+          PickField(key: const Key('rqf-mach'), label: 'Machinery *', value: mach, items: ml.keys.toList(), labels: ml, blank: 'Pick…', onChanged: (v) {
+            setState(() => mach = v);
+            _lbLoad();
+          })
         else
           TextBox(key: const Key('rqf-for'), label: kind == 'Site work' ? 'Location / work (e.g. Ch 540+450 toe wall)' : 'Which', controller: which),
+        // (3.70.0) the machinery's maintenance log book – attached by itself; the tick takes it off
+        if (lbOn != null)
+          CheckboxListTile(
+            key: const Key('rqf-lb'),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: lbOn,
+            onChanged: busy ? null : (v) => setState(() => lbOn = v == true),
+            title: Text('📕 Attach the maintenance log book of $mach', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            subtitle: lbText.isEmpty ? null : Text(lbText, key: const Key('rqf-lbt'), style: _faint),
+          )
+        else if (lbText.isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text('📕 $lbText', key: const Key('rqf-lbt'), style: _muted)),
         const SizedBox(height: 8),
+        if (widget.step8) ...[
+          Row(children: [
+            Expanded(child: TextBox(key: const Key('rqf-cn'), label: 'Contact name', controller: cName)),
+            const SizedBox(width: 8),
+            Expanded(child: TextBox(key: const Key('rqf-cp'), label: 'Contact number', controller: cPhone, kb: TextInputType.phone)),
+          ]),
+          const SizedBox(height: 8),
+        ],
         TextBox(key: const Key('rqf-rem'), label: 'Remark', controller: rem),
         const SizedBox(height: 14),
         Text('Items', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
@@ -1141,10 +1271,13 @@ Future<List<AttFile>> storePhotosOf(StoreKit k, Object? no, {String site = ''}) 
 /// A requirement's photos: each opens big; "Add photos" – who made it or the Store Admin, while it waits or is approved (made on the
 /// laptop, its photos taken here: the laptop's page shows them at once).
 class ReqPhotosScreen extends StatefulWidget {
-  const ReqPhotosScreen({super.key, required this.k, required this.req, this.canAdd = false, this.site = ''});
+  const ReqPhotosScreen({super.key, required this.k, required this.req, this.canAdd = false, this.canDel = false, this.site = ''});
   final StoreKit k;
   final Map<String, dynamic> req;
   final bool canAdd;
+
+  /// (3.70.0, "upload keleli photo … edit or delet krta yetil ek ek") a photo taken out – who made it or the Store Admin
+  final bool canDel;
   final String site;
   @override
   State<ReqPhotosScreen> createState() => _ReqPhotosScreenState();
@@ -1193,8 +1326,24 @@ class _ReqPhotosScreenState extends State<ReqPhotosScreen> {
       if (bad.isNotEmpty) throw ApiError(bad);
       final r = await widget.k.call('reqPhotoAdd', {'no': no, 'photos': storePhotoList(add, tok)});
       if (!mounted) return;
-      toast(context, '${add.length} photo${add.length == 1 ? '' : 's'} added to requirement $no (${r['photos']} now).');
+      toast(context, '${add.length} photo${add.length == 1 ? '' : 's'} added to requirement ${reqRef(widget.req)} (${r['photos']} now).');
       setState(add.clear);
+      await _load();
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  /// (3.70.0) one photo taken out of the requirement (its file stays kept by the Store – only off the list)
+  Future<void> _out(AttFile f) async {
+    if (!await ask(context, 'Take this photo out of requirement ${reqRef(widget.req)}?', bi('The others stay.', 'हा photo काढला जाईल.'), yes: 'Take it out', no: 'No', danger: true)) return;
+    setState(() => busy = true);
+    try {
+      await widget.k.call('reqPhotoDel', {'no': no, 'sha': f.sha});
+      if (!mounted) return;
+      toast(context, 'Photo taken out of requirement ${reqRef(widget.req)}.');
       await _load();
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
@@ -1219,12 +1368,14 @@ class _ReqPhotosScreenState extends State<ReqPhotosScreen> {
           ),
           const SizedBox(height: 3),
           Text('${f.by}${f.at.isEmpty ? '' : ' · ${paperDmy(istOf(f.at))}'}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+          if (widget.canDel)
+            TextButton(key: Key('rqp-out-$i'), style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 30), foregroundColor: C.red), onPressed: busy ? null : () => _out(f), child: const Text('Take out', style: TextStyle(fontSize: 12.5))),
         ]),
       );
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(actions: withAsk(), title: Text('Photos – requirement $no')),
+        appBar: AppBar(actions: withAsk(), title: Text('Photos – requirement ${reqRef(widget.req)}')),
         body: loading
             ? _loading()
             : ListView(key: const Key('rqp'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
@@ -1247,6 +1398,85 @@ class _ReqPhotosScreenState extends State<ReqPhotosScreen> {
                 ],
               ]),
       );
+}
+
+/* ======================== (3.70.0) A MACHINERY REQUIREMENT'S MAINTENANCE LOG BOOK ========================
+ * The web's 29-10-2026 ("vehicle che maintanace log book auto requirement madhe attach hoil … update kadhi paryant ahe … edit or delet
+ * krta yetil ek ek"): up to which date it is attached and how far it is written now; Update (as written now) / Take it out / Attach –
+ * who made the requirement or the Store Admin (the server's reqLogbook). It is printed after the form and its photos. */
+class ReqLogbookScreen extends StatefulWidget {
+  const ReqLogbookScreen({super.key, required this.k, required this.req});
+  final StoreKit k;
+  final Map<String, dynamic> req;
+  @override
+  State<ReqLogbookScreen> createState() => _ReqLogbookScreenState();
+}
+
+class _ReqLogbookScreenState extends State<ReqLogbookScreen> {
+  Map<String, dynamic>? now;
+  Map? lb;
+  bool loading = true, busy = false;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    lb = widget.req['logbook'] is Map ? widget.req['logbook'] as Map : null;
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await widget.k.call('mlogInfo', {'no': widget.req['for_text']});
+      if (mounted) setState(() => now = r);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> _set(bool on) async {
+    if (!on && !await ask(context, 'Take the log book out of requirement ${reqRef(widget.req)}?', bi('It is not printed with it any more.', 'log book काढला जाईल.'), yes: 'Take it out', no: 'No', danger: true)) return;
+    setState(() => busy = true);
+    try {
+      final r = await widget.k.call('reqLogbook', {'no': widget.req['no'], 'attach': on});
+      if (!mounted) return;
+      setState(() => lb = r['logbook'] is Map ? r['logbook'] as Map : null);
+      toast(context, lb != null ? 'Log book attached – up to ${dmy(lb!['upto'])}.' : 'Log book taken out of requirement ${reqRef(widget.req)}.');
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final may = widget.req['attach'] == true, bills = nOf(now?['bills']);
+    return Scaffold(
+      appBar: AppBar(actions: withAsk(), title: Text('Log book – ${widget.req['for_text'] ?? ''}')),
+      body: loading
+          ? _loading()
+          : ListView(key: const Key('rqlb'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
+              if (err.isNotEmpty) InfoLine(err, bad: true),
+              _card(children: [
+                Text('📕 Maintenance log book – ${widget.req['for_text'] ?? ''}', style: _bold),
+                Text(lb != null ? 'Attached: up to ${dmy(lb!['upto'])} · ${q3(lb!['bills'])} bill(s)${'${lb!['by'] ?? ''}'.isEmpty ? '' : ' · by ${lb!['by']}'}' : 'Not attached.', key: const Key('rqlb-on'), style: const TextStyle(fontSize: 14)),
+                if (now != null) Text('Written now up to ${'${now!['upto'] ?? ''}'.isEmpty ? '–' : dmy(now!['upto'])} · ${q3(bills)} bill(s)', key: const Key('rqlb-now'), style: _muted),
+                Text('Printed after the requirement and its photos.', style: _faint),
+              ]),
+              if (may) ...[
+                const SizedBox(height: 10),
+                if (bills > 0) FilledButton(key: const Key('rqlb-set'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)), onPressed: busy ? null : () => _set(true), child: Text(lb != null ? 'Update (as written now)' : 'Attach')),
+                if (lb != null) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton(key: const Key('rqlb-off'), style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: C.red), onPressed: busy ? null : () => _set(false), child: const Text('Take it out')),
+                ],
+              ],
+            ]),
+    );
+  }
 }
 
 /* ======================== PURCHASE – EVERY SITE (HO Purchase) ======================== */
@@ -1331,7 +1561,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
                   controlAffinity: ListTileControlAffinity.leading,
                   value: ticks.contains('$site|${r['no']}|${l['line']}'),
                   onChanged: (v) => setState(() => v == true ? ticks.add('$site|${r['no']}|${l['line']}') : ticks.remove('$site|${r['no']}|${l['line']}')),
-                  title: Text('REQ ${r['no']} · ${l['name']}${bsOf(l)} – to order ${q3(l['left'])} ${l['unit']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  title: Text('${reqRef(r)} · ${l['name']}${bsOf(l)} – to order ${q3(l['left'])} ${l['unit']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                   subtitle: Text('${r['for_kind'] ?? ''}${'${r['for_text'] ?? ''}'.isNotEmpty ? ' – ${r['for_text']}' : ''} · ${dmy(r['date'])}${'${r['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(r['need_by'])}' : ''} · asked ${q3(l['qty'])}, ordered ${q3(l['ordered'])}', style: _faint),
                 ),
               ),
@@ -1343,7 +1573,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
                 key: Key('pu-ph-$site-${r['no']}'),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReqPhotosScreen(k: k, req: r, site: site))),
                 icon: const Icon(Icons.photo_library_rounded, size: 18),
-                label: Text('REQ ${r['no']} – 📷 ${listOf(r['photos']).length} photo${listOf(r['photos']).length == 1 ? '' : 's'}'),
+                label: Text('${reqRef(r)} – 📷 ${listOf(r['photos']).length} photo${listOf(r['photos']).length == 1 ? '' : 's'}'),
               ),
             ),
         ],
@@ -1457,6 +1687,16 @@ class PoCard extends StatelessWidget {
               await reload();
             });
           }, color: C.red),
+        // (3.70.0, the web's 29-10-2026) nothing came: deleted – its requirements can then be changed or deleted
+        if (k.buyer && p['status'] != 'Closed' && !lines.any((l) => nOf(l['received']) > 0))
+          _act('po-del-$site-$no', 'Delete', () async {
+            if (!await ask(context, 'Delete PO $no?', bi('Nothing of it has come. It goes from the list; its requirements can then be changed or deleted. (Written in the activity record.)', 'ही PO delete होईल.'), yes: 'Delete the PO', no: 'No', danger: true)) return;
+            await run(() async {
+              await k.call('poDelete', {if (site.isNotEmpty) 'site': site, 'no': no});
+              if (context.mounted) toast(context, 'PO $no deleted.');
+              await reload();
+            });
+          }, color: C.red),
         if ((k.buyer || k.admin) && open && p['state'] != 'Received')
           _act('po-close-$site-$no', 'Close', () async {
             if (!await ask(context, 'Close PO $no?', 'The rest of it will not come.', yes: 'Close', no: 'No')) return;
@@ -1553,7 +1793,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
         if (widget.po != null) {
           for (final l in listOf(widget.po!['lines'])) {
             final rq = l['req_no'] == null ? null : nOf(l['req_no']).toInt();
-            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', disc: _nz(l['disc_pct']), hsn: '${l['hsn'] ?? ''}', reqNo: rq, reqLine: l['req_line'] == null ? null : nOf(l['req_line']).toInt(), info: rq == null ? '' : 'REQ $rq'));
+            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', disc: _nz(l['disc_pct']), hsn: '${l['hsn'] ?? ''}', reqNo: rq, reqLine: l['req_line'] == null ? null : nOf(l['req_line']).toInt(), info: rq == null ? '' : '${l['req_ref'] ?? 'REQ $rq'}'));
           }
         } else {
           final pp = mapOf(r['papers']);
@@ -1562,7 +1802,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
           terms.text = '${pp['terms'] ?? ''}';
           for (final p in widget.picked) {
             final r = mapOf(p['req']), l = mapOf(p['line']), it = items.where((i) => i['code'] == l['code']).firstOrNull ?? const <String, dynamic>{};
-            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), gst: plainN(it['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', hsn: '${it['hsn'] ?? ''}', reqNo: nOf(r['no']).toInt(), reqLine: nOf(l['line']).toInt(), info: 'REQ ${r['no']}'));
+            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), gst: plainN(it['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', hsn: '${it['hsn'] ?? ''}', reqNo: nOf(r['no']).toInt(), reqLine: nOf(l['line']).toInt(), info: reqRef(r)));
           }
         }
         loading = false;

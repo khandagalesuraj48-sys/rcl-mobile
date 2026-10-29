@@ -776,14 +776,27 @@ class SaSiteScreen extends StatefulWidget {
 
 class _SaSiteScreenState extends State<SaSiteScreen> {
   late final name = TextEditingController(text: '${widget.site['name'] ?? ''}');
+  // (3.70.0, the Portal's 29-10-2026: "site option ahe portal madhe tithech site address and contact number name he option de") the site's
+  // address and contact – the Store's papers (the PO's Shipping Address and Site Contact, a requirement's contact)
+  late final addr = TextEditingController(text: '${widget.site['address'] ?? ''}'), cName = TextEditingController(text: '${widget.site['contact_name'] ?? ''}'),
+      cPhone = TextEditingController(text: '${widget.site['contact_phone'] ?? ''}');
   late String company = '${widget.site['company_id'] ?? ''}', status = widget.site['status'] == 'closed' ? 'closed' : 'active';
   bool busy = false;
   String get code => '${widget.site['code']}';
 
+  @override
+  void dispose() {
+    name.dispose();
+    addr.dispose();
+    cName.dispose();
+    cPhone.dispose();
+    super.dispose();
+  }
+
   Future<void> _save() async {
     final c = widget.console;
     setState(() => busy = true);
-    final ok = await c.run(() => c.api.admin({'action': 'siteSave', 'isNew': false, 'code': code, 'name': name.text, 'company': company, 'status': status}));
+    final ok = await c.run(() => c.api.admin({'action': 'siteSave', 'isNew': false, 'code': code, 'name': name.text, 'company': company, 'status': status, 'address': addr.text, 'contact_name': cName.text, 'contact_phone': cPhone.text}));
     if (!mounted) return;
     setState(() => busy = false);
     if (!ok) return;
@@ -831,7 +844,11 @@ class _SaSiteScreenState extends State<SaSiteScreen> {
           items: [const DropdownMenuItem(value: '', child: Text('–')), for (final c in d.companies) DropdownMenuItem(value: '${c['id']}', child: mt.Text('${c['name']}'))],
           onChanged: (v) => setState(() => company = v ?? ''),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
+        TextField(key: const Key('sa-st-addr'), controller: addr, maxLength: 300, minLines: 1, maxLines: 3, decoration: InputDecoration(labelText: tr('Site address'), hintText: tr('e.g. Site office, Valshind, NH 848'))),
+        TextField(key: const Key('sa-st-cname'), controller: cName, maxLength: 80, decoration: InputDecoration(labelText: tr('Contact name'))),
+        TextField(key: const Key('sa-st-cphone'), controller: cPhone, maxLength: 40, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: tr('Contact number'))),
+        const SizedBox(height: 8),
         SegmentedButton<String>(
           key: const Key('sa-st-status'),
           showSelectedIcon: false,

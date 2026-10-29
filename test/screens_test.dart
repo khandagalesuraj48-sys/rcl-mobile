@@ -2320,7 +2320,7 @@ void main() {
     await net(t);
     final add = sent(srv, 'reqPhotoAdd').single;
     expect([add['no'], (add['photos'] as List).length, ((add['photos'] as List).single as Map)['t']], [1, 1, 'proof-${hs.substring(0, 8)}']);
-    expect(find.textContaining('1 photo added to requirement 1 (2 now).'), findsOneWidget);
+    expect(find.textContaining('1 photo added to requirement RCL/VTR/PR/2026/0001 (2 now).'), findsOneWidget, reason: '(3.70.0) named by its Indent No.');
     expect(find.text('2 of 10 photos – a photo opens big.'), findsOneWidget);
     await settle(t, 4200);
     await t.pageBack();
@@ -2344,6 +2344,111 @@ void main() {
     expect(find.text('2 of 10 photos – a photo opens big.'), findsOneWidget);
     expect(find.byKey(const Key('rqp-send')), findsNothing, reason: 'HO Purchase only sees them');
     expect(sent(srv, 'reqPhotos').last['site'], 'S1');
+  });
+
+  testWidgets('(3.70.0 – the Store\'s step 8) the Indent No.; Change / Delete as the server says – never while a PO has it (the PO deleted first); the contact; a machinery\'s log book attached; a photo taken out; the print with the contact and the log book', (t) async {
+    final papers = <(String, String)>[];
+    storePaperSink = (h, title) => papers.add((title, h));
+    addTearDown(() => storePaperSink = null);
+    final h1 = 'b' * 64;
+    final srv = FakeServer()
+      ..storePages = {...FakeServer().storePages, 'purchase': 'Edit'}
+      ..storeStep8 = true;
+    srv.storeReqs[1]
+      ..['mine'] = true
+      ..['photos'] = [{'sha': h1, 'size': 1000, 'by': 'Amol Patil', 'at': '2026-10-13T05:00:00.000Z'}]
+      ..['contact_name'] = 'Suresh More'
+      ..['contact_phone'] = '90000 11111';
+    await openStoreWork(t, server: srv);
+    await tapK(t, 'sw-req');
+    await net(t);
+    // the Indent No. – RCL / VTR / the financial year / M (a machinery) or P / its number
+    expect(find.text('RCL/VTR/2026-27/M/0002 · 14-10-2026'), findsOneWidget);
+    expect(find.text('RCL/VTR/2026-27/P/0001 · 12-10-2026'), findsOneWidget);
+    // requirement 1 is in PO 1: no Change, no Delete; requirement 2: both, and its machinery's Log book
+    expect(find.byKey(const Key('rq-pos-1')), findsOneWidget);
+    expect(find.byKey(const Key('rq-edit-1')), findsNothing);
+    expect(find.byKey(const Key('rq-del-1')), findsNothing);
+    expect(find.byKey(const Key('rq-edit-2')), findsOneWidget);
+    expect(find.byKey(const Key('rq-del-2')), findsOneWidget);
+    // the log book of requirement 2 (Sany 210): not attached – written up to 10-10-2026 → Attach
+    await tapK(t, 'rq-lb-2');
+    await net(t);
+    expect(find.text('Not attached.'), findsOneWidget);
+    expect(find.text('Written now up to 10-10-2026 · 12 bill(s)'), findsOneWidget);
+    await tapK(t, 'rqlb-set');
+    await net(t);
+    expect(sent(srv, 'reqLogbook').single, {'action': 'reqLogbook', 'no': 2, 'attach': true});
+    expect(find.text('Attached: up to 10-10-2026 · 12 bill(s) · by Sujit Mule'), findsOneWidget);
+    await settle(t, 4200);
+    await t.pageBack();
+    await net(t);
+    expect(find.text('📕 Log book up to 10-10-2026'), findsOneWidget);
+    // its print: the form, then the log book as the Store draws it
+    await tapK(t, 'rq-print-2');
+    await net(t);
+    expect(papers.last.$1, 'Requirement RCL/VTR/2026-27/M/0002');
+    expect(papers.last.$2, contains('<div style="page-break-before:always"><div class="mlbw"><div class="mlbt">Maintenance Log Book – Sany 210 (No.1)</div>'));
+    // requirement 1's print: its contact and the site's address
+    await tapK(t, 'rq-print-1');
+    await net(t);
+    expect(papers.last.$2, contains('<tr><td>Contact Person :</td><td>Suresh More</td><td>Contact No. :</td><td>90000 11111</td></tr>'));
+    expect(papers.last.$2, contains('<tr><td>Site Address :</td><td colspan="3">Site office, Valshind</td></tr>'));
+    // a photo of requirement 1 taken out (the others stay)
+    await tapK(t, 'rq-ph-1');
+    await net(t);
+    await tapK(t, 'rqp-out-0');
+    await settle(t, 600);
+    await t.tap(find.text('Take it out'));
+    await net(t);
+    expect(sent(srv, 'reqPhotoDel').single, {'action': 'reqPhotoDel', 'no': 1, 'sha': h1});
+    expect(find.text('No photo yet.'), findsOneWidget);
+    await settle(t, 4200);
+    await t.pageBack();
+    await net(t);
+    // requirement 2 changed: its contact typed, its log book kept (ticked – attached up to 10-10-2026)
+    await tapK(t, 'rq-edit-2');
+    await net(t);
+    expect(find.byKey(const Key('rqf-lb')), findsOneWidget);
+    expect(find.text('attached up to 10-10-2026'), findsOneWidget);
+    await t.enterText(box('rqf-cn'), 'Mahesh Jadhav');
+    await t.enterText(box('rqf-cp'), '91234 56789');
+    await settle(t, 300);
+    await tapK(t, 'rq-save');
+    await net(t);
+    final ch = sent(srv, 'reqSave').single;
+    expect([ch['no'], (ch['req'] as Map)['contact_name'], (ch['req'] as Map)['contact_phone'], ch['logbook']], [2, 'Mahesh Jadhav', '91234 56789', true]);
+    expect(find.textContaining('Requirement RCL/VTR/2026-27/M/0002 saved – it waits for Level 1.'), findsOneWidget);
+    await settle(t, 4200);
+    // a new one starts with the site's contact (the Portal's)
+    await tapK(t, 'rq-new');
+    await net(t);
+    expect(find.text('Ramesh Patil'), findsOneWidget);
+    expect(find.text('98765 43210'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // PO 1 deleted (nothing of it came… in the fake) – then requirement 1 may be changed and deleted
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'sw-po');
+    await net(t);
+    await tapK(t, 'po-del-S1-1');
+    await settle(t, 600);
+    await t.tap(find.text('Delete the PO'));
+    await net(t);
+    expect(sent(srv, 'poDelete').single, {'action': 'poDelete', 'site': 'S1', 'no': 1});
+    await settle(t, 4200);
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'sw-req');
+    await net(t);
+    expect(find.byKey(const Key('rq-pos-1')), findsNothing);
+    await tapK(t, 'rq-del-1');
+    await settle(t, 600);
+    await t.tap(find.text('Delete').last);      // (the box's button – over the list's)
+    await net(t);
+    expect(sent(srv, 'reqDelete').single, {'action': 'reqDelete', 'no': 1});
+    expect(find.byKey(const Key('rq-1')), findsNothing);
   });
 
   testWidgets('(3.55.0) Store – Purchase (every site): the ticked lines of a site → its PO; a vendor nearly one written before asked ("Use")', (t) async {
@@ -4978,6 +5083,25 @@ void main() {
     expect(saves(srv).last, {'action': 'storePagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'pages': {'approve': 'L2', 'purchase': 'None', 'poapprove': 'Yes'}});
     expect(find.text('Store pages saved.'), findsOneWidget);
   }, tags: ['golden']);
+
+  testWidgets('(3.70.0) Super Admin – Sites: a site\'s address and contact (the Store\'s papers – the PO\'s Shipping Address and Site Contact, a requirement\'s contact), saved with the site', (t) async {
+    phone(t);
+    final srv = await openConsole(t);
+    await t.tap(find.byKey(const Key('sa-t-sites')));
+    await net(t);
+    await tapK(t, 'sa-st-S1');
+    await net(t);
+    for (final (k, v) in [('sa-st-addr', 'Site office, Valshind, NH 848'), ('sa-st-cname', 'Ramesh Patil'), ('sa-st-cphone', '98765 43210')]) {
+      await t.ensureVisible(find.byKey(Key(k)));
+      await t.enterText(find.byKey(Key(k)), v);
+    }
+    await settle(t, 300);
+    await tapK(t, 'sa-st-save');
+    await net(t);
+    final x = saves(srv).lastWhere((y) => y['action'] == 'siteSave');
+    expect([x['code'], x['address'], x['contact_name'], x['contact_phone']], ['S1', 'Site office, Valshind, NH 848', 'Ramesh Patil', '98765 43210']);
+    expect(srv.saSites.firstWhere((y) => y['code'] == 'S1')['contact_name'], 'Ramesh Patil');
+  });
 
   testWidgets('(3.17.0) Super Admin – Sites: a site\'s diesel places; New site – the checklist until Ready (the SQL copied); a closed site deleted with its code typed', (t) async {
     phone(t);

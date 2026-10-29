@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.70.0 (29-10-2026 – "indent number … RCL … VTR … financial year … mechanical / material purchase … 0001"; "site option
+ahe portal madhe tithech site address and contact"; "vehicle che maintanace log book … attach"; "ekda banwaleli requirement edit delet
+krta yeil … po banli aahe … adhi po delet"; with rcl-store's step 8 and the Portal's step 5):** a requirement is named by its **Indent No.**
+(RCL/VTR/2026-27/M/0001 – `reqRef`, everywhere: the list, its form, photos, purchase, the PO's lines); **Change** and **Delete** as the
+server says (`edit`, `del` – also after its approval: it waits for its approval again; never while a PO has it – "In PO 1"); the
+requirement's **contact** (Contact name / number – the site's from the Portal to start with, changed in the form; on the print); a
+machinery's **maintenance log book** – in the form "Attach the maintenance log book of … – written up to …" (ticked by itself), its own
+screen (`ReqLogbookScreen`: Update / Take it out / Attach), printed after the photos as the Store draws it (`reqLogbookHtml`); a photo
+**taken out** one by one (`reqPhotoDel`); a PO with nothing come **deleted** (`poDelete`); Super Admin → Sites: the site's **address,
+contact name and number**. Tests: `store_papers_test`, `screens_test` (step 8, the site's contact). Before the Store's step 8 at a site:
+as before (`edit` not sent – the rule of before).
+
 **Version 3.69.0 (29-10-2026 – his "REQUIREMENT OF FOUNDATION BOLT": "requirement format ha fix kar format fkt logo dilay to pn fix kr";
 his answer: as the PDF, the company's and the site's address kept; with rcl-store's):** **the Purchase Requisition Form as his paper** –
 the Rachana logo | the company's name (its address under it) and "Purchase Requisition Form"; Project Name · Sub Project NA, Indent No. ·
