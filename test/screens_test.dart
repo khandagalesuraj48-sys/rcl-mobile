@@ -5262,11 +5262,21 @@ void main() {
     expect(inK('sa-wf-grn', 'Verifies: Amol Patil'), findsOneWidget);
     expect(inK('sa-wf-grn', 'Approves: nobody – no approval'), findsOneWidget);
     // not set yet: the requirements to Head Office, the GRNs and the issues stay at the site
-    bool sel(String k) => (t.widget<SegmentedButton<bool>>(find.byKey(Key('sa-wf-ho-$k')))).selected.single;
-    expect([sel('req'), sel('grn'), sel('iss')], [true, false, false]);
+    // (each card brought into view first – the list builds only what is near the screen)
+    Future<List<bool>> sel() async {
+      final r = <bool>[];
+      for (final k in ['req', 'grn', 'iss']) {
+        await reach(t, 'sa-wf-ho-$k', 'sa-wf');
+        r.add(t.widget<SegmentedButton<bool>>(find.byKey(Key('sa-wf-ho-$k'))).selected.single);
+      }
+      return r;
+    }
+    expect(await sel(), [true, false, false]);
+    await reach(t, 'sa-wf-ho-req', 'sa-wf');
     await tapIn(t, 'sa-wf-ho-req', 'No');
     await settle(t, 300);
     expect(inK('sa-wf-req', 'the site buys it itself (its Store Admin makes the PO)'), findsOneWidget);
+    await reach(t, 'sa-wf-ho-grn', 'sa-wf');
     await tapIn(t, 'sa-wf-ho-grn', 'Yes');
     await settle(t, 300);
     expect(inK('sa-wf-grn', 'HO Purchase sees each bill (checked with its PO) and checks it'), findsOneWidget);
@@ -5276,7 +5286,7 @@ void main() {
     expect(saves(srv).last, {'action': 'rulesSave', 'site': 'S1', 'ho': {'req': false, 'grn': true, 'iss': false}});
     expect(find.text('Saved – the Store of S1 is told.'), findsOneWidget);
     expect(srv.saHo['S1'], {'req': false, 'grn': true, 'iss': false});
-    expect([sel('req'), sel('grn'), sel('iss')], [false, true, false], reason: 'as saved (read again)');
+    expect(await sel(), [false, true, false], reason: 'as saved (read again)');
     expect(srv.saAudit.first['action'], 'Workflow');
     await settle(t, 4200);
     // before the Portal's step 6: no Save – what to run said
