@@ -773,6 +773,9 @@ class Session extends ChangeNotifier {
   String screen = 'home';
   DateTime _touched = DateTime.now();
 
+  /// (3.68.0) the last touch of the screen – the Store's lists ask every 2 s until 5 quiet minutes, as this heartbeat
+  DateTime get touchedAt => _touched;
+
   /// how long until the next "what changed?"
   Duration liveGap() {
     if (DateTime.now().difference(_touched) > const Duration(minutes: 5)) return liveEvery;

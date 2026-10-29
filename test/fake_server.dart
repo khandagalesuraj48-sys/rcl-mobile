@@ -355,6 +355,8 @@ class FakeServer {
   // (3.66.0) the Store's step 7 at the site: a requirement's photos (each photo sent: its fingerprint → its size)
   bool storeStep7 = true;
   final storePhotos = <String, int>{};
+  // (3.68.0) the Store's live: the site's last change (a test makes one: +1)
+  int storeLive = 1;
   final regGrnsSaved = <(String, String, int, String, String)>[]; // (key, GRN No, no, date, supplier) of the register's GRNs saved
   // (3.62.0) the Store's step 5 at the site: a PO's own fields and its approval; the papers' settings; PO 1's approval
   bool storeStep5 = true;
@@ -388,6 +390,8 @@ class FakeServer {
         return _j({'reqs': [for (final r in storeReqs) {...r, 'ref': 'RCL/VTR/PR/2026/${'${r['no']}'.padLeft(4, '0')}', 'photos': r['photos'] ?? []}], 'levels': [{'level': 1, 'people': ['Sujit Mule']}],
           'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'email': storePapers['email'] ?? ''}, 'step7': storeStep7});
       // (3.66.0) a requirement's photos – as the Store's server: a JPEG only, kept under its fingerprint; its proof for the save
+      case 'live':
+        return _j({'v': storeLive});
       case 'reqPhotoUp':
         final mJ = RegExp(r'^data:image/jpeg;base64,(.+)$').firstMatch('${b['data'] ?? ''}');
         if (!storeStep7) return _j({'error': 'Photos of a requirement need the Store\'s database step 7 at this site.', 'code': 'sql'}, 400);
