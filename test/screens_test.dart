@@ -2281,6 +2281,7 @@ void main() {
     final hs = srv.storePhotos.keys.single, sz = srv.storePhotos[hs];
     expect(sent(srv, 'reqSave').single['photos'], [{'sha': hs, 'size': sz, 't': 'proof-${hs.substring(0, 8)}'}], reason: 'its list with the new photo\'s proof');
     expect(find.textContaining('Requirement 3 saved'), findsOneWidget);
+    await settle(t, 4200); // (the message at the foot goes – a tap there would land on it)
     // Photos of requirement 1 (made already, approved – he made it): seen, one added from the gallery
     await tapK(t, 'rq-ph-1');
     await net(t);
@@ -2296,6 +2297,7 @@ void main() {
     expect([add['no'], (add['photos'] as List).length, ((add['photos'] as List).single as Map)['t']], [1, 1, 'proof-${hs.substring(0, 8)}']);
     expect(find.textContaining('1 photo added to requirement 1 (2 now).'), findsOneWidget);
     expect(find.text('2 of 10 photos – a photo opens big.'), findsOneWidget);
+    await settle(t, 4200);
     await t.pageBack();
     await net(t);
     // its print: the form, then "Photos of the material" with both
