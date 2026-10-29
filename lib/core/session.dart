@@ -854,7 +854,7 @@ class Session extends ChangeNotifier {
       if (r is Map) _admin(r);
       // (3.62.1) the app left open past midnight: "today" moves on with the server's (a user's entry dates – Mechanical update-187)
       final dayNew = r is Map && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch('${r['today'] ?? ''}') && '${r['today']}' != today;
-      if (dayNew) today = '${(r as Map)['today']}';
+      if (dayNew) today = '${r['today']}';
       final dsNew = r is Map && r['user'] is Map && _dsrc(r['user']); // (3.43.0) his diesel sources changed in the Portal: the forms at once
       final v = (r is Map && r['versions'] is Map) ? (r['versions'] as Map).map((k, x) => MapEntry('$k', '$x')) : <String, String>{};
       final first = versions.isEmpty;
