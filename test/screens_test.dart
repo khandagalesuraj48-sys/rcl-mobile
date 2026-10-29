@@ -37,6 +37,7 @@ import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
 import 'package:rcl_mobile/screens/pend_print.dart' show PendPrintScreen;
 import 'package:rcl_mobile/screens/machinery.dart' show vendorNames;
+import 'package:rcl_mobile/screens/store_work.dart' show storePaperSink;
 import 'package:rcl_mobile/core/grn_reg.dart';
 
 import 'fake_rtc.dart';
@@ -2241,8 +2242,11 @@ void main() {
     await tapK(t, 'pu-mk-S1');
     await net(t);
     expect(sent(srv, 'purItems').single['site'], 'S1');
-    expect((t.widget<TextField>(box('pol-q-0')).controller!).text, '30', reason: 'what is still to order');
     await t.enterText(box('pof-ven'), 'Shree Traders');
+    // (3.62.0) the PO's own fields above the items now – each line reached first
+    await reach(t, 'pol-q-0', 'pof');
+    expect((t.widget<TextField>(box('pol-q-0')).controller!).text, '30', reason: 'what is still to order');
+    await reach(t, 'pol-r-0', 'pof');
     await t.enterText(box('pol-r-0'), '50');
     await settle(t, 300);
     // (3.58.0) the line is taller now (its Brand and Material specification) – each total read by its own key
@@ -2261,9 +2265,135 @@ void main() {
     final ps = sent(srv, 'poSave');
     expect(ps.length, 2);
     expect((ps.last['po'] as Map)['vendor'], 'Shri Traders');
-    expect((ps.last['po'] as Map)['lines'], [{'code': 'ITM-0002', 'qty': '30', 'rate': '50', 'gst_pct': '5', 'req_no': 1, 'req_line': 1, 'brand': 'Madhur', 'spec': ''}]);
+    expect((ps.last['po'] as Map)['lines'], [{'code': 'ITM-0002', 'qty': '30', 'rate': '50', 'disc_pct': '', 'hsn': '1701', 'gst_pct': '5', 'req_no': 1, 'req_line': 1, 'brand': 'Madhur', 'spec': ''}], reason: '(3.62.0) its Disc. % and HSN (the item\'s)');
     expect(ps.last['site'], 'S1');
     expect(find.textContaining('PO 2 of S1 saved'), findsOneWidget);
+  });
+
+  testWidgets('(3.62.0 – the Store\'s step 5) the PO in his Diesel PO\'s format: Disc. % and HSN in each line, Credit Period, Site Contact, Shipping Address, Freight, Load / Unload (a new PO starts with the site\'s papers); it waits for its approval – Reject (why) / Approve; Print in his format; the Purchase Requisition Form; the papers; before step 5 said so', (t) async {
+    final srv = FakeServer()..storePages = {...FakeServer().storePages, 'purchase': 'Edit'};
+    final papers = <(String, String)>[];
+    storePaperSink = (h, title) => papers.add((title, h));
+    addTearDown(() => storePaperSink = null);
+    String txt(String k) => (t.widget<TextField>(box(k)).controller!).text;
+    Object? data(String k) => (t.widget(find.byKey(Key(k))) as dynamic).data;
+    await openStoreWork(t, server: srv);
+    await tapK(t, 'sw-purchase');
+    await net(t);
+    await tapK(t, 'pu-t-S1-1-1');
+    await t.pump();
+    await tapK(t, 'pu-mk-S1');
+    await net(t);
+    expect([txt('pof-sc'), txt('pof-ship')], ['Store Keeper : 90000 00000', 'VTR Site Store\nNH 848'], reason: 'a new PO: the site\'s papers');
+    await t.enterText(box('pof-ven'), 'Shri Traders');
+    await t.enterText(box('pof-cr'), '30');
+    await reach(t, 'pof-fr', 'pof');
+    await t.enterText(box('pof-fr'), '100');
+    await reach(t, 'pof-lu', 'pof');
+    await t.enterText(box('pof-lu'), '50');
+    await reach(t, 'pof-terms', 'pof');
+    expect(txt('pof-terms'), '1. Payment within 30 days.\n2. Material as per the specification.');
+    await reach(t, 'pol-r-0', 'pof');
+    await t.enterText(box('pol-r-0'), '50');
+    await reach(t, 'pol-d-0', 'pof');
+    await t.enterText(box('pol-d-0'), '10');
+    await settle(t, 300);
+    await reach(t, 'pol-h-0', 'pof');
+    expect(txt('pol-h-0'), '1701', reason: 'the item\'s HSN');
+    await reach(t, 'pol-m-0', 'pof');
+    expect(data('pol-m-0'), 'Taxable ₹1,350.00 · GST ₹67.50 · Total ₹1,417.50', reason: 'the line less its Disc. %, as the web');
+    await reach(t, 'pof-total', 'pof');
+    expect(data('pof-total'), 'Taxable ₹1,350.00 · GST ₹67.50 · Freight ₹100.00 · Load / Unload ₹50.00 · Total ₹1,567.50');
+    await tapK(t, 'po-save');
+    await net(t);
+    final po = sent(srv, 'poSave').single['po'] as Map;
+    expect([po['credit_days'], po['site_contact'], po['ship_to'], po['freight'], po['load_unload'], po['terms']],
+        ['30', 'Store Keeper : 90000 00000', 'VTR Site Store\nNH 848', '100', '50', '1. Payment within 30 days.\n2. Material as per the specification.']);
+    expect(po['lines'], [{'code': 'ITM-0002', 'qty': '30', 'rate': '50', 'disc_pct': '10', 'hsn': '1701', 'gst_pct': '5', 'req_no': 1, 'req_line': 1, 'brand': '', 'spec': ''}]);
+    expect(find.text('PO 2 of S1 saved – ₹1,575.00 – it waits for its approval.'), findsOneWidget);
+    // its approval: waiting for whom; Reject – why is needed
+    await reach(t, 'po-appr-S1-1', 'pu-list');
+    expect(data('po-appr-S1-1'), 'Waiting approval – Sujit Mule');
+    await tapK(t, 'po-no-S1-1');
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('note-ok')));
+    await settle(t, 400);
+    expect(find.text('Say why the PO is rejected (the one who made it sees it).'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('note-box')), 'Rate too high');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(sent(srv, 'poDecide').single, {'action': 'poDecide', 'no': 1, 'ok': false, 'note': 'Rate too high'});
+    expect(find.text('PO 1 rejected.'), findsOneWidget);
+    await reach(t, 'po-appr-S1-1', 'pu-list');
+    expect(data('po-appr-S1-1'), 'Rejected – "Rate too high" – Sujit Mule');
+    expect(find.byKey(const Key('po-ok-S1-1')), findsNothing);
+    // Print – his format (the supplier from the Vendor Master, the PO's details, the totals, the terms, Prepared / Approved By)
+    await tapK(t, 'po-print-S1-1');
+    await net(t);
+    expect(sent(srv, 'poGet').single, {'action': 'poGet', 'site': 'S1', 'no': 1});
+    expect(papers.single.$1, 'PO RCL/VTR/PO/2026/0001');
+    for (final w in ['Purchase Order', 'Supplier Details', 'Shri Traders', 'Nashik Road', 'PO Details', 'RCL/VTR/PO/2026/0001', '13-10-2026', '30 Days', 'Store Keeper : 90000 00000', 'VTR Site Store<br>NH 848', 'Sugar', '1701', '2,000.00',
+      'Total Freight Charges', 'TOTAL AMOUNT (Rs.)', '2,100.00', 'Two Thousand One Hundred Rupees Only', '1. Payment within 30 days.', 'Prepared By', '(rejected)', 'This Purchase Order is computer generated it does not require signature.', 'data:image/png;base64,']) {
+      expect(papers.single.$2, contains(w), reason: w);
+    }
+    Navigator.of(t.element(find.byKey(const Key('pu-list')))).pop();
+    await net(t);
+    // Purchase Orders of this site: one waiting again – Approve; his name after it
+    srv.po1Appr = {'appr': 'Waiting', 'appr_name': null, 'appr_note': null};
+    await reach(t, 'sw-po', 'st-work');      // (the Work tab's list was scrolled by the page opened before)
+    await tapK(t, 'sw-po');
+    await net(t);
+    expect(data('po-appr-S1-1'), 'Waiting approval – Sujit Mule');
+    await tapK(t, 'po-ok-S1-1');
+    await net(t);
+    expect(sent(srv, 'poDecide').last, {'action': 'poDecide', 'no': 1, 'ok': true});
+    expect(find.text('PO 1 approved.'), findsOneWidget);
+    expect(data('po-appr-S1-1'), 'Approved by Sujit Mule');
+    Navigator.of(t.element(find.byKey(const Key('pol-list')))).pop();
+    await net(t);
+    // the requirement's Purchase Requisition Form
+    await reach(t, 'sw-req', 'st-work');      // (the Work tab's list was scrolled by the page opened before)
+    await tapK(t, 'sw-req');
+    await net(t);
+    await tapK(t, 'rq-print-1');
+    await net(t);
+    expect(papers.last.$1, 'Requirement RCL/VTR/PR/2026/0001');
+    for (final w in ['Purchase Requisition Form', 'VTR Site – NH 848', 'Site work – Ch 540+450 toe wall', 'RCL/VTR/PR/2026/0001', '12/10/2026', 'ITM-0002', 'Sugar', 'canteen', '50.0', 'Amol Patil', 'Prepared By', 'Checked By', 'Sujit Mule', 'Approved By']) {
+      expect(papers.last.$2, contains(w), reason: w);
+    }
+    Navigator.of(t.element(find.byKey(const Key('rq-list')))).pop();
+    await net(t);
+    // the papers of the site (Store Admin)
+    await reach(t, 'sw-settings', 'st-work');      // (the Work tab's list was scrolled by the page opened before)
+    await tapK(t, 'sw-settings');
+    await net(t);
+    await tapK(t, 'pp-open');
+    await settle(t, 600);
+    expect([txt('pp-email'), txt('pp-sc')], ['store@rcl.test', 'Store Keeper : 90000 00000']);
+    await t.enterText(box('pp-prefix'), 'RCL/VTR');
+    await t.enterText(box('pp-cin'), 'U00000MH0000PLC000000');
+    await settle(t, 300);
+    await reach(t, 'pp-nos', 'op-list');
+    expect(data('pp-nos'), 'PO No: RCL/VTR/PO/2026/0001 · Indent No: RCL/VTR/PR/2026/0001');
+    await tapK(t, 'pp-save');
+    await net(t);
+    expect(sent(srv, 'papersSave').single, {'action': 'papersSave', 'prefix': 'RCL/VTR', 'email': 'store@rcl.test', 'phone': '', 'cin': 'U00000MH0000PLC000000', 'web': '', 'site_contact': 'Store Keeper : 90000 00000', 'ship_to': 'VTR Site Store\nNH 848',
+      'terms': '1. Payment within 30 days.\n2. Material as per the specification.'});
+    expect(find.text('The papers are saved.'), findsOneWidget);
+    // a site before the Store's step 5: the PO's own fields are not asked – said why
+    srv.storeStep5 = false;
+    Navigator.of(t.element(find.byKey(const Key('op-list')))).pop();
+    await net(t);
+    await reach(t, 'sw-purchase', 'st-work');
+    await tapK(t, 'sw-purchase');
+    await net(t);
+    await tapK(t, 'pu-t-S1-1-1');
+    await t.pump();
+    await tapK(t, 'pu-mk-S1');
+    await net(t);
+    expect(find.byKey(const Key('pof-cr')), findsNothing);
+    await reach(t, 'pof-step5', 'pof');
+    expect(find.byKey(const Key('pof-step5')), findsOneWidget);
   });
 
   testWidgets('(3.57.0) Store – Inward (GRN): his inward register – the check (a row corrected, a duplicate deleted, the AI\'s names ticked), Import in parts; the list in his columns', (t) async {
@@ -4646,9 +4776,12 @@ void main() {
     await settle(t, 600);
     await t.tap(find.text('Level 2').last);
     await settle(t, 400);
+    // (3.62.0, the Store's step 5) and who approves its purchase orders – the Portal's note says what it does
+    expect(find.textContaining('Approves purchase orders: a PO of this site is taken in (GRN) only after one of them approves it'), findsOneWidget);
+    await tapIn(t, 'sa-spg-poapprove', 'Yes');
     await tapK(t, 'sa-spg-save');
     await net(t);
-    expect(saves(srv).last, {'action': 'storePagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'pages': {'approve': 'L2', 'purchase': 'None'}});
+    expect(saves(srv).last, {'action': 'storePagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'pages': {'approve': 'L2', 'purchase': 'None', 'poapprove': 'Yes'}});
     expect(find.text('Store pages saved.'), findsOneWidget);
   }, tags: ['golden']);
 

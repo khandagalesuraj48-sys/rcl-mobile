@@ -15,6 +15,23 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.62.0 (29-10-2026 – the Store's step 5 as the app's own screens: "he amche company che format ahet mala je po bantil
+requiremet bantil te same ya format amddhe hawet" … "PO approve karaychi payri kara"; with the Store's PR #18 and the Portal's PR #26;
+needs the Store's database step 5 at a site for the PO's own fields and its approval; on 3.61.0; not released yet):** **A PO in his
+Diesel PO's format:** each line its **Disc. %** and **HSN** (the item's HSN filled in; the line's amount less its Disc. %, as the web's
+`lineMoney`); **Credit Period (days)**, **Site Contact**, **Shipping Address**, **Total Freight Charges**, **Total Load / Unload Amount**
+and **Terms And Conditions (one a line)** – a new PO starts with the site's Site Contact, Shipping Address and Terms; the total with the
+freight and load / unload; "– it waits for its approval." A site without step 5: those fields are not asked and it says so. **Its
+approval:** "Waiting approval – who", "Rejected – why – who", "Approved by …" on each PO; **Approve** / **Reject** (why is needed) for one
+the Super Admin gave "Approves purchase orders" (`poDecide`, never his own). **Print** – the PO in his format (`poGet` → `poPaperHtml`,
+`lib/core/store_papers.dart`: the heading with e-mail, contact, CIN, web, GST, PAN; Supplier Details from the Vendor Master; PO Details;
+the columns; Total Disc. / Gross / GST / Freight / Load / Unload / TOTAL AMOUNT; Amount in word; the terms; Prepared By / Approved By)
+and a requirement's **Purchase Requisition Form** (`reqPaperHtml`: Indent No., Checked By the levels before the last, Approved By the
+last) – the logo as the web's (the company's own, else the Rachana logo, else its name). **Opening stock & Numbers → Papers – Purchase
+Order and Requirement** (the Store Admin, `papersSave`): Numbers start with (RCL/VTR → RCL/VTR/PO/2026/0001), Email ID, Contact, CIN No,
+Web, a new PO's Site Contact, Shipping Address and Terms. **Super Admin:** "Approves purchase orders" (None / Yes) among a person's Store
+pages, with the Portal's note. Words in English, मराठी, हिंदी. Not verified: a real phone's printing of the new papers, iPhone.
+
 **Version 3.61.0 (29-10-2026 – "mala mazya app madhe ai khup powerfull banwaych aahe user live bolu shakel sadhya ai thinking krte te
 tyan nahi kel pahiej … ai la swatachi memory asel chat history asel … live jas 2 person kas boltat tas bolu pn shaktil fast response
 currect answer … fkt aik site wise asel"; with Mechanical update-186 – it needs update-186 live: without it the answer comes in one piece,

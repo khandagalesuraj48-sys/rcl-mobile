@@ -48,9 +48,9 @@ String portalMsg(Object e) {
 }
 
 const kRoleWord = {'': 'No access', 'user': 'User', 'admin': 'Admin'};
-/// (3.55.0, the Store's step 2) as the Portal's note under the Store's pages
-const kStoreExtraNote = 'Approves requirements: Level 1 approves first, then Level 2 … (any one person of a level; nobody his own; he sees the Requirements to approve them). Store Purchase: makes the purchase orders of every site.';
-const kPageWord = {'Edit': 'Edit', 'View': 'View', 'None': 'No access', 'L1': 'Level 1', 'L2': 'Level 2', 'L3': 'Level 3', 'L4': 'Level 4', 'L5': 'Level 5'};
+/// (3.55.0, the Store's step 2) as the Portal's note under the Store's pages – (3.62.0, the Store's step 5) and "Approves purchase orders"
+const kStoreExtraNote = 'Approves requirements: Level 1 approves first, then Level 2 … (any one person of a level; nobody his own; he sees the Requirements to approve them). Store Purchase: makes the purchase orders of every site. Approves purchase orders: a PO of this site is taken in (GRN) only after one of them approves it (never his own) – his name goes on the PO as "Approved By"; nobody given – a PO is approved when made.';
+const kPageWord = {'Edit': 'Edit', 'View': 'View', 'None': 'No access', 'L1': 'Level 1', 'L2': 'Level 2', 'L3': 'Level 3', 'L4': 'Level 4', 'L5': 'Level 5', 'Yes': 'Yes'};
 
 /// The Portal's fail(): his sign-in ended – the sign-in screen, with the Marathi line; else false.
 bool portalSignInEnded(BuildContext context, Object e) {

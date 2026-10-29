@@ -3,7 +3,10 @@
  * site (HO Purchase), Purchase Orders, Inward (GRN), Issue & Return, Stock & Reports, Opening stock & Numbers. The same actions,
  * checks and access as the web's pages (rcl-store api/work.js and public/work.js); every save is checked again by the Store's
  * server and inside its database (one save at a time on the site, an item's stock never below zero on any date). */
+import 'dart:convert';
+
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/services.dart' show rootBundle;
 
 import '../core/api.dart' show ApiError;
 import '../core/format.dart';
@@ -12,6 +15,7 @@ import '../core/lb_io.dart' show XSheet;
 import '../core/more_imports.dart' show generalText;
 import '../core/rdoc.dart';
 import '../core/sheet_read.dart' show readSheets, SheetError, SheetTab;
+import '../core/store_papers.dart';
 import '../core/xlsx.dart';
 import '../ui/ask_bot.dart';
 import '../ui/fields.dart';
@@ -22,6 +26,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../web/print_view.dart';
 
 part 'store_reg.dart';
 
@@ -285,8 +290,10 @@ Future<Map<String, dynamic>?> pickStoreItem(BuildContext context, List<Map<Strin
 
 /* ---------------- the LINES of a paper (the web's Lines): a card each, "+ Add item" ---------------- */
 class SLine {
-  SLine({this.code = '', this.name = '', this.unit = '', String qty = '', String rate = '', String gst = '', String note = '', String serial = '', String brand = '', String spec = '', this.returnable = false, this.reqNo, this.reqLine, this.poLine, this.info = ''})
-      : qty = TextEditingController(text: qty),
+  SLine({this.code = '', this.name = '', this.unit = '', String qty = '', String rate = '', String gst = '', String note = '', String serial = '', String brand = '', String spec = '', String disc = '', String hsn = '', this.returnable = false, this.reqNo, this.reqLine, this.poLine, this.info = ''})
+      : disc = TextEditingController(text: disc),
+        hsn = TextEditingController(text: hsn),
+        qty = TextEditingController(text: qty),
         rate = TextEditingController(text: rate),
         gst = TextEditingController(text: gst),
         note = TextEditingController(text: note),
@@ -297,17 +304,20 @@ class SLine {
 
   /// (3.58.0, the web's 28-10-2026) a requirement's / PO's line: its Brand and Material specification
   final TextEditingController qty, rate, gst, note, serial, brand, spec;
+
+  /// (3.62.0, the Store's step 5) a PO's line: its Disc. % and HSN
+  final TextEditingController disc, hsn;
   bool returnable;
   final int? reqNo, reqLine, poLine;
 
-  /// taxable = qty × rate, the GST on it, the total
+  /// taxable = qty × rate less the Disc. % (the web's lineMoney), the GST on it, the total
   ({double t, double g, double all}) money() {
-    final t = r2(_d(qty.text) * _d(rate.text)), g = r2(t * _d(gst.text) / 100);
+    final t = r2(r2(_d(qty.text) * _d(rate.text)) * (100 - _d(disc.text)) / 100), g = r2(t * _d(gst.text) / 100);
     return (t: t, g: g, all: r2(t + g));
   }
 
   void dispose() {
-    for (final c in [qty, rate, gst, note, serial, brand, spec]) {
+    for (final c in [qty, rate, gst, note, serial, brand, spec, disc, hsn]) {
       c.dispose();
     }
   }
@@ -324,7 +334,7 @@ class SLine {
 }
 
 class SLinesEditor extends StatelessWidget {
-  const SLinesEditor({super.key, required this.k, required this.lines, required this.onChanged, this.items, this.tag = 'ln', this.qtyLabel = 'Qty *', this.rateLabel = '', this.gst = false, this.gstFill = false, this.noteLabel = '', this.returnable = false, this.serial = false, this.stock = false, this.money = false, this.brandSpec = false});
+  const SLinesEditor({super.key, required this.k, required this.lines, required this.onChanged, this.items, this.tag = 'ln', this.qtyLabel = 'Qty *', this.rateLabel = '', this.gst = false, this.gstFill = false, this.noteLabel = '', this.returnable = false, this.serial = false, this.stock = false, this.money = false, this.brandSpec = false, this.discHsn = false});
   final StoreKit k;
   final List<SLine> lines;
   final VoidCallback onChanged;
@@ -334,10 +344,13 @@ class SLinesEditor extends StatelessWidget {
   final String tag, qtyLabel, rateLabel, noteLabel;
   final bool gst, gstFill, returnable, serial, stock, money, brandSpec;
 
+  /// (3.62.0) a PO's line: Disc. % and HSN (the item's own HSN filled in)
+  final bool discHsn;
+
   Future<void> _add(BuildContext context) async {
     final i = await pickStoreItem(context, items ?? k.active);
     if (i == null) return;
-    lines.add(SLine(code: '${i['code']}', name: '${i['name']}', unit: '${i['unit']}', gst: gstFill && i['gst_pct'] != null ? plainN(i['gst_pct']) : ''));
+    lines.add(SLine(code: '${i['code']}', name: '${i['name']}', unit: '${i['unit']}', gst: gstFill && i['gst_pct'] != null ? plainN(i['gst_pct']) : '', hsn: discHsn ? '${i['hsn'] ?? ''}' : ''));
     onChanged();
   }
 
@@ -374,6 +387,15 @@ class SLinesEditor extends StatelessWidget {
               if (gst) ...[const SizedBox(width: 8), SizedBox(width: 86, child: TextBox(key: Key('$tag-g-$i'), label: 'GST %', controller: l.gst, kb: _dec, onChanged: (_) => onChanged()))],
             ]),
           ),
+          if (discHsn)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, right: 8),
+              child: Row(children: [
+                Expanded(child: TextBox(key: Key('$tag-d-$i'), label: 'Disc. %', controller: l.disc, kb: _dec, onChanged: (_) => onChanged())),
+                const SizedBox(width: 8),
+                Expanded(child: TextBox(key: Key('$tag-h-$i'), label: 'HSN', controller: l.hsn, kb: TextInputType.number)),
+              ]),
+            ),
           if (serial) Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: TextBox(key: Key('$tag-s-$i'), label: 'Serial No (tyre / battery)', controller: l.serial)),
           if (brandSpec) ...[
             Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: TextBox(key: Key('$tag-b-$i'), label: 'Brand', controller: l.brand)),
@@ -534,6 +556,9 @@ class ReqListScreen extends StatefulWidget {
 
 class _ReqListScreenState extends State<ReqListScreen> {
   List<Map<String, dynamic>> reqs = [], levels = [];
+
+  /// (3.62.0) the heading of this site's papers (the company, the site, e-mail …) – for the Purchase Requisition Form
+  Map<String, dynamic> heading = {};
   String filter = 'open', err = '';
   bool loading = true;
   final ticked = <int>{};
@@ -553,6 +578,7 @@ class _ReqListScreenState extends State<ReqListScreen> {
       setState(() {
         reqs = listOf(r['reqs']);
         levels = listOf(r['levels']);
+        heading = mapOf(r['heading']);
         ticked.removeWhere((n) => !reqs.any((x) => nOf(x['no']) == n && x['mayApprove'] == true));
         loading = false;
         err = '';
@@ -660,6 +686,8 @@ class _ReqListScreenState extends State<ReqListScreen> {
       Wrap(spacing: 2, children: [
         if (may) ...[_act('rq-ok-$no', 'Approve', () => _approve([no])), _act('rq-no-$no', 'Reject', () => _reject(x), color: C.red)],
         _act('rq-det-$no', 'Details', () => _details(x), color: C.blue),
+        // (3.62.0, his format) the Purchase Requisition Form
+        _act('rq-print-$no', 'Print', () => _do(() => printStorePaper(context, heading, 'Requirement ${'${x['ref'] ?? ''}'.isEmpty ? no : x['ref']}', (logo) => reqPaperHtml(x, heading, logo: logo))), color: C.blue),
         if ((mine || k.admin) && st == 'Pending' && listOf(x['approvals']).isEmpty && k.edit('req')) _act('rq-edit-$no', 'Change', () => _form(x), color: C.blue),
         if ((mine || k.admin) && (st == 'Pending' || st == 'Approved') && !lines.any((l) => nOf(l['ordered']) > 0)) _act('rq-cancel-$no', 'Cancel', () => _cancel(x), color: C.red),
         if ((k.buyer || k.admin) && st == 'Approved' && lines.any((l) => nOf(l['left']) > 0)) _act('rq-close-$no', 'Close', () => _close(x), color: C.slate),
@@ -910,7 +938,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       );
 }
 
-/// A purchase order in a list: its lines and what has come; Print, Change, Cancel, Close (as the web's poTable).
+/// A purchase order in a list: its lines and what has come; its approval; Approve / Reject, Print, Change, Cancel, Close (as the
+/// web's poTable).
 class PoCard extends StatelessWidget {
   const PoCard({super.key, required this.k, required this.po, required this.sites, required this.reload});
   final StoreKit k;
@@ -921,6 +950,8 @@ class PoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = po, no = nOf(p['no']).toInt(), site = '${p['site'] ?? ''}', lines = listOf(p['lines']), open = p['status'] == 'Open';
+    // (3.62.0, the Store's step 5) its approval: waiting (for whom), rejected (why), approved (by whom) – as the web's apprTag
+    final appr = '${p['appr'] ?? ''}', may = p['mayApprove'] == true, wait = [for (final w in (p['waitFor'] as List? ?? const [])) '$w'];
     Future<void> run(Future<void> Function() f) async {
       try {
         await f();
@@ -929,7 +960,7 @@ class PoCard extends StatelessWidget {
       }
     }
 
-    return _card(key: Key('po-$site-$no'), children: [
+    return _card(key: Key('po-$site-$no'), color: may ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [
         Expanded(child: Text('${sites ? '$site · ' : ''}PO $no · ${dmy(p['date'])}', style: _bold)),
         statePill('${p['state'] ?? p['status']}'),
@@ -937,12 +968,34 @@ class PoCard extends StatelessWidget {
       Text('${p['vendor'] ?? ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${bsOf(l)}${nOf(l['received']) > 0 ? ' (came ${q3(l['received'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
       Text('Total ${rs(p['total'])}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+      if (open && appr == 'Waiting')
+        Text('Waiting approval${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}', key: Key('po-appr-$site-$no'), style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600))
+      else if (open && appr == 'Rejected')
+        Text('Rejected${'${p['appr_note'] ?? ''}'.isNotEmpty ? ' – "${p['appr_note']}" – ${p['appr_name'] ?? ''}' : ''}', key: Key('po-appr-$site-$no'), style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600))
+      else if (open && appr == 'Approved' && '${p['appr_name'] ?? ''}'.isNotEmpty)
+        Text('Approved by ${p['appr_name']}', key: Key('po-appr-$site-$no'), style: _faint),
       Wrap(spacing: 2, children: [
+        if (may) ...[
+          _act('po-ok-$site-$no', 'Approve', () => run(() async {
+                await k.call('poDecide', {'no': no, 'ok': true});
+                if (context.mounted) toast(context, 'PO $no approved.');
+                await reload();
+              })),
+          _act('po-no-$site-$no', 'Reject', () async {
+            final why = await askNote(context, 'Reject PO $no?', label: 'Say why (the one who made it sees it and changes it):', ok: 'Reject', danger: true, neededMsg: 'Say why the PO is rejected (the one who made it sees it).');
+            if (why == null) return;
+            await run(() async {
+              await k.call('poDecide', {'no': no, 'ok': false, 'note': why});
+              if (context.mounted) toast(context, 'PO $no rejected.');
+              await reload();
+            });
+          }, color: C.red),
+        ],
         _act('po-print-$site-$no', 'Print', () => run(() async {
               final r = await k.call('poGet', {if (site.isNotEmpty) 'site': site, 'no': no});
               if (!context.mounted) return;
-              final h = mapOf(r['heading']);
-              await printDoc(context, SessionScope.read(context), poDoc(mapOf(r['po']), h), head: '${h['company'] ?? ''}', site: '${h['site'] ?? ''}');
+              final h = mapOf(r['heading']), x = mapOf(r['po']);
+              await printStorePaper(context, h, 'PO ${'${x['ref'] ?? ''}'.isEmpty ? no : x['ref']}', (logo) => poPaperHtml(x, h, mapOf(r['supplier']), logo: logo));
             }), color: C.blue),
         if (k.buyer && open && sites)
           _act('po-edit-$site-$no', 'Change', () async {
@@ -972,35 +1025,26 @@ class PoCard extends StatelessWidget {
   }
 }
 
-/// A PO as its paper (the web's poPrint): the company of its site on top, the vendor, the lines, the totals, the terms.
-RDoc poDoc(Map<String, dynamic> p, Map<String, dynamic> h) {
-  final lines = listOf(p['lines']);
-  return RDoc(
-    title: 'Purchase Order – PO ${p['no']}',
-    file: 'PO_${p['site'] ?? ''}_${p['no']}',
-    meta: [
-      if ('${h['address'] ?? ''}'.isNotEmpty) '${h['address']}',
-      if ('${h['gstin'] ?? ''}'.isNotEmpty) 'GSTIN ${h['gstin']}',
-      'PO No ${p['no']} · ${dmy(p['date'])} · Site: ${h['site'] ?? p['site'] ?? ''}',
-      'To: ${p['vendor'] ?? ''}${'${p['vendor_gst'] ?? ''}'.isNotEmpty ? ' · GSTIN ${p['vendor_gst']}' : ''}',
-      if ('${p['deliver_by'] ?? ''}'.isNotEmpty) 'Delivery by: ${dmy(p['deliver_by'])}',
-    ].join('\n'),
-    blocks: [
-      RTable(
-        sheet: 'PO ${p['no']}',
-        head: const ['#', 'Item', 'Brand', 'Material specification', 'Qty', 'Unit', 'Rate ₹', 'Taxable ₹', 'GST %', 'GST ₹', 'Total ₹'],
-        numCols: const {4, 6, 7, 8, 9, 10},
-        rows: [
-          for (final (i, l) in lines.indexed)
-            RRow([sc(i + 1), tc(l['name']), tc(l['brand'] ?? ''), tc(l['spec'] ?? ''), RCell(q3(l['qty']), n: true, value: nOf(l['qty'])), tc(l['unit']), mc(l['rate']), mc(l['taxable']), RCell(q3(l['gst_pct']), n: true, value: nOf(l['gst_pct'])), mc(l['gst']), mc(l['total'])]),
-        ],
-        foot: [RRow([RCell('Total', bold: true, span: 7), mc(p['taxable'], bold: true), const RCell(''), mc(p['gst'], bold: true), mc(p['total'], bold: true)], kind: RKind.grand)],
-      ),
-      if ('${p['terms'] ?? ''}'.isNotEmpty) RNote('Terms: ${p['terms']}'),
-      if ('${p['remark'] ?? ''}'.isNotEmpty) RNote('${p['remark']}'),
-    ],
-    signs: [('Prepared by', '${p['created_name'] ?? ''}'), ('Authorised signatory', '')],
-  );
+/// (3.62.0) Where a paper of the Store goes instead of its print screen (a test reads it back) – null: the print screen.
+void Function(String html, String title)? storePaperSink;
+
+/// (3.62.0, 28-10-2026 – his formats) A paper of the Store – the Purchase Order, the Purchase Requisition Form – as the web prints it
+/// (lib/core/store_papers.dart), to the phone's printing (a printer, or "Save as PDF"). The logo as the web's: the company's own from
+/// the Portal, else the app's own Rachana logo when the site's company is Rachana's, else its name.
+Future<void> printStorePaper(BuildContext context, Map heading, String title, String Function(String logo) html) async {
+  var logo = '';
+  if ('${heading['logo'] ?? ''}'.isEmpty && '${heading['company'] ?? ''}'.toLowerCase().contains('rachana')) {
+    try {
+      logo = 'data:image/png;base64,${base64Encode((await rootBundle.load('assets/brand/rachana_logo.png')).buffer.asUint8List())}';
+    } catch (_) {/* the company's own logo, or its name */}
+  }
+  final page = html(logo);
+  if (storePaperSink != null) {
+    storePaperSink!(page, title);
+    return;
+  }
+  if (!context.mounted) return;
+  await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: page, title: title)));
 }
 
 class PoFormScreen extends StatefulWidget {
@@ -1022,9 +1066,17 @@ class _PoFormScreenState extends State<PoFormScreen> {
   late String date = '${widget.po?['date'] ?? widget.k.today}', deliver = '${widget.po?['deliver_by'] ?? ''}';
   late final vendor = TextEditingController(text: '${widget.po?['vendor'] ?? ''}'), vgst = TextEditingController(text: '${widget.po?['vendor_gst'] ?? ''}');
   late final terms = TextEditingController(text: '${widget.po?['terms'] ?? ''}'), rem = TextEditingController(text: '${widget.po?['remark'] ?? ''}');
+  // (3.62.0, the Store's step 5 – his Diesel PO's format) the PO Details: Credit Period, Site Contact, Shipping Address; Freight,
+  // Load / Unload (a new PO starts with the site's Shipping Address, Site Contact and Terms of the Store's settings)
+  late final credit = TextEditingController(text: widget.po?['credit_days'] == null ? '' : plainN(widget.po!['credit_days']));
+  late final siteContact = TextEditingController(text: '${widget.po?['site_contact'] ?? ''}'), shipTo = TextEditingController(text: '${widget.po?['ship_to'] ?? ''}');
+  late final freight = TextEditingController(text: _nz(widget.po?['freight'])), loadUnload = TextEditingController(text: _nz(widget.po?['load_unload']));
   final lines = <SLine>[];
-  bool busy = false, loading = true;
+  bool busy = false, loading = true, step5 = false;
   String err = '';
+
+  /// a PO's amount as the web shows it: none when 0
+  static String _nz(Object? v) => v == null || nOf(v) == 0 ? '' : plainN(v);
 
   @override
   void initState() {
@@ -1034,7 +1086,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
 
   @override
   void dispose() {
-    for (final c in [vendor, vgst, terms, rem]) {
+    for (final c in [vendor, vgst, terms, rem, credit, siteContact, shipTo, freight, loadUnload]) {
       c.dispose();
     }
     for (final l in lines) {
@@ -1051,15 +1103,20 @@ class _PoFormScreenState extends State<PoFormScreen> {
         items = listOf(r['items']);
         vendors = [for (final v in (r['vendors'] as List? ?? const [])) '$v'];
         gstMap = mapOf(r['gst']);
+        step5 = r['step5'] == true;
         if (widget.po != null) {
           for (final l in listOf(widget.po!['lines'])) {
             final rq = l['req_no'] == null ? null : nOf(l['req_no']).toInt();
-            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', reqNo: rq, reqLine: l['req_line'] == null ? null : nOf(l['req_line']).toInt(), info: rq == null ? '' : 'REQ $rq'));
+            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', disc: _nz(l['disc_pct']), hsn: '${l['hsn'] ?? ''}', reqNo: rq, reqLine: l['req_line'] == null ? null : nOf(l['req_line']).toInt(), info: rq == null ? '' : 'REQ $rq'));
           }
         } else {
+          final pp = mapOf(r['papers']);
+          siteContact.text = '${pp['site_contact'] ?? ''}';
+          shipTo.text = '${pp['ship_to'] ?? ''}';
+          terms.text = '${pp['terms'] ?? ''}';
           for (final p in widget.picked) {
             final r = mapOf(p['req']), l = mapOf(p['line']), it = items.where((i) => i['code'] == l['code']).firstOrNull ?? const <String, dynamic>{};
-            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), gst: plainN(it['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', reqNo: nOf(r['no']).toInt(), reqLine: nOf(l['line']).toInt(), info: 'REQ ${r['no']}'));
+            lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), gst: plainN(it['gst_pct']), brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}', hsn: '${it['hsn'] ?? ''}', reqNo: nOf(r['no']).toInt(), reqLine: nOf(l['line']).toInt(), info: 'REQ ${r['no']}'));
           }
         }
         loading = false;
@@ -1088,12 +1145,17 @@ class _PoFormScreenState extends State<PoFormScreen> {
           'deliver_by': deliver,
           'terms': terms.text,
           'remark': rem.text,
-          'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'rate': l.rate.text, 'gst_pct': l.gst.text, if (l.reqNo != null) 'req_no': l.reqNo, if (l.reqLine != null) 'req_line': l.reqLine, 'brand': l.brand.text, 'spec': l.spec.text}],
+          'credit_days': credit.text,
+          'site_contact': siteContact.text,
+          'ship_to': shipTo.text,
+          'freight': freight.text,
+          'load_unload': loadUnload.text,
+          'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'rate': l.rate.text, 'disc_pct': l.disc.text, 'hsn': l.hsn.text, 'gst_pct': l.gst.text, if (l.reqNo != null) 'req_no': l.reqNo, if (l.reqLine != null) 'req_line': l.reqLine, 'brand': l.brand.text, 'spec': l.spec.text}],
         },
       };
       final r = await storeSaveAsk(context, widget.k.call, 'poSave', x);
       if (r == null || !mounted) return;
-      toast(context, 'PO ${r['no']} of ${r['site']} saved – ${rs(r['total'])}.');
+      toast(context, 'PO ${r['no']} of ${r['site']} saved – ${rs(r['total'])}${r['appr'] == 'Waiting' ? ' – it waits for its approval.' : '.'}');
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
@@ -1104,7 +1166,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final m = linesMoney(lines);
+    final m = linesMoney(lines), fr = step5 ? r2(_d(freight.text)) : 0.0, lu = step5 ? r2(_d(loadUnload.text)) : 0.0;
     return Scaffold(
       appBar: AppBar(actions: withAsk(), title: Text(widget.po != null ? 'Change PO ${widget.po!['no']} – ${widget.site}' : 'New purchase order – ${widget.site}')),
       bottomNavigationBar: loading ? null : _saveBar('po-save', 'Save PO', busy, _save),
@@ -1130,16 +1192,29 @@ class _PoFormScreenState extends State<PoFormScreen> {
               ),
               const SizedBox(height: 8),
               TextBox(key: const Key('pof-gst'), label: 'Vendor GST no.', controller: vgst, upper: true),
+              if (step5) ...[
+                const SizedBox(height: 8),
+                TextBox(key: const Key('pof-cr'), label: 'Credit Period (days)', hint: 'e.g. 0 or 30', controller: credit, kb: TextInputType.number),
+                const SizedBox(height: 8),
+                TextBox(key: const Key('pof-sc'), label: 'Site Contact', hint: 'Name : mobile', controller: siteContact),
+                const SizedBox(height: 8),
+                TextBox(key: const Key('pof-ship'), label: 'Shipping Address', controller: shipTo, maxLines: 2),
+                const SizedBox(height: 8),
+                TextBox(key: const Key('pof-fr'), label: 'Total Freight Charges ₹', controller: freight, kb: _dec, onChanged: (_) => setState(() {})),
+                const SizedBox(height: 8),
+                TextBox(key: const Key('pof-lu'), label: 'Total Load / Unload Amount ₹', controller: loadUnload, kb: _dec, onChanged: (_) => setState(() {})),
+              ],
               const SizedBox(height: 8),
-              TextBox(key: const Key('pof-terms'), label: 'Terms (payment, delivery, …)', controller: terms),
+              TextBox(key: const Key('pof-terms'), label: 'Terms And Conditions (one a line)', controller: terms, maxLines: 4),
               const SizedBox(height: 8),
               TextBox(key: const Key('pof-rem'), label: 'Remark', controller: rem),
               const SizedBox(height: 14),
               Text('Items', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              SLinesEditor(k: widget.k, lines: lines, items: items, tag: 'pol', rateLabel: 'Rate ₹ *', gst: true, gstFill: true, money: true, brandSpec: true, onChanged: () => setState(() {})),
+              SLinesEditor(k: widget.k, lines: lines, items: items, tag: 'pol', rateLabel: 'Rate ₹ *', gst: true, gstFill: true, money: true, brandSpec: true, discHsn: true, onChanged: () => setState(() {})),
               const SizedBox(height: 10),
-              Text('Taxable ${rs(m.t)} · GST ${rs(m.g)} · Total ${rs(m.all)}', key: const Key('pof-total'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+              Text('Taxable ${rs(m.t)} · GST ${rs(m.g)}${fr > 0 ? ' · Freight ${rs(fr)}' : ''}${lu > 0 ? ' · Load / Unload ${rs(lu)}' : ''} · Total ${rs(r2(m.all + fr + lu))}', key: const Key('pof-total'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+              if (!step5) Padding(padding: const EdgeInsets.only(top: 8), child: Text('The Credit Period, Site Contact, Shipping Address, Freight, Load / Unload and the PO\'s approval come after the Store\'s database step 5 (sql/store_step5_po_format.sql) is run at this site.', key: const Key('pof-step5'), style: _muted)),
             ]),
     );
   }
@@ -2384,6 +2459,12 @@ class _OpeningScreenState extends State<OpeningScreen> {
   final have = <String, Map<String, dynamic>>{};
   final qc = <String, TextEditingController>{}, rc = <String, TextEditingController>{};
   final gNo = TextEditingController(), oNo = TextEditingController();
+  // (3.62.0, his formats) the papers of this site: the numbers' prefix (RCL/VTR → RCL/VTR/PO/2026/0128), the heading's e-mail,
+  // contact, CIN, web; what a new PO starts with – its Site Contact, Shipping Address, Terms And Conditions
+  static const _pk = ['prefix', 'email', 'phone', 'cin', 'web', 'site_contact', 'ship_to', 'terms'];
+  final pc = {for (final f in _pk) f: TextEditingController()};
+  String prefixNow = '';
+  bool step5 = true;
   Map<String, dynamic> used = {};
   late String asOn = widget.k.monthStart;
   String q = '', err = '';
@@ -2398,7 +2479,7 @@ class _OpeningScreenState extends State<OpeningScreen> {
 
   @override
   void dispose() {
-    for (final c in [...qc.values, ...rc.values, gNo, oNo]) {
+    for (final c in [...qc.values, ...rc.values, ...pc.values, gNo, oNo]) {
       c.dispose();
     }
     super.dispose();
@@ -2421,6 +2502,7 @@ class _OpeningScreenState extends State<OpeningScreen> {
         gNo.text = '${mapOf(n['next'])['GRN'] ?? ''}';
         oNo.text = '${mapOf(n['next'])['OUT'] ?? ''}';
         used = mapOf(n['used']);
+        _papers(n);
         loading = false;
         err = '';
       });
@@ -2511,6 +2593,29 @@ class _OpeningScreenState extends State<OpeningScreen> {
     await _send(out, 'Opening stock imported');
   }
 
+  void _papers(Map n) {
+    final pp = mapOf(n['papers']);
+    for (final f in _pk) {
+      pc[f]!.text = '${pp[f] ?? ''}';
+    }
+    prefixNow = '${n['prefixNow'] ?? ''}';
+    step5 = n['step5'] != false;
+  }
+
+  Future<void> _papersSave() async {
+    setState(() => busy = true);
+    try {
+      final r = await k.call('papersSave', {for (final f in _pk) f: pc[f]!.text});
+      if (!mounted) return;
+      toast(context, 'The papers are saved.');
+      setState(() => _papers(r));
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> _numbers() async {
     setState(() => busy = true);
     try {
@@ -2545,6 +2650,45 @@ class _OpeningScreenState extends State<OpeningScreen> {
               ]),
               const SizedBox(height: 6),
               Align(alignment: Alignment.centerRight, child: _small('nm-save', 'Save the numbers', busy ? null : _numbers, icon: Icons.save_rounded)),
+              const Divider(height: 28),
+              // (3.62.0) the papers – closed until tapped (the opening stock's list stays where it was)
+              Material(
+                type: MaterialType.transparency,
+                child: ExpansionTile(
+                  key: const Key('pp-open'),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 6),
+                  title: Text('Papers – Purchase Order and Requirement', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                  subtitle: Text('Printed on the PO and the Purchase Requisition Form of this site. The company\'s name, address, GST, PAN and logo come from the site\'s company (Portal).', style: _muted),
+                  children: [
+                    TextBox(key: const Key('pp-prefix'), label: 'Numbers start with', hint: prefixNow.isEmpty ? 'RCL/VTR' : prefixNow, controller: pc['prefix']!, onChanged: (_) => setState(() {})),
+                    const SizedBox(height: 8),
+                    TextBox(key: const Key('pp-email'), label: 'Email ID', controller: pc['email']!, kb: TextInputType.emailAddress),
+                    const SizedBox(height: 8),
+                    TextBox(key: const Key('pp-phone'), label: 'Contact', controller: pc['phone']!, kb: TextInputType.phone),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Expanded(child: TextBox(key: const Key('pp-cin'), label: 'CIN No', controller: pc['cin']!, upper: true)),
+                      const SizedBox(width: 8),
+                      Expanded(child: TextBox(key: const Key('pp-web'), label: 'Web', controller: pc['web']!)),
+                    ]),
+                    const SizedBox(height: 8),
+                    TextBox(key: const Key('pp-sc'), label: 'Site Contact (a new PO)', hint: 'Name : mobile', controller: pc['site_contact']!),
+                    const SizedBox(height: 8),
+                    TextBox(key: const Key('pp-ship'), label: 'Shipping Address (a new PO)', controller: pc['ship_to']!, maxLines: 3),
+                    const SizedBox(height: 8),
+                    TextBox(key: const Key('pp-terms'), label: 'Terms And Conditions (a new PO – one a line)', controller: pc['terms']!, maxLines: 4),
+                    const SizedBox(height: 6),
+                    Builder(builder: (_) {
+                      final pre = pc['prefix']!.text.trim().isNotEmpty ? pc['prefix']!.text.trim() : prefixNow, y = k.today.length >= 4 ? k.today.substring(0, 4) : '';
+                      return Align(alignment: Alignment.centerLeft, child: Text('PO No: $pre/PO/$y/0001 · Indent No: $pre/PR/$y/0001', key: const Key('pp-nos'), style: const TextStyle(fontSize: 12.5, color: C.blue, fontWeight: FontWeight.w600)));
+                    }),
+                    if (!step5) Text('The PO\'s Credit Period, Site Contact, Shipping Address, Freight, Load / Unload and its approval need the Store\'s step 5 (sql/store_step5_po_format.sql) at this site.', key: const Key('pp-step5'), style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Align(alignment: Alignment.centerRight, child: _small('pp-save', 'Save the papers', busy ? null : _papersSave, icon: Icons.save_rounded)),
+                  ],
+                ),
+              ),
               const Divider(height: 28),
               Text('Opening stock', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               Text('The stock of each item when the Store starts here (as on a date) and its rate. Change a row and Save; 0 takes it out. Or import an Excel (Item, Qty, Rate, Date).', style: _muted),

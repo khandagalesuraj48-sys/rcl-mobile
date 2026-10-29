@@ -349,6 +349,10 @@ class FakeServer {
   // (3.58.0) a new GRN's GRN No: the next by itself (grnNext); typed by hand where the Store's step 4 is run (else only the next)
   bool storeStep4 = true;
   final regGrnsSaved = <(String, String, int, String, String)>[]; // (key, GRN No, no, date, supplier) of the register's GRNs saved
+  // (3.62.0) the Store's step 5 at the site: a PO's own fields and its approval; the papers' settings; PO 1's approval
+  bool storeStep5 = true;
+  Map<String, dynamic> storePapers = {'prefix': '', 'email': 'store@rcl.test', 'site_contact': 'Store Keeper : 90000 00000', 'ship_to': 'VTR Site Store\nNH 848', 'terms': '1. Payment within 30 days.\n2. Material as per the specification.'};
+  Map<String, dynamic> po1Appr = {'appr': 'Waiting', 'appr_name': null, 'appr_note': null};
   final storeReqs = <Map<String, dynamic>>[
     {'no': 2, 'date': '2026-10-14', 'need_by': '2026-10-20', 'for_kind': 'Machinery', 'for_text': 'Sany 210 (No.1)', 'status': 'Pending', 'level': 1, 'approvals': [], 'created_by': 'amol@rcl.test', 'created_name': 'Amol Patil',
       'lines': [{'line': 1, 'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'qty': 12, 'note': '', 'ordered': 0, 'left': 0}], 'mayApprove': true, 'mine': false, 'waitFor': ['Sujit Mule']},
@@ -374,7 +378,8 @@ class FakeServer {
           'grn': {'today': 1, 'todayValue': 525, 'month': 2, 'monthValue': 2625, 'recent': [{'no': 4, 'date': '2026-10-14', 'supplier': 'Shri Traders', 'gross': 525}]},
           'issue': {'today': 1, 'todayValue': 1200, 'month': 1, 'monthValue': 1200, 'recent': [{'no': 7, 'date': '2026-10-14', 'to_kind': 'Machinery', 'machinery': 'Sany 210 (No.1)', 'party': '', 'amount': 1200}]}});
       case 'reqList':
-        return _j({'reqs': storeReqs, 'levels': [{'level': 1, 'people': ['Sujit Mule']}]});
+        return _j({'reqs': [for (final r in storeReqs) {...r, 'ref': 'RCL/VTR/PR/2026/${'${r['no']}'.padLeft(4, '0')}'}], 'levels': [{'level': 1, 'people': ['Sujit Mule']}],
+          'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'email': storePapers['email'] ?? ''}});
       case 'reqSave':
         return _j({'ok': true, 'no': 3, 'status': 'Pending', 'level': 1});
       case 'reqDecide':
@@ -394,17 +399,30 @@ class FakeServer {
           {'site': 'T2', 'name': '18B Kolhapur', 'reqs': [], 'error': 'The Store\'s step 2 is not run in this site\'s database yet.'},
         ]});
       case 'purItems':
-        return _j({'site': b['site'], 'items': brief(), 'vendors': ['Shri Traders'], 'gst': {'Shri Traders': '27ABCDE1234F1Z5'}});
+        return _j({'site': b['site'], 'items': [for (final i in brief()) {...i, 'hsn': i['code'] == 'ITM-0002' ? '1701' : ''}], 'vendors': ['Shri Traders'], 'gst': {'Shri Traders': '27ABCDE1234F1Z5'},
+          'papers': {'ship_to': storePapers['ship_to'] ?? '', 'site_contact': storePapers['site_contact'] ?? '', 'terms': storePapers['terms'] ?? ''}, 'step5': storeStep5});
       case 'poList':
-        return _j({'pos': [storePo]});
+        // (3.62.0) PO 1 waits for the approval of Sujit Mule (the one signed in) – it was made by someone else
+        final wait = storeStep5 && po1Appr['appr'] == 'Waiting';
+        return _j({'pos': [{...storePo, ...(storeStep5 ? po1Appr : {'appr': 'Approved'}), 'mayApprove': wait, 'waitFor': wait ? ['Sujit Mule'] : []}]});
       case 'poGet':
-        return _j({'po': storePo, 'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5'}});
+        return _j({
+          'po': {...storePo, ...po1Appr, 'ref': 'RCL/VTR/PO/2026/0001', 'words': 'Two Thousand One Hundred Rupees Only', 'credit_days': 30, 'site_contact': 'Store Keeper : 90000 00000', 'ship_to': 'VTR Site Store\nNH 848', 'freight': 0, 'load_unload': 0,
+            'terms': '1. Payment within 30 days.\n2. Material as per the specification.', 'lines': [{...(storePo['lines'] as List).first as Map, 'hsn': '1701', 'disc_pct': 0, 'disc': 0}]},
+          'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'pan': 'ABCDE1234F', 'email': storePapers['email'] ?? '', 'phone': '', 'cin': '', 'web': ''},
+          'supplier': {'name': 'Shri Traders', 'address': 'Nashik Road', 'mobile': '', 'email': '', 'contact': '', 'gstin': '27ABCDE1234F1Z5'},
+        });
+      case 'poDecide':
+        if (!storeStep5) return _j({'error': 'The purchase order\'s Credit Period, Site Contact, Shipping Address, Freight, Load / Unload and its approval need the Store\'s database step 5 at this site.', 'code': 'sql'}, 400);
+        if (b['ok'] != true && '${b['note'] ?? ''}'.trim().isEmpty) return _j({'error': 'Say why the PO is rejected (the one who made it sees it).', 'code': 'field'}, 400);
+        po1Appr = {'appr': b['ok'] == true ? 'Approved' : 'Rejected', 'appr_name': 'Sujit Mule', 'appr_note': b['ok'] == true ? null : b['note']};
+        return _j({'ok': true, 'no': b['no'], 'appr': po1Appr['appr']});
       case 'poSave':
         final po = (b['po'] as Map).cast<String, dynamic>();
         if (po['vendor'] == 'Shree Traders' && b['confirmParty'] != true) {
           return _j({'error': 'Please confirm: "Shri Traders" is already there – is "Shree Traders" another vendor?', 'code': 'party', 'near': ['Shri Traders'], 'field': 'vendor', 'typed': 'Shree Traders'}, 409);
         }
-        return _j({'ok': true, 'site': b['site'], 'no': 2, 'total': 1575});
+        return _j({'ok': true, 'site': b['site'], 'no': 2, 'total': 1575, 'appr': storeStep5 ? 'Waiting' : 'Approved'});
       case 'grnList':
         return _j({'from': b['from'], 'to': b['to'], 'grns': [
           {'no': 4, 'ref': '4', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': 'MH15AB1', 'po_no': 1, 'tcs': 0, 'gross': 525, 'created_name': 'Sujit Mule',
@@ -438,8 +456,10 @@ class FakeServer {
         return _j({'rows': [{'code': 'ITM-0001', 'qty': 20, 'rate': 100, 'date': '2026-10-01'}]});
       case 'openingSave':
         return _j({'ok': true, 'rows': (b['rows'] as List).length});
-      case 'numbers' || 'numbersSave':
-        return _j({'next': {'GRN': 5, 'OUT': 8}, 'used': {'GRN': 4, 'OUT': 7}, if (b['action'] == 'numbersSave') 'ok': true});
+      case 'numbers' || 'numbersSave' || 'papersSave':
+        if (b['action'] == 'papersSave') storePapers = {for (final k in ['prefix', 'email', 'phone', 'cin', 'web', 'site_contact', 'ship_to', 'terms']) if ('${b[k] ?? ''}'.isNotEmpty) k: '${b[k]}'};
+        final pre = '${storePapers['prefix'] ?? ''}'.isNotEmpty ? storePapers['prefix'] : 'RCL/S1';
+        return _j({'next': {'GRN': 5, 'OUT': 8}, 'used': {'GRN': 4, 'OUT': 7}, 'papers': storePapers, 'prefixNow': pre, 'step5': storeStep5, if (b['action'] != 'numbers') 'ok': true});
       // (3.57.0) the old inward register's import (rcl-store api/work.js regInfo / regNames / regVendors / regItems / regGrns)
       case 'regInfo':
         return _j({'step3': regStep3, 'ai': true, 'today': '2026-10-28', 'units': ['Nos', 'Kg', 'Ltr'], 'next': regGrnsSaved.isEmpty ? 1 : 8031, 'items': [], 'vendors': [],
@@ -539,6 +559,8 @@ class FakeServer {
     {'key': 'req', 'label': 'Material Requirements', 'opts': ['None', 'View', 'Edit']},
     {'key': 'approve', 'label': 'Approves requirements', 'opts': ['None', 'L1', 'L2', 'L3', 'L4', 'L5'], 'admin': true},
     {'key': 'purchase', 'label': 'Store Purchase – every site (HO)', 'opts': ['None', 'Edit'], 'admin': true},
+    // (3.62.0, the Portal with the Store's step 5) who approves the site's purchase orders
+    {'key': 'poapprove', 'label': 'Approves purchase orders', 'opts': ['None', 'Yes'], 'admin': true},
   ];
 
   http.Response _no(String msg, [int code = 400, String c = '']) => _j({'error': msg, if (c.isNotEmpty) 'code': c}, code);
@@ -605,7 +627,7 @@ class FakeServer {
           if (y == null) return _no('First give him the Store on this site (Admin or User), then his pages.', 400, 'noaccess');
           // (3.55.0, as the Portal with the Store's step 2) a Store Admin: only who approves and Store Purchase
           final pg = ((x['pages'] as Map?) ?? const {}).cast<String, dynamic>();
-          y['pages'] = y['role'] == 'admin' ? {for (final k in const ['approve', 'purchase']) if (pg.containsKey(k)) k: pg[k]} : pg;
+          y['pages'] = y['role'] == 'admin' ? {for (final k in const ['approve', 'purchase', 'poapprove']) if (pg.containsKey(k)) k: pg[k]} : pg;
           return _j({'ok': true, 'pages': y['pages']});
         }
       case 'placesGet':
