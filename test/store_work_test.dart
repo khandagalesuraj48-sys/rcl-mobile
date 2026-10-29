@@ -104,4 +104,20 @@ void main() {
     expect(storeToWho({'to_kind': 'Machinery', 'machinery': 'JCB-7', 'party': 'Ganesh'}), 'JCB-7 (Ganesh)');
     expect([storeToWho({'to_kind': 'Site work'}), storeToWho({'to_kind': 'Sub-contractor', 'party': 'Ganesh'}), storeToWho({'to_kind': 'Office'})], ['RCL – site work', 'Ganesh', 'Office']);
   });
+
+  test('(3.71.0, the Store\'s workflow) a bill checked with its PO in the web\'s words; what a save says; the days a PO is open', () {
+    expect(checkWords({'ok': true, 'diffs': []}), '✓ As per PO');
+    expect(
+        checkWords({'ok': false, 'diffs': [
+          {'kind': 'rate', 'name': 'Cement OPC 53', 'po': 6175, 'bill': 6500},
+          {'kind': 'gst', 'name': 'Cement OPC 53', 'po': 28, 'bill': 18},
+          {'kind': 'qty', 'name': 'Cement OPC 53', 'unit': 'Ton', 'po': 50, 'bill': 60},
+          {'kind': 'extra', 'name': 'Binding Wire'},
+        ]}),
+        '⚠ Cement OPC 53: rate 6,500.00 – PO 6,175.00 · Cement OPC 53: GST 18% – PO 28% · Cement OPC 53: 60 Ton – PO still had 50 · Binding Wire: not on the PO');
+    expect(checkWords(null), '', reason: 'a GRN without a PO (or of before): nothing');
+    expect([wfSaid('verify'), wfSaid('approve'), wfSaid('done'), wfSaid(null)], [' – it waits for its verification.', ' – it waits for its approval.', ' – it goes to Head Office.', '.']);
+    expect([daysSince('2026-10-12', '2026-10-14'), daysSince('2026-10-14T05:00:00Z', '2026-10-14'), daysSince('', '2026-10-14'), daysSince('2026-10-20', '2026-10-14')], [2, 0, 0, 0]);
+    expect(wfLine({'no': 4}), null, reason: 'a paper of before (no workflow): nothing shown');
+  });
 }

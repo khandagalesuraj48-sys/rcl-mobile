@@ -37,7 +37,7 @@ import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
 import 'package:rcl_mobile/ui/pick_file.dart';
 import 'package:rcl_mobile/screens/pend_print.dart' show PendPrintScreen;
 import 'package:rcl_mobile/screens/machinery.dart' show vendorNames;
-import 'package:rcl_mobile/screens/store_work.dart' show storePaperSink, rs;
+import 'package:rcl_mobile/screens/store_work.dart' show storePaperSink, rs, PoDetailScreen;
 import 'package:rcl_mobile/core/grn_reg.dart';
 
 import 'fake_rtc.dart';
@@ -2451,6 +2451,146 @@ void main() {
     await net(t);
     expect(sent(srv, 'reqDelete').single, {'action': 'reqDelete', 'no': 1});
     expect(find.byKey(const Key('rq-1')), findsNothing);
+  });
+
+  testWidgets('(3.71.0 – the Store\'s workflow) what waits for me on each page; a requirement verified; Head Office: a site\'s bill (checked with its PO) ✓ Checked, a site that buys itself; a PO – its balance, its verification, its Details (every GRN checked with the PO); the site\'s own To order → its PO; a GRN verified (its bill not as per the PO); a return sent back (why)', (t) async {
+    final srv = FakeServer()
+      ..storeWf = true
+      ..storePages = {...FakeServer().storePages, 'purchase': 'Edit'};
+    Finder inK(String k, String text) => find.descendant(of: find.byKey(Key(k)), matching: find.text(text));
+    await openStoreWork(t, server: srv);
+    // the Work tab: on each page what waits for me (to verify or approve)
+    for (final k in ['req', 'po', 'grn', 'issue']) {
+      expect(find.byKey(Key('sw-$k-mine')), findsOneWidget, reason: k);
+    }
+    // the Dashboard's tiles
+    await t.tap(find.byKey(const Key('st-tab-dashboard')));
+    await net(t);
+    for (final k in ['sd-wpo', 'sd-wgrn', 'sd-wiss']) {
+      expect(find.byKey(Key(k)), findsOneWidget, reason: k);
+    }
+    await t.tap(find.byKey(const Key('st-tab-work')));
+    await net(t);
+    // ---- Material Requirements: requirement 2 waits for MY verification – Verify
+    await tapK(t, 'sw-req');
+    await net(t);
+    expect(find.byKey(const Key('rq-vf-2')), findsOneWidget);
+    expect(find.text('Verification – Sujit Mule'), findsOneWidget);
+    expect(find.textContaining('Verified by: Sujit Mule · Approved by: Level 1 – Sujit Mule'), findsOneWidget);
+    expect(inK('rq-ok-2', 'Verify'), findsOneWidget);
+    await tapK(t, 'rq-ok-2');
+    await net(t);
+    expect(sent(srv, 'reqDecide').single, {'action': 'reqDecide', 'nos': [2], 'ok': true});
+    expect(find.text('Requirement 2 verified.'), findsOneWidget);
+    await settle(t, 4200);
+    await t.pageBack();
+    await net(t);
+    // ---- Purchase (Head Office): S1 buys itself; the bills S1 sent – GRN 4 checked with its PO → ✓ Checked; the issues: none sent
+    await reach(t, 'sw-purchase', 'st-work');
+    await tapK(t, 'sw-purchase');
+    await net(t);
+    expect(find.byKey(const Key('pu-own-S1')), findsOneWidget);
+    expect(find.byKey(const Key('pu-t-T2-1-1')), findsOneWidget, reason: 'the other site\'s requirement to order here');
+    expect([for (final x in sent(srv, 'hoInbox')) x['kind']], ['grn', 'iss']);
+    await reach(t, 'ho-grn-S1-4', 'pu-list');
+    expect(inK('ho-grn-S1-4', 'Bill with PO 1: ⚠ Sugar: rate 100.00 – PO 95.00'), findsOneWidget);
+    expect(inK('ho-grn-S1-4', 'At Head Office'), findsOneWidget);
+    expect(inK('ho-grn-S1-4', 'Asha Accounts · 14-10-2026'), findsOneWidget);
+    await tapK(t, 'ho-ok-grn-S1-4');
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(sent(srv, 'hoCheck').single, {'action': 'hoCheck', 'site': 'S1', 'kind': 'grn', 'no': 4, 'note': ''});
+    expect(find.text('GRN 4 – checked.'), findsOneWidget);
+    expect(find.byKey(const Key('ho-grn-S1-4')), findsNothing, reason: 'checked: out of the list to check');
+    await reach(t, 'ho-done-grn', 'pu-list');
+    await tapK(t, 'ho-done-grn');
+    await net(t);
+    expect(sent(srv, 'hoInbox').where((x) => x['kind'] == 'grn').last['done'], true);
+    expect(inK('ho-grn-S1-4', '✓ Checked by HO'), findsOneWidget);
+    expect(find.byKey(const Key('ho-ok-grn-S1-4')), findsNothing);
+    // the issues & returns: no site sends them (Portal → Workflow); a site without the Store's step 9 said so
+    final pu = find.descendant(of: find.byKey(const Key('pu-list')), matching: find.byType(Scrollable)).first;
+    await t.scrollUntilVisible(find.text('No site sends its issues & returns to Head Office (Portal → Workflow).'), 200, scrollable: pu);
+    expect(find.text('The Store\'s database step 9 is not run at T2 yet (sql/store_step9_workflow.sql).'), findsWidgets);
+    await settle(t, 4200);
+    await t.pageBack();
+    await net(t);
+    // ---- the site's Purchase Orders: PO 1 – ordered 20, came 5, BALANCE 15; open a day; it waits for my verification → Verify
+    await reach(t, 'sw-po', 'st-work');
+    await tapK(t, 'sw-po');
+    await net(t);
+    expect(sent(srv, 'purPending').last, {'action': 'purPending', 'mine': true});
+    expect(find.byKey(const Key('pol-own')), findsOneWidget, reason: 'S1 buys its requirements itself: its Store Admin orders here');
+    expect(inK('po-l-S1-1-1', '• Sugar 20 Kg · came 5'), findsOneWidget);
+    expect(inK('po-l-S1-1-1', 'balance 15'), findsOneWidget);
+    expect(find.text('1 day(s) open · 1 GRN'), findsOneWidget);
+    expect(find.text('Waiting verification – Sujit Mule'), findsOneWidget);
+    expect(inK('po-ok-S1-1', 'Verify'), findsOneWidget);
+    await tapK(t, 'po-ok-S1-1');
+    await net(t);
+    expect(sent(srv, 'poDecide').single, {'action': 'poDecide', 'no': 1, 'ok': true});
+    expect(find.text('PO 1 verified.'), findsOneWidget);
+    await settle(t, 4200);
+    // its Details: each line ordered / came / balance; its GRN checked with the PO
+    await tapK(t, 'po-det-S1-1');
+    await net(t);
+    expect(sent(srv, 'poGrns').single, {'action': 'poGrns', 'site': 'S1', 'no': 1});
+    expect(find.byType(PoDetailScreen), findsOneWidget);
+    expect(find.text('Total (before GST): ordered ₹2,000.00 · came ₹500.00 · balance ₹1,500.00'), findsOneWidget);
+    expect(inK('pod-g-4', '⚠ Sugar: rate 100.00 – PO 95.00'), findsOneWidget);
+    expect(inK('pod-g-4', 'Waiting verification'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // the site's own To order: requirement 1's Sugar (30 Kg) ticked → its PO made here
+    await reach(t, 'pol-t-1-1', 'pol-list');
+    await tapK(t, 'pol-t-1-1');
+    await t.pump();
+    await tapK(t, 'pol-mk');
+    await net(t);
+    expect(sent(srv, 'purItems').last['site'], 'S1');
+    await reach(t, 'pol-q-0', 'pof');
+    expect((t.widget<TextField>(box('pol-q-0')).controller!).text, '30', reason: 'what is still to order');
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- Inward (GRN): GRN 4 waits for MY verification – its bill not as per its PO – Verify
+    await reach(t, 'sw-grn', 'st-work');
+    await tapK(t, 'sw-grn');
+    await net(t);
+    expect(find.byKey(const Key('gr-mine')), findsOneWidget);
+    expect(inK('grm-ck-4', 'Bill with PO 1: ⚠ Sugar: rate 100.00 – PO 95.00'), findsOneWidget);
+    expect(inK('grm-wf-4', 'Waiting verification'), findsOneWidget);
+    expect(inK('mwf-ok-grn-4', 'Verify'), findsOneWidget);
+    await tapK(t, 'mwf-ok-grn-4');
+    await net(t);
+    expect(sent(srv, 'wfDecide').single, {'action': 'wfDecide', 'kind': 'grn', 'no': 4, 'ok': true, 'note': ''});
+    expect(find.text('GRN 4 verified – it waits for its approval.'), findsOneWidget);
+    expect(find.byKey(const Key('gr-mine')), findsNothing, reason: 'nothing waits for me now');
+    expect(inK('gr-wf-4', 'Waiting approval'), findsOneWidget);
+    await settle(t, 4200);
+    await t.pageBack();
+    await net(t);
+    // ---- Issue & Return: return 1 (of outward 7) waits for MY approval – sent back, saying why
+    await reach(t, 'sw-issue', 'st-work');
+    await tapK(t, 'sw-issue');
+    await net(t);
+    expect(find.byKey(const Key('is-mine')), findsOneWidget);
+    expect(inK('mwf-ok-ret-1', 'Approve'), findsOneWidget);
+    await tapK(t, 'mwf-no-ret-1');
+    await settle(t, 600);
+    expect(find.text('Send back Return 1?'), findsOneWidget);
+    await t.tap(find.byKey(const Key('note-ok')));
+    await settle(t, 400);
+    expect(find.text('Say why it is sent back.'), findsOneWidget, reason: 'why is needed');
+    await t.enterText(find.byKey(const Key('note-box')), '3 came back, not 1');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    expect(sent(srv, 'wfDecide').last, {'action': 'wfDecide', 'kind': 'ret', 'no': 1, 'ok': false, 'note': '3 came back, not 1'});
+    expect(find.text('Return 1 sent back.'), findsOneWidget);
+    expect(find.byKey(const Key('is-mine')), findsNothing);
+    await settle(t, 4200);
   });
 
   testWidgets('(3.55.0) Store – Purchase (every site): the ticked lines of a site → its PO; a vendor nearly one written before asked ("Use")', (t) async {
@@ -5082,7 +5222,8 @@ void main() {
     await tapIn(t, 'sa-spg-poapprove', 'Yes');
     await tapK(t, 'sa-spg-save');
     await net(t);
-    expect(saves(srv).last, {'action': 'storePagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'pages': {'approve': 'L2', 'purchase': 'None', 'poapprove': 'Yes'}});
+    // (3.71.0) and who verifies each work, who approves the GRN / the issues (not given: None)
+    expect(saves(srv).last, {'action': 'storePagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'pages': {'vreq': 'None', 'approve': 'L2', 'purchase': 'None', 'vpo': 'None', 'poapprove': 'Yes', 'vgrn': 'None', 'agrn': 'None', 'viss': 'None', 'aiss': 'None'}});
     expect(find.text('Store pages saved.'), findsOneWidget);
   }, tags: ['golden']);
 
@@ -5103,6 +5244,49 @@ void main() {
     final x = saves(srv).lastWhere((y) => y['action'] == 'siteSave');
     expect([x['code'], x['address'], x['contact_name'], x['contact_phone']], ['S1', 'Site office, Valshind, NH 848', 'Ramesh Patil', '98765 43210']);
     expect(srv.saSites.firstWhere((y) => y['code'] == 'S1')['contact_name'], 'Ramesh Patil');
+  });
+
+  testWidgets('(3.71.0) Super Admin – Workflow: a site\'s Store – who verifies and approves each work (given in Users & Access), and once approved, Head Office Yes / No; saved – the Store told; before the Portal\'s step 6 said so', (t) async {
+    phone(t);
+    final srv = await openConsole(t);
+    (srv.saAccess.firstWhere((a) => a['email'] == 'amol@rcl.test' && a['module'] == 'store'))['pages'] = {'dashboard': 'View', 'vreq': 'Yes', 'approve': 'L1', 'vgrn': 'Yes'};
+    await tapK(t, 'sa-reload');
+    await net(t);
+    await tapK(t, 'sa-t-wf');
+    await net(t);
+    Finder inK(String k, String text) => find.descendant(of: find.byKey(Key(k)), matching: find.text(text));
+    expect(inK('sa-wf-req', 'Verifies: Amol Patil'), findsOneWidget);
+    expect(inK('sa-wf-req', 'Approves: Level 1: Amol Patil'), findsOneWidget);
+    expect(inK('sa-wf-po', 'Verifies: nobody – no verification'), findsOneWidget);
+    expect(inK('sa-wf-po', 'Approves: nobody – approved when made'), findsOneWidget);
+    expect(inK('sa-wf-grn', 'Verifies: Amol Patil'), findsOneWidget);
+    expect(inK('sa-wf-grn', 'Approves: nobody – no approval'), findsOneWidget);
+    // not set yet: the requirements to Head Office, the GRNs and the issues stay at the site
+    bool sel(String k) => (t.widget<SegmentedButton<bool>>(find.byKey(Key('sa-wf-ho-$k')))).selected.single;
+    expect([sel('req'), sel('grn'), sel('iss')], [true, false, false]);
+    await tapIn(t, 'sa-wf-ho-req', 'No');
+    await settle(t, 300);
+    expect(inK('sa-wf-req', 'the site buys it itself (its Store Admin makes the PO)'), findsOneWidget);
+    await tapIn(t, 'sa-wf-ho-grn', 'Yes');
+    await settle(t, 300);
+    expect(inK('sa-wf-grn', 'HO Purchase sees each bill (checked with its PO) and checks it'), findsOneWidget);
+    await reach(t, 'sa-wf-save', 'sa-wf');
+    await tapK(t, 'sa-wf-save');
+    await net(t);
+    expect(saves(srv).last, {'action': 'rulesSave', 'site': 'S1', 'ho': {'req': false, 'grn': true, 'iss': false}});
+    expect(find.text('Saved – the Store of S1 is told.'), findsOneWidget);
+    expect(srv.saHo['S1'], {'req': false, 'grn': true, 'iss': false});
+    expect([sel('req'), sel('grn'), sel('iss')], [false, true, false], reason: 'as saved (read again)');
+    expect(srv.saAudit.first['action'], 'Workflow');
+    await settle(t, 4200);
+    // before the Portal's step 6: no Save – what to run said
+    srv.portalStep6 = false;
+    await tapK(t, 'sa-reload');
+    await net(t);
+    await t.drag(find.byKey(const Key('sa-wf')), const Offset(0, -2000));
+    await settle(t, 400);
+    expect(find.byKey(const Key('sa-wf-save')), findsNothing);
+    expect(find.textContaining('The Head Office choices need the Portal\'s database step 6 first'), findsOneWidget);
   });
 
   testWidgets('(3.17.0) Super Admin – Sites: a site\'s diesel places; New site – the checklist until Ready (the SQL copied); a closed site deleted with its code typed', (t) async {
@@ -5193,7 +5377,7 @@ void main() {
   testWidgets('(3.17.0) Super Admin – Companies, Modules, Activity; the Portal\'s refusals in its words; a sign-in that ended goes to the sign-in', (t) async {
     phone(t);
     final srv = await openConsole(t);
-    await t.tap(find.byKey(const Key('sa-t-companies')));
+    await tapK(t, 'sa-t-companies'); // (3.71.0: six tabs now – brought into view first)
     await net(t);
     expect(find.byKey(const Key('sa-co-RACHANA')), findsOneWidget);
     await tapK(t, 'sa-co-new');
@@ -5222,7 +5406,7 @@ void main() {
     expect(saves(srv).last, {'action': 'companyDelete', 'id': 'SKETCHLINE'});
     expect(find.text('Company deleted.'), findsOneWidget);
     // Modules: Mechanical is never deleted; HR (Off) – Live without a link is refused; deleted with its key typed
-    await t.tap(find.byKey(const Key('sa-t-modules')));
+    await tapK(t, 'sa-t-modules'); // (3.71.0: six tabs now – brought into view first)
     await net(t);
     await tapK(t, 'sa-m-mechanical');
     await net(t);
@@ -5245,7 +5429,7 @@ void main() {
     expect(find.text('Module deleted.'), findsOneWidget);
     expect(find.byKey(const Key('sa-m-hr')), findsNothing);
     // Activity: the last 200
-    await t.tap(find.byKey(const Key('sa-t-audit')));
+    await tapK(t, 'sa-t-audit'); // (3.71.0: six tabs now – brought into view first)
     await net(t);
     expect(srv.calls.where((c) => c == 'admin:audit').length, 1);
     expect(find.text('Signed in'), findsOneWidget);

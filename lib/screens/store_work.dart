@@ -200,6 +200,82 @@ Widget statePill(String s) {
   return Pill(s, color: t.$1, bg: t.$2);
 }
 
+/* (3.71.0, the web's 29-10-2026 – "pratek kamamadhe … verification … approval … head office … super admin … portel"; "konte jail konte
+ * nahi jail te super admin tharau shakel") A PAPER'S WORKFLOW – a GRN, an issue, a return: waiting for its verification / approval (for
+ * whom), sent back (why), approved, at Head Office, checked by Head Office; Verify / Approve / Send back for the one who decides it now
+ * (never his own) – the same actions and checks as the web's page (wfDecide, hoCheck). */
+String wfSaid(dynamic st) => st == 'verify' ? ' – it waits for its verification.' : st == 'approve' ? ' – it waits for its approval.' : st == 'done' ? ' – it goes to Head Office.' : '.';
+Map? _lastStep(Map w) { final s = w['steps'] is List ? w['steps'] as List : const []; return s.isEmpty || s.last is! Map ? null : s.last as Map; }
+
+/// the workflow's pills and words (null: none – a paper of before, nothing to do)
+Widget? wfLine(Map x, {Key? key}) {
+  final w = x['wf'] is Map ? x['wf'] as Map : null;
+  if (w == null) return null;
+  final st = '${w['state']}', step = '${x['step'] ?? ''}', wait = [for (final p in (x['waitFor'] as List? ?? const [])) '$p'], l = _lastStep(w);
+  final kids = <Widget>[];
+  if (st == 'verify' || st == 'approve') {
+    kids.add(Pill(step == 'verify' ? 'Waiting verification' : step == 'approve' ? 'Waiting approval' : 'Waiting', color: C.amber, bg: C.amberSoft));
+    kids.add(Text(step.isEmpty ? 'nobody verifies or approves it now – the Super Admin gives it in the Portal' : wait.join(', '), style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600)));
+  } else if (st == 'returned') {
+    kids.add(Pill('Sent back', color: C.red, bg: C.redSoft));
+    if (l != null) kids.add(Text('by ${l['name'] ?? ''}${'${l['note'] ?? ''}'.isNotEmpty ? ': "${l['note']}"' : ''} – the Store Admin corrects it (Change)', style: const TextStyle(fontSize: 12.5, color: C.red)));
+  } else if (st == 'done' && l != null) {
+    kids.add(Pill(l['step'] == 'verify' ? 'Verified' : 'Approved'));
+    kids.add(Text('${l['name'] ?? ''} · ${dmy(l['at'])}', style: _faint));
+  }
+  if (w['ho'] == true) {
+    final ok = w['hoOk'] is Map ? w['hoOk'] as Map : null;
+    kids.add(Pill(ok != null ? '✓ Checked by HO' : 'At Head Office', color: C.blue, bg: C.blueSoft));
+    if (ok != null) kids.add(Text('${ok['name'] ?? ''}${'${ok['note'] ?? ''}'.isNotEmpty ? ': "${ok['note']}"' : ''}', style: _faint));
+  }
+  return kids.isEmpty ? null : Padding(key: key, padding: const EdgeInsets.only(top: 4), child: Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: kids));
+}
+
+/// (3.71.0) the bill (a GRN against a PO) checked with its PO – the web's checkTxt
+String checkWords(dynamic c) {
+  if (c is! Map) return '';
+  if (c['ok'] == true) return '✓ As per PO';
+  return '⚠ ${[for (final d in (c['diffs'] as List? ?? const [])) if (d is Map) d['kind'] == 'rate' ? '${d['name']}: rate ${money(d['bill'])} – PO ${money(d['po'])}' : d['kind'] == 'gst' ? '${d['name']}: GST ${d['bill']}% – PO ${d['po']}%' : d['kind'] == 'qty' ? '${d['name']}: ${q3(d['bill'])} ${d['unit'] ?? ''} – PO still had ${q3(d['po'])}' : '${d['name']}: not on the PO'].join(' · ')}';
+}
+
+Widget? checkLine(Map g, {Key? key}) => g['check'] is Map
+    ? Padding(key: key, padding: const EdgeInsets.only(top: 3), child: Text('Bill with PO ${g['po_no'] ?? ''}: ${checkWords(g['check'])}', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: (g['check'] as Map)['ok'] == true ? C.greenDark : C.red)))
+    : null;
+
+const _kWfName = {'grn': 'GRN', 'issue': 'Outward', 'ret': 'Return'};
+
+/// Verify / Approve (or Send back, saying why) – then [reload]
+Future<void> storeWfDecide(BuildContext context, StoreKit k, String kind, Map x, bool ok, Future<void> Function() reload, {String name = ''}) async {
+  final nm = '${_kWfName[kind] ?? ''} ${name.isEmpty ? x['no'] : name}', verify = x['step'] == 'verify';
+  var note = '';
+  if (!ok) {
+    final v = await askNote(context, 'Send back $nm?', label: 'Say why (the Store Admin sees it and corrects it):', ok: 'Send back', danger: true, neededMsg: 'Say why it is sent back.');
+    if (v == null) return;
+    note = v;
+  }
+  try {
+    final r = await k.call('wfDecide', {'kind': kind, 'no': x['no'], 'ok': ok, 'note': note});
+    if (context.mounted) toast(context, '$nm${ok ? (r['state'] == 'approve' ? ' verified – it waits for its approval.' : ' ${verify ? 'verified' : 'approved'}${r['ho'] == true ? ' – it goes to Head Office.' : '.'}') : ' sent back.'}');
+    await reload();
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e), bad: true);
+  }
+}
+
+/// ([pre]: the keys of a paper shown twice – "Waiting for you" above the list – kept apart)
+List<Widget> wfButtons(BuildContext context, StoreKit k, String kind, Map x, Future<void> Function() reload, {String name = '', String pre = ''}) => x['mayDecide'] == true
+    ? [
+        _act('${pre}wf-ok-$kind-${x['no']}', x['step'] == 'verify' ? 'Verify' : 'Approve', () => storeWfDecide(context, k, kind, x, true, reload, name: name)),
+        _act('${pre}wf-no-$kind-${x['no']}', 'Send back', () => storeWfDecide(context, k, kind, x, false, reload, name: name), color: C.red),
+      ]
+    : const [];
+
+/// (3.71.0) days from a date to today (a PO open, a requirement waiting for its PO)
+int daysSince(dynamic d, String today) {
+  final s = '${d ?? ''}', a = DateTime.tryParse(s.length >= 10 ? s.substring(0, 10) : ''), b = DateTime.tryParse(today);
+  return a == null || b == null ? 0 : b.difference(a).inDays.clamp(0, 100000);
+}
+
 const _muted = TextStyle(fontSize: 12.5, color: C.muted, height: 1.35);
 const _faint = TextStyle(fontSize: 12, color: C.faint);
 const _bold = TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800);
@@ -354,7 +430,7 @@ Future<Map<String, dynamic>?> pickStoreItem(BuildContext context, List<Map<Strin
 
 /* ---------------- the LINES of a paper (the web's Lines): a card each, "+ Add item" ---------------- */
 class SLine {
-  SLine({this.code = '', this.name = '', this.unit = '', String qty = '', String rate = '', String gst = '', String note = '', String serial = '', String brand = '', String spec = '', String disc = '', String hsn = '', this.returnable = false, this.reqNo, this.reqLine, this.poLine, this.info = '', this.discOn = 'basic', this.poQty, this.poBefore})
+  SLine({this.code = '', this.name = '', this.unit = '', String qty = '', String rate = '', String gst = '', String note = '', String serial = '', String brand = '', String spec = '', String disc = '', String hsn = '', this.returnable = false, this.reqNo, this.reqLine, this.poLine, this.info = '', this.discOn = 'basic', this.poQty, this.poBefore, this.poRate, this.poGst})
       : disc = TextEditingController(text: disc),
         hsn = TextEditingController(text: hsn),
         qty = TextEditingController(text: qty),
@@ -379,6 +455,9 @@ class SLine {
 
   /// (3.63.0) a GRN's line against a PO: the PO's Qty and what was received on it before (the shortage after this GRN)
   final double? poQty, poBefore;
+
+  /// (3.71.0, the web's 29-10-2026 – the bill checked with its PO) the PO line's rate after its Disc. % and its GST %
+  final double? poRate, poGst;
 
   /// taxable = qty × rate less the Disc. % (the web's lineMoney), the GST on it, the total
   ({double t, double g, double all}) money() {
@@ -545,6 +624,13 @@ class SLinesEditor extends StatelessWidget {
               child: Text('PO Qty ${q3(l.poQty)} · Received before ${q3(l.poBefore ?? 0)} · ${short > 0.0005 ? 'Shortage ${q3(short)} ${l.unit}' : short < -0.0005 ? '+${q3(-short)} more than the PO' : 'Shortage 0'}',
                   key: Key('$tag-po-$i'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: short > 0.0005 ? C.amber : short < -0.0005 ? C.red : C.muted)),
             ),
+          // (3.71.0) the PO's rate (after its Disc. %) beside the bill's (after its discounts on the Basic, before GST) – red when the bill's is more
+          if (l.poRate != null && gm != null)
+            Builder(builder: (_) {
+              final q = _d(l.qty.text), bill = q > 0 ? r2(gm.taxable / q) : 0.0, over = q > 0 && bill > l.poRate! + 0.009, gOther = l.poGst != null && _d(l.gst.text) != l.poGst;
+              return Text('PO Rate ${money(l.poRate)} · bill ${money(bill)}${over ? ' ⚠ more than the PO' : ''}${gOther ? ' · GST ${plainN(_d(l.gst.text))}% – PO ${plainN(l.poGst)}%' : ''}',
+                  key: Key('$tag-pr-$i'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: over || gOther ? C.red : C.muted));
+            }),
           const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -629,7 +715,9 @@ class StoreWorkTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final d = dash ?? const <String, dynamic>{}, rq = mapOf(d['req']);
+    final d = dash ?? const <String, dynamic>{}, rq = mapOf(d['req']), wf = mapOf(d['wf']);
+    // (3.71.0) what waits for this person on each page (to verify or approve)
+    final forMe = {'req': nOf(rq['mine']), 'po': nOf(wf['po']), 'grn': nOf(wf['grn']), 'issue': nOf(wf['issue']) + nOf(wf['ret'])};
     final pages = [for (final p in kWorkPages) if (k.can(p.$1)) p];
     return ListView(key: const Key('st-work'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 90), children: [
       if (err.isNotEmpty) InfoLine(err, bad: true),
@@ -653,7 +741,7 @@ class StoreWorkTab extends StatelessWidget {
                   Text(p.$4, style: _muted),
                 ]),
               ),
-              if (p.$1 == 'req' && nOf(rq['mine']) > 0) Pill('${rq['mine']} for me', key: const Key('sw-req-mine'), color: C.amber, bg: C.amberSoft),
+              if ((forMe[p.$1] ?? 0) > 0) Pill('${forMe[p.$1]} for me', key: Key('sw-${p.$1}-mine'), color: C.amber, bg: C.amberSoft),
               const Icon(Icons.chevron_right_rounded, color: C.faint),
             ]),
           ),
@@ -669,7 +757,7 @@ class StoreDashWork extends StatelessWidget {
   final Map<String, dynamic> dash;
   @override
   Widget build(BuildContext context) {
-    final st = mapOf(dash['stock']), rq = mapOf(dash['req']), po = mapOf(dash['po']), g = mapOf(dash['grn']), iss = mapOf(dash['issue']);
+    final st = mapOf(dash['stock']), rq = mapOf(dash['req']), po = mapOf(dash['po']), g = mapOf(dash['grn']), iss = mapOf(dash['issue']), wf = mapOf(dash['wf']);
     Widget tile(String key, String label, String n, String sub, Color c, Color bg) => Container(
           key: Key(key),
           width: 160,
@@ -695,6 +783,10 @@ class StoreDashWork extends StatelessWidget {
         if (rq.isNotEmpty) tile('sd-mine', 'Waiting for my approval', '${rq['mine'] ?? 0}', '${rq['pending'] ?? 0} requirement(s) pending', C.amber, C.amberSoft),
         if (rq.isNotEmpty) tile('sd-appr', 'Approved – to order', '${rq['approved'] ?? 0}', 'requirements', C.blue, C.blueSoft),
         if (po.isNotEmpty) tile('sd-po', 'POs open', '${po['open'] ?? 0}', 'material to come', C.slate, C.slateSoft),
+        // (3.71.0, the web's 29-10-2026) what waits for this person: a PO, a GRN, an issue or a return to verify or approve
+        if (nOf(wf['po']) > 0) tile('sd-wpo', 'PO – waiting for me', '${wf['po']}', 'to verify or approve', C.amber, C.amberSoft),
+        if (nOf(wf['grn']) > 0) tile('sd-wgrn', 'GRN – waiting for me', '${wf['grn']}', 'to verify or approve', C.amber, C.amberSoft),
+        if (nOf(wf['issue']) + nOf(wf['ret']) > 0) tile('sd-wiss', 'Issues & returns – waiting for me', '${nOf(wf['issue']) + nOf(wf['ret'])}', 'to verify or approve', C.amber, C.amberSoft),
         if (g.isNotEmpty) tile('sd-grn', 'GRN today', '${g['today'] ?? 0}', '${rs(g['todayValue'])} · month ${g['month'] ?? 0}', C.greenDark, C.greenSoft),
         if (iss.isNotEmpty) tile('sd-iss', 'Issues today', '${iss['today'] ?? 0}', '${rs(iss['todayValue'])} · month ${iss['month'] ?? 0}', C.blue, C.blueSoft),
       ]),
@@ -752,6 +844,9 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
   Future<void> liveLoad() => _load();
   List<Map<String, dynamic>> reqs = [], levels = [];
 
+  /// (3.71.0, the web's 29-10-2026 workflow) who verifies the requirements first (the Portal)
+  List<String> verifiers = [];
+
   /// (3.62.0) the heading of this site's papers (the company, the site, e-mail …) – for the Purchase Requisition Form
   Map<String, dynamic> heading = {};
 
@@ -782,6 +877,7 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
       setState(() {
         reqs = listOf(r['reqs']);
         levels = listOf(r['levels']);
+        verifiers = [for (final v in (r['verifiers'] as List? ?? const [])) '$v'];
         heading = mapOf(r['heading']);
         step7 = r['step7'] == true;
         step8 = r['step8'] == true;
@@ -812,7 +908,7 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
         final r = await k.call('reqDecide', {'nos': nos, 'ok': true});
         final done = listOf(r['done']), left = listOf(r['left']);
         if (mounted) {
-          toast(context, nos.length == 1 && left.isEmpty ? 'Requirement ${nos.first} approved.' : '${done.length} approved${left.isEmpty ? '' : '; ${left.map((l) => '${l['no']}: ${l['why']}').join('; ')}'}.');
+          toast(context, nos.length == 1 && left.isEmpty ? 'Requirement ${nos.first} ${done.isNotEmpty && done.first['step'] == 'verify' ? 'verified' : 'approved'}.' : '${done.length} approved / verified${left.isEmpty ? '' : '; ${left.map((l) => '${l['no']}: ${l['why']}').join('; ')}'}.');
         }
         ticked.clear();
         await _load();
@@ -922,7 +1018,7 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
                 InfoRow('Stock now', q3(k.stock('${l['code']}'))),
                 if ('${l['note'] ?? ''}'.isNotEmpty) InfoRow('Note', '${l['note']}'),
               ]),
-            for (final a in listOf(x['approvals'])) Text('Level ${a['level']}: ${a['ok'] == true ? 'approved' : 'rejected'} by ${a['name'] ?? ''} on ${dmy(a['at'])}${'${a['note'] ?? ''}'.isNotEmpty ? ' – "${a['note']}"' : ''}', style: _muted),
+            for (final a in listOf(x['approvals'])) Text('${a['step'] == 'verify' ? 'Verification: ${a['ok'] == true ? 'verified' : 'rejected'}' : 'Level ${a['level']}: ${a['ok'] == true ? 'approved' : 'rejected'}'} by ${a['name'] ?? ''} on ${dmy(a['at'])}${'${a['note'] ?? ''}'.isNotEmpty ? ' – "${a['note']}"' : ''}', style: _muted),
             if ('${x['close_note'] ?? ''}'.isNotEmpty) Text('${x['close_note']}', style: _muted),
           ]),
         ),
@@ -938,17 +1034,17 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
       Row(children: [
         if (may) Checkbox(key: Key('rq-tick-$no'), value: ticked.contains(no), onChanged: (v) => setState(() => v == true ? ticked.add(no) : ticked.remove(no))),
         Expanded(child: Text('${reqRef(x)} · ${dmy(x['date'])}', style: _bold)),
-        statePill(st),
+        x['step'] == 'verify' ? Pill('Waiting verification', key: Key('rq-vf-$no'), color: C.amber, bg: C.amberSoft) : statePill(st),
       ]),
       Text('For: ${x['for_kind'] ?? ''}${'${x['for_text'] ?? ''}'.isNotEmpty ? ' – ${x['for_text']}' : ''}${'${x['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(x['need_by'])}' : ''}', style: const TextStyle(fontSize: 13.5)),
       for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${bsOf(l)}${st == 'Approved' && nOf(l['left']) < nOf(l['qty']) ? ' (ordered ${q3(l['ordered'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
       if (photos.isNotEmpty) Text('📷 ${photos.length} photo${photos.length == 1 ? '' : 's'}', key: Key('rq-phn-$no'), style: const TextStyle(fontSize: 12.5, color: C.blue, fontWeight: FontWeight.w600)),
       if (lb != null) Text('📕 Log book up to ${dmy(lb['upto'])}', key: Key('rq-lbn-$no'), style: const TextStyle(fontSize: 12.5, color: C.blue, fontWeight: FontWeight.w600)),
       if (pos.isNotEmpty) Text('In PO ${pos.join(', ')}', key: Key('rq-pos-$no'), style: _faint),
-      if (st == 'Pending') Text('Level ${x['level']}${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600)),
+      if (st == 'Pending') Text(x['step'] == 'verify' ? 'Verification${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}' : 'Level ${x['level']}${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600)),
       Text('Asked by ${x['created_name'] ?? x['created_by'] ?? ''}', style: _faint),
       Wrap(spacing: 2, children: [
-        if (may) ...[_act('rq-ok-$no', 'Approve', () => _approve([no])), _act('rq-no-$no', 'Reject', () => _reject(x), color: C.red)],
+        if (may) ...[_act('rq-ok-$no', x['step'] == 'verify' ? 'Verify' : 'Approve', () => _approve([no])), _act('rq-no-$no', 'Reject', () => _reject(x), color: C.red)],
         _act('rq-det-$no', 'Details', () => _details(x), color: C.blue),
         if (photos.isNotEmpty || _phAdd(x)) _act('rq-ph-$no', photos.isEmpty ? 'Photos' : 'Photos (${photos.length})', () => _photos(x), color: C.blue),
         if (x['for_kind'] == 'Machinery' && step8 && (lb != null || x['attach'] == true)) _act('rq-lb-$no', 'Log book', () => _logbook(x), color: C.blue),
@@ -975,7 +1071,7 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
               child: ListView(key: const Key('rq-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 90), children: [
                 Text('What the site needs. Approved level by level (who approves: given by the Super Admin in the Portal) – then HO Purchase makes its purchase order.', style: _muted),
                 const SizedBox(height: 4),
-                Text(levels.isEmpty ? 'No approver set for this site – a requirement is approved when it is made.' : 'Approved by: ${levels.map((l) => 'Level ${l['level']} – ${(l['people'] as List? ?? const []).join(', ')}').join(' · ')}', key: const Key('rq-lv'), style: const TextStyle(fontSize: 12.5, color: C.blue, fontWeight: FontWeight.w600)),
+                Text('${verifiers.isEmpty ? '' : 'Verified by: ${verifiers.join(', ')} · '}${levels.isEmpty ? 'No approver set for this site – a requirement is approved when it is made.' : 'Approved by: ${levels.map((l) => 'Level ${l['level']} – ${(l['people'] as List? ?? const []).join(', ')}').join(' · ')}'}', key: const Key('rq-lv'), style: const TextStyle(fontSize: 12.5, color: C.blue, fontWeight: FontWeight.w600)),
                 if (err.isNotEmpty) InfoLine(err, bad: true),
                 const SizedBox(height: 8),
                 SingleChildScrollView(
@@ -996,7 +1092,7 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
                 if (tickable)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: FilledButton(key: const Key('rq-okall'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)), onPressed: ticked.isEmpty ? null : () => _approve(ticked.toList()..sort()), child: Text('Approve the ticked (${ticked.length})')),
+                    child: FilledButton(key: const Key('rq-okall'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)), onPressed: ticked.isEmpty ? null : () => _approve(ticked.toList()..sort()), child: Text('Approve / verify the ticked (${ticked.length})')),
                   ),
                 const SizedBox(height: 8),
                 if (rows.isEmpty) Padding(padding: const EdgeInsets.all(20), child: Text('No requirement here.', textAlign: TextAlign.center, style: _muted)),
@@ -1143,7 +1239,7 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
       });
       if (!mounted) return;
       final note = '${r['photoNote'] ?? ''}', nm = '${r['ref'] ?? ''}'.isNotEmpty ? '${r['ref']}' : widget.req != null ? reqRef(widget.req!) : '${r['no']}';
-      toast(context, note.isNotEmpty ? note : 'Requirement $nm saved – ${r['status'] == 'Approved' ? 'approved (no approver set for this site).' : r['again'] == true ? 'it waits for its approval again (level ${r['level']}).' : 'it waits for Level ${r['level']}.'}', bad: note.isNotEmpty);
+      toast(context, note.isNotEmpty ? note : 'Requirement $nm saved – ${r['status'] == 'Approved' ? 'approved (no approver set for this site).' : r['step'] == 'verify' ? 'it waits for its verification${(r['waitFor'] as List? ?? const []).isEmpty ? '' : ' (${(r['waitFor'] as List).join(', ')})'}.' : r['again'] == true ? 'it waits for its approval again (level ${r['level']}).' : 'it waits for Level ${r['level']}.'}', bad: note.isNotEmpty);      // (3.71.0) its verification first
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
@@ -1496,8 +1592,13 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
   Map<String, dynamic> get liveAsk => const {'all': true};
   List<Map<String, dynamic>> sites = [], pos = [];
   final ticks = <String>{}; // 'site|req|line'
-  String err = '';
-  bool loading = true;
+  String err = '', today = '';
+  bool loading = true, pend = false;
+
+  /// (3.71.0, the web's 29-10-2026) HEAD OFFICE – what the sites sent once approved (the Portal → Workflow): their bills (GRN, checked
+  /// with the PO) and their issues & returns, to check here; "Show the checked ones"
+  Map<String, dynamic> hoG = {}, hoI = {};
+  bool doneG = false, doneI = false;
   StoreKit get k => widget.k;
 
   @override
@@ -1510,10 +1611,18 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
   Future<void> _load() async {
     try {
       final p = await k.call('purPending'), l = await k.call('poList', {'all': true});
+      Map<String, dynamic> g = {}, i = {};
+      try {
+        g = await k.call('hoInbox', {'kind': 'grn', 'done': doneG});
+        i = await k.call('hoInbox', {'kind': 'iss', 'done': doneI});
+      } catch (_) {/* an older Store: no Head Office lists */}
       if (!mounted) return;
       setState(() {
         sites = listOf(p['sites']);
         pos = listOf(l['pos']);
+        today = '${p['today'] ?? l['today'] ?? k.today}';
+        hoG = g;
+        hoI = i;
         loading = false;
         err = '';
       });
@@ -1547,6 +1656,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
       Text('${st['name']} ($site)', style: _bold),
       if ('${st['error'] ?? ''}'.isNotEmpty)
         Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text('${st['error']}', style: _muted))
+      // (3.71.0) a site that buys itself (the Portal → Workflow: its requirements do not go to Head Office)
+      else if (st['own'] == true)
+        Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text('This site buys its requirements itself (Portal → Workflow) – its Store Admin makes their purchase orders.${nOf(st['open']) > 0 ? ' ${st['open']} PO(s) open.' : ''}', key: Key('pu-own-$site'), style: _muted))
       else ...[
         if (reqs.isEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text('Nothing to order.', style: _muted)),
         for (final r in reqs) ...[
@@ -1562,7 +1674,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
                   value: ticks.contains('$site|${r['no']}|${l['line']}'),
                   onChanged: (v) => setState(() => v == true ? ticks.add('$site|${r['no']}|${l['line']}') : ticks.remove('$site|${r['no']}|${l['line']}')),
                   title: Text('${reqRef(r)} · ${l['name']}${bsOf(l)} – to order ${q3(l['left'])} ${l['unit']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                  subtitle: Text('${r['for_kind'] ?? ''}${'${r['for_text'] ?? ''}'.isNotEmpty ? ' – ${r['for_text']}' : ''} · ${dmy(r['date'])}${'${r['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(r['need_by'])}' : ''} · asked ${q3(l['qty'])}, ordered ${q3(l['ordered'])}', style: _faint),
+                  subtitle: Text('${r['for_kind'] ?? ''}${'${r['for_text'] ?? ''}'.isNotEmpty ? ' – ${r['for_text']}' : ''} · ${dmy(r['date'])}${'${r['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(r['need_by'])}' : ''} · asked ${q3(l['qty'])}, ordered ${q3(l['ordered'])}${'${r['made_by'] ?? ''}'.isNotEmpty ? ' · made by ${r['made_by']}' : ''}${'${r['since'] ?? ''}'.isNotEmpty ? ' · waiting ${daysSince(r['since'], today)} day(s)' : ''}', style: _faint),      // (3.71.0) who made it, since when it waits
                 ),
               ),
           // (3.66.0) its photos (another site's – HO Purchase)
@@ -1591,6 +1703,61 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
     ]);
   }
 
+  /// (3.71.0) one of Head Office's lists – the bills (GRN) or the issues & returns of every site: to check (✓ Checked, a note if wanted)
+  List<Widget> _ho(String kind, Map<String, dynamic> d) {
+    final done = kind == 'grn' ? doneG : doneI, rows = <Widget>[], sent = [for (final s in listOf(d['sites'])) if (s['ho'] == true || listOf(s['rows']).isNotEmpty) s];
+    Future<void> check(String site, String wk, Map x, String name) async {
+      final note = await askNote(context, 'Checked: $name of $site?', label: 'A note (if you want – e.g. what was told to the site):', ok: '✓ Checked', needed: false);
+      if (note == null) return;
+      try {
+        await k.call('hoCheck', {'site': site, 'kind': wk, 'no': x['no'], 'note': note});
+        if (mounted) toast(context, '$name – checked.');
+        await _load();
+      } catch (e) {
+        if (mounted) toast(context, errText(e), bad: true);
+      }
+    }
+
+    for (final s in sent) {
+      final site = '${s['site']}';
+      rows.add(Padding(padding: const EdgeInsets.only(top: 8, bottom: 4), child: Text('${s['name']} ($site)', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800))));
+      if ('${s['error'] ?? ''}'.isNotEmpty) rows.add(Text('${s['error']}', style: _muted));
+      final list = <(String, Map, String, String)>[]; // (kind, paper, what, items)
+      for (final x in listOf(s['rows'])) {
+        if (kind == 'grn') {
+          list.add(('grn', x, 'GRN ${grnRef(x)} · ${dmy(x['date'])} · ${x['supplier'] ?? ''}${'${x['invoice_no'] ?? ''}'.isNotEmpty ? ' · invoice ${x['invoice_no']}' : ''} · ${rs(x['gross'])}', [for (final l in listOf(x['lines'])) '${l['name']} ${q3(l['qty'])} ${l['unit']} @ ${money(l['rate'])}'].join('\n')));
+        } else {
+          final w = x['wf'] is Map ? x['wf'] as Map : const {};
+          if (w['ho'] == true && (w['hoOk'] != null) == done) list.add(('issue', x, 'Outward ${x['no']} · ${dmy(x['date'])} · ${storeToWho(x)} · ${rs(x['amount'])}', [for (final l in listOf(x['lines'])) '${l['name']} ${q3(l['qty'])} ${l['unit']}'].join('\n')));
+          for (final r in listOf(x['returns'])) {
+            final rw = r['wf'] is Map ? r['wf'] as Map : const {};
+            if (rw['ho'] == true && (rw['hoOk'] != null) == done) list.add(('ret', r, 'Return ${r['no']} · ${dmy(r['date'])} (outward ${x['no']}, ${storeToWho(x)})', ''));
+          }
+        }
+      }
+      if (list.isEmpty) rows.add(Text('Nothing here.', style: _muted));
+      for (final (wk, x, what, items) in list) {
+        rows.add(_card(key: Key('ho-$wk-$site-${x['no']}'), children: [
+          Text(what, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+          if (items.isNotEmpty) Text(items, style: const TextStyle(fontSize: 13)),
+          if (checkLine(x) != null) checkLine(x)!,
+          if (wfLine(x) != null) wfLine(x)!,
+          if ((x['wf'] is Map) && (x['wf'] as Map)['hoOk'] == null)
+            Align(alignment: Alignment.centerLeft, child: _act('ho-ok-$wk-$site-${x['no']}', '✓ Checked', () => check(site, wk, x, wk == 'grn' ? 'GRN ${grnRef(x)}' : '${_kWfName[wk]} ${x['no']}'))),
+        ]));
+      }
+    }
+    final off = [for (final s in listOf(d['sites'])) if (s['step9'] == false) '${s['site']}'];
+    return [
+      const SizedBox(height: 14),
+      Text(kind == 'grn' ? 'Bills (GRN) from the sites' : 'Issues & returns from the sites', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+      SwitchListTile(key: Key('ho-done-$kind'), contentPadding: EdgeInsets.zero, value: done, onChanged: (v) { setState(() => kind == 'grn' ? doneG = v : doneI = v); _load(); }, title: Text('Show the checked ones')),
+      if (sent.isEmpty) Text('No site sends ${kind == 'grn' ? 'its GRNs' : 'its issues & returns'} to Head Office (Portal → Workflow).', style: _muted),
+      ...rows,
+      if (off.isNotEmpty) InfoLine('The Store\'s database step 9 is not run at ${off.join(', ')} yet (sql/store_step9_workflow.sql).'),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: _bar('Purchase – every site', 'खरेदी – सर्व साइट', refresh: _load),
@@ -1606,9 +1773,14 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
                   for (final st in sites) _site(st),
                   const SizedBox(height: 8),
                   Text('Purchase orders of every site', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 6),
+                  Text('Each PO in full – ordered, what came (the GRNs of the site) and the balance still to come. Details: its every GRN checked with the PO.', style: _muted),
+                  SwitchListTile(key: const Key('pu-pend'), contentPadding: EdgeInsets.zero, value: pend, onChanged: (v) => setState(() => pend = v), title: Text('Only what is still to come')),
                   if (pos.isEmpty) Text('No purchase order.', style: _muted),
-                  for (final p in pos) PoCard(k: k, po: p, sites: true, reload: _load),
+                  for (final p in pos)
+                    if (!pend || (p['status'] == 'Open' && p['state'] != 'Received')) PoCard(k: k, po: p, sites: true, reload: _load, buy: k.buyer, today: today),
+                  // (3.71.0) Head Office: the bills and the issues & returns the sites sent
+                  if (hoG.isNotEmpty) ..._ho('grn', hoG),
+                  if (hoI.isNotEmpty) ..._ho('iss', hoI),
                 ]),
               ),
       );
@@ -1617,11 +1789,15 @@ class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<Purchase
 /// A purchase order in a list: its lines and what has come; its approval; Approve / Reject, Print, Change, Cancel, Close (as the
 /// web's poTable).
 class PoCard extends StatelessWidget {
-  const PoCard({super.key, required this.k, required this.po, required this.sites, required this.reload});
+  const PoCard({super.key, required this.k, required this.po, required this.sites, required this.reload, this.buy = false, this.today = ''});
   final StoreKit k;
   final Map<String, dynamic> po;
   final bool sites;
   final Future<void> Function() reload;
+
+  /// (3.71.0) this person makes and changes the POs here (HO Purchase – every site; a site that buys itself – its Store Admin)
+  final bool buy;
+  final String today;
 
   @override
   Widget build(BuildContext context) {
@@ -1642,19 +1818,28 @@ class PoCard extends StatelessWidget {
         statePill('${p['state'] ?? p['status']}'),
       ]),
       Text('${p['vendor'] ?? ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-      for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${bsOf(l)}${nOf(l['received']) > 0 ? ' (came ${q3(l['received'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
+      // (3.71.0, the web's 29-10-2026: "PO … GRN … quantity kami hoil … HO … full … site … PO balance") ordered · came · BALANCE
+      for (final l in lines)
+        Wrap(key: Key('po-l-$site-$no-${l['line']}'), spacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${bsOf(l)}${nOf(l['received']) > 0 ? ' · came ${q3(l['received'])}' : ''}', style: const TextStyle(fontSize: 13.5)),
+          if (nOf(l['received']) > 0) Text('balance ${q3(l['left'])}', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: nOf(l['left']) > 0 ? C.amber : C.greenDark)),
+        ]),
       Text('Total ${rs(p['total'])}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+      if (open && p['state'] != 'Received')
+        Text('${'${p['deliver_by'] ?? ''}'.isNotEmpty && today.isNotEmpty && '${p['deliver_by']}'.compareTo(today) < 0 ? 'late – delivery by ${dmy(p['deliver_by'])} · ' : ''}${daysSince(p['date'], today.isEmpty ? k.today : today)} day(s) open${nOf(p['grns']) > 0 ? ' · ${p['grns']} GRN' : ''}', key: Key('po-age-$site-$no'), style: _faint)
+      else if (nOf(p['grns']) > 0)
+        Text('${p['grns']} GRN', style: _faint),
       if (open && appr == 'Waiting')
-        Text('Waiting approval${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}', key: Key('po-appr-$site-$no'), style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600))
+        Text('${p['step'] == 'verify' ? 'Waiting verification' : 'Waiting approval'}${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}', key: Key('po-appr-$site-$no'), style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600))
       else if (open && appr == 'Rejected')
         Text('Rejected${'${p['appr_note'] ?? ''}'.isNotEmpty ? ' – "${p['appr_note']}" – ${p['appr_name'] ?? ''}' : ''}', key: Key('po-appr-$site-$no'), style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600))
       else if (open && appr == 'Approved' && '${p['appr_name'] ?? ''}'.isNotEmpty)
         Text('Approved by ${p['appr_name']}', key: Key('po-appr-$site-$no'), style: _faint),
       Wrap(spacing: 2, children: [
         if (may) ...[
-          _act('po-ok-$site-$no', 'Approve', () => run(() async {
+          _act('po-ok-$site-$no', p['step'] == 'verify' ? 'Verify' : 'Approve', () => run(() async {
                 await k.call('poDecide', {'no': no, 'ok': true});
-                if (context.mounted) toast(context, 'PO $no approved.');
+                if (context.mounted) toast(context, 'PO $no ${p['step'] == 'verify' ? 'verified' : 'approved'}.');
                 await reload();
               })),
           _act('po-no-$site-$no', 'Reject', () async {
@@ -1667,18 +1852,20 @@ class PoCard extends StatelessWidget {
             });
           }, color: C.red),
         ],
+        // (3.71.0) its details: each line ordered / came / balance (quantity and value), every GRN on it checked with the PO
+        _act('po-det-$site-$no', 'Details', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PoDetailScreen(k: k, site: site, no: no))), color: C.blue),
         _act('po-print-$site-$no', 'Print', () => run(() async {
               final r = await k.call('poGet', {if (site.isNotEmpty) 'site': site, 'no': no});
               if (!context.mounted) return;
               final h = mapOf(r['heading']), x = mapOf(r['po']);
               await printStorePaper(context, h, 'PO ${'${x['ref'] ?? ''}'.isEmpty ? no : x['ref']}', (logo) => poPaperHtml(x, h, mapOf(r['supplier']), logo: logo));
             }), color: C.blue),
-        if (k.buyer && open && sites)
+        if (buy && open)
           _act('po-edit-$site-$no', 'Change', () async {
             final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => PoFormScreen(k: k, site: site, po: p)));
             if (saved == true) await reload();
           }, color: C.blue),
-        if (k.buyer && open && !lines.any((l) => nOf(l['received']) > 0))
+        if (buy && open && !lines.any((l) => nOf(l['received']) > 0))
           _act('po-cancel-$site-$no', 'Cancel', () async {
             if (!await ask(context, 'Cancel PO $no?', 'Nothing of it has come – it is cancelled.', yes: 'Cancel the PO', no: 'No', danger: true)) return;
             await run(() async {
@@ -1688,7 +1875,7 @@ class PoCard extends StatelessWidget {
             });
           }, color: C.red),
         // (3.70.0, the web's 29-10-2026) nothing came: deleted – its requirements can then be changed or deleted
-        if (k.buyer && p['status'] != 'Closed' && !lines.any((l) => nOf(l['received']) > 0))
+        if (buy && p['status'] != 'Closed' && !lines.any((l) => nOf(l['received']) > 0))
           _act('po-del-$site-$no', 'Delete', () async {
             if (!await ask(context, 'Delete PO $no?', bi('Nothing of it has come. It goes from the list; its requirements can then be changed or deleted. (Written in the activity record.)', 'ही PO delete होईल.'), yes: 'Delete the PO', no: 'No', danger: true)) return;
             await run(() async {
@@ -1697,7 +1884,7 @@ class PoCard extends StatelessWidget {
               await reload();
             });
           }, color: C.red),
-        if ((k.buyer || k.admin) && open && p['state'] != 'Received')
+        if ((buy || k.admin) && open && p['state'] != 'Received')
           _act('po-close-$site-$no', 'Close', () async {
             if (!await ask(context, 'Close PO $no?', 'The rest of it will not come.', yes: 'Close', no: 'No')) return;
             await run(() async {
@@ -1708,6 +1895,72 @@ class PoCard extends StatelessWidget {
           }, color: C.slate),
       ]),
     ]);
+  }
+}
+
+/// (3.71.0, the web's 29-10-2026) ONE PO with every GRN made against it: each line ordered / came / balance (quantity and value at its
+/// rate after its Disc. %), every GRN (the supplier's bill) with its check with the PO and its workflow (poGrns)
+class PoDetailScreen extends StatefulWidget {
+  const PoDetailScreen({super.key, required this.k, required this.site, required this.no});
+  final StoreKit k;
+  final String site;
+  final int no;
+  @override
+  State<PoDetailScreen> createState() => _PoDetailScreenState();
+}
+
+class _PoDetailScreenState extends State<PoDetailScreen> {
+  Map<String, dynamic>? d;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await widget.k.call('poGrns', {if (widget.site.isNotEmpty) 'site': widget.site, 'no': widget.no});
+      if (mounted) setState(() => d = r);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final x = d, po = mapOf(x?['po']), lines = listOf(x?['lines']), grns = listOf(x?['grns']);
+    num tot(String k) => lines.fold<num>(0, (a, l) => a + nOf(l[k]));
+    return Scaffold(
+      appBar: _bar('PO ${'${po['ref'] ?? ''}'.isEmpty ? widget.no : po['ref']}', 'खरेदी ऑर्डर – तपशील', refresh: _load),
+      body: x == null
+          ? (err.isEmpty ? _loading() : Padding(padding: const EdgeInsets.all(16), child: InfoLine(err, bad: true)))
+          : ListView(key: const Key('pod-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
+              Text('${po['vendor'] ?? ''} · ${dmy(po['date'])}${'${po['deliver_by'] ?? ''}'.isNotEmpty ? ' · delivery by ${dmy(po['deliver_by'])}' : ''}', style: _bold),
+              const SizedBox(height: 8),
+              for (final l in lines)
+                _card(key: Key('pod-l-${l['line']}'), children: [
+                  Text('${l['name']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  InfoRow('Ordered', '${q3(l['qty'])} ${l['unit']} · ${rs(l['value'])}'),
+                  InfoRow('Came', '${q3(l['came'])} · ${rs(l['cameValue'])}'),
+                  InfoRow('Balance', '${q3(l['left'])} · ${rs(l['leftValue'])}'),
+                  InfoRow('Rate (after Disc.)', rs(l['rate'])),
+                ]),
+              Text('Total (before GST): ordered ${rs(tot('value'))} · came ${rs(tot('cameValue'))} · balance ${rs(tot('leftValue'))}', key: const Key('pod-tot'), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              Text('GRNs on it (the bills) – ${grns.length}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              if (grns.isEmpty) Text('No GRN on it yet.', style: _muted),
+              for (final g in grns)
+                _card(key: Key('pod-g-${g['no']}'), children: [
+                  Text('GRN ${grnRef(g)} · ${dmy(g['date'])} · ${rs(g['gross'])}', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                  if ('${g['invoice_no'] ?? ''}${g['challan_no'] ?? ''}'.isNotEmpty) Text([if ('${g['invoice_no'] ?? ''}'.isNotEmpty) 'Invoice ${g['invoice_no']}${'${g['invoice_date'] ?? ''}'.isNotEmpty ? ' ${dmy(g['invoice_date'])}' : ''}', if ('${g['challan_no'] ?? ''}'.isNotEmpty) 'Challan ${g['challan_no']}'].join(' · '), style: _faint),
+                  for (final l in listOf(g['lines'])) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']} @ ${money(l['rate'])}', style: const TextStyle(fontSize: 13.5)),
+                  Text(checkWords(g['check']), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: mapOf(g['check'])['ok'] == true ? C.greenDark : C.red)),
+                  if (wfLine(g) != null) wfLine(g)!,
+                ]),
+            ]),
+    );
   }
 }
 
@@ -1841,7 +2094,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
       };
       final r = await storeSaveAsk(context, widget.k.call, 'poSave', x);
       if (r == null || !mounted) return;
-      toast(context, 'PO ${r['no']} of ${r['site']} saved – ${rs(r['total'])}${r['appr'] == 'Waiting' ? ' – it waits for its approval.' : '.'}');
+      toast(context, '${r['note'] ?? ''}'.isNotEmpty ? '${r['note']}' : 'PO ${r['no']} of ${r['site']} saved – ${rs(r['total'])}${r['appr'] == 'Waiting' ? (r['step'] == 'verify' ? ' – it waits for its verification.' : ' – it waits for its approval.') : '.'}', bad: '${r['note'] ?? ''}'.isNotEmpty);      // (3.71.0) its verification first
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
@@ -1921,7 +2174,13 @@ class _PoListScreenState extends State<PoListScreen> with StoreLive<PoListScreen
   Future<void> liveLoad() => _load();
   List<Map<String, dynamic>> pos = [];
   bool pending = false, loading = true;
-  String err = '';
+  String err = '', today = '';
+
+  /// (3.71.0, the web's 29-10-2026) buy: this person makes and changes the POs of this site (HO Purchase; a site that buys itself – the
+  /// Portal → Workflow – its Store Admin); own: the site's requirements to order here
+  bool buy = false;
+  Map<String, dynamic>? own;
+  final ticks = <String>{};
 
   @override
   void initState() {
@@ -1932,10 +2191,23 @@ class _PoListScreenState extends State<PoListScreen> with StoreLive<PoListScreen
 
   Future<void> _load() async {
     try {
+      await widget.k.boot().catchError((_) {});
       final r = await widget.k.call('poList');
+      Map<String, dynamic>? mine;
+      final ho = mapOf(mapOf(widget.k.b['wf'])['ho']);
+      // a Store server before the workflow says nothing of buy: HO Purchase only, as before
+      final b = r.containsKey('buy') ? r['buy'] == true : widget.k.buyer;
+      if (b && ho['req'] == false) {
+        try {
+          mine = listOf((await widget.k.call('purPending', {'mine': true}))['sites']).firstOrNull;
+        } catch (_) {/* the list of POs still */}
+      }
       if (!mounted) return;
       setState(() {
         pos = listOf(r['pos']);
+        buy = b;
+        own = mine;
+        today = '${r['today'] ?? widget.k.today}';
         loading = false;
         err = '';
       });
@@ -1959,8 +2231,9 @@ class _PoListScreenState extends State<PoListScreen> with StoreLive<PoListScreen
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(key: const Key('pol-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
-                Text('Made by HO Purchase; what has come is from the GRNs against each.', style: _muted),
+                Text('Each PO – ordered, what came (the GRNs against it) and the balance still to come. Details: its every GRN checked with the PO.', style: _muted),
                 if (err.isNotEmpty) InfoLine(err, bad: true),
+                if (own != null) _own(own!),
                 Material(
                   type: MaterialType.transparency,
                   child: SwitchListTile(key: const Key('pol-pend'), contentPadding: EdgeInsets.zero, value: pending, onChanged: (v) => setState(() => pending = v), title: Text('Only what is still to come', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600))),
@@ -1971,10 +2244,52 @@ class _PoListScreenState extends State<PoListScreen> with StoreLive<PoListScreen
                 ]),
                 const SizedBox(height: 8),
                 if (list.isEmpty) Padding(padding: const EdgeInsets.all(20), child: Text('No purchase order.', textAlign: TextAlign.center, style: _muted)),
-                for (final p in list) PoCard(k: widget.k, po: p, sites: false, reload: _load),
+                for (final p in list) PoCard(k: widget.k, po: p, sites: false, reload: _load, buy: buy, today: today),
               ]),
             ),
     );
+  }
+
+  /// (3.71.0) a site that buys itself: its approved requirements still to order – ticked, its PO made here (the web's "To order")
+  Widget _own(Map<String, dynamic> st) {
+    final site = '${st['site']}', reqs = listOf(st['reqs']);
+    return _card(key: const Key('pol-own'), color: C.amberSoft.withValues(alpha: .3), children: [
+      Text('To order – this site buys it itself', style: _bold),
+      if (reqs.isEmpty) Text('Nothing to order.', style: _muted),
+      for (final r in reqs)
+        for (final l in listOf(r['lines']))
+          if (nOf(l['left']) > 0)
+            Material(
+              type: MaterialType.transparency,
+              child: CheckboxListTile(
+                key: Key('pol-t-${r['no']}-${l['line']}'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: ticks.contains('${r['no']}|${l['line']}'),
+                onChanged: (v) => setState(() => v == true ? ticks.add('${r['no']}|${l['line']}') : ticks.remove('${r['no']}|${l['line']}')),
+                title: Text('${reqRef(r)} · ${l['name']}${bsOf(l)} – to order ${q3(l['left'])} ${l['unit']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                subtitle: Text('${dmy(r['date'])} · made by ${r['made_by'] ?? r['created_name'] ?? ''}', style: _faint),
+              ),
+            ),
+      FilledButton(
+        key: const Key('pol-mk'),
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+        onPressed: () async {
+          final picked = <Map<String, dynamic>>[
+            for (final r in reqs)
+              for (final l in listOf(r['lines']))
+                if (ticks.contains('${r['no']}|${l['line']}')) {'req': r, 'line': l}
+          ];
+          final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => PoFormScreen(k: widget.k, site: site, picked: picked)));
+          if (saved == true) {
+            ticks.clear();
+            _load();
+          }
+        },
+        child: Text(reqs.isEmpty ? 'Make a PO' : 'Make a PO (the ticked lines)'),
+      ),
+    ]);
   }
 }
 
@@ -2003,6 +2318,7 @@ RDoc grnDoc(Map<String, dynamic> g) {
         if ('${g['vehicle_no'] ?? ''}'.isNotEmpty) 'Vehicle ${g['vehicle_no']}',
         if (g['po_no'] != null) 'PO ${g['po_no']}',
       ].join(' · '),
+      if (g['check'] is Map) 'Bill checked with PO ${g['po_no'] ?? ''}: ${checkWords(g['check']).replaceFirst(RegExp(r'^[✓⚠] '), '')}', // (3.71.0)
     ].where((x) => x.isNotEmpty).join('\n'),
     blocks: [
       RTable(
@@ -2026,7 +2342,13 @@ RDoc grnDoc(Map<String, dynamic> g) {
       ),
       if ('${g['remark'] ?? ''}'.isNotEmpty) RNote('${g['remark']}'),
     ],
-    signs: [('Received by', '${g['created_name'] ?? ''}'), ('Store in-charge', '')],
+    signs: [
+      ('Received by', '${g['created_name'] ?? ''}'),
+      // (3.71.0) who verified and approved it (its workflow)
+      for (final s in (g['wf'] is Map && (g['wf'] as Map)['steps'] is List ? (g['wf'] as Map)['steps'] as List : const []))
+        if (s is Map && s['ok'] == true) (s['step'] == 'verify' ? 'Verified by' : 'Approved by', '${s['name'] ?? ''}'),
+      ('Store in-charge', ''),
+    ],
   );
 }
 
@@ -2043,6 +2365,9 @@ class _GrnListScreenState extends State<GrnListScreen> with StoreLive<GrnListScr
   @override
   Future<void> liveLoad() => _load();
   List<Map<String, dynamic>> grns = [];
+
+  /// (3.71.0, the web's 29-10-2026) the GRNs this person verifies or approves now (of any date)
+  List<Map<String, dynamic>> mine = [];
   late String from = widget.k.monthStart, to = widget.k.today;
   bool loading = true;
   String err = '';
@@ -2071,9 +2396,14 @@ class _GrnListScreenState extends State<GrnListScreen> with StoreLive<GrnListScr
   Future<void> _load() async {
     try {
       final r = await k.call('grnList', {'from': from, 'to': to});
+      var m = <Map<String, dynamic>>[];
+      try {
+        m = listOf((await k.call('wfMine'))['grns']);
+      } catch (_) {/* an older Store */}
       if (!mounted) return;
       setState(() {
         grns = listOf(r['grns']);
+        mine = m;
         loading = false;
         err = '';
       });
@@ -2111,9 +2441,9 @@ class _GrnListScreenState extends State<GrnListScreen> with StoreLive<GrnListScr
   /// (3.57.0, "ji excel diley tech column mala GRN / inward madhe de") a GRN in the columns of his inward register: GRN No, GRN Date,
   /// Challan No, Invoice No., Invoice Date, Vehicle No, Supplier Name; each material its Received Qty, UOM, Basic Rate, Taxable Amount,
   /// GST Amount, Gross Amount, Remark; TCS, PO No
-  Widget _tile(Map<String, dynamic> g) {
-    final no = nOf(g['no']).toInt();
-    return _card(key: Key('gr-$no'), children: [
+  Widget _tile(Map<String, dynamic> g, {String keyPre = 'gr'}) {
+    final no = nOf(g['no']).toInt(), m = keyPre == 'gr' ? '' : 'm'; // (3.71.0) shown under "Waiting for you": its buttons' keys apart
+    return _card(key: Key('$keyPre-$no'), color: g['mayDecide'] == true ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [Expanded(child: Text('GRN ${grnRef(g)} · ${dmy(g['date'])}', style: _bold)), Text(rs(g['gross']), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800))]),
       Text('${g['supplier'] ?? ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       Text(
@@ -2132,11 +2462,15 @@ class _GrnListScreenState extends State<GrnListScreen> with StoreLive<GrnListScr
           padding: const EdgeInsets.only(top: 3),
           // (3.63.0) its code apart; a discount: what came off and its net rate (the stock's)
           child: Text('• ${l['code'] ?? ''} · ${l['name']} – ${q3(l['qty'])} ${l['unit']} @ ${q3(l['rate'])}${grnLineDisc(l) > 0 ? ' · Disc. ${rs(grnLineDisc(l))} · Net rate ${q3(l['net_rate'] ?? l['rate'])}' : ''} · Taxable ${rs(l['taxable'])} · GST ${rs(l['gst'])} · Gross ${rs(l['gross'])}${'${l['remark'] ?? ''}'.isNotEmpty ? ' · ${l['remark']}' : ''}',
-              key: Key('gr-l-$no-${l['line']}'), style: const TextStyle(fontSize: 13.5)),
+              key: Key('${m}gr-l-$no-${l['line']}'), style: const TextStyle(fontSize: 13.5)),
         ),
+      // (3.71.0) its bill checked with its PO; its workflow
+      if (checkLine(g, key: Key('$keyPre-ck-$no')) != null) checkLine(g, key: Key('$keyPre-ck-$no'))!,
+      if (wfLine(g, key: Key('$keyPre-wf-$no')) != null) wfLine(g, key: Key('$keyPre-wf-$no'))!,
       Wrap(spacing: 2, children: [
-        _act('gr-print-$no', 'Print', () => printDoc(context, SessionScope.read(context), grnDoc(g)), color: C.blue),
-        if (k.admin) ...[_act('gr-edit-$no', 'Change', () => _form(g), color: C.blue), _act('gr-del-$no', 'Delete', () => _delete(g), color: C.red)],
+        ...wfButtons(context, k, 'grn', g, _load, name: grnRef(g), pre: m),
+        _act('${m}gr-print-$no', 'Print', () => printDoc(context, SessionScope.read(context), grnDoc(g)), color: C.blue),
+        if (k.admin) ...[_act('${m}gr-edit-$no', 'Change', () => _form(g), color: C.blue), _act('${m}gr-del-$no', 'Delete', () => _delete(g), color: C.red)],
       ]),
     ]);
   }
@@ -2165,6 +2499,13 @@ class _GrnListScreenState extends State<GrnListScreen> with StoreLive<GrnListScr
                   ],
                 ]),
                 const SizedBox(height: 8),
+                // (3.71.0) waiting for him – to verify or approve
+                if (mine.isNotEmpty) ...[
+                  Text('Waiting for you – to verify or approve (${mine.length})', key: const Key('gr-mine'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: C.amber)),
+                  const SizedBox(height: 6),
+                  for (final g in mine) _tile(g, keyPre: 'grm'),
+                  const SizedBox(height: 8),
+                ],
                 Text('${grns.length} GRN(s) · ${rs(total)}', key: const Key('gr-count'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 if (grns.isEmpty) Padding(padding: const EdgeInsets.all(20), child: Text('No GRN in these dates.', textAlign: TextAlign.center, style: _muted)),
@@ -2250,8 +2591,11 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
   SLine _saved(Map<String, dynamic> l) {
     final pl = l['po_line'] == null ? null : nOf(l['po_line']).toInt(), p = _poLine('${widget.grn?['po_no'] ?? ''}', pl);
     return SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), note: '${l['remark'] ?? ''}', poLine: pl, info: pl == null ? '' : 'PO line $pl',
-        disc: _dTxt(l['disc_pct'], l['disc']), discOn: l['disc_on'] == 'gst' ? 'gst' : 'basic', poQty: p == null ? null : nOf(p['qty']).toDouble(), poBefore: p == null ? null : nOf(p['received']).toDouble());
+        disc: _dTxt(l['disc_pct'], l['disc']), discOn: l['disc_on'] == 'gst' ? 'gst' : 'basic', poQty: p == null ? null : nOf(p['qty']).toDouble(), poBefore: p == null ? null : nOf(p['received']).toDouble(), poRate: p == null ? null : _effRate(p), poGst: p == null ? null : nOf(p['gst_pct']).toDouble());
   }
+
+  /// (3.71.0) a PO line's rate after its Disc. % (as the server checks the bill – billCheck)
+  static double _effRate(Map l) => r2(nOf(l['rate']) * (100 - nOf(l['disc_pct'])) / 100);
 
   Map<String, dynamic>? _poLine(String po, int? line) {
     if (po.isEmpty || line == null) return null;
@@ -2316,7 +2660,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
         if (nOf(l['left']) <= 0) continue;
         // (3.63.0) its Disc. % of the PO comes with it; the PO's Qty and what came before – the shortage after this GRN
         lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), poLine: nOf(l['line']).toInt(), info: 'PO line ${l['line']}',
-            disc: step6 && nOf(l['disc_pct']) > 0 ? '${plainN(l['disc_pct'])}%' : '', poQty: nOf(l['qty']).toDouble(), poBefore: nOf(l['received']).toDouble()));
+            disc: step6 && nOf(l['disc_pct']) > 0 ? '${plainN(l['disc_pct'])}%' : '', poQty: nOf(l['qty']).toDouble(), poBefore: nOf(l['received']).toDouble(), poRate: _effRate(l), poGst: nOf(l['gst_pct']).toDouble()));
       }
       if (g == null && sup.text.trim().isEmpty) sup.text = '${p['vendor'] ?? ''}';
     }
@@ -2325,6 +2669,16 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
 
   Future<void> _save() async {
     if (lines.isEmpty) return toast(context, 'Add at least one item.', bad: true);
+    // (3.71.0) the bill checked with its PO before it is saved: a rate above the PO's, another GST % – asked first (as the web)
+    final gm0 = grnMoney(lines, step6 ? billDisc.text : '', billOn), diff = <String>[];
+    for (final (i, l) in lines.indexed) {
+      if (l.poRate == null || i >= gm0.lines.length) continue;
+      final q = _d(l.qty.text), bill = q > 0 ? r2(gm0.lines[i].taxable / q) : 0.0;
+      if (q > 0 && bill > l.poRate! + 0.009) diff.add('${l.name}: rate ${money(bill)} – PO ${money(l.poRate)}');
+      if (l.poGst != null && _d(l.gst.text) != l.poGst) diff.add('${l.name}: GST ${plainN(_d(l.gst.text))}% – PO ${plainN(l.poGst)}%');
+    }
+    if (diff.isNotEmpty && !await ask(context, 'The bill is not as per the PO', '${diff.join('\n')}\nSave it anyway? (It shows as "not as per PO" on the GRN and to Head Office.)\nबिल PO प्रमाणे नाही – तरी save करायचे का?', yes: 'Save anyway')) return;
+    if (!mounted) return;
     setState(() => busy = true);
     try {
       final x = <String, dynamic>{
@@ -2349,7 +2703,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
       };
       final r = await storeSaveAsk(context, widget.k.call, 'grnSave', x);
       if (r == null || !mounted) return;
-      toast(context, 'GRN ${r['ref'] ?? r['no']} saved – ${rs(r['gross'])}.');
+      toast(context, '${r['note'] ?? ''}'.isNotEmpty ? '${r['note']}' : 'GRN ${r['ref'] ?? r['no']} saved – ${rs(r['gross'])}${wfSaid(r['wf'])}', bad: '${r['note'] ?? ''}'.isNotEmpty);      // (3.71.0) its workflow
       Navigator.pop(context, true);
     } catch (e) {
       // (3.58.0) a GRN No already used: the next free one in its box (the server says it)
@@ -2483,6 +2837,9 @@ class _IssueListScreenState extends State<IssueListScreen> with StoreLive<IssueL
   @override
   Future<void> liveLoad() => _load();
   List<Map<String, dynamic>> issues = [];
+
+  /// (3.71.0, the web's 29-10-2026) the issues and returns this person verifies or approves now (of any date)
+  List<Map<String, dynamic>> mine = [];
   late String from = widget.k.monthStart, to = widget.k.today;
   bool loading = true;
   String err = '';
@@ -2511,9 +2868,14 @@ class _IssueListScreenState extends State<IssueListScreen> with StoreLive<IssueL
   Future<void> _load() async {
     try {
       final r = await k.call('issueList', {'from': from, 'to': to});
+      var m = <Map<String, dynamic>>[];
+      try {
+        m = listOf((await k.call('wfMine'))['issues']);
+      } catch (_) {/* an older Store */}
       if (!mounted) return;
       setState(() {
         issues = listOf(r['issues']);
+        mine = m;
         loading = false;
         err = '';
       });
@@ -2552,10 +2914,11 @@ class _IssueListScreenState extends State<IssueListScreen> with StoreLive<IssueL
     }
   }
 
-  Widget _tile(Map<String, dynamic> i) {
-    final no = nOf(i['no']).toInt(), lines = listOf(i['lines']), rets = listOf(i['returns']);
+  Widget _tile(Map<String, dynamic> i, {String keyPre = 'is'}) {
+    final no = nOf(i['no']).toInt(), lines = listOf(i['lines']), rets = listOf(i['returns']), m = keyPre == 'is' ? '' : 'm';
     final out = lines.where((l) => l['returnable'] == true && nOf(l['qty']) - nOf(l['back']) > 0.0005).length;
-    return _card(key: Key('is-$no'), children: [
+    final waits = i['mayDecide'] == true || rets.any((r) => r['mayDecide'] == true);
+    return _card(key: Key('$keyPre-$no'), color: waits ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [
         Expanded(child: Text('Outward $no · ${dmy(i['date'])}', style: _bold)),
         if (i['debit'] == true) const Padding(padding: EdgeInsets.only(right: 6), child: Pill('Debit', color: C.amber, bg: C.amberSoft)),
@@ -2572,18 +2935,24 @@ class _IssueListScreenState extends State<IssueListScreen> with StoreLive<IssueL
           ].join(' · '),
           style: _faint),
       for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${l['returnable'] == true ? ' (returnable${nOf(l['back']) > 0 ? ', ${q3(l['back'])} back' : ''})' : nOf(l['back']) > 0 ? ' (${q3(l['back'])} back)' : ''}', style: const TextStyle(fontSize: 13.5)),
-      for (final r in rets)
-        Row(children: [
-          Expanded(child: Text('Return ${r['no']} · ${dmy(r['date'])}', style: const TextStyle(fontSize: 13, color: C.blue, fontWeight: FontWeight.w600))),
-          if (k.admin) _act('is-rdel-${r['no']}', 'Delete', () => _del('return', 'retDelete', r['no'] as Object, 'What came back goes out of the stock again.'), color: C.red),
+      if (wfLine(i, key: Key('$keyPre-wf-$no')) != null) wfLine(i, key: Key('$keyPre-wf-$no'))!, // (3.71.0) its workflow
+      for (final r in rets) ...[
+        // (3.71.0) a Wrap: its Approve / Send back beside its Delete never run out of the phone's width
+        Wrap(spacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Text('Return ${r['no']} · ${dmy(r['date'])}', style: const TextStyle(fontSize: 13, color: C.blue, fontWeight: FontWeight.w600)),
+          ...wfButtons(context, k, 'ret', r, _load, pre: m),
+          if (k.admin) _act('${m}is-rdel-${r['no']}', 'Delete', () => _del('return', 'retDelete', r['no'] as Object, 'What came back goes out of the stock again.'), color: C.red),
         ]),
+        if (wfLine(r) != null) wfLine(r)!,
+      ],
       if (out > 0) Text('$out returnable item(s) out', style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600)),
       Wrap(spacing: 2, children: [
-        if (k.edit('issue')) _act('is-ret-$no', 'Return', () => _ret(i)),
-        _act('is-print-$no', 'Print', () => printDoc(context, SessionScope.read(context), issueDoc(i)), color: C.blue),
+        ...wfButtons(context, k, 'issue', i, _load, pre: m),
+        if (k.edit('issue')) _act('${m}is-ret-$no', 'Return', () => _ret(i)),
+        _act('${m}is-print-$no', 'Print', () => printDoc(context, SessionScope.read(context), issueDoc(i)), color: C.blue),
         if (k.admin) ...[
-          _act('is-edit-$no', 'Change', () => _form(i), color: C.blue),
-          _act('is-del-$no', 'Delete', () => _del('outward', 'issueDelete', no, bi('Its material comes back into the stock.', 'हे issue डिलीट होईल.')), color: C.red),
+          _act('${m}is-edit-$no', 'Change', () => _form(i), color: C.blue),
+          _act('${m}is-del-$no', 'Delete', () => _del('outward', 'issueDelete', no, bi('Its material comes back into the stock.', 'हे issue डिलीट होईल.')), color: C.red),
         ],
       ]),
     ]);
@@ -2613,6 +2982,13 @@ class _IssueListScreenState extends State<IssueListScreen> with StoreLive<IssueL
                   ],
                 ]),
                 const SizedBox(height: 8),
+                // (3.71.0) waiting for him – to verify or approve
+                if (mine.isNotEmpty) ...[
+                  Text('Waiting for you – to verify or approve (${mine.length})', key: const Key('is-mine'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: C.amber)),
+                  const SizedBox(height: 6),
+                  for (final i in mine) _tile(i, keyPre: 'ism'),
+                  const SizedBox(height: 8),
+                ],
                 Text('${issues.length} issue(s) · ${rs(total)}', key: const Key('is-count'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 if (issues.isEmpty) Padding(padding: const EdgeInsets.all(20), child: Text('No issue in these dates.', textAlign: TextAlign.center, style: _muted)),
@@ -2686,7 +3062,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       };
       final r = await storeSaveAsk(context, widget.k.call, 'issueSave', x);
       if (r == null || !mounted) return;
-      toast(context, 'Outward ${r['no']} saved – ${rs(r['amount'])}.');
+      toast(context, '${r['note'] ?? ''}'.isNotEmpty ? '${r['note']}' : 'Outward ${r['no']} saved – ${rs(r['amount'])}${wfSaid(r['wf'])}', bad: '${r['note'] ?? ''}'.isNotEmpty);      // (3.71.0) its workflow
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
@@ -2790,7 +3166,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     try {
       final r = await widget.k.call('retSave', {'ret': {'issue_no': widget.issue['no'], 'date': date, 'remark': rem.text, 'lines': ls}});
       if (!mounted) return;
-      toast(context, 'Return ${r['no']} saved.');
+      toast(context, '${r['note'] ?? ''}'.isNotEmpty ? '${r['note']}' : 'Return ${r['no']} saved${wfSaid(r['wf'])}', bad: '${r['note'] ?? ''}'.isNotEmpty);      // (3.71.0) its workflow
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);

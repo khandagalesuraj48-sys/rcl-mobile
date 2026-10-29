@@ -15,6 +15,22 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.71.0 (29-10-2026 – "pratek kamamadhe … verification … approval … head office … super admin swatache portel madhun krel";
+"pratek task approval nantr HO la nahi janar – konte jail konte nahi jail te super admin tharau shakel"; "500 MT cement … 100 MT …
+PO balance … HO la full PO … site la balance"; with rcl-store's step 9 and the Portal's step 6):** the Store's **workflow** as the web's:
+a requirement, a PO, a GRN and an issue / return first **verified** (one of the people given "Verifies …", never his own), then
+**approved** ("Approves …"; the requirement's levels, the PO's approvers as before) – Verify / Approve / Send back (why) on each page,
+"Waiting for you" above the GRN and Issue lists (`wfMine`, `wfDecide`), what waits for him on the Work tab and the Dashboard; a **PO's
+balance** (ordered · came · balance on each line, the days it is open, its GRNs) and its **Details** screen (`PoDetailScreen`,
+`poGrns`: each line's quantity and value, every GRN checked with the PO); a **bill checked with its PO** (rate after the Disc. %, GST %,
+more than the PO still had, an item not on the PO – in the GRN form "PO Rate … · bill …" and "The bill is not as per the PO" before the
+save; on the GRN, its print and at HO); **Head Office** on the Purchase page: the bills and the issues & returns the sites send
+(`hoInbox`, ✓ Checked – `hoCheck`); a site that **buys itself** (Portal → Workflow: its requirements not to HO) – its Store Admin's "To
+order" on the site's Purchase Orders; **Super Admin → Workflow** (a new tab): for each work of a site who verifies and who approves it,
+and once approved Head Office Yes / No (`rulesSave`); the Store pages "Verifies … / Approves GRN / issues & returns". Tests:
+`store_work_test`, `screens_test` (the Store's workflow, Super Admin – Workflow). Before the Store's step 9 at a site: the PO, GRN and
+issue as before (no verification); an older Store server: as before.
+
 **Version 3.70.0 (29-10-2026 – "indent number … RCL … VTR … financial year … mechanical / material purchase … 0001"; "site option
 ahe portal madhe tithech site address and contact"; "vehicle che maintanace log book … attach"; "ekda banwaleli requirement edit delet
 krta yeil … po banli aahe … adhi po delet"; with rcl-store's step 8 and the Portal's step 5):** a requirement is named by its **Indent No.**

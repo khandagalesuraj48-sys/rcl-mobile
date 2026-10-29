@@ -127,9 +127,11 @@ String poPaperHtml(Map po, Map heading, Map supplier, {String logo = ''}) {
   final tc = terms.isEmpty
       ? ''
       : '<p style="margin-top:14px"><b>Terms And Conditions:</b></p>${numbered ? terms.map((t) => '<p style="margin:6px 0">${_e(t)}</p>').join() : '<ol>${terms.map((t) => '<li>${_e(t)}</li>').join()}</ol>'}';
-  final ap = p['appr'] == 'Waiting' ? '(waiting for approval)' : p['appr'] == 'Rejected' ? '(rejected)' : _e(p['appr_name']);
+  final ap = p['appr'] == 'Waiting' ? (p['wf'] is Map && (p['wf'] as Map)['state'] == 'verify' ? '(waiting for verification)' : '(waiting for approval)') : p['appr'] == 'Rejected' ? '(rejected)' : _e(p['appr_name']);
+  // (3.71.0, the web's 29-10-2026) who verified it, when it was verified (the workflow)
+  final vby = '${p['verified_by'] ?? ''}'.isEmpty ? '' : '<div>${_e(p['verified_by'])}<br><br>Verified By</div>';
   return _page('PO ${_blank(p['ref']) ? p['no'] : p['ref']}',
-      '<div class="fm">$head$items<p style="margin-top:8px"><b>Remark:</b> ${_e(p['remark'])}</p>$tc<div class="sig"><div>${_e(p['created_name'])}<br><br>Prepared By</div><div>$ap<br><br>Approved By</div></div>'
+      '<div class="fm">$head$items<p style="margin-top:8px"><b>Remark:</b> ${_e(p['remark'])}</p>$tc<div class="sig"><div>${_e(p['created_name'])}<br><br>Prepared By</div>$vby<div>$ap<br><br>Approved By</div></div>'
       '<div class="cg">This Purchase Order is computer generated it does not require signature.</div></div>');
 }
 

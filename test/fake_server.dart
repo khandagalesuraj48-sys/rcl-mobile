@@ -360,6 +360,11 @@ class FakeServer {
   bool storeStep8 = false;
   int? req1Po = 1;
   final storeDeleted = <String>[];
+  // (3.71.0, the Store's workflow – the Portal's Workflow and step 9) off by default: the Store as before. On: requirement 2 waits for
+  // HIS verification, PO 1 for his verification, GRN 4 (against PO 1) for his verification, the return of outward 7 for his approval;
+  // S1 buys its requirements itself (its Store Admin), Head Office has GRN 4 of S1 to check
+  bool storeWf = false;
+  final wfDone = <String>[];
   // (3.68.0) the Store's live: the site's last change (a test makes one: +1)
   int storeLive = 1;
   final regGrnsSaved = <(String, String, int, String, String)>[]; // (key, GRN No, no, date, supplier) of the register's GRNs saved
@@ -378,6 +383,13 @@ class FakeServer {
   static const storeIssue = {'no': 7, 'date': '2026-10-14', 'to_kind': 'Machinery', 'machinery': 'Sany 210 (No.1)', 'party': '', 'reading': 4712, 'location': '540+450', 'side': 'LHS', 'use_for': 'Breakdown', 'receiver': 'Gupta', 'debit': false, 'amount': 1200, 'created_name': 'Sujit Mule',
     'lines': [{'id': 71, 'line': 1, 'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'qty': 4, 'rate': 300, 'amount': 1200, 'gst': 0, 'returnable': true, 'serial': '', 'back': 1}], 'returns': [{'no': 1, 'date': '2026-10-14', 'lines': []}]};
 
+  /// (3.71.0) GRN 4 (against PO 1) waiting for his verification, its bill checked with the PO (its rate 100 – the PO's 95 after its Disc. %)
+  Map<String, dynamic> _wfGrn4() => {'no': 4, 'ref': '4', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': 'MH15AB1', 'po_no': 1, 'tcs': 0, 'gross': 525, 'created_name': 'Store Keeper',
+        'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 5, 'rate': 100, 'gst_pct': 5, 'taxable': 500, 'gst': 25, 'gross': 525, 'po_line': 1, 'remark': ''}],
+        'check': {'ok': false, 'diffs': [{'kind': 'rate', 'name': 'Sugar', 'unit': 'Kg', 'po': 95, 'bill': 100}]}, 'wf': {'state': 'verify', 'by': 'store@rcl.test', 'steps': []}, 'step': 'verify', 'mayDecide': true, 'waitFor': ['Sujit Mule']};
+  /// (3.71.0) outward 7 with its return 1 waiting for his approval
+  Map<String, dynamic> _wfIssue7() => {...storeIssue, 'returns': [{'no': 1, 'date': '2026-10-14', 'lines': [], 'wf': {'state': 'approve', 'by': 'store@rcl.test', 'steps': [{'step': 'verify', 'ok': true, 'name': 'View User', 'at': '2026-10-14T06:00:00Z'}]}, 'step': 'approve', 'mayDecide': true, 'waitFor': ['Sujit Mule']}]};
+
   http.Response _work(Map<String, dynamic> b) {
     List<Map<String, dynamic>> brief() => [for (final i in storeItems) {'code': i['code'], 'name': i['name'], 'unit': i['unit'], 'category': i['category'], 'gst_pct': i['gst_pct'], 'min_stock': i['min_stock'], 'status': i['status']}];
     final rep = {'title': 'Stock', 'sub': 'As on 14-10-2026', 'cols': [{'h': 'Code'}, {'h': 'Item'}, {'h': 'Stock', 'n': true}, {'h': 'Value ₹', 'n': true}], 'rows': [['ITM-0001', 'Hydraulic Hose 1/2 inch', 25, 2500], ['ITM-0002', 'Sugar', 10.5, 1050]], 'total': ['', 'Total (2 items)', '', 3550]};
@@ -386,9 +398,10 @@ class FakeServer {
         return _j({'site': 'S1', 'today': '2026-10-14', 'items': brief(), 'stock': {'ITM-0001': 25, 'ITM-0002': 10.5}, 'avg': {'ITM-0001': 100, 'ITM-0002': 100},
           'machinery': [{'no': 'MH-25-AJ-2169', 'name': 'Tipper', 'own': 'Rental'}, {'no': 'Sany 210 (No.1)', 'name': 'Excavator', 'own': 'Own'}],
           'names': {'suppliers': ['Shri Traders'], 'subs': ['Ganesh Contractor'], 'vendors': ['Shri Traders'], 'gst': {'Shri Traders': '27ABCDE1234F1Z5'}},
-          'levels': [{'level': 1, 'people': ['Sujit Mule']}], 'myLevels': [1], 'kinds': {'for': ['Site work', 'Machinery', 'Office', 'Other'], 'to': ['Site work', 'Sub-contractor', 'Machinery', 'Office'], 'sides': ['LHS', 'RHS', 'Both']}});
+          'levels': [{'level': 1, 'people': ['Sujit Mule']}], 'myLevels': [1], 'kinds': {'for': ['Site work', 'Machinery', 'Office', 'Other'], 'to': ['Site work', 'Sub-contractor', 'Machinery', 'Office'], 'sides': ['LHS', 'RHS', 'Both']},
+          if (storeWf) 'wf': {'mine': {'vreq': true, 'vpo': true, 'vgrn': true, 'agrn': false, 'viss': false, 'aiss': true}, 'ho': {'req': false, 'grn': true, 'iss': false}, 'buy': true}, if (storeWf) 'step9': true});
       case 'dash':
-        return _j({'today': '2026-10-14', 'stock': {'value': 3550, 'below': 1, 'items': 3}, 'req': {'pending': 1, 'mine': 1, 'approved': 1}, 'po': {'open': 1},
+        return _j({'today': '2026-10-14', 'stock': {'value': 3550, 'below': 1, 'items': 3}, 'req': {'pending': 1, 'mine': 1, 'approved': 1}, 'po': {'open': 1}, if (storeWf) 'wf': {'po': 1, 'grn': 1, 'issue': 0, 'ret': 1},
           'grn': {'today': 1, 'todayValue': 525, 'month': 2, 'monthValue': 2625, 'recent': [{'no': 4, 'date': '2026-10-14', 'supplier': 'Shri Traders', 'gross': 525}]},
           'issue': {'today': 1, 'todayValue': 1200, 'month': 1, 'monthValue': 1200, 'recent': [{'no': 7, 'date': '2026-10-14', 'to_kind': 'Machinery', 'machinery': 'Sany 210 (No.1)', 'party': '', 'amount': 1200}]}});
       case 'reqList':
@@ -398,7 +411,8 @@ class FakeServer {
           return {'ref': 'RCL/VTR/2026-27/${r['for_kind'] == 'Machinery' ? 'M' : 'P'}/${'${r['no']}'.padLeft(4, '0')}', 'pos': pos, 'edit': pos.isEmpty && ['Pending', 'Approved', 'Rejected'].contains(r['status']), 'del': pos.isEmpty, 'attach': true,
             'logbook': r['logbook'], 'contact_name': r['contact_name'] ?? '', 'contact_phone': r['contact_phone'] ?? ''};
         }
-        return _j({'reqs': [for (final r in storeReqs) {...r, 'ref': 'RCL/VTR/PR/2026/${'${r['no']}'.padLeft(4, '0')}', 'photos': r['photos'] ?? [], if (storeStep8) ...s8(r)}], 'levels': [{'level': 1, 'people': ['Sujit Mule']}],
+        Map<String, dynamic> vf(Map<String, dynamic> r) => storeWf && r['no'] == 2 && r['status'] == 'Pending' ? {'level': 0, 'step': 'verify', 'mayVerify': true, 'mayApprove': true, 'waitFor': ['Sujit Mule']} : {};
+        return _j({'reqs': [for (final r in storeReqs) {...r, 'ref': 'RCL/VTR/PR/2026/${'${r['no']}'.padLeft(4, '0')}', 'photos': r['photos'] ?? [], if (storeStep8) ...s8(r), ...vf(r)}], 'levels': [{'level': 1, 'people': ['Sujit Mule']}], if (storeWf) 'verifiers': ['Sujit Mule'],
           'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'email': storePapers['email'] ?? '', if (storeStep8) 'site_address': 'Site office, Valshind'}, 'step7': storeStep7,
           if (storeStep8) 'step8': true, if (storeStep8) 'start': {'contact_name': 'Ramesh Patil', 'contact_phone': '98765 43210'}});
       // (3.70.0) a machinery's maintenance log book; a requirement deleted, a photo taken out, its log book attached / taken out; a PO deleted
@@ -461,10 +475,12 @@ class FakeServer {
             r['mayApprove'] = false;
           }
         }
-        return _j({'ok': true, 'done': [for (final n in nos) {'no': n, 'status': b['ok'] == true ? 'Approved' : 'Rejected', 'level': 0}], 'left': []});
+        return _j({'ok': true, 'done': [for (final n in nos) {'no': n, 'status': b['ok'] == true ? 'Approved' : 'Rejected', 'level': 0, if (storeWf && n == 2) 'step': 'verify'}], 'left': []});
       case 'reqCancel' || 'reqClose' || 'poCancel' || 'poClose' || 'grnDelete' || 'issueDelete' || 'retDelete':
         return _j({'ok': true});
       case 'purPending':
+        if (storeWf && b['mine'] == true) return _j({'sites': [{'site': 'S1', 'name': 'VTR Site – NH 848', 'reqs': [{...storeReqs.firstWhere((r) => r['no'] == 1), 'made_by': 'Amol Patil', 'since': '2026-10-12'}], 'open': 1}], 'today': '2026-10-14'});
+        if (storeWf) return _j({'today': '2026-10-14', 'sites': [{'site': 'S1', 'name': 'VTR Site – NH 848', 'reqs': [], 'own': true, 'open': 1}, {'site': 'T2', 'name': '18B Kolhapur', 'reqs': [{...storeReqs.firstWhere((r) => r['no'] == 1), 'made_by': 'Amol Patil', 'since': '2026-10-12'}], 'open': 0}]});
         return _j({'sites': [
           {'site': 'S1', 'name': 'VTR Site – NH 848', 'reqs': [storeReqs.firstWhere((r) => r['no'] == 1)], 'open': 1},
           {'site': 'T2', 'name': '18B Kolhapur', 'reqs': [], 'error': 'The Store\'s step 2 is not run in this site\'s database yet.'},
@@ -478,7 +494,30 @@ class FakeServer {
         // (3.70.0) with step 8: PO 1 with nothing come yet (it may be deleted); deleted – no PO
         if (storeStep8 && req1Po == null) return _j({'pos': []});
         final po0 = storeStep8 ? {...storePo, 'state': 'Open', 'lines': [{...((storePo['lines'] as List).first as Map), 'received': 0, 'left': 20, 'req_ref': 'RCL/VTR/2026-27/P/0001'}]} : storePo;
-        return _j({'pos': [{...po0, ...(storeStep5 ? po1Appr : {'appr': 'Approved'}), 'mayApprove': wait, 'waitFor': wait ? ['Sujit Mule'] : []}]});
+        final v1 = storeWf && wait && !wfDone.contains('PO 1');
+        return _j({'pos': [{...po0, ...(storeStep5 ? po1Appr : {'appr': 'Approved'}), 'mayApprove': wait, 'waitFor': wait ? ['Sujit Mule'] : [], if (storeWf) 'grns': 1, if (v1) 'step': 'verify', if (v1) 'mayVerify': true}], 'buy': storePages['purchase'] == 'Edit' || (storeWf && storeAdmin), 'today': '2026-10-14'});
+      // (3.71.0) one PO with every GRN against it – ordered / came / balance, each GRN checked with the PO
+      case 'poGrns':
+        return _j({'po': {...storePo, 'ref': 'RCL/VTR/PO/2026/0001'}, 'today': '2026-10-14', 'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 20, 'rate': 100, 'came': 5, 'left': 15, 'value': 2000, 'cameValue': 500, 'leftValue': 1500}],
+          'grns': [{'no': 4, 'ref': '4', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'gross': 525, 'lines': [{'line': 1, 'name': 'Sugar', 'unit': 'Kg', 'qty': 5, 'rate': 100, 'taxable': 500, 'po_line': 1}],
+            'check': {'ok': false, 'diffs': [{'kind': 'rate', 'name': 'Sugar', 'unit': 'Kg', 'po': 95, 'bill': 100}]}, 'wf': {'state': 'verify', 'by': 'store@rcl.test', 'steps': []}, 'step': 'verify', 'mayDecide': true, 'waitFor': ['Sujit Mule']}]});
+      case 'wfMine':
+        if (!storeWf) return _j({'grns': [], 'issues': [], 'step9': false});
+        return _j({'step9': true, 'grns': [if (!wfDone.contains('grn 4')) _wfGrn4()], 'issues': [if (!wfDone.contains('ret 1')) _wfIssue7()]});
+      case 'wfDecide':
+        wfDone.add('${b['kind']} ${b['no']}');
+        return _j({'ok': true, 'no': b['no'], 'state': b['ok'] == true ? (b['kind'] == 'grn' ? 'approve' : 'done') : 'returned', 'ho': false});
+      case 'hoInbox':
+        if (!storeWf) return _j({'error': 'Unknown action.'}, 404); // (as a Store before its workflow – the old tests' Purchase page unchanged)
+        final grnHo = {..._wfGrn4(), 'wf': {'state': 'done', 'ho': true, 'steps': [{'step': 'approve', 'ok': true, 'name': 'Asha Accounts', 'at': '2026-10-14T06:00:00Z'}], if (wfDone.contains('ho grn 4')) 'hoOk': {'name': 'Sujit Mule'}}, 'step': '', 'mayDecide': false};
+        final done = b['done'] == true;
+        return _j({'kind': b['kind'], 'done': done, 'sites': [
+          {'site': 'S1', 'name': 'VTR Site – NH 848', 'ho': b['kind'] == 'grn', 'step9': true, 'rows': [if (b['kind'] == 'grn' && done == wfDone.contains('ho grn 4')) grnHo]},
+          {'site': 'T2', 'name': '18B Kolhapur', 'rows': [], 'step9': false},
+        ]});
+      case 'hoCheck':
+        wfDone.add('ho ${b['kind']} ${b['no']}');
+        return _j({'ok': true});
       case 'poGet':
         return _j({
           'po': {...storePo, ...po1Appr, 'ref': 'RCL/VTR/PO/2026/0001', 'words': 'Two Thousand One Hundred Rupees Only', 'credit_days': 30, 'site_contact': 'Store Keeper : 90000 00000', 'ship_to': 'VTR Site Store\nNH 848', 'freight': 0, 'load_unload': 0,
@@ -504,7 +543,8 @@ class FakeServer {
             {'no': 6, 'ref': '6', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-12', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': '', 'po_no': null, 'tcs': 0, 'gross': 926.1, 'created_name': 'Sujit Mule',
               'basic': 1000, 'disc': 118, 'bill_disc': 18, 'bill_disc_pct': 2, 'bill_disc_on': 'basic',
               'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 10, 'rate': 100, 'gst_pct': 5, 'basic': 1000, 'disc': 100, 'disc_pct': 10, 'disc_on': 'basic', 'bill_disc': 18, 'taxable': 882, 'gst': 44.1, 'gross': 926.1, 'net_rate': 88.2, 'po_line': null, 'remark': ''}]},
-          {'no': 4, 'ref': '4', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': 'MH15AB1', 'po_no': 1, 'tcs': 0, 'gross': 525, 'created_name': 'Sujit Mule',
+          storeWf ? {..._wfGrn4(), if (wfDone.contains('grn 4')) 'wf': {'state': 'approve', 'by': 'store@rcl.test', 'steps': [{'step': 'verify', 'ok': true, 'name': 'Sujit Mule', 'at': '2026-10-14T06:00:00Z'}]}, if (wfDone.contains('grn 4')) 'mayDecide': false, if (wfDone.contains('grn 4')) 'step': 'approve'}
+          : {'no': 4, 'ref': '4', 'date': '2026-10-14', 'supplier': 'Shri Traders', 'invoice_no': 'INV-9', 'invoice_date': '2026-10-14', 'challan_no': '', 'vehicle_no': 'MH15AB1', 'po_no': 1, 'tcs': 0, 'gross': 525, 'created_name': 'Sujit Mule',
             'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 5, 'rate': 100, 'gst_pct': 5, 'taxable': 500, 'gst': 25, 'gross': 525, 'po_line': 1, 'remark': ''}]},
           {'no': 1000000001, 'ref': '342-A', 'date': '2026-10-13', 'supplier': 'Om Hardware Bhiwandi', 'invoice_no': 'OH-77', 'invoice_date': '2026-10-12', 'challan_no': 'CH-5', 'vehicle_no': 'MH04AB1234', 'po_no': null, 'tcs': 12.5, 'gross': 1192.5, 'created_name': 'Sujit Mule',
             'lines': [{'line': 1, 'code': 'ITM-0001', 'name': 'Hydraulic Hose 1/2 inch', 'unit': 'Mtr', 'qty': 4, 'rate': 250, 'gst_pct': 18, 'taxable': 1000, 'gst': 180, 'gross': 1180, 'po_line': null, 'remark': 'Mechanical'}]},
@@ -631,15 +671,24 @@ class FakeServer {
     {'name': 'Camp Pump', 'cap': 18000, 'used': true, 'stock': 12450.5},
     {'name': 'MH12ZE1739', 'cap': 2650, 'used': false, 'stock': 800},
   ];
+  final saHo = <String, Map<String, bool>>{}; // (3.71.0) the sites' workflow Head Office choices
+  bool portalStep6 = true;
   bool siteKey = false, siteTables = false; // the New site checklist: the key in Vercel, Mechanical's tables run
   static const kStorePages = [
     {'key': 'dashboard', 'label': 'Dashboard', 'opts': ['View', 'None']},
     {'key': 'items', 'label': 'Item Master', 'opts': ['Edit', 'View', 'None']},
     {'key': 'req', 'label': 'Material Requirements', 'opts': ['None', 'View', 'Edit']},
+    // (3.71.0, the Portal with the Store's workflow) who verifies each work and who approves the GRN / the issues
+    {'key': 'vreq', 'label': 'Verifies requirements', 'opts': ['None', 'Yes'], 'admin': true},
     {'key': 'approve', 'label': 'Approves requirements', 'opts': ['None', 'L1', 'L2', 'L3', 'L4', 'L5'], 'admin': true},
     {'key': 'purchase', 'label': 'Store Purchase – every site (HO)', 'opts': ['None', 'Edit'], 'admin': true},
+    {'key': 'vpo', 'label': 'Verifies purchase orders', 'opts': ['None', 'Yes'], 'admin': true},
     // (3.62.0, the Portal with the Store's step 5) who approves the site's purchase orders
     {'key': 'poapprove', 'label': 'Approves purchase orders', 'opts': ['None', 'Yes'], 'admin': true},
+    {'key': 'vgrn', 'label': 'Verifies GRN (Inward)', 'opts': ['None', 'Yes'], 'admin': true},
+    {'key': 'agrn', 'label': 'Approves GRN (Inward)', 'opts': ['None', 'Yes'], 'admin': true},
+    {'key': 'viss', 'label': 'Verifies issues & returns', 'opts': ['None', 'Yes'], 'admin': true},
+    {'key': 'aiss', 'label': 'Approves issues & returns', 'opts': ['None', 'Yes'], 'admin': true},
   ];
 
   http.Response _no(String msg, [int code = 400, String c = '']) => _j({'error': msg, if (c.isNotEmpty) 'code': c}, code);
@@ -653,7 +702,8 @@ class FakeServer {
     switch (a) {
       case 'overview':
         {
-          return _j({'users': saUsers, 'sites': saSites, 'modules': saModules, 'companies': saCompanies, 'access': saAccess, 'storePages': kStorePages});
+          // (3.71.0) each site with its workflow's Head Office choices (the Portal's step 6)
+          return _j({'users': saUsers, 'sites': [for (final y in saSites) {...y, 'ho': saHo[y['code']] ?? const {'req': true, 'grn': false, 'iss': false}, 'step6': portalStep6}], 'modules': saModules, 'companies': saCompanies, 'access': saAccess, 'storePages': kStorePages});
         }
       case 'userSave':
         {
@@ -700,13 +750,27 @@ class FakeServer {
           mechUserPerms[email] = given;
           return _j({'ok': true, 'added': was.isEmpty, 'changes': ch.join(', ')});
         }
+      case 'rulesSave':
+        {
+          // (3.71.0, as the Portal's) what goes to Head Office once approved – needs the Portal's step 6
+          if (!siteOk(site)) return _no('This site is not in the list.', 404);
+          if (!portalStep6) return _no('The Head Office choices of the workflow need the Portal\'s database step 6 first: run sql/portal_step6_rules.sql once in the Portal\'s Supabase → SQL Editor, then save them again.', 400, 'nostep');
+          final g = (x['ho'] as Map?) ?? const {}, ho = <String, bool>{};
+          for (final k in const ['req', 'grn', 'iss']) {
+            if (g[k] is! bool) return _no('Choose Yes or No for each work.', 400, 'field');
+            ho[k] = g[k] as bool;
+          }
+          saHo[site] = ho;
+          log('Workflow', '$site · store', {'headOffice': ho.entries.map((e) => '${e.key}: ${e.value ? 'Yes' : 'No'}').join(', ')});
+          return _j({'ok': true, 'ho': ho});
+        }
       case 'storePagesSave':
         {
           final y = acc(email, site, 'store');
           if (y == null) return _no('First give him the Store on this site (Admin or User), then his pages.', 400, 'noaccess');
           // (3.55.0, as the Portal with the Store's step 2) a Store Admin: only who approves and Store Purchase
           final pg = ((x['pages'] as Map?) ?? const {}).cast<String, dynamic>();
-          y['pages'] = y['role'] == 'admin' ? {for (final k in const ['approve', 'purchase', 'poapprove']) if (pg.containsKey(k)) k: pg[k]} : pg;
+          y['pages'] = y['role'] == 'admin' ? {for (final p in kStorePages) if (p['admin'] == true && pg.containsKey(p['key'])) '${p['key']}': pg[p['key']]} : pg;
           return _j({'ok': true, 'pages': y['pages']});
         }
       case 'placesGet':
