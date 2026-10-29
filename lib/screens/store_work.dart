@@ -4,6 +4,7 @@
  * checks and access as the web's pages (rcl-store api/work.js and public/work.js); every save is checked again by the Store's
  * server and inside its database (one save at a time on the site, an item's stock never below zero on any date). */
 import 'dart:convert';
+import 'dart:math' show min;
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart' show rootBundle;
@@ -298,7 +299,7 @@ Future<Map<String, dynamic>?> pickStoreItem(BuildContext context, List<Map<Strin
 
 /* ---------------- the LINES of a paper (the web's Lines): a card each, "+ Add item" ---------------- */
 class SLine {
-  SLine({this.code = '', this.name = '', this.unit = '', String qty = '', String rate = '', String gst = '', String note = '', String serial = '', String brand = '', String spec = '', String disc = '', String hsn = '', this.returnable = false, this.reqNo, this.reqLine, this.poLine, this.info = ''})
+  SLine({this.code = '', this.name = '', this.unit = '', String qty = '', String rate = '', String gst = '', String note = '', String serial = '', String brand = '', String spec = '', String disc = '', String hsn = '', this.returnable = false, this.reqNo, this.reqLine, this.poLine, this.info = '', this.discOn = 'basic', this.poQty, this.poBefore})
       : disc = TextEditingController(text: disc),
         hsn = TextEditingController(text: hsn),
         qty = TextEditingController(text: qty),
@@ -318,6 +319,12 @@ class SLine {
   bool returnable;
   final int? reqNo, reqLine, poLine;
 
+  /// (3.63.0, the Store's step 6) a GRN's line: its discount ("10%" or "500" ₹ – in [disc]) is on the Basic or after GST
+  String discOn;
+
+  /// (3.63.0) a GRN's line against a PO: the PO's Qty and what was received on it before (the shortage after this GRN)
+  final double? poQty, poBefore;
+
   /// taxable = qty × rate less the Disc. % (the web's lineMoney), the GST on it, the total
   ({double t, double g, double all}) money() {
     final t = r2(r2(_d(qty.text) * _d(rate.text)) * (100 - _d(disc.text)) / 100), g = r2(t * _d(gst.text) / 100);
@@ -331,6 +338,92 @@ class SLine {
   }
 }
 
+/* (3.63.0, the Store's step 6 – 29-10-2026: "bill madh discount pn kadhi kdhi dettat mg to kadhi basic war … kadhi gst war"; his answers:
+ * on a line AND on the whole bill, each on the Basic or after GST, % or ₹; the stock's rate with both deducted) A GRN'S MONEY as the
+ * Store's server works it out (lib/work.js checkGrn – the web's grnMoney): a line's Basic (qty × rate); its discount on the Basic, then
+ * the bill's on the Basic shared by the lines' taxable; GST on what is left; a line's discount after GST, then the bill's after GST shared
+ * by the lines' amounts (to the paisa – what is left over to the biggest). The server works it out again when it is saved. */
+double _r2e(num v) => ((v + 2.220446049250313e-16) * 100).roundToDouble() / 100; // (the server's r2: Math.round((n + EPSILON) * 100) / 100)
+
+/// a discount as typed – "10%" (a share) or "500" (₹); null: none
+({double? pct, double? amt})? grnDiscOf(String v) {
+  final t = v.replaceAll(',', '').replaceFirst(RegExp(r'^₹\s*'), '').replaceAll(RegExp(r'\s+'), '');
+  if (t.isEmpty || t == '0' || t == '0%') return null;
+  final p = t.endsWith('%'), n = double.tryParse(p ? t.substring(0, t.length - 1) : t);
+  if (n == null || n < 0) return null;
+  return p ? (pct: _r2e(n < 99.99 ? n : 99.99), amt: null) : (pct: null, amt: _r2e(n));
+}
+
+class GrnLineMoney {
+  GrnLineMoney(this.basic, this.taxable, this.pct);
+  final double basic, pct;
+  double taxable, disc = 0, billDisc = 0, gst = 0, gross = 0;
+}
+
+class GrnMoney {
+  GrnMoney(this.lines, this.billDisc);
+  final List<GrnLineMoney> lines;
+  final double billDisc;
+  double _s(double Function(GrnLineMoney) f) => _r2e(lines.fold<double>(0, (a, l) => a + f(l)));
+  double get basic => _s((l) => l.basic);
+  double get taxable => _s((l) => l.taxable);
+  double get gst => _s((l) => l.gst);
+  double get gross => _s((l) => l.gross);
+  double get disc => _r2e(_s((l) => l.disc) + billDisc);
+}
+
+List<double> _share(double total, List<double> bases) {
+  final sum = bases.fold<double>(0, (a, b) => a + b), out = [for (final b in bases) sum > 0 ? _r2e(total * b / sum) : 0.0];
+  final left = _r2e(total - out.fold<double>(0, (a, b) => a + b));
+  if (left != 0 && out.isNotEmpty) {
+    var k = 0;
+    for (var i = 0; i < bases.length; i++) {
+      if (bases[i] > bases[k]) k = i;
+    }
+    out[k] = _r2e(out[k] + left);
+  }
+  return out;
+}
+
+GrnMoney grnMoney(List<SLine> rows, String billDisc, String billOn) {
+  final ds = [for (final r in rows) grnDiscOf(r.disc.text)], ml = <GrnLineMoney>[];
+  for (final (i, r) in rows.indexed) {
+    final basic = _r2e(_d(r.qty.text) * _d(r.rate.text)), d = ds[i];
+    final ld = d != null && r.discOn != 'gst' ? min(basic, d.pct != null ? _r2e(basic * d.pct! / 100) : d.amt!) : 0.0;
+    ml.add(GrnLineMoney(basic, _r2e(basic - ld), _d(r.gst.text))..disc = ld);
+  }
+  final bd = grnDiscOf(billDisc), bon = billOn == 'gst' ? 'gst' : 'basic';
+  var bill = 0.0;
+  if (bd != null && bon == 'basic') {
+    final base = _r2e(ml.fold<double>(0, (a, l) => a + l.taxable));
+    bill = min(base, bd.pct != null ? _r2e(base * bd.pct! / 100) : bd.amt!);
+    for (final (i, v) in _share(bill, [for (final l in ml) l.taxable]).indexed) {
+      ml[i].taxable = _r2e(ml[i].taxable - v);
+      ml[i].billDisc = v;
+    }
+  }
+  for (final l in ml) {
+    l.gst = _r2e(l.taxable * l.pct / 100);
+    l.gross = _r2e(l.taxable + l.gst);
+  }
+  for (final (i, l) in ml.indexed) {
+    final d = ds[i];
+    if (d == null || rows[i].discOn != 'gst') continue;
+    final v = min(l.gross, d.pct != null ? _r2e(l.gross * d.pct! / 100) : d.amt!);
+    l.disc = v;
+    l.gross = _r2e(l.gross - v);
+  }
+  if (bd != null && bon == 'gst') {
+    final base = _r2e(ml.fold<double>(0, (a, l) => a + l.gross));
+    bill = min(base, bd.pct != null ? _r2e(base * bd.pct! / 100) : bd.amt!);
+    for (final (i, v) in _share(bill, [for (final l in ml) l.gross]).indexed) {
+      ml[i].gross = _r2e(ml[i].gross - v);
+      ml[i].billDisc = v;
+    }
+  }
+  return GrnMoney(ml, bill);
+}
+
 ({double t, double g, double all}) linesMoney(List<SLine> l) {
   var t = 0.0, g = 0.0;
   for (final x in l) {
@@ -342,7 +435,7 @@ class SLine {
 }
 
 class SLinesEditor extends StatelessWidget {
-  const SLinesEditor({super.key, required this.k, required this.lines, required this.onChanged, this.items, this.tag = 'ln', this.qtyLabel = 'Qty *', this.rateLabel = '', this.gst = false, this.gstFill = false, this.noteLabel = '', this.returnable = false, this.serial = false, this.stock = false, this.money = false, this.brandSpec = false, this.discHsn = false});
+  const SLinesEditor({super.key, required this.k, required this.lines, required this.onChanged, this.items, this.tag = 'ln', this.qtyLabel = 'Qty *', this.rateLabel = '', this.gst = false, this.gstFill = false, this.noteLabel = '', this.returnable = false, this.serial = false, this.stock = false, this.money = false, this.brandSpec = false, this.discHsn = false, this.grn});
   final StoreKit k;
   final List<SLine> lines;
   final VoidCallback onChanged;
@@ -355,6 +448,10 @@ class SLinesEditor extends StatelessWidget {
   /// (3.62.0) a PO's line: Disc. % and HSN (the item's own HSN filled in)
   final bool discHsn;
 
+  /// (3.63.0, the Store's step 6) a GRN's lines: their money (each line's discount, its part of the bill's) – with [GrnMoney.disc] offered
+  /// when [grnDisc]; a line against a PO shows its PO Qty, what came before and the shortage after this GRN
+  final ({GrnMoney m, bool disc})? grn;
+
   Future<void> _add(BuildContext context) async {
     final i = await pickStoreItem(context, items ?? k.active);
     if (i == null) return;
@@ -363,7 +460,8 @@ class SLinesEditor extends StatelessWidget {
   }
 
   Widget _line(int i, SLine l) {
-    final m = l.money();
+    final m = l.money(), gm = grn != null && i < grn!.m.lines.length ? grn!.m.lines[i] : null;
+    final short = l.poQty == null ? null : ((l.poQty! - (l.poBefore ?? 0) - _d(l.qty.text)) * 1000).roundToDouble() / 1000;
     return Container(
       key: Key('$tag-$i'),
       margin: const EdgeInsets.only(bottom: 8),
@@ -385,7 +483,13 @@ class SLinesEditor extends StatelessWidget {
               icon: const Icon(Icons.close_rounded, color: C.red),
             ),
           ]),
-          Text('${l.code}${stock ? ' · stock now ${q3(k.stock(l.code))} ${l.unit}' : ''}', style: _faint),
+          Text('Item Code ${l.code}${stock ? ' · stock now ${q3(k.stock(l.code))} ${l.unit}' : ''}', key: Key('$tag-code-$i'), style: _faint), // (3.63.0, "iteam code ani name weg wegle de")
+          if (short != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text('PO Qty ${q3(l.poQty)} · Received before ${q3(l.poBefore ?? 0)} · ${short > 0.0005 ? 'Shortage ${q3(short)} ${l.unit}' : short < -0.0005 ? '+${q3(-short)} more than the PO' : 'Shortage 0'}',
+                  key: Key('$tag-po-$i'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: short > 0.0005 ? C.amber : short < -0.0005 ? C.red : C.muted)),
+            ),
           const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -402,6 +506,22 @@ class SLinesEditor extends StatelessWidget {
                 Expanded(child: TextBox(key: Key('$tag-d-$i'), label: 'Disc. %', controller: l.disc, kb: _dec, onChanged: (_) => onChanged())),
                 const SizedBox(width: 8),
                 Expanded(child: TextBox(key: Key('$tag-h-$i'), label: 'HSN', controller: l.hsn, kb: TextInputType.number)),
+              ]),
+            ),
+          if (grn?.disc == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, right: 8),
+              child: Row(children: [
+                Expanded(child: TextBox(key: Key('$tag-gd-$i'), label: 'Disc. (% or ₹)', hint: '10% / 500', controller: l.disc, onChanged: (_) => onChanged())),
+                const SizedBox(width: 8),
+                for (final o in const [('basic', 'Basic'), ('gst', 'After GST')])
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: ChoiceChip(key: Key('$tag-go-$i-${o.$1}'), label: Text(o.$2), selected: l.discOn == o.$1, onSelected: (_) {
+                      l.discOn = o.$1;
+                      onChanged();
+                    }),
+                  ),
               ]),
             ),
           if (serial) Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: TextBox(key: Key('$tag-s-$i'), label: 'Serial No (tyre / battery)', controller: l.serial)),
@@ -423,7 +543,12 @@ class SLinesEditor extends StatelessWidget {
               },
               title: Text('Returnable', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ),
-          if (money) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Taxable ${rs(m.t)} · GST ${rs(m.g)} · Total ${rs(m.all)}', key: Key('$tag-m-$i'), style: _muted)),
+          if (money && gm != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text('${gm.disc + gm.billDisc > 0 ? 'Basic ${rs(gm.basic)} · Disc. ${rs(_r2e(gm.disc + gm.billDisc))} · ' : ''}Taxable ${rs(gm.taxable)} · GST ${rs(gm.gst)} · Gross ${rs(gm.gross)}', key: Key('$tag-m-$i'), style: _muted))
+          else if (money)
+            Padding(padding: const EdgeInsets.only(top: 6), child: Text('Taxable ${rs(m.t)} · GST ${rs(m.g)} · Total ${rs(m.all)}', key: Key('$tag-m-$i'), style: _muted)),
         ]),
       ),
     );
@@ -1300,8 +1425,14 @@ class _PoListScreenState extends State<PoListScreen> {
 /// (3.57.0) the GRN No as shown: an old register's GRN No ("342-A") – else its number
 String grnRef(Map g) => '${g['ref'] ?? ''}'.isNotEmpty ? '${g['ref']}' : '${g['no']}';
 
+/// (3.63.0, the Store's step 6) a GRN with a discount: its lines also show the discount (its own and its part of the bill's) and the net rate
+bool grnHasDisc(Map g) => nOf(g['disc']) > 0 || listOf(g['lines']).any((l) => nOf(l['disc']) > 0 || nOf(l['bill_disc']) > 0);
+String grnDiscOnTxt(dynamic on) => on == 'gst' ? 'after GST' : 'on Basic';
+String grnBillDiscTxt(Map g) => nOf(g['bill_disc']) > 0 ? '${g['bill_disc_pct'] != null ? '${plainN(g['bill_disc_pct'])}% ' : ''}${grnDiscOnTxt(g['bill_disc_on'])} – ${rs(g['bill_disc'])}' : '';
+num grnLineDisc(Map l) => _r2e(nOf(l['disc']) + nOf(l['bill_disc']));
+
 RDoc grnDoc(Map<String, dynamic> g) {
-  final lines = listOf(g['lines']);
+  final lines = listOf(g['lines']), hd = grnHasDisc(g);
   return RDoc(
     title: 'Goods Received Note – GRN ${grnRef(g)}',
     file: 'GRN_${grnRef(g).replaceAll(RegExp(r'[^A-Za-z0-9-]+'), '_')}',
@@ -1318,15 +1449,21 @@ RDoc grnDoc(Map<String, dynamic> g) {
     blocks: [
       RTable(
         sheet: 'GRN ${grnRef(g)}',
-        head: const ['#', 'Material', 'Received Qty', 'UOM', 'Basic Rate', 'Taxable', 'GST %', 'GST', 'Gross', 'Remark'],
-        numCols: const {2, 4, 5, 6, 7, 8},
+        // (3.63.0, as the web's print) the item's code; a GRN with a discount: the discount and the net rate, the bill's discount
+        head: ['#', 'Item Code', 'Material', 'Received Qty', 'UOM', 'Basic Rate', if (hd) ...['Discount', 'Net Rate'], 'Taxable', 'GST %', 'GST', 'Gross', 'Remark'],
+        numCols: hd ? const {3, 5, 6, 7, 8, 9, 10, 11} : const {3, 5, 6, 7, 8, 9},
         rows: [
           for (final (i, l) in lines.indexed)
-            RRow([sc(i + 1), tc(l['name']), RCell(q3(l['qty']), n: true, value: nOf(l['qty'])), tc(l['unit']), mc(l['rate']), mc(l['taxable']), RCell(q3(l['gst_pct']), n: true, value: nOf(l['gst_pct'])), mc(l['gst']), mc(l['gross']), tc(l['remark'] ?? '')]),
+            RRow([
+              sc(i + 1), tc(l['code'] ?? ''), tc(l['name']), RCell(q3(l['qty']), n: true, value: nOf(l['qty'])), tc(l['unit']), mc(l['rate']),
+              if (hd) ...[mc(grnLineDisc(l)), mc(l['net_rate'] ?? l['rate'])],
+              mc(l['taxable']), RCell(q3(l['gst_pct']), n: true, value: nOf(l['gst_pct'])), mc(l['gst']), mc(l['gross']), tc(l['remark'] ?? ''),
+            ]),
         ],
         foot: [
-          if (nOf(g['tcs']) != 0) RRow([RCell('TCS', span: 8), mc(g['tcs']), tc('')]),
-          RRow([RCell('Gross', bold: true, span: 8), mc(g['gross'], bold: true), tc('')], kind: RKind.grand),
+          if (hd && nOf(g['basic']) > 0) RRow([RCell('Basic ${rs(g['basic'])} · Discount ${rs(g['disc'])}${nOf(g['bill_disc']) > 0 ? ' (the bill: ${grnBillDiscTxt(g)})' : ''}', span: 13)]),
+          if (nOf(g['tcs']) != 0) RRow([RCell('TCS', span: hd ? 11 : 9), mc(g['tcs']), tc('')]),
+          RRow([RCell('Gross', bold: true, span: hd ? 11 : 9), mc(g['gross'], bold: true), tc('')], kind: RKind.grand),
         ],
       ),
       if ('${g['remark'] ?? ''}'.isNotEmpty) RNote('${g['remark']}'),
@@ -1424,13 +1561,15 @@ class _GrnListScreenState extends State<GrnListScreen> {
             if ('${g['vehicle_no'] ?? ''}'.isNotEmpty) 'Vehicle No ${g['vehicle_no']}',
             if (nOf(g['tcs']) != 0) 'TCS ${rs(g['tcs'])}',
             if (g['po_no'] != null) 'PO No ${g['po_no']}',
+            if (nOf(g['bill_disc']) > 0) 'Bill discount ${grnBillDiscTxt(g)}', // (3.63.0)
           ].join(' · '),
           style: _faint),
       for (final l in listOf(g['lines']))
         Padding(
           padding: const EdgeInsets.only(top: 3),
-          child: Text('• ${l['name']} – ${q3(l['qty'])} ${l['unit']} @ ${q3(l['rate'])} · Taxable ${rs(l['taxable'])} · GST ${rs(l['gst'])} · Gross ${rs(l['gross'])}${'${l['remark'] ?? ''}'.isNotEmpty ? ' · ${l['remark']}' : ''}',
-              style: const TextStyle(fontSize: 13.5)),
+          // (3.63.0) its code apart; a discount: what came off and its net rate (the stock's)
+          child: Text('• ${l['code'] ?? ''} · ${l['name']} – ${q3(l['qty'])} ${l['unit']} @ ${q3(l['rate'])}${grnLineDisc(l) > 0 ? ' · Disc. ${rs(grnLineDisc(l))} · Net rate ${q3(l['net_rate'] ?? l['rate'])}' : ''} · Taxable ${rs(l['taxable'])} · GST ${rs(l['gst'])} · Gross ${rs(l['gross'])}${'${l['remark'] ?? ''}'.isNotEmpty ? ' · ${l['remark']}' : ''}',
+              key: Key('gr-l-$no-${l['line']}'), style: const TextStyle(fontSize: 13.5)),
         ),
       Wrap(spacing: 2, children: [
         _act('gr-print-$no', 'Print', () => printDoc(context, SessionScope.read(context), grnDoc(g)), color: C.blue),
@@ -1492,6 +1631,12 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
   final lines = <SLine>[];
   bool busy = false, loading = true;
 
+  /// (3.63.0, the Store's step 6) a discount on a line and on the whole bill (each on the Basic or after GST) – offered with step 6
+  bool step6 = false;
+  final billDisc = TextEditingController();
+  String billOn = 'basic';
+  static String _dTxt(dynamic pct, dynamic amt) => pct != null && '$pct'.isNotEmpty ? '${plainN(pct)}%' : nOf(amt) > 0 ? plainN(amt) : '';
+
   @override
   void initState() {
     super.initState();
@@ -1512,12 +1657,11 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
     tcs.text = plainN(g?['tcs']);
     rem.text = '${g?['remark'] ?? ''}';
     if (g != null) ref.text = grnRef(g);
+    billDisc.text = g == null ? '' : _dTxt(g['bill_disc_pct'], g['bill_disc']);
+    billOn = g?['bill_disc_on'] == 'gst' ? 'gst' : 'basic';
     final old = [...lines];
     lines.clear();
-    for (final l in listOf(g?['lines'])) {
-      final pl = l['po_line'] == null ? null : nOf(l['po_line']).toInt();
-      lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), note: '${l['remark'] ?? ''}', poLine: pl, info: pl == null ? '' : 'PO line $pl'));
-    }
+    for (final l in listOf(g?['lines'])) lines.add(_saved(l));
     if (old.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         for (final l in old) {
@@ -1539,8 +1683,22 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
     }
   }
 
+  /// a line of the GRN being changed, as it is saved (its discount; against its PO: the PO's figures without this GRN)
+  SLine _saved(Map<String, dynamic> l) {
+    final pl = l['po_line'] == null ? null : nOf(l['po_line']).toInt(), p = _poLine('${widget.grn?['po_no'] ?? ''}', pl);
+    return SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), note: '${l['remark'] ?? ''}', poLine: pl, info: pl == null ? '' : 'PO line $pl',
+        disc: _dTxt(l['disc_pct'], l['disc']), discOn: l['disc_on'] == 'gst' ? 'gst' : 'basic', poQty: p == null ? null : nOf(p['qty']).toDouble(), poBefore: p == null ? null : nOf(p['received']).toDouble());
+  }
+
+  Map<String, dynamic>? _poLine(String po, int? line) {
+    if (po.isEmpty || line == null) return null;
+    final p = pos.where((x) => '${x['no']}' == po).firstOrNull;
+    return p == null ? null : listOf(p['lines']).where((l) => nOf(l['line']) == line).firstOrNull;
+  }
+
   @override
   void dispose() {
+    billDisc.dispose();
     for (final c in [sup, ch, inv, veh, tcs, rem, ref]) {
       c.dispose();
     }
@@ -1553,25 +1711,29 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
   Future<void> _load() async {
     var l = <Map<String, dynamic>>[];
     try {
-      l = listOf((await widget.k.call('poOpen'))['pos']);
+      // (3.63.0) a GRN being changed: its own PO too, with what came on it before it
+      l = listOf((await widget.k.call('poOpen', {if (widget.grn != null) 'grn': widget.grn!['no']}))['pos']);
     } catch (_) {/* no open PO to pick */}
     final g = widget.grn;
     if (g != null && g['po_no'] != null && !l.any((p) => nOf(p['no']) == nOf(g['po_no']))) l.add({'no': g['po_no'], 'vendor': g['supplier'], 'lines': const []});
-    if (g == null) await _next();
+    await _next();
     if (mounted) {
       setState(() {
         pos = l;
         loading = false;
+        if (g != null) _fill(); // (its lines with the PO's figures, now that the POs are here)
       });
     }
   }
 
-  /// the next GRN No (a new GRN) – not when he typed one
+  /// the next GRN No (a new GRN) – not when he typed one; whether the site has the Store's step 6 (the discounts)
   Future<void> _next() async {
     try {
       final r = await widget.k.call('grnNext');
-      if (!mounted || refTyped) return;
+      if (!mounted) return;
       setState(() {
+        step6 = r['step6'] == true;
+        if (widget.grn != null || refTyped) return;
         ref.text = '${r['next'] ?? ''}';
         step4 = r['step4'] == true;
       });
@@ -1584,13 +1746,14 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
     lines.clear();
     if (g != null && '${g['po_no'] ?? ''}' == v) {
       for (final l in listOf(g['lines'])) {
-        final pl = l['po_line'] == null ? null : nOf(l['po_line']).toInt();
-        lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), note: '${l['remark'] ?? ''}', poLine: pl, info: pl == null ? '' : 'PO line $pl'));
+        lines.add(_saved(l));
       }
     } else if (p != null) {
       for (final l in listOf(p['lines'])) {
         if (nOf(l['left']) <= 0) continue;
-        lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), poLine: nOf(l['line']).toInt(), info: 'PO line ${l['line']}'));
+        // (3.63.0) its Disc. % of the PO comes with it; the PO's Qty and what came before – the shortage after this GRN
+        lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['left']), rate: plainN(l['rate']), gst: plainN(l['gst_pct']), poLine: nOf(l['line']).toInt(), info: 'PO line ${l['line']}',
+            disc: step6 && nOf(l['disc_pct']) > 0 ? '${plainN(l['disc_pct'])}%' : '', poQty: nOf(l['qty']).toDouble(), poBefore: nOf(l['received']).toDouble()));
       }
       if (g == null && sup.text.trim().isEmpty) sup.text = '${p['vendor'] ?? ''}';
     }
@@ -1614,7 +1777,11 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
           'vehicle_no': veh.text,
           'tcs': tcs.text,
           'remark': rem.text,
-          'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'rate': l.rate.text, 'gst_pct': l.gst.text, if (l.poLine != null) 'po_line': l.poLine, 'remark': l.note.text}],
+          if (step6 && billDisc.text.trim().isNotEmpty) ...{'bill_disc': billDisc.text.trim(), 'bill_disc_on': billOn},
+          'lines': [
+            for (final l in lines)
+              {'code': l.code, 'qty': l.qty.text, 'rate': l.rate.text, 'gst_pct': l.gst.text, if (l.poLine != null) 'po_line': l.poLine, 'remark': l.note.text, if (step6 && l.disc.text.trim().isNotEmpty) ...{'disc': l.disc.text.trim(), 'disc_on': l.discOn}}
+          ],
         },
       };
       final r = await storeSaveAsk(context, widget.k.call, 'grnSave', x);
@@ -1635,7 +1802,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final m = linesMoney(lines), t = _d(tcs.text);
+    final gm = grnMoney(lines, step6 ? billDisc.text : '', billOn), t = _d(tcs.text);
     final poLabels = {
       for (final p in pos)
         '${p['no']}': 'PO ${p['no']} – ${p['vendor'] ?? ''}${listOf(p['lines']).isEmpty ? '' : ' (${listOf(p['lines']).where((l) => nOf(l['left']) > 0).map((l) => '${l['name']} ${q3(l['left'])}').join(', ')})'}',
@@ -1681,9 +1848,28 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
               const SizedBox(height: 14),
               Text('Items', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              SLinesEditor(k: widget.k, lines: lines, tag: 'grl', qtyLabel: 'Received Qty *', rateLabel: 'Basic Rate ₹', gst: true, gstFill: true, money: true, noteLabel: 'Remark', onChanged: () => setState(() {})),
+              SLinesEditor(k: widget.k, lines: lines, tag: 'grl', qtyLabel: 'Received Qty *', rateLabel: 'Basic Rate ₹', gst: true, gstFill: true, money: true, noteLabel: 'Remark', grn: (m: gm, disc: step6), onChanged: () => setState(() {})),
               const SizedBox(height: 10),
-              Text('Taxable ${rs(m.t)} · GST ${rs(m.g)}${t != 0 ? ' · TCS ${rs(t)}' : ''} · Gross ${rs(r2(m.all + t))}', key: const Key('grf-total'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+              // (3.63.0) the discount on the whole bill – on the Basic or after GST (the Store's step 6)
+              if (step6) ...[
+                Row(children: [
+                  Expanded(child: TextBox(key: const Key('grf-bd'), label: 'Discount on the whole bill (% or ₹)', hint: '2% / 500', controller: billDisc, onChanged: (_) => setState(() {}))),
+                  for (final o in const [('basic', 'Basic'), ('gst', 'After GST')])
+                    Padding(padding: const EdgeInsets.only(left: 4), child: ChoiceChip(key: Key('grf-bdon-${o.$1}'), label: Text(o.$2), selected: billOn == o.$1, onSelected: (_) => setState(() => billOn = o.$1))),
+                ]),
+                const SizedBox(height: 10),
+              ] else
+                Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('A discount (on a line or on the whole bill) needs the Store\'s database step 6 – the Admin runs sql/store_step6_grn_discount.sql once.', key: const Key('grf-nodisc'), style: _faint)),
+              Text(
+                  [
+                    if (gm.disc > 0) ...['Basic ${rs(gm.basic)}', 'Discount ${rs(gm.disc)}${gm.billDisc > 0 ? ' (the bill ${rs(gm.billDisc)})' : ''}'],
+                    'Taxable ${rs(gm.taxable)}',
+                    'GST ${rs(gm.gst)}',
+                    if (t != 0) 'TCS ${rs(t)}',
+                    'Gross ${rs(_r2e(gm.gross + t))}',
+                  ].join(' · '),
+                  key: const Key('grf-total'),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
             ]),
     );
   }

@@ -24,6 +24,30 @@ void main() {
     expect((StoreKit(call: none, pages: const {}, admin: false, superAdmin: true)..b = {'today': '2026-10-29'}).entryFirst, null, reason: 'the Super Admin');
   });
 
+  test('(3.63.0, the Store\'s step 6) a GRN\'s money as the server works it out – the same figures as its own unit test (a line\'s and the bill\'s discount, each kind)', () {
+    SLine l(double q, double r, double g, {String d = '', String on = 'basic'}) => SLine(code: 'X', qty: '$q', rate: '$r', gst: '$g', disc: d, discOn: on);
+    List<List<double>> pick(GrnMoney m) => [for (final x in m.lines) [x.basic, x.disc, x.billDisc, x.taxable, x.gst, x.gross]];
+    // a line's 10 % on its Basic
+    var m = grnMoney([l(10, 100, 18, d: '10%')], '', 'basic');
+    expect(pick(m), [[1000, 100, 0, 900, 162, 1062]]);
+    // a line's ₹500 after GST
+    m = grnMoney([l(10, 100, 18, d: '500', on: 'gst')], '', 'basic');
+    expect(pick(m), [[1000, 500, 0, 1000, 180, 680]]);
+    // the bill's 10 % on the Basic, shared by the lines' taxable
+    m = grnMoney([l(10, 100, 18), l(30, 100, 5)], '10%', 'basic');
+    expect(pick(m), [[1000, 0, 100, 900, 162, 1062], [3000, 0, 300, 2700, 135, 2835]]);
+    expect([m.basic, m.disc, m.billDisc, m.taxable, m.gst, m.gross], [4000, 400, 400, 3600, 297, 3897]);
+    // the bill's ₹100 after GST, shared by the lines' amounts to the paisa
+    m = grnMoney([l(10, 100, 18), l(30, 100, 5)], '₹ 100', 'gst');
+    expect([for (final x in m.lines) [x.billDisc, x.gross]], [[27.25, 1152.75], [72.75, 3077.25]]);
+    expect([m.taxable, m.gst, m.gross, m.disc], [4000, 330, 4230, 100]);
+    // as the app's screen test: 10 % on Basic, ₹100 after GST, the bill's 2 % on Basic
+    m = grnMoney([l(10, 100, 5, d: '10%'), l(4, 250, 18, d: '100', on: 'gst')], '2%', 'basic');
+    expect([m.basic, m.disc, m.billDisc, m.taxable, m.gst, m.gross], [2000, 238, 38, 1862, 220.5, 1982.5]);
+    // what a discount may be
+    expect([grnDiscOf('10%'), grnDiscOf(' 1,000 '), grnDiscOf(''), grnDiscOf('0%'), grnDiscOf('ten')], [(pct: 10.0, amt: null), (pct: null, amt: 1000.0), null, null, null]);
+  });
+
   test('numbers as the web writes them: a quantity (up to 3 decimals, Indian grouping), a box\'s number, money', () {
     expect([q3(1234567.5), q3(0.125), q3(12), q3(-1500), q3(''), q3(null)], ['12,34,567.5', '0.125', '12', '-1,500', '', '']);
     expect([plainN(12.5), plainN(100), plainN(0), plainN(null), plainN('7.250')], ['12.5', '100', '0', '', '7.25']);
