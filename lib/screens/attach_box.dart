@@ -66,11 +66,14 @@ Future<List<({String name, Uint8List bytes})>> _pickFiles(String how, int room) 
 
 /// Tiles of the files + the buttons that add them. [files] is changed in place; [onChanged] after every change.
 class AttachStrip extends StatefulWidget {
-  const AttachStrip({super.key, required this.files, required this.max, required this.onChanged, this.enabled = true});
+  const AttachStrip({super.key, required this.files, required this.max, required this.onChanged, this.enabled = true, this.photosOf = ''});
   final List<AttFile> files;
   final int max;
   final VoidCallback onChanged;
   final bool enabled;
+
+  /// (3.66.0) photos only (no PDF), of this – 'requirement' (the Store's): its words say so
+  final String photosOf;
   @override
   State<AttachStrip> createState() => _AttachStripState();
 }
@@ -88,7 +91,7 @@ class _AttachStripState extends State<AttachStrip> {
   Future<void> _add(String how) async {
     final room = widget.max - fs.length;
     if (room <= 0) {
-      _say('An entry keeps at most ${widget.max} attachments – remove one first.', isBad: true);
+      _say(widget.photosOf.isEmpty ? 'An entry keeps at most ${widget.max} attachments – remove one first.' : 'A ${widget.photosOf} keeps at most ${widget.max} photos – take one out first.', isBad: true);
       return;
     }
     List<({String name, Uint8List bytes})> got;
@@ -100,8 +103,8 @@ class _AttachStripState extends State<AttachStrip> {
     }
     for (final g in got.take(room)) {
       final f = AttFile(name: g.name, state: 'make', src: g.bytes, mime: attSniff(g.bytes).isEmpty ? 'image/jpeg' : attSniff(g.bytes));
-      if (attSniff(g.bytes).isEmpty) {
-        _say('“${g.name}” is not a photo or a PDF – left out.', isBad: true);
+      if (attSniff(g.bytes).isEmpty || (widget.photosOf.isNotEmpty && attSniff(g.bytes) == 'application/pdf')) {
+        _say(widget.photosOf.isEmpty ? '“${g.name}” is not a photo or a PDF – left out.' : '“${g.name}” is not a photo – left out.', isBad: true);
         continue;
       }
       setState(() => fs.add(f));
@@ -160,7 +163,7 @@ class _AttachStripState extends State<AttachStrip> {
       Wrap(spacing: 8, runSpacing: 8, children: [
         OutlinedButton.icon(key: const Key('att-cam'), onPressed: on && !full ? () => _add('camera') : null, icon: const Icon(Icons.photo_camera_rounded, size: 18), label: const Text('Camera')),
         OutlinedButton.icon(key: const Key('att-gal'), onPressed: on && !full ? () => _add('gallery') : null, icon: const Icon(Icons.photo_library_rounded, size: 18), label: const Text('Gallery')),
-        OutlinedButton.icon(key: const Key('att-pdf'), onPressed: on && !full ? () => _add('pdf') : null, icon: const Icon(Icons.picture_as_pdf_rounded, size: 18), label: const Text('PDF')),
+        if (widget.photosOf.isEmpty) OutlinedButton.icon(key: const Key('att-pdf'), onPressed: on && !full ? () => _add('pdf') : null, icon: const Icon(Icons.picture_as_pdf_rounded, size: 18), label: const Text('PDF')),
       ]),
       if (msg.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(msg, key: const Key('att-msg'), style: TextStyle(fontSize: 12.5, color: bad ? C.red : C.muted))),
     ]);
@@ -200,7 +203,7 @@ class _AttachStripState extends State<AttachStrip> {
                 key: Key('att-rm-$i'),
                 onTap: () {
                   setState(() => fs.remove(f));
-                  if (f.sent) _say('Taken out of this entry when it is saved (the file itself is kept – nothing is deleted).');
+                  if (f.sent) _say(widget.photosOf.isEmpty ? 'Taken out of this entry when it is saved (the file itself is kept – nothing is deleted).' : 'Taken out of this ${widget.photosOf} when it is saved.');
                   widget.onChanged();
                 },
                 child: const CircleAvatar(radius: 12, backgroundColor: Color(0xB8101828), child: Icon(Icons.close_rounded, size: 15, color: Colors.white)),

@@ -77,4 +77,20 @@ void main() {
       expect(full, contains(w), reason: w);
     }
   });
+
+  test('(3.66.0, "Print मध्ये photos पण") the requirement\'s photos on the pages after the form – two a row, who added each and its day in India; none: no photos page; only proper links', () {
+    final x = {'no': 7, 'ref': 'RCL/VTR/PR/2026/0007', 'date': '2026-10-29', 'for_kind': 'Site work', 'status': 'Pending', 'level': 1, 'approvals': [], 'created_name': 'Amol Patil', 'lines': []};
+    final h = reqPaperHtml(x, heading, photos: [
+      {'url': 'https://s.test/storage/v1/object/sign/erp-files/store/req/aa/a.jpg?token=1', 'by': 'Amol Patil', 'at': '2026-10-28T19:00:00.000Z'},
+      {'url': 'https://s.test/b.jpg?token=2', 'by': 'Sujit Mule', 'at': '2026-10-29T05:00:00.000Z'},
+      {'url': 'javascript:alert(1)', 'by': 'x'},
+    ]);
+    for (final w in ['page-break-before:always', 'Photos of the material – RCL/VTR/PR/2026/0007 (2)', '<img src="https://s.test/storage/v1/object/sign/erp-files/store/req/aa/a.jpg?token=1" alt="Photo 1">',
+      'Photo 1 · Amol Patil · 29-10-2026', 'Photo 2 · Sujit Mule · 29-10-2026', '.fm .phg{display:grid;grid-template-columns:1fr 1fr']) {
+      expect(h, contains(w), reason: w);
+    }
+    expect(h, isNot(contains('javascript:')), reason: 'only an http(s) link');
+    expect(reqPaperHtml(x, heading), isNot(contains('Photos of the material')), reason: 'no photos: no photos page');
+    expect(istOf('2026-10-28T19:00:00.000Z').substring(0, 10), '2026-10-29', reason: '19:00 UTC = 00:30 the next day in India');
+  });
 }

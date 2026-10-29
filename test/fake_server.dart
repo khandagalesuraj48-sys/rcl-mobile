@@ -352,6 +352,9 @@ class FakeServer {
   bool storeStep4 = true;
   // (3.63.0) the Store's step 6 at the site: a GRN's discounts (off by default – the GRNs of before)
   bool storeStep6 = false;
+  // (3.66.0) the Store's step 7 at the site: a requirement's photos (each photo sent: its fingerprint → its size)
+  bool storeStep7 = true;
+  final storePhotos = <String, int>{};
   final regGrnsSaved = <(String, String, int, String, String)>[]; // (key, GRN No, no, date, supplier) of the register's GRNs saved
   // (3.62.0) the Store's step 5 at the site: a PO's own fields and its approval; the papers' settings; PO 1's approval
   bool storeStep5 = true;
@@ -382,8 +385,29 @@ class FakeServer {
           'grn': {'today': 1, 'todayValue': 525, 'month': 2, 'monthValue': 2625, 'recent': [{'no': 4, 'date': '2026-10-14', 'supplier': 'Shri Traders', 'gross': 525}]},
           'issue': {'today': 1, 'todayValue': 1200, 'month': 1, 'monthValue': 1200, 'recent': [{'no': 7, 'date': '2026-10-14', 'to_kind': 'Machinery', 'machinery': 'Sany 210 (No.1)', 'party': '', 'amount': 1200}]}});
       case 'reqList':
-        return _j({'reqs': [for (final r in storeReqs) {...r, 'ref': 'RCL/VTR/PR/2026/${'${r['no']}'.padLeft(4, '0')}'}], 'levels': [{'level': 1, 'people': ['Sujit Mule']}],
-          'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'email': storePapers['email'] ?? ''}});
+        return _j({'reqs': [for (final r in storeReqs) {...r, 'ref': 'RCL/VTR/PR/2026/${'${r['no']}'.padLeft(4, '0')}', 'photos': r['photos'] ?? []}], 'levels': [{'level': 1, 'people': ['Sujit Mule']}],
+          'heading': {'site': 'VTR Site – NH 848', 'company': 'Rachana Construction Limited', 'address': 'Nashik', 'gstin': '27ABCDE1234F1Z5', 'email': storePapers['email'] ?? ''}, 'step7': storeStep7});
+      // (3.66.0) a requirement's photos – as the Store's server: a JPEG only, kept under its fingerprint; its proof for the save
+      case 'reqPhotoUp':
+        final mJ = RegExp(r'^data:image/jpeg;base64,(.+)$').firstMatch('${b['data'] ?? ''}');
+        if (!storeStep7) return _j({'error': 'Photos of a requirement need the Store\'s database step 7 at this site.', 'code': 'sql'}, 400);
+        if (mJ == null) return _j({'error': 'A photo must be a JPG picture (the page makes it one) – add it again.', 'code': 'field'}, 400);
+        final bytes = base64Decode(mJ.group(1)!), h = crypto.sha256.convert(bytes).toString();
+        storePhotos[h] = bytes.length;
+        return _j({'ok': true, 'sha': h, 'size': bytes.length, 't': 'proof-${h.substring(0, 8)}'});
+      case 'reqPhotos':
+        final rq = storeReqs.where((r) => r['no'] == b['no']).firstOrNull;
+        return _j({'no': b['no'], 'photos': [for (final p in (rq?['photos'] as List? ?? const [])) {...(p as Map), 'url': 'https://erp.test/ph/${p['sha']}.jpg'}]});
+      case 'reqPhotoAdd':
+        final rqA = storeReqs.firstWhere((r) => r['no'] == b['no']);
+        final list = [...(rqA['photos'] as List? ?? const [])];
+        for (final p in (b['photos'] as List)) {
+          final m2 = (p as Map).cast<String, dynamic>();
+          if (m2['t'] != 'proof-${'${m2['sha']}'.substring(0, 8)}') return _j({'error': 'A photo was not added from this page (or by you) – add it again.', 'code': 'field'}, 400);
+          list.add({'sha': m2['sha'], 'size': m2['size'], 'by': 'Sujit Mule', 'at': '2026-10-14T05:00:00.000Z'});
+        }
+        rqA['photos'] = list;
+        return _j({'ok': true, 'no': b['no'], 'photos': list.length});
       case 'reqSave':
         return _j({'ok': true, 'no': 3, 'status': 'Pending', 'level': 1});
       case 'reqDecide':
