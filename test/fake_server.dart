@@ -19,6 +19,7 @@ class FakeServer {
   /// (3.43.0, Mechanical update-162) his diesel sources (getInit's user.dsrc); [userInSync]: the sync tells the user too (as Mechanical)
   Map<String, dynamic>? dsrc;
   bool userInSync = false;
+  List<String>? pageAdmin; // (3.64.0, Mechanical update-189) the pages where he is Admin (entries of an earlier day)
   String? syncToday; // (3.62.1) the server's today in the live sync (Mechanical's sync gives it)
   /// (3.44.0, Mechanical update-163) a site with a place per fuel card (HO): DIESEL CARD, PETROL CARD, PETROL CAN, CNG CARD with their
   /// fuel (getInit's placeFuels), and a Petrol, a CNG and an Electric car
@@ -552,7 +553,7 @@ class FakeServer {
   ];
   final mechUserPerms = <String, Map<String, String>>{'amol@rcl.test': {'diesel': 'Edit', 'log': 'View'}};
   static const mechPageList = [
-    {'key': 'diesel', 'label': 'Diesel Issue'},
+    {'key': 'diesel', 'label': 'Diesel Issue', 'dateAdmin': true}, // (3.64.0) a page with a date: Admin offered
     {'key': 'log', 'label': 'Log Book'},
     {'key': 'reports', 'label': 'Reports'},
   ];
@@ -1002,7 +1003,7 @@ class FakeServer {
           final m = [...rtcIn];
           rtcIn.clear();
           return _j({'result': {'versions': versions, if (syncToday != null) 'today': syncToday, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m},
-            if (userInSync) 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc}}});
+            if (userInSync) 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc, if (pageAdmin != null) 'pageAdmin': pageAdmin}}});
         case 'rtcUsers':
           return _j({'result': {'me': 'u-sujit', 'name': 'Sujit Mule', 'users': rtcPeople, 'ice': [{'urls': ['stun:stun.l.google.com:19302']}], 'relay': false, 'max': 3}});
         case 'fcmSave':
@@ -1154,7 +1155,7 @@ class FakeServer {
           return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': card ? <String>[] : fuels ? ['DIESEL CARD', 'PETROL CARD', 'PETROL CAN', 'CNG CARD'] : ['Dispenser', 'VTR Store'],
             if (card) ...{'fuelMode': 'card', 'siteFuels': ['Diesel', 'Petrol', 'CNG']},
             if (fuels && !card) 'placeFuels': {'DIESEL CARD': 'Diesel', 'PETROL CARD': 'Petrol', 'PETROL CAN': 'Petrol', 'CNG CARD': 'CNG'}, 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
-            'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc},
+            'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc, if (pageAdmin != null) 'pageAdmin': pageAdmin},
             'master': _master, 'ai': {'on': aiOn}}});
         // (3.4.0) the masters
         case 'getVendors':
@@ -1379,7 +1380,7 @@ class FakeServer {
           return _j({'result': {'count': 0, 'qty': 0, 'rows': []}});
         // (3.9.0) Administration
         case 'usersAdmin':
-          return _j({'result': {'users': adminUsers, 'modules': [{'key': 'Dashboard', 'label': 'Dashboard'}, {'key': 'Log Book', 'label': 'Log Book'}, {'key': 'Machinery Billing', 'label': 'Machinery Billing'}], 'managedBySuper': usersBySuper, 'canCreateSuper': false}});
+          return _j({'result': {'users': adminUsers, 'modules': [{'key': 'Dashboard', 'label': 'Dashboard'}, {'key': 'Log Book', 'label': 'Log Book', 'dateAdmin': true}, {'key': 'Machinery Billing', 'label': 'Machinery Billing'}], 'managedBySuper': usersBySuper, 'canCreateSuper': false}});
         case 'saveUserAdmin':
           adminSent.add({'fn': action, 'x': a[0]});
           final x = (a[0] as Map).cast<String, dynamic>();

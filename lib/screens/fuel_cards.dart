@@ -481,7 +481,7 @@ class _PayFormState extends State<PayForm> {
     return Scaffold(
       appBar: AppBar(title: TwoLang(widget.edit == null ? 'Payment onto a card' : 'Change ${widget.edit!['id']}', 'कार्डवर भरलेले पैसे', size: 18, weight: FontWeight.w700)),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-        DateField(key: const Key('pf-date'), label: 'Date', value: date, clear: false, last: s.today.isEmpty ? null : parseKey(s.today), first: s.entryFirst(), onChanged: (v) => setState(() => date = v)),
+        DateField(key: const Key('pf-date'), label: 'Date', value: date, clear: false, last: s.today.isEmpty ? null : parseKey(s.today), first: s.entryFirst(page: 'Fuel Cards'), onChanged: (v) => setState(() => date = v)),
         const SizedBox(height: 10),
         PickField(key: const Key('pf-card'), label: 'Card', value: card, items: [for (final x in s.cards) x.name], onChanged: (v) => setState(() => card = v)),
         if (c != null) Padding(padding: const EdgeInsets.only(top: 6), child: InfoLine('${c.name} – balance now ${rupees(c.balance)}', icon: Icons.credit_card_rounded)),

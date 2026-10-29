@@ -176,7 +176,7 @@ class _EntryFormState extends State<EntryForm> {
       setState(() {
         // (3.62.1) its date only when it was typed today – one of an earlier day: today's date (not its old day, unseen)
         final sameDay = draftToday(v('at'), s.clock());
-        if (v('date').isNotEmpty && sameDay && s.entryDayOk(v('date'))) date = v('date');
+        if (v('date').isNotEmpty && sameDay && s.entryDayOk(v('date'), page: k.module)) date = v('date');
         if (v('shift').isNotEmpty && sameDay) shift = v('shift');
         if ((k.key == 'inward' ? s.locations : s.mySources('Diesel Issue')).contains(v('source')) || (issue && s.cardSite && s.payFor(s.machine(v('no'))).contains(v('source')))) source = v('source');
         if (s.mySources('Diesel Transfer').contains(v('from'))) from = v('from');
@@ -304,7 +304,7 @@ class _EntryFormState extends State<EntryForm> {
     final last = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     final cur = bill ? (billDate.isEmpty ? date : billDate) : date;
     // (3.62.1, update-187) a user: from his first day (today) – the Admin and the Super Admin any day
-    final low = bill ? DateTime(2024) : (s.entryFirst() ?? DateTime(2024)), at = parseKey(cur);
+    final low = bill ? DateTime(2024) : (s.entryFirst(page: k.module) ?? DateTime(2024)), at = parseKey(cur);      // (3.64.0) the page's Admin: any day
     final d = await showDatePicker(context: context, initialDate: at.isBefore(low) ? low : (at.isAfter(last) ? last : at), firstDate: low, lastDate: last);
     if (d == null) return;
     setState(() {

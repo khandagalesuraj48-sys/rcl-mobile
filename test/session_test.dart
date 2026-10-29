@@ -6,6 +6,7 @@ import 'package:rcl_mobile/core/alerts.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/photo.dart';
 import 'package:rcl_mobile/core/plate.dart';
+import 'package:rcl_mobile/core/format.dart' show parseKey;
 import 'package:rcl_mobile/core/kinds.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/screens/verify.dart';
@@ -630,6 +631,28 @@ void main() {
     s.admin = false;
     s.superAdmin = true;
     expect(s.entryFirst(), null, reason: 'the Super Admin: any day');
+    // (3.64.0, Mechanical update-189) a page's Admin: that page's entries any day, the others as a user
+    s.superAdmin = false;
+    s.pageAdmin = ['Diesel Issue', 'Log Book'];
+    expect([s.entryFirst(page: 'Diesel Issue'), s.entryFirst(log: true, page: 'Log Book'), s.entryDayOk('2026-01-01', page: 'Diesel Issue')], [null, null, true]);
+    expect([s.entryFirst(page: 'Diesel Inward'), s.entryFirst()], [DateTime(2026, 10, 29), DateTime(2026, 10, 29)], reason: 'another page – and no page given: as a user');
+  });
+
+  test('(3.64.0, Mechanical update-189) his pages with Admin come with his sign-in; a change in the Portal reaches the app with the live sync', () async {
+    srv.pageAdmin = ['Diesel Issue'];
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    expect(s.pageAdmin, ['Diesel Issue']);
+    expect(s.entryFirst(page: 'Diesel Issue'), null);
+    await s.liveTick();
+    srv.pageAdmin = ['Log Book'];
+    srv.userInSync = true;
+    var told = 0;
+    s.addListener(() => told++);
+    await s.liveTick();
+    expect([s.pageAdmin, told > 0], [['Log Book'], true]);
+    expect(s.entryFirst(page: 'Diesel Issue'), s.today.isEmpty ? null : parseKey(s.today), reason: 'Diesel Issue as a user again');
   });
 
   test('(3.62.1) the app left open past midnight: the live sync moves "today" on – a user\'s entry dates with it', () async {

@@ -1272,5 +1272,6 @@
 "Basic": "Basic",
 "After GST": "GST नंतर",
 "Discount on the whole bill (% or ₹)": "पूर्ण bill वर सूट (% किंवा ₹)",
-"A discount (on a line or on the whole bill) needs the Store's database step 6 – the Admin runs sql/store_step6_grn_discount.sql once.": "सूट (ओळीवर किंवा पूर्ण bill वर) साठी Store चा database step 6 लागतो – Admin एकदा sql/store_step6_grn_discount.sql चालवतो."
+"A discount (on a line or on the whole bill) needs the Store's database step 6 – the Admin runs sql/store_step6_grn_discount.sql once.": "सूट (ओळीवर किंवा पूर्ण bill वर) साठी Store चा database step 6 लागतो – Admin एकदा sql/store_step6_grn_discount.sql चालवतो.",
+"Admin = Edit + entries of an earlier day (a page with a date)": "Admin = Edit + मागच्या दिवसाच्या entries (तारीख असलेले page)"
 }
