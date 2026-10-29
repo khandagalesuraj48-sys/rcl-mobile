@@ -1314,5 +1314,17 @@
 "Requirement {0} was changed by someone else just now – refresh and add the photos again.": "मागणी {0} आत्ताच दुसऱ्या कोणी बदलली – refresh करून फोटो पुन्हा जोडा.",
 "The photos could not be opened now ({0}) – printed without them.": "फोटो आत्ता उघडता आले नाहीत ({0}) – त्यांच्याशिवाय print केले.",
 "Photos were added to requirement {0} just now – it would have more than {1}. Refresh and look.": "मागणी {0} मध्ये आत्ताच फोटो जोडले गेले – {1} पेक्षा जास्त होतील. Refresh करून बघा.",
-"You sent {0} photos today – that is the most for one day. Send the rest tomorrow (if you did not send them, tell the Store Admin).": "आज तुम्ही {0} फोटो पाठवले – एका दिवसाची ही मर्यादा आहे. बाकी उद्या पाठवा (तुम्ही पाठवले नसतील तर Store Admin ला सांगा)."
+"You sent {0} photos today – that is the most for one day. Send the rest tomorrow (if you did not send them, tell the Store Admin).": "आज तुम्ही {0} फोटो पाठवले – एका दिवसाची ही मर्यादा आहे. बाकी उद्या पाठवा (तुम्ही पाठवले नसतील तर Store Admin ला सांगा).",
+"Take out": "काढा",
+"Take it out": "काढून टाका",
+"Contact name": "संपर्क व्यक्तीचे नाव",
+"Contact number": "संपर्क नंबर",
+"Site address": "Site चा पत्ता",
+"e.g. Site office, Valshind, NH 848": "उदा. Site office, Valshind, NH 848",
+"Not attached.": "जोडलेले नाही.",
+"Attach": "जोडा",
+"Update (as written now)": "Update करा (आत्ता जसे लिहिले आहे)",
+"Printed after the requirement and its photos.": "मागणी आणि तिच्या photos नंतर print होतो.",
+"Delete the PO": "PO delete करा",
+"The others stay.": "बाकीचे राहतात."
 }

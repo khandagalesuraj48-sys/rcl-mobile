@@ -136,7 +136,9 @@ String poPaperHtml(Map po, Map heading, Map supplier, {String logo = ''}) {
 /// as the PDF, and keep the company's and the site's address) THE FORM AS HIS PAPER, word for word the web's reqPrint: the logo | the
 /// company's name (its address under it) and "Purchase Requisition Form"; Project Name · Sub Project, Indent No. · Date (and the Site
 /// Address); the items with their specification line by line; "Remark:Require For :" what it is for, then its remark; the three names.
-String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = const []}) {
+/// (3.70.0, the web's 29-10-2026) its contact (Contact Person · Contact No.), and its machinery's maintenance log book on the pages after
+/// the photos – [logbook]: the Store's own piece of HTML and its look (reqLogbookHtml: {html, css}), put in as it comes, as the web's.
+String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = const [], Map logbook = const {}}) {
   final h = heading, lines = (x['lines'] as List? ?? const []).whereType<Map>().toList();
   final ok = (x['approvals'] as List? ?? const []).whereType<Map>().where((a) => a['ok'] == true).toList();
   final done = x['status'] == 'Approved' || x['status'] == 'Closed';
@@ -150,7 +152,8 @@ String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = co
       '<tr><td class="pt">Purchase Requisition Form</td></tr></table>'
       '<table class="nb pi"><tr><td style="width:15%">Project Name :</td><td style="width:45%">${_e(h['site'])}</td><td style="width:15%">Sub Project :</td><td>NA</td></tr>'
       '<tr><td>Indent No. :</td><td>${_e(_blank(x['ref']) ? x['no'] : x['ref'])}</td><td>Date :</td><td>${slash(x['date'])}</td></tr>'
-      '${_blank(h['site_address']) ? '' : '<tr><td>Site Address :</td><td colspan="3">${_nl(h['site_address'])}</td></tr>'}</table>';
+      '${_blank(h['site_address']) ? '' : '<tr><td>Site Address :</td><td colspan="3">${_nl(h['site_address'])}</td></tr>'}'
+      '${_blank(x['contact_name']) && _blank(x['contact_phone']) ? '' : '<tr><td>Contact Person :</td><td>${_e(x['contact_name'] ?? '')}</td><td>Contact No. :</td><td>${_e(x['contact_phone'] ?? '')}</td></tr>'}</table>';
   final rows = StringBuffer();
   for (final (i, l) in lines.indexed) {
     final spec = [if (!_blank(l['spec'])) _nl(l['spec']), if (!_blank(l['brand'])) 'Brand: ${_e(l['brand'])}', if (!_blank(l['note'])) _nl(l['note'])].join('<br>');
@@ -168,9 +171,11 @@ String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = co
   final photoPage = ph.isEmpty
       ? ''
       : '<div class="fm" style="page-break-before:always;border:1px solid #000;padding:6px"><div class="ttl" style="margin-bottom:6px">Photos of the material – ${_e(_blank(x['ref']) ? x['no'] : x['ref'])} (${ph.length})</div><div class="phg">$pics</div></div>';
+  // (3.70.0) the machinery's maintenance log book – as Mechanical draws it (the Store makes it: every word in it written as text there)
+  final lb = _blank(logbook['html']) ? '' : '<style>${'${logbook['css'] ?? ''}'.replaceAll('</', '')}</style><div style="page-break-before:always">${logbook['html']}</div>';
   return _page('Requirement ${_blank(x['ref']) ? x['no'] : x['ref']}',
       '<style>$_rcss</style><div class="fm prf">$head$items$remark'
-      '<div class="s2 ps"><div>${_e(x['created_name'])}<span>Prepared By</span></div><div>${_e(checked)}<span>Checked By</span></div><div>${_e(appr)}<span>Approved By</span></div></div></div>$photoPage');
+      '<div class="s2 ps"><div>${_e(x['created_name'])}<span>Prepared By</span></div><div>${_e(checked)}<span>Checked By</span></div><div>${_e(appr)}<span>Approved By</span></div></div></div>$photoPage$lb');
 }
 
 // (3.69.0) the Purchase Requisition Form's own look (his paper) – the web's RCSS word for word

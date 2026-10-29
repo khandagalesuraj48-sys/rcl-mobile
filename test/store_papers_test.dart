@@ -99,4 +99,16 @@ void main() {
     expect(reqPaperHtml(x, heading), isNot(contains('Photos of the material')), reason: 'no photos: no photos page');
     expect(istOf('2026-10-28T19:00:00.000Z').substring(0, 10), '2026-10-29', reason: '19:00 UTC = 00:30 the next day in India');
   });
+
+  test('(3.70.0, the web\'s 29-10-2026) the requirement\'s contact (Contact Person · Contact No.) and its machinery\'s maintenance log book on the pages after the photos – as the Store sends it; none: no row, no page', () {
+    final x = {'no': 9, 'ref': 'RCL/VTR/2026-27/M/0001', 'date': '2026-10-29', 'for_kind': 'Machinery', 'for_text': 'MH-25-AJ-5506', 'status': 'Pending', 'level': 1, 'approvals': [], 'created_name': 'Amol Patil', 'lines': [],
+      'contact_name': 'Ramesh Patil', 'contact_phone': '98765 43210'};
+    final h = reqPaperHtml(x, heading, logbook: {'html': '<div class="mlbw"><div class="mlbt">Maintenance Log Book – MH-25-AJ-5506</div><table class="mlb"></table></div>', 'css': '.mlb{border-collapse:collapse}</style><script>'});
+    expect(h, contains('<tr><td>Contact Person :</td><td>Ramesh Patil</td><td>Contact No. :</td><td>98765 43210</td></tr>'));
+    expect(h, contains('<style>.mlb{border-collapse:collapse}style><script></style><div style="page-break-before:always"><div class="mlbw"><div class="mlbt">Maintenance Log Book – MH-25-AJ-5506</div>'), reason: 'its look cannot close the style');
+    expect(h, contains('<title>Requirement RCL/VTR/2026-27/M/0001</title>'));
+    final none = reqPaperHtml({...x, 'contact_name': '', 'contact_phone': null}, heading);
+    expect(none, isNot(contains('Contact Person')));
+    expect(none, isNot(contains('Maintenance Log Book')));
+  });
 }
