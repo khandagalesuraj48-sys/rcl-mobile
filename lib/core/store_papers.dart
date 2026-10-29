@@ -12,6 +12,12 @@ num _n(Object? v) => v is num ? v : num.tryParse('${v ?? ''}'.replaceAll(',', ''
 bool _blank(Object? v) => v == null || '$v'.trim().isEmpty;
 
 /// yyyy-mm-dd → dd-mm-yyyy (the web's dmy)
+/// (3.66.0) a time the server keeps (UTC, "2026-10-29T19:00:00.000Z") as India's (its date: 30-10-2026) – a photo's "when"
+String istOf(Object? t) {
+  final d = DateTime.tryParse('${t ?? ''}');
+  return d == null ? '${t ?? ''}' : d.toUtc().add(const Duration(hours: 5, minutes: 30)).toIso8601String();
+}
+
 String paperDmy(Object? d) {
   final s = '${d ?? ''}';
   if (s.length < 10) return s;
@@ -54,7 +60,9 @@ const _base = '@page{size:A4 portrait;margin:10mm}body{font:12px Arial,sans-seri
 const _pcss = '.fm{font:11px Arial,sans-serif}.fm table{border-collapse:collapse;width:100%}.fm td,.fm th{border:1px solid #000;padding:2px 5px;vertical-align:top}.fm .nb td{border:0;padding:1px 3px}'
     '.fm .cn{font-size:18px;font-weight:700;text-align:center}.fm .ttl{text-align:center;font-weight:700;font-size:14px}.fm .sh{text-align:center;font-weight:700;border-bottom:1px solid #000;margin:0 -5px 3px;padding-bottom:2px}'
     '.fm .r{text-align:right}.fm .c{text-align:center}.fm .sig{display:flex;justify-content:space-between;margin-top:120px;padding:0 40px}.fm .sig div{text-align:center;font-weight:700}.fm .cg{text-align:center;font-weight:700;margin-top:6px}'
-    '.fm ol{margin:4px 0 0 18px;padding:0}.fm li{margin:6px 0}.fm .s2{margin-top:90px;display:flex;justify-content:space-between;padding:0 10px}.fm .s2 div{text-align:center;min-width:150px}.fm .s2 span{display:block;border-top:1px solid #000;margin-top:2px}';
+    '.fm ol{margin:4px 0 0 18px;padding:0}.fm li{margin:6px 0}.fm .s2{margin-top:90px;display:flex;justify-content:space-between;padding:0 10px}.fm .s2 div{text-align:center;min-width:150px}.fm .s2 span{display:block;border-top:1px solid #000;margin-top:2px}'
+    // (3.66.0) a requirement's photos (the web's 29-10-2026): two a row, each with who added it and when
+    '.fm .phg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fm figure{margin:0;break-inside:avoid;page-break-inside:avoid;text-align:center;border:1px solid #ccc;padding:4px}.fm figure img{max-width:100%;max-height:115mm;object-fit:contain}.fm figcaption{font-size:10px;color:#333;margin-top:2px}';
 String _page(String title, String body) =>
     '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${_e(title)}</title><style>$_base$_pcss</style></head><body>$body</body></html>';
 
@@ -123,7 +131,7 @@ String poPaperHtml(Map po, Map heading, Map supplier, {String logo = ''}) {
 
 /// The Purchase Requisition Form of a requirement (reqList: the requirement, its heading): Prepared By – who made it; Checked By – the
 /// levels that approved before the last; Approved By – the last.
-String reqPaperHtml(Map x, Map heading, {String logo = ''}) {
+String reqPaperHtml(Map x, Map heading, {String logo = '', List<Map> photos = const []}) {
   final h = heading, lines = (x['lines'] as List? ?? const []).whereType<Map>().toList();
   final ok = (x['approvals'] as List? ?? const []).whereType<Map>().where((a) => a['ok'] == true).toList();
   final done = x['status'] == 'Approved' || x['status'] == 'Closed';
@@ -149,7 +157,16 @@ String reqPaperHtml(Map x, Map heading, {String logo = ''}) {
         '</td><td class="r">${paperNum(l['qty'], min: 1, max: 3)}</td><td class="c">${slash(_blank(x['need_by']) ? x['date'] : x['need_by'])}</td></tr>');
   }
   final items = '<table><thead><tr><th>Sr No</th><th>Item Code</th><th>Item Description</th><th>Item Specification</th><th>Unit</th><th>Quantity</th><th>Required Date</th></tr></thead><tbody>$rows</tbody></table>';
+  // (3.66.0, the web's 29-10-2026: "Print मध्ये photos पण") its photos on the pages after the form
+  final ph = [for (final p in photos) if (RegExp(r'^https?://').hasMatch('${p['url'] ?? ''}')) p];
+  final pics = StringBuffer();
+  for (final (i, p) in ph.indexed) {
+    pics.write('<figure><img src="${_e(p['url'])}" alt="Photo ${i + 1}"><figcaption>Photo ${i + 1}${_blank(p['by']) ? '' : ' · ${_e(p['by'])}'}${_blank(p['at']) ? '' : ' · ${paperDmy(istOf(p['at']))}'}</figcaption></figure>');
+  }
+  final photoPage = ph.isEmpty
+      ? ''
+      : '<div class="fm" style="page-break-before:always;border:1px solid #000;padding:6px"><div class="ttl" style="margin-bottom:6px">Photos of the material – ${_e(_blank(x['ref']) ? x['no'] : x['ref'])} (${ph.length})</div><div class="phg">$pics</div></div>';
   return _page('Requirement ${_blank(x['ref']) ? x['no'] : x['ref']}',
       '<div class="fm" style="border:1px solid #000;min-height:260mm;padding:0">$head$items<p style="margin:6px">Remark:${_e(x['remark'])}</p>'
-      '<div class="s2"><div>${_e(x['created_name'])}<span>Prepared By</span></div><div>${_e(checked)}<span>Checked By</span></div><div>${_e(appr)}<span>Approved By</span></div></div></div>');
+      '<div class="s2"><div>${_e(x['created_name'])}<span>Prepared By</span></div><div>${_e(checked)}<span>Checked By</span></div><div>${_e(appr)}<span>Approved By</span></div></div></div>$photoPage');
 }

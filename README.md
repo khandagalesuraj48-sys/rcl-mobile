@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.66.0 (29-10-2026 – "requirement madhe attachment cha option add karaycha aahe attachment madhe material photo … multiple photos
+… app madhun photo kadhla tri laptop web madhe yeil"; his answers: the whole requirement, many photos, in the print too; with rcl-store
+step 7):** a requirement's **Photos of the material** – up to 10, from the camera or the gallery (no PDF), made ready as a Log Book photo
+(upright, at most 1600 px, a JPEG of a few hundred KB) and sent to the Store when the requirement is saved (`reqPhotoUp`, then `reqSave`
+with their list – each new one with the Store's proof). **Photos (n)** on a requirement: seen big; **Add photos** – who made it or the
+Store Admin, while it waits or is approved (`reqPhotoAdd`: a requirement made on the laptop, its photos taken here – the laptop shows
+them). In a Change (nobody approved it yet) a photo is taken out with ×. Its **print** has the photos on the pages after the form (who
+added each, its day). HO Purchase sees an approved requirement's photos (another site's too). The same photos as the web's (the site's
+file store). Before step 7 at a site: no photo box (as before).
+
 **Version 3.65.0 (29-10-2026 – "requirement jewa mi banwato print gheto n ji print yetey tya war rachana address nahi site address nahiye ani
 rachana logo nahiye"; with rcl-store):** the Purchase Requisition Form's heading as the PO's – the logo, the company's name and address
 (Portal → Companies), Email ID / Contact / CIN / Web (Store Settings → Papers), GST / PAN – and a **Site Address** line (Papers → Site

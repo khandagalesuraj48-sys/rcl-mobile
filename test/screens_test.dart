@@ -2231,6 +2231,96 @@ void main() {
     expect(find.textContaining('Requirement 3 saved – it waits for Level 1.'), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('(3.66.0 – the Store\'s step 7) a requirement\'s photos: taken in its form and sent (reqPhotoUp), the save with their list and proofs; Photos of one made already – seen, one added (reqPhotoAdd); its print with the photos page; HO Purchase sees them', (t) async {
+    final p0 = pickAttFiles, c0 = attCompute;
+    attCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);
+    final papers = <(String, String)>[];
+    storePaperSink = (h, title) => papers.add((title, h));
+    addTearDown(() {
+      pickAttFiles = p0;
+      attCompute = c0;
+      storePaperSink = null;
+    });
+    final shot = Uint8List.fromList(img.encodeJpg(img.fill(img.Image(width: 64, height: 48), color: img.ColorRgb8(200, 60, 40))));
+    var how = '';
+    pickAttFiles = (h, room) async {
+      how = h;
+      return [(name: 'material.jpg', bytes: shot)];
+    };
+    final h1 = 'a' * 64;
+    final srv = FakeServer()..storePages = {...FakeServer().storePages, 'purchase': 'Edit'};
+    srv.storeReqs[1]
+      ..['mine'] = true
+      ..['photos'] = [{'sha': h1, 'size': 1000, 'by': 'Amol Patil', 'at': '2026-10-13T20:00:00.000Z'}];
+    await openStoreWork(t, server: srv);
+    await tapK(t, 'sw-req');
+    await net(t);
+    expect(find.text('📷 1 photo'), findsOneWidget, reason: 'the requirement with a photo says so');
+    expect(find.text('Photos (1)'), findsOneWidget);
+    // a new requirement with a photo from the camera: sent at once when saved, then the requirement with its list
+    await tapK(t, 'rq-new');
+    await net(t);
+    await tapK(t, 'rql-add');
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('pick-ITM-0002 · Sugar (Kg)')));
+    await settle(t, 600);
+    await t.enterText(box('rql-q-0'), '5');
+    await settle(t, 300);
+    await reach(t, 'rqf-photos', 'rqf');      // (below the items – the list builds it when it is reached)
+    expect(find.text('Photos of the material'), findsOneWidget);
+    expect(find.byKey(const Key('att-pdf')), findsNothing, reason: 'photos only – no PDF');
+    await tapK(t, 'att-cam');
+    await settle(t, 800);
+    expect(how, 'camera');
+    expect(find.byKey(const Key('att-tile-0')), findsOneWidget);
+    await tapK(t, 'rq-save');
+    await net(t);
+    final up = sent(srv, 'reqPhotoUp');
+    expect(up.length, 1);
+    expect('${up.single['data']}'.startsWith('data:image/jpeg;base64,'), true, reason: 'a JPEG made here');
+    final hs = srv.storePhotos.keys.single, sz = srv.storePhotos[hs];
+    expect(sent(srv, 'reqSave').single['photos'], [{'sha': hs, 'size': sz, 't': 'proof-${hs.substring(0, 8)}'}], reason: 'its list with the new photo\'s proof');
+    expect(find.textContaining('Requirement 3 saved'), findsOneWidget);
+    await settle(t, 4200); // (the message at the foot goes – a tap there would land on it)
+    // Photos of requirement 1 (made already, approved – he made it): seen, one added from the gallery
+    await tapK(t, 'rq-ph-1');
+    await net(t);
+    expect(find.text('1 of 10 photos – a photo opens big.'), findsOneWidget);
+    expect(find.byKey(const Key('rqp-0')), findsOneWidget);
+    expect(find.text('Amol Patil · 14-10-2026'), findsOneWidget, reason: 'who added it, its day in India (20:00 UTC = 01:30 the next day)');
+    await tapK(t, 'att-gal');
+    await settle(t, 800);
+    expect(how, 'gallery');
+    await tapK(t, 'rqp-send');
+    await net(t);
+    final add = sent(srv, 'reqPhotoAdd').single;
+    expect([add['no'], (add['photos'] as List).length, ((add['photos'] as List).single as Map)['t']], [1, 1, 'proof-${hs.substring(0, 8)}']);
+    expect(find.textContaining('1 photo added to requirement 1 (2 now).'), findsOneWidget);
+    expect(find.text('2 of 10 photos – a photo opens big.'), findsOneWidget);
+    await settle(t, 4200);
+    await t.pageBack();
+    await net(t);
+    // its print: the form, then "Photos of the material" with both
+    await tapK(t, 'rq-print-1');
+    await net(t);
+    final pg = papers.last.$2;
+    expect(pg, contains('Photos of the material – RCL/VTR/PR/2026/0001 (2)'));
+    expect(pg, contains('<img src="https://erp.test/ph/$h1.jpg" alt="Photo 1">'));
+    expect(pg, contains('Photo 1 · Amol Patil · 14-10-2026'));
+    expect(pg, contains('Photo 2 · Sujit Mule · 14-10-2026'));
+    // HO Purchase: the approved requirement's photos
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'sw-purchase');
+    await net(t);
+    expect(find.text('REQ 1 – 📷 2 photos'), findsOneWidget);
+    await tapK(t, 'pu-ph-S1-1');
+    await net(t);
+    expect(find.text('2 of 10 photos – a photo opens big.'), findsOneWidget);
+    expect(find.byKey(const Key('rqp-send')), findsNothing, reason: 'HO Purchase only sees them');
+    expect(sent(srv, 'reqPhotos').last['site'], 'S1');
+  });
+
   testWidgets('(3.55.0) Store – Purchase (every site): the ticked lines of a site → its PO; a vendor nearly one written before asked ("Use")', (t) async {
     final srv = FakeServer()..storePages = {...FakeServer().storePages, 'purchase': 'Edit'};
     ((srv.storeReqs[1]['lines'] as List)[0] as Map)['brand'] = 'Madhur';      // (3.58.0) the requirement's brand – carried to the PO

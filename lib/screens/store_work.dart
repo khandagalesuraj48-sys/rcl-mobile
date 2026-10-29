@@ -10,6 +10,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../core/api.dart' show ApiError;
+import '../core/attach.dart' show AttFile, AttEdit, attMake;
 import '../core/format.dart';
 import '../core/grn_reg.dart';
 import '../core/lb_io.dart' show XSheet;
@@ -28,6 +29,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/print_view.dart';
+import 'attach_box.dart' show AttachStrip, AttViewer;
 
 part 'store_reg.dart';
 
@@ -692,6 +694,9 @@ class _ReqListScreenState extends State<ReqListScreen> {
 
   /// (3.62.0) the heading of this site's papers (the company, the site, e-mail …) – for the Purchase Requisition Form
   Map<String, dynamic> heading = {};
+
+  /// (3.66.0) the Store's step 7 at this site: a requirement's photos
+  bool step7 = false;
   String filter = 'open', err = '';
   bool loading = true;
   final ticked = <int>{};
@@ -712,6 +717,7 @@ class _ReqListScreenState extends State<ReqListScreen> {
         reqs = listOf(r['reqs']);
         levels = listOf(r['levels']);
         heading = mapOf(r['heading']);
+        step7 = r['step7'] == true;
         ticked.removeWhere((n) => !reqs.any((x) => nOf(x['no']) == n && x['mayApprove'] == true));
         loading = false;
         err = '';
@@ -773,9 +779,33 @@ class _ReqListScreenState extends State<ReqListScreen> {
   }
 
   Future<void> _form(Map<String, dynamic>? x) async {
-    final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => ReqFormScreen(k: k, req: x)));
+    final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => ReqFormScreen(k: k, req: x, photos: step7)));
     if (saved == true) _load();
   }
+
+  /// (3.66.0) photos added to a requirement made already: who made it or the Store Admin, while it waits or is approved (step 7)
+  bool _phAdd(Map x) => step7 && k.edit('req') && (x['mine'] == true || k.admin) && (x['status'] == 'Pending' || x['status'] == 'Approved');
+
+  Future<void> _photos(Map<String, dynamic> x) async {
+    await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => ReqPhotosScreen(k: k, req: x, canAdd: _phAdd(x))));
+    if (mounted) _load();
+  }
+
+  /// (3.62.0, his format) the Purchase Requisition Form; (3.66.0) its photos on the pages after it
+  Future<void> _print(Map<String, dynamic> x) => _do(() async {
+        var ph = <AttFile>[];
+        if (listOf(x['photos']).isNotEmpty) {
+          try {
+            ph = await storePhotosOf(k, x['no']);
+          } catch (e) {
+            // (the print never waits on the file store: without the photos, said so)
+            if (mounted) toast(context, 'The photos could not be opened now (${errText(e)}) – printed without them.', bad: true);
+          }
+        }
+        if (!mounted) return;
+        await printStorePaper(context, heading, 'Requirement ${'${x['ref'] ?? ''}'.isEmpty ? x['no'] : x['ref']}',
+            (logo) => reqPaperHtml(x, heading, logo: logo, photos: [for (final f in ph) {'url': f.url, 'by': f.by, 'at': f.at}]));
+      });
 
   void _details(Map x) => showModalBottomSheet<void>(
         context: context,
@@ -805,7 +835,7 @@ class _ReqListScreenState extends State<ReqListScreen> {
 
   Widget _tile(Map<String, dynamic> x) {
     final no = nOf(x['no']).toInt(), st = '${x['status']}', lines = listOf(x['lines']), may = x['mayApprove'] == true, mine = x['mine'] == true;
-    final wait = [for (final p in (x['waitFor'] as List? ?? const [])) '$p'];
+    final wait = [for (final p in (x['waitFor'] as List? ?? const [])) '$p'], photos = listOf(x['photos']);
     return _card(key: Key('rq-$no'), color: may ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [
         if (may) Checkbox(key: Key('rq-tick-$no'), value: ticked.contains(no), onChanged: (v) => setState(() => v == true ? ticked.add(no) : ticked.remove(no))),
@@ -814,13 +844,14 @@ class _ReqListScreenState extends State<ReqListScreen> {
       ]),
       Text('For: ${x['for_kind'] ?? ''}${'${x['for_text'] ?? ''}'.isNotEmpty ? ' – ${x['for_text']}' : ''}${'${x['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(x['need_by'])}' : ''}', style: const TextStyle(fontSize: 13.5)),
       for (final l in lines) Text('• ${l['name']} ${q3(l['qty'])} ${l['unit']}${bsOf(l)}${st == 'Approved' && nOf(l['left']) < nOf(l['qty']) ? ' (ordered ${q3(l['ordered'])})' : ''}', style: const TextStyle(fontSize: 13.5)),
+      if (photos.isNotEmpty) Text('📷 ${photos.length} photo${photos.length == 1 ? '' : 's'}', key: Key('rq-phn-$no'), style: const TextStyle(fontSize: 12.5, color: C.blue, fontWeight: FontWeight.w600)),
       if (st == 'Pending') Text('Level ${x['level']}${wait.isNotEmpty ? ' – ${wait.join(', ')}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.amber, fontWeight: FontWeight.w600)),
       Text('Asked by ${x['created_name'] ?? x['created_by'] ?? ''}', style: _faint),
       Wrap(spacing: 2, children: [
         if (may) ...[_act('rq-ok-$no', 'Approve', () => _approve([no])), _act('rq-no-$no', 'Reject', () => _reject(x), color: C.red)],
         _act('rq-det-$no', 'Details', () => _details(x), color: C.blue),
-        // (3.62.0, his format) the Purchase Requisition Form
-        _act('rq-print-$no', 'Print', () => _do(() => printStorePaper(context, heading, 'Requirement ${'${x['ref'] ?? ''}'.isEmpty ? no : x['ref']}', (logo) => reqPaperHtml(x, heading, logo: logo))), color: C.blue),
+        if (photos.isNotEmpty || _phAdd(x)) _act('rq-ph-$no', photos.isEmpty ? 'Photos' : 'Photos (${photos.length})', () => _photos(x), color: C.blue),
+        _act('rq-print-$no', 'Print', () => _print(x), color: C.blue),
         if ((mine || k.admin) && st == 'Pending' && listOf(x['approvals']).isEmpty && k.edit('req')) _act('rq-edit-$no', 'Change', () => _form(x), color: C.blue),
         if ((mine || k.admin) && (st == 'Pending' || st == 'Approved') && !lines.any((l) => nOf(l['ordered']) > 0)) _act('rq-cancel-$no', 'Cancel', () => _cancel(x), color: C.red),
         if ((k.buyer || k.admin) && st == 'Approved' && lines.any((l) => nOf(l['left']) > 0)) _act('rq-close-$no', 'Close', () => _close(x), color: C.slate),
@@ -875,9 +906,12 @@ class _ReqListScreenState extends State<ReqListScreen> {
 }
 
 class ReqFormScreen extends StatefulWidget {
-  const ReqFormScreen({super.key, required this.k, this.req});
+  const ReqFormScreen({super.key, required this.k, this.req, this.photos = false});
   final StoreKit k;
   final Map<String, dynamic>? req;
+
+  /// (3.66.0) its photos (the Store's step 7 at this site)
+  final bool photos;
   @override
   State<ReqFormScreen> createState() => _ReqFormScreenState();
 }
@@ -889,12 +923,34 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
   final lines = <SLine>[];
   bool busy = false;
 
+  /// (3.66.0) its photos: those it has (their pictures through their links) and the ones taken here; each new one's proof (sha → t)
+  final photos = <AttFile>[];
+  final tok = <String, String>{};
+
   @override
   void initState() {
     super.initState();
     for (final l in listOf(widget.req?['lines'])) {
       lines.add(SLine(code: '${l['code']}', name: '${l['name']}', unit: '${l['unit']}', qty: plainN(l['qty']), note: '${l['note'] ?? ''}', brand: '${l['brand'] ?? ''}', spec: '${l['spec'] ?? ''}'));
     }
+    for (final (i, p) in listOf(widget.req?['photos']).indexed) {
+      photos.add(AttFile(sha: '${p['sha']}', p: 'store', name: 'Photo ${i + 1}', size: nOf(p['size']).toInt(), by: '${p['by'] ?? ''}', at: '${p['at'] ?? ''}'));
+    }
+    if (widget.photos && photos.isNotEmpty) _links();
+  }
+
+  Future<void> _links() async {
+    try {
+      final got = await storePhotosOf(widget.k, widget.req!['no']);
+      if (!mounted) return;
+      setState(() {
+        for (final g in got) {
+          for (final f in photos.where((y) => y.sha == g.sha)) {
+            f.url = g.url;
+          }
+        }
+      });
+    } catch (_) {/* the tiles without their pictures – the photos stay as they are */}
   }
 
   @override
@@ -911,12 +967,25 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
     if (lines.isEmpty) return toast(context, 'Add at least one item.', bad: true);
     setState(() => busy = true);
     try {
+      // (3.66.0) its photos sent first (each kept once by the Store), then the requirement with their list
+      List<Map<String, dynamic>>? ph;
+      if (widget.photos) {
+        final bad = await storePhotosSend(widget.k, photos, tok, () {
+          if (mounted) setState(() {});
+        });
+        if (bad.isNotEmpty) throw ApiError(bad);
+        ph = storePhotoList(photos, tok);
+      }
       final r = await widget.k.call('reqSave', {
         if (widget.req != null) 'no': widget.req!['no'],
         'req': {'date': date, 'need_by': need, 'for_kind': kind, 'for_text': kind == 'Machinery' ? mach : which.text, 'remark': rem.text, 'lines': [for (final l in lines) {'code': l.code, 'qty': l.qty.text, 'brand': l.brand.text, 'spec': l.spec.text, 'note': l.note.text}]},
+        if (ph != null) 'photos': ph,
+        // (the Store's review) the photos it opened with: one added since (the laptop, the Store Admin) stays
+        if (ph != null && widget.req != null) 'photosWas': [for (final p in listOf(widget.req!['photos'])) '${p['sha']}'],
       });
       if (!mounted) return;
-      toast(context, 'Requirement ${r['no']} saved – ${r['status'] == 'Approved' ? 'approved (no approver set for this site).' : 'it waits for Level ${r['level']}.'}');
+      final note = '${r['photoNote'] ?? ''}';
+      toast(context, note.isNotEmpty ? note : 'Requirement ${r['no']} saved – ${r['status'] == 'Approved' ? 'approved (no approver set for this site).' : 'it waits for Level ${r['level']}.'}', bad: note.isNotEmpty);
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
@@ -950,9 +1019,176 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
         Text('Items', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
         SLinesEditor(k: k, lines: lines, tag: 'rql', stock: true, brandSpec: true, noteLabel: 'Note', onChanged: () => setState(() {})),
+        // (3.66.0) the photos of the material – the camera, the gallery; up to 10
+        if (widget.photos) ...[
+          const SizedBox(height: 16),
+          Text('Photos of the material', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          AttachStrip(key: const Key('rqf-photos'), files: photos, max: kReqPhotoMax, photosOf: 'requirement', enabled: !busy, onChanged: () => setState(() {})),
+        ],
       ]),
     );
   }
+}
+
+/* ======================== (3.66.0) A REQUIREMENT'S PHOTOS ========================
+ * The Store's step 7 (29-10-2026: "requirement madhe attachment cha option … material photo … multiple photos … app madhun photo kadhla
+ * tri laptop web madhe yeil"; his answers: the whole requirement, many photos; in the print too). A photo taken here (the camera, the
+ * gallery) is made ready as a Log Book photo – upright, at most 1600 px, a JPEG of a few hundred KB – and sent to the Store
+ * (reqPhotoUp, the web's action); the save takes the list with each new photo's proof. The same photos as the laptop's page. */
+const kReqPhotoMax = 10, _kPhRaw = 2 * 1024 * 1024;
+
+/// The photos not yet sent → the Store, one after the other; each one's proof into [tok] (sha → t). '' = all are sent.
+Future<String> storePhotosSend(StoreKit k, List<AttFile> files, Map<String, String> tok, void Function() changed) async {
+  for (final f in files.where((x) => x.state == 'new' || x.state == 'err').toList()) {
+    try {
+      // (the Store takes a JPEG of 2 MB at most: "Use the original file" or a big "Original quality" one is made the usual size)
+      if (f.src != null && (f.mime != 'image/jpeg' || (f.bytes?.length ?? 0) > _kPhRaw)) {
+        f.ed = AttEdit(rot: f.ed.rot, ang: f.ed.ang, q: f.ed.q);
+        await attMake(f);
+      }
+      final b = f.bytes;
+      if (b == null) throw ApiError('Add this photo again.');
+      f.state = 'send';
+      f.err = '';
+      changed();
+      final r = await k.call('reqPhotoUp', {'data': 'data:image/jpeg;base64,${base64Encode(b)}'});
+      if ('${r['sha']}' != f.sha) throw ApiError('The photo did not arrive as it was sent – add it again.');
+      tok[f.sha] = '${r['t']}';
+      f.size = nOf(r['size']).toInt();
+      f.p = 'store';
+      f.state = 'ok';
+    } catch (e) {
+      f.state = 'err';
+      f.err = errText(e);
+    }
+    changed();
+  }
+  final bad = files.where((x) => x.state != 'ok').length;
+  return bad == 0 ? '' : '$bad photo${bad == 1 ? ' was' : 's were'} not sent (marked !) – save again to try again, or take ${bad == 1 ? 'it' : 'them'} out.';
+}
+
+/// The list a save sends: a photo the requirement has ({sha}), a new one with its proof ({sha, size, t}).
+List<Map<String, dynamic>> storePhotoList(List<AttFile> files, Map<String, String> tok) => [for (final f in files) tok[f.sha] != null ? {'sha': f.sha, 'size': f.size, 't': tok[f.sha]} : {'sha': f.sha}];
+
+/// A requirement's photos with their links (15 minutes); [site] – another site's (HO Purchase).
+Future<List<AttFile>> storePhotosOf(StoreKit k, Object? no, {String site = ''}) async {
+  final r = await k.call('reqPhotos', {if (site.isNotEmpty) 'site': site, 'no': no});
+  return [
+    for (final (i, p) in listOf(r['photos']).indexed)
+      AttFile(sha: '${p['sha']}', p: 'store', name: 'Photo ${i + 1}', size: nOf(p['size']).toInt(), by: '${p['by'] ?? ''}', at: '${p['at'] ?? ''}', url: '${p['url'] ?? ''}'),
+  ];
+}
+
+/// A requirement's photos: each opens big; "Add photos" – who made it or the Store Admin, while it waits or is approved (made on the
+/// laptop, its photos taken here: the laptop's page shows them at once).
+class ReqPhotosScreen extends StatefulWidget {
+  const ReqPhotosScreen({super.key, required this.k, required this.req, this.canAdd = false, this.site = ''});
+  final StoreKit k;
+  final Map<String, dynamic> req;
+  final bool canAdd;
+  final String site;
+  @override
+  State<ReqPhotosScreen> createState() => _ReqPhotosScreenState();
+}
+
+class _ReqPhotosScreenState extends State<ReqPhotosScreen> {
+  List<AttFile> have = [];
+  final add = <AttFile>[];
+  final tok = <String, String>{};
+  bool loading = true, busy = false;
+  String err = '';
+  Object? get no => widget.req['no'];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final got = await storePhotosOf(widget.k, no, site: widget.site);
+      if (!mounted) return;
+      setState(() {
+        have = got;
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _send() async {
+    if (add.isEmpty) return toast(context, 'Take or pick a photo first.', bad: true);
+    setState(() => busy = true);
+    try {
+      final bad = await storePhotosSend(widget.k, add, tok, () {
+        if (mounted) setState(() {});
+      });
+      if (bad.isNotEmpty) throw ApiError(bad);
+      final r = await widget.k.call('reqPhotoAdd', {'no': no, 'photos': storePhotoList(add, tok)});
+      if (!mounted) return;
+      toast(context, '${add.length} photo${add.length == 1 ? '' : 's'} added to requirement $no (${r['photos']} now).');
+      setState(add.clear);
+      await _load();
+    } catch (e) {
+      if (mounted) toast(context, errText(e), bad: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Widget _tile(int i, AttFile f) => SizedBox(
+        key: Key('rqp-$i'),
+        width: 104,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttViewer(files: have, start: i, title: 'Photos'))),
+            child: Container(
+              width: 104,
+              height: 84,
+              decoration: BoxDecoration(color: C.slateSoft, borderRadius: BorderRadius.circular(10), border: Border.all(color: C.line, width: 1.5)),
+              clipBehavior: Clip.antiAlias,
+              child: f.url.isEmpty ? const Icon(Icons.image_outlined, color: C.muted) : Image.network(f.url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, color: C.muted)),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text('${f.by}${f.at.isEmpty ? '' : ' · ${paperDmy(istOf(f.at))}'}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(actions: withAsk(), title: Text('Photos – requirement $no')),
+        body: loading
+            ? _loading()
+            : ListView(key: const Key('rqp'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true),
+                Text(have.isEmpty ? 'No photo yet.' : '${have.length} of $kReqPhotoMax photos – a photo opens big.', key: const Key('rqp-count'), style: _muted),
+                const SizedBox(height: 8),
+                Wrap(spacing: 10, runSpacing: 10, children: [for (final (i, f) in have.indexed) _tile(i, f)]),
+                if (widget.canAdd && have.length < kReqPhotoMax) ...[
+                  const SizedBox(height: 18),
+                  Text('Add photos', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  AttachStrip(key: const Key('rqp-add'), files: add, max: kReqPhotoMax - have.length, photosOf: 'requirement', enabled: !busy, onChanged: () => setState(() {})),
+                  const SizedBox(height: 10),
+                  FilledButton(
+                    key: const Key('rqp-send'),
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                    onPressed: busy || add.isEmpty ? null : _send,
+                    child: Text(busy ? 'Sending…' : add.isEmpty ? 'Add to the requirement' : 'Add ${add.length} photo${add.length == 1 ? '' : 's'} to the requirement'),
+                  ),
+                ],
+              ]),
+      );
 }
 
 /* ======================== PURCHASE – EVERY SITE (HO Purchase) ======================== */
@@ -1018,7 +1254,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text('${st['error']}', style: _muted))
       else ...[
         if (reqs.isEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text('Nothing to order.', style: _muted)),
-        for (final r in reqs)
+        for (final r in reqs) ...[
           for (final l in listOf(r['lines']))
             if (nOf(l['left']) > 0)
               Material(
@@ -1034,6 +1270,18 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   subtitle: Text('${r['for_kind'] ?? ''}${'${r['for_text'] ?? ''}'.isNotEmpty ? ' – ${r['for_text']}' : ''} · ${dmy(r['date'])}${'${r['need_by'] ?? ''}'.isNotEmpty ? ' · needed by ${dmy(r['need_by'])}' : ''} · asked ${q3(l['qty'])}, ordered ${q3(l['ordered'])}', style: _faint),
                 ),
               ),
+          // (3.66.0) its photos (another site's – HO Purchase)
+          if (listOf(r['photos']).isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: Key('pu-ph-$site-${r['no']}'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReqPhotosScreen(k: k, req: r, site: site))),
+                icon: const Icon(Icons.photo_library_rounded, size: 18),
+                label: Text('REQ ${r['no']} – 📷 ${listOf(r['photos']).length} photo${listOf(r['photos']).length == 1 ? '' : 's'}'),
+              ),
+            ),
+        ],
         if (nOf(st['open']) > 0) Text('${st['open']} PO(s) open', style: _muted),
         Padding(
           padding: const EdgeInsets.only(top: 6, bottom: 4),
