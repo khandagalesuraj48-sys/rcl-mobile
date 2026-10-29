@@ -49,10 +49,13 @@ const _kFor = ['Site work', 'Machinery', 'Office', 'Other'], _kTo = ['Site work'
 /// What the Store's work needs (its "boot"): who works and what he may do, the items and their stock, the machinery, the names
 /// typed before, who approves – read again when a page opens and after a save (the web's B).
 class StoreKit {
-  StoreKit({required this.call, required Map pages, required this.admin}) : pages = Map<String, dynamic>.from(pages);
+  StoreKit({required this.call, required Map pages, required this.admin, this.superAdmin = false}) : pages = Map<String, dynamic>.from(pages);
   final StoreCall call;
   final Map<String, dynamic> pages;
   final bool admin;
+
+  /// (3.62.1, 29-10-2026) the Super Admin (his Portal ticket): any day, as the Store Admin
+  final bool superAdmin;
   Map<String, dynamic> b = {};
 
   /// a page of the web's menu: Edit / View / None ("purchase" only when given; "settings" is the Store Admin's)
@@ -67,6 +70,11 @@ class StoreKit {
   }
 
   String get today => '${b['today'] ?? dateKey(DateTime.now())}';
+
+  /// (3.62.1, 29-10-2026 – "jo entry user karayla jail tyala auto aajchi date select aasel tyala date change krta yenar nahi") a Store User
+  /// dates a requirement, PO, GRN, issue or return only today (the server refuses another day); null: any day – the Store Admin and the
+  /// Super Admin
+  DateTime? get entryFirst => admin || superAdmin ? null : parseKey(today);
   String get monthStart => '${today.substring(0, 8)}01';
   List<Map<String, dynamic>> get items => listOf(b['items']);
   List<Map<String, dynamic>> get active => [for (final i in items) if (i['status'] == 'Active') i];
@@ -800,7 +808,7 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
       bottomNavigationBar: _saveBar('rq-save', 'Save requirement', busy, _save),
       body: ListView(key: const Key('rqf'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         Row(children: [
-          Expanded(child: DateField(key: const Key('rqf-date'), label: 'Date *', value: date, clear: false, onChanged: (v) => setState(() => date = v))),
+          Expanded(child: DateField(key: const Key('rqf-date'), label: 'Date *', value: date, clear: false, first: k.entryFirst, onChanged: (v) => setState(() => date = v))),
           const SizedBox(width: 8),
           Expanded(child: DateField(key: const Key('rqf-need'), label: 'Needed by', value: need, onChanged: (v) => setState(() => need = v))),
         ]),
@@ -1175,7 +1183,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
           : ListView(key: const Key('pof'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
               if (err.isNotEmpty) InfoLine(err, bad: true),
               Row(children: [
-                Expanded(child: DateField(key: const Key('pof-date'), label: 'PO date *', value: date, clear: false, onChanged: (v) => setState(() => date = v))),
+                Expanded(child: DateField(key: const Key('pof-date'), label: 'PO date *', value: date, clear: false, first: widget.k.entryFirst, onChanged: (v) => setState(() => date = v))),
                 const SizedBox(width: 8),
                 Expanded(child: DateField(key: const Key('pof-del'), label: 'Delivery by', value: deliver, onChanged: (v) => setState(() => deliver = v))),
               ]),
@@ -1650,7 +1658,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
                         hint: widget.grn == null && !step4 ? 'the next number' : '',
                         onChanged: (_) => refTyped = true)),
                 const SizedBox(width: 8),
-                Expanded(child: DateField(key: const Key('grf-date'), label: 'GRN date *', value: date, clear: false, onChanged: (v) => setState(() => date = v))),
+                Expanded(child: DateField(key: const Key('grf-date'), label: 'GRN date *', value: date, clear: false, first: widget.k.entryFirst, onChanged: (v) => setState(() => date = v))),
               ]),
               const SizedBox(height: 8),
               DateField(key: const Key('grf-invd'), label: 'Invoice date', value: invDate, onChanged: (v) => setState(() => invDate = v)),
@@ -1941,7 +1949,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       bottomNavigationBar: _saveBar('is-save', 'Save issue', busy, _save),
       body: ListView(key: const Key('isf'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         Row(children: [
-          Expanded(child: DateField(key: const Key('isf-date'), label: 'Date *', value: date, clear: false, onChanged: (v) => setState(() => date = v))),
+          Expanded(child: DateField(key: const Key('isf-date'), label: 'Date *', value: date, clear: false, first: k.entryFirst, onChanged: (v) => setState(() => date = v))),
           const SizedBox(width: 8),
           Expanded(child: PickField(key: const Key('isf-kind'), label: 'Issued to *', value: kind, items: k.kinds('to'), onChanged: (v) => setState(() => kind = v))),
         ]),
@@ -2046,7 +2054,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
       body: ListView(key: const Key('rtf'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         Text('Back to the store from ${storeToWho(i)} – outward ${i['no']} of ${dmy(i['date'])}', style: _muted),
         const SizedBox(height: 8),
-        DateField(key: const Key('rtf-date'), label: 'Return date *', value: date, clear: false, onChanged: (v) => setState(() => date = v)),
+        DateField(key: const Key('rtf-date'), label: 'Return date *', value: date, clear: false, first: widget.k.entryFirst, onChanged: (v) => setState(() => date = v)),
         const SizedBox(height: 8),
         TextBox(key: const Key('rtf-rem'), label: 'Remark', controller: rem),
         const SizedBox(height: 12),

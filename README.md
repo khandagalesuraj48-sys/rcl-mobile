@@ -25,7 +25,10 @@ krta yenar nahi … modual wise"; the Log Book "kal + aaj"; with Mechanical upda
 entry only today – the Log Book (and its water tanker trips) also yesterday: the date pickers of Diesel Issue / Inward / Transfer, the
 many-entries screens, Tank check, the Maintenance bill and a fuel card's payment start at that day (`Session.entryFirst`); a half-filled
 entry of a day he may not use comes back with today. The Admin and the Super Admin any day, as before; the server refuses any other day
-(update-187). Rules of the site: the label says the fixed rule ("0" – the Log Book too only today). Not verified: his phone itself.
+(update-187). Rules of the site: the label says the fixed rule ("0" – the Log Book too only today). **The Store** (its own rule, rcl-store
+#19): a Store User's requirement, PO, GRN, issue and return dates start today (`StoreKit.entryFirst`; the Super Admin from his Portal ticket
+– `superAdmin`); a requirement / PO he changes keeps its own date. Engineering has no screens in the app yet (its rule is on its server).
+Not verified: his phone itself.
 
 **Version 3.62.0 (29-10-2026 – the Store's step 5 as the app's own screens: "he amche company che format ahet mala je po bantil
 requiremet bantil te same ya format amddhe hawet" … "PO approve karaychi payri kara"; with the Store's PR #18 and the Portal's PR #26;
