@@ -2430,6 +2430,7 @@ void main() {
     // PO 1 deleted (nothing of it came… in the fake) – then requirement 1 may be changed and deleted
     await t.pageBack();
     await net(t);
+    await reach(t, 'sw-po', 'st-work');
     await tapK(t, 'sw-po');
     await net(t);
     await tapK(t, 'po-del-S1-1');
@@ -2440,6 +2441,7 @@ void main() {
     await settle(t, 4200);
     await t.pageBack();
     await net(t);
+    await reach(t, 'sw-req', 'st-work'); // (the Work tab scrolled to its PO page – its top again)
     await tapK(t, 'sw-req');
     await net(t);
     expect(find.byKey(const Key('rq-pos-1')), findsNothing);
