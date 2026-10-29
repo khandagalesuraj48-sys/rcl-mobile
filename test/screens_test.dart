@@ -5185,15 +5185,22 @@ void main() {
     expect(find.text('11-10-2026'), findsNothing, reason: 'not the day it was typed');
     await t.binding.handlePopRoute();
     await net(t);
-    // typed today with an earlier date picked on purpose (the app closed by the camera): that date comes back
-    await t.runAsync(() => s.api.keep.write(key, jsonEncode({'date': '2026-10-12', 'shift': 'Day', 'no': 'Sany 210 (No.1)', 'qty': '30', 'at': DateTime(2026, 10, 14, 9).toUtc().toIso8601String()})));
-    await t.tap(find.byKey(const Key('tab-plus')));
-    await settle(t, 600);
-    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
-    await net(t);
-    expect(find.byKey(const Key('draft-back')), findsOneWidget);
-    expect(find.text('12-10-2026'), findsOneWidget);
-    expect(find.text('Today'), findsNothing);
+    // typed today with an earlier date picked on purpose (the app closed by the camera): a user – today (update-187: he dates only
+    // today); the Admin – that date comes back
+    final draft = jsonEncode({'date': '2026-10-12', 'shift': 'Day', 'no': 'Sany 210 (No.1)', 'qty': '30', 'at': DateTime(2026, 10, 14, 9).toUtc().toIso8601String()});
+    for (final adm in [false, true]) {
+      s.admin = adm;
+      await t.runAsync(() => s.api.keep.write(key, draft));
+      await t.tap(find.byKey(const Key('tab-plus')));
+      await settle(t, 600);
+      await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+      await net(t);
+      expect(find.byKey(const Key('draft-back')), findsOneWidget);
+      expect(find.text('12-10-2026'), adm ? findsOneWidget : findsNothing, reason: adm ? 'the Admin: the day he picked' : 'a user: only today');
+      expect(find.text('Today'), adm ? findsNothing : findsOneWidget);
+      await t.binding.handlePopRoute();
+      await net(t);
+    }
   });
 
   // ---------------- (3.31.0) the new look from his picture ----------------
