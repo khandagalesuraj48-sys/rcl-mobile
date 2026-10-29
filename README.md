@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.68.0 (29-10-2026 – "supabase 2 second cha vishay … ERP mothi hotey … saving mahtwachi aahe but data real time disne user
+laa he pn mahtwach aahe … niyojan tu kar"; with rcl-store's live):** **the Store's lists show another person's save by themselves** –
+Requirements, Purchase (every site), Purchase Orders, Inward (GRN), Issue & Return and the Store's Dashboard figures (`StoreLive` in
+`store_work.dart`): each asks only "what changed at this site?" (the Store's `live` – about 40 bytes; its server reads the database once in
+2 s for every page of the site) every 2 s while the phone is used, every 15 s after 5 quiet minutes, nothing while another screen or a
+sheet is over it or the app is in the background, and reads its list again only when something changed. Mechanical's screens: as
+before (the heartbeat of 3.36.0).
+
 **Version 3.67.0 (29-10-2026 – "jithe jithe type krun entry hotat ata prynt app madhe kuth hi ani new kahi yenar asel … tithe voice
 mick banaw user apla voice madhe bolel … text madhe add krel … hindi english marathi"; his answers: the app and the website, words and
 numbers):** **🎙 in every box of the app** (`ui/voice_box.dart`, over every screen from `main.dart` – a box added later has it by

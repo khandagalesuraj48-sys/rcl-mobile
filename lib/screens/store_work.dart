@@ -3,6 +3,7 @@
  * site (HO Purchase), Purchase Orders, Inward (GRN), Issue & Return, Stock & Reports, Opening stock & Numbers. The same actions,
  * checks and access as the web's pages (rcl-store api/work.js and public/work.js); every save is checked again by the Store's
  * server and inside its database (one save at a time on the site, an item's stock never below zero on any date). */
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' show min;
 
@@ -35,6 +36,58 @@ part 'store_reg.dart';
 
 /// One action of the Store's work (POST <store>/api/work { action, … }).
 typedef StoreCall = Future<Map<String, dynamic>> Function(String action, [Map<String, dynamic>? x]);
+
+/* (3.68.0 – 29-10-2026, the MD: "supabase 2 second cha vishay … saving mahtwachi aahe but data real time disne user laa he pn mahtwach
+ * aahe … niyojan tu kar") A LIST OF THE STORE SHOWS ANOTHER PERSON'S SAVE BY ITSELF – as the web's page: it asks only "what changed
+ * at this site?" (the Store's live – about 40 bytes; its server reads the database once in 2 s for every page of the site) every 2 s
+ * while the phone is used, every 15 s after 5 quiet minutes, nothing while another screen or a sheet is over it or the app is in the
+ * background; it reads its list again only when something changed. */
+mixin StoreLive<T extends StatefulWidget> on State<T> {
+  Timer? _lt;
+  String? _lv;
+  bool _lbusy = false;
+  StoreKit? get liveKit;
+  Future<void> liveLoad();
+
+  /// what the question carries (HO Purchase: every site)
+  Map<String, dynamic> get liveAsk => const {};
+
+  void liveStart() {
+    _lt?.cancel();
+    _lt = Timer(const Duration(seconds: 2), _liveTick);
+  }
+
+  @override
+  void dispose() {
+    _lt?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _liveTick() async {
+    if (!mounted) return;
+    final app = WidgetsBinding.instance.lifecycleState;
+    final seen = (ModalRoute.of(context)?.isCurrent ?? true) && (app == null || app == AppLifecycleState.resumed);
+    var quiet = false;
+    try {
+      quiet = DateTime.now().difference(SessionScope.read(context).touchedAt) > const Duration(minutes: 5);
+    } catch (_) {}
+    final k = liveKit;
+    if (seen && !_lbusy && k != null) {
+      _lbusy = true;
+      try {
+        final r = await k.call('live', liveAsk);
+        final v = '${r['v']}';
+        if (_lv != null && v != _lv && mounted) await liveLoad();
+        _lv = v;
+      } catch (_) {
+        /* the next time */
+      } finally {
+        _lbusy = false;
+      }
+    }
+    if (mounted) _lt = Timer(Duration(seconds: quiet ? 15 : 2), _liveTick);
+  }
+}
 
 /// The pages of the Store's work, as the web's menu: key, name, Marathi, what it is, icon.
 const kWorkPages = <(String, String, String, String, IconData)>[
@@ -689,7 +742,11 @@ class ReqListScreen extends StatefulWidget {
   State<ReqListScreen> createState() => _ReqListScreenState();
 }
 
-class _ReqListScreenState extends State<ReqListScreen> {
+class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScreen> {
+  @override
+  StoreKit? get liveKit => widget.k;
+  @override
+  Future<void> liveLoad() => _load();
   List<Map<String, dynamic>> reqs = [], levels = [];
 
   /// (3.62.0) the heading of this site's papers (the company, the site, e-mail …) – for the Purchase Requisition Form
@@ -705,6 +762,7 @@ class _ReqListScreenState extends State<ReqListScreen> {
   @override
   void initState() {
     super.initState();
+    liveStart(); // (3.68.0) another person's save shows by itself
     _load();
   }
 
@@ -1199,7 +1257,13 @@ class PurchaseScreen extends StatefulWidget {
   State<PurchaseScreen> createState() => _PurchaseScreenState();
 }
 
-class _PurchaseScreenState extends State<PurchaseScreen> {
+class _PurchaseScreenState extends State<PurchaseScreen> with StoreLive<PurchaseScreen> {
+  @override
+  StoreKit? get liveKit => widget.k;
+  @override
+  Future<void> liveLoad() => _load();
+  @override
+  Map<String, dynamic> get liveAsk => const {'all': true};
   List<Map<String, dynamic>> sites = [], pos = [];
   final ticks = <String>{}; // 'site|req|line'
   String err = '';
@@ -1209,6 +1273,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   @override
   void initState() {
     super.initState();
+    liveStart(); // (3.68.0) another person's save shows by itself
     _load();
   }
 
@@ -1609,7 +1674,11 @@ class PoListScreen extends StatefulWidget {
   State<PoListScreen> createState() => _PoListScreenState();
 }
 
-class _PoListScreenState extends State<PoListScreen> {
+class _PoListScreenState extends State<PoListScreen> with StoreLive<PoListScreen> {
+  @override
+  StoreKit? get liveKit => widget.k;
+  @override
+  Future<void> liveLoad() => _load();
   List<Map<String, dynamic>> pos = [];
   bool pending = false, loading = true;
   String err = '';
@@ -1617,6 +1686,7 @@ class _PoListScreenState extends State<PoListScreen> {
   @override
   void initState() {
     super.initState();
+    liveStart(); // (3.68.0) another person's save shows by itself
     _load();
   }
 
@@ -1727,7 +1797,11 @@ class GrnListScreen extends StatefulWidget {
   State<GrnListScreen> createState() => _GrnListScreenState();
 }
 
-class _GrnListScreenState extends State<GrnListScreen> {
+class _GrnListScreenState extends State<GrnListScreen> with StoreLive<GrnListScreen> {
+  @override
+  StoreKit? get liveKit => widget.k;
+  @override
+  Future<void> liveLoad() => _load();
   List<Map<String, dynamic>> grns = [];
   late String from = widget.k.monthStart, to = widget.k.today;
   bool loading = true;
@@ -1737,6 +1811,7 @@ class _GrnListScreenState extends State<GrnListScreen> {
   @override
   void initState() {
     super.initState();
+    liveStart(); // (3.68.0) another person's save shows by itself
     _start();
   }
 
@@ -2162,7 +2237,11 @@ class IssueListScreen extends StatefulWidget {
   State<IssueListScreen> createState() => _IssueListScreenState();
 }
 
-class _IssueListScreenState extends State<IssueListScreen> {
+class _IssueListScreenState extends State<IssueListScreen> with StoreLive<IssueListScreen> {
+  @override
+  StoreKit? get liveKit => widget.k;
+  @override
+  Future<void> liveLoad() => _load();
   List<Map<String, dynamic>> issues = [];
   late String from = widget.k.monthStart, to = widget.k.today;
   bool loading = true;
@@ -2172,6 +2251,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
   @override
   void initState() {
     super.initState();
+    liveStart(); // (3.68.0) another person's save shows by itself
     _start();
   }
 

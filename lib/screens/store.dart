@@ -90,7 +90,12 @@ class StoreScreen extends StatefulWidget {
   State<StoreScreen> createState() => _StoreScreenState();
 }
 
-class _StoreScreenState extends State<StoreScreen> {
+class _StoreScreenState extends State<StoreScreen> with StoreLive<StoreScreen> {
+  // (3.68.0) the Dashboard's figures of the Store's work: another person's save shows by itself (store_work.dart StoreLive)
+  @override
+  StoreKit? get liveKit => kit;
+  @override
+  Future<void> liveLoad() => _loadDash();
   Map<String, dynamic>? me;
   List<Map<String, dynamic>> items = [];
   List<String> units = [], cats = [];
@@ -105,6 +110,7 @@ class _StoreScreenState extends State<StoreScreen> {
   void initState() {
     super.initState();
     q = widget.find;
+    liveStart();
   }
 
   @override

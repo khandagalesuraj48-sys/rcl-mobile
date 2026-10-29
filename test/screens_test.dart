@@ -2231,6 +2231,31 @@ void main() {
     expect(find.textContaining('Requirement 3 saved – it waits for Level 1.'), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('(3.68.0) Store – live: the Requirements list asks "what changed?" every 2 s; another person\'s save (the site\'s last change moved) shows by itself; nothing asked while another screen is over it', (t) async {
+    final srv = await openStoreWork(t);
+    await tapK(t, 'sw-req');
+    await net(t);
+    expect(find.byKey(const Key('rq-9')), findsNothing);
+    await t.pump(const Duration(milliseconds: 2500));
+    await net(t);
+    final asked = sent(srv, 'live').length;
+    expect(asked, greaterThanOrEqualTo(1), reason: 'asked after 2 s');
+    // another person makes requirement 9 at the site
+    srv.storeReqs.insert(0, {'no': 9, 'date': '2026-10-14', 'need_by': null, 'for_kind': 'Site work', 'for_text': 'Ch 548+200 drain', 'status': 'Pending', 'level': 1, 'approvals': [], 'created_by': 'amol@rcl.test', 'created_name': 'Amol Patil',
+      'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 3, 'note': '', 'ordered': 0, 'left': 0}], 'mayApprove': true, 'mine': false, 'waitFor': ['Sujit Mule']});
+    srv.storeLive++;
+    await t.pump(const Duration(milliseconds: 2500));
+    await net(t);
+    expect(find.byKey(const Key('rq-9')), findsOneWidget, reason: 'shown by itself – no pull to refresh');
+    // a screen over the list: nothing asked
+    await tapK(t, 'rq-new');
+    await net(t);
+    final before = sent(srv, 'live').length;
+    await t.pump(const Duration(seconds: 5));
+    await net(t);
+    expect(sent(srv, 'live').length, before, reason: 'the list is under the form');
+  });
+
   testWidgets('(3.66.0 – the Store\'s step 7) a requirement\'s photos: taken in its form and sent (reqPhotoUp), the save with their list and proofs; Photos of one made already – seen, one added (reqPhotoAdd); its print with the photos page; HO Purchase sees them', (t) async {
     final p0 = pickAttFiles, c0 = attCompute;
     attCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);
