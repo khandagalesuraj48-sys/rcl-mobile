@@ -328,7 +328,7 @@ class _SpDocState extends State<SpDoc> {
       if (can.contains('cancel')) ('cancel', 'Cancel', false),
     ];
     return Scaffold(
-      appBar: AppBar(title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(d == null ? 'New ${f['short'] ?? f['name']}' : '${d?['no']}')),      // (the whole number – made smaller, never cut) actions: [if (d != null) Padding(padding: const EdgeInsets.only(right: 10), child: Center(child: Pill('${d?['status']}', color: C.blue, bg: C.blueSoft)))]),
+      appBar: AppBar(title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(d == null ? 'New ${f['short'] ?? f['name']}' : '${d?['no']}')), /* (the whole number – made smaller, never cut) */ actions: [if (d != null) Padding(padding: const EdgeInsets.only(right: 10), child: Center(child: Pill('${d?['status']}', color: C.blue, bg: C.blueSoft)))]),
       bottomNavigationBar: acts.isEmpty || loading
           ? null
           : SafeArea(
