@@ -468,6 +468,19 @@ class Api {
     }
   }
 
+  // ---------------- Purchase (3.72.0) ----------------
+  /// (3.72.0, rcl-purchase – the Purchase Department, one for every site) Purchase's sign-in on [siteCode] – as Engineering's: a
+  /// ticket of the Portal for the module 'purchase', POST <purchase>/api/sso { ticket }. The answer: who, his role (super / admin /
+  /// user), the site open now and every site where he has Purchase (its Dashboard). Its cookie (rcl_pur) is kept when Purchase has
+  /// pages that ask its server.
+  Future<Map<String, dynamic>> purOpen(String siteCode, String purUrl) async {
+    final t = await ticket(siteCode, 'purchase');
+    final r = await _send(() => _c.post(Uri.parse('$purUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
+    final j = _json(r, 'Purchase');
+    if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
+    return j;
+  }
+
   /// Signs out of Mechanical and of the Portal (one sign-out for every module, as on the web).
   Future<void> signOut() async {
     try {
