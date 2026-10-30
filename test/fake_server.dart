@@ -1077,9 +1077,9 @@ class FakeServer {
     // (SP build – local rig) the new formats of the Store and of Purchase (POST <module>/api/sp): a small spec, a list, one document;
     // a save / submit kept in [spSent]; [spOffline] – no network for them (the phone's queue)
     if (path.endsWith('/store/api/sp') || path.endsWith('/purchase/api/sp')) {
-      if (spOffline) throw http.ClientException('no network (test)');
       final b = (jsonDecode(r.body) as Map).cast<String, dynamic>(), pur = path.endsWith('/purchase/api/sp');
-      spSent.add({'mod': pur ? 'purchase' : 'store', ...b});
+      spSent.add({'mod': pur ? 'purchase' : 'store', if (spOffline) 'offline': true, ...b});      // (the try without network too – it never reached a server)
+      if (spOffline) throw http.ClientException('no network (test)');
       final head = [
         {'key': 'date', 'label': 'Date', 'type': 'date', 'req': true}, {'key': 'store', 'label': 'Store', 'type': 'text', 'req': true},
         {'key': 'for_kind', 'label': 'For', 'type': 'select', 'options': ['Site work', 'Machinery'], 'req': true},

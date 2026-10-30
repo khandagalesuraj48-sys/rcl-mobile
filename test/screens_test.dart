@@ -6857,9 +6857,12 @@ void main() {
     }
     await t.tap(find.byKey(const Key('store-sp')));
     await net(t);
-    expect(find.textContaining('Sent from the queue: 1'), findsOneWidget);
+    await net(t);      // (the queue is sent first, then the spec is read)
+    final shown = t.widgetList<Text>(find.byType(Text)).map((x) => x.data ?? x.textSpan?.toPlainText() ?? '').where((x) => x.isNotEmpty).join(' | ');
     final sub = srv.spSent.where((x) => x['action'] == 'submit').toList();
+    expect(find.textContaining('Sent from the queue: 1'), findsOneWidget, reason: 'on the screen: $shown · submits sent: ${sub.length}');
     expect(sub.length, 2, reason: 'the try without network, and the queued one sent');
+    expect(sub[0]['offline'], true); expect(sub[1]['offline'], isNull);
     expect(sub[0]['rid'], sub[1]['rid'], reason: 'the same save-once key – never a second document');
     // Purchase: the Vendor Master is view-only on the phone (D-29)
     for (var i = 0; i < 2; i++) {
