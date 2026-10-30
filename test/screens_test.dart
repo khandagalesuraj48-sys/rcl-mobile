@@ -2025,6 +2025,56 @@ void main() {
     expect(find.textContaining("values ('boss@site.com', 'boss@site.com', 'Admin'"), findsOneWidget, reason: 'the SQL follows what is typed');
   }, tags: ['golden']);
 
+  testWidgets('(3.72.0) Purchase (rcl-purchase): its tile only with Purchase on the site; its own sign-in (a Portal ticket for "purchase"); the Dashboard – his sites with Purchase, the one open now; in the search', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    var s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.text('Purchase'), findsNothing, reason: 'no Purchase on this site: no tile');
+    srv.purSite = true;
+    s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.ensureVisible(find.text('Purchase'));
+    await settle(t, 400);
+    await t.tap(find.text('Purchase'));
+    await net(t);
+    expect(srv.calls, contains('portal:go:purchase:S1'));
+    expect(srv.purSent.single['fn'], 'sso');
+    expect(find.byKey(const Key('pur-dash')), findsOneWidget);
+    expect(find.text('Purchase Department'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('pur-count')), matching: find.text('2')), findsOneWidget);
+    expect(find.byKey(const Key('pur-site-S1')), findsOneWidget);
+    expect(find.byKey(const Key('pur-site-T2')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('pur-site-S1')), matching: find.text('Open now')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('pur-site-T2')), matching: find.text('Open now')), findsNothing);
+    expect(find.textContaining('Purchase Admin'), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/74_purchase.png'));
+    // a Purchase User: his one site
+    await t.pageBack();
+    await net(t);
+    srv.purRole = 'user';
+    await t.tap(find.text('Purchase'));
+    await net(t);
+    expect(find.descendant(of: find.byKey(const Key('pur-count')), matching: find.text('1')), findsOneWidget);
+    expect(find.byKey(const Key('pur-site-T2')), findsNothing);
+    expect(find.textContaining('Purchase User'), findsWidgets);
+    await t.pageBack();
+    await net(t);
+    // the search: Purchase's Dashboard
+    await t.tap(find.byKey(const Key('home-search')));
+    await net(t);
+    await t.enterText(find.byKey(const Key('gs-in')), 'purchase');
+    await net(t);
+    final hit = find.ancestor(of: find.text('Purchase'), matching: find.byKey(const Key('gs-page-Dashboard')));
+    expect(hit, findsOneWidget, reason: 'Purchase\'s Dashboard in the search');
+    await t.tap(hit);
+    await net(t);
+    expect(find.byKey(const Key('pur-dash')), findsOneWidget);
+  }, tags: ['golden']);
+
   testWidgets('(3.10.0) Store: its own sign-in (a Portal ticket); the Dashboard; the Item Master – a near name asked, saved as a different item', (t) async {
     phone(t);
     final srv = FakeServer();

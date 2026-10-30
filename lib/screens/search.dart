@@ -36,6 +36,7 @@ import 'machinery.dart' show AssetMasterScreen;
 import 'report_screen.dart' show openReport, reportOfPage;
 import 'settings.dart' show SettingsScreen;
 import 'start_page.dart' show startPagesFor, openStartPage;
+import 'purchase.dart' show PurchaseScreen;
 import 'store.dart' show StoreScreen;
 import 'tank_check.dart' show TankCheckScreen;
 import 'vendors.dart' show VendorMasterScreen;
@@ -156,6 +157,7 @@ class _SearchScreenState extends State<SearchScreen> {
         GsItem('page', 'Dashboard', 'Store', () => _push(const StoreScreen())),
         GsItem('page', 'Item Master', 'Store', () => _push(const StoreScreen(items: true))),
       ],
+      if (s.site?.module('purchase') != null) GsItem('page', 'Dashboard', 'Purchase', () => _push(const PurchaseScreen())),      // (3.72.0)
     ];
     return out;
   }

@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.72.0 (30-10-2026 – "supabase ani vercel madhe purchase department banau sagle site cha data tyatach asel … ani aata jas
+aahe ekach link warti sagle kahi"; with the new rcl-purchase and Mechanical update-194):** **Purchase** on Home (and in the side
+menu and the search) for whoever has Purchase on the site in the Portal: its own sign-in (a Portal ticket for `purchase`,
+`api.purOpen`) and its **Dashboard** as the web's – the Purchase Department, his sites with Purchase (the one open now marked) and
+his role (Purchase Admin / User, Super Admin). Nothing is saved from it. No Purchase on the site: no tile.
+
 **Version 3.71.0 (29-10-2026 – "pratek kamamadhe … verification … approval … head office … super admin swatache portel madhun krel";
 "pratek task approval nantr HO la nahi janar – konte jail konte nahi jail te super admin tharau shakel"; "500 MT cement … 100 MT …
 PO balance … HO la full PO … site la balance"; with rcl-store's step 9 and the Portal's step 6):** the Store's **workflow** as the web's:

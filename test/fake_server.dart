@@ -157,6 +157,10 @@ class FakeServer {
   final aiLookups = <Map<String, dynamic>>[];
   /// (3.59.0) Engineering at S1 for him; what reached it; its sign-ins; its sign-in ended once
   bool engSite = false, engEnded = false;
+  // (3.72.0) Purchase (rcl-purchase) at S1 when [purSite]: its sign-in (a Portal ticket); what was sent; his role there
+  bool purSite = false;
+  String purRole = 'admin';
+  final purSent = <Map<String, dynamic>>[];
   final engSent = <Map<String, dynamic>>[];
   int engSessions = 0;
   /// (3.61.0, Mechanical update-186) the answer word by word (/api/ai): on or not (off – a server without it: 404); what it was sent;
@@ -919,6 +923,7 @@ class FakeServer {
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
           if (engSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'engineering', 'moduleName': 'Engineering', 'url': 'https://erp.test/engineering'},      // (3.59.0)
+          if (purSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'purchase', 'moduleName': 'Purchase', 'url': 'https://erp.test/purchase'},      // (3.72.0)
           {'site': 'T2', 'siteName': '18B Kolhapur', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'X9', 'siteName': 'Bad', 'company': '', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'javascript:alert(1)'},
           {'site': 'Z5', 'siteName': 'Store only', 'company': '', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
@@ -1057,6 +1062,14 @@ class FakeServer {
       if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the Engineering page.'}, 403);
       engSessions++;
       return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': 'Admin'}, 'site': 'S1', 'siteName': 'VTR Site – NH 848'}, 200, {'set-cookie': 'rcl_eng=S1.eng$engSessions; Path=/; HttpOnly; SameSite=Lax'});
+    }
+    // (3.72.0) Purchase of the site: its sign-in (a ticket of the Portal) – who, his role, every site where he has Purchase
+    if (path.endsWith('/purchase/api/sso')) {
+      final b = jsonDecode(r.body) as Map;
+      purSent.add({'fn': 'sso', 'ticket': b['ticket']});
+      if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the Purchase page.'}, 403);
+      return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': purRole}, 'site': 'S1', 'siteName': 'VTR Site – NH 848',
+        'sites': [{'code': 'S1', 'name': 'VTR Site – NH 848'}, if (purRole != 'user') {'code': 'T2', 'name': '18B Kolhapur'}]}, 200, {'set-cookie': 'rcl_pur=S1.pur1; Path=/; HttpOnly; SameSite=Lax'});
     }
     if (path.endsWith('/engineering/api/eng')) {
       final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();

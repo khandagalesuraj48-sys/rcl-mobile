@@ -34,6 +34,7 @@ import 'fuel_cards.dart' show FuelCardsScreen, rupees;
 import 'verify.dart';
 import 'logbook.dart';
 import 'store.dart';
+import 'purchase.dart';
 import 'masters.dart';
 import '../ui/t.dart';
 import '../ui/live.dart';
@@ -62,6 +63,7 @@ const kModules = [
   ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, native: 'breakdown', perm: 'Breakdown'), // (3.7.0) the app's own Breakdown
   ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, native: 'billing'), // (3.8.0) the app's own Billing screens
   ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, native: 'store', module: 'store'), // (3.10.0) the app's own Store screens
+  ModuleTile('Purchase', 'खरेदी', 'inbox_tray', C.blue, C.blueSoft, native: 'purchase', module: 'purchase'), // (3.72.0) the Purchase Department (rcl-purchase)
   ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', C.blue, C.blueSoft, native: 'reports'),
   ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, native: 'admin', admin: true), // (3.9.0) the app's own Admin screens
 ];
@@ -245,6 +247,10 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     }
     if (m.native == 'store') {
       await openStore(context);
+      return;
+    }
+    if (m.native == 'purchase') {
+      await openPurchase(context);
     }
     // (3.18.0) every module is the app's own screens – no web page in the app
   }
