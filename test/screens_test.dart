@@ -6834,6 +6834,7 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('sp-doc')), findsOneWidget);
     expect(find.textContaining('KM 4321 · Hrs 210'), findsOneWidget, reason: 'the reading of the main Log Book, as the server kept it');
+    expect(find.textContaining('30-10-2026 Day (main Log Book)'), findsOneWidget, reason: 'dates as the site reads them (dd-mm-yyyy)');
     expect(find.textContaining('MD approval'), findsWidgets);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/75_sp_store_doc.png'));

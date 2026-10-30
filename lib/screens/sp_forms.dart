@@ -24,6 +24,16 @@ import '../ui/widgets.dart';
 
 Future<void> openSpForms(BuildContext context, String mod) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SpHub(mod: mod)));
 
+/// A date as the site reads it: 2026-10-30 → 30-10-2026; a time of the server → 30-10-2026 15:30 (this phone's time).
+String spDmy(Object? v) {
+  final t = '${v ?? ''}';
+  if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(t)) return t.split('-').reversed.join('-');
+  final d = DateTime.tryParse(t);
+  if (d == null || !t.contains('T')) return t;
+  final l = d.toLocal(), two = (int n) => n.toString().padLeft(2, '0');
+  return '${two(l.day)}-${two(l.month)}-${l.year} ${two(l.hour)}:${two(l.minute)}';
+}
+
 String _rid() {
   final t = DateTime.now().microsecondsSinceEpoch.toRadixString(36), r = (Object().hashCode ^ t.hashCode).toRadixString(36);
   return 'app-$t-$r';
@@ -198,7 +208,7 @@ class _SpListState extends State<SpList> {
               child: ListTile(
                 key: Key('sp-row-${r['id']}'),
                 title: Text('${r['no']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text([r['name'] ?? r['party'] ?? '', '${r['date'] ?? ''}', if (r['waitingFor'] != null) 'waits: ${r['waitingFor']}'].where((x) => '$x'.isNotEmpty).join(' · '), maxLines: 2),
+                subtitle: Text([r['name'] ?? r['party'] ?? '', spDmy(r['date']), if (r['waitingFor'] != null) 'waits: ${r['waitingFor']}'].where((x) => '$x'.isNotEmpty).join(' · '), maxLines: 2),
                 trailing: Pill('${r['status']}', color: C.blue, bg: C.blueSoft),
                 onTap: () => _open('${r['id']}'),
               ),
@@ -288,7 +298,7 @@ class _SpDocState extends State<SpDoc> {
     final k = '${fd['key']}', t = '${fd['type'] ?? 'text'}', v = target[k], ro = fd['ro'] == true || !editable;
     final label = '${fd['label']}${fd['req'] == true || fd['req'] == 'always' ? ' *' : ''}';
     if (t == 'json') return InfoRow(label, _json(k, v));
-    if (ro) return InfoRow(label, v == null ? '–' : v is bool ? (v ? 'Yes' : 'No') : v is List ? v.join(', ') : '$v');
+    if (ro) return InfoRow(label, v == null ? '–' : v is bool ? (v ? 'Yes' : 'No') : v is List ? v.join(', ') : t == 'date' || t == 'time' ? spDmy(v) : '$v');
     if (t == 'select') return PickField(label: label, value: '${v ?? ''}', items: [for (final o in (fd['options'] as List? ?? const [])) '$o'], blank: '', onChanged: (x) => setState(() { target[k] = x; _keep(); }));
     if (t == 'bool') return SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(label), value: v == true || v == 'true', onChanged: (x) => setState(() { target[k] = x; _keep(); }));
     if (t == 'date') return DateField(label: label, value: '${v ?? ''}', onChanged: (x) => setState(() { target[k] = x; _keep(); }));
@@ -301,7 +311,7 @@ class _SpDocState extends State<SpDoc> {
     if (k == 'reading' && v is Map) {
       if (v['found'] != true) return '${v['warn'] ?? 'No reading'}';
       final parts = [if (v['km'] != null) 'KM ${v['km']}', if (v['hrs'] != null) 'Hrs ${v['hrs']}'];
-      return '${parts.isEmpty ? '${v['unit']} – no KM / Hrs' : parts.join(' · ')} – ${v['date']} ${v['shift'] ?? ''} (main Log Book)${v['warn'] != null ? '\n⚠ ${v['warn']}' : ''}';
+      return '${parts.isEmpty ? '${v['unit']} – no KM / Hrs' : parts.join(' · ')} – ${spDmy(v['date'])} ${v['shift'] ?? ''} (main Log Book)${v['warn'] != null ? '\n⚠ ${v['warn']}' : ''}';
     }
     return v is Map || v is List ? const JsonEncoder.withIndent(' ').convert(v) : '$v';
   }
@@ -318,7 +328,7 @@ class _SpDocState extends State<SpDoc> {
       if (can.contains('cancel')) ('cancel', 'Cancel', false),
     ];
     return Scaffold(
-      appBar: AppBar(title: Text(d == null ? 'New ${f['short'] ?? f['name']}' : '${d?['no']}'), actions: [if (d != null) Padding(padding: const EdgeInsets.only(right: 10), child: Center(child: Pill('${d?['status']}', color: C.blue, bg: C.blueSoft)))]),
+      appBar: AppBar(title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(d == null ? 'New ${f['short'] ?? f['name']}' : '${d?['no']}')),      // (the whole number – made smaller, never cut) actions: [if (d != null) Padding(padding: const EdgeInsets.only(right: 10), child: Center(child: Pill('${d?['status']}', color: C.blue, bg: C.blueSoft)))]),
       bottomNavigationBar: acts.isEmpty || loading
           ? null
           : SafeArea(
@@ -336,11 +346,11 @@ class _SpDocState extends State<SpDoc> {
           ? const Center(child: CircularProgressIndicator())
           : ListView(key: const Key('sp-doc'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
               if (err.isNotEmpty) InfoLine(err, bad: !err.startsWith('Half')),
-              if (d?['why'] != null && !can.contains('decide')) InfoLine('${d?['why']}'),
+              if (d?['why'] != null && !can.contains('decide')) InfoLine('${d?['why']}', icon: Icons.info_outline_rounded),
               if (route != null)
                 Wrap(spacing: 6, runSpacing: 4, children: [
                   for (final (i, st) in (route['steps'] as List? ?? const []).whereType<Map>().indexed) Pill('${st['name']} · ${st['who']}', color: i == route['at'] && '${d?['status']}'.startsWith('Waiting') ? C.blue : C.muted, bg: i < (route['at'] as num? ?? 0) ? C.greenSoft : C.blueSoft),
-                  if (route['failClosed'] == true) const InfoLine('No route is set for this format yet – it goes to the highest authority until the Super Admin sets one.'),
+                  if (route['failClosed'] == true) const InfoLine('No route is set for this format yet – it goes to the highest authority until the Super Admin sets one.', icon: Icons.alt_route_rounded),
                 ]),
               Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(children: [for (final fd in head) if (shown(fd)) Padding(padding: const EdgeInsets.only(bottom: 8), child: field(fd, data, 'h'))]))),
               if (f['lines'] != null) ...[
@@ -362,7 +372,7 @@ class _SpDocState extends State<SpDoc> {
                 SectionTitle('Attachments', mr: 'फाईल'),
                 for (final x in (d?['files'] as List? ?? const []).whereType<Map>()) if (x['removed_at'] == null && x['replaced_by'] == null) ListTile(dense: true, leading: Icon(x['state'] == 'Clean' ? Icons.verified_rounded : Icons.gpp_maybe_rounded, color: x['state'] == 'Clean' ? C.green : C.orange), title: Text('${x['name']}'), subtitle: Text('${x['state']}${x['why'] != null ? ' – ${x['why']}' : ''}')),
                 SectionTitle('History', mr: 'इतिहास'),
-                for (final a in (d?['acts'] as List? ?? const []).whereType<Map>()) ListTile(dense: true, title: Text('${a['action']}${a['step'] != null ? ' · ${a['step']}' : ''} → ${a['to_status']}'), subtitle: Text('${a['name'] ?? a['by']} · ${a['at']}${a['reason'] != null ? '\n${a['reason']}' : ''}')),
+                for (final a in (d?['acts'] as List? ?? const []).whereType<Map>()) ListTile(dense: true, title: Text('${a['action']}${a['step'] != null ? ' · ${a['step']}' : ''} → ${a['to_status']}'), subtitle: Text('${a['name'] ?? a['by']} · ${spDmy(a['at'])}${a['reason'] != null ? '\n${a['reason']}' : ''}')),
               ],
             ]),
     );
