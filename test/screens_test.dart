@@ -6851,13 +6851,11 @@ void main() {
     await net(t);
     expect(find.textContaining('kept on this phone'), findsOneWidget);
     srv.spOffline = false;
-    for (var i = 0; i < 3; i++) {
-      await t.pageBack();      // (the document → the list → the formats → the Store)
+    for (var i = 0; i < 2; i++) {
+      await t.pageBack();      // (the document → the list → the formats: back on the formats, what waits is sent)
       await net(t);
     }
-    await t.tap(find.byKey(const Key('store-sp')));
     await net(t);
-    await net(t);      // (the queue is sent first, then the spec is read)
     final shown = t.widgetList<Text>(find.byType(Text)).map((x) => x.data ?? x.textSpan?.toPlainText() ?? '').where((x) => x.isNotEmpty).join(' | ');
     final sub = srv.spSent.where((x) => x['action'] == 'submit').toList();
     expect(find.textContaining('Sent from the queue: 1'), findsOneWidget, reason: 'on the screen: $shown · submits sent: ${sub.length}');
