@@ -174,7 +174,7 @@ class _SpListState extends State<SpList> {
     if (mounted) setState(() => loading = false);
   }
 
-  bool get canNew => widget.f['access'] == 'Edit' && widget.f['viewOnlyPhone'] != true;
+  bool get canNew => widget.f['access'] == 'Edit' && widget.f['viewOnlyPhone'] != true && (widget.f['noCreate'] ?? '') == '';      // (made by the system only: no New)
   @override
   Widget build(BuildContext context) {
     final f = widget.f, states = [for (final s in (f['states'] as List? ?? const [])) '$s'];

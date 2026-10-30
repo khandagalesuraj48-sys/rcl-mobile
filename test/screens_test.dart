@@ -6820,6 +6820,13 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('sp-hub')), findsOneWidget);
     expect(find.byKey(const Key('sp-f-S03')), findsOneWidget);
+    // what the system makes (the site copy of a PO): its list, but no "New" – as on the web; the server refuses one anyway
+    await t.tap(find.byKey(const Key('sp-f-SPO')));
+    await net(t);
+    expect(find.byKey(const Key('sp-list-SPO')), findsOneWidget);
+    expect(find.byKey(const Key('sp-new')), findsNothing, reason: 'noCreate: no New');
+    await t.pageBack();
+    await net(t);
     await t.tap(find.byKey(const Key('sp-f-S03')));
     await net(t);
     expect(find.text('RCL/S1/MRQ/2026-27/0001'), findsOneWidget);

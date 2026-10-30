@@ -1096,7 +1096,9 @@ class FakeServer {
         'acts': [{'action': 'submit', 'to_status': 'Waiting final approval', 'by': 'eng@rcl.test', 'name': 'Site Engineer', 'at': '2026-10-30T10:00:00Z', 'version': 2}]};
       switch (b['action']) {
         case 'spec':
-          return _j({'mod': pur ? 'purchase' : 'store', 'site': 'S1', 'me': {'email': 'sujit@rcl.test', 'roles': ['MD']}, 'formats': [f]});
+          return _j({'mod': pur ? 'purchase' : 'store', 'site': 'S1', 'me': {'email': 'sujit@rcl.test', 'roles': ['MD']}, 'formats': [f, if (!pur)
+            {'kind': 'SPO', 'name': 'Purchase Order (site copy)', 'short': 'POs (from Purchase)', 'group': 'Store work', 'access': 'Edit', 'route': false, 'decide': false,
+              'noCreate': 'A purchase order comes from the Purchase Department by itself (its verified copy).', 'head': [{'key': 'rev', 'label': 'Revision', 'type': 'int', 'ro': true}], 'lines': null, 'states': ['Released'], 'actions': []}]});
         case 'list':
           return _j({'rows': [{'id': doc['id'], 'no': doc['no'], 'date': '2026-10-30', 'status': doc['status'], 'name': pur ? 'Alpha Cement (synthetic)' : 'Machinery · MH-12-AB-1234', 'waitingFor': 'MD'}], 'more': false});
         case 'get':
