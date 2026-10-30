@@ -49,7 +49,7 @@ String portalMsg(Object e) {
 
 const kRoleWord = {'': 'No access', 'user': 'User', 'admin': 'Admin'};
 /// (3.55.0, the Store's step 2) as the Portal's note under the Store's pages – (3.62.0, the Store's step 5) and "Approves purchase orders"
-const kStoreExtraNote = 'Approves requirements: Level 1 approves first, then Level 2 … (any one person of a level; nobody his own; he sees the Requirements to approve them). Store Purchase: makes the purchase orders of every site. Approves purchase orders: a PO of this site is taken in (GRN) only after one of them approves it (never his own) – his name goes on the PO as "Approved By"; nobody given – a PO is approved when made.';
+const kStoreExtraNote = 'Verifies …: an entry of that work goes first to one of them (never his own) – verified, it goes to its approval (Workflow shows who does each step of the site). Approves requirements: Level 1 approves first, then Level 2 … (any one person of a level; nobody his own; he sees the Requirements to approve them). Store Purchase: makes the purchase orders of every site. Approves purchase orders: a PO of this site is taken in (GRN) only after one of them approves it (never his own) – his name goes on the PO as "Approved By"; nobody given – a PO is approved when made. Approves GRN / issues & returns: one of them approves each (after its verification); then it goes to Head Office when the site\'s Workflow says so.';
 const kPageWord = {'Admin': 'Admin', 'Edit': 'Edit', 'View': 'View', 'None': 'No access', 'L1': 'Level 1', 'L2': 'Level 2', 'L3': 'Level 3', 'L4': 'Level 4', 'L5': 'Level 5', 'Yes': 'Yes'};
 
 /// The Portal's fail(): his sign-in ended – the sign-in screen, with the Marathi line; else false.
@@ -167,7 +167,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Super Admin', 'सुपर ॲडमिन', size: 20, weight: FontWeight.w700),
@@ -177,11 +177,12 @@ class SuperAdminState extends State<SuperAdminScreen> {
             tabAlignment: TabAlignment.start,
             labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
             onTap: (i) {
-              if (i == 4 && audit == null) loadAudit();
+              if (i == 5 && audit == null) loadAudit();
             },
             tabs: [
               Tab(key: const Key('sa-t-users'), text: tr('Users & Access')),
               Tab(key: const Key('sa-t-sites'), text: tr('Sites')),
+              Tab(key: const Key('sa-t-wf'), text: tr('Workflow')), // (3.71.0)
               Tab(key: const Key('sa-t-companies'), text: tr('Companies')),
               Tab(key: const Key('sa-t-modules'), text: tr('Modules')),
               Tab(key: const Key('sa-t-audit'), text: tr('Activity')),
@@ -190,7 +191,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
         ),
         body: d == null
             ? (err.isEmpty ? const Center(child: CircularProgressIndicator()) : ListView(padding: const EdgeInsets.all(16), children: [InfoLine(err, bad: true)]))
-            : TabBarView(children: [_users(), _sites(), _companies(), _modules(), _audit()]),
+            : TabBarView(children: [_users(), _sites(), _workflow(), _companies(), _modules(), _audit()]),
       ),
     );
   }
@@ -343,6 +344,89 @@ class SuperAdminState extends State<SuperAdminScreen> {
 
   Future<void> _newSite({Map<String, dynamic>? site}) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SaNewSiteScreen(console: this, site: site)));
+
+  /* ---------------- (3.71.0, the web's 29-10-2026 – "pratek kamamadhe … verification … approval … head office … super admin swatache
+   * portel madhun krel"; "konte jail konte nahi jail te super admin tharau shakel") WORKFLOW – a site's Store: for each work who verifies
+   * it and who approves it (given per person: Users & Access → the person → Pages in the Store), and whether, once approved, it goes to
+   * Head Office (here, Yes / No – the Portal's step 6). Saved – the Store of that site is told at once (rulesSave). ---------------- */
+  String wfSite = '';
+  Map<String, bool>? wfEdit; // the Head Office choices being changed (null: as saved)
+  bool wfBusy = false;
+  static const _wfWorks = <(String, String, String, String, String, String)>[
+    ('req', 'Material Requirements', 'vreq', '', 'HO Purchase makes its purchase order', 'the site buys it itself (its Store Admin makes the PO)'),
+    ('po', 'Purchase Orders', 'vpo', 'poapprove', '', ''),
+    ('grn', 'Inward (GRN) – the supplier\'s bill', 'vgrn', 'agrn', 'HO Purchase sees each bill (checked with its PO) and checks it', 'it stays at the site'),
+    ('iss', 'Issue & Return', 'viss', 'aiss', 'HO Purchase sees them and checks them', 'they stay at the site'),
+  ];
+
+  Widget _workflow() {
+    final x = d!;
+    if (!x.sites.any((s) => s['code'] == wfSite)) wfSite = x.sites.any((s) => s['code'] == site) ? site : '${x.sites.firstOrNull?['code'] ?? ''}';
+    final st = x.sites.where((s) => s['code'] == wfSite).firstOrNull ?? const <String, dynamic>{}, step6 = st['step6'] == true;
+    final saved = st['ho'] is Map ? st['ho'] as Map : const {'req': true, 'grn': false, 'iss': false}, ho = wfEdit ?? {for (final k in ['req', 'grn', 'iss']) k: saved[k] == true};
+    bool on(String e) => x.user(e)?['active'] != false;
+    String nm(String e) => '${x.user(e)?['name'] ?? e}';
+    final acc = [for (final a in x.access) if (a['module'] == 'store' && a['site'] == wfSite && on('${a['email']}')) a];
+    List<String> who(String k) => [for (final a in acc) if (a['pages'] is Map && (a['pages'] as Map)[k] == 'Yes') nm('${a['email']}')];
+    final lv = [for (var n = 1; n <= 5; n++) (n, [for (final a in acc) if (a['pages'] is Map && (a['pages'] as Map)['approve'] == 'L$n') nm('${a['email']}')])].where((l) => l.$2.isNotEmpty).toList();
+    Future<void> save() async {
+      setState(() => wfBusy = true);
+      Map<String, dynamic> r = const {};
+      final ok = await run(() async => r = await api.admin({'action': 'rulesSave', 'site': wfSite, 'ho': ho}));
+      if (!mounted) return;
+      setState(() {
+        wfBusy = false;
+        if (ok) wfEdit = null;
+      });
+      if (ok) say('${r['warn'] ?? ''}'.isNotEmpty ? '${r['warn']}' : 'Saved – the Store of $wfSite is told.', bad: '${r['warn'] ?? ''}'.isNotEmpty);
+    }
+
+    return RefreshIndicator(
+      onRefresh: load,
+      child: ListView(key: const Key('sa-wf'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
+        _note('For each work of a site: who verifies it, who approves it, and whether – once approved – it goes to Head Office. The one who makes an entry never verifies or approves it himself. Nobody given for a step = that step is passed (as before).'),
+        PickField(key: const Key('sa-wf-site'), label: 'Site', value: wfSite, items: [for (final s in x.sites) '${s['code']}'], labels: {for (final s in x.sites) '${s['code']}': '${s['name']} (${s['code']})'}, onChanged: (v) => setState(() {
+              wfSite = v;
+              wfEdit = null;
+            })),
+        const SizedBox(height: 10),
+        if (!x.modules.any((m) => m['key'] == 'store')) _note('No Store module yet (Modules).')
+        else ...[
+          for (final w in _wfWorks)
+            _card(
+              key: Key('sa-wf-${w.$1}'),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                mt.Text(tr(w.$2), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                mt.Text('${tr('Verifies')}: ${who(w.$3).isEmpty ? tr('nobody – no verification') : who(w.$3).join(', ')}', style: const TextStyle(fontSize: 13.5)),
+                mt.Text('${tr('Approves')}: ${w.$1 == 'req' ? (lv.isEmpty ? tr('nobody – approved when made') : lv.map((l) => 'Level ${l.$1}: ${l.$2.join(', ')}').join(' · ')) : who(w.$4).isEmpty ? tr(w.$1 == 'po' ? 'nobody – approved when made' : 'nobody – no approval') : who(w.$4).join(', ')}', style: const TextStyle(fontSize: 13.5)),
+                const SizedBox(height: 6),
+                if (w.$1 == 'po')
+                  Text('Once approved → Head Office: made by HO Purchase (a site that buys itself: by its Store Admin)', style: const TextStyle(fontSize: 13, color: C.muted))
+                else ...[
+                  Text('Once approved → Head Office', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  SegmentedButton<bool>(
+                    key: Key('sa-wf-ho-${w.$1}'),
+                    showSelectedIcon: false,
+                    segments: [ButtonSegment(value: true, label: Text('Yes')), ButtonSegment(value: false, label: Text('No'))],
+                    selected: {ho[w.$1] == true},
+                    onSelectionChanged: step6 ? (v) => setState(() => wfEdit = {...ho, w.$1: v.first}) : null,
+                  ),
+                  const SizedBox(height: 2),
+                  mt.Text(tr(ho[w.$1] == true ? w.$5 : w.$6), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                ],
+              ]),
+            ),
+          _note('Who verifies and approves: Users & Access → the person → Pages in the Store ("Verifies …", "Approves …"). The verification of POs, GRNs and issues needs the Store\'s database step 9 at the site (sql/store_step9_workflow.sql – run in that site\'s Supabase).'),
+          if (step6)
+            FilledButton(key: const Key('sa-wf-save'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)), onPressed: wfBusy ? null : save, child: Text(wfBusy ? 'Saving…' : 'Save – Head Office'))
+          else
+            InfoLine('The Head Office choices need the Portal\'s database step 6 first: run sql/portal_step6_rules.sql once in the Portal\'s Supabase → SQL Editor.', bad: true),
+        ],
+      ]),
+    );
+  }
 
   /* ---------------- Companies ---------------- */
   Widget _companies() {
