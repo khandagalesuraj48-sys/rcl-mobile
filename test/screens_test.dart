@@ -2036,12 +2036,28 @@ void main() {
     s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
+    // the search: Purchase's Dashboard (Home not scrolled yet – its search button at the top)
+    await t.tap(find.byKey(const Key('home-search')));
+    await net(t);
+    await t.enterText(find.byKey(const Key('gs-in')), 'purchase');
+    await net(t);
+    final hit = find.ancestor(of: find.text('Purchase'), matching: find.byKey(const Key('gs-page-Dashboard')));
+    expect(hit, findsOneWidget, reason: 'Purchase\'s Dashboard in the search');
+    await t.tap(hit);
+    await net(t);
+    expect(find.byKey(const Key('pur-dash')), findsOneWidget);
+    expect(srv.calls, contains('portal:go:purchase:S1'));
+    expect([for (final x in srv.purSent) x['fn']], ['sso'], reason: 'its own sign-in by a ticket of the Portal');
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // Home → Purchase
     await t.ensureVisible(find.text('Purchase'));
     await settle(t, 400);
     await t.tap(find.text('Purchase'));
     await net(t);
-    expect(srv.calls, contains('portal:go:purchase:S1'));
-    expect(srv.purSent.single['fn'], 'sso');
+    expect(srv.purSent.length, 2, reason: 'a fresh sign-in each time it is opened');
     expect(find.byKey(const Key('pur-dash')), findsOneWidget);
     expect(find.text('Purchase Department'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('pur-count')), matching: find.text('2')), findsOneWidget);
@@ -2061,18 +2077,6 @@ void main() {
     expect(find.descendant(of: find.byKey(const Key('pur-count')), matching: find.text('1')), findsOneWidget);
     expect(find.byKey(const Key('pur-site-T2')), findsNothing);
     expect(find.textContaining('Purchase User'), findsWidgets);
-    await t.pageBack();
-    await net(t);
-    // the search: Purchase's Dashboard
-    await t.tap(find.byKey(const Key('home-search')));
-    await net(t);
-    await t.enterText(find.byKey(const Key('gs-in')), 'purchase');
-    await net(t);
-    final hit = find.ancestor(of: find.text('Purchase'), matching: find.byKey(const Key('gs-page-Dashboard')));
-    expect(hit, findsOneWidget, reason: 'Purchase\'s Dashboard in the search');
-    await t.tap(hit);
-    await net(t);
-    expect(find.byKey(const Key('pur-dash')), findsOneWidget);
   }, tags: ['golden']);
 
   testWidgets('(3.10.0) Store: its own sign-in (a Portal ticket); the Dashboard; the Item Master – a near name asked, saved as a different item', (t) async {
