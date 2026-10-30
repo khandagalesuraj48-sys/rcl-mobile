@@ -6803,4 +6803,84 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/72_ai_memory.png'));
   }, tags: ['golden']);
+
+  // (SP build – local rig) THE NEW FORMATS' OWN SCREENS: the Store's S03 from its spec (route, reading of the main Log Book, approval on
+  // what is seen), Purchase's Vendor Master VIEW-ONLY on the phone (D-29), and a Submit without network kept on the phone (D-43)
+  testWidgets('(SP build) the formats: S03 from the spec, approve on the phone; the Vendor Master view-only (D-29); a Submit offline waits and is sent later (D-43)', (t) async {
+    phone(t);
+    final srv = FakeServer()..purSite = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.ensureVisible(find.text('Store'));
+    await settle(t, 400);
+    await t.tap(find.text('Store'));
+    await net(t);
+    await t.tap(find.byKey(const Key('store-sp')));
+    await net(t);
+    expect(find.byKey(const Key('sp-hub')), findsOneWidget);
+    expect(find.byKey(const Key('sp-f-S03')), findsOneWidget);
+    await t.tap(find.byKey(const Key('sp-f-S03')));
+    await net(t);
+    expect(find.text('RCL/S1/MRQ/2026-27/0001'), findsOneWidget);
+    await t.tap(find.text('RCL/S1/MRQ/2026-27/0001'));
+    await net(t);
+    expect(find.byKey(const Key('sp-doc')), findsOneWidget);
+    expect(find.textContaining('KM 4321 · Hrs 210'), findsOneWidget, reason: 'the reading of the main Log Book, as the server kept it');
+    expect(find.textContaining('MD approval'), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/75_sp_store_doc.png'));
+    await t.tap(find.byKey(const Key('sp-act-approve')));
+    await net(t);
+    await t.tap(find.text('Yes'));
+    await net(t);
+    final dec = srv.spSent.where((x) => x['action'] == 'decide').toList();
+    expect(dec.length, 1); expect(dec.first['version'], 2, reason: 'the version he saw'); expect('${dec.first['rid']}', startsWith('app-'));
+    // offline: a new requisition's Submit waits on the phone, then goes
+    await t.pageBack();
+    await net(t);
+    await t.tap(find.byKey(const Key('sp-new')));
+    await net(t);
+    await t.enterText(find.byKey(const Key('sp-h-store')), 'MAIN');
+    await t.enterText(find.byKey(const Key('sp-h-reason')), 'Hose burst');
+    await t.enterText(find.byKey(const Key('sp-l0-item')), 'ITM-0001');
+    await t.enterText(find.byKey(const Key('sp-l0-qty')), '2');
+    await settle(t, 600);
+    srv.spOffline = true;
+    await t.tap(find.byKey(const Key('sp-act-submit')));
+    await net(t);
+    expect(find.textContaining('kept on this phone'), findsOneWidget);
+    srv.spOffline = false;
+    for (var i = 0; i < 3; i++) {
+      await t.pageBack();      // (the document → the list → the formats → the Store)
+      await net(t);
+    }
+    await t.tap(find.byKey(const Key('store-sp')));
+    await net(t);
+    expect(find.textContaining('Sent from the queue: 1'), findsOneWidget);
+    final sub = srv.spSent.where((x) => x['action'] == 'submit').toList();
+    expect(sub.length, 2, reason: 'the try without network, and the queued one sent');
+    expect(sub[0]['rid'], sub[1]['rid'], reason: 'the same save-once key – never a second document');
+    // Purchase: the Vendor Master is view-only on the phone (D-29)
+    for (var i = 0; i < 2; i++) {
+      await t.pageBack();      // (the formats → the Store → Home)
+      await net(t);
+    }
+    await t.ensureVisible(find.text('Purchase'));
+    await settle(t, 400);
+    await t.tap(find.text('Purchase'));
+    await net(t);
+    await t.tap(find.byKey(const Key('pur-sp')));
+    await net(t);
+    expect(find.text('View only on the phone'), findsOneWidget);
+    await t.tap(find.byKey(const Key('sp-f-P01')));
+    await net(t);
+    expect(find.byKey(const Key('sp-new')), findsNothing, reason: 'no New on the phone');
+    await t.tap(find.text('V-000001'));
+    await net(t);
+    expect(find.byKey(const Key('sp-act-approve')), findsNothing, reason: 'no button at all');
+    expect(find.byKey(const Key('sp-act-save')), findsNothing);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/76_sp_vendor_view.png'));
+  }, tags: ['golden']);
 }

@@ -9,6 +9,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'sp_forms.dart';
 
 Future<void> openPurchase(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PurchaseScreen()));
 
@@ -68,7 +69,10 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TwoLang('Purchase', 'खरेदी', size: 20, weight: FontWeight.w700),
-        actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _start, icon: const Icon(Icons.refresh_rounded))]),
+        actions: withAsk([
+          // (SP build – local rig) the new Purchase formats (Central Item Master, P01 – P10): the app's own screens from Purchase's spec
+          IconButton(key: const Key('pur-sp'), tooltip: tr('Purchase formats (new)'), onPressed: () => openSpForms(context, 'purchase'), icon: const Icon(Icons.assignment_rounded)),
+          IconButton(tooltip: tr('Refresh'), onPressed: _start, icon: const Icon(Icons.refresh_rounded))]),
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())

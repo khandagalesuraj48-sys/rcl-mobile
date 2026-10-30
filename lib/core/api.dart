@@ -478,8 +478,33 @@ class Api {
     final r = await _send(() => _c.post(Uri.parse('$purUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
     final j = _json(r, 'Purchase');
     if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
+    final m = RegExp(r'rcl_pur=([^;]*)').firstMatch(r.headers['set-cookie'] ?? '');
+    _purCookie = m == null ? '' : 'rcl_pur=${m.group(1)}';
+    _purKey = '$siteCode|$purUrl';
     return j;
   }
+
+  // (SP build – local rig) Purchase's own work: its sign-in kept (rcl_pur), a new one when it has ended (once) – as Engineering's
+  String _purCookie = '', _purKey = '';
+  Future<Map<String, dynamic>> pur(String siteCode, String purUrl, Map<String, dynamic> body, {String path = 'sp'}) async {
+    for (var tryNo = 1;; tryNo++) {
+      if (_purCookie.isEmpty || _purKey != '$siteCode|$purUrl') await purOpen(siteCode, purUrl);
+      final r = await _send(() => _c.post(Uri.parse('$purUrl/api/$path'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _purCookie}, body: jsonEncode(body)));
+      final j = _json(r, 'Purchase');
+      if (r.statusCode == 401 && j['code'] == 'session' && tryNo == 1) {
+        _purCookie = '';
+        continue;
+      }
+      if (r.statusCode >= 400 || j['error'] != null) {
+        throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString(), data: {...j}..remove('error'));
+      }
+      return j;
+    }
+  }
+
+  /// (SP build) the new Store & Purchase formats: POST <module>/api/sp { action, … } with the module's own sign-in of this site
+  Future<Map<String, dynamic>> sp(String mod, String siteCode, String url, Map<String, dynamic> body) =>
+      mod == 'purchase' ? pur(siteCode, url, body) : store(siteCode, url, body, path: 'sp');
 
   /// Signs out of Mechanical and of the Portal (one sign-out for every module, as on the web).
   Future<void> signOut() async {

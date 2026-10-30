@@ -21,6 +21,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/ask_bot.dart';
+import 'sp_forms.dart';
 import 'store_work.dart';
 
 /// The columns of the web's item files (Export, Import template).
@@ -264,7 +265,10 @@ class _StoreScreenState extends State<StoreScreen> with StoreLive<StoreScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Store', 'स्टोअर', size: 20, weight: FontWeight.w700),
-          actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: me == null ? _start : _load, icon: const Icon(Icons.refresh_rounded))]),
+          actions: withAsk([
+            // (SP build – local rig) the new Store formats (S02 – S15): the app's own screens from the Store's spec
+            IconButton(key: const Key('store-sp'), tooltip: tr('Store formats (new)'), onPressed: () => openSpForms(context, 'store'), icon: const Icon(Icons.assignment_rounded)),
+            IconButton(tooltip: tr('Refresh'), onPressed: me == null ? _start : _load, icon: const Icon(Icons.refresh_rounded))]),
           bottom: me == null || tabs.length < 2
               ? null
               : TabBar(labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5), tabs: [

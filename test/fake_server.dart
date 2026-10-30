@@ -159,6 +159,9 @@ class FakeServer {
   bool engSite = false, engEnded = false;
   // (3.72.0) Purchase (rcl-purchase) at S1 when [purSite]: its sign-in (a Portal ticket); what was sent; his role there
   bool purSite = false;
+  // (SP build) what the new formats' screens sent; no network for them while [spOffline]
+  final List<Map<String, dynamic>> spSent = [];
+  bool spOffline = false;
   String purRole = 'admin';
   final purSent = <Map<String, dynamic>>[];
   final engSent = <Map<String, dynamic>>[];
@@ -1070,6 +1073,41 @@ class FakeServer {
       if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the Purchase page.'}, 403);
       return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': purRole}, 'site': 'S1', 'siteName': 'VTR Site – NH 848',
         'sites': [{'code': 'S1', 'name': 'VTR Site – NH 848'}, if (purRole != 'user') {'code': 'T2', 'name': '18B Kolhapur'}]}, 200, {'set-cookie': 'rcl_pur=S1.pur1; Path=/; HttpOnly; SameSite=Lax'});
+    }
+    // (SP build – local rig) the new formats of the Store and of Purchase (POST <module>/api/sp): a small spec, a list, one document;
+    // a save / submit kept in [spSent]; [spOffline] – no network for them (the phone's queue)
+    if (path.endsWith('/store/api/sp') || path.endsWith('/purchase/api/sp')) {
+      if (spOffline) throw http.ClientException('no network (test)');
+      final b = (jsonDecode(r.body) as Map).cast<String, dynamic>(), pur = path.endsWith('/purchase/api/sp');
+      spSent.add({'mod': pur ? 'purchase' : 'store', ...b});
+      final head = [
+        {'key': 'date', 'label': 'Date', 'type': 'date', 'req': true}, {'key': 'store', 'label': 'Store', 'type': 'text', 'req': true},
+        {'key': 'for_kind', 'label': 'For', 'type': 'select', 'options': ['Site work', 'Machinery'], 'req': true},
+        {'key': 'machinery', 'label': 'Machinery No.', 'type': 'machinery', 'show': {'key': 'for_kind', 'in': ['Machinery']}},
+        {'key': 'reading', 'label': 'Reading (main Log Book)', 'type': 'json', 'ro': true}, {'key': 'reason', 'label': 'Reason / purpose', 'type': 'textarea', 'req': true, 'voice': true}];
+      final cols = [{'key': 'item', 'label': 'Item', 'type': 'item', 'req': 'always'}, {'key': 'qty', 'label': 'Qty asked', 'type': 'qty', 'req': true}, {'key': 'unit', 'label': 'Unit', 'type': 'text', 'ro': true}];
+      final f = pur
+          ? {'kind': 'P01', 'name': 'Vendor / Supplier Master', 'short': 'Vendors', 'group': 'Masters', 'access': 'Edit', 'master': true, 'route': true, 'viewOnlyPhone': true, 'decide': true, 'head': [{'key': 'legal_name', 'label': 'Legal name', 'type': 'text', 'req': 'always'}], 'lines': null, 'states': ['Draft', 'Approved'], 'actions': []}
+          : {'kind': 'S03', 'name': 'Material Requisition', 'short': 'Requisitions', 'group': 'Store work', 'access': 'Edit', 'route': true, 'decide': true, 'head': head, 'lines': {'title': 'Items asked', 'cols': cols}, 'states': ['Draft', 'Waiting final approval', 'With Store'], 'actions': [{'key': 'close', 'label': 'Close balance', 'input': [{'key': 'reason', 'label': 'Why', 'type': 'text'}]}]};
+      final doc = {'id': 'd0c00000-0000-4000-8000-000000000001', 'kind': f['kind'], 'no': pur ? 'V-000001' : 'RCL/S1/MRQ/2026-27/0001', 'status': 'Waiting final approval', 'version': 2, 'date': '2026-10-30',
+        'data': pur ? {'legal_name': 'Alpha Cement (synthetic)'} : {'date': '2026-10-30', 'store': 'MAIN', 'for_kind': 'Machinery', 'machinery': 'MH-12-AB-1234', 'reason': 'Breakdown', 'reading': {'found': true, 'km': 4321, 'hrs': 210, 'date': '2026-10-30', 'shift': 'Day', 'unit': 'KM + Hrs'}},
+        'lines': pur ? [] : [{'ln': 1, 'item': 'ITM-0001', 'item_name': 'Engine Oil 15W40', 'qty': '10.000', 'unit': 'Ltr'}], 'can': pur ? ['decide'] : ['decide'],
+        'route': {'steps': [{'key': 'final', 'name': 'MD approval', 'who': 'MD'}], 'at': 0, 'failClosed': true}, 'files': [{'id': 'f1', 'name': 'part.pdf', 'state': 'Clean'}],
+        'acts': [{'action': 'submit', 'to_status': 'Waiting final approval', 'by': 'eng@rcl.test', 'name': 'Site Engineer', 'at': '2026-10-30T10:00:00Z', 'version': 2}]};
+      switch (b['action']) {
+        case 'spec':
+          return _j({'mod': pur ? 'purchase' : 'store', 'site': 'S1', 'me': {'email': 'sujit@rcl.test', 'roles': ['MD']}, 'formats': [f]});
+        case 'list':
+          return _j({'rows': [{'id': doc['id'], 'no': doc['no'], 'date': '2026-10-30', 'status': doc['status'], 'name': pur ? 'Alpha Cement (synthetic)' : 'Machinery · MH-12-AB-1234', 'waitingFor': 'MD'}], 'more': false});
+        case 'get':
+          return _j(doc);
+        case 'save':
+        case 'submit':
+          return _j({'ok': true, 'id': 'd0c00000-0000-4000-8000-000000000002', 'no': 'RCL/S1/MRQ/2026-27/0002', 'version': 1, 'status': b['action'] == 'submit' ? 'Waiting final approval' : 'Draft'});
+        case 'decide':
+          return _j({'ok': true, 'id': doc['id'], 'no': doc['no'], 'version': 3, 'status': pur ? 'Approved' : 'With Store'});
+      }
+      return _j({'error': 'Unknown action.', 'code': 'action'}, 404);
     }
     if (path.endsWith('/engineering/api/eng')) {
       final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
