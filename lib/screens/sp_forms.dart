@@ -15,8 +15,11 @@ import 'package:flutter/material.dart' hide Text;
 import '../core/api.dart';
 import '../core/draft.dart';
 import '../core/lang.dart';
+import '../core/lb_io.dart' show XSheet;
 import '../core/sp_queue.dart';
+import '../core/xlsx.dart' show sheetsXlsx;
 import '../ui/fields.dart';
+import '../ui/outputs.dart' show shareXlsx;
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
@@ -189,7 +192,11 @@ class _SpListState extends State<SpList> {
   Widget build(BuildContext context) {
     final f = widget.f, states = [for (final s in (f['states'] as List? ?? const [])) '$s'];
     return Scaffold(
-      appBar: AppBar(title: Text('${f['short'] ?? f['name']}')),
+      appBar: AppBar(title: Text('${f['short'] ?? f['name']}'), actions: [
+        // (31-10-2026) a format's download – e.g. P10 "Excel for Accounts" (listed only for those who may take it)
+        for (final x in (f['exports'] as List? ?? const []).whereType<Map>())
+          IconButton(key: Key('sp-x-${x['key']}'), tooltip: '${x['label']}', onPressed: () => _export(x.cast<String, dynamic>()), icon: const Icon(Icons.download_rounded)),
+      ]),
       floatingActionButton: canNew ? FloatingActionButton.extended(key: const Key('sp-new'), onPressed: () => _open(null), icon: const Icon(Icons.add_rounded), label: const Text('New')) : null,
       body: RefreshIndicator(
         onRefresh: _load,
@@ -221,6 +228,53 @@ class _SpListState extends State<SpList> {
         ]),
       ),
     );
+  }
+
+  /// A download of this format (its few inputs, then the Excel file to the phone's sharing – Excel, Drive, WhatsApp …).
+  Future<void> _export(Map<String, dynamic> x) async {
+    final now = DateTime.now(), two = (int n) => n.toString().padLeft(2, '0');
+    final today = '${now.year}-${two(now.month)}-${two(now.day)}';
+    final inp = <String, dynamic>{};
+    for (final fd in (x['input'] as List? ?? const []).whereType<Map>()) {
+      inp['${fd['key']}'] = fd['type'] == 'date' ? (fd['key'] == 'from' ? '${today.substring(0, 8)}01' : today) : fd['def'];
+    }
+    final go = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        builder: (ctx) => StatefulBuilder(
+            builder: (ctx, set) => Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Text('${x['label']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
+                  for (final fd in (x['input'] as List? ?? const []).whereType<Map>())
+                    fd['type'] == 'date'
+                        ? Padding(padding: const EdgeInsets.only(bottom: 8), child: DateField(key: Key('sp-xi-${fd['key']}'), label: '${fd['label']}', value: '${inp[fd['key']] ?? ''}', clear: false, onChanged: (v) => set(() => inp['${fd['key']}'] = v)))
+                        : SwitchListTile(key: Key('sp-xi-${fd['key']}'), contentPadding: EdgeInsets.zero, title: Text('${fd['label']}'), value: inp[fd['key']] == true, onChanged: (v) => set(() => inp['${fd['key']}'] = v)),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(key: const Key('sp-x-go'), onPressed: () => Navigator.of(ctx).pop(true), icon: const Icon(Icons.download_rounded), label: const Text('Download')),
+                ]))));
+    if (go != true || !mounted) return;
+    try {
+      final r = await widget.c.call('export', {'kind': widget.f['kind'], 'key': x['key'], 'input': inp});
+      if (!mounted) return;
+      if ((r['count'] ?? 0) == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nothing to download for these dates.')));
+        return;
+      }
+      final tabs = [
+        for (final sh in (r['sheets'] as List? ?? const []).whereType<Map>())
+          XSheet('${sh['name']}', [
+            [for (final h in (sh['head'] as List? ?? const [])) '$h'],
+            for (final row in (sh['rows'] as List? ?? const []).whereType<List>()) [for (final v in row) v is num ? v : '${v ?? ''}']
+          ], head: 1)
+      ];
+      await shareXlsx(sheetsXlsx(tabs), '${r['file']}');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r['count']} in ${r['file']}')));
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
   }
 
   Future<void> _open(String? id) async {

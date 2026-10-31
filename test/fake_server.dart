@@ -1098,7 +1098,11 @@ class FakeServer {
         case 'spec':
           return _j({'mod': pur ? 'purchase' : 'store', 'site': 'S1', 'me': {'email': 'sujit@rcl.test', 'roles': ['MD']}, 'formats': [f, if (!pur)
             {'kind': 'SPO', 'name': 'Purchase Order (site copy)', 'short': 'POs (from Purchase)', 'group': 'Store work', 'access': 'Edit', 'route': false, 'decide': false,
-              'noCreate': 'A purchase order comes from the Purchase Department by itself (its verified copy).', 'head': [{'key': 'rev', 'label': 'Revision', 'type': 'int', 'ro': true}], 'lines': null, 'states': ['Released'], 'actions': []}]});
+              'noCreate': 'A purchase order comes from the Purchase Department by itself (its verified copy).', 'head': [{'key': 'rev', 'label': 'Revision', 'type': 'int', 'ro': true}], 'lines': null, 'states': ['Released'], 'actions': []},
+            if (pur)
+            {'kind': 'P10', 'name': 'Vendor Invoice Verification', 'short': 'Invoices', 'group': 'Purchase work', 'access': 'View', 'route': true, 'decide': true, 'head': [{'key': 'invoice_no', 'label': 'Invoice No.', 'type': 'text'}], 'lines': null,
+              'states': ['Approved', 'Handed to Accounts'], 'actions': [],
+              'exports': [{'key': 'accounts.excel', 'label': 'Excel for Accounts', 'input': [{'key': 'from', 'label': 'Approved from', 'type': 'date'}, {'key': 'to', 'label': 'Approved up to', 'type': 'date'}, {'key': 'only_new', 'label': 'Only those not taken yet', 'type': 'bool', 'def': true}]}]}]});
         case 'list':
           return _j({'rows': [{'id': doc['id'], 'no': doc['no'], 'date': '2026-10-30', 'status': doc['status'], 'name': pur ? 'Alpha Cement (synthetic)' : 'Machinery · MH-12-AB-1234', 'waitingFor': 'MD'}], 'more': false});
         case 'get':
@@ -1106,6 +1110,10 @@ class FakeServer {
         case 'save':
         case 'submit':
           return _j({'ok': true, 'id': 'd0c00000-0000-4000-8000-000000000002', 'no': 'RCL/S1/MRQ/2026-27/0002', 'version': 1, 'status': b['action'] == 'submit' ? 'Waiting final approval' : 'Draft'});
+        case 'export':
+          return _j({'file': 'Accounts-invoices-2026-10-01-to-2026-10-14.xlsx', 'count': 1, 'sheets': [
+            {'name': 'Invoices', 'head': ['Verification No', 'Vendor', 'Payable'], 'rows': [['RCL/HO/IV/2026-27/0001', 'Alpha Cement (synthetic)', 1180.5]]},
+            {'name': 'Lines', 'head': ['Verification No', 'Item', 'Qty'], 'rows': [['RCL/HO/IV/2026-27/0001', 'Cement OPC 53', 20]]}]});
         case 'decide':
           return _j({'ok': true, 'id': doc['id'], 'no': doc['no'], 'version': 3, 'status': pur ? 'Approved' : 'With Store'});
       }

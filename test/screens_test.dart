@@ -6891,5 +6891,25 @@ void main() {
     expect(find.byKey(const Key('sp-act-save')), findsNothing);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/76_sp_vendor_view.png'));
+    // (31-10-2026) Accounts takes the approved bills as Excel: the download of P10, its dates, the file to the phone's sharing
+    final files = <(String, Uint8List)>[];
+    fileSink = (b, n, m) async => files.add((n, b));
+    addTearDown(() => fileSink = null);
+    for (var i = 0; i < 2; i++) {
+      await t.pageBack();      // (the document → the list → the formats)
+      await net(t);
+    }
+    await t.tap(find.byKey(const Key('sp-f-P10')));
+    await net(t);
+    await t.tap(find.byKey(const Key('sp-x-accounts.excel')));
+    await settle(t, 600);
+    expect(find.text('Excel for Accounts'), findsWidgets);
+    await t.tap(find.byKey(const Key('sp-x-go')));
+    await net(t);
+    final ex = srv.spSent.where((x) => x['action'] == 'export').toList();
+    expect(ex.length, 1); expect(ex.first['key'], 'accounts.excel'); expect((ex.first['input'] as Map)['only_new'], true, reason: 'the default: only those not taken yet');
+    expect('${(ex.first['input'] as Map)['from']}', endsWith('-01'), reason: 'from the first of the month');
+    expect(files.length, 1); expect(files.first.$1, 'Accounts-invoices-2026-10-01-to-2026-10-14.xlsx');
+    expect(String.fromCharCodes(files.first.$2.take(2)), 'PK', reason: 'an Excel file (.xlsx is a zip)');
   }, tags: ['golden']);
 }
