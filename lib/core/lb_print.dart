@@ -280,6 +280,52 @@ String tankText(Map? t) {
       '${run.isNotEmpty ? 'run after it $run = ${fmt(t['used'])} L by standard' : 'no work after it'}; ${fmt(t['applied'])} L taken as still in the tank – not debited';
 }
 
+/// (3.72.2, Mechanical update-199) THE MONTH-END TANK CHECK DECIDES THE DIESEL DEBIT – the server's tankMonthEnd_ and the web's
+/// tankMonthEnd, line by line. The dates carry "checks" (logPrintExtra) from 31-10-2026 on. Opening = the diesel found at the check
+/// of the day before the dates (none: 0); System = Opening + company diesel − the standard of the work; above the Tank Capacity →
+/// debited; the check of the last day: found less → the shortage debited, the same or more → nothing; System 0 or less → no check;
+/// no check → the bill cannot be verified; a final bill (left the site) → the whole System debited.
+Map<String, dynamic> tankMonthEnd(Map m, String no, Map extra, num companyQty, num stdQty, bool fin) {
+  final ck = ((extra['checks'] as Map?)?[_key(_s(m['id']).isNotEmpty ? m['id'] : no)] as Map?) ?? const {};
+  final op = ck['open'] as Map?, cl = ck['close'] as Map?;
+  final num open = op != null ? r2(_n(op['physical'])) : 0;
+  final num system = r2(open + companyQty - stdQty), cap = _n(m['tankCap']) > 0 ? r2(_n(m['tankCap'])) : 0;
+  final num over = cap > 0 && system > cap ? r2(system - cap) : 0, expect = r2(system - over);
+  final t = <String, dynamic>{'open': open, 'openDate': op != null ? _s(op['date']) : '', 'issued': r2(companyQty), 'std': r2(stdQty), 'system': system, 'cap': cap, 'over': over,
+    'expect': expect, 'need': false, 'found': '', 'foundDate': '', 'checkId': '', 'short': 0, 'debit': 0, 'missing': false, 'final': fin};
+  if (cl != null) {
+    t['found'] = r2(_n(cl['physical']));
+    t['foundDate'] = _s(cl['date']);
+    t['checkId'] = _s(cl['id']);
+  }
+  if (fin) {
+    t['debit'] = system > 0 ? system : 0;
+    return t;
+  }
+  if (!(expect > 0)) return t;
+  t['need'] = true;
+  if (cl == null) {
+    t['missing'] = true;
+    t['debit'] = over;
+    return t;
+  }
+  final num sh = r2(expect - _n(t['found']));
+  t['short'] = sh > 0 ? sh : 0;
+  t['debit'] = r2(over + _n(t['short']));
+  return t;
+}
+
+/// "opening 0 + issued 469.3 − standard 344 = 125.3 L; found 80 L in the tank on 31-10-2026 → 45.3 L short – debited"
+String tcText(Map? t, String to) {
+  if (t == null) return '';
+  final calc = 'opening ${fmt(t['open'])}${_s(t['openDate']).isNotEmpty ? ' (found on ${showDate(_s(t['openDate']))})' : ''} + issued ${fmt(t['issued'])} − standard ${fmt(t['std'])} = ${fmt(t['system'])} L';
+  if (t['final'] == true) return '$calc should be in its tank – it left with the machinery: debited';
+  if (t['need'] != true) return '$calc – nothing in the tank as per the standard, nothing debited';
+  final capT = _n(t['over']) > 0 ? '; the tank holds ${fmt(t['cap'])} L – the ${fmt(t['over'])} L above it debited' : '';
+  if (t['missing'] == true) return '$calc$capT; TANK CHECK OF ${showDate(to)} NOT ENTERED';
+  return '$calc$capT; found ${fmt(t['found'])} L in the tank on ${showDate(_s(t['foundDate']))}${_n(t['short']) > 0 ? ' → ${fmt(t['short'])} L short – debited' : ' → nothing short – not debited'}';
+}
+
 /// Item-wise BOQ, one day: each item on its own quantity and rate (→ the lines of the bill part). → the quantity billed that day.
 num itemDaySegs(Map b, String bk, String d, List<Map> dayRows, Map<String, num> itemHrs, Map<String, dynamic> Function(String, Map<String, dynamic>) seg) {
   final items = (b['items'] as List? ?? const []).whereType<Map>().toList();
@@ -568,8 +614,30 @@ LbPrint logBookPrint({
     final dayAfterP = _dateAdd(to, 1), inf = _s(m['inactiveFrom']);
     final leftP = (m['status'] == 'Inactive' && inf.isNotEmpty && (inf.length > 10 ? inf.substring(0, 10) : inf).compareTo(dayAfterP) <= 0) ||
         (m['earlier'] as List? ?? const []).whereType<Map>().any((p) => _s(p['until']).compareTo(from) > 0 && _s(p['until']).compareTo(dayAfterP) <= 0);
-    final tank = leftP ? null : tankLeft(m, u, ownRows, iss0, isDebitD, rawExcess);
-    final excessQty = r2(rawExcess - (tank != null ? _n(tank['applied']) : 0));
+    // (3.72.2, update-199) dates of the month-end tank check rule: the bill's rule, and the diesel columns run from the opening
+    final tcs = extra['checks'] is Map && ((hasKm(u) && kmStd > 0) || (hasHr(u) && hrStd > 0)) ? tankMonthEnd(m, no, extra, r2(issued - debitQty), stdQty, leftP) : null;
+    final tank = leftP || extra['checks'] is Map ? null : tankLeft(m, u, ownRows, iss0, isDebitD, rawExcess);
+    final excessQty = tcs != null ? r2(_n(tcs['debit'])) : r2(rawExcess - (tank != null ? _n(tank['applied']) : 0));
+    // the daily opening and closing: the opening = found at the check of the day before the dates; each row + its diesel − its work at
+    // the standard = its closing, the next row's opening; a debited day's diesel is the vendor's (in and out, the balance stays)
+    if (tcs != null) {
+      num bal = _n(tcs['open']);
+      for (final x in lines) {
+        final r = x['r'] as Map, iss = _n(x['iss']);
+        x['open'] = r2(bal);
+        x['total'] = r2(bal + iss);
+        x['avg'] = '';
+        if (isDebitD(_s(r['date']))) {
+          x['used'] = iss;
+          x['close'] = r2(bal);
+          continue;
+        }
+        final use = (hasKm(u) && kmStd != 0 ? _n(r['wkm']) / kmStd : 0) + (hasHr(u) && hrStd != 0 ? _n(r['whr']) * hrStd : 0);
+        bal = bal + iss - use;
+        x['used'] = r2(use);
+        x['close'] = r2(bal);
+      }
+    }
     final avgR = _n(extra['avgRate']), lastR = _n(extra['lastRate']), avgRate = manRate > 0 ? manRate : (avgR > lastR ? avgR : lastR), excessAmt = r2((debitQty + excessQty) * avgRate);
     final basic = r2(payable - excessAmt);
     final tdsP = last != null && !_blank(last['tdsPct']) ? _n(last['tdsPct']) : _n(m['tdsRate']);
@@ -600,7 +668,7 @@ LbPrint logBookPrint({
           '<td>${st ? '<b>${_e(_up(w))}</b>${_s(r['work']).isNotEmpty || _s(r['remark']).isNotEmpty ? ' – ' : ''}' : ''}${lbMarks(r)}${!st && items.isNotEmpty ? '<b>${_e(_up(items))}</b>${_s(r['work']).isNotEmpty || _s(r['remark']).isNotEmpty ? ' – ' : ''}' : ''}${_e(_up(_s(r['work']).isNotEmpty ? r['work'] : r['remark']))}</td></tr>');
     }
     final totWork = [if (tKm != 0) '${fmt(tKm)} KM', if (tHr != 0) '${fmt(tHr)} HR', if (tTrips != 0) '${fmt(tTrips)} TRIPS'].join('<br>');
-    table.write('</tbody><tfoot><tr><td colspan="6" class="c">TOTAL</td><td class="n">${totWork.isEmpty ? '0' : totWork}</td><td></td><td class="n">${fmt(issued)}</td><td></td><td class="n">${fmt(sum('total'))}</td><td class="n">${fmt(used)}</td><td></td><td></td><td></td><td></td></tr></tfoot></table>');
+    table.write('</tbody><tfoot><tr><td colspan="6" class="c">TOTAL</td><td class="n">${totWork.isEmpty ? '0' : totWork}</td><td></td><td class="n">${fmt(issued)}</td><td></td><td class="n">${tcs != null ? '' : fmt(sum('total'))}</td><td class="n">${fmt(tcs != null ? sum('used') : used)}</td><td></td><td></td><td></td><td></td></tr></tfoot></table>');
     String money(num v) => v != 0 ? '₹ ${n2(v)}' : '–';
     final allDebit = issued > 0 ? debitQty >= issued : m['supply'] == 'Debit Basis';
     final dA = dual ? dualAvg(issued, tKm, tHr, kmStd, hrStd) : null;
@@ -623,7 +691,15 @@ LbPrint logBookPrint({
                 ? dualWord
                 : (tKm != 0 ? '${(tKm / issued).toStringAsFixed(2)} KM / LTR' : '–');
     final stdWord = [if (hasKm(u) && kmStd != 0) 'STD ${fmt(kmStd)} KM/L', if (hasHr(u) && hrStd != 0) 'STD ${fmt(hrStd)} L/HR'].join(' · ');
-    final verdict = allDebit ? 'DIESEL ON DEBIT – ALL DIESEL IS DEBITED' : stdQty == 0 ? 'NO STANDARD IN ASSET MASTER' : excessQty > 0 ? 'WORSE THAN STANDARD → DEBIT' : 'WITHIN STANDARD → NO DEBIT';
+    final verdict = allDebit
+        ? 'DIESEL ON DEBIT – ALL DIESEL IS DEBITED'
+        : tcs != null
+            ? (tcs['final'] == true ? 'FINAL BILL – THE DIESEL OF ITS TANK IS DEBITED' : tcs['missing'] == true ? 'TANK CHECK OF ${showDate(to)} NOT ENTERED' : excessQty > 0 ? 'SHORT IN THE TANK → DEBIT' : 'NOTHING SHORT → NO DEBIT')
+            : stdQty == 0
+                ? 'NO STANDARD IN ASSET MASTER'
+                : excessQty > 0
+                    ? 'WORSE THAN STANDARD → DEBIT'
+                    : 'WITHIN STANDARD → NO DEBIT';
     final nightHr = r2(list.where((r) => r['shift'] == 'Night').fold<num>(0, (s, r) => s + _n(r['whr'])));
     List<List<String>> onRows(String k) => k == 'hr'
         ? [
@@ -649,6 +725,17 @@ LbPrint logBookPrint({
       ['TOTAL DIESEL ISSUE$noEntryNote', '${n2(issued)} LTR'],
       ['DIESEL MONTHLY AVERAGE', avgWord],
       ['STANDARD AVERAGE<small>$verdict</small>', allDebit ? 'NOT CHECKED' : '${stdWord.isEmpty ? '–' : stdWord}${stdQty != 0 ? '<br><small>${fmt(stdQty)} L allowed for the work</small>' : ''}'],
+      if (tcs != null && !allDebit)
+        [
+          'TANK CHECK – ${showDate(to)}<small>OPENING ${fmt(tcs['open'])}${_s(tcs['openDate']).isNotEmpty ? ' (FOUND ON ${showDate(_s(tcs['openDate']))})' : ''} + ISSUED ${fmt(tcs['issued'])} − STANDARD ${fmt(tcs['std'])} = ${fmt(tcs['system'])} L${_n(tcs['over']) > 0 ? ' · THE TANK HOLDS ${fmt(tcs['cap'])} L' : ''}</small>',
+          tcs['final'] == true
+              ? '${fmt(_n(tcs['system']) > 0 ? tcs['system'] : 0)} L<br><small>LEFT THE SITE</small>'
+              : tcs['need'] != true
+                  ? 'NOT NEEDED'
+                  : tcs['missing'] == true
+                      ? '<b>NOT ENTERED</b>'
+                      : 'FOUND ${fmt(tcs['found'])} L<br><small>${_n(tcs['short']) > 0 ? '${fmt(tcs['short'])} L SHORT' : 'NOTHING SHORT'}</small>'
+        ],
     ];
     final tankApplied = tank != null && _n(tank['applied']) > 0;
     final rr = [
@@ -656,10 +743,10 @@ LbPrint logBookPrint({
       if (kinds.contains('day')) ['DAILY RATE', dailyCell],
       ['PAYABLE AMOUNT', money(payable)],
       [
-        '${debitQty != 0 ? 'DIESEL DEBIT' : 'EXCESS DIESEL – DEBIT AMT'}<small>${manRate > 0 ? 'rate = ₹${n2(manRate)} (fixed by hand)' : 'rate = higher of avg ₹${n2(avgR)} / last ₹${n2(lastR)}'}</small>',
+        '${debitQty != 0 ? 'DIESEL DEBIT' : tcs != null ? 'DIESEL SHORT – DEBIT AMT' : 'EXCESS DIESEL – DEBIT AMT'}<small>${manRate > 0 ? 'rate = ₹${n2(manRate)} (fixed by hand)' : 'rate = higher of avg ₹${n2(avgR)} / last ₹${n2(lastR)}'}</small>',
         excessAmt != 0
-            ? '<small>${[if (debitQty != 0) '${fmt(debitQty)} L debit', if (excessQty != 0) '${fmt(excessQty)} L extra'].join(' + ')} × ₹${n2(avgRate)}</small> − ₹ ${n2(excessAmt)}${tankApplied ? '<br><small>${_e(tankText(tank).toUpperCase())}</small>' : ''}'
-            : '<small>${tankApplied ? _e(tankText(tank).toUpperCase()) : stdQty != 0 ? 'no extra diesel' : 'no standard'}</small> –'
+            ? '<small>${[if (debitQty != 0) '${fmt(debitQty)} L debit', if (excessQty != 0) '${fmt(excessQty)}${tcs != null ? (tcs['final'] == true ? ' L in its tank' : _n(tcs['over']) > 0 ? (_n(tcs['short']) > 0 ? ' L above the tank and short' : ' L above the tank') : ' L short') : ' L extra'}'].join(' + ')} × ₹${n2(avgRate)}</small> − ₹ ${n2(excessAmt)}${tankApplied ? '<br><small>${_e(tankText(tank).toUpperCase())}</small>' : ''}'
+            : '<small>${tankApplied ? _e(tankText(tank).toUpperCase()) : tcs != null ? (tcs['missing'] == true ? 'tank check not entered' : 'nothing short') : stdQty != 0 ? 'no extra diesel' : 'no standard'}</small> –'
       ],
       ['TDS ${tdsP != 0 ? '${fmt(tdsP)}% (on basic)' : ''}', tds != 0 ? '− ₹ ${n2(tds)}' : '–'],
       ['GST ${gstP != 0 ? '${fmt(gstP)}% (on basic)' : '– not applicable'}', gst != 0 ? '+ ₹ ${n2(gst)}' : '–'],
@@ -740,8 +827,8 @@ LbPrint logBookPrint({
         'dO': _Col('OPENING<br>BALANCE', (x) => n2(x['open']), g: 'DIESEL (LTR)', c: 'n'),
         'dI': _Col('ISSUED<br>QTY', (x) => _n(x['iss']) != 0 ? '<b>${fmt(x['iss'])}</b>' : '', g: 'DIESEL (LTR)', c: 'n', t: () => fmt(issued)),
         'dR': _Col('CURRENT DIESEL<br>REFILLING READING', (x) => refillTxt(x), g: 'DIESEL (LTR)', c: 'n'),
-        'dT': _Col('TOTAL<br>DIESEL', (x) => n2(x['total']), g: 'DIESEL (LTR)', c: 'n', t: () => fmt(sum('total'))),
-        'dU': _Col('CONSUMED<br>DIESEL', (x) => n2(x['used']), g: 'DIESEL (LTR)', c: 'n', t: () => fmt(used)),
+        'dT': _Col('TOTAL<br>DIESEL', (x) => n2(x['total']), g: 'DIESEL (LTR)', c: 'n', t: () => tcs != null ? '' : fmt(sum('total'))),
+        'dU': _Col('CONSUMED<br>DIESEL', (x) => n2(x['used']), g: 'DIESEL (LTR)', c: 'n', t: () => fmt(tcs != null ? sum('used') : used)),
         'dC': _Col('CLOSING<br>BALANCE', (x) => n2(x['close']), g: 'DIESEL (LTR)', c: 'n'),
         'dQ': _Col('DIESEL<br>QTY', (x) => _n(x['iss']) != 0 ? '<b>${fmt(x['iss'])}</b>' : '', c: 'n', t: () => fmt(issued)),
         'avg': _Col('AVG', (x) => _s(x['avg']), c: 'n'),
