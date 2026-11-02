@@ -905,7 +905,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     final s = SessionScope.read(context);
     setState(() => dNotes = []);
     // the web sends every row (the server leaves out the empty ones)
-    final rows = [
+    final rows = <Map<String, dynamic>>[
       for (final r in dRows)
         {
           'no': r.m?.id ?? r.typed,      // (3.22.0: a corrected entry's machinery not in the Master stays as it was sent – the save says so)
