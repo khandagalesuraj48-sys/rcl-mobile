@@ -15,6 +15,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.72.1 (02-11-2026 – "tank capacity takli ani save krtoy tr nothing change as yetey"; with Mechanical update-197):** an edit
+of a machinery compares every box of the form – Tank Capacity, Engine / Chassis Number, Engine Make and the papers (Tax, PUC, Permit,
+Fitness, Insurance) were left out, so a change of only them said "Nothing changed." and was not saved (`kMasterDiff`, `masterChanges`).
+
 **Version 3.72.0 (30-10-2026 – "supabase ani vercel madhe purchase department banau sagle site cha data tyatach asel … ani aata jas
 aahe ekach link warti sagle kahi"; with the new rcl-purchase and Mechanical update-194):** **Purchase** on Home (and in the side
 menu and the search) for whoever has Purchase on the site in the Portal: its own sign-in (a Portal ticket for `purchase`,
