@@ -15,7 +15,7 @@ import '../core/format.dart';
 import '../core/imports.dart' show onSiteOn;
 import '../core/lb_io.dart' show localeCmp;
 import '../core/masters.dart' show vendorMatOnly;
-import '../core/more_imports.dart' show kQrPerPage, masterImportRows, qrLabelsHtml, qrPrintHtml, qrSub;
+import '../core/more_imports.dart' show kQrPerPage, labelBase, masterImportRows, qrLabelsHtml, qrPrintHtml, qrSub;
 import '../core/session.dart';
 import '../core/sheet_read.dart' show readSheets, SheetError;
 import '../ui/fields.dart';
@@ -453,7 +453,7 @@ class _AssetMasterScreenState extends State<AssetMasterScreen> {
     final (list, owner) = got;
     final customer = '${s.org['customer'] ?? ''}';
     final title = 'QR labels – ${list.length == 1 ? list.first['id'] : '${owner.isNotEmpty && list.every((m) => qrOwnerOf(m) == owner) ? '$owner – ' : ''}${list.length} machinery'}';
-    final html = qrPrintHtml(title, qrLabelsHtml(list, s.api.mechUrl, customer), customer);
+    final html = qrPrintHtml(title, qrLabelsHtml(list, labelBase(s.api.mechUrl), customer), customer);
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: html, title: title)));
   }
 

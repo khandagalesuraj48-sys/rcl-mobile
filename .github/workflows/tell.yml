@@ -1,0 +1,37 @@
+# TELL – "RCL ERP <version> is ready" to the phones (02-11-2026). Started by the Portal's "Give to everybody" (Super Admin →
+# Versions) once a beta version with an app became the stable one – every phone's update takes it now – or by hand.
+# topic: rcl-app-update (every phone) or rcl-app-update-beta (the testers' phones). The key: the GitHub secret
+# FCM_SERVICE_ACCOUNT_JSON (never in a file). Nothing else is done.
+name: tell
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version (e.g. 3.80.0)'
+        required: true
+      build:
+        description: 'Its build number (e.g. 201)'
+        required: true
+      topic:
+        description: 'rcl-app-update (every phone) or rcl-app-update-beta (the testers)'
+        required: false
+        default: 'rcl-app-update'
+permissions:
+  contents: read
+jobs:
+  tell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Tell the phones
+        env:
+          FCM_SA: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}
+          V: ${{ github.event.inputs.version }}
+          B: ${{ github.event.inputs.build }}
+          T: ${{ github.event.inputs.topic }}
+        run: |
+          [[ "$V" =~ ^[0-9A-Za-z._-]{1,30}$ ]] && [[ "$B" =~ ^[0-9]{1,7}$ ]] || { echo "::error::version / build are not right."; exit 1; }
+          case "$T" in rcl-app-update|rcl-app-update-beta) ;; *) echo "::error::topic: rcl-app-update or rcl-app-update-beta"; exit 1;; esac
+          if [ -z "$FCM_SA" ]; then echo "::warning::FCM_SERVICE_ACCOUNT_JSON is not set – the phones see the update when the app is opened."; exit 0; fi
+          timeout 120 bash tool/fcm_topic.sh "$V" "$B" "$T"

@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.73.0 (02-11-2026 – "ethun pudhe je kahi asel agodr testing hoil … mi kahi user la testing sathi deu shakel nantr … other la
+pn app web stable deu shakel … je cuurent chalu aahe te bighdnar nahi"; "jewa stable war jaych asel tewa mala version wise button de je
+dable ki auto app updet push hoil stable war web updet hoil"; with the Portal's step 7):** the **beta channel**. A **tester** (ticked
+by the Super Admin in the Portal – its `me` says `user.tester`) takes the newest version with an app in it, a **beta** one (a GitHub
+pre-release) included (`checkUpdate(beta:)`, `newestOf`), and his phone also listens to `rcl-app-update-beta`; the Portal gives him the
+modules' beta links, so the app works with the beta servers (on the live data). Everybody else: the stable version (`releases/latest`),
+as before. A label printed by a tester carries the live address (`labelBase`). The versions: `beta.yml` (the Portal's "New beta
+version": the web modules' beta commits, the app when it changed, what is new from `WHATS_NEW.txt`, the testers told), `tell.yml` (the
+Portal's "Give to everybody": every phone told), `tool/next_build.sh` (every build number above all the releases – `release.yml` too).
+
 **Version 3.72.2 (02-11-2026 – "month end la … bill close karte weli tank check mandatory … jitki kami ti debit … tank capacity
 mandatory"; with Mechanical update-199):** Machinery Billing – from the bill of 31-10-2026 on the **month-end tank check** decides the
 diesel debit, as the web: opening (found at the check of the day before) + company diesel − the standard of the work = what should be
@@ -1103,13 +1113,25 @@ The first run makes the `android/` and `ios/` folders and saves them in the bran
 
 Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-*.txt`).
 
+## Beta versions and "Give to everybody" (02-11-2026)
+* **`beta.yml`** (branch `beta`; started by the Portal → Versions → **New beta version**, or Actions → beta → Run workflow): a GitHub
+  **pre-release** – the exact commit of each web module's branch `beta` (in its hidden line, `web`), the signed app when this branch
+  changed since the newest version with an app (the same steps and key as `release.yml`; it never makes a key), what is new
+  (`WHATS_NEW.txt`, English / मराठी / हिंदी), the testers' phones told (`rcl-app-update-beta`). The app unchanged: a version of the
+  web only (no app – no phone updates).
+* **Give to everybody** (the Portal): each web module's `main` moved forward to the tested commit (Vercel puts it live), this
+  repository's `main` too, the release made the stable one ("latest" when it has an app), then **`tell.yml`** tells every phone.
+* **`tell.yml`**: `version`, `build`, `topic` (`rcl-app-update` or `rcl-app-update-beta`) → `tool/fcm_topic.sh`.
+* Both workflows must be on `main` once (GitHub starts a workflow by hand only when it is on the default branch).
+
 ## Release (signed, a GitHub Release)
 `.github/workflows/release.yml` is run by hand on `main` (Actions → release → Run workflow), after the owner says yes.
 * **First time:** it makes the private bucket **app-keys** in the Portal's Supabase and the signing key, kept only there. A
   copy of that key should be kept offline: Android installs an update only when it carries the same key.
 * **Every time:**
   1. the tests;
-  2. the signed APK for every Android phone (ARM 32 + 64 bit), with build number 100 + run number;
+  2. the signed APK for every Android phone (ARM 32 + 64 bit), with the next build number (`tool/next_build.sh`: one more than
+     every release – the beta versions too – never below 100 + run number);
   3. a check that the debug key was not used;
   4. a GitHub Release `v<version>-<build>` with the APK, its SHA-256 and the data line for the app.
 

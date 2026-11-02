@@ -4,3 +4,6 @@ const kPortalUrl = '$kMainUrl/portal';
 
 /// The app's releases (GitHub Releases of the app's repository): the newest one is the update (asked 14-10-2026).
 const kReleasesApi = 'https://api.github.com/repos/khandagalesuraj48-sys/rcl-mobile/releases/latest';
+
+/// (02-11-2026) A TESTER (ticked in the Portal) takes the BETA versions too: the newest releases, a pre-release ("Beta") included.
+const kReleasesListApi = 'https://api.github.com/repos/khandagalesuraj48-sys/rcl-mobile/releases?per_page=20';

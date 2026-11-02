@@ -150,6 +150,20 @@ void main() {
     expect(s.superAdmin, false);
   });
 
+  test('(02-11-2026) a tester (the Portal\'s "me" says so) gets the beta channel; not a tester / signed out: the stable one', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.tester, false);
+    await s.signOut();
+    srv.tester = true;
+    final t = make();
+    await t.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(t.tester, true);
+    await t.signOut();
+    expect(t.tester, false);
+    srv.tester = false;
+  });
+
   test('(14-10-2026) the Super Admin (his ticket says so): his change of a billed entry is saved, nothing is asked', () async {
     srv.superAdmin = true;
     final s = make();

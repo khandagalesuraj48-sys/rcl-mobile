@@ -81,4 +81,30 @@ void main() {
       expect(u.sha256, win);
     });
   });
+  group('(02-11-2026) the beta channel: a tester takes a beta version too; everybody else only the stable one', () {
+    const base = 'https://github.com/khandagalesuraj48-sys/rcl-mobile/releases/download/';
+    Map<String, dynamic> r(int build, {bool pre = false, bool app = true}) => {
+          'name': 'RCL ERP 3.80.0 ($build)',
+          'draft': false,
+          'prerelease': pre,
+          'body': '<!-- rcl-new -->\nNew: X\n<!-- /rcl-new -->\n<!-- rcl:{"build":$build,"version":"3.80.0",${app ? '"sha256":"$sha",' : ''}"web":{"rclerp":"${'1' * 40}"},"app":"${'2' * 40}"} -->',
+          'assets': app ? [{'name': 'rcl-erp-3.80.0-$build.apk', 'browser_download_url': '${base}v3.80.0-$build/rcl-erp-3.80.0-$build.apk'}] : <Map<String, dynamic>>[],
+        };
+    test('a beta version (pre-release): not for everybody, taken by a tester', () {
+      expect(parseRelease(r(201, pre: true), 200), isNull);
+      final u = parseRelease(r(201, pre: true), 200, beta: true)!;
+      expect(u.build, 201);
+      expect(u.notes, 'New: X');
+    });
+    test('a tester: the newest with an app of the list – a version of the web only (no app) is never taken', () {
+      final list = [r(204, pre: true, app: false), r(203, pre: true), r(202), r(201, pre: true)];
+      expect(newestOf(list, 200)!.build, 203);
+      expect(newestOf(list, 203), isNull);
+      expect(newestOf([r(205, pre: true, app: false)], 200), isNull);
+      expect(newestOf(const [], 200), isNull);
+    });
+    test('a stable version made from a beta one (no longer a pre-release): everybody takes it', () {
+      expect(parseRelease(r(203), 202)!.build, 203);
+    });
+  });
 }

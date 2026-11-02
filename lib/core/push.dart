@@ -8,7 +8,8 @@
  *       cr     verification and approvals: waiting for you, the next level, approved / rejected, sent back, answered, sent again,
  *              a reminder – pressed: Approvals at that site
  *   – and every phone with the app: "RCL ERP <version> is ready" when a new version is released (the topic rcl-app-update –
- *     release.yml) – pressed: the app opens and offers the update.
+ *     release.yml) – pressed: the app opens and offers the update. (02-11-2026) A tester's phone also listens to rcl-app-update-beta
+ *     (a new beta version – beta.yml); taken off when he is no longer a tester. A version made stable for everybody: tell.yml.
  *   – Shown in the app's language (tr). The approvals' notifications use the same numbers as the 15-minute check (alerts.dart), so
  *     one thing is never told twice; that check stays as it was (if Firebase is ever late, nothing is missed).
  *   – While the app is open: a ring of the open site comes on the app's own ring screen (asked now – no notification); another
@@ -23,6 +24,9 @@ import 'api.dart';
 import 'lang.dart';
 
 const kPushTopic = 'rcl-app-update';
+
+/// (02-11-2026) the testers' phones only: "a new BETA version is ready" (.github/workflows/beta.yml)
+const kPushTopicBeta = 'rcl-app-update-beta';
 /// (3.42.0) a new version was told (while the app is open, or its notification pressed): Home asks for the update again
 final pushUpdateTick = ValueNotifier<int>(0);
 const kPushSent = 'push_sent'; // "<who>|<token>|<day>": this phone was given to Mechanical today (not asked again at every start)
