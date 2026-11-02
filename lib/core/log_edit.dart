@@ -734,6 +734,9 @@ class LogEdit {
     final c = LxCalc(), kmStd = _n0(m['kmStd']), hrStd = _n0(m['hrStd']), capX = _n0(m['tankCap']) > 0 ? _n0(m['tankCap']) : 0;
     final prev = d['prev'] as Map?;
     num open = prev != null ? _n0(prev['stock']) : (odsl != '' ? _n0(odsl) : (rows.isNotEmpty && rows.first.odsl0 != '' ? _n0(rows.first.odsl0) : 0));
+    // (3.73.1, Mechanical update-200) the tank checks: after one, the tank starts from what was found (as the server saves it)
+    final cks = [for (final x in (d['checks'] as List? ?? const [])) if (x is Map) x];
+    var ckAt = prev != null ? _s(prev['date']) : '';
     for (var i = 0; i < rows.length; i++) {
       final r = rows[i], f = LxFig(), w = way(r), km = hasKm(w), hr = hasHr(w), tm = w == 'Time', tp = w == 'Trip';
       f.wk = km && r.okm != '' && r.ckm != '' ? r2(_n0(r.ckm) - _n0(r.okm)) : '';
@@ -742,6 +745,11 @@ class LogEdit {
       f.need = r2((km && (wk ?? 0) > 0 && kmStd > 0 ? wk! / kmStd : 0) + ((hr || tm) && (wh ?? 0) > 0 && hrStd > 0 ? wh! * hrStd : 0));
       f.odBox = r.date.endsWith('-01') && !later(r);
       f.odTyped = f.odBox && r.odSet != '';
+      if (r.date.isNotEmpty) {
+        final ck = cks.where((x) => _s(x['date']).compareTo(r.date) < 0 && (ckAt.isEmpty || _s(x['date']).compareTo(ckAt) >= 0)).lastOrNull;
+        if (ck != null) open = _n0(ck['physical']);
+        ckAt = r.date;
+      }
       if (f.odTyped) open = _n0(r.odSet);
       f.open = open;
       f.iss = issued(r);

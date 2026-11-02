@@ -49,6 +49,21 @@ void main() {
     expect(js(1008.0), '1008');
   });
 
+  test('(3.73.1, Mechanical update-200) a tank check: the tank starts again from what was found – from the next row on (as the server saves it)', () {
+    // 28-09: 50 − 25 (100 km ÷ 4) = 25; the check of 28-09 found 30 → 29-09 opens at 30 (not 25): 30 + 20 − 12.5 = 37.5; 30-09: 37.5 − 12.5 = 25
+    final e0 = LogEdit(kmData(), superUser: false, today: '2026-10-16');
+    final c0 = e0.calc();
+    final d = kmData()..['checks'] = [{'id': 'TC-00001', 'date': '2026-09-28', 'physical': 30}];
+    final e = LogEdit(d, superUser: false, today: '2026-10-16');
+    final c = e.calc();
+    expect([c.figs[0].open, c.figs[1].open, c0.figs[1].open], [c0.figs[0].open, 30, c0.figs[0].close]);
+    expect(c.figs[1].close, r2(30 + 20 - c.figs[1].need));
+    expect(c.figs[2].open, c.figs[1].close);
+    // a check before the entry before: already in its stock (not used again)
+    final d2 = kmData()..['checks'] = [{'id': 'TC-00002', 'date': '2026-09-20', 'physical': 99}];
+    expect(LogEdit(d2, superUser: false, today: '2026-10-16').calc().figs[0].open, c0.figs[0].open);
+  });
+
   test('Open: an hour machinery on an Item-wise BOQ – the figures, the work picked by itself, nothing changed', () {
     final e = LogEdit(fx('ex200'), superUser: false, today: '2026-10-16');
     expect(e.ho, true, reason: 'read by the hour meter only');
