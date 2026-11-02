@@ -941,7 +941,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(key: Key('mb-tcs-$i-$k'), onPressed: busy ? null : () => _tcSave(b, no, box), child: Text('Save')),
+                FilledButton(key: Key('mb-tcs-$i-$k'), style: FilledButton.styleFrom(minimumSize: const Size(84, 44)), onPressed: busy ? null : () => _tcSave(b, no, box), child: Text('Save')),
                 if (_tcEdit.contains(k)) TextButton(key: Key('mb-tcx-$i-$k'), onPressed: () => setState(() => _tcEdit.remove(k)), child: Text('Cancel')),
               ]),
           ];
