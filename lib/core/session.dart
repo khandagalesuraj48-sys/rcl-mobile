@@ -12,6 +12,7 @@ import 'rtc.dart';
 import 'format.dart';
 import 'fuel.dart';
 import 'lang.dart';
+import 'sitewords.dart';
 export 'fuel.dart';      // (3.44.0) kFuels, fuelUnit, fuelText – for every screen that has the session
 
 enum Stage { starting, signedOut, setPassword, pickSite, opening, ready, waiting }
@@ -631,6 +632,30 @@ class Session extends ChangeNotifier {
     _flow(d['flow']);
     _admin(d);
     setStock(d['stock']);
+    unawaited(loadVoiceWords(force: true)); // (3.74.0) the site's own words for voice typing
+  }
+
+  /// (3.74.0, Mechanical update-201) the site's own words for voice typing (sitewords.dart – the web's same): read after sign-in and
+  /// when a site is opened, again after 30 minutes when the microphone is used; a spoken word corrected by hand is kept for the site.
+  Map<String, dynamic> voiceWords = {};
+  DateTime? _vwAt;
+  Future<void> loadVoiceWords({bool force = false}) async {
+    SiteWords.i.onLearn = (h, f) => unawaited(Future<void>(() async {
+          try {
+            await api.call('saveVoiceFix', [
+              {'heard': h, 'fixed': f}
+            ]);
+          } catch (_) {/* only for the next time */}
+        }));
+    if (!force && _vwAt != null && DateTime.now().difference(_vwAt!) < const Duration(minutes: 30)) return;
+    try {
+      final d = await api.call('getVoiceWords');
+      if (d is Map) {
+        voiceWords = d.cast<String, dynamic>();
+        _vwAt = DateTime.now();
+        SiteWords.i.set(voiceWords);
+      }
+    } catch (_) {/* voice typing as before */}
   }
 
   /// (3.14.0) A fault of the app's own code (an exception) is sent to the server – the Admin's "Faults of the app" lists it, as the

@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.74.0 (02-11-2026 – "jewa mi voice typing krtoy … mi bolalo Arihant City tr apla system tyala Aaryan City tr kadhi Aryna
+Nagar as karte"; his choice: the site's word list; with Mechanical update-201):** voice typing writes the site's own words – what the
+phone's speech wrote is put right with the names of Asset Master, Vendor Master, the places and works of the Log Book and the Super
+Admin's words (`getVoiceWords`; `lib/core/sitewords.dart` = the web's same engine, checked against it: `test/fixtures/voice/`); of
+the speech's guesses (up to 5) the one of the site is taken; a spoken word corrected by hand right after is learned for the site
+(`saveVoiceFix`) – only when it sounds like what was heard. Rules of this site (Super Admin): the words and the corrections learned
+(`saveVoiceWords`).
+
 **Version 3.73.1 (02-11-2026 – "01-11-26 ch opening bagh as ka ale"; with Mechanical update-200):** Edit Log Book – after a tank
 check the tank starts again from the diesel found (the server's `checks`), as the server saves it; the Log Book entry takes its
 opening from the server (a tank check after the entry before: the diesel found).

@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/core/sitewords.dart';
 import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/ui/voice_box.dart';
 
@@ -101,5 +102,67 @@ void main() {
     t.view.viewInsets = FakeViewPadding.zero;
     await t.pump();
     expect(find.byKey(const Key('voice-mic')), findsNothing);
+  });
+
+  // (3.74.0, Mechanical update-201) the site's own words: what the speech wrote is put right with them; of its guesses the one of
+  // the site; a spoken word corrected by hand is learned for the site (onLearn → saveVoiceFix) – not a change of what was meant
+  testWidgets('the 🎙 writes the site\'s own words ("Aaryan City" → "Arihant City"); a correction by hand right after is learned', (t) async {
+    final l0 = voice.listenOnce;
+    final learned = <(String, String)>[];
+    addTearDown(() {
+      voice.listenOnce = l0;
+      voice.heardAlternates = [];
+      SiteWords.i.set(null);
+      SiteWords.i.onLearn = null;
+    });
+    SiteWords.i.set({'words': ['Arihant City', 'Mahalaxmi Bridge'], 'fixes': []});
+    SiteWords.i.onLearn = (h, f) => learned.add((h, f));
+    t.view.viewInsets = const FakeViewPadding(bottom: 900);
+    addTearDown(t.view.reset);
+    final replies = <String>[];
+    voice.listenOnce = (lang, heard) async => replies.removeAt(0);
+    final txt = TextEditingController(), num = TextEditingController();
+    await t.pumpWidget(MaterialApp(
+      builder: (c, child) => VoiceLayer(child: child!),
+      home: Scaffold(
+        body: ListView(children: [
+          TextField(key: const Key('t'), controller: txt),
+          TextField(key: const Key('n'), controller: num, keyboardType: TextInputType.number),
+        ]),
+      ),
+    ));
+    Future<void> say(String words, [List<String> alts = const []]) async {
+      replies.add(words);
+      voice.heardAlternates = [words, ...alts];
+      await t.tap(find.byKey(const Key('t')));
+      await t.pump();
+      await t.tap(find.byKey(const Key('voice-mic')));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 50));
+    }
+
+    await say('RCL camp to Aaryan City');
+    expect(txt.text, 'RCL camp to Arihant City');
+    expect(find.text('“Aaryan City → Arihant City”'), findsOneWidget, reason: 'what was changed is shown');
+    await t.pump(const Duration(seconds: 5));
+    expect(find.byKey(const Key('voice-heard')), findsNothing, reason: 'the note goes after 4 seconds');
+    // corrected by hand, then the box left: "Aaryan City" → "Arihant Nagar" learned (what the speech will write again)
+    await t.enterText(find.byKey(const Key('t')), 'RCL camp to Arihant Nagar');
+    await t.tap(find.byKey(const Key('n')));
+    await t.pump();
+    expect(learned, [('Aaryan City', 'Arihant Nagar')]);
+    expect(SiteWords.i.fix(['go to Aaryan City']).text, 'go to Arihant Nagar', reason: 'used at once');
+    // of the speech's guesses the one of the site
+    txt.clear();
+    await say('aryan city', ['arihant city']);
+    expect(txt.text, 'arihant city');
+    // a change of what was meant is not learned
+    txt.clear();
+    await say('two trips');
+    expect(txt.text, 'two trips');
+    await t.enterText(find.byKey(const Key('t')), 'three trips');
+    await t.tap(find.byKey(const Key('n')));
+    await t.pump();
+    expect(learned.length, 1);
   });
 }

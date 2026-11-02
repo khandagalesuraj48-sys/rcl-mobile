@@ -339,6 +339,10 @@ class FakeServer {
   };
   // (3.9.0) Administration: the users and their access, the activity, the rules, Read Me; what was sent
   final adminSent = <Map<String, dynamic>>[];
+  // (3.74.0) the site's own words for voice typing (Mechanical update-201): the Super Admin's words, the corrections learned, what was sent
+  List<String> voiceAdmin = ['Arihant City'];
+  List<Map<String, dynamic>> voiceFixes = [];
+  final voiceSent = <Map<String, dynamic>>[];
   bool usersBySuper = false;
   final adminUsers = <Map<String, dynamic>>[
     {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'active': true, 'admin': true, 'mustChange': false, 'perms': {'Dashboard': 'Edit', 'Log Book': 'Edit', 'Machinery Billing': 'Edit'}},
@@ -1548,6 +1552,22 @@ class FakeServer {
             {'id': 'L-2', 'when': '14-10-2026 10:12:03', 'email': 'clerk@rcl.test', 'name': 'Site Clerk', 'action': 'Edit', 'module': 'Log Book', 'record': 'MH-25-AJ-2169|2026-10-13|Full Day', 'summary': 'Log Book entry changed', 'changes': 'Close KM: 15100 → 15130; Work: Earth carting → Earth carting (Ch 12+000)'},
             {'id': 'L-1', 'when': '14-10-2026 09:01:44', 'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'action': 'Login', 'module': '', 'record': '', 'summary': 'Signed in (app)', 'changes': ''},
           ]}});
+        // (3.74.0, Mechanical update-201) the site's own words for voice typing: the list, a correction learned, the Super Admin's save
+        case 'getVoiceWords':
+          return _j({'result': {'words': [...voiceAdmin, 'Mahalaxmi Bridge', 'Siddhappa Bhimu Basbire', 'Kaseli'], 'admin': voiceAdmin, 'fixes': voiceFixes, 'super': superAdmin}});
+        case 'saveVoiceFix':
+          voiceSent.add({'fn': action, 'x': a[0]});
+          final x = (a[0] as Map).cast<String, dynamic>();
+          final h = '${x['heard']}'.trim().toLowerCase(), f = '${x['fixed']}'.trim();
+          voiceFixes = [...voiceFixes.where((y) => y['h'] != h), {'h': h, 'f': f, 'n': 1}];
+          return _j({'result': {'ok': true, 'h': h, 'f': f}});
+        case 'saveVoiceWords':
+          voiceSent.add({'fn': action, 'x': a[0]});
+          if (!superAdmin) return _j({'error': 'Only the Super Admin sets the site\'s words for voice typing (signed in through the Portal).'}, 500);
+          final x = (a[0] as Map).cast<String, dynamic>();
+          voiceAdmin = [for (final w in (x['words'] as List? ?? const [])) '$w'];
+          voiceFixes = [for (final y in (x['fixes'] as List? ?? const [])) {'h': '${(y as Map)['h']}', 'f': '${y['f']}', 'n': 1}];
+          return _j({'result': {'ok': true, 'words': voiceAdmin.length, 'fixes': voiceFixes.length}});
         case 'saveSiteRules':
           adminSent.add({'fn': action, 'x': a[0]});
           final r = (a[0] as Map).cast<String, dynamic>();

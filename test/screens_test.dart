@@ -18,6 +18,7 @@ import 'package:rcl_mobile/core/push.dart' show PushTap;
 import 'package:rcl_mobile/screens/approvals.dart' show ApprovalsScreen;
 import 'package:rcl_mobile/screens/call.dart' show CallPickScreen;
 import 'package:rcl_mobile/core/session.dart';
+import 'package:rcl_mobile/core/sitewords.dart';
 import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
 import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
@@ -2041,6 +2042,28 @@ void main() {
     await net(t);
     expect((srv.adminSent.last['x'] as Map)['backDays'], '3');
     expect(s.siteRules['backDays'], 3);
+    // (3.74.0, Mechanical update-201) voice typing – the site's own words: the Super Admin's list and the corrections learned
+    // (a hand correction taken off); saved with saveVoiceWords and given to the voice typing at once
+    srv.voiceFixes = [{'h': 'aryna nagar', 'f': 'Arihant City', 'n': 2}, {'h': 'two', 'f': 'three', 'n': 1}];
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'ad-Rules of this site');
+    await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('vw-save')), 300, scrollable: find.ancestor(of: find.byKey(const Key('rule-save')), matching: find.byType(Scrollable)).first);
+    await settle(t, 400);
+    expect(find.text('“aryna nagar” → Arihant City  ×2'), findsOneWidget);
+    expect(find.text('“two” → three'), findsOneWidget);
+    expect(find.textContaining('Also known by themselves: 3 names'), findsOneWidget);
+    await t.enterText(box('vw-words'), 'Arihant City\nYewai Naka\n ');
+    await tapK(t, 'vw-del-1');
+    await settle(t, 300);
+    await tapK(t, 'vw-save');
+    await net(t);
+    expect(srv.voiceSent.last, {'fn': 'saveVoiceWords', 'x': {'words': ['Arihant City', 'Yewai Naka'], 'fixes': [{'h': 'aryna nagar', 'f': 'Arihant City'}]}});
+    expect(srv.rids.any((r) => r.startsWith('saveVoiceWords:')), true, reason: 'saved once');
+    expect(find.text('“two” → three'), findsNothing);
+    expect(s.voiceWords['admin'], ['Arihant City', 'Yewai Naka']);
+    expect(SiteWords.i.fix(['go to Yeway Naka']).text, 'go to Yewai Naka', reason: 'the voice typing has the new list at once');
     await t.pageBack();
     await net(t);
     // (3.19.1, Mechanical update-123: the opening film is gone) Company & site: nothing about a film to set; what the server
