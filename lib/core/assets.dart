@@ -177,18 +177,29 @@ String autoOwnership(String owner) => RegExp(r'^rachana construction', caseSensi
 
 const kMasterDiff = [
   ('no', 'Machinery Number'), ('name', 'Machinery Name'), ('type', 'Type of Machinery'), ('make', 'Make'), ('fuel', 'Fuel'), ('worksOn', 'Works on'),
-  ('kmStd', 'Standard Average (KM/Ltr)'), ('hrStd', 'Standard Average (Ltr/Hr)'), ('owner', 'Owner Name'), ('ownership', 'Ownership'),
+  ('kmStd', 'Standard Average (KM/Ltr)'), ('hrStd', 'Standard Average (Ltr/Hr)'), ('tankCap', 'Tank Capacity (Ltr)'), ('owner', 'Owner Name'), ('ownership', 'Ownership'),
   ('supply', 'Diesel Supply'), ('status', 'Status'), ('activeFrom', 'Active From'), ('inactiveFrom', 'Inactive From'),
+  ('engineNo', 'Engine Number'), ('chassisNo', 'Chassis Number'), ('engineMake', 'Engine Make'),
+  ('taxUpto', 'Tax'), ('pucUpto', 'PUC'), ('permitUpto', 'Permit'), ('fitnessUpto', 'Fitness'), ('insuranceUpto', 'Insurance'),
 ];
+
+/// (3.72.1, Mechanical update-197 – asked 02-11-2026: "tank capacity takli ani save krtoy tr nothing change as yetey") these were not
+/// compared, so a change of only them said "Nothing changed." and was not saved; compared only when the form sends them
+const kMasterDiffSent = {'tankCap', 'engineNo', 'chassisNo', 'engineMake', 'taxUpto', 'pucUpto', 'permitUpto', 'fitnessUpto', 'insuranceUpto'};
 
 /// What an edit changes: [field, now, new] – the same lines as the web's "Update …?" (and the earlier periods, came back / never left).
 List<(String, String, String)> masterChanges(Map<String, dynamic> before, Map<String, dynamic> after) {
   // (3.44.0, update-163) its fuel: none = Diesel (a machinery of before)
   final b = {...before, 'worksOn': worksOf(before).join(', '), 'fuel': const ['Diesel', 'Petrol', 'CNG', 'Electric'].contains('${before['fuel'] ?? ''}') ? '${before['fuel']}' : 'Diesel'};
   if (!after.containsKey('fuel')) b.remove('fuel');
+  // (3.72.1) a paper as the form shows it: N/A, Lifetime, a date or nothing
+  for (final d in kDocs) {
+    final v = _s(b[d.$3]);
+    b[d.$3] = v == 'NA' || v == 'LIFETIME' || RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(v) ? v : '';
+  }
   final out = <(String, String, String)>[
     for (final f in kMasterDiff)
-      if (_s(b[f.$1]).trim() != _s(after[f.$1]).trim()) (f.$2, _s(b[f.$1]), _s(after[f.$1])),
+      if ((!kMasterDiffSent.contains(f.$1) || after.containsKey(f.$1)) && _s(b[f.$1]).trim() != _s(after[f.$1]).trim()) (f.$2, _s(b[f.$1]), _s(after[f.$1])),
   ];
   String pt(dynamic l) {
     final t = (l as List? ?? const []).whereType<Map>().map((p) => periodText(Period(_s(p['from']), _s(p['until']).isNotEmpty ? _s(p['until']) : _s(p['from'])))).join('; ');

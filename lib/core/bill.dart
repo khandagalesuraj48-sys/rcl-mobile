@@ -5,7 +5,7 @@
  * kept as the same map the web keeps (it is what verifyBills / submitBills are sent and what is saved). */
 import 'dash.dart' show kDayStatus;
 import 'format.dart' show showDate;
-import 'lb_print.dart' show fmt, n2, tankLeft, tankText, itemDaySegs, dayPart;
+import 'lb_print.dart' show fmt, n2, tankLeft, tankText, tankMonthEnd, tcText, itemDaySegs, dayPart;
 import 'log_edit.dart' show r2, js;
 import 'print_css.dart';
 import 'session.dart' show hasKm, hasHr, kNoReading;
@@ -45,6 +45,11 @@ String corrCalc(Map z) => [
     ].join('<br>');
 
 String billTank(Map b) => _maps(b['machines']).where((m) => m['tank'] is Map && _n((m['tank'] as Map)['applied']) > 0).map((m) => '${_nodash(m['no'])}: ${tankText(m['tank'] as Map)}').join(' | ');
+/// (3.72.2, update-199) the month-end tank check of each machinery that needs one, in words (the Abstract's line B, the Debit Note).
+String billTc(Map b) => _maps(b['machines'])
+    .where((m) => m['tc'] is Map && ((m['tc'] as Map)['need'] == true || (m['tc'] as Map)['final'] == true || _n((m['tc'] as Map)['over']) > 0))
+    .map((m) => '${_nodash(m['no'])}: ${tcText(m['tc'] as Map, _s(b['to']))}')
+    .join(' | ');
 String billFinal(Map b) => _maps(b['machines']).where((m) => _s(m['final']).isNotEmpty).map((m) => '${_nodash(m['no'])}: FINAL BILL – left the site on ${showDate(_s(m['final']))}, the diesel in its tank is debited (nothing left out)').join(' | ');
 String billEst(Map b) => _maps(b['machines']).where((m) => m['est'] is Map && _n((m['est'] as Map)['days']) != 0).map((m) {
       final x = m['est'] as Map;
@@ -173,8 +178,10 @@ Map<String, dynamic> mbMachine(String no, List<Map<String, dynamic>> list0, Map 
   // (the server's leftOn_: the date it went Inactive – the web page names the same date)
   final leftOn = m['status'] == 'Inactive' && inf10.isNotEmpty ? inf10 : '';
   final fin = (m['status'] == 'Inactive' && inf10.isNotEmpty && inf10.compareTo(dayAfter) <= 0) || _maps(m['earlier']).any((p) => _s(p['until']).compareTo(from) > 0 && _s(p['until']).compareTo(dayAfter) <= 0);
-  final tank = fin ? null : tankLeft(m, u, own, iss0, isDebit, rawExcess);
-  final excessQty = r2(rawExcess - (tank != null ? _n(tank['applied']) : 0));
+  // (3.72.2, update-199) a period of the month-end tank check rule: the check decides (a machinery with a standard); before it – the last fill
+  final tc = extra['checks'] is Map && ((hasKm(u) && kmStd > 0) || (hasHr(u) && hrStd > 0)) ? tankMonthEnd(m, no, extra, companyQty, stdQty, fin) : null;
+  final tank = fin || extra['checks'] is Map ? null : tankLeft(m, u, own, iss0, isDebit, rawExcess);
+  final excessQty = tc != null ? r2(_n(tc['debit'])) : r2(rawExcess - (tank != null ? _n(tank['applied']) : 0));
   final avg = _n(extra['avgRate']), lastR = _n(extra['lastRate']), autoRate = avg > lastR ? avg : lastR, manRate = _n(extra['manualRate']) > 0 ? r2(_n(extra['manualRate'])) : 0;
   final dRate = manRate > 0 ? manRate : autoRate, excessAmt = r2((debitQty + excessQty) * dRate);
   // diesel issued on a day that has no WORKING Log Book entry: counted in the bill, and the bill says so
@@ -187,7 +194,7 @@ Map<String, dynamic> mbMachine(String no, List<Map<String, dynamic>> list0, Map 
   final offRows = list.where((r) => _mode(r) == kNoReading).toList();
   final est = {'days': offRows.map((r) => r['date']).toSet().length, 'km': r2(offRows.fold<num>(0, (s, r) => s + _n(r['wkm']))), 'hr': r2(offRows.fold<num>(0, (s, r) => s + _n(r['whr'])))};
   return {
-    'final': fin ? leftOn : '', 'tank': tank != null && _n(tank['applied']) > 0 ? tank : null, 'rawExcess': rawExcess, 'est': est, 'noEntry': noEntry,
+    'final': fin ? leftOn : '', 'tank': tank != null && _n(tank['applied']) > 0 ? tank : null, 'tc': tc, 'rawExcess': rawExcess, 'est': est, 'noEntry': noEntry,
     'no': _s(m['id']).isNotEmpty ? m['id'] : no, 'type': _s(m['type']), 'name': _s(m['name']), 'unit': u, 'supply': _s(m['supply']),
     'workDays': workDays, 'nights': nights, 'holidays': holidays, 'idleDays': idleDays, 'itemNotes': itemNotes, 'lines': lines, 'amount': amount, 'zeroWork': zeroWork,
     'issued': issued, 'stdQty': stdQty, 'excessQty': excessQty, 'debitQty': debitQty, 'dieselRate': dRate, 'autoRate': autoRate, 'rateManual': manRate > 0, 'excessAmt': excessAmt, 'days': units.length,
@@ -242,6 +249,14 @@ Map<String, dynamic> mbFill(Map<String, dynamic> b, BillLogs l, Map<String, dyna
   }
   for (final x in machines) {
     if (_s(x['final']).isNotEmpty) w.add('${x['no']}: FINAL BILL – the machinery left the site on ${showDate(_s(x['final']))}; the diesel in its tank is debited, and every open debit note of the vendor should be deducted');
+  }
+  for (final x in machines) {
+    final t = x['tc'] as Map?; // (3.72.2, update-199) the month-end tank check
+    if (t == null || t['final'] == true) continue;
+    if (t['missing'] == true) {
+      w.add('${x['no']}: tank check of ${showDate(_s(b['to']))} needed – ${fmt(t['expect'])} L should be in the tank as per the standard${_n(t['cap']) > 0 ? '' : ' (first set its Tank Capacity in Asset Master)'}; the diesel found in the tank goes in the box below (Tank check) – the bill is not submitted without it');
+    }
+    if (_n(t['over']) > 0) w.add('${x['no']}: as per the standard ${fmt(t['system'])} L, more than its tank holds (${fmt(t['cap'])} L) – the ${fmt(t['over'])} L above the tank is debited; check the Log Book and the diesel issued');
   }
   for (final x in machines) {
     final t = x['tank'] as Map?;
@@ -369,9 +384,9 @@ String billHtml(Map b, {String logo = ''}) {
           '<td class="c">${fmt(l['qty'])}${unit != 'Days' ? ' ${_e(unit)}' : ''}</td><td class="n">${n2(l['rate'])}</td><td class="n">${n2(l['amount'])}</td></tr>');
     }
   }
-  final dq = machines.fold<num>(0, (a, x) => a + _n(x['debitQty'])), eq = machines.fold<num>(0, (a, x) => a + _n(x['excessQty']));
-  final bNote = [if (dq != 0) 'diesel debit ${fmt(r2(dq))} L', if (eq != 0) 'excess diesel over standard ${fmt(r2(eq))} L'].join(' + ');
-  final bNoEntry = billNoEntry(b), est = billEst(b), fin = billFinal(b), tank = billTank(b);
+  final dq = machines.fold<num>(0, (a, x) => a + _n(x['debitQty'])), eq = machines.fold<num>(0, (a, x) => a + (x['tc'] is Map ? 0 : _n(x['excessQty']))), tq = machines.fold<num>(0, (a, x) => a + (x['tc'] is Map ? _n(x['excessQty']) : 0));
+  final bNote = [if (dq != 0) 'diesel debit ${fmt(r2(dq))} L', if (eq != 0) 'excess diesel over standard ${fmt(r2(eq))} L', if (tq != 0) 'diesel debited by the month-end tank check ${fmt(r2(tq))} L'].join(' + ');
+  final bNoEntry = billNoEntry(b), est = billEst(b), fin = billFinal(b), tank = billTank(b), tcB = billTc(b);
   final num bB = _n(b['B']), bC = _n(b['C']), bJ = _n(b['J']), gstPct = _n(b['gstPct']), tdsPct = _n(b['tdsPct']);
   final corr = _maps(b['corr']), dns = _maps(b['dns']);
   final rate0 = machines.isNotEmpty ? _n(machines.first['dieselRate']) : 0;
@@ -379,7 +394,7 @@ String billHtml(Map b, {String logo = ''}) {
     ('A', 'Workdone amount >>>${est.isNotEmpty ? '<small>incl. days without a reading (meter not working), work estimated: ${_e(est)}</small>' : ''}', _n(b['A']), ''),
     (
       'B',
-      'Less- Diesel Deduction >>>${fin.isNotEmpty ? '<small>${_e(fin)}</small>' : ''}${tank.isNotEmpty ? '<small>${_e(tank)}</small>' : ''}${bB != 0 ? '<small>$bNote${rate0 != 0 ? ' @ ₹${fmt(rate0)}/L' : ''}</small>${bNoEntry.isNotEmpty ? '<small>incl. diesel issued on days with no Log Book entry: ${_e(bNoEntry)}</small>' : ''}' : ''}',
+      'Less- Diesel Deduction >>>${fin.isNotEmpty ? '<small>${_e(fin)}</small>' : ''}${tank.isNotEmpty ? '<small>${_e(tank)}</small>' : ''}${tcB.isNotEmpty ? '<small>Tank check: ${_e(tcB)}</small>' : ''}${bB != 0 ? '<small>$bNote${rate0 != 0 ? ' @ ₹${fmt(rate0)}/L' : ''}</small>${bNoEntry.isNotEmpty ? '<small>incl. diesel issued on days with no Log Book entry: ${_e(bNoEntry)}</small>' : ''}' : ''}',
       bB != 0 ? -bB : '',
       ''
     ),
@@ -575,10 +590,21 @@ String debitNoteHtml(Map b) {
     final rate = _n(m['dieselRate']), dq = _n(m['debitQty']), eq = _n(m['excessQty']), first = dq != 0 && eq != 0 ? r2(dq * rate) : amt;
     void add(String what, num q, num a) => rows.add('<tr><td class="c">${++sr}</td><td><b>${_e(_nodash(m['no']).toUpperCase())}</b>${_s(m['type']).isNotEmpty ? ' ${_e(_up(m['type']))}' : ''}</td><td>$what</td><td class="n">${fmt(r2(q))}</td><td class="n">${rate != 0 ? n2(rate) : '-'}</td><td class="n">${n2(a)}</td></tr>');
     if (dq != 0) add('Diesel issued – debit basis', dq, first);
-    if (eq != 0) add('Diesel used over the standard average', eq, dq != 0 ? r2(amt - first) : amt);
+    final t = m['tc'] as Map?;
+    final num eAmt = dq != 0 ? r2(amt - first) : amt;
+    if (eq != 0 && t != null && t['final'] == true) {
+      add('Diesel in its tank as per the standard – the machinery left the site (final bill)', eq, eAmt);
+    } else if (eq != 0 && t != null) {
+      // (3.72.2, update-199) the month-end tank check: above the tank, short at the check
+      final num over = _n(t['over']), short = _n(t['short']), oAmt = over > 0 && short > 0 ? r2(over * rate) : over > 0 ? eAmt : 0;
+      if (over > 0) add('Diesel above the tank capacity (${fmt(t['cap'])} L) as per the standard', over, oAmt);
+      if (short > 0) add('Diesel short in the tank at the check of ${mbDot(t['foundDate'])}', short, r2(eAmt - oAmt));
+    } else if (eq != 0) {
+      add('Diesel used over the standard average', eq, eAmt);
+    }
     if (dq == 0 && eq == 0) add('Diesel deduction', 0, amt);
   }
-  final rev = _n(b['rev']), ne = billNoEntry(b), tank = billTank(b);
+  final rev = _n(b['rev']), ne = billNoEntry(b), tank = billTank(b), tcB = billTc(b);
   return '$kDocCss<div class="dnp"><div class="dnp-co">${_e(co.toUpperCase())}</div><div class="dnp-title">DEBIT NOTE – DIESEL</div>'
       '<table><colgroup><col style="width:50%"><col style="width:20%"><col style="width:30%"></colgroup><tbody>'
       '<tr><td rowspan="4">To,<br><b>${_e(_up(v['name']))}</b>${_s(v['address']).isNotEmpty ? '<br>${_e(v['address'])}' : ''}${_s(v['pan']).isNotEmpty ? '<br>PAN NO :- ${_e(v['pan'])}' : ''}${_s(v['gst']).isNotEmpty ? '<br>GSTIN :- ${_e(v['gst'])}' : ''}</td>'
@@ -589,7 +615,7 @@ String debitNoteHtml(Map b) {
       '<table><colgroup><col style="width:7%"><col style="width:25%"><col style="width:32%"><col style="width:11%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th class="c">Sr.No</th><th>Machinery</th><th>Particular</th><th class="c">Qty (Ltr)</th><th class="c">Rate (₹/Ltr)</th><th class="c">Amount</th></tr></thead><tbody>'
       '${rows.join()}<tr><td colspan="5" class="n"><b>Total debit</b></td><td class="n"><b>${n2(b['B'])}</b></td></tr>'
       '<tr><td colspan="6"><b>In Word : ${_e(rupeesWords(b['B']))} /-</b></td></tr></tbody></table>'
-      '<div class="dnp-note">This amount is deducted in RA Bill No <b>${_e(b['billNo'] ?? '')}</b> (line B of the Abstract of Bill, "Less – Diesel Deduction").${ne.isNotEmpty ? '<br>It includes diesel issued on days with no Log Book entry: ${_e(ne)}.' : ''}${tank.isNotEmpty ? '<br>Left out: ${_e(tank)}.' : ''}</div>'
+      '<div class="dnp-note">This amount is deducted in RA Bill No <b>${_e(b['billNo'] ?? '')}</b> (line B of the Abstract of Bill, "Less – Diesel Deduction").${ne.isNotEmpty ? '<br>It includes diesel issued on days with no Log Book entry: ${_e(ne)}.' : ''}${tank.isNotEmpty ? '<br>Left out: ${_e(tank)}.' : ''}${tcB.isNotEmpty ? '<br>Tank check: ${_e(tcB)}.' : ''}</div>'
       '<div class="dnp-sign"><span>Accepted by – ${_e(v['name'] ?? '')}</span><span>For ${_e(co)}</span></div></div>';
 }
 

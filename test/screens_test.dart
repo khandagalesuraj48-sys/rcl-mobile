@@ -1890,6 +1890,48 @@ void main() {
     expect(find.byKey(const Key('dnb-BILL-00001')), findsOneWidget, reason: 'the diesel debit note of the bill');
   }, tags: ['golden']);
 
+  testWidgets('(3.72.2, Mechanical update-199) Machinery Billing: the month-end tank check – the bill says it is needed, the box (what should be in the tank), the diesel found saved (saveBillTankCheck, once), the shortage debited', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..billing = true
+      ..tankRule = true;
+    srv.perms.addAll({'Machinery Billing': 'Edit'});
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Billing'));
+    await net(t);
+    await tapK(t, 'bh-Machinery Billing');
+    await net(t);
+    await tapK(t, 'mb-vendors');
+    await settle(t, 600);
+    await t.tap(find.descendant(of: find.byKey(const Key('mbv-I E Enterprises')), matching: find.byType(Checkbox)));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('mbv-done')));
+    await settle(t, 600);
+    await tapK(t, 'mb-build');
+    await net(t);
+    final list = find.descendant(of: find.byKey(const Key('mb-list')), matching: find.byType(Scrollable)).first;
+    await t.scrollUntilVisible(find.byKey(const Key('mb-warn-0')), 300, scrollable: list);
+    // 180 L issued, 500 km ÷ 3.5 = 142.86 L standard → 37.14 L should be in the tank; no check yet: nothing debited, the bill says so
+    expect(find.textContaining('MH-25-AJ-2169: tank check of 30-09-2026 needed – 37.14 L should be in the tank as per the standard'), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const Key('mb-tc-0')), 300, scrollable: list);
+    expect(find.text('MH-25-AJ-2169: 37.14 L as per the standard'), findsOneWidget);
+    expect(find.text('opening 0 + issued 180 − standard 142.86'), findsOneWidget);
+    expect(find.text('0.00'), findsWidgets, reason: 'B = 0 until the check');
+    await t.enterText(find.byKey(const Key('mb-tcf-0-MH-25-AJ-2169')), '20');
+    await tapK(t, 'mb-tcs-0-MH-25-AJ-2169');
+    await net(t);
+    final sent = srv.billSent.firstWhere((c) => c['fn'] == 'saveBillTankCheck')['x'] as Map;
+    expect([sent['no'], sent['from'], sent['to'], sent['physical'], sent['replace']], ['MH-25-AJ-2169', '2026-09-01', '2026-09-30', 20, false]);
+    expect(srv.rids.any((r) => r.startsWith('saveBillTankCheck:')), true, reason: 'saved once, with its own number');
+    expect(srv.billSent.where((c) => c['fn'] == 'logPrintExtra').length, 2, reason: 'the dates read again after the save');
+    await t.scrollUntilVisible(find.byKey(const Key('mb-tc-0')), 300, scrollable: list);
+    expect(find.text('found 20 L (TC-00009) → 17.14 L short – debited'), findsOneWidget);
+    expect(find.text('1,595.73'), findsWidgets, reason: 'B = 17.14 L × ₹93.10');
+    expect(find.byKey(const Key('mb-tcc-0-MH-25-AJ-2169')), findsOneWidget, reason: 'Change');
+  });
+
   testWidgets('(3.8.0) Billing: a new debit note from the Log Book entries charged to the party; Vendor Ledger; a payment saved', (t) async {
     phone(t);
     final srv = FakeServer()..billing = true;

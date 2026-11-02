@@ -112,6 +112,14 @@ void main() {
       expect(masterChanges(before, {...before, 'worksOn': 'KM', 'fuel': 'Diesel'}), isEmpty, reason: 'none = Diesel');
       expect(masterChanges(before, {...before, 'worksOn': 'KM', 'fuel': 'CNG'}).single, ('Fuel', 'Diesel', 'CNG'));
       expect(masterChanges({...before, 'fuel': 'Petrol'}, {...before, 'worksOn': 'KM'}), isEmpty, reason: 'a save that sends no Fuel keeps it');
+      // (3.72.1, Mechanical update-197) only the Tank Capacity typed: a change (it said "Nothing changed." and was not saved)
+      expect(masterChanges(before, {...before, 'worksOn': 'KM', 'tankCap': 220}).single, ('Tank Capacity (Ltr)', '', '220'));
+      expect(masterChanges({...before, 'tankCap': 220}, {...before, 'worksOn': 'KM', 'tankCap': 220}), isEmpty, reason: 'the same again');
+      expect(masterChanges(before, {...before, 'worksOn': 'KM', 'engineNo': 'E123', 'chassisNo': 'C9', 'engineMake': 'Tata'}).map((c) => c.$1),
+          ['Engine Number', 'Chassis Number', 'Engine Make']);
+      expect(masterChanges({...before, 'taxUpto': 'NA'}, {...before, 'worksOn': 'KM', 'taxUpto': '2027-03-31'}).single, ('Tax', 'NA', '2027-03-31'));
+      expect(masterChanges({...before, 'pucUpto': 'LIFETIME'}, {...before, 'worksOn': 'KM', 'pucUpto': 'LIFETIME'}), isEmpty);
+      expect(masterChanges({...before, 'tankCap': 220}, {...before, 'worksOn': 'KM'}), isEmpty, reason: 'a save that does not send it keeps it');
     });
 
     test('Edit selected: a shared value is filled in; only what was changed is sent', () {
