@@ -12,6 +12,10 @@
  * (3.24.0, asked 19-10-2026: "jewa app la update detos n tya madhe kay new ale he 3 language madhe dakhaw … next time update pasun")
  * The update's question shows what is new in it in English, मराठी and हिंदी – the release's notes between <!-- rcl-new --> and
  * <!-- /rcl-new --> (.github/workflows/release.yml); a release without them: its name, as before.
+ * (02-11-2026, asked: "mi kahi user la testing sathi deu shakel nantr … other la pn app web stable deu shakel") THE BETA CHANNEL: a
+ * TESTER (ticked in the Portal – its "me" says user.tester) takes the newest version with an app in it, a BETA one (a pre-release made
+ * by .github/workflows/beta.yml) included; everybody else the stable one ("latest") as before. A version of the web only has no app:
+ * never taken.
  * (3.31.4, asked 23-10-2026: "app madhun baher al ki updet hoych band hot nantr app prt chalu krun prt sagle 0 pasun start hot tr as nko
  * … background la app updet chaluch asel ani complte al ki konte hi screen war aso mi install karaychi as ek pop up eil mi install
  * bolel ani install hoil") Android: the update is downloaded by Android's own Download Manager (UpdateKit.kt) – it goes on when the
@@ -62,9 +66,10 @@ const kAbiFiles = ['.arm64-v8a.apk', '.armeabi-v7a.apk', '.x86_64.apk'];
 
 /// The update in a GitHub Release (its JSON from the GitHub API), when it is newer than [currentBuild] – else null.
 /// [computer]: the Windows setup (.exe, fingerprint "win") instead of the Android app (.apk, fingerprint "sha256").
-AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer = false}) {
+/// [beta]: (02-11-2026) a tester – a pre-release (a beta version) is taken too.
+AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer = false, bool beta = false}) {
   final m = RegExp(r'<!-- rcl:(\{.*?\}) -->').firstMatch((j['body'] ?? '').toString());
-  if (m == null || j['draft'] == true || j['prerelease'] == true) return null;
+  if (m == null || j['draft'] == true || (j['prerelease'] == true && !beta)) return null;
   Map<String, dynamic> meta;
   try {
     meta = (jsonDecode(m.group(1)!) as Map).cast<String, dynamic>();
@@ -98,14 +103,27 @@ String releaseNotes(Map<String, dynamic> j) {
   return t.isNotEmpty ? t : (j['name'] ?? '').toString();
 }
 
+/// (02-11-2026) A tester: of the newest releases (beta ones included), the one with the highest build that is newer – else null.
+AppUpdate? newestOf(List<dynamic> list, int currentBuild, {bool computer = false}) {
+  AppUpdate? best;
+  for (final j in list.whereType<Map>()) {
+    final u = parseRelease(j.cast<String, dynamic>(), currentBuild, computer: computer, beta: true);
+    if (u != null && (best == null || u.build > best.build)) best = u;
+  }
+  return best;
+}
+
 /// A newer version than the one on this phone, or null (also when it cannot be asked – the app works on).
-Future<AppUpdate?> checkUpdate(Api api) async {
+/// [beta]: (02-11-2026) a tester (Session.tester) – a beta version too.
+Future<AppUpdate?> checkUpdate(Api api, {bool beta = false}) async {
   if (Platform.isIOS) return null; // (the App Store / TestFlight – later)
   try {
     final info = await PackageInfo.fromPlatform();
-    final r = await http.get(Uri.parse(kReleasesApi), headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
+    final r = await http.get(Uri.parse(beta ? kReleasesListApi : kReleasesApi), headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
     if (r.statusCode != 200) return null;
-    return parseRelease((jsonDecode(utf8.decode(r.bodyBytes)) as Map).cast<String, dynamic>(), int.tryParse(info.buildNumber) ?? 0, computer: onComputer);
+    final j = jsonDecode(utf8.decode(r.bodyBytes)), mine = int.tryParse(info.buildNumber) ?? 0;
+    if (beta) return j is List ? newestOf(j, mine, computer: onComputer) : null;
+    return parseRelease((j as Map).cast<String, dynamic>(), mine, computer: onComputer);
   } catch (_) {
     return null;
   }

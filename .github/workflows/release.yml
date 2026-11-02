@@ -71,10 +71,14 @@ jobs:
             echo "::notice::A NEW signing key was made and kept in the private bucket app-keys. Download a copy from Supabase and keep it offline."
           fi
           echo "::add-mask::$(grep '^storePassword=' key.properties | cut -d= -f2-)"
+      # (02-11-2026) the build number: one more than every release's (the beta versions too – tool/next_build.sh); the publish job
+      # below asks the same (no other release can be made in between: the concurrency group "release" of this and beta.yml)
       - name: Version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
-          BN=$((100 + GITHUB_RUN_NUMBER))
+          BN=$(bash tool/next_build.sh)
           echo "VER=$VER" >> "$GITHUB_ENV"; echo "BN=$BN" >> "$GITHUB_ENV"
           echo "::notice::Releasing $VER ($BN)"
       # (3.42.0) the notifications at once (Firebase): its settings from the GitHub secret – a release never goes out without them
@@ -174,9 +178,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
-          BN=$((100 + GITHUB_RUN_NUMBER))
+          BN=$(bash tool/next_build.sh)
           echo "VER=$VER" >> "$GITHUB_ENV"; echo "BN=$BN" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v4
         with:

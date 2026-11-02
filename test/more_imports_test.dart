@@ -150,6 +150,12 @@ void main() {
         ['10', '0.5', '18.5', '0.3', '12345678901', '40092100', '0.333333333', '0.0000001', '1.23457E+14', '-2.5', '1E+21', '2147483648', '-0.000123456', '98765.4321']);
   });
 
+  test('(02-11-2026) a label printed by a tester (the BETA copy) carries the live address; the live one: as it is', () {
+    expect(labelBase('https://rclerp-git-beta-pk12356843.vercel.app'), 'https://oneclicksolution-erp.vercel.app');
+    expect(labelBase('https://oneclicksolution-erp.vercel.app'), 'https://oneclicksolution-erp.vercel.app');
+    expect(labelBase('https://rcl-erp.example.app'), 'https://rcl-erp.example.app');
+  });
+
   test('QR labels: the web\'s link and QR code (SVG) for every machinery number', () {
     final qr = jsonDecode(File('test/fixtures/qr/web_qr.json').readAsStringSync()) as List;
     expect(qr.length, greaterThan(5));

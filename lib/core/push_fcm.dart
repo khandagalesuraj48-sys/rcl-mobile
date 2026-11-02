@@ -50,13 +50,24 @@ class Fcm {
 
   /// The session's two moments (session.dart onReady / onSignOut) and the messages while the app is open.
   static void listen(Session s) {
-    Session.onReady = (x) => phone.give(x.api, x.email);
+    Session.onReady = (x) async {
+      unawaited(channel(x.tester)); // (02-11-2026) the beta versions told only to a tester's phone
+      await phone.give(x.api, x.email);
+    };
     Session.onSignOut = (x) => phone.takeOff(x.api);
     if (s.stage == Stage.ready) unawaited(phone.give(s.api, s.email)); // (the site opened before Firebase was there)
     FirebaseMessaging.onMessage.listen((m) => foreground(s, m.data));
     FirebaseMessaging.instance.onTokenRefresh.listen((_) {
       if (s.stage == Stage.ready) unawaited(phone.give(s.api, s.email));
     });
+  }
+
+  /// (02-11-2026) a tester's phone listens to the beta versions too; not a tester (any more): taken off
+  static Future<void> channel(bool tester) async {
+    try {
+      final m = FirebaseMessaging.instance;
+      await (tester ? m.subscribeToTopic(kPushTopicBeta) : m.unsubscribeFromTopic(kPushTopicBeta));
+    } catch (_) {/* (no Firebase: as before) */}
   }
 
   static Future<void> foreground(Session s, Map<String, dynamic> d) async {

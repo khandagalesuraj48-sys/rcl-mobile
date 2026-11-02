@@ -15,6 +15,8 @@ import 'dart:math' as math;
 
 import 'package:qr/qr.dart';
 
+import '../config.dart' show kMainUrl;
+
 import 'imports.dart' show readExcelRows, xlDate, Cols, findMachine;
 import 'lb_io.dart' show XSheet, XList, XFormula, lbTripsOf, localeCmp;
 import 'log_edit.dart' show wtSpan;
@@ -278,6 +280,10 @@ String jsEncodeUriComponent(String s) {
 
 /// The link on a machinery's label: the Mechanical page with the machinery (…/?m=MH-25-AJ-8511) – as the web's qrLink.
 String qrLink(String mechUrl, String id) => '${mechUrl.endsWith('/') ? mechUrl : '$mechUrl/'}?m=${jsEncodeUriComponent(id)}';
+
+/// (02-11-2026) The address on a printed label is always the LIVE one: a tester works in the BETA copy (its address has "-git-beta-"),
+/// but a label stays on the machine for years and is scanned by everybody – as the web's (Mechanical's page.js rclLive).
+String labelBase(String mechUrl) => mechUrl.contains('-git-beta-') ? kMainUrl : mechUrl;
 
 /// The web's qrSvg: qrcode(0, 'M') of [text] → createSvgTag({cellSize: 4, margin: 2, scalable: true}).
 String qrSvg(String text) {

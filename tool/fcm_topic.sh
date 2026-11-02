@@ -1,11 +1,13 @@
 #!/bin/bash
 # (3.42.0, asked 26-10-2026: "app updet pasun te sagle kahi" notification) THE RELEASE TELLS EVERY PHONE WITH THE APP: "RCL ERP
 # <version> is ready" – one Firebase message to the topic rcl-app-update (the app listens to it – lib/core/push.dart). Used by
-# .github/workflows/release.yml after the release is published:  tool/fcm_topic.sh <version> <build>
+# .github/workflows/release.yml after the release is published:  tool/fcm_topic.sh <version> <build> [topic]
+# (02-11-2026) [topic]: rcl-app-update (every phone – the default) or rcl-app-update-beta (the testers' phones – beta.yml); tell.yml
 # The key is the GitHub secret FCM_SERVICE_ACCOUNT_JSON (env FCM_SA) – never in a file of this public repository; it is written only
 # to a temporary file of the build machine (removed at the end). Only Google's two addresses are called.
 set -euo pipefail
-VER="$1"; BN="$2"
+VER="$1"; BN="$2"; TOPIC="${3:-rcl-app-update}"
+case "$TOPIC" in rcl-app-update|rcl-app-update-beta) ;; *) echo "unknown topic $TOPIC"; exit 1;; esac
 [ -n "${FCM_SA:-}" ] || { echo "no FCM_SA"; exit 1; }
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 python3 - "$T" <<'PY'
@@ -27,8 +29,9 @@ AT=$(curl -sS --max-time 30 https://oauth2.googleapis.com/token --data-urlencode
   | python3 -c "import json,sys; print(json.load(sys.stdin).get('access_token',''))")
 [ -n "$AT" ] || { echo "Google did not accept the key"; exit 1; }
 echo "::add-mask::$AT"
-BODY=$(python3 -c "import json,sys; print(json.dumps({'message': {'topic': 'rcl-app-update', 'data': {'t': 'upd', 'version': sys.argv[1], 'build': sys.argv[2]}, 'android': {'priority': 'HIGH', 'ttl': '604800s'}}}))" "$VER" "$BN")
+BODY=$(python3 -c "import json,sys; print(json.dumps({'message': {'topic': sys.argv[3], 'data': {'t': 'upd', 'version': sys.argv[1], 'build': sys.argv[2]}, 'android': {'priority': 'HIGH', 'ttl': '604800s'}}}))" "$VER" "$BN" "$TOPIC")
 C=$(curl -sS --max-time 30 -o "$T/r.json" -w "%{http_code}" -X POST "https://fcm.googleapis.com/v1/projects/$(cat "$T/project")/messages:send" \
   -H "Authorization: Bearer $AT" -H "Content-Type: application/json" -d "$BODY")
 [ "$C" = "200" ] || { echo "Firebase answered $C: $(head -c 300 "$T/r.json")"; exit 1; }
-echo "::notice::Every phone with the app was told: RCL ERP $VER ($BN) is ready."
+WHO="Every phone with the app"; [ "$TOPIC" = rcl-app-update ] || WHO="The testers' phones"
+echo "::notice::$WHO were told: RCL ERP $VER ($BN) is ready."

@@ -200,6 +200,10 @@ class Session extends ChangeNotifier {
   bool admin = false;
   /// (14-10-2026) the Super Admin (his Portal ticket says so): he changes entries of a submitted bill; others send them for approval.
   bool superAdmin = false;
+
+  /// (02-11-2026) a TESTER (ticked in the Portal): the beta versions of the app (update.dart) and of the web (the Portal gives him
+  /// the beta links); everybody else the stable ones
+  bool tester = false;
   Map<String, String> perms = {};
 
   /// (3.64.0, Mechanical update-189) the pages where he is Admin (a page with a date): Edit, and their entries of an earlier day
@@ -468,6 +472,7 @@ class Session extends ChangeNotifier {
     if (sites.isEmpty) throw ApiError('You have no site with Mechanical yet – ask the Super Admin.', code: 'nosite');
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();
+    tester = u['tester'] == true; // (02-11-2026) the Portal's "me" – the beta channel
     startItem = (me['start'] ?? '').toString();
   }
 
@@ -1124,6 +1129,7 @@ class Session extends ChangeNotifier {
     cards = [];
     admin = false;
     superAdmin = false;
+    tester = false;
     _go(Stage.signedOut, msg);
   }
 }

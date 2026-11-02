@@ -1,0 +1,3 @@
+New: Beta testing – the people the Super Admin chooses get the new version first; everybody else keeps the stable one.
+नवीन: Beta चाचणी – Super Admin ने निवडलेल्या लोकांना नवीन version आधी मिळते; बाकी सर्वांकडे stable version तसाच राहतो.
+नया: Beta परीक्षण – Super Admin द्वारा चुने गए लोगों को नया version पहले मिलता है; बाकी सबके पास stable version वैसा ही रहता है।
