@@ -2049,7 +2049,7 @@ void main() {
     await net(t);
     await tapK(t, 'ad-Rules of this site');
     await net(t);
-    await t.ensureVisible(find.byKey(const Key('vw-save')));
+    await t.scrollUntilVisible(find.byKey(const Key('vw-save')), 300, scrollable: find.ancestor(of: find.byKey(const Key('rule-save')), matching: find.byType(Scrollable)).first);
     await settle(t, 400);
     expect(find.text('“aryna nagar” → Arihant City  ×2'), findsOneWidget);
     expect(find.text('“two” → three'), findsOneWidget);
