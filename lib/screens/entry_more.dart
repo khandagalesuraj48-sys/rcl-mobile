@@ -727,6 +727,10 @@ class _DRow {
   Map? hist; // (3.14.0) its machinery's diesel history (the web's "last fill" line)
   int histSeq = 0;
   final qty = TextEditingController(), km = TextEditingController(), hr = TextEditingController(), driver = TextEditingController(), remark = TextEditingController();
+  // (3.76.0, Mechanical update-203) a tank check due with this fill (the first row of its machinery in "One date – many machinery")
+  Map<String, dynamic>? tcDue;
+  int tcSeq = 0;
+  final tcPh = TextEditingController(), tcRs = TextEditingController();
 
   /// The way of this fill: the machinery's own (Asset Master), "No reading" when its meter is not working, '' for no meter.
   String wayFor(Machine? mm) => mm == null || mm.debit || mm.dieselWay.isEmpty ? '' : (meterOff ? kNoReading : mm.dieselWay);
@@ -859,10 +863,31 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
 
   /// (3.14.0) The last fill of a row's machinery up to the batch date (the web's dhRowLine).
   Future<void> _rowHist(_DRow r) async {
+    _rowTc(r); // (3.76.0, update-203)
     final m = r.m, my = ++r.histSeq;
     if (m == null) return;
     final h = await dieselHistoryOf(SessionScope.read(context), m.id, date);
     if (my == r.histSeq && mounted && r.m?.id == m.id) setState(() => r.hist = h);
+  }
+
+  /// (3.76.0, Mechanical update-203) a row's tank check: due with its fill – only the first row of a machinery asks it (the web's
+  /// rowTcCheck); the other rows of it are looked at again.
+  Future<void> _rowTc(_DRow r) async {
+    final m = r.m, my = ++r.tcSeq;
+    final first = m != null && dRows.firstWhere((x) => x.m?.id == m.id, orElse: () => r) == r;
+    if (m == null || !first || m.fuel != 'Diesel' || !dRows.contains(r)) {
+      if (r.tcDue != null) setState(() => r.tcDue = null);
+      return;
+    }
+    Map<String, dynamic>? due;
+    try {
+      final x = await SessionScope.read(context).api.call('tankDue', [
+        {'no': m.id, 'date': date}
+      ]);
+      if (x is Map && x['due'] == true) due = x.cast<String, dynamic>();
+    } catch (_) {/* (a server before update-203) – it says so at the save */}
+    if (my != r.tcSeq || !mounted) return;
+    setState(() => r.tcDue = due);
   }
 
   /// (3.14.0) The machinery of "one machinery – many dates": its history up to today (the web's bm_hist).
@@ -890,6 +915,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           'driver': r.driver.text.trim(),
           'remark': r.remark.text.trim(),
           'mode': r.wayFor(r.m),
+          if (r.tcDue != null) 'tc': {'physical': r.tcPh.text.trim(), 'reason': r.tcRs.text.trim()},      // (3.76.0, update-203)
         },
     ];
     if (!await confirmReadings(context, [
@@ -1466,6 +1492,24 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
         ],
         const SizedBox(height: 8),
         TextBox(key: Key('$key-remark'), label: 'Remark', controller: r.remark),
+        if (r.tcDue != null) ...[      // (3.76.0, Mechanical update-203)
+          const SizedBox(height: 8),
+          Container(
+            key: Key('$key-tc'),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFDBA74))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('Tank check due – ${'${r.tcDue!['last'] ?? ''}'.isNotEmpty ? 'the last one on ${showDate('${r.tcDue!['last']}')}' : 'no check yet'}, every ${r.tcDue!['days']} days',
+                  style: const TextStyle(color: Color(0xFF9A3412), fontWeight: FontWeight.w700, fontSize: 13)),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(child: TextBox(key: Key('$key-tc-ph'), label: 'Found in the tank (L)', controller: r.tcPh, kb: const TextInputType.numberWithOptions(decimal: true))),
+                const SizedBox(width: 8),
+                Expanded(child: TextBox(key: Key('$key-tc-rs'), label: 'Reason (if it differs)', controller: r.tcRs)),
+              ]),
+            ]),
+          ),
+        ],
         if (note.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6),

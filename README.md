@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.76.0 (02-11-2026 – "jya gadyana diesel dile jatey tya pratek gadich tank check compulsory karaych aahe every 7 days …
+super admin la access de …"; "ratri 12 nantr next day chalu hotoy ata 12 nko tr sakali 6 am nantr next day chalu hoil … portal madhun
+site wise change kru shakel"; with Mechanical update-203):** Diesel Issue – a tank check due with the fill (Mechanical's `tankDue`: the
+Super Admin's rule, counted from the last check) shows its box (the diesel found before filling, a reason when it differs); the fill is
+not saved without it and goes with it (`tc`); "Multiple entries" – in the first row of the machinery. Super Admin → Sites → a site →
+**Day & tank check**: the hour the site's day starts (06:00 unless set – the app's "today" comes from Mechanical) and the tank check
+every N days for Own / Rental / Hired and machinery-wise (add / change / delete) – the Portal's `siteRulesGet` / `siteRulesSave`.
+
 **Version 3.75.0 (02-11-2026 – "apan je bill banwato te point madhe yet … amount mala decimal madhe nko aahe round off amount hawwet
 … ha bill madhe 2 sign wadhwayche aahet fkt abstract warti … verify by ho account ani checked by ho account"; with Mechanical
 update-202):** a bill made from now on is in WHOLE RUPEES (`b['round']`) – every line, the diesel debit of each machinery, the other

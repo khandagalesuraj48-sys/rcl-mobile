@@ -706,6 +706,40 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/8_issue_saved.png'));
   }, tags: ['golden']);
 
+  testWidgets('(3.76.0, Mechanical update-203) Diesel Issue: a tank check due with the fill – its box; not saved without it; saved with it', (t) async {
+    phone(t);
+    final srv = FakeServer()..tankDueAns = {'no': 'Sany 210 (No.1)', 'date': '2026-10-14', 'due': true, 'days': 7, 'last': '2026-10-05', 'start': '2026-10-06', 'cap': 300, 'gone': 8};
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await t.tap(find.text('New Entry'));
+    await net(t);
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)'));
+    await net(t);
+    expect(srv.tankDueAsked.last, {'no': 'Sany 210 (No.1)', 'date': '2026-10-14'});
+    await t.enterText(find.byType(TextField).at(1), '60');
+    await settle(t, 300);
+    await t.ensureVisible(find.byKey(const Key('f-tc')));
+    await settle(t, 300);
+    expect(find.text('the last one on 05-10-2026, a check every 7 days. Measure the tank before filling.'), findsOneWidget);
+    await t.tap(find.text('Save Diesel Issue'));
+    await net(t);
+    expect(srv.saved, isEmpty, reason: 'not sent without the check');
+    expect(find.text('Tank check due: type the diesel found in the tank before filling.'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('f-tc-ph')), '40');
+    await t.enterText(find.byKey(const Key('f-tc-rs')), 'dip stick');
+    await t.tap(find.text('Save Diesel Issue'));
+    await net(t);
+    expect(srv.saved.single['tc'], {'physical': 40, 'reason': 'dip stick'});
+    expect(find.textContaining('DI-000526'), findsOneWidget);
+  });
+
   testWidgets('(3.29.0, update-139) A machinery measured by KM and Hrs: a 5th photo, the Hour meter; one with one reading: the 4 photos', (t) async {
     phone(t);
     final srv = FakeServer();
@@ -5453,6 +5487,29 @@ void main() {
       'places': [{'name': 'Camp Pump', 'cap': 18000}, {'name': 'MH12ZE1739', 'cap': 2650}, {'name': 'VTR Store', 'cap': 5000}],
     });
     expect(find.text('Diesel places of S1 saved: Camp Pump, MH12ZE1739, VTR Store.'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // (3.76.0, Mechanical update-203) Day & tank check: the hour the day starts; a tank check every N days (Rental 7, one machinery 3)
+    await tapK(t, 'sa-st-rules');
+    await net(t);
+    expect(saves(srv).last, {'action': 'siteRulesGet', 'site': 'S1'});
+    expect(find.text('Now for 0 of 2 machinery · not for: 1 no Tank Capacity.'), findsOneWidget);
+    await tapK(t, 'sr-g-Rental-on');
+    await tapK(t, 'sr-add');
+    await settle(t, 300);
+    await tapK(t, 'sr-m-0-no');
+    await settle(t, 800);
+    await t.tap(find.text('MH-25-AJ-2169 · Tipper · Rental'));
+    await settle(t, 800);
+    await t.enterText(find.descendant(of: find.byKey(const Key('sr-m-0-days')), matching: find.byType(TextField)), '3');
+    await tapK(t, 'sr-save');
+    await net(t);
+    expect(saves(srv).last, {
+      'action': 'siteRulesSave', 'site': 'S1', 'dayStart': '06:00',
+      'tank': {'groups': {'Own': '', 'Rental': '7', 'Hired': ''}, 'machines': [{'no': 'MH-25-AJ-2169', 'on': true, 'days': '3'}]},
+    });
+    expect(find.text('Day & tank check of S1 saved: the day starts at 06:00.'), findsOneWidget);
+    expect(find.textContaining('On since 14-10-2026.'), findsOneWidget);
     await t.pageBack();
     await net(t);
     await t.pageBack();
