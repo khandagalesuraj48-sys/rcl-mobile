@@ -1920,7 +1920,7 @@ void main() {
     await t.scrollUntilVisible(find.byKey(const Key('mb-tc-0')), 300, scrollable: list);
     expect(find.text('MH-25-AJ-2169: 37.14 L as per the standard'), findsOneWidget);
     expect(find.text('opening 0 + issued 180 − standard 142.86'), findsOneWidget);
-    expect(find.text('0.00'), findsWidgets, reason: 'B = 0 until the check');
+    expect(find.text('0'), findsWidgets, reason: 'B = 0 until the check (3.75.0: whole rupees)');
     await t.enterText(find.byKey(const Key('mb-tcf-0-MH-25-AJ-2169')), '20');
     await tapK(t, 'mb-tcs-0-MH-25-AJ-2169');
     await net(t);
