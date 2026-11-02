@@ -590,7 +590,8 @@ String debitNoteHtml(Map b) {
     final rate = _n(m['dieselRate']), dq = _n(m['debitQty']), eq = _n(m['excessQty']), first = dq != 0 && eq != 0 ? r2(dq * rate) : amt;
     void add(String what, num q, num a) => rows.add('<tr><td class="c">${++sr}</td><td><b>${_e(_nodash(m['no']).toUpperCase())}</b>${_s(m['type']).isNotEmpty ? ' ${_e(_up(m['type']))}' : ''}</td><td>$what</td><td class="n">${fmt(r2(q))}</td><td class="n">${rate != 0 ? n2(rate) : '-'}</td><td class="n">${n2(a)}</td></tr>');
     if (dq != 0) add('Diesel issued – debit basis', dq, first);
-    final t = m['tc'] as Map?, num eAmt = dq != 0 ? r2(amt - first) : amt;
+    final t = m['tc'] as Map?;
+    final num eAmt = dq != 0 ? r2(amt - first) : amt;
     if (eq != 0 && t != null && t['final'] == true) {
       add('Diesel in its tank as per the standard – the machinery left the site (final bill)', eq, eAmt);
     } else if (eq != 0 && t != null) {
