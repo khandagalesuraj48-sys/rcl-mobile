@@ -35,6 +35,10 @@ Future<String> Function(String lang, void Function(String words) heard) listenOn
 /// Stops the listening.
 Future<void> Function() stopListening = _stopListen;
 
+/// (3.74.0, Mechanical update-201) the speech's other guesses of the last listening (the first is what listenOnce gave) – for the
+/// site's own words (sitewords.dart).
+List<String> heardAlternates = [];
+
 Future<void> _say(String text, String lang) async {
   final words = aiSpeakable(text, lang);
   if (words.isEmpty) return;
@@ -97,9 +101,13 @@ Future<String> _listen(String lang, void Function(String words) heard) async {
   final c = _cur = Completer<String>();
   _heard = '';
   _why = null;
+  heardAlternates = [];
   await s.listen(
     onResult: (SpeechRecognitionResult r) {
       _heard = r.recognizedWords;
+      try {
+        heardAlternates = [for (final a in r.alternates.take(5)) a.recognizedWords];
+      } catch (_) {/* a phone that gives no guesses */}
       heard(_heard);
       if (r.finalResult) _finish();
     },

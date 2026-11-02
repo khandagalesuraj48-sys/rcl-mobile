@@ -538,8 +538,11 @@ class RulesScreen extends StatefulWidget {
 
 class _RulesScreenState extends State<RulesScreen> {
   final back = TextEditingController(), note = TextEditingController(), att = TextEditingController();      // (3.34.0) attachments of an entry
+  final vwWords = TextEditingController(); // (3.74.0, Mechanical update-201) the site's own words for voice typing – the Super Admin's
+  List<Map<String, dynamic>> vwFixes = [];
+  int vwAuto = 0;
   String day = '08:00', night = '20:00';
-  bool busy = false, started = false;
+  bool busy = false, started = false, vwOn = false;
 
   @override
   void didChangeDependencies() {
@@ -552,6 +555,7 @@ class _RulesScreenState extends State<RulesScreen> {
     att.text = '${r['attachMax'] ?? 10}';
     day = s.dayFrom;
     night = s.nightFrom;
+    if (s.superAdmin) _vwLoad();
   }
 
   @override
@@ -559,7 +563,43 @@ class _RulesScreenState extends State<RulesScreen> {
     back.dispose();
     note.dispose();
     att.dispose();
+    vwWords.dispose();
     super.dispose();
+  }
+
+  // (3.74.0) the Super Admin's words and the corrections learned (the web: Settings → Voice typing – the site's own words)
+  Future<void> _vwLoad() async {
+    final s = SessionScope.read(context);
+    await s.loadVoiceWords(force: true);
+    if (!mounted) return;
+    final d = s.voiceWords;
+    setState(() {
+      vwOn = d['super'] == true;
+      vwWords.text = [for (final w in (d['admin'] as List? ?? const [])) '$w'].join('\n');
+      vwFixes = [for (final x in (d['fixes'] as List? ?? const [])) if (x is Map) x.cast<String, dynamic>()];
+      vwAuto = (d['words'] as List? ?? const []).length - (d['admin'] as List? ?? const []).length;
+    });
+  }
+
+  Future<void> _vwSave() async {
+    final s = SessionScope.read(context);
+    setState(() => busy = true);
+    try {
+      final r = (await s.api.call('saveVoiceWords', [
+        {
+          'words': vwWords.text.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList(),
+          'fixes': [for (final x in vwFixes) {'h': x['h'], 'f': x['f']}],
+        }
+      ], true)) as Map;
+      await _vwLoad();
+      if (!mounted) return;
+      setState(() => busy = false);
+      toast(context, 'Voice typing: ${r['words']} word(s) of the site and ${r['fixes']} correction(s) saved.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => busy = false);
+      toast(context, errText(e), bad: !isSent(e));
+    }
   }
 
   Future<void> _time(bool isDay) async {
@@ -614,6 +654,24 @@ class _RulesScreenState extends State<RulesScreen> {
           FilledButton(key: const Key('rule-save'), onPressed: busy ? null : _save, child: Text('Save the rules')),
           const SizedBox(height: 12),
           _note('More settings of the site: Company & site and users (Administration); Month close and company details for bills (Billing → Machinery Billing).'),
+          if (vwOn) ...[
+            const Divider(height: 32),
+            const Text('Voice typing – the site\'s own words', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            _note('Super Admin – names the speech does not know (Arihant City …): what is heard like them is written as here. Also known by themselves: $vwAuto names and places from Asset Master, Vendor Master and the Log Book.'),
+            const SizedBox(height: 8),
+            TextBox(key: const Key('vw-words'), label: 'Words of this site (one per line)', controller: vwWords, maxLines: 7, hint: 'Arihant City'),
+            const SizedBox(height: 10),
+            const Text('Corrected by hand after speaking (learned)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            if (vwFixes.isEmpty) _note('Nothing yet – a spoken word corrected by hand right after speaking is shown here.'),
+            for (var i = 0; i < vwFixes.length; i++)
+              Row(key: Key('vw-fix-$i'), children: [
+                Expanded(child: Text('“${vwFixes[i]['h']}” → ${vwFixes[i]['f']}${(num.tryParse('${vwFixes[i]['n'] ?? 1}') ?? 1) > 1 ? '  ×${vwFixes[i]['n']}' : ''}', style: const TextStyle(fontSize: 13.5))),
+                IconButton(key: Key('vw-del-$i'), tooltip: 'Remove', icon: const Icon(Icons.close_rounded, size: 18), onPressed: () => setState(() => vwFixes.removeAt(i))),
+              ]),
+            const SizedBox(height: 8),
+            FilledButton(key: const Key('vw-save'), onPressed: busy ? null : _vwSave, child: Text('Save the words')),
+          ],
         ]),
       );
 

@@ -1,0 +1,429 @@
+{
+ "words": [
+  "Arihant City",
+  "RCL CAMP",
+  "Mahalaxmi Bridge",
+  "Barricades Shifting",
+  "Sonale",
+  "Siddhappa Bhimu Basbire",
+  "Vadape",
+  "Kobelco machine shifting",
+  "Excavator",
+  "Yewai Naka",
+  "Kaseli Bridge",
+  "Bhiwandi",
+  "Padgha Toll Plaza",
+  "खडी",
+  "सिमेंट बॅग",
+  "JCB",
+  "Ch 559+210",
+  "Hyva"
+ ],
+ "fixes": [
+  {
+   "h": "aryna nagar",
+   "f": "Arihant City"
+  },
+  {
+   "h": "soni",
+   "f": "Sonale"
+  }
+ ],
+ "cases": [
+  {
+   "alts": [
+    "go to Aaryan City"
+   ],
+   "text": "go to Arihant City",
+   "changes": [
+    {
+     "from": "Aaryan City",
+     "to": "Arihant City",
+     "at": 6
+    }
+   ]
+  },
+  {
+   "alts": [
+    "shifting at Mahalakshmi bridge"
+   ],
+   "text": "shifting at Mahalaxmi Bridge",
+   "changes": [
+    {
+     "from": "Mahalakshmi bridge",
+     "to": "Mahalaxmi Bridge",
+     "at": 12
+    }
+   ]
+  },
+  {
+   "alts": [
+    "siddappa bimu basbire"
+   ],
+   "text": "Siddhappa Bhimu Basbire",
+   "changes": [
+    {
+     "from": "siddappa bimu basbire",
+     "to": "Siddhappa Bhimu Basbire",
+     "at": 0
+    }
+   ]
+  },
+  {
+   "alts": [
+    "aryan city",
+    "arihant city"
+   ],
+   "text": "arihant city",
+   "changes": []
+  },
+  {
+   "alts": [
+    "sale"
+   ],
+   "text": "sale",
+   "changes": []
+  },
+  {
+   "alts": [
+    "vada pav"
+   ],
+   "text": "vada pav",
+   "changes": []
+  },
+  {
+   "alts": [
+    "the plaza is open"
+   ],
+   "text": "the plaza is open",
+   "changes": []
+  },
+  {
+   "alts": [
+    "kaseli bridge 559 plus 250"
+   ],
+   "text": "kaseli bridge 559 plus 250",
+   "changes": []
+  },
+  {
+   "alts": [
+    "Aryna Nagar"
+   ],
+   "text": "Arihant City",
+   "changes": [
+    {
+     "from": "Aryna Nagar",
+     "to": "Arihant City",
+     "at": 0
+    }
+   ]
+  },
+  {
+   "alts": [
+    "Aryna Nagar se camp tak"
+   ],
+   "text": "Arihant City se camp tak",
+   "changes": [
+    {
+     "from": "Aryna Nagar",
+     "to": "Arihant City",
+     "at": 0
+    }
+   ]
+  },
+  {
+   "alts": [
+    "RCL camp to Aaryan City"
+   ],
+   "text": "RCL camp to Arihant City",
+   "changes": [
+    {
+     "from": "Aaryan City",
+     "to": "Arihant City",
+     "at": 12
+    }
+   ]
+  },
+  {
+   "alts": [
+    "rcl camp to arihant city"
+   ],
+   "text": "rcl camp to arihant city",
+   "changes": []
+  },
+  {
+   "alts": [
+    "barricade shifting near yeway naka"
+   ],
+   "text": "Barricades Shifting near Yewai Naka",
+   "changes": [
+    {
+     "from": "yeway naka",
+     "to": "Yewai Naka",
+     "at": 25
+    },
+    {
+     "from": "barricade shifting",
+     "to": "Barricades Shifting",
+     "at": 0
+    }
+   ]
+  },
+  {
+   "alts": [
+    "excavator work at vadpe"
+   ],
+   "text": "excavator work at vadpe",
+   "changes": []
+  },
+  {
+   "alts": [
+    "bhivandi to padga toll plaza"
+   ],
+   "text": "Bhiwandi to Padgha Toll Plaza",
+   "changes": [
+    {
+     "from": "padga toll plaza",
+     "to": "Padgha Toll Plaza",
+     "at": 12
+    },
+    {
+     "from": "bhivandi",
+     "to": "Bhiwandi",
+     "at": 0
+    }
+   ]
+  },
+  {
+   "alts": [
+    "kobelko machine shifting"
+   ],
+   "text": "Kobelco machine shifting",
+   "changes": [
+    {
+     "from": "kobelko machine shifting",
+     "to": "Kobelco machine shifting",
+     "at": 0
+    }
+   ]
+  },
+  {
+   "alts": [
+    "soni village"
+   ],
+   "text": "Sonale village",
+   "changes": [
+    {
+     "from": "soni",
+     "to": "Sonale",
+     "at": 0
+    }
+   ]
+  },
+  {
+   "alts": [
+    "खडी टाकली"
+   ],
+   "text": "खडी टाकली",
+   "changes": []
+  },
+  {
+   "alts": [
+    "सिमेंट बॅग आणली"
+   ],
+   "text": "सिमेंट बॅग आणली",
+   "changes": []
+  },
+  {
+   "alts": [
+    "jcb work"
+   ],
+   "text": "jcb work",
+   "changes": []
+  },
+  {
+   "alts": [
+    "hywa trip 5"
+   ],
+   "text": "hywa trip 5",
+   "changes": []
+  },
+  {
+   "alts": [
+    "Arihant Nagar"
+   ],
+   "text": "Arihant Nagar",
+   "changes": []
+  },
+  {
+   "alts": [
+    "go to Aryan city",
+    "go to Arihant City",
+    "go to arihant cities"
+   ],
+   "text": "go to Arihant City",
+   "changes": []
+  },
+  {
+   "alts": [
+    "mahalaxmi bridge"
+   ],
+   "text": "mahalaxmi bridge",
+   "changes": []
+  },
+  {
+   "alts": [
+    "Mahalakshmi"
+   ],
+   "text": "Mahalakshmi",
+   "changes": []
+  },
+  {
+   "alts": [
+    "the excavators"
+   ],
+   "text": "the excavators",
+   "changes": []
+  },
+  {
+   "alts": [
+    "two barricades shiftings"
+   ],
+   "text": "two barricades shiftings",
+   "changes": []
+  },
+  {
+   "alts": [
+    "bhiwandis"
+   ],
+   "text": "bhiwandis",
+   "changes": []
+  },
+  {
+   "alts": [
+    "sonali"
+   ],
+   "text": "sonali",
+   "changes": []
+  },
+  {
+   "alts": [
+    ""
+   ],
+   "text": "",
+   "changes": []
+  },
+  {
+   "alts": [
+    "   "
+   ],
+   "text": "",
+   "changes": []
+  },
+  {
+   "alts": [
+    "kaseli bridge to yewai naka 12 km"
+   ],
+   "text": "kaseli bridge to yewai naka 12 km",
+   "changes": []
+  },
+  {
+   "alts": [
+    "aryan city aryan city"
+   ],
+   "text": "Arihant City Arihant City",
+   "changes": [
+    {
+     "from": "aryan city",
+     "to": "Arihant City",
+     "at": 0
+    },
+    {
+     "from": "aryan city",
+     "to": "Arihant City",
+     "at": 13
+    }
+   ]
+  },
+  {
+   "alts": [
+    "go to Kasheli bridge"
+   ],
+   "text": "go to Kaseli Bridge",
+   "changes": [
+    {
+     "from": "Kasheli bridge",
+     "to": "Kaseli Bridge",
+     "at": 6
+    }
+   ]
+  }
+ ],
+ "alike": [
+  [
+   "Aryna Nagar",
+   "Arihant City",
+   true
+  ],
+  [
+   "Aaryan City",
+   "Arihant Nagar",
+   true
+  ],
+  [
+   "kasheli",
+   "Kaseli",
+   true
+  ],
+  [
+   "two",
+   "three",
+   false
+  ],
+  [
+   "city",
+   "Nagar",
+   false
+  ],
+  [
+   "loading",
+   "unloading",
+   false
+  ],
+  [
+   "morning",
+   "evening",
+   false
+  ],
+  [
+   "excavator",
+   "JCB",
+   false
+  ],
+  [
+   "RCL camp",
+   "RCL plant",
+   true
+  ],
+  [
+   "camp",
+   "plant",
+   false
+  ],
+  [
+   "Aryna",
+   "Arihant",
+   true
+  ],
+  [
+   "खडी",
+   "खडीचा",
+   true
+  ],
+  [
+   "सिमेंट",
+   "रेती",
+   false
+  ]
+ ]
+}

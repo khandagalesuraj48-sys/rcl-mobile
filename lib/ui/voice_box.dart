@@ -8,12 +8,15 @@
  *   • what was said goes into the box AS IF TYPED – the box's own rules (capitals, digits only, its length) and its screen's reaction
  *     (totals, checks) as for typing: a number box gets the NUMBER ("साडे तीन हजार" → 3500, "बारा पॉइंट पाच" → 12.5 – numwords.dart,
  *     the web's same rules), a phone box the digits said, a text box the words at the cursor. */
+import 'dart:async';
+
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import '../core/lang.dart';
 import '../core/numwords.dart';
+import '../core/sitewords.dart';
 import '../core/voice.dart' as voice;
 import 'scope.dart';
 import 'theme.dart';
@@ -28,6 +31,7 @@ const _say = {
   'mic': {'mr': 'Microphone ला परवानगी नाही – Settings › Apps › RCL ERP › Permissions › Microphone.', 'hi': 'Microphone की अनुमति नहीं – Settings › Apps › RCL ERP › Permissions › Microphone।', 'en': 'The microphone is not allowed – Settings › Apps › RCL ERP › Permissions › Microphone.'},
   'cant': {'mr': 'हा device ऐकू शकत नाही.', 'hi': 'यह device सुन नहीं सकता।', 'en': 'This device cannot listen.'},
   'tip': {'mr': 'बोलून लिहा', 'hi': 'बोलकर लिखें', 'en': 'Speak to type'},
+  'site': {'mr': 'Site चा शब्द लिहिला', 'hi': 'Site का शब्द लिखा', 'en': 'Written as the site writes it'}, // (3.74.0)
 };
 
 /// Over every screen of the app (main.dart's builder).
@@ -46,6 +50,23 @@ class _VoiceLayerState extends State<VoiceLayer> {
   /// the listening of now – one let go (another language picked) is not put in the box
   int _gen = 0;
 
+  /// (3.74.0, Mechanical update-201) what was spoken into a box last: changed by hand right after (within 3 minutes, before the
+  /// box is left) → "heard → typed" is learned for the site (SiteWords.onLearn → saveVoiceFix)
+  ({EditableTextState st, int start, int len, String value, List<Map<String, Object>> changes, DateTime at})? _last;
+
+  void _learnFrom(EditableTextState? st) {
+    final l = _last;
+    if (l == null || st == null || !identical(l.st, st)) return;
+    _last = null;
+    if (!st.mounted || DateTime.now().difference(l.at) > const Duration(minutes: 3)) return;
+    final r = swLearned(l.value, st.textEditingValue.text, l.start, l.len, l.changes);
+    if (r == null) return;
+    SiteWords.i.learn(r.$1, r.$2);
+    try {
+      SiteWords.i.onLearn?.call(r.$1, r.$2);
+    } catch (_) {/* only for the next time */}
+  }
+
   /// the language chosen here (kept on the phone); '' = the app's
   static String chosen = '';
   static bool _read = false, _cant = false;
@@ -59,9 +80,12 @@ class _VoiceLayerState extends State<VoiceLayer> {
     FocusManager.instance.addListener(_focus);
   }
 
+  Timer? _tipT; // (3.74.0) the note "written as the site writes it" goes after 4 seconds
+
   @override
   void dispose() {
     FocusManager.instance.removeListener(_focus);
+    _tipT?.cancel();
     super.dispose();
   }
 
@@ -75,6 +99,7 @@ class _VoiceLayerState extends State<VoiceLayer> {
     }
     final nb = st != null && st.mounted && !st.widget.obscureText && !st.widget.readOnly ? st : null;
     if (identical(nb, box)) return;
+    _learnFrom(box); // (3.74.0) the box left: a spoken text changed by hand is learned
     void apply() {
       if (!mounted) return;
       if (live && !identical(nb, box)) voice.stopListening();
@@ -119,6 +144,9 @@ class _VoiceLayerState extends State<VoiceLayer> {
     }
     await _readLang();
     if (!mounted) return;
+    try {
+      unawaited(SessionScope.read(context).loadVoiceWords()); // (3.74.0) the site's words, again after 30 minutes
+    } catch (_) {/* (no session here) */}
     final g = ++_gen;
     setState(() {
       live = true;
@@ -167,13 +195,17 @@ class _VoiceLayerState extends State<VoiceLayer> {
     final kb = st.widget.keyboardType.index;
     final kind = kb == TextInputType.phone.index ? 'digits' : kb == TextInputType.number.index ? 'number' : 'text';
     final v = st.textEditingValue;
-    String text;
-    int at;
+    String text, said = t;
+    int at, start = 0;
+    SwFix? fx;
     if (kind == 'text') {
+      fx = SiteWords.i.fix([t, ...voice.heardAlternates.where((a) => a.trim().isNotEmpty && a.trim() != t)]); // (3.74.0) the site's own words
+      if (fx.text.isNotEmpty) said = fx.text;
       final sel = v.selection.isValid ? v.selection : TextSelection.collapsed(offset: v.text.length);
-      final before = v.text.substring(0, sel.start), ins = '${before.isNotEmpty && !RegExp(r'\s$').hasMatch(before) ? ' ' : ''}$t';
+      final before = v.text.substring(0, sel.start), ins = '${before.isNotEmpty && !RegExp(r'\s$').hasMatch(before) ? ' ' : ''}$said';
       text = before + ins + v.text.substring(sel.end);
       at = before.length + ins.length;
+      start = at - said.length;
     } else {
       final n = spokenNumber(t, digits: kind == 'digits');
       if (n.isEmpty) {
@@ -188,11 +220,20 @@ class _VoiceLayerState extends State<VoiceLayer> {
       at = n.length;
     }
     st.userUpdateTextEditingValue(TextEditingValue(text: text, selection: TextSelection.collapsed(offset: at)), SelectionChangedCause.keyboard);
+    if (fx != null && st.mounted) _last = (st: st, start: start, len: said.length, value: st.textEditingValue.text, changes: fx.changes, at: DateTime.now());
+    final changed = fx == null ? '' : fx.changes.map((c) => '${c['from']} → ${c['to']}').join(', ');
     setState(() {
-      msg = '';
-      heard = '';
+      msg = changed.isEmpty ? '' : _t('site');
+      heard = changed;
       bad = false;
     });
+    _tipT?.cancel();
+    if (changed.isNotEmpty) {
+      final shown = msg;
+      _tipT = Timer(const Duration(seconds: 4), () {
+        if (mounted && !live && msg == shown) setState(() => msg = heard = '');
+      });
+    }
   }
 
   @override
