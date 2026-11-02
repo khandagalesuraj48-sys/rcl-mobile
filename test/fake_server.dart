@@ -273,6 +273,9 @@ class FakeServer {
   // (3.8.0) Billing: the vendors to bill, September's Log Book / diesel / BOQ of MH-25-AJ-2169 (a Monthly BOQ, an Idle day,
   // diesel above the standard), the saved bills, notes, payments, ledger; what was sent
   bool billing = false;
+  // (3.72.2, Mechanical update-199) the dates under the month-end tank check rule: "checks" with the period's data; the check saved
+  bool tankRule = false;
+  Map<String, dynamic>? tankClose;
   static Object? _arg(List a, String k) => a.isNotEmpty && a[0] is Map ? (a[0] as Map)[k] : null;
   // (3.11.0) the imports and the multiple entries of the diesel pages: what was sent, the lists' filters asked
   final importSent = <Map<String, dynamic>>[];
@@ -1566,7 +1569,12 @@ class FakeServer {
           return _j({'result': {'count': 6, 'rows': _billRows, 'summary': []}});
         case 'logPrintExtra' when billing:
           billSent.add({'fn': action, 'args': a});
-          return _j({'result': _billExtra});
+          return _j({'result': {..._billExtra, if (tankRule) 'checks': {if (tankClose != null) 'MH25AJ2169': {'close': tankClose}}}});
+        case 'saveBillTankCheck':
+          billSent.add({'fn': action, 'x': a[0]});
+          final ph = ((a[0] as Map)['physical'] as num?) ?? 0;
+          tankClose = {'id': 'TC-00009', 'date': (a[0] as Map)['to'], 'physical': ph, 'system': 37.14, 'method': 'Measured in tank'};
+          return _j({'result': {'ok': true, 'id': 'TC-00009', 'no': (a[0] as Map)['no'], 'date': (a[0] as Map)['to'], 'system': 37.14, 'physical': ph, 'diff': ph - 37.14, 'expect': 37.14, 'short': ph < 37.14 ? ((37.14 - ph) * 100).round() / 100 : 0, 'replaced': ''}});
         case 'billInit':
           return _j({'result': _billInit});
         case 'billCorrections':

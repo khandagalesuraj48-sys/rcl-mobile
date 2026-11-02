@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.72.2 (02-11-2026 – "month end la … bill close karte weli tank check mandatory … jitki kami ti debit … tank capacity
+mandatory"; with Mechanical update-199):** Machinery Billing – from the bill of 31-10-2026 on the **month-end tank check** decides the
+diesel debit, as the web: opening (found at the check of the day before) + company diesel − the standard of the work = what should be
+in the tank; above the Tank Capacity debited; a **Tank check** box on the bill for each machinery that needs one (Save / Change –
+`saveBillTankCheck`; without it the bill is not submitted); found less → the shortage debited, more → nothing; a final bill debits
+all of it. The Abstract, the Debit Note and the Log Book (the daily opening / closing from the opening, the tank check under it) say
+so (`tankMonthEnd`, `tcText`, `billTc`). Tank Check: a machinery without its Tank Capacity says so (the server refuses the check).
+
 **Version 3.72.1 (02-11-2026 – "tank capacity takli ani save krtoy tr nothing change as yetey"; with Mechanical update-197):** an edit
 of a machinery compares every box of the form – Tank Capacity, Engine / Chassis Number, Engine Make and the papers (Tax, PUC, Permit,
 Fitness, Insurance) were left out, so a change of only them said "Nothing changed." and was not saved (`kMasterDiff`, `masterChanges`).

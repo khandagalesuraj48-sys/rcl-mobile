@@ -119,6 +119,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
   bool busy = false, showCo = false, loading = true;
   final _c = <String, TextEditingController>{};
   final _co = <String, TextEditingController>{};
+  final _tcEdit = <String>{}; // (3.72.2, update-199) machinery whose month-end check is being entered again (Change)
   int _gen = 0;
 
   @override
@@ -768,6 +769,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
         ]),
         if (ne.isNotEmpty) _note('⚠ Diesel issued on a day with no Log Book entry: $ne. It is counted in this bill.', C.amber, C.amberSoft),
         if (warns.isNotEmpty) _note(['⚠ To check before submitting:', for (final w in warns) '• $w'].join('\n'), C.amber, C.amberSoft, key: Key('mb-warn-$i')),
+        if (ms.any((m) => m['tc'] is Map && (m['tc'] as Map)['need'] == true)) _tcCard(i, b, [for (final m in ms) if (m['tc'] is Map && (m['tc'] as Map)['need'] == true) m]),
         if ('${b['corrErr'] ?? ''}'.isNotEmpty) _note('⚠ Earlier bills could not be checked: ${b['corrErr']}', C.red, C.redSoft),
         if (corr.isNotEmpty) ...[
           _note('Earlier bills changed – tick each one after checking (it is taken in this bill; without it the bill is not submitted):', C.blue, C.blueSoft),
@@ -896,6 +898,88 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
       ),
       ),
     );
+  }
+
+  /* (3.72.2, Mechanical update-199) THE MONTH-END TANK CHECK on the bill (the web's "Tank check" box): for each machinery that needs
+   * one – what should be in its tank as per the standard, and the diesel found (Save; "Change" to enter it again). Saved
+   * (saveBillTankCheck – the server works the figure out again), the dates' data is read again and every bill is worked out again. */
+  Widget _tcCard(int i, Map<String, dynamic> b, List<Map> ms) {
+    String f(Object? v) => fmt(v);
+    return Container(
+      key: Key('mb-tc-$i'),
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: C.greenSoft, borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('Tank check (month end) – ${showDate('${b['to']}')}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.greenDark)),
+        Text('diesel found in the tank', style: const TextStyle(fontSize: 12, color: C.muted)),
+        for (final m in ms) ...(() {
+          final t = m['tc'] as Map, no = '${m['no']}', k = no.toUpperCase(), edit = t['missing'] == true || _tcEdit.contains(k), cap = num.tryParse('${t['cap']}') ?? 0;
+          final short = num.tryParse('${t['short']}') ?? 0, over = num.tryParse('${t['over']}') ?? 0;
+          final box = _box(i, 'tc|$k', _tcEdit.contains(k) ? '${t['found']}' : '');
+          return <Widget>[
+            const SizedBox(height: 8),
+            Text('$no: ${f(t['expect'])} L as per the standard', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+            Text('opening ${f(t['open'])} + issued ${f(t['issued'])} − standard ${f(t['std'])}${over > 0 ? ' = ${f(t['system'])} L; the tank holds ${f(cap)} L' : ''}', style: const TextStyle(fontSize: 12, color: C.muted)),
+            if (!edit)
+              Row(children: [
+                Expanded(child: Text('found ${f(t['found'])} L (${t['checkId']}) → ${short > 0 ? '${f(short)} L short – debited' : 'nothing short'}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: short > 0 ? C.red : C.greenDark))),
+                TextButton(key: Key('mb-tcc-$i-$k'), onPressed: busy ? null : () => setState(() => _tcEdit.add(k)), child: Text('Change')),
+              ])
+            else if (!(cap > 0))
+              Text('set its Tank Capacity in Asset Master first', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.red))
+            else
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    key: Key('mb-tcf-$i-$k'),
+                    controller: box,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                    onSubmitted: (_) => _tcSave(b, no, box),
+                    decoration: InputDecoration(isDense: true, labelText: tr('Diesel found (L)'), helperText: '${tr('tank')} ${f(cap)} L'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(key: Key('mb-tcs-$i-$k'), onPressed: busy ? null : () => _tcSave(b, no, box), child: Text('Save')),
+                if (_tcEdit.contains(k)) TextButton(key: Key('mb-tcx-$i-$k'), onPressed: () => setState(() => _tcEdit.remove(k)), child: Text('Cancel')),
+              ]),
+          ];
+        })(),
+      ]),
+    );
+  }
+
+  Future<void> _tcSave(Map<String, dynamic> b, String no, TextEditingController c) async {
+    final s = SessionScope.read(context), k = no.toUpperCase(), l = logs;
+    if (!s.canEdit('Machinery Billing')) return toast(context, 'You have View access only for Machinery Billing.', bad: true);
+    final v = num.tryParse(c.text.trim());
+    if (v == null || v < 0 || l == null) return toast(context, 'Type the diesel found in the tank of $no (litres).', bad: true);
+    setState(() => busy = true);
+    try {
+      final r = ((await s.api.call('saveBillTankCheck', [
+        {'no': no, 'from': b['from'], 'to': b['to'], 'physical': v, 'replace': _tcEdit.contains(k)}
+      ], true)) as Map).cast<String, dynamic>();
+      final nos = {for (final x in bills) for (final p in (x['picked'] as List? ?? const [])) '$p'}.toList();
+      final extra = ((await s.api.call('logPrintExtra', [
+        {'from': l.from, 'to': l.to, 'nos': nos}
+      ])) as Map?) ?? const {};
+      if (!mounted) return;
+      setState(() {
+        logs = BillLogs(l.rows, l.from, l.to, extra); // the checks as saved now – every bill of these dates is worked out again
+        _tcEdit.remove(k);
+        for (final x in bills) {
+          mbFill(x, logs!, (n) => s.machine(n)?.m);
+        }
+        busy = false;
+      });
+      final sh = num.tryParse('${r['short']}') ?? 0;
+      toast(context, '${r['no']}: tank check of ${showDate('${r['date']}')} saved – found ${fmt(r['physical'])} L${sh > 0 ? ', ${fmt(sh)} L short – debited in the bill.' : ', nothing short.'}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => busy = false);
+      toast(context, tr(errText(e)), bad: true);
+    }
   }
 
   void _rate(Map<String, dynamic> b, TextEditingController c) {

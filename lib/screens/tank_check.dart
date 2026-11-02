@@ -253,7 +253,7 @@ class _TankCheckScreenState extends State<TankCheckScreen> {
                       _cmp('System says (as per standard)', '${fmtNum(asNum(x['system']))} Ltr', [
                         if (x['fromCheck'] is Map) 'from the check of ${showDate('${(x['fromCheck'] as Map)['date']}')} (${fmtNum(asNum((x['fromCheck'] as Map)['physical']))} L)' else if (x['fromLog'] is Map) 'Log Book ${showDate('${(x['fromLog'] as Map)['date']}')} (${(x['fromLog'] as Map)['shift']})' else 'no Log Book yet',
                         if ((asNum(x['addedAfter']) ?? 0) != 0) '+ ${fmtNum(asNum(x['addedAfter']))} L given after that',
-                        if (cap > 0) 'tank ${fmtNum(cap)} L',
+                        if (cap > 0) 'tank ${fmtNum(cap)} L' else 'Tank Capacity not set in Asset Master – set it first, a tank check needs it', // (3.72.2, update-199)
                       ].join(' · '), over: cap > 0 && (asNum(x['system']) ?? 0) > cap),
                       const SizedBox(height: 8),
                       _cmp('Found in the tank', f == null ? '–' : '${fmtNum(f)} Ltr', method == 'full' && f != null ? '${fmtNum(cap)} L tank − ${fmtNum(num.tryParse(fill.text.trim()))} L to fill' : ''),
