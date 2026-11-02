@@ -571,7 +571,8 @@ String taxInvoiceHtml(Map b) {
     final detail = net
         ? [txPeriod(b)]
         : lines.map((l) => '${_s(l['item']).isNotEmpty ? '${_up(l['item'])}${_s(l['note']).isNotEmpty ? ' – ${l['note']}' : ''}: ' : (_s(l['note']).isNotEmpty ? '${l['note']}: ' : '')}${fmt(l['qty'])} ${_s(l['unit'])} × ${n2(l['rate'])} = ${n2(l['amount'])}').toList();
-    final a = amt(m), num tax = rowTax ? (b['round'] == true ? r0(a * half / 100) : r2(a * half / 100)) : 0;
+    final a = amt(m);
+    final num tax = rowTax ? (b['round'] == true ? r0(a * half / 100) : r2(a * half / 100)) : 0;
     rows.add('<tr><td class="c">${i + 1}</td><td><b>RENT ON VEHICLE ${_e(_nodash(m['no']).toUpperCase())}</b>${_s(m['type']).isNotEmpty ? ' <span>(${_e(_up(m['type']))})</span>' : ''}'
         '${detail.isNotEmpty ? '<small>${detail.map(_e).join('<br>')}</small>' : ''}</td><td class="n">${mbA(b, net ? a : m['amount'])}</td><td class="n">${rowTax ? mbA(b, tax) : '-'}</td><td class="n">${rowTax ? mbA(b, tax) : '-'}</td><td class="n">${mbA(b, r2(a + 2 * tax))}</td></tr>');
   }
