@@ -15,6 +15,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.73.1 (02-11-2026 – "01-11-26 ch opening bagh as ka ale"; with Mechanical update-200):** Edit Log Book – after a tank
+check the tank starts again from the diesel found (the server's `checks`), as the server saves it; the Log Book entry takes its
+opening from the server (a tank check after the entry before: the diesel found).
+
 **Version 3.73.0 (02-11-2026 – "ethun pudhe je kahi asel agodr testing hoil … mi kahi user la testing sathi deu shakel nantr … other la
 pn app web stable deu shakel … je cuurent chalu aahe te bighdnar nahi"; "jewa stable war jaych asel tewa mala version wise button de je
 dable ki auto app updet push hoil stable war web updet hoil"; with the Portal's step 7):** the **beta channel**. A **tester** (ticked
