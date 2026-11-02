@@ -66,6 +66,7 @@ void main() {
         billDate: '${a['billDate']}',
         logs: logsOf('${a['from']}', '${a['to']}'),
         machine: machine,
+        round: false, // (the web's bills before update-202 – the fixture's)
       );
       final want = (c['bills'] as List).cast<Map<String, dynamic>>(), sheets = (c['sheets'] as List).cast<String>();
       expect(got.length, want.length);
@@ -104,7 +105,7 @@ void main() {
   test('A built bill changed: Idle paid / not paid, a typed diesel rate, an other deduction, debit notes, corrections of earlier bills, a saved bill, a minus bill', () {
     final l = logsOf('2026-09-20', '2026-10-10');
     for (final c in (fx['refills'] as List).cast<Map<String, dynamic>>()) {
-      final got = mbFill(copy(c['input']), l, machine);
+      final got = mbFill(copy(c['input']), l, machine, round: false); // (a bill before update-202)
       expect(differ(jsonDecode(jsonEncode(got)), c['bill']), '', reason: '${c['name']}');
       expect(diffAt(billSheets(got, ''), '${c['sheets']}'), '', reason: '${c['name']}: papers');
       expect(diffAt(debitNoteHtml(got), '${c['dn']}'), '', reason: '${c['name']}: debit note');

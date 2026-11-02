@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.75.0 (02-11-2026 – "apan je bill banwato te point madhe yet … amount mala decimal madhe nko aahe round off amount hawwet
+… ha bill madhe 2 sign wadhwayche aahet fkt abstract warti … verify by ho account ani checked by ho account"; with Mechanical
+update-202):** a bill made from now on is in WHOLE RUPEES (`b['round']`) – every line, the diesel debit of each machinery, the other
+deduction, GST and TDS rounded (below 50 paise down, 50 paise and above up: `r0`), so the totals add up; the Abstract, Tax Invoice,
+Debit Note, the bill list and the bill's Log Book sheet (the bill's own amounts – `lbFig`) show rupees without paise. The Abstract:
+"Checked By – Billing Dept" no more; under the General Manager the HEAD OFFICE – Checked By, then Verified By (HO Accounts). A bill made
+before keeps its figures and papers (the tests of those bills: `round: false`); `test/round_test.dart` against the web's own code
+(`test/fixtures/bill/web_round.json`).
+
 **Version 3.74.0 (02-11-2026 – "jewa mi voice typing krtoy … mi bolalo Arihant City tr apla system tyala Aaryan City tr kadhi Aryna
 Nagar as karte"; his choice: the site's word list; with Mechanical update-201):** voice typing writes the site's own words – what the
 phone's speech wrote is put right with the names of Asset Master, Vendor Master, the places and works of the Log Book and the Super

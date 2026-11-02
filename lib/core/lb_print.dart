@@ -48,6 +48,14 @@ String grp(num v, {int minD = 0, int maxD = 2}) {
 String fmt(Object? v) => _blank(v) ? '' : grp(_n(v));
 String n2(Object? v) => grp(_n(v), minD: 2, maxD: 2);
 
+/// (3.75.0, Mechanical update-202 – asked 02-11-2026: "amount mala decimal madhe nko … .5 che aat asel tr 1 … .5 che nantr asel tr
+/// next amount") a bill in whole rupees: below 50 paise down, 50 paise and above up (12.3 → 12, 122.6 → 123); a minus amount the
+/// same way from 0 (the web's r0).
+int r0(Object? v) {
+  final x = r2(_n(v));
+  return x < 0 ? -((-x + .5).floor()) : (x + .5).floor();
+}
+
 /// Meter readings without commas, as on the meter.
 String plain(Object? v) => _blank(v) ? '' : js(r2(_n(v)));
 
@@ -404,6 +412,8 @@ class LbPrint {
 /// [extra]: logPrintExtra (diesel issues, BOQ of each date, diesel rates). [fmtF] / [sample]: "View format".
 /// [dieselRate]: typed for this print (0 = the automatic rate). [portrait]: the page turned.
 /// [note]: printed above the sheets (3.32.0: a saved bill's Log Book – as submitted, or today's, said so).
+/// [round] / [figBy] (3.75.0, Mechanical update-202): the Log Book of a bill made in whole rupees – its money in rupees, the bill's
+/// own amount and diesel debit of each machinery ({ key: {amount, excessAmt} }).
 LbPrint logBookPrint({
   required List<Map<String, dynamic>> rows,
   required String from,
@@ -420,8 +430,11 @@ LbPrint logBookPrint({
   String logo = '',
   bool portrait = true,
   String note = '',
+  bool round = false,
+  Map? figBy,
 }) {
   const ord = {'Day': 0, 'Full Day': 0, 'Night': 1};
+  String nA(Object? v) => round && r2(_n(v)) == r2(_n(v)).truncateToDouble() ? grp(_n(v), maxD: 0) : n2(v);
   final at0 = {for (var i = 0; i < rows.length; i++) rows[i]: i};
   final list0 = [...rows]..sort((a, b) {
       final c = natCompare(_s(a['no']), _s(b['no']));
@@ -638,11 +651,15 @@ LbPrint logBookPrint({
         x['close'] = r2(bal);
       }
     }
-    final avgR = _n(extra['avgRate']), lastR = _n(extra['lastRate']), avgRate = manRate > 0 ? manRate : (avgR > lastR ? avgR : lastR), excessAmt = r2((debitQty + excessQty) * avgRate);
+    final fg = round ? (figBy ?? const {})[key] as Map? : null; // (3.75.0, update-202) the bill's own figures
+    if (round) payable = fg != null ? _n(fg['amount']) : r0(payable);
+    final avgR = _n(extra['avgRate']), lastR = _n(extra['lastRate']), avgRate = manRate > 0 ? manRate : (avgR > lastR ? avgR : lastR);
+    final num excessAmt = fg != null ? _n(fg['excessAmt']) : (round ? r0((debitQty + excessQty) * avgRate) : r2((debitQty + excessQty) * avgRate));
     final basic = r2(payable - excessAmt);
     final tdsP = last != null && !_blank(last['tdsPct']) ? _n(last['tdsPct']) : _n(m['tdsRate']);
     final gstP = last != null && !_blank(last['gstPct']) ? _n(last['gstPct']) : 0;
-    final gst = basic > 0 ? r2(basic * gstP / 100) : 0, tds = basic > 0 ? r2(basic * tdsP / 100) : 0, netPay = r2(basic + gst - tds);
+    final num gst = basic > 0 ? (round ? r0(basic * gstP / 100) : r2(basic * gstP / 100)) : 0, tds = basic > 0 ? (round ? r0(basic * tdsP / 100) : r2(basic * tdsP / 100)) : 0;
+    final netPay = r2(basic + gst - tds);
     final std = [if (_n(m['kmStd']) != 0) '${js(m['kmStd'])} KM/L', if (_n(m['hrStd']) != 0) '${js(m['hrStd'])} L/HR'].join(' + ');
     final fm = fmtF.isNotEmpty ? fmtF : (_s(m['lbFormat']).isNotEmpty ? _s(m['lbFormat']) : 'A');
     final headHtml = '<div class="lb-head">${logoHtml.isNotEmpty ? '<div class="lb-logo">$logoHtml</div>' : ''}'
@@ -669,7 +686,7 @@ LbPrint logBookPrint({
     }
     final totWork = [if (tKm != 0) '${fmt(tKm)} KM', if (tHr != 0) '${fmt(tHr)} HR', if (tTrips != 0) '${fmt(tTrips)} TRIPS'].join('<br>');
     table.write('</tbody><tfoot><tr><td colspan="6" class="c">TOTAL</td><td class="n">${totWork.isEmpty ? '0' : totWork}</td><td></td><td class="n">${fmt(issued)}</td><td></td><td class="n">${tcs != null ? '' : fmt(sum('total'))}</td><td class="n">${fmt(tcs != null ? sum('used') : used)}</td><td></td><td></td><td></td><td></td></tr></tfoot></table>');
-    String money(num v) => v != 0 ? '₹ ${n2(v)}' : '–';
+    String money(num v) => v != 0 ? '₹ ${nA(v)}' : '–';
     final allDebit = issued > 0 ? debitQty >= issued : m['supply'] == 'Debit Basis';
     final dA = dual ? dualAvg(issued, tKm, tHr, kmStd, hrStd) : null;
     final dualWord = dA == null
@@ -745,11 +762,11 @@ LbPrint logBookPrint({
       [
         '${debitQty != 0 ? 'DIESEL DEBIT' : tcs != null ? 'DIESEL SHORT – DEBIT AMT' : 'EXCESS DIESEL – DEBIT AMT'}<small>${manRate > 0 ? 'rate = ₹${n2(manRate)} (fixed by hand)' : 'rate = higher of avg ₹${n2(avgR)} / last ₹${n2(lastR)}'}</small>',
         excessAmt != 0
-            ? '<small>${[if (debitQty != 0) '${fmt(debitQty)} L debit', if (excessQty != 0) '${fmt(excessQty)}${tcs != null ? (tcs['final'] == true ? ' L in its tank' : _n(tcs['over']) > 0 ? (_n(tcs['short']) > 0 ? ' L above the tank and short' : ' L above the tank') : ' L short') : ' L extra'}'].join(' + ')} × ₹${n2(avgRate)}</small> − ₹ ${n2(excessAmt)}${tankApplied ? '<br><small>${_e(tankText(tank).toUpperCase())}</small>' : ''}'
+            ? '<small>${[if (debitQty != 0) '${fmt(debitQty)} L debit', if (excessQty != 0) '${fmt(excessQty)}${tcs != null ? (tcs['final'] == true ? ' L in its tank' : _n(tcs['over']) > 0 ? (_n(tcs['short']) > 0 ? ' L above the tank and short' : ' L above the tank') : ' L short') : ' L extra'}'].join(' + ')} × ₹${n2(avgRate)}</small> − ₹ ${nA(excessAmt)}${tankApplied ? '<br><small>${_e(tankText(tank).toUpperCase())}</small>' : ''}'
             : '<small>${tankApplied ? _e(tankText(tank).toUpperCase()) : tcs != null ? (tcs['missing'] == true ? 'tank check not entered' : 'nothing short') : stdQty != 0 ? 'no extra diesel' : 'no standard'}</small> –'
       ],
-      ['TDS ${tdsP != 0 ? '${fmt(tdsP)}% (on basic)' : ''}', tds != 0 ? '− ₹ ${n2(tds)}' : '–'],
-      ['GST ${gstP != 0 ? '${fmt(gstP)}% (on basic)' : '– not applicable'}', gst != 0 ? '+ ₹ ${n2(gst)}' : '–'],
+      ['TDS ${tdsP != 0 ? '${fmt(tdsP)}% (on basic)' : ''}', tds != 0 ? '− ₹ ${nA(tds)}' : '–'],
+      ['GST ${gstP != 0 ? '${fmt(gstP)}% (on basic)' : '– not applicable'}', gst != 0 ? '+ ₹ ${nA(gst)}' : '–'],
     ];
     var tableF = table.toString();
     var lf = [...lon, ...lz];
@@ -909,7 +926,7 @@ LbPrint logBookPrint({
       final l = k < lf.length ? lf[k] : ['', ''], r = k < rr.length ? rr[k] : ['', ''];
       bill.write('<tr><th>${l[0]}</th><td>${l[1]}</td><th>${r[0]}</th><td>${r[1]}</td></tr>');
     }
-    bill.write('<tr class="net"><th colspan="3">NET PAYABLE AMOUNT <small>(basic ₹ ${n2(basic)} = payable − excess diesel; + GST − TDS)</small></th><td>${payable != 0 ? '₹ ${n2(netPay)}' : '–'}</td></tr></tbody></table>'
+    bill.write('<tr class="net"><th colspan="3">NET PAYABLE AMOUNT <small>(basic ₹ ${nA(basic)} = payable − excess diesel; + GST − TDS)</small></th><td>${payable != 0 ? '₹ ${nA(netPay)}' : '–'}</td></tr></tbody></table>'
         '${payable != 0 ? '' : '<p class="lb-note">No BOQ for this machinery in these dates – the amounts are left blank (make its BOQ in Vendor BOQ).</p>'}');
     const signs = [
       ['CONTRACTOR', 'SUBCONTRACTOR'],

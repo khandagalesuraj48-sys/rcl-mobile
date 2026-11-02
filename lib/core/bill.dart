@@ -5,7 +5,7 @@
  * kept as the same map the web keeps (it is what verifyBills / submitBills are sent and what is saved). */
 import 'dash.dart' show kDayStatus;
 import 'format.dart' show showDate;
-import 'lb_print.dart' show fmt, n2, tankLeft, tankText, tankMonthEnd, tcText, itemDaySegs, dayPart;
+import 'lb_print.dart' show fmt, n2, grp, r0, tankLeft, tankText, tankMonthEnd, tcText, itemDaySegs, dayPart;
 import 'log_edit.dart' show r2, js;
 import 'print_css.dart';
 import 'session.dart' show hasKm, hasHr, kNoReading;
@@ -37,6 +37,24 @@ String mbDot(Object? d) => _blank(d) ? '' : _e(_s(d).split('-').reversed.join('.
 /// "+ ₹1,234.00" / "− ₹1,234.00"
 String corrSgn(num v) => '${v < 0 ? '− ' : '+ '}₹${n2(v.abs())}';
 
+/// (3.75.0, Mechanical update-202) the Log Book of bills made in whole rupees: the bill's own amount and diesel debit of each machinery
+/// (logBookPrint's round / figBy) – the web's lbFig.
+({bool round, Map<String, Map<String, num>> figBy}) lbFig(Iterable<Map?> bills) {
+  var round = false;
+  final fig = <String, Map<String, num>>{};
+  for (final b in bills) {
+    if (b == null || b['round'] != true) continue;
+    round = true;
+    for (final m in _maps(b['machines'])) {
+      fig[_key(_s(m['noNow']).isNotEmpty ? m['noNow'] : m['no'])] = {'amount': _n(m['amount']), 'excessAmt': _n(m['excessAmt'])};
+    }
+  }
+  return (round: round, figBy: fig);
+}
+
+/// (3.75.0, Mechanical update-202) an amount of a bill made in whole rupees without paise (1,74,003); else as before (1,74,002.82) – the web's mbA.
+String mbA(Map? b, Object? v) => b != null && b['round'] == true && r2(_n(v)) == r2(_n(v)).truncateToDouble() ? grp(_n(v), maxD: 0) : n2(v);
+
 /// What changed in an earlier bill, line by line (work at its rate, diesel debited at its rate).
 String corrCalc(Map z) => [
       for (final w in _maps(z['work'])) '${_e(w['unit'])} ${fmt(w['from'])} → ${fmt(w['to'])}${w['rate'] != '' ? ' × ₹${n2(w['rate'])}' : ''} = ${corrSgn(_n(w['amount']))}',
@@ -60,7 +78,7 @@ String billNoEntry(Map b) => [for (final m in _maps(b['machines'])) for (final x
 // =====================================================================================================================
 //  ONE MACHINERY'S BILL FOR THE DATES (mbMachine) – the same rules as the Log Book print
 // =====================================================================================================================
-Map<String, dynamic> mbMachine(String no, List<Map<String, dynamic>> list0, Map extra, String from, String to, Map<String, dynamic>? Function(String) machine, {String vt = '', bool idlePaid = true}) {
+Map<String, dynamic> mbMachine(String no, List<Map<String, dynamic>> list0, Map extra, String from, String to, Map<String, dynamic>? Function(String) machine, {String vt = '', bool idlePaid = true, bool rnd = false}) {
   final m = machine(no) ?? <String, dynamic>{'id': no};
   final u = _s(m['unit']).isNotEmpty ? _s(m['unit']) : (list0.isNotEmpty && _s(list0.first['unit']).isNotEmpty ? _s(list0.first['unit']) : 'KM');
   final key = _key(no);
@@ -154,7 +172,7 @@ Map<String, dynamic> mbMachine(String no, List<Map<String, dynamic>> list0, Map 
   }
   final lines = [
     for (final x in segs.values)
-      {'unit': x['unit'], 'qty': r2(_n(x['qty'])), 'rate': r2(_n(x['rate'])), 'amount': r2(_n(x['amount'])), 'monthly': _blank(x['monthly']) || x['monthly'] == 0 ? '' : x['monthly'], 'note': _s(x['note']), 'item': _s(x['item'])},
+      {'unit': x['unit'], 'qty': r2(_n(x['qty'])), 'rate': r2(_n(x['rate'])), 'amount': rnd ? r0(x['amount']) : r2(_n(x['amount'])), 'monthly': _blank(x['monthly']) || x['monthly'] == 0 ? '' : x['monthly'], 'note': _s(x['note']), 'item': _s(x['item'])},
   ].where((x) => _n(x['qty']) != 0 || _n(x['amount']) != 0).toList();
   final zeroWork = [for (final k in zero.keys) {'basis': k, 'days': zero[k]}];
   final amount = r2(lines.fold<num>(0, (s, x) => s + _n(x['amount'])));
@@ -183,7 +201,7 @@ Map<String, dynamic> mbMachine(String no, List<Map<String, dynamic>> list0, Map 
   final tank = fin || extra['checks'] is Map ? null : tankLeft(m, u, own, iss0, isDebit, rawExcess);
   final excessQty = tc != null ? r2(_n(tc['debit'])) : r2(rawExcess - (tank != null ? _n(tank['applied']) : 0));
   final avg = _n(extra['avgRate']), lastR = _n(extra['lastRate']), autoRate = avg > lastR ? avg : lastR, manRate = _n(extra['manualRate']) > 0 ? r2(_n(extra['manualRate'])) : 0;
-  final dRate = manRate > 0 ? manRate : autoRate, excessAmt = r2((debitQty + excessQty) * dRate);
+  final dRate = manRate > 0 ? manRate : autoRate, excessAmt = rnd ? r0((debitQty + excessQty) * dRate) : r2((debitQty + excessQty) * dRate);
   // diesel issued on a day that has no WORKING Log Book entry: counted in the bill, and the bill says so
   final worked = {for (final r in list) if (!kDayStatus.contains(_mode(r))) _s(r['date'])};
   final noEntry = [
@@ -213,7 +231,8 @@ class BillLogs {
 }
 
 /// The machinery, warnings and totals of a bill from the Log Book of the dates (again when the Idle choice or the rate changes).
-Map<String, dynamic> mbFill(Map<String, dynamic> b, BillLogs l, Map<String, dynamic>? Function(String) machine) {
+/// [round] (3.75.0, update-202): a bill made from now on is in whole rupees (b['round']); false only for the tests of the bills before.
+Map<String, dynamic> mbFill(Map<String, dynamic> b, BillLogs l, Map<String, dynamic>? Function(String) machine, {bool round = true}) {
   final byNo = <String, List<Map<String, dynamic>>>{};
   for (final r in l.rows) {
     byNo.putIfAbsent(_up(r['no']), () => []).add(r);
@@ -222,11 +241,12 @@ Map<String, dynamic> mbFill(Map<String, dynamic> b, BillLogs l, Map<String, dyna
   final idlePaid = b['idlePaid'] != false;
   final picked = [for (final x in (b['picked'] as List? ?? const [])) '$x'];
   final machines = [
-    for (final id in picked) mbMachine(id, byNo[id.toUpperCase()] ?? [], ex, _s(b['from']), _s(b['to']), machine, idlePaid: idlePaid),
+    for (final id in picked) mbMachine(id, byNo[id.toUpperCase()] ?? [], ex, _s(b['from']), _s(b['to']), machine, idlePaid: idlePaid, rnd: round || b['round'] == true),
   ].where((x) => _n(x['days']) != 0 || _n(x['issued']) != 0 || _n(x['amount']) != 0 || _n(x['idleDays']) != 0).toList();
   final wo = machines.where((x) => _s(x['woNo']).isNotEmpty).firstOrNull ?? const {};
   b['machines'] = machines;
   b['txNet'] = true; // (3.20.0, Mechanical update-124) a bill made from now on: its Tax Invoice is of the value after the diesel debit
+  if (round) b['round'] = true; // (3.75.0, Mechanical update-202) a bill made from now on: every amount in whole rupees
   b['woNo'] = _s(wo['woNo']);
   b['woDate'] = _s(wo['woDate']);
   b['idleDays'] = machines.fold<num>(0, (a, x) => a + _n(x['idleDays']));
@@ -286,11 +306,12 @@ bool gstDeclOn(Map b) {
 /// A–K of a bill.
 Map<String, dynamic> mbTotals(Map<String, dynamic> b) {
   final ms = _maps(b['machines']);
-  final a = r2(ms.fold<num>(0, (s, x) => s + _n(x['amount']))), bb = r2(ms.fold<num>(0, (s, x) => s + _n(x['excessAmt']))), c = r2(_n(b['C']));
+  num rr(Object? v) => b['round'] == true ? r0(v) : r2(_n(v)); // (3.75.0, update-202) a bill made in whole rupees
+  final a = r2(ms.fold<num>(0, (s, x) => s + _n(x['amount']))), bb = r2(ms.fold<num>(0, (s, x) => s + _n(x['excessAmt']))), c = rr(b['C']);
   final d = r2(a - bb - c);
   num mx(String k) => ms.fold<num>(0, (m0, x) => _n(x[k]) > m0 ? _n(x[k]) : m0);
   final gstPct = mx('gstPct'), tdsPct = mx('tdsPct'), plus = d > 0;
-  final ee = plus ? r2(d * gstPct / 200) : 0, g = r2(d + ee + ee), h = plus ? r2(d * tdsPct / 100) : 0, i = r2(g - h);
+  final ee = plus ? rr(d * gstPct / 200) : 0, g = r2(d + ee + ee), h = plus ? rr(d * tdsPct / 100) : 0, i = r2(g - h);
   final j = r2(_maps(b['dns']).fold<num>(0, (s, n) => s + _n(n['total'])) + _maps(b['corr']).fold<num>(0, (s, z) => s + (z['kind'] == 'Credit' ? -_n(z['total']) : _n(z['total']))));
   b
     ..['A'] = a
@@ -321,6 +342,7 @@ List<Map<String, dynamic>> buildBills({
   required String billDate,
   required BillLogs logs,
   required Map<String, dynamic>? Function(String) machine,
+  bool round = true,
 }) {
   final st = (init['settings'] as Map?) ?? const {};
   final vs = _maps(init['vendors']).where((v) => picked.containsKey(_s(v['name']))).toList();
@@ -346,7 +368,7 @@ List<Map<String, dynamic>> buildBills({
         'dnOpen': [for (final n in _maps(init['pendingDn'])) if (_up(_s(n['vendor']).trim()) == _up(_s(v['name']).trim()) && n['company'] == company) n],
         'dns': <Map<String, dynamic>>[],
       };
-      out.add(mbFill(b, logs, machine));
+      out.add(mbFill(b, logs, machine, round: round));
     }
   }
   return out;
@@ -381,7 +403,7 @@ String billHtml(Map b, {String logo = ''}) {
       rows.add('<tr><td>${k > 0 ? '' : _e(_up(m['type']))}</td><td>${k > 0 ? '' : '<b>${_e(_nodash(m['no']))}</b>'}</td><td>${k > 0 ? '' : _e(_up(_s(m['name']).isNotEmpty ? m['name'] : m['type']))}'
           '${pmCol ? '</td><td class="n"><b>${!_blank(l['monthly']) && l['monthly'] != 0 ? n2(l['monthly']) : '–'}</b>' : ''}</td>'
           '<td class="c">${item.isNotEmpty ? '<b>${_e(item.toUpperCase())}</b>${unit == 'Days' || note.isNotEmpty ? ' – ' : ''}' : ''}$shift</td>'
-          '<td class="c">${fmt(l['qty'])}${unit != 'Days' ? ' ${_e(unit)}' : ''}</td><td class="n">${n2(l['rate'])}</td><td class="n">${n2(l['amount'])}</td></tr>');
+          '<td class="c">${fmt(l['qty'])}${unit != 'Days' ? ' ${_e(unit)}' : ''}</td><td class="n">${n2(l['rate'])}</td><td class="n">${mbA(b, l['amount'])}</td></tr>');
     }
   }
   final dq = machines.fold<num>(0, (a, x) => a + _n(x['debitQty'])), eq = machines.fold<num>(0, (a, x) => a + (x['tc'] is Map ? 0 : _n(x['excessQty']))), tq = machines.fold<num>(0, (a, x) => a + (x['tc'] is Map ? _n(x['excessQty']) : 0));
@@ -419,21 +441,25 @@ String billHtml(Map b, {String logo = ''}) {
   String cell((String, String, Object, String) x) {
     if (x.$3 == '') return '–';
     final v0 = x.$3 as num;
-    return '${v0 < 0 ? '− ' : x.$1 == 'J' ? '+ ' : ''}${n2(v0.abs())}';
+    return '${v0 < 0 ? '− ' : x.$1 == 'J' ? '+ ' : ''}${mbA(b, v0.abs())}';
   }
 
+  String cS(num v) => '${v < 0 ? '− ' : '+ '}₹${mbA(b, v.abs())}'; // (3.75.0, update-202) whole rupees on a bill made in whole rupees
   final corrT = corr.isEmpty
       ? ''
       : '<table class="bl-t bl-corr"><thead><tr><th colspan="7">Corrections of earlier bills taken in this bill (at the earlier bill\'s rates)</th></tr><tr><th>Earlier RA Bill</th><th>Vehicle No</th><th>What changed</th><th class="n">Difference</th><th class="n">GST</th><th class="n">TDS</th><th class="n">Note</th></tr></thead><tbody>'
-          '${corr.map((z) => '<tr><td>${_e(z['billNo'])}${_n(z['rev']) != 0 ? ' (Rev ${_e(z['rev'])})' : ''}<br><small>${mbDot(z['from'])} To ${mbDot(z['to'])}</small></td><td><b>${_e(_nodash(z['no']))}</b></td><td>${corrCalc(z)}</td><td class="n">${corrSgn(_n(z['net']))}</td>'
-              '<td class="n">${_n(z['gst']) != 0 ? '${n2(z['gst'])}<small>${fmt(z['gstPct'])}%</small>' : '–'}</td><td class="n">${_n(z['tds']) != 0 ? '− ${n2(z['tds'])}<small>${fmt(z['tdsPct'])}%</small>' : '–'}</td>'
-              '<td class="n"><b>${z['kind'] == 'Credit' ? 'Credit Note' : 'Debit Note'}</b><br>${_e(_s(z['noteNo']).isNotEmpty ? z['noteNo'] : 'on submit')}<br><b>${corrSgn(z['kind'] == 'Credit' ? _n(z['total']) : -_n(z['total']))}</b></td></tr>').join()}</tbody></table>';
+          '${corr.map((z) => '<tr><td>${_e(z['billNo'])}${_n(z['rev']) != 0 ? ' (Rev ${_e(z['rev'])})' : ''}<br><small>${mbDot(z['from'])} To ${mbDot(z['to'])}</small></td><td><b>${_e(_nodash(z['no']))}</b></td><td>${corrCalc(z)}</td><td class="n">${cS(_n(z['net']))}</td>'
+              '<td class="n">${_n(z['gst']) != 0 ? '${mbA(b, z['gst'])}<small>${fmt(z['gstPct'])}%</small>' : '–'}</td><td class="n">${_n(z['tds']) != 0 ? '− ${mbA(b, z['tds'])}<small>${fmt(z['tdsPct'])}%</small>' : '–'}</td>'
+              '<td class="n"><b>${z['kind'] == 'Credit' ? 'Credit Note' : 'Debit Note'}</b><br>${_e(_s(z['noteNo']).isNotEmpty ? z['noteNo'] : 'on submit')}<br><b>${cS(z['kind'] == 'Credit' ? _n(z['total']) : -_n(z['total']))}</b></td></tr>').join()}</tbody></table>';
   final rev = _n(b['rev']);
-  const signs = [
+  // (3.75.0, Mechanical update-202) a bill made in whole rupees: "Checked By – Billing Dept" no more; after the General Manager the
+  // Head Office (Checked By, then Verified By – HO Accounts). A bill before keeps the signatures it had.
+  final round = b['round'] == true;
+  final signs = [
     ['Accepted By', 'Sub Contractor'],
     ['Prepared & Checked By', 'Mechanical Dept'],
     ['Checked By', 'Site Incharge'],
-    ['Checked By', 'Billing Dept'],
+    if (!round) ['Checked By', 'Billing Dept'],
     ['Checked & Verified By', 'Acc. Dept'],
     ['Verified By', 'Project Manager'],
     ['Approved By', 'General Manager']
@@ -458,7 +484,8 @@ String billHtml(Map b, {String logo = ''}) {
       '<table class="bl-t"><thead>'
       '<tr><th>Machine type</th><th>Vehicle No</th><th>Vehicle Type</th>${pmCol ? '<th class="n">Rent / Month</th>' : ''}<th>Shift</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows.join()}</tbody></table>'
       '<table class="bl-sum"><tbody>${sum.map((x) => '<tr class="r${x.$1}"><td class="c l">${x.$1}</td><td class="t">${x.$2}</td><td class="p">${x.$4}</td><td class="n${x.$1 == netRow ? ' net' : ''}">${cell(x)}</td></tr>').join()}</tbody></table>$corrT</div>'
-      '<div class="bl-sign">${signs.map((x) => '<div><span></span><b>${x[0]}</b><small>${x[1]}</small></div>').join()}</div>'
+      '<div class="bl-sign${round ? ' six' : ''}">${signs.map((x) => '<div><span></span><b>${x[0]}</b><small>${x[1]}</small></div>').join()}</div>'
+      '${round ? '<div class="bl-ho"><div class="bl-ho-t">HEAD OFFICE</div>${const [['Checked By', 'HO Accounts'], ['Verified By', 'HO Accounts']].map((x) => '<div><span></span><b>${x[0]}</b><small>${x[1]}</small></div>').join()}</div>' : ''}'
       '</div>';
 }
 
@@ -544,20 +571,22 @@ String taxInvoiceHtml(Map b) {
     final detail = net
         ? [txPeriod(b)]
         : lines.map((l) => '${_s(l['item']).isNotEmpty ? '${_up(l['item'])}${_s(l['note']).isNotEmpty ? ' – ${l['note']}' : ''}: ' : (_s(l['note']).isNotEmpty ? '${l['note']}: ' : '')}${fmt(l['qty'])} ${_s(l['unit'])} × ${n2(l['rate'])} = ${n2(l['amount'])}').toList();
-    final a = amt(m), tax = rowTax ? r2(a * half / 100) : 0;
+    final a = amt(m);
+    final num tax = rowTax ? (b['round'] == true ? r0(a * half / 100) : r2(a * half / 100)) : 0;
     rows.add('<tr><td class="c">${i + 1}</td><td><b>RENT ON VEHICLE ${_e(_nodash(m['no']).toUpperCase())}</b>${_s(m['type']).isNotEmpty ? ' <span>(${_e(_up(m['type']))})</span>' : ''}'
-        '${detail.isNotEmpty ? '<small>${detail.map(_e).join('<br>')}</small>' : ''}</td><td class="n">${n2(net ? a : m['amount'])}</td><td class="n">${rowTax ? n2(tax) : '-'}</td><td class="n">${rowTax ? n2(tax) : '-'}</td><td class="n">${n2(r2(a + 2 * tax))}</td></tr>');
+        '${detail.isNotEmpty ? '<small>${detail.map(_e).join('<br>')}</small>' : ''}</td><td class="n">${mbA(b, net ? a : m['amount'])}</td><td class="n">${rowTax ? mbA(b, tax) : '-'}</td><td class="n">${rowTax ? mbA(b, tax) : '-'}</td><td class="n">${mbA(b, r2(a + 2 * tax))}</td></tr>');
   }
   final pct = gst != 0 ? '${fmt(half)}%' : '';
+  String dd(Object? v) => docDash(v) == '-' ? '-' : mbA(b, v); // (3.75.0, update-202) whole rupees on a bill made in whole rupees
   final sum = <(String, String)>[
-    ('Total Amount Before Tax', n2(before)),
-    if (_n(b['B']) != 0 && !net) ('Less: Diesel deduction${_s(b['dnNo']).isNotEmpty ? ' (Debit Note ${_e(b['dnNo'])})' : ''}', '− ${n2(b['B'])}'),
-    if (_n(b['C']) != 0) ('Less: Other deduction${_s(b['cReason']).isNotEmpty ? ' (${_e(b['cReason'])})' : ''}', '− ${n2(b['C'])}'),
-    ('Basic Value', n2(b['D'])),
-    ('SGST $pct', docDash(b['F'])),
-    ('CGST $pct', docDash(b['E'])),
-    ('Total Billing Amt', n2(b['G'])),
-    ('Net Cheque Amount', n2(b['G'])),
+    ('Total Amount Before Tax', mbA(b, before)),
+    if (_n(b['B']) != 0 && !net) ('Less: Diesel deduction${_s(b['dnNo']).isNotEmpty ? ' (Debit Note ${_e(b['dnNo'])})' : ''}', '− ${mbA(b, b['B'])}'),
+    if (_n(b['C']) != 0) ('Less: Other deduction${_s(b['cReason']).isNotEmpty ? ' (${_e(b['cReason'])})' : ''}', '− ${mbA(b, b['C'])}'),
+    ('Basic Value', mbA(b, b['D'])),
+    ('SGST $pct', dd(b['F'])),
+    ('CGST $pct', dd(b['E'])),
+    ('Total Billing Amt', mbA(b, b['G'])),
+    ('Net Cheque Amount', mbA(b, b['G'])),
   ];
   final party = '<b>${_e(co.toUpperCase())}</b>', rev = _n(b['rev']);
   return '$kDocCss<div class="tx"><div class="tx-name">${_e(v['name'] ?? '')}</div><div class="tx-title">TAX INVOICE</div>'
@@ -570,7 +599,7 @@ String taxInvoiceHtml(Map b) {
       '<tr><td>To,<br>$party${_s(ci['address']).isNotEmpty ? '<br>Address : ${_e(ci['address'])}' : ''}<br><b>GST : ${_e(_s(ci['gstin']).isNotEmpty ? ci['gstin'] : '–')}</b></td>'
       '<td>To,<br>$party${_s(b['siteAddress']).isNotEmpty ? '<br>Address : ${_e(b['siteAddress'])}' : ''}<br><b>GST : ${_e(_s(ci['gstin']).isNotEmpty ? ci['gstin'] : '–')}</b></td></tr></tbody></table>'
       '<table><colgroup><col style="width:7%"><col style="width:43%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th class="c">Sr.No</th><th class="c">Description of Work</th><th class="c">Amount</th><th class="c">Add CGST $pct</th><th class="c">Add SGST $pct</th><th class="c">Total Amount</th></tr></thead><tbody>'
-      '${rows.join()}<tr class="sum"><td colspan="2" class="c">Total Billing Amount</td><td class="n">${n2(before)}</td><td class="n">-</td><td class="n">-</td><td class="n">${n2(before)}</td></tr></tbody></table>'
+      '${rows.join()}<tr class="sum"><td colspan="2" class="c">Total Billing Amount</td><td class="n">${mbA(b, before)}</td><td class="n">-</td><td class="n">-</td><td class="n">${mbA(b, before)}</td></tr></tbody></table>'
       '<table class="foot"><colgroup><col style="width:50%"><col style="width:36%"><col style="width:14%"></colgroup><tbody>'
       '${[for (var i = 0; i < sum.length; i++) '<tr>${i == 0 ? '<td rowspan="${sum.length}"><b>In Word : ${_e(rupeesWords(b['G']))} /-</b></td>' : ''}<td class="k">${sum[i].$1}</td><td class="n"><b>${sum[i].$2}</b></td></tr>'].join()}'
       '<tr><td>${_e(v['name'] ?? '')}${_s(v['address']).isNotEmpty ? '<br>${_e(v['address'])}' : ''}${_s(v['account']).isNotEmpty ? '<br>AC.NO : - ${_e(v['account'])}' : ''}${_s(v['ifsc']).isNotEmpty ? '<br>IFSC CODE :${_e(v['ifsc'])}' : ''}${_s(v['bank']).isNotEmpty ? '<br>BANK : ${_e(v['bank'])}${_s(v['branch']).isNotEmpty ? ', ${_e(v['branch'])}' : ''}' : ''}'
@@ -587,8 +616,9 @@ String debitNoteHtml(Map b) {
   for (final m in _maps(b['machines'])) {
     final amt = _n(m['excessAmt']);
     if (!(amt > 0)) continue;
-    final rate = _n(m['dieselRate']), dq = _n(m['debitQty']), eq = _n(m['excessQty']), first = dq != 0 && eq != 0 ? r2(dq * rate) : amt;
-    void add(String what, num q, num a) => rows.add('<tr><td class="c">${++sr}</td><td><b>${_e(_nodash(m['no']).toUpperCase())}</b>${_s(m['type']).isNotEmpty ? ' ${_e(_up(m['type']))}' : ''}</td><td>$what</td><td class="n">${fmt(r2(q))}</td><td class="n">${rate != 0 ? n2(rate) : '-'}</td><td class="n">${n2(a)}</td></tr>');
+    num rr(num v) => b['round'] == true ? r0(v) : r2(v); // (3.75.0, update-202) whole rupees
+    final rate = _n(m['dieselRate']), dq = _n(m['debitQty']), eq = _n(m['excessQty']), first = dq != 0 && eq != 0 ? rr(dq * rate) : amt;
+    void add(String what, num q, num a) => rows.add('<tr><td class="c">${++sr}</td><td><b>${_e(_nodash(m['no']).toUpperCase())}</b>${_s(m['type']).isNotEmpty ? ' ${_e(_up(m['type']))}' : ''}</td><td>$what</td><td class="n">${fmt(r2(q))}</td><td class="n">${rate != 0 ? n2(rate) : '-'}</td><td class="n">${mbA(b, a)}</td></tr>');
     if (dq != 0) add('Diesel issued – debit basis', dq, first);
     final t = m['tc'] as Map?;
     final num eAmt = dq != 0 ? r2(amt - first) : amt;
@@ -596,7 +626,7 @@ String debitNoteHtml(Map b) {
       add('Diesel in its tank as per the standard – the machinery left the site (final bill)', eq, eAmt);
     } else if (eq != 0 && t != null) {
       // (3.72.2, update-199) the month-end tank check: above the tank, short at the check
-      final num over = _n(t['over']), short = _n(t['short']), oAmt = over > 0 && short > 0 ? r2(over * rate) : over > 0 ? eAmt : 0;
+      final num over = _n(t['over']), short = _n(t['short']), oAmt = over > 0 && short > 0 ? rr(over * rate) : over > 0 ? eAmt : 0;
       if (over > 0) add('Diesel above the tank capacity (${fmt(t['cap'])} L) as per the standard', over, oAmt);
       if (short > 0) add('Diesel short in the tank at the check of ${mbDot(t['foundDate'])}', short, r2(eAmt - oAmt));
     } else if (eq != 0) {
@@ -613,7 +643,7 @@ String debitNoteHtml(Map b) {
       '<tr><td><b>Work Period</b></td><td>${mbDot(b['from'])} To ${mbDot(b['to'])}</td></tr>'
       '<tr><td colspan="3"><b>${_e(co.toUpperCase())}</b>${_s(ci['address']).isNotEmpty ? ', ${_e(ci['address'])}' : ''} &nbsp; <b>GSTIN :</b> ${_e(_s(ci['gstin']).isNotEmpty ? ci['gstin'] : '–')}${_s(b['woNo']).isNotEmpty ? ' &nbsp; <b>Work Order :</b> ${_e(b['woNo'])}' : ''}</td></tr></tbody></table>'
       '<table><colgroup><col style="width:7%"><col style="width:25%"><col style="width:32%"><col style="width:11%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th class="c">Sr.No</th><th>Machinery</th><th>Particular</th><th class="c">Qty (Ltr)</th><th class="c">Rate (₹/Ltr)</th><th class="c">Amount</th></tr></thead><tbody>'
-      '${rows.join()}<tr><td colspan="5" class="n"><b>Total debit</b></td><td class="n"><b>${n2(b['B'])}</b></td></tr>'
+      '${rows.join()}<tr><td colspan="5" class="n"><b>Total debit</b></td><td class="n"><b>${mbA(b, b['B'])}</b></td></tr>'
       '<tr><td colspan="6"><b>In Word : ${_e(rupeesWords(b['B']))} /-</b></td></tr></tbody></table>'
       '<div class="dnp-note">This amount is deducted in RA Bill No <b>${_e(b['billNo'] ?? '')}</b> (line B of the Abstract of Bill, "Less – Diesel Deduction").${ne.isNotEmpty ? '<br>It includes diesel issued on days with no Log Book entry: ${_e(ne)}.' : ''}${tank.isNotEmpty ? '<br>Left out: ${_e(tank)}.' : ''}${tcB.isNotEmpty ? '<br>Tank check: ${_e(tcB)}.' : ''}</div>'
       '<div class="dnp-sign"><span>Accepted by – ${_e(v['name'] ?? '')}</span><span>For ${_e(co)}</span></div></div>';

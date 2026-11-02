@@ -1851,7 +1851,7 @@ void main() {
     final list = find.descendant(of: find.byKey(const Key('mb-list')), matching: find.byType(Scrollable)).first;
     await t.scrollUntilVisible(find.byKey(const Key('mb-warn-0')), 300, scrollable: list);
     expect(find.textContaining('1 Idle day(s) – choose Paid / Not paid'), findsOneWidget);
-    expect(find.text('5,431.42'), findsOneWidget, reason: 'A 9,000.00 − B 3,457.73 (37.14 L above the standard × ₹93.10) − TDS 2 % 110.85');
+    expect(find.text('5,431'), findsOneWidget, reason: 'A 9,000 − B 3,458 (37.14 L above the standard × ₹93.10 = 3,457.73 → 3,458) − TDS 2 % 111 (3.75.0: whole rupees)');
     await t.scrollUntilVisible(find.byKey(const Key('mb-idle-0')), 300, scrollable: list);
     await tapK(t, 'mb-idle-0');
     await settle(t, 600);
@@ -1862,7 +1862,7 @@ void main() {
     await tapK(t, 'mb-dn-0-DN-0003');
     await settle(t, 600);
     await t.scrollUntilVisible(find.byKey(const Key('mb-no-0')), 300, scrollable: list);
-    expect(find.text('3,931.42'), findsOneWidget, reason: 'the debit note of 1,500.00 off the net payable');
+    expect(find.text('3,931'), findsOneWidget, reason: 'the debit note of 1,500 off the net payable');
     await t.scrollUntilVisible(find.byKey(const Key('mb-title')), -300, scrollable: list);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/30_bill_make.png'));
@@ -1872,9 +1872,10 @@ void main() {
     await t.tap(find.byKey(const Key('vf-ok')));
     await net(t);
     final x = srv.billSent.firstWhere((c) => c['fn'] == 'submitBills')['x'] as Map, b = ((x['bills'] as List).single as Map);
-    expect([b['vendor'], b['company'], b['billNo'], b['from'], b['to'], b['net']], ['I E Enterprises', 'Sketchline Industries', '8', '2026-09-01', '2026-09-30', 5431.42]);
+    // (3.75.0, Mechanical update-202) in whole rupees: B 3,457.73 → 3,458, D 5,542, TDS 2 % 110.84 → 111, Net 5,431, less the note 1,500 → 3,931
+    expect([b['vendor'], b['company'], b['billNo'], b['from'], b['to'], b['net']], ['I E Enterprises', 'Sketchline Industries', '8', '2026-09-01', '2026-09-30', 5431]);
     final data = b['data'] as Map;
-    expect([data['idlePaid'], data['A'], data['B'], data['K'], (data['dns'] as List).length, data['edited']], [true, 9000, 3457.73, 3931.42, 1, false]);
+    expect([data['idlePaid'], data['A'], data['B'], data['D'], data['H'], data['I'], data['K'], (data['dns'] as List).length, data['edited'], data['round']], [true, 9000, 3458, 5542, 111, 5431, 3931, 1, false, true]);
     expect(srv.rids.any((r) => r.startsWith('submitBills:')), true, reason: 'saved once, with its own number');
     expect(find.text('1 bill(s) verified and submitted.'), findsOneWidget);
     await t.pageBack();
@@ -1919,7 +1920,7 @@ void main() {
     await t.scrollUntilVisible(find.byKey(const Key('mb-tc-0')), 300, scrollable: list);
     expect(find.text('MH-25-AJ-2169: 37.14 L as per the standard'), findsOneWidget);
     expect(find.text('opening 0 + issued 180 − standard 142.86'), findsOneWidget);
-    expect(find.text('0.00'), findsWidgets, reason: 'B = 0 until the check');
+    expect(find.text('0'), findsWidgets, reason: 'B = 0 until the check (3.75.0: whole rupees)');
     await t.enterText(find.byKey(const Key('mb-tcf-0-MH-25-AJ-2169')), '20');
     await tapK(t, 'mb-tcs-0-MH-25-AJ-2169');
     await net(t);
@@ -1929,7 +1930,7 @@ void main() {
     expect(srv.billSent.where((c) => c['fn'] == 'logPrintExtra').length, 2, reason: 'the dates read again after the save');
     await t.scrollUntilVisible(find.byKey(const Key('mb-tc-0')), 300, scrollable: list);
     expect(find.text('found 20 L (TC-00009) → 17.14 L short – debited'), findsOneWidget);
-    expect(find.text('1,595.73'), findsWidgets, reason: 'B = 17.14 L × ₹93.10');
+    expect(find.text('1,596'), findsWidgets, reason: 'B = 17.14 L × ₹93.10 = 1,595.73 → 1,596 (3.75.0, whole rupees)');
     expect(find.byKey(const Key('mb-tcc-0-MH-25-AJ-2169')), findsOneWidget, reason: 'Change');
   });
 

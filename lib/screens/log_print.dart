@@ -100,7 +100,7 @@ Future<LbPrintAsk?> askLbPrint(BuildContext context, List<String> names, {requir
 /// The Log Book of [rows] (getLogBookList's rows) for [from] – [to], printed. [fmt] / [sample]: View format.
 /// (3.32.0) A saved bill's Log Book as submitted: [fixed] = its BOQ / diesel / rates as kept with the bill (nothing is asked from
 /// the server and the rate is the bill's own – no rate question), [machines] = its machinery as it was, [note] printed on top.
-Future<void> printLogBook(BuildContext context, Session s, {required List<Map<String, dynamic>> rows, required String from, required String to, String fmt = '', String sample = '', num dieselRate = 0, Map? rateBy, Map? idle, Map? fixed, Map<String, Map<String, dynamic>>? machines, String note = ''}) async {
+Future<void> printLogBook(BuildContext context, Session s, {required List<Map<String, dynamic>> rows, required String from, required String to, String fmt = '', String sample = '', num dieselRate = 0, Map? rateBy, Map? idle, Map? fixed, Map<String, Map<String, dynamic>>? machines, String note = '', ({bool round, Map<String, Map<String, num>> figBy})? fig}) async {
   if (rows.isEmpty) {
     toast(context, 'No Log Book entries to print – pick a Machinery and dates first.', bad: true);
     return;
@@ -156,6 +156,8 @@ Future<void> printLogBook(BuildContext context, Session s, {required List<Map<St
     logo: logo,
     portrait: opt.portrait,
     note: note,
+    round: fig?.round ?? false, // (3.75.0, update-202) the Log Book of a bill made in whole rupees
+    figBy: fig?.figBy,
   );
   if (!context.mounted) return;
   await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PrintView(html: p.html, title: p.title, fit: true)));

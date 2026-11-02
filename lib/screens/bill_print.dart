@@ -55,7 +55,8 @@ String billLogSheets(Session s, Map b, List<Map<String, dynamic>> rows0, String 
   final idle = {for (final n in (machines != null ? machines.keys : nos.map(_key))) n: b['idlePaid'] != false};
   final rate = num.tryParse('${b['dieselRate'] ?? ''}') ?? 0;
   try {
-    return logBookPrint(rows: rows, from: from, to: to, head: '${b['company'] ?? ''}', site: s.siteLabel, extra: extra, machine: (no) => machines?[_key(no)] ?? s.machine(no)?.m, dieselRate: rate > 0 ? rate : 0, idle: idle, logo: logo).sheets;
+    final fg = lbFig([b]); // (3.75.0, update-202) a bill made in whole rupees: its own amounts
+    return logBookPrint(rows: rows, from: from, to: to, head: '${b['company'] ?? ''}', site: s.siteLabel, extra: extra, machine: (no) => machines?[_key(no)] ?? s.machine(no)?.m, dieselRate: rate > 0 ? rate : 0, idle: idle, logo: logo, round: fg.round, figBy: fg.figBy).sheets;
   } catch (_) {
     return '';
   }
@@ -219,12 +220,12 @@ Future<void> printSavedBillLog(BuildContext context, Session s, String id) async
     }
     if (x.fixed) {
       final ex = x.extra ?? const {}, rate = num.tryParse('${ex['dieselRate'] ?? ''}') ?? 0;
-      await printLogBook(context, s, rows: x.rows, from: '${b['from']}', to: '${b['to']}', idle: {for (final k in (x.machines ?? const {}).keys) k: ex['idlePaid'] != false}, dieselRate: rate > 0 ? rate : 0, fixed: ex, machines: x.machines, note: x.note);
+      await printLogBook(context, s, rows: x.rows, from: '${b['from']}', to: '${b['to']}', idle: {for (final k in (x.machines ?? const {}).keys) k: ex['idlePaid'] != false}, dieselRate: rate > 0 ? rate : 0, fixed: ex, machines: x.machines, note: x.note, fig: lbFig([data]));
       return;
     }
     final nos = billNos(data);
     final rate = num.tryParse('${data['dieselRate'] ?? ''}') ?? 0;
-    await printLogBook(context, s, rows: x.rows, from: '${b['from']}', to: '${b['to']}', idle: {for (final n in nos) _key(n): data['idlePaid'] != false}, dieselRate: rate > 0 ? rate : 0, note: x.note);
+    await printLogBook(context, s, rows: x.rows, from: '${b['from']}', to: '${b['to']}', idle: {for (final n in nos) _key(n): data['idlePaid'] != false}, dieselRate: rate > 0 ? rate : 0, note: x.note, fig: lbFig([data]));
   } catch (e) {
     if (context.mounted) toast(context, errText(e), bad: true);
   }

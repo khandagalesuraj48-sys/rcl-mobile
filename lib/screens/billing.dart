@@ -326,7 +326,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
           for (final m in (b['machines'] as List).whereType<Map>()) k(m['no']): num.parse('${b['dieselRate']}')
     };
     final one = list.length == 1 ? (num.tryParse('${list.first['dieselRate'] ?? ''}') ?? 0) : 0;
-    await printLogBook(context, s, rows: rows, from: l.from, to: l.to, idle: idle, rateBy: rateBy, dieselRate: one > 0 ? one : 0);
+    await printLogBook(context, s, rows: rows, from: l.from, to: l.to, idle: idle, rateBy: rateBy, dieselRate: one > 0 ? one : 0, fig: lbFig(list));
   }
 
   // ---------- Verify & Submit ----------
@@ -521,7 +521,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('${x['vendor']}${b['partial'] == true ? ' (${(b['picked'] as List).join(', ')})' : ''} – RA Bill ${'${x['billNo'] ?? ''}'.isNotEmpty ? x['billNo'] : '–'} – Net ₹${n2(x['net'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text('${x['vendor']}${b['partial'] == true ? ' (${(b['picked'] as List).join(', ')})' : ''} – RA Bill ${'${x['billNo'] ?? ''}'.isNotEmpty ? x['billNo'] : '–'} – Net ₹${mbA(b, x['net'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
         Text(bad > 0 ? '✖ ${fmt(bad)} problem${bad == 1 ? '' : 's'} – cannot submit' : warn > 0 ? '⚠ OK with ${fmt(warn)} note${warn == 1 ? '' : 's'}' : '✔ All correct', style: TextStyle(color: col, fontWeight: FontWeight.w700)),
         for (final c in (x['checks'] as List? ?? const []).whereType<Map>())
           Padding(
@@ -828,8 +828,8 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
               ),
             ),
           ]),
-        fig('Workdone (A)', n2(b['A'])),
-        fig('Diesel ded. (B)', n2(b['B'])),
+        fig('Workdone (A)', mbA(b, b['A'])),
+        fig('Diesel ded. (B)', mbA(b, b['B'])),
         if (hasDiesel)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
@@ -872,10 +872,10 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
           ),
         ]),
         const SizedBox(height: 4),
-        fig('GST', (num.tryParse('${b['gstPct'] ?? 0}') ?? 0) != 0 ? n2(r2((num.tryParse('${b['E']}') ?? 0) + (num.tryParse('${b['F']}') ?? 0))) : '–'),
-        fig('TDS', n2(b['H'])),
-        fig('Net Payable', n2(b['I']), strong: true, color: C.greenDark),
-        if (j != 0) fig('${j > 0 ? 'less' : 'add'} notes ${n2(j.abs())} · balance', n2(b['K']), strong: true),
+        fig('GST', (num.tryParse('${b['gstPct'] ?? 0}') ?? 0) != 0 ? mbA(b, r2((num.tryParse('${b['E']}') ?? 0) + (num.tryParse('${b['F']}') ?? 0))) : '–'),
+        fig('TDS', mbA(b, b['H'])),
+        fig('Net Payable', mbA(b, b['I']), strong: true, color: C.greenDark),
+        if (j != 0) fig('${j > 0 ? 'less' : 'add'} notes ${mbA(b, j.abs())} · balance', mbA(b, b['K']), strong: true),
         const SizedBox(height: 6),
         TextField(
           key: Key('mb-no-$i'),
