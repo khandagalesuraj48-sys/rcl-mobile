@@ -486,7 +486,7 @@ LbPrint logBookPrint({
       final r = list[i], d = iss0[r['date']] as Map?, first = seenDay.add(_s(r['date']));
       final iss = first && d != null ? _n(d['qty']) : 0;
       final refill = first && d != null ? fillReads(d) : ''; // (update-206)
-      final x = <String, dynamic>{'r': r, 'i': i, 'open': 0, 'iss': iss, 'refill': refill ?? '', 'total': iss, 'used': iss, 'close': 0, 'avg': ''};
+      final x = <String, dynamic>{'r': r, 'i': i, 'open': 0, 'iss': iss, 'refill': refill, 'total': iss, 'used': iss, 'close': 0, 'avg': ''};
       final ws = sample.isNotEmpty ? null : lbWorkRows(r);
       if (ws == null) {
         lines.add(x);
