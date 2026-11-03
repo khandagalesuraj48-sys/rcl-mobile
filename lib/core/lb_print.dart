@@ -388,7 +388,7 @@ const kLbFmtCols = {
   'E': ['sr', 'date', 'particular', 'challan', 'rS', 'rC', 'rT', 'dO', 'dI', 'dR', 'dT', 'dU', 'dC', 'avg', 'ch', 'work'],
   'F': ['sr', 'date', 'regno', 'particular', 'challan', 'tS', 'tE', 'tG', 'tN', 'ch', 'work'],
   'G': ['sr', 'date', 'regno', 'particular', 'challan', 'tS', 'tE', 'tG', 'hr1', 'hr2', 'ch', 'work'],
-  'H': ['sr', 'date', 'shift', 'vehno', 'challan', 'dQ', 'dRh', 'inT', 'outT', 'trip', 'ch', 'work'], // (update-206) dRh – only when a fill has a reading
+  'H': ['sr', 'date', 'shift', 'vehno', 'challan', 'dQ', 'dRh', 'inT', 'outT', 'trip', 'ch', 'work'], // (update-206) dRh – when the machinery had diesel in the dates (F, G, I: dQ and dRh then put in)
   'I': ['sr', 'date', 'shift', 'agency', 'vehno', 'challan', 'dspT', 'unlT', 'trip', 'chno', 'usefor'],
 };
 
@@ -879,9 +879,15 @@ LbPrint logBookPrint({
               '${_e(_up(_s(r['work']).isNotEmpty ? r['work'] : (fm == 'E' || fm == 'F' || fm == 'G' ? '' : r['remark'])))}';
         }, wrap: true),
       };
+      // (update-206: "mala pratek format madhe diesel issue haw … dile aahe tr haw aahe ani diesel diley reading nahi tr reading blank thew")
+      // every format shows the diesel given and the reading at it: F, G, I get "Diesel qty" and "Reading at diesel" when the machinery
+      // had diesel in the dates (none given – not shown); Format H its reading column the same way; no reading – blank
+      const dqAt = {'F': 'ch', 'G': 'ch', 'I': 'chno'};
+      final gave = issued > 0, keys = [...colsF];
+      if (dqAt[fm] != null && gave) keys.insertAll(keys.indexOf(dqAt[fm]!), ['dQ', 'dRh']);
       final cols = [
-        for (final k in colsF)
-          if (k != 'dRh' || lines.any((x) => '${x['refill'] ?? ''}'.isNotEmpty)) (fm == 'C' || fm == 'D') && RegExp(r'^(km|hr)[SCT]$').hasMatch(k) ? c[k]!.group('READING') : c[k]!, // (update-206)
+        for (final k in keys)
+          if (k != 'dRh' || gave) (fm == 'C' || fm == 'D') && RegExp(r'^(km|hr)[SCT]$').hasMatch(k) ? c[k]!.group('READING') : c[k]!,
       ];
       // Format I: every trip of an entry is a line of its own
       final linesF = <Map<String, dynamic>>[];
@@ -890,8 +896,8 @@ LbPrint logBookPrint({
         if (fm != 'I') {
           linesF.add(x);
         } else if (tr != null && tr.isNotEmpty) {
-          for (final t in tr) {
-            linesF.add({...x, 'i': linesF.length, 't': t});
+          for (final (j, t) in tr.indexed) {
+            linesF.add({...x, 'i': linesF.length, 't': t, if (j > 0) ...{'iss': 0, 'refill': ''}}); // (update-206) an entry's diesel on its first trip only
           }
         } else {
           linesF.add({...x, 'i': linesF.length, 't': null});
@@ -923,8 +929,8 @@ LbPrint logBookPrint({
       t2.write('</tbody><tfoot><tr>${firstTot > 0 ? '<td colspan="$firstTot" class="c">TOTAL</td>${cols.sublist(firstTot).map((cc) => '<td class="n">${cc.t != null ? '<b>${cc.t!()}</b>' : ''}</td>').join()}' : '<td colspan="${cols.length}" class="c">TOTAL – ${list.length} ENTRIES</td>'}</tr></tfoot></table>');
       tableF = t2.toString();
       // the summary on the left follows the format: days, the work it shows, and diesel only where the format has diesel
-      bool has(String k) => colsF.contains(k);
-      final hasDiesel = colsF.any((k) => RegExp(r'^d[OITUCR]$').hasMatch(k));
+      bool has(String k) => keys.contains(k); // (update-206) the columns this sheet has
+      final hasDiesel = keys.any((k) => RegExp(r'^d[OITUCR]$').hasMatch(k));
       final work = [
         if (has('kmT') && !kinds.contains('km')) ['TOTAL KM', '${fmt(tKm)} KM'],
         if ((has('hrT') || has('rT') || has('tN') || has('tG')) && !kinds.contains('hr')) ['TOTAL HOURS', '${fmt(tHr)} HRS'],
