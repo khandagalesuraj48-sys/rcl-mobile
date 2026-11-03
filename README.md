@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.79.0 (03-11-2026 – after 3.78.0, the tank check – "mala vehicle compliance madhe pratek vehicle ch document upload krta yaw asa haway rc book pn ok ani
+tya gadich tax invoice pn ok ani ha je kahi renewal hote te renewal wise asaw mhanje maghche document pn mala bghta yeil"; with
+Mechanical update-205):** Vehicle Compliance – **📎 Documents** of each machinery (`compliance_docs.dart`): its RC Book and Tax Invoice
+(the invoice of buying it – each one added is kept, the earlier ones stay) and each paper with every renewal of the history and ITS
+files; each file Open / Print / Download; "+ Add …" (Edit). A renewal takes its PDF / photos after the dates (optional – Done with none
+saves the date only). The history's 📎. Server: `getCmpFiles`, `cmpDoc`, `cmpFiles` (step 1zl in each site's Supabase).
+
 **Version 3.78.0 (02-11-2026 – made as 3.76.0, its code notes say so – "jya gadyana diesel dile jatey tya pratek gadich tank check compulsory karaych aahe every 7 days …
 super admin la access de …"; "ratri 12 nantr next day chalu hotoy ata 12 nko tr sakali 6 am nantr next day chalu hoil … portal madhun
 site wise change kru shakel"; with Mechanical update-203):** Diesel Issue – a tank check due with the fill (Mechanical's `tankDue`: the

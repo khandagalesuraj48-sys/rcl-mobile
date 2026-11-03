@@ -60,6 +60,14 @@ class FakeServer {
   final vendorFiles = <String, Map<String, dynamic>>{};
   final fileGets = <String>[];
   List<String> cmpSkipped = [];
+  // (3.79.0, Mechanical update-205) the documents of Vehicle Compliance: the site keeps them (step 1zl); the files sent (cmpDoc); the
+  // lines of the history with their files
+  bool cmpFilesOn = false;
+  final cmpSent = <String, Map<String, dynamic>>{};
+  final cmpRows = <Map<String, dynamic>>[
+    {'id': 'CMP-000001', 'no': 'MH-25-AJ-2169', 'doc': 'RC Book', 'from': '', 'to': '', 'on': '2026-09-01', 'docNo': 'MH25AJ2169', 'amount': '', 'remark': '', 'source': 'Document', 'by': 'Tester',
+      'files': [{'sha': 'c' * 64, 'p': 'log/cc/${'c' * 64}.jpg', 'mime': 'image/jpeg', 'size': 1200, 'name': 'rc old.jpg', 'at': '2026-09-01T05:00:00Z', 'by': 'Tester'}]},
+  ];
   /// (3.49.0, Mechanical update-168) what maintLog answers instead of the bill below (null: that one)
   Map<String, dynamic>? maintLogAnswer;
   /// (3.56.0, Mechanical update-180) the lines of MT-000001 in the log book below – changed / taken out by updateMaintLine / deleteMaintLine
@@ -639,7 +647,7 @@ class FakeServer {
   Map<String, dynamic> get _compliance => {
         'today': '2026-10-14', 'soonDays': 30, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'noPapers': 1,
         'machines': [
-          {'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'ownership': 'Rental', 'docs': {
+          {'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'owner': 'I E Enterprises', 'ownership': 'Rental', 'files': cmpFilesOn ? 1 : 0, 'docs': {
             'Tax': {'v': 'LIFETIME', 's': 'life', 'days': ''}, 'PUC': {'v': '2026-09-30', 's': 'expired', 'days': -14}, 'Permit': {'v': '', 's': 'missing', 'days': ''},
             'Fitness': {'v': '2027-01-31', 's': 'ok', 'days': 109}, 'Insurance': {'v': '2026-10-20', 's': 'due', 'days': 6}}},
           {'no': 'Sany 210 (No.1)', 'type': 'Excavator', 'owner': 'RCL', 'ownership': 'Own', 'docs': {
@@ -650,7 +658,11 @@ class FakeServer {
           {'type': 'Tipper', 'key': 'TIPPER', 'count': 1, 'docs': ['Tax', 'PUC', 'Permit', 'Fitness', 'Insurance'], 'set': false, 'guess': 'Road vehicle – all papers'},
           {'type': 'Excavator', 'key': 'EXCAVATOR', 'count': 1, 'docs': ['Insurance'], 'set': true, 'guess': ''},
         ],
-        'history': [{'on': '2026-10-02', 'no': 'MH-25-AJ-2169', 'doc': 'Fitness', 'from': '2026-09-30', 'to': '2027-01-31', 'docNo': 'F-77', 'amount': 1200, 'remark': '', 'source': '', 'by': 'Tester'}],
+        'history': [
+          {'id': 'CMP-000002', 'on': '2026-10-02', 'no': 'MH-25-AJ-2169', 'doc': 'Fitness', 'from': '2026-09-30', 'to': '2027-01-31', 'docNo': 'F-77', 'amount': 1200, 'remark': '', 'source': '', 'by': 'Tester', 'files': 0},
+          if (cmpFilesOn) {'id': 'CMP-000001', 'on': '2026-09-01', 'no': 'MH-25-AJ-2169', 'doc': 'RC Book', 'from': '', 'to': '', 'docNo': 'MH25AJ2169', 'amount': '', 'remark': '', 'source': 'Document', 'by': 'Tester', 'files': 1},
+        ],
+        'filesOn': cmpFilesOn, 'keep': ['RC Book', 'Tax Invoice'],
       };
   List<String> _works(dynamic w) => '${w ?? ''}'.split(',').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
 
@@ -1495,6 +1507,29 @@ class FakeServer {
         case 'renewDoc':
           masterCalls.add({'fn': action, 'x': a[0]});
           return _j({'result': {'ok': true}});
+        // (3.79.0, Mechanical update-205) one file of a paper sent (as the server's uploadAttachment_ 'Vehicle Compliance'); the files kept
+        // with a line (cmpFiles – the server's same checks: each sent by this person); a machinery's documents with their links
+        case 'cmpDoc':
+          final up = (a[0] as Map).cast<String, dynamic>(), m = RegExp(r'^data:(image/jpeg|image/png|application/pdf);base64,(.+)$').firstMatch('${up['data']}');
+          masterCalls.add({'fn': action, 'name': up['name']});
+          if (!cmpFilesOn) return _j({'error': 'The documents of Vehicle Compliance cannot be kept yet. This needs one database step first: the Admin runs sql/supabase_step1zl_compliance_files.sql once in Supabase → SQL Editor, in every site.'}, 500);
+          if (m == null) return _j({'error': 'An attachment must be a photo (JPG or PNG) or a PDF.'}, 500);
+          final raw = base64Decode(m.group(2)!), sha = crypto.sha256.convert(raw).toString(), ext = m.group(1) == 'application/pdf' ? 'pdf' : m.group(1) == 'image/png' ? 'png' : 'jpg';
+          cmpSent[sha] = {'sha': sha, 'p': 'log/${sha.substring(0, 2)}/$sha.$ext', 'mime': m.group(1), 'size': raw.length, 'name': up['name'], 'at': '2026-10-14T05:00:00Z', 'by': 'Tester'};
+          return _j({'result': {'ok': true, 'sha': sha, 'path': cmpSent[sha]!['p'], 'mime': m.group(1), 'size': raw.length, 'name': up['name'], 'dup': false}});
+        case 'cmpFiles':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          masterCalls.add({'fn': action, 'x': x});
+          final fs = [for (final f in (x['files'] as List? ?? const []).whereType<Map>()) cmpSent['${f['sha']}']];
+          if (fs.isEmpty || fs.any((f) => f == null)) return _j({'error': 'A file of the paper was not added by you in the last 6 hours – add it again.'}, 500);
+          final id = 'CMP-${(cmpRows.length + 10).toString().padLeft(6, '0')}';
+          cmpRows.insert(0, {'id': id, 'no': x['no'], 'doc': x['doc'], 'from': '', 'to': '', 'on': '${x['on'] ?? ''}'.isEmpty ? '2026-10-14' : x['on'], 'docNo': x['docNo'] ?? '', 'amount': '', 'remark': x['remark'] ?? '', 'source': 'Document', 'by': 'Tester', 'files': fs});
+          return _j({'result': {'ok': true, 'no': x['no'], 'doc': x['doc'], 'id': id, 'n': fs.length, 'added': true}});
+        case 'getCmpFiles':
+          final no = '${(a[0] as Map)['no']}';
+          return _j({'result': {'no': no, 'type': 'Tipper', 'owner': 'I E Enterprises', 'ownership': 'Own', 'keep': ['RC Book', 'Tax Invoice'], 'on': cmpFilesOn, 'max': 10,
+            'papers': [{'name': 'Tax', 'v': 'LIFETIME'}, {'name': 'PUC', 'v': '2026-09-30'}, {'name': 'Permit', 'v': ''}, {'name': 'Fitness', 'v': '2027-01-31'}, {'name': 'Insurance', 'v': '2026-10-20'}],
+            'rows': [for (final r in cmpRows.where((r) => r['no'] == no)) {...r, 'files': [for (final f in r['files'] as List) {...(f as Map), 'url': 'https://store.test/${f['p']}?token=t'}]}]}});
         case 'saveCmpRules':
           masterCalls.add({'fn': action, 'rules': a[0]});
           return _j({'result': {'ok': true}});

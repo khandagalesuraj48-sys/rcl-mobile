@@ -1574,6 +1574,61 @@ void main() {
     expect(find.byKey(const Key('cp-Sany 210 (No.1)')), findsOneWidget);
   }, tags: ['golden']);
 
+  testWidgets('(3.79.0, Mechanical update-205) Vehicle Compliance – 📎 Documents: the RC Book (the earlier one seen, a new one added – sent with cmpDoc, kept with cmpFiles); a renewal with its photo', (t) async {
+    phone(t);
+    final p0 = pickAttFiles, c0 = attCompute;
+    attCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);
+    addTearDown(() {
+      pickAttFiles = p0;
+      attCompute = c0;
+    });
+    final shot = Uint8List.fromList(img.encodeJpg(img.fill(img.Image(width: 64, height: 48), color: img.ColorRgb8(40, 90, 200))));
+    pickAttFiles = (h, room) async => [(name: 'rc new.jpg', bytes: shot)];
+    final srv = editor()..cmpFilesOn = true;
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Vehicle Compliance');
+    expect(find.text('Documents (1)'), findsOneWidget, reason: 'the machinery with its files');
+    await tapK(t, 'cpd-MH-25-AJ-2169');
+    await net(t);
+    expect(find.text('Documents – MH-25-AJ-2169'), findsOneWidget);
+    expect(find.text('Latest – added 01-09-2026'), findsOneWidget, reason: 'the RC Book kept before');
+    expect(find.text('rc old.jpg'), findsOneWidget);
+    expect(find.text('the invoice of buying the vehicle'), findsOneWidget);
+    expect(find.text('Not added yet.'), findsOneWidget, reason: 'no Tax Invoice yet');
+    // a new RC Book: its photo, its RC No; the earlier one stays
+    await tapK(t, 'cpd-add-RC Book');
+    await settle(t, 600);
+    expect(find.text('A new RC Book – the earlier ones stay.'), findsOneWidget);
+    await tapK(t, 'att-cam');
+    await settle(t, 800);
+    expect(find.byKey(const Key('att-tile-0')), findsOneWidget);
+    await t.enterText(box('cpf-no'), 'MH25AJ2169-NEW');
+    await tapK(t, 'cpf-done');
+    await net(t);
+    expect(srv.masterCalls.where((c) => c['fn'] == 'cmpDoc').length, 1, reason: 'the photo sent once');
+    final c = srv.masterCalls.lastWhere((c) => c['fn'] == 'cmpFiles')['x'] as Map;
+    expect([c['no'], c['doc'], c['id'], (c['files'] as List).length, c['docNo']], ['MH-25-AJ-2169', 'RC Book', '', 1, 'MH25AJ2169-NEW']);
+    expect(find.text('1 file kept with the RC Book of MH-25-AJ-2169.'), findsOneWidget);
+    await settle(t, 4200);
+    expect(find.text('Latest – added 14-10-2026'), findsOneWidget);
+    expect(find.text('Earlier – added 01-09-2026'), findsOneWidget, reason: 'the earlier RC Book stays');
+    await t.pageBack();
+    await net(t);
+    // a renewal (Tax – lifetime) with its photo: the files screen after the dates, the renewal with its list
+    await tapK(t, 'cpr-MH-25-AJ-2169-Tax');
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('cp-save')));
+    await settle(t, 800);
+    expect(find.text('The renewed paper (PDF / photo) – optional: press Done with no file to save the date only.'), findsOneWidget);
+    await tapK(t, 'att-cam');
+    await settle(t, 800);
+    await tapK(t, 'cpf-done');
+    await net(t);
+    final r = srv.masterCalls.lastWhere((c) => c['fn'] == 'renewDoc')['x'] as Map;
+    expect([r['no'], r['doc'], r['to'], (r['files'] as List).length], ['MH-25-AJ-2169', 'Tax', 'LIFETIME', 1]);
+    expect(find.textContaining('with 1 file'), findsOneWidget);
+  });
+
   testWidgets('(3.4.0) Log Book Format: a machinery set to Format C, Save – saveLbFormats; a format renamed', (t) async {
     phone(t);
     final srv = editor();
