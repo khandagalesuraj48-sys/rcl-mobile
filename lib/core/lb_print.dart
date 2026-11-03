@@ -382,13 +382,13 @@ num itemDaySegs(Map b, String bk, String d, List<Map> dayRows, Map<String, num> 
 
 /// The columns of each Log Book format (A = the standard sheet).
 const kLbFmtCols = {
-  'B': ['sr', 'date', 'shift', 'kmS', 'kmC', 'kmT', 'hrS', 'hrC', 'hrT', 'dO', 'dI', 'dT', 'dU', 'dC', 'trip', 'ch', 'work'],
+  'B': ['sr', 'date', 'shift', 'kmS', 'kmC', 'kmT', 'hrS', 'hrC', 'hrT', 'dO', 'dI', 'dR', 'dT', 'dU', 'dC', 'trip', 'ch', 'work'], // (3.80.0, update-206) dR
   'C': ['sr', 'date', 'shift', 'kmS', 'kmC', 'kmT', 'dO', 'dI', 'dR', 'dT', 'dU', 'dC', 'avg', 'work'],
   'D': ['sr', 'date', 'shift', 'hrS', 'hrC', 'hrT', 'dO', 'dI', 'dR', 'dT', 'dU', 'dC', 'avg', 'ch', 'work'],
-  'E': ['sr', 'date', 'particular', 'challan', 'rS', 'rC', 'rT', 'dO', 'dI', 'dT', 'dU', 'dC', 'avg', 'ch', 'work'],
+  'E': ['sr', 'date', 'particular', 'challan', 'rS', 'rC', 'rT', 'dO', 'dI', 'dR', 'dT', 'dU', 'dC', 'avg', 'ch', 'work'],
   'F': ['sr', 'date', 'regno', 'particular', 'challan', 'tS', 'tE', 'tG', 'tN', 'ch', 'work'],
   'G': ['sr', 'date', 'regno', 'particular', 'challan', 'tS', 'tE', 'tG', 'hr1', 'hr2', 'ch', 'work'],
-  'H': ['sr', 'date', 'shift', 'vehno', 'challan', 'dQ', 'inT', 'outT', 'trip', 'ch', 'work'],
+  'H': ['sr', 'date', 'shift', 'vehno', 'challan', 'dQ', 'dRh', 'inT', 'outT', 'trip', 'ch', 'work'], // (update-206) dRh – only when a fill has a reading
   'I': ['sr', 'date', 'shift', 'agency', 'vehno', 'challan', 'dspT', 'unlT', 'trip', 'chno', 'usefor'],
 };
 
@@ -468,14 +468,25 @@ LbPrint logBookPrint({
     final list = by[no]!, m = machine(no) ?? <String, dynamic>{}, u = _s(m['unit']).isNotEmpty ? _s(m['unit']) : (_s(list.first['unit']).isNotEmpty ? _s(list.first['unit']) : 'KM');
     final isHr = u == 'Hrs', dual = u == 'KM + Hrs', key = _key(no);
     final iss0 = ((extra['issues'] as Map?)?[key] as Map?) ?? const {};
+    // (3.80.0, Mechanical update-206: "jith diesel issue diesel tith jr tya machine chi reading dilei asel tr ti dislich pahije") the reading
+    // given at a fill – whatever the fill has (KM, Hrs or both), each fill of the day; the machinery's own unit plain, another says KM / HRS
+    String rdOne(Object? km, Object? hr, bool lab) {
+      final k = !_blank(km), h = !_blank(hr);
+      return k && h ? '${plain(km)} KM / ${plain(hr)} HRS' : k ? '${plain(km)}${lab || isHr || dual ? ' KM' : ''}' : h ? '${plain(hr)}${lab || !isHr ? ' HRS' : ''}' : '';
+    }
+    String fillReads(Map? d, [bool lab = false]) {
+      if (d == null) return '';
+      final fs = d['fills'] is List && (d['fills'] as List).isNotEmpty ? [for (final f in d['fills'] as List) f as Map] : [{'km': d['km'], 'hr': d['hr']}];
+      return fs.map((f) => rdOne(f['km'], f['hr'], lab)).where((x) => x.isNotEmpty).join(lab ? ', ' : '<br>');
+    }
     final byR = _n(rateBy0[key]) > 0 ? r2(_n(rateBy0[key])) : 0;
     final manRate = rateAll > 0 ? rateAll : byR > 0 ? byR : rateX;
     final seenDay = <String>{}, lines = <Map<String, dynamic>>[];
     for (var i = 0; i < list.length; i++) {
       final r = list[i], d = iss0[r['date']] as Map?, first = seenDay.add(_s(r['date']));
       final iss = first && d != null ? _n(d['qty']) : 0;
-      final refill = first && d != null ? (isHr ? d['hr'] : dual ? [d['km'], d['hr']].where((x) => x != '' && x != null).map((x) => '$x').join(' / ') : d['km']) : '';
-      final x = <String, dynamic>{'r': r, 'i': i, 'open': 0, 'iss': iss, 'refill': refill ?? '', 'total': iss, 'used': iss, 'close': 0, 'avg': ''};
+      final refill = first && d != null ? fillReads(d) : ''; // (update-206)
+      final x = <String, dynamic>{'r': r, 'i': i, 'open': 0, 'iss': iss, 'refill': refill, 'total': iss, 'used': iss, 'close': 0, 'avg': ''};
       final ws = sample.isNotEmpty ? null : lbWorkRows(r);
       if (ws == null) {
         lines.add(x);
@@ -499,7 +510,12 @@ LbPrint logBookPrint({
       if (d0.isNotEmpty) inRows[d0] = r2((inRows[d0] ?? 0) + _n(x['iss']));
     }
     final noEntry = (iss0.keys.map((k) => '$k').toList()..sort()).map((d0) => (d0, r2(_n((iss0[d0] as Map?)?['qty']) - (inRows[d0] ?? 0)))).where((x) => x.$2 > .005).toList();
-    final noEntryNote = noEntry.isNotEmpty ? '<small>${n2(issuedRows)} IN THE ENTRIES ABOVE + NOT IN AN ENTRY: ${noEntry.map((x) => '${showDate(x.$1)} ${fmt(x.$2)} L').join(', ')}</small>' : '';
+    final noEntryNote = noEntry.isNotEmpty
+        ? '<small>${n2(issuedRows)} IN THE ENTRIES ABOVE + NOT IN AN ENTRY: ${noEntry.map((x) {
+            final rd = fillReads(iss0[x.$1] as Map?, true); // (update-206) with the reading given at the fill
+            return '${showDate(x.$1)} ${fmt(x.$2)} L${rd.isNotEmpty ? ' (READING $rd)' : ''}';
+          }).join(', ')}</small>'
+        : '';
     int daysOf(String w) => list.where((r) => _mode(r) == w).map((r) => r['date']).toSet().length;
     final holDays = daysOf('Holiday'), bdDaysP = daysOf('Breakdown'), idleDays = daysOf('Idle');
     final idleSet = idle != null && idle.containsKey(key), idlePaid = !(idleSet && idle[key] == false);
@@ -848,6 +864,7 @@ LbPrint logBookPrint({
         'dU': _Col('CONSUMED<br>DIESEL', (x) => n2(x['used']), g: 'DIESEL (LTR)', c: 'n', t: () => fmt(tcs != null ? sum('used') : used)),
         'dC': _Col('CLOSING<br>BALANCE', (x) => n2(x['close']), g: 'DIESEL (LTR)', c: 'n'),
         'dQ': _Col('DIESEL<br>QTY', (x) => _n(x['iss']) != 0 ? '<b>${fmt(x['iss'])}</b>' : '', c: 'n', t: () => fmt(issued)),
+        'dRh': _Col('READING AT<br>DIESEL', (x) => refillTxt(x), c: 'n'), // (update-206) Format H
         'avg': _Col('AVG', (x) => _s(x['avg']), c: 'n'),
         'trip': _Col('TRIP', (x) => tOf(x) != null ? '<b>1</b>' : !stOf(rOf(x)) && _n(rOf(x)['trip']) > 0 ? '<b>${numT(rOf(x)['trip'])}</b>' : '', c: 'n', t: () => fmt(tTrips)),
         'ch': _Col('CHAINAGE', (x) => _e(_up([rOf(x)['chFrom'], rOf(x)['chTo']].where((v) => _s(v).isNotEmpty).join(' – '))), c: 'lb-sm', wrap: true),
@@ -862,7 +879,10 @@ LbPrint logBookPrint({
               '${_e(_up(_s(r['work']).isNotEmpty ? r['work'] : (fm == 'E' || fm == 'F' || fm == 'G' ? '' : r['remark'])))}';
         }, wrap: true),
       };
-      final cols = [for (final k in colsF) (fm == 'C' || fm == 'D') && RegExp(r'^(km|hr)[SCT]$').hasMatch(k) ? c[k]!.group('READING') : c[k]!];
+      final cols = [
+        for (final k in colsF)
+          if (k != 'dRh' || lines.any((x) => '${x['refill'] ?? ''}'.isNotEmpty)) (fm == 'C' || fm == 'D') && RegExp(r'^(km|hr)[SCT]$').hasMatch(k) ? c[k]!.group('READING') : c[k]!, // (update-206)
+      ];
       // Format I: every trip of an entry is a line of its own
       final linesF = <Map<String, dynamic>>[];
       for (final x in lines) {

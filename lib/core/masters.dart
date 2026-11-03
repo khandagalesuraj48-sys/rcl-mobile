@@ -290,13 +290,13 @@ class LbFormat {
 
 const kLbFormats = [
   LbFormat('A', 'Format A – Standard Log Book (Monthly)', 'Unit, reading / work (KM, Hrs, Time, Trip), diesel with refilling reading, average, chainage, work.'),
-  LbFormat('B', 'Format B – KM + Hrs + Trip', 'KM reading, Hrs reading, diesel, trip, chainage, work.'),
+  LbFormat('B', 'Format B – KM + Hrs + Trip', 'KM reading, Hrs reading, diesel with refilling reading, trip, chainage, work.'),
   LbFormat('C', 'Format C – KM', 'KM reading, diesel with refilling reading, average, work.'),
   LbFormat('D', 'Format D – Hrs', 'Hrs reading, diesel with refilling reading, average, chainage, work.'),
-  LbFormat('E', 'Format E – Particular / Challan (reading)', 'Particular, challan no, start / closed reading, total hrs, diesel, average, chainage, work – no shift.'),
+  LbFormat('E', 'Format E – Particular / Challan (reading)', 'Particular, challan no, start / closed reading, total hrs, diesel with refilling reading, average, chainage, work – no shift.'),
   LbFormat('F', 'Format F – Time sheet', 'Reg no, particular, challan no, start / closed time, total hrs, chainage, work – no diesel.'),
   LbFormat('G', 'Format G – Time sheet, 1st hr / 2nd hrs', 'Reg no, particular, challan no, start / closed time, total hrs, 1st hr, 2nd hrs (BOQ slab), chainage, work.'),
-  LbFormat('H', 'Format H – Trip register (vehicle / challan)', 'Shift, vehicle no, challan no, diesel qty, in time, out time, trip, chainage, work.'),
+  LbFormat('H', 'Format H – Trip register (vehicle / challan)', 'Shift, vehicle no, challan no, diesel qty (and the reading given at the fill, when there is one), in time, out time, trip, chainage, work.'),
   LbFormat('I', 'Format I – Water tanker (trip by trip)', 'Water Tanker Report: date, shift, agency, tanker no, challan no, dispatch / unload time, trip, chainage, use for – one line per trip; total, day and night trips. Entered on Log Book → "Water tanker – trip by trip".'),
 ];
 
