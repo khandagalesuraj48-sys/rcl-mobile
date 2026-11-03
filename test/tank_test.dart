@@ -61,6 +61,7 @@ void main() {
         logs: BillLogs(rows, '${a['from']}', '${a['to']}', c['extra'] as Map),
         machine: machine,
         round: false, // (the web's bills before update-202 – the fixture's)
+        txD: false, // (… and before update-204)
       );
       final want = (c['bills'] as List).cast<Map<String, dynamic>>(), sheets = (c['sheets'] as List).cast<String>();
       expect(got.length, want.length);

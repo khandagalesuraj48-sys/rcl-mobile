@@ -15,13 +15,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
-**Version 3.76.0 (02-11-2026 – "jya gadyana diesel dile jatey tya pratek gadich tank check compulsory karaych aahe every 7 days …
+**Version 3.78.0 (02-11-2026 – made as 3.76.0, its code notes say so – "jya gadyana diesel dile jatey tya pratek gadich tank check compulsory karaych aahe every 7 days …
 super admin la access de …"; "ratri 12 nantr next day chalu hotoy ata 12 nko tr sakali 6 am nantr next day chalu hoil … portal madhun
 site wise change kru shakel"; with Mechanical update-203):** Diesel Issue – a tank check due with the fill (Mechanical's `tankDue`: the
 Super Admin's rule, counted from the last check) shows its box (the diesel found before filling, a reason when it differs); the fill is
 not saved without it and goes with it (`tc`); "Multiple entries" – in the first row of the machinery. Super Admin → Sites → a site →
 **Day & tank check**: the hour the site's day starts (06:00 unless set – the app's "today" comes from Mechanical) and the tank check
 every N days for Own / Rental / Hired and machinery-wise (add / change / delete) – the Portal's `siteRulesGet` / `siteRulesSave`.
+**Version 3.77.0 (03-11-2026 – "je party tax invoice ahe tya war debit amount nko dakhau tith direct ji abstract warti Net Work Done
+Amount ji amount asel debit nantr chi tich tax invoice part dakhwel … ajun ek delet kelel bill eth nko show karu seprate thew month
+wise"; with Mechanical update-204):** a bill made from now on (`txD`) – its Tax Invoice is of the Net Work Done Amount (D): no
+deduction on it, the other deduction (C) taken off the vehicles in proportion (`txShares`, the web's; the fixture `web_round.json`
+made again by the web's own code). RCL Drive: a deleted bill is not in Saved Bills but in its own tab, **Deleted Bills**, month by
+month. (3.76.0 – the tank check – is its own piece of work.)
 
 **Version 3.75.0 (02-11-2026 – "apan je bill banwato te point madhe yet … amount mala decimal madhe nko aahe round off amount hawwet
 … ha bill madhe 2 sign wadhwayche aahet fkt abstract warti … verify by ho account ani checked by ho account"; with Mechanical

@@ -2,7 +2,9 @@
  * Saved Bills (View / Print with the Log Book, the Log Book alone, Delete – Admin, with the reason) and Saved Debit Notes (the
  * notes made from the Log Book – View / Print, Cancel by Admin – and the diesel debit note of every bill); + New Debit Note: work
  * charged to a party in "Debit to" of the Log Book, the lines corrected or added by hand, GST / TDS, saved with the next number.
- * Server: getBills, getDebitNotes, deleteBill, cancelDebitNote, getLookups (the parties), getDebitPending, saveDebitNote. */
+ * Server: getBills, getDebitNotes, deleteBill, cancelDebitNote, getLookups (the parties), getDebitPending, saveDebitNote.
+ * (3.77.0, Mechanical update-204: "delet kelel bill eth nko show karu seprate thew month wise") a deleted bill is not in Saved Bills
+ * but in its own tab, Deleted Bills – month by month (the month its work period starts, the newest first). */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 
@@ -137,7 +139,7 @@ class _DriveScreenState extends State<DriveScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('RCL Drive', 'RCL ड्राइव्ह', size: 20, weight: FontWeight.w700),
@@ -145,6 +147,7 @@ class _DriveScreenState extends State<DriveScreen> {
           bottom: TabBar(labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5), tabs: [
             Tab(key: const Key('drv-bills'), child: Text('Saved Bills')),
             Tab(key: const Key('drv-dn'), child: Text('Saved Debit Notes')),
+            Tab(key: const Key('drv-del'), child: Text('Deleted Bills')),
           ]),
         ),
         body: Column(children: [
@@ -153,7 +156,7 @@ class _DriveScreenState extends State<DriveScreen> {
           Expanded(
             child: loading && bills.isEmpty && notes.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : TabBarView(children: [_bills(s), _notes(s)]),
+                : TabBarView(children: [_bills(s), _notes(s), _deleted(s)]),
           ),
         ]),
       ),
@@ -211,10 +214,38 @@ class _DriveScreenState extends State<DriveScreen> {
         child: ListView(key: const Key('sb-list'), padding: const EdgeInsets.fromLTRB(16, 6, 16, 30), children: [
           Text('Everything that was submitted – shown exactly as it was saved: the Abstract, the Tax Invoice and the Debit Note of every bill.', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           const SizedBox(height: 8),
-          if (bills.isEmpty && !loading) Padding(padding: const EdgeInsets.all(20), child: Text('No submitted bills for these filters.', textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
-          for (final b in bills) _billTile(s, b),
+          if (!bills.any((b) => b['status'] != 'Deleted') && !loading) Padding(padding: const EdgeInsets.all(20), child: Text('No submitted bills for these filters.', textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
+          for (final b in bills)
+            if (b['status'] != 'Deleted') _billTile(s, b),
         ]),
       );
+
+  static const _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  /// (3.77.0, update-204) Deleted Bills: month by month – the month its work period starts (as the Bill Summary), the newest first
+  Widget _deleted(Session s) {
+    final by = <String, List<Map<String, dynamic>>>{};
+    for (final b in bills.where((b) => b['status'] == 'Deleted')) {
+      final f = '${b['from'] ?? ''}';
+      (by[RegExp(r'^\d{4}-\d{2}').hasMatch(f) ? f.substring(0, 7) : ''] ??= []).add(b);
+    }
+    final keys = by.keys.toList()..sort((a, b) => b.compareTo(a));
+    String month(String k) => k.isEmpty ? 'No period' : '${_months[(int.tryParse(k.substring(5, 7)) ?? 1) - 1]} ${k.substring(0, 4)}';
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(key: const Key('sbx-list'), padding: const EdgeInsets.fromLTRB(16, 6, 16, 30), children: [
+        if (keys.isEmpty && !loading) Padding(padding: const EdgeInsets.all(20), child: Text('No deleted bills for these filters.', textAlign: TextAlign.center, style: const TextStyle(color: C.muted))),
+        for (final k in keys) ...[
+          Padding(
+            key: Key('sbx-m-$k'),
+            padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+            child: Text('${month(k)} – ${by[k]!.length} deleted bill${by[k]!.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: C.ink)),
+          ),
+          for (final b in by[k]!) _billTile(s, b),
+        ],
+      ]),
+    );
+  }
 
   Widget _billTile(Session s, Map<String, dynamic> b) {
     final gone = b['status'] == 'Deleted', old = b['status'] == 'Superseded' || gone, rev = num.tryParse('${b['rev'] ?? 0}') ?? 0; // (3.33.0) a deleted bill is kept, marked Deleted

@@ -1979,6 +1979,17 @@ void main() {
     await net(t);
     await tapK(t, 'bh-Saved Bills');
     await net(t);
+    // (3.77.0, Mechanical update-204) a deleted bill is not in Saved Bills: it is in Deleted Bills, under its month
+    expect(find.byKey(const Key('sb-BILL-00001')), findsOneWidget);
+    expect(find.byKey(const Key('sb-BILL-00003')), findsNothing);
+    await t.tap(find.byKey(const Key('drv-del')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('sbx-m-2026-07')), findsOneWidget);
+    expect(find.text('July 2026 – 1 deleted bill'), findsOneWidget);
+    expect(find.byKey(const Key('sb-BILL-00003')), findsOneWidget);
+    expect(find.textContaining('Deleted by Super Admin on 05-08-2026 – wrong rate'), findsOneWidget);
+    expect(find.byKey(const Key('sbv-BILL-00003')), findsOneWidget);
+    expect(find.byKey(const Key('sbd-BILL-00003')), findsNothing, reason: 'already deleted');
     await t.tap(find.byKey(const Key('drv-dn')));
     await settle(t, 800);
     await tapK(t, 'dn-open');

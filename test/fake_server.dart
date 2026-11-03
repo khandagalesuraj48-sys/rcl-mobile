@@ -327,6 +327,8 @@ class FakeServer {
   static const _savedBills = [
     {'id': 'BILL-00001', 'vendor': 'I E Enterprises', 'company': 'Sketchline Industries', 'billNo': '7', 'rev': 0, 'from': '2026-08-01', 'to': '2026-08-31', 'billDate': '2026-09-05', 'net': 41250.5, 'status': 'Active', 'enteredBy': 'Tester', 'dnNo': 'SLI/TST/DN-2', 'dnAmt': 3200},
     {'id': 'BILL-00002', 'vendor': 'Chalke Enterprises', 'company': 'Rachana Construction Limited', 'billNo': '3', 'rev': 1, 'from': '2026-08-01', 'to': '2026-08-31', 'billDate': '2026-09-06', 'net': 18000, 'status': 'Superseded', 'enteredBy': 'Tester', 'dnNo': '', 'dnAmt': 0},
+    // (3.77.0, Mechanical update-204) a deleted bill: not in Saved Bills, in Deleted Bills under its month
+    {'id': 'BILL-00003', 'vendor': 'Chalke Enterprises', 'company': 'Sketchline Industries', 'billNo': '2', 'rev': 0, 'from': '2026-07-01', 'to': '2026-07-31', 'billDate': '2026-08-04', 'net': 9000, 'status': 'Deleted', 'enteredBy': 'Tester', 'deletedBy': 'Super Admin', 'deletedAt': '2026-08-05T06:00:00Z', 'deleteReason': 'wrong rate', 'dnNo': '', 'dnAmt': 0},
   ];
   static const _ledger = {
     'vendor': 'I E Enterprises', 'from': '', 'to': '', 'opening': 5000, 'openEntry': {'date': '2026-08-01', 'side': 'Payable', 'amount': 5000},
