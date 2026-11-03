@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.77.0 (03-11-2026 – "je party tax invoice ahe tya war debit amount nko dakhau tith direct ji abstract warti Net Work Done
+Amount ji amount asel debit nantr chi tich tax invoice part dakhwel … ajun ek delet kelel bill eth nko show karu seprate thew month
+wise"; with Mechanical update-204):** a bill made from now on (`txD`) – its Tax Invoice is of the Net Work Done Amount (D): no
+deduction on it, the other deduction (C) taken off the vehicles in proportion (`txShares`, the web's; the fixture `web_round.json`
+made again by the web's own code). RCL Drive: a deleted bill is not in Saved Bills but in its own tab, **Deleted Bills**, month by
+month. (3.76.0 – the tank check – is its own piece of work.)
+
 **Version 3.75.0 (02-11-2026 – "apan je bill banwato te point madhe yet … amount mala decimal madhe nko aahe round off amount hawwet
 … ha bill madhe 2 sign wadhwayche aahet fkt abstract warti … verify by ho account ani checked by ho account"; with Mechanical
 update-202):** a bill made from now on is in WHOLE RUPEES (`b['round']`) – every line, the diesel debit of each machinery, the other
