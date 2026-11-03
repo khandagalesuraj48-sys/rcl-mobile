@@ -22,6 +22,13 @@ Mechanical update-205):** Vehicle Compliance – **📎 Documents** of each mach
 files; each file Open / Print / Download; "+ Add …" (Edit). A renewal takes its PDF / photos after the dates (optional – Done with none
 saves the date only). The history's 📎. Server: `getCmpFiles`, `cmpDoc`, `cmpFiles` (step 1zl in each site's Supabase).
 
+**Version 3.78.0 (02-11-2026 – made as 3.76.0, its code notes say so – "jya gadyana diesel dile jatey tya pratek gadich tank check compulsory karaych aahe every 7 days …
+super admin la access de …"; "ratri 12 nantr next day chalu hotoy ata 12 nko tr sakali 6 am nantr next day chalu hoil … portal madhun
+site wise change kru shakel"; with Mechanical update-203):** Diesel Issue – a tank check due with the fill (Mechanical's `tankDue`: the
+Super Admin's rule, counted from the last check) shows its box (the diesel found before filling, a reason when it differs); the fill is
+not saved without it and goes with it (`tc`); "Multiple entries" – in the first row of the machinery. Super Admin → Sites → a site →
+**Day & tank check**: the hour the site's day starts (06:00 unless set – the app's "today" comes from Mechanical) and the tank check
+every N days for Own / Rental / Hired and machinery-wise (add / change / delete) – the Portal's `siteRulesGet` / `siteRulesSave`.
 **Version 3.77.0 (03-11-2026 – "je party tax invoice ahe tya war debit amount nko dakhau tith direct ji abstract warti Net Work Done
 Amount ji amount asel debit nantr chi tich tax invoice part dakhwel … ajun ek delet kelel bill eth nko show karu seprate thew month
 wise"; with Mechanical update-204):** a bill made from now on (`txD`) – its Tax Invoice is of the Net Work Done Amount (D): no

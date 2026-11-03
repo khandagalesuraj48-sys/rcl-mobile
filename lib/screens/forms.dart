@@ -77,6 +77,11 @@ class _EntryFormState extends State<EntryForm> {
   final pump = TextEditingController(), rate = TextEditingController(), billNo = TextEditingController();
   /// (3.45.0, Mechanical update-164) a fill at a site on fuel cards: its ₹ (its card or Cash is [source]; its rate in [rate])
   final amount = TextEditingController();
+  // (3.76.0, Mechanical update-203) a tank check every N days (the Super Admin's rule in the Portal): due with this fill → its box,
+  // saved with the fill (the tank before filling = the end of the day before). A change of the entry does not ask it.
+  final tcPh = TextEditingController(), tcRs = TextEditingController();
+  Map<String, dynamic>? tcDue;
+  int tcSeq = 0;
   String billDate = '';
   Map<String, dynamic>? bal; // stock at the source for this date + shift (issue)
   Map? tbal; // (3.14.0) a transfer: the opening stock of From and To at this date + shift (getTransferBalance)
@@ -281,7 +286,7 @@ class _EntryFormState extends State<EntryForm> {
   @override
   void dispose() {
     _draft?.close();
-    for (final c in [qty, km, hr, driver, remark, pump, rate, billNo, amount]) {
+    for (final c in [qty, km, hr, driver, remark, pump, rate, billNo, amount, tcPh, tcRs]) {
       c.dispose();
     }
     super.dispose();
@@ -364,7 +369,45 @@ class _EntryFormState extends State<EntryForm> {
   }
 
   /// (3.14.0) The machinery's diesel history (the web's dhShow): the card, the last reading as the hint, the last driver.
+  Future<void> _tcCheck() async {
+    final m = machine, my = ++tcSeq;
+    if (!issue || m == null || ed != null || m.fuel != 'Diesel') {
+      if (tcDue != null) setState(() => tcDue = null);
+      return;
+    }
+    Map<String, dynamic>? r;
+    try {
+      final x = await SessionScope.read(context).api.call('tankDue', [
+        {'no': m.id, 'date': date}
+      ]);
+      if (x is Map && x['due'] == true) r = x.cast<String, dynamic>();
+    } catch (_) {/* (a server before update-203) – it says so at the save */}
+    if (my != tcSeq || !mounted) return;
+    setState(() => tcDue = r);
+  }
+
+  Widget _tcBox() {
+    final t = tcDue!;
+    final last = '${t['last'] ?? ''}'.isNotEmpty ? 'the last one on ${showDate('${t['last']}')}' : 'no check yet (diesel since ${showDate('${t['start'] ?? ''}')})';
+    return Container(
+      key: const Key('f-tc'),
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFFDBA74))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('Tank check due', mr: 'Tank check करायचा आहे', style: const TextStyle(color: Color(0xFF9A3412), fontWeight: FontWeight.w800)),
+        const SizedBox(height: 2),
+        Text('$last, a check every ${t['days']} days. Measure the tank before filling.', style: const TextStyle(color: Color(0xFF7C2D12), fontSize: 13)),
+        const SizedBox(height: 8),
+        TextField(key: const Key('f-tc-ph'), controller: tcPh, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: tr('Diesel found in the tank before filling (L)'))),
+        const SizedBox(height: 8),
+        TextField(key: const Key('f-tc-rs'), controller: tcRs, decoration: InputDecoration(labelText: tr('Reason (if it differs from the system)'))),
+      ]),
+    );
+  }
+
   Future<void> _hist() async {
+    _tcCheck(); // (3.76.0, update-203) with the machinery and the date
     final m = machine, my = ++histSeq;
     if (!issue || m == null) {
       if (hist != null) setState(() => hist = null);
@@ -902,6 +945,7 @@ class _EntryFormState extends State<EntryForm> {
             'driver': driver.text.trim(), 'remark': remark.text.trim(), 'source': source, 'force': false, 'mode': way,
             if (_photoList.isNotEmpty && ed == null) 'photos': _photoList,
             if (SessionScope.read(context).cardSite) ...{'amount': asNum(amount.text) ?? '', 'rate': asNum(rate.text) ?? ''},      // (3.45.0) its ₹
+            if (tcDue != null && ed == null) 'tc': {'physical': asNum(tcPh.text) ?? '', 'reason': tcRs.text.trim()},      // (3.76.0, update-203)
           },
         'inward' => {
             'date': date, 'location': source, 'pump': pump.text.trim(), 'qty': asNum(qty.text) ?? '', 'rate': asNum(rate.text) ?? '', 'billNo': billNo.text.trim(), 'billDate': billDate,
@@ -921,6 +965,7 @@ class _EntryFormState extends State<EntryForm> {
     if (k.key == 'transfer' && s.placeFuel(from) != s.placeFuel(to)) return 'A transfer goes only between places of the same fuel: $from holds ${s.placeFuel(from)}, $to holds ${s.placeFuel(to)}.';
     if (!((asNum(qty.text) ?? 0) > 0)) return _unit == 'kg' ? 'Enter the kg.' : 'Enter the litres.';
     if (issue && s.cardSite && !((asNum(amount.text) ?? 0) > 0)) return 'Enter the Amount (₹) of this fill.';      // (3.45.0)
+    if (issue && tcDue != null && ed == null && asNum(tcPh.text) == null) return 'Tank check due: type the diesel found in the tank before filling.';      // (3.76.0, update-203)
     if (issue && bal != null && (asNum(qty.text) ?? 0) > (asNum(bal!['available']) ?? double.infinity)) {
       final w = s.placeFuel(source) == 'Diesel' ? 'diesel' : s.placeFuel(source), u = _unit == 'kg' ? 'kg' : 'L';
       return 'Not enough $w at $source for ${showDate(date)} ($shift): you can issue up to ${fmtNum(asNum(bal!['available']))} $u. Add a ${w == 'diesel' ? 'Diesel' : w} Inward first or reduce the ${u == 'kg' ? 'kg' : 'litres'}.';
@@ -1011,9 +1056,10 @@ class _EntryFormState extends State<EntryForm> {
         ai.clear();
         aiPut.clear();
         _billsReset();
-        for (final c in [qty, km, hr, remark, rate, billNo, amount]) {
+        for (final c in [qty, km, hr, remark, rate, billNo, amount, tcPh, tcRs]) {
           c.clear();
         }
+        tcDue = null;
       });
       _balance();
     } catch (e) {
@@ -1502,6 +1548,7 @@ class _EntryFormState extends State<EntryForm> {
               _transferLive(),
             ],
             if (k.key != 'inward') ...[_label('Remark', 'शेरा'), TextField(controller: remark, decoration: InputDecoration(hintText: tr('Optional')))],
+            if (issue && tcDue != null && ed == null) _tcBox(),      // (3.76.0, update-203)
             if (err.isNotEmpty) InfoLine(err, bad: true),
           ]),
         ),

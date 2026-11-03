@@ -349,6 +349,17 @@ class FakeServer {
   };
   // (3.9.0) Administration: the users and their access, the activity, the rules, Read Me; what was sent
   final adminSent = <Map<String, dynamic>>[];
+  // (3.76.0, Mechanical update-203) a site's Day & tank check (the Portal) and a tank check due with a fill (Mechanical's tankDue)
+  Map<String, dynamic> siteRules = {
+    'dayStart': '06:00',
+    'tank': {'since': '', 'groups': {'Own': '', 'Rental': '', 'Hired': ''}, 'machines': []},
+    'machines': [
+      {'no': 'MH-25-AJ-2169', 'name': '', 'type': 'Tipper', 'ownership': 'Rental', 'cap': 220, 'not': '', 'days': 0},
+      {'no': 'Sany 210 (No.1)', 'name': '', 'type': 'Excavator', 'ownership': 'Own', 'cap': '', 'not': 'no Tank Capacity', 'days': 0},
+    ],
+  };
+  Map<String, dynamic>? tankDueAns; // null = no check due
+  final tankDueAsked = <Map>[];
   // (3.74.0) the site's own words for voice typing (Mechanical update-201): the Super Admin's words, the corrections learned, what was sent
   List<String> voiceAdmin = ['Arihant City'];
   List<Map<String, dynamic>> voiceFixes = [];
@@ -798,6 +809,25 @@ class FakeServer {
           final pg = ((x['pages'] as Map?) ?? const {}).cast<String, dynamic>();
           y['pages'] = y['role'] == 'admin' ? {for (final p in kStorePages) if (p['admin'] == true && pg.containsKey(p['key'])) '${p['key']}': pg[p['key']]} : pg;
           return _j({'ok': true, 'pages': y['pages']});
+        }
+      // (3.76.0, Mechanical update-203) Sites → Day & tank check
+      case 'siteRulesGet':
+        {
+          if (!siteOk(site)) return _no('Pick a site.');
+          return _j({'site': site, ...siteRules});
+        }
+      case 'siteRulesSave':
+        {
+          if (!siteOk(site)) return _no('Pick a site.');
+          if (!RegExp(r'^([01][0-9]|2[0-3]):[0-5][0-9]$').hasMatch('${x['dayStart'] ?? ''}')) return _no('Day starts at: type the hour as HH:MM (for example 06:00).');
+          final t = (x['tank'] as Map?) ?? const {}, g = (t['groups'] as Map?) ?? const {};
+          final on = ['Own', 'Rental', 'Hired'].any((k) => '${g[k] ?? ''}'.isNotEmpty) || (t['machines'] as List? ?? const []).any((m) => m is Map && m['on'] != false);
+          siteRules = {
+            'dayStart': x['dayStart'],
+            'tank': {'since': on ? '2026-10-14' : '', 'groups': {for (final k in ['Own', 'Rental', 'Hired']) k: num.tryParse('${g[k] ?? ''}') ?? ''}, 'machines': [for (final m in (t['machines'] as List? ?? const [])) if (m is Map) {'no': m['no'], 'on': m['on'] != false, 'days': num.tryParse('${m['days'] ?? ''}') ?? ''}]},
+            'machines': siteRules['machines'],
+          };
+          return _j({'ok': true, 'site': site, ...siteRules});
         }
       case 'placesGet':
         {
@@ -2133,8 +2163,13 @@ class FakeServer {
               {'no': 'MH-12-HO-2163', 'name': 'Ertiga', 'type': 'Car', 'fuel': 'CNG', 'unit': 'kg', 'std': 25, 'km': 300, 'qty': 12, 'amount': 1100, 'card': 0, 'cash': 1100, 'fills': 1, 'avg': 25, 'last': {'date': '2026-10-12', 'qty': 12, 'amount': 1100, 'km': 30100, 'paidBy': 'Cash'}},
             ],
             'total': {'byFuel': {'Petrol': 30, 'CNG': 12}, 'amount': 4300, 'card': 3200, 'cash': 1100, 'fills': 2, 'km': 990, 'cars': 2}}});
+        // (3.76.0, Mechanical update-203) a tank check due with this fill?
+        case 'tankDue':
+          tankDueAsked.add((a[0] as Map));
+          return _j({'result': tankDueAns ?? {'no': (a[0] as Map)['no'], 'date': (a[0] as Map)['date'], 'due': false}});
         case 'saveDieselIssue':
           final d = (a[0] as Map).cast<String, dynamic>();
+          if (tankDueAns != null && tankDueAns!['due'] == true && d['tc'] == null) return _j({'error': '${d['no']}: tank check due – the last one on 31-10-2026, a check every 7 days. Type the diesel found in the tank before filling (Tank check), then save.'}, 500);
           if (card) {
             saved.add(d);
             final c = cards.where((c) => c['name'] == d['source']).firstOrNull;
