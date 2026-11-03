@@ -1,3 +1,3 @@
-New: the Tax Invoice of a bill shows the Net Work Done Amount directly – no deduction on it. RCL Drive: deleted bills in their own tab, month by month.
-नवीन: Bill च्या Tax Invoice वर थेट Net Work Done Amount – कोणतीही deduction नाही. RCL Drive: Deleted bill वेगळ्या tab मध्ये, महिन्यानुसार.
-नया: Bill के Tax Invoice पर सीधे Net Work Done Amount – कोई deduction नहीं। RCL Drive: Deleted bill अलग tab में, महीने के हिसाब से।
+New: Vehicle Compliance – 📎 Documents of each vehicle: RC Book, Tax Invoice and the PDF / photo of every renewal (the earlier ones stay to be seen).
+नवीन: Vehicle Compliance – प्रत्येक गाडीचे 📎 Documents: RC Book, Tax Invoice आणि प्रत्येक renewal ची PDF / photo (जुन्या पण बघता येतात).
+नया: Vehicle Compliance – हर गाड़ी के 📎 Documents: RC Book, Tax Invoice और हर renewal की PDF / photo (पुरानी भी देख सकते हैं)।

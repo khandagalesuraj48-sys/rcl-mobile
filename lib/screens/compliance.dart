@@ -3,7 +3,9 @@
  * attention / expired / due / not entered / all), ownership and search; each machinery with its papers – tap a paper to renew it
  * (the new date goes into Asset Master, the old one into the history); "Papers per type" (which papers a type needs); Export
  * Excel (what is on the screen, the same file the web gives); the renewal history.
- * Server: getCompliance, renewDoc, saveCmpRules. */
+ * Server: getCompliance, renewDoc, saveCmpRules.
+ * (3.78.0, Mechanical update-205) 📎 Documents of each machinery (compliance_docs.dart): the RC Book, the Tax Invoice, every renewal's
+ * files; a renewal takes its PDF / photos (optional – "Done" with none saves the date only; back = nothing saved); the history's 📎. */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
@@ -22,6 +24,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import 'compliance_docs.dart';
 
 Future<void> openCompliance(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ComplianceScreen()));
 
@@ -191,6 +194,8 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
                   Row(children: [
                     Expanded(child: Text('${h['no']} · ${h['doc']}', style: const TextStyle(fontWeight: FontWeight.w800))),
                     Text(cmpDateWords(h['on']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                    if ((asNum(h['files']) ?? 0) > 0)      // (3.78.0, update-205) its files
+                      TextButton(key: Key('cphf-${h['id']}'), style: TextButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8)), onPressed: () => openCmpDocs(context, '${h['no']}'), child: Text('📎 ${asNum(h['files'])!.toInt()}')),
                   ]),
                   const SizedBox(height: 2),
                   Text('${cmpDateWords(h['from'])} → ${cmpDateWords(h['to'])}', style: const TextStyle(fontWeight: FontWeight.w700, color: C.greenDark)),
@@ -229,7 +234,20 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('${m['no']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         Text([m['type'], m['ownership'], m['owner']].where((x) => '${x ?? ''}'.isNotEmpty).join(' · '), style: const TextStyle(fontSize: 12.5, color: C.muted)),
-        const SizedBox(height: 8),
+        // (3.78.0, update-205) its documents – the RC Book, the Tax Invoice, every renewal's files
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: Key('cpd-${m['no']}'),
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 40)),
+            onPressed: () async {
+              await openCmpDocs(context, '${m['no']}');
+              if (mounted) _load(quiet: true);
+            },
+            icon: const Icon(Icons.attach_file_rounded, size: 18),
+            label: Text('Documents${(asNum(m['files']) ?? 0) > 0 ? ' (${asNum(m['files'])!.toInt()})' : ''}'),
+          ),
+        ),
         LayoutBuilder(builder: (_, bx) => Wrap(spacing: 6, runSpacing: 6, children: [
           for (final k in docs)
             (() {
@@ -287,17 +305,28 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
         ),
       ),
     );
-    final x = {'no': no, 'doc': doc, 'to': na ? 'NA' : lt && doc == 'Tax' ? 'LIFETIME' : to, 'on': on, 'docNo': docNo.text, 'amount': amt.text, 'remark': rem.text};
+    final x = <String, Object?>{'no': no, 'doc': doc, 'to': na ? 'NA' : lt && doc == 'Tax' ? 'LIFETIME' : to, 'on': on, 'docNo': docNo.text, 'amount': amt.text, 'remark': rem.text};
     if (ok != true || !mounted) return;
     if ('${x['to']}'.isEmpty) {
       toast(context, 'Enter the new valid-upto date.', bad: true);
       return;
     }
+    // (3.78.0, update-205) the renewed paper's PDF / photos – optional ("Done" with none: the date only); back: nothing is saved
+    if (d?['filesOn'] == true && x['to'] != 'NA') {
+      final files = await cmpPickFiles(context, '$doc – $no', 'The renewed paper (PDF / photo) – optional: press Done with no file to save the date only.');
+      if (!mounted) return;
+      if (files == null) {
+        toast(context, 'Not saved.');
+        return;
+      }
+      if (files.isNotEmpty) x['files'] = files;
+    }
     try {
       await s.api.call('renewDoc', [x], true);
       if (!mounted) return;
       HapticFeedback.lightImpact();
-      toast(context, '$doc of $no saved – ${x['to'] == 'NA' ? 'N/A' : x['to'] == 'LIFETIME' ? 'lifetime tax paid' : 'valid upto ${showDate('${x['to']}')}'}.');
+      final nf = (x['files'] as List?)?.length ?? 0;
+      toast(context, '$doc of $no saved – ${x['to'] == 'NA' ? 'N/A' : x['to'] == 'LIFETIME' ? 'lifetime tax paid' : 'valid upto ${showDate('${x['to']}')}'}${nf > 0 ? ', with $nf file${nf == 1 ? '' : 's'}' : ''}.');
       await _load(quiet: true);
       try {
         await s.loadInit(); // the new date is in Asset Master

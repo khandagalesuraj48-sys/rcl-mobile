@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.78.0 (03-11-2026 – "mala vehicle compliance madhe pratek vehicle ch document upload krta yaw asa haway rc book pn ok ani
+tya gadich tax invoice pn ok ani ha je kahi renewal hote te renewal wise asaw mhanje maghche document pn mala bghta yeil"; with
+Mechanical update-205):** Vehicle Compliance – **📎 Documents** of each machinery (`compliance_docs.dart`): its RC Book and Tax Invoice
+(the invoice of buying it – each one added is kept, the earlier ones stay) and each paper with every renewal of the history and ITS
+files; each file Open / Print / Download; "+ Add …" (Edit). A renewal takes its PDF / photos after the dates (optional – Done with none
+saves the date only). The history's 📎. Server: `getCmpFiles`, `cmpDoc`, `cmpFiles` (step 1zl in each site's Supabase).
+
 **Version 3.77.0 (03-11-2026 – "je party tax invoice ahe tya war debit amount nko dakhau tith direct ji abstract warti Net Work Done
 Amount ji amount asel debit nantr chi tich tax invoice part dakhwel … ajun ek delet kelel bill eth nko show karu seprate thew month
 wise"; with Mechanical update-204):** a bill made from now on (`txD`) – its Tax Invoice is of the Net Work Done Amount (D): no
