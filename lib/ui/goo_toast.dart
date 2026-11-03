@@ -21,7 +21,19 @@ void gooToast(BuildContext context, String text,
   // a context under the app's Navigator – or the Navigator's own (the call's notices, the phone-lock warning: its key)
   var ov = Overlay.maybeOf(context, rootOverlay: true);
   if (ov == null && context is StatefulElement && context.state is NavigatorState) ov = (context.state as NavigatorState).overlay;
-  if (ov == null) return;
+  if (ov == null) {
+    // no screen layer reachable from here (a context above the app's Navigator): the bar at the bottom, as before
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(text),
+        backgroundColor: color,
+        duration: stay,
+        persist: false,
+        action: action == null ? null : SnackBarAction(label: action, textColor: actionColor, onPressed: () => onAction?.call()),
+      ));
+    return;
+  }
   gooClear();
   late final OverlayEntry e;
   e = OverlayEntry(
@@ -68,6 +80,14 @@ class _GooState extends State<_Goo> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
   final _lab = GlobalKey();
   late final int _total;
+
+  /// the message's size – measured after each frame is laid out (a size is not read while building)
+  Size? _box;
+  void _measure(Duration _) {
+    if (!mounted) return;
+    final b = _lab.currentContext?.findRenderObject();
+    if (b is RenderBox && b.hasSize) _box = b.size;
+  }
 
   @override
   void initState() {
@@ -126,7 +146,8 @@ class _GooState extends State<_Goo> with SingleTickerProviderStateMixin {
         animation: _c,
         builder: (context, _) {
           final ms = _c.value * _total, out = _total - _gone.toDouble();
-          final box = _lab.currentContext?.size, w = box?.width ?? 120, h = box?.height ?? 46;
+          WidgetsBinding.instance.addPostFrameCallback(_measure);
+          final w = _box?.width ?? 120, h = _box?.height ?? 46;
           // how much the words are there: in after it has spread, out when it starts to gather
           final tx = still ? (ms < 200 ? ms / 200 : (ms > _total - 200 ? (_total - ms) / 200 : 1.0)) : (_seg(ms, _fall + 260, 220) * (1 - _seg(ms, out, 140)));
           return Stack(children: [
