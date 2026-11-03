@@ -4,7 +4,7 @@
  * (the new date goes into Asset Master, the old one into the history); "Papers per type" (which papers a type needs); Export
  * Excel (what is on the screen, the same file the web gives); the renewal history.
  * Server: getCompliance, renewDoc, saveCmpRules.
- * (3.78.0, Mechanical update-205) 📎 Documents of each machinery (compliance_docs.dart): the RC Book, the Tax Invoice, every renewal's
+ * (3.79.0, Mechanical update-205) 📎 Documents of each machinery (compliance_docs.dart): the RC Book, the Tax Invoice, every renewal's
  * files; a renewal takes its PDF / photos (optional – "Done" with none saves the date only; back = nothing saved); the history's 📎. */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
@@ -194,7 +194,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
                   Row(children: [
                     Expanded(child: Text('${h['no']} · ${h['doc']}', style: const TextStyle(fontWeight: FontWeight.w800))),
                     Text(cmpDateWords(h['on']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
-                    if ((asNum(h['files']) ?? 0) > 0)      // (3.78.0, update-205) its files
+                    if ((asNum(h['files']) ?? 0) > 0)      // (3.79.0, update-205) its files
                       TextButton(key: Key('cphf-${h['id']}'), style: TextButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8)), onPressed: () => openCmpDocs(context, '${h['no']}'), child: Text('📎 ${asNum(h['files'])!.toInt()}')),
                   ]),
                   const SizedBox(height: 2),
@@ -234,7 +234,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('${m['no']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         Text([m['type'], m['ownership'], m['owner']].where((x) => '${x ?? ''}'.isNotEmpty).join(' · '), style: const TextStyle(fontSize: 12.5, color: C.muted)),
-        // (3.78.0, update-205) its documents – the RC Book, the Tax Invoice, every renewal's files
+        // (3.79.0, update-205) its documents – the RC Book, the Tax Invoice, every renewal's files
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -311,7 +311,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       toast(context, 'Enter the new valid-upto date.', bad: true);
       return;
     }
-    // (3.78.0, update-205) the renewed paper's PDF / photos – optional ("Done" with none: the date only); back: nothing is saved
+    // (3.79.0, update-205) the renewed paper's PDF / photos – optional ("Done" with none: the date only); back: nothing is saved
     if (d?['filesOn'] == true && x['to'] != 'NA') {
       final files = await cmpPickFiles(context, '$doc – $no', 'The renewed paper (PDF / photo) – optional: press Done with no file to save the date only.');
       if (!mounted) return;

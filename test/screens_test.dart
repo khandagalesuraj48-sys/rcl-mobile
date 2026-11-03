@@ -1540,7 +1540,7 @@ void main() {
     expect(find.byKey(const Key('cp-Sany 210 (No.1)')), findsOneWidget);
   }, tags: ['golden']);
 
-  testWidgets('(3.78.0, Mechanical update-205) Vehicle Compliance – 📎 Documents: the RC Book (the earlier one seen, a new one added – sent with cmpDoc, kept with cmpFiles); a renewal with its photo', (t) async {
+  testWidgets('(3.79.0, Mechanical update-205) Vehicle Compliance – 📎 Documents: the RC Book (the earlier one seen, a new one added – sent with cmpDoc, kept with cmpFiles); a renewal with its photo', (t) async {
     phone(t);
     final p0 = pickAttFiles, c0 = attCompute;
     attCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);

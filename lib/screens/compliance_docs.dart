@@ -1,4 +1,4 @@
-/* (3.78.0, Mechanical update-205) THE DOCUMENTS OF A MACHINERY IN VEHICLE COMPLIANCE – the app's own screens of the web's 📎 Documents
+/* (3.79.0, Mechanical update-205) THE DOCUMENTS OF A MACHINERY IN VEHICLE COMPLIANCE – the app's own screens of the web's 📎 Documents
  * (asked 03-11-2026: "vehicle compliance madhe pratek vehicle ch document upload krta yaw asa haway rc book pn ok ani tya gadich tax
  * invoice pn ok ani … renewal wise asaw mhanje maghche document pn mala bghta yeil"):
  *   CmpDocsScreen  – its RC Book and Tax Invoice (the invoice of buying it – each one added is kept, the earlier ones stay) and each paper

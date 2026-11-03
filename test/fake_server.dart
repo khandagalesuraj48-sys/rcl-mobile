@@ -60,7 +60,7 @@ class FakeServer {
   final vendorFiles = <String, Map<String, dynamic>>{};
   final fileGets = <String>[];
   List<String> cmpSkipped = [];
-  // (3.78.0, Mechanical update-205) the documents of Vehicle Compliance: the site keeps them (step 1zl); the files sent (cmpDoc); the
+  // (3.79.0, Mechanical update-205) the documents of Vehicle Compliance: the site keeps them (step 1zl); the files sent (cmpDoc); the
   // lines of the history with their files
   bool cmpFilesOn = false;
   final cmpSent = <String, Map<String, dynamic>>{};
@@ -1477,7 +1477,7 @@ class FakeServer {
         case 'renewDoc':
           masterCalls.add({'fn': action, 'x': a[0]});
           return _j({'result': {'ok': true}});
-        // (3.78.0, Mechanical update-205) one file of a paper sent (as the server's uploadAttachment_ 'Vehicle Compliance'); the files kept
+        // (3.79.0, Mechanical update-205) one file of a paper sent (as the server's uploadAttachment_ 'Vehicle Compliance'); the files kept
         // with a line (cmpFiles – the server's same checks: each sent by this person); a machinery's documents with their links
         case 'cmpDoc':
           final up = (a[0] as Map).cast<String, dynamic>(), m = RegExp(r'^data:(image/jpeg|image/png|application/pdf);base64,(.+)$').firstMatch('${up['data']}');
