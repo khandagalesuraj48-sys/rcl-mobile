@@ -95,4 +95,31 @@ void main() {
     expect(sheet.contains('Billing Dept'), false);
     expect(sheet.contains('<div class="bl-ho"><div class="bl-ho-t">HEAD OFFICE</div><div><span></span><b>Checked By</b><small>HO Accounts</small></div><div><span></span><b>Verified By</b><small>HO Accounts</small></div></div>'), true);
   });
+
+  test('(3.77.0, Mechanical update-204) the Tax Invoice of a bill made from now on is of the Net Work Done Amount (D) – no deduction on it; the other deduction taken off the vehicles in proportion; a bill before keeps its own', () {
+    String text(String h) => h.replaceAll(RegExp(r'<style>[\s\S]*?</style>'), '').replaceAll(RegExp(r'<[^>]+>'), ' ').replaceAll('&nbsp;', ' ').replaceAll(RegExp(r'\s+'), ' ');
+    final c = (fx['cases'] as List).cast<Map<String, dynamic>>().firstWhere((x) => x['name'] == 'round_c'), bill = ((c['bills'] as List).first as Map);
+    expect(bill['txD'], true, reason: 'the web marks a bill it builds (update-204)');
+    final inv = text(taxInvoiceHtml(bill));
+    expect(inv.contains('RENT ON VEHICLE RND1 (TIPPER) FOR THE MONTH OF OCTOBER 2026 70,046 6,304 6,304 82,654'), true, reason: inv);
+    expect(inv.contains('RENT ON VEHICLE RND2 (EXCAVATOR) FOR THE MONTH OF OCTOBER 2026 1,00,939 9,085 9,085 1,19,109'), true, reason: inv);
+    expect(inv.contains('Total Billing Amount 1,70,985 - - 1,70,985'), true);
+    expect(inv.contains('Total Amount Before Tax 1,70,985 Basic Value 1,70,985 SGST 9% 15,389 CGST 9% 15,389 Total Billing Amt 2,01,763'), true, reason: inv);
+    for (final gone in ['Less', 'deduction', 'Tyre', 'Diesel', 'TDS']) {
+      expect(inv.contains(gone), false, reason: 'not on the invoice: $gone');
+    }
+    expect(txShares({'C': 1000}, [124800, 32400, 40000]), [632.86, 164.3, 202.84]);
+    expect(txShares({'C': 1000, 'round': true}, [124800, 32400, 40000]), [633, 164, 203]);
+    expect(txShares({'C': 0}, [124800, 32400]), [0, 0]);
+    // his RA 19 (03-11-2026): one Bolero, the substitute driver's charges – the invoice of 39,490
+    final his = {'company': 'Sketchline Industries', 'vendor': {'name': 'TEST VENDOR'}, 'billNo': '19', 'billDate': '2026-11-03', 'from': '2026-10-01', 'to': '2026-10-31', 'round': true, 'txNet': true, 'txD': true,
+      'machines': [{'no': 'MH12SY6216', 'type': 'BOLERO', 'amount': 41290, 'excessAmt': 0}], 'A': 41290, 'B': 0, 'C': 1800, 'cReason': 'Substitute driver charges', 'D': 39490, 'gstPct': 0, 'E': 0, 'F': 0, 'G': 39490, 'H': 790, 'I': 38700};
+    final t1 = text(taxInvoiceHtml(his));
+    expect(t1.contains('RENT ON VEHICLE MH12SY6216 (BOLERO) FOR THE MONTH OF OCTOBER 2026 39,490 - - 39,490'), true, reason: t1);
+    expect(t1.contains('Total Amount Before Tax 39,490 Basic Value 39,490'), true, reason: t1);
+    expect(['Less', 'Substitute', '41,290', '1,800'].where(t1.contains), isEmpty);
+    // a bill made before (txNet only): the other deduction stays a line of its own
+    final before = text(taxInvoiceHtml({...his, 'txD': null}));
+    expect(before.contains('Total Amount Before Tax 41,290 Less: Other deduction (Substitute driver charges) − 1,800 Basic Value 39,490'), true, reason: before);
+  });
 }
