@@ -15,14 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.81.0 (03-11-2026 – "mala pratek format madhe diesel issue haw aahe ok jr tya gadila dilech nasel tr nko deu but dile aahe
+tr haw aahe ani diesel diley reading nahi tr reading blank thew … sagle format la aple he lagu"; with Mechanical update-206, its second
+part):** every Log Book format shows the diesel given – Format F, G (time sheets) and I (water tanker) get "Diesel qty" and "Reading
+at diesel" when the machinery had diesel in the dates (none – not shown), Format H its reading the same way; a fill without a reading –
+blank; Format I – an entry's diesel on its first trip only (`lb_print.dart`; the fixture `lbprint/web_sheets.json` made again by the
+web's own print, new case "fill_fgi_206").
+
 **Version 3.80.0 (03-11-2026 – "jith diesel issue diesel tith jr tya machine chi reading dilei asel tr ti dislich pahije"; with
 Mechanical update-206):** the Log Book print (and a bill's Log Book) shows the reading given at every diesel fill – KM, Hrs or both,
 whatever the fill has (not only the reading of the machinery's unit), each fill of the day, and with a fill on a day without an entry;
-Format B and E with the refilling reading. Then ("mala pratek format madhe diesel issue haw aahe … dile aahe tr haw aahe ani diesel
-diley reading nahi tr reading blank thew"): every format shows the diesel given – Format F, G and I get "Diesel qty" and "Reading at
-diesel" when the machinery had diesel in the dates (none – not shown), Format H its reading the same way; a fill without a reading –
-blank (`lb_print.dart`; the fixture `lbprint/web_sheets.json` made again by the web's own code, with the cases "fill_reads_206" and
-"fill_fgi_206").
+Format B and E with the refilling reading, Format H when a fill has one (`lb_print.dart`; the fixture `lbprint/web_sheets.json` made
+again by the web's own code, with the case "fill_reads_206").
 
 **Version 3.79.0 (03-11-2026 – after 3.78.0, the tank check – "mala vehicle compliance madhe pratek vehicle ch document upload krta yaw asa haway rc book pn ok ani
 tya gadich tax invoice pn ok ani ha je kahi renewal hote te renewal wise asaw mhanje maghche document pn mala bghta yeil"; with
