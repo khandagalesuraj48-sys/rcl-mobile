@@ -948,6 +948,15 @@ class _SaSiteScreenState extends State<SaSiteScreen> {
             icon: const Icon(Icons.local_gas_station_rounded),
             label: const Text('Diesel places'),
           ),
+        if (!closed) ...[
+          const SizedBox(height: 10),
+          OutlinedButton.icon(      // (3.76.0, Mechanical update-203)
+            key: const Key('sa-st-rules'),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SaSiteRulesScreen(console: widget.console, site: code))),
+            icon: const Icon(Icons.schedule_rounded),
+            label: const Text('Day & tank check'),
+          ),
+        ],
         if (closed) ...[
           OutlinedButton.icon(
             key: const Key('sa-st-setup'),
@@ -1136,6 +1145,195 @@ class _SaPlacesScreenState extends State<SaPlacesScreen> {
             Text(l, style: TextStyle(fontSize: 13, color: l.startsWith('Not set') ? C.amber : C.muted, height: 1.35, fontWeight: l.startsWith('Not set') ? FontWeight.w700 : FontWeight.w400)),
           const SizedBox(height: 12),
           PlacesEditor(rows: rows, live: true, changed: () => setState(() {})),
+        ],
+      ]),
+    );
+  }
+}
+
+/* ======================================== day & tank check ======================================== */
+/// (3.76.0, Mechanical update-203 – the Portal's Sites → Day & tank check) the hour the site's day starts (06:00 unless set) and a tank
+/// check every N days before diesel: Own / Rental / Hired, and a machinery's own line (compulsory or not, its days) that wins over its
+/// group – add / change / delete. Only Active machinery with its Tank Capacity, never Debit Basis (Mechanical says which and why).
+class SaRuleLine {
+  SaRuleLine([Map? x]) {
+    no = '${x?['no'] ?? ''}';
+    on = x?['on'] != false;
+    days.text = '${x?['days'] ?? ''}';
+  }
+  String no = '';
+  bool on = true;
+  final days = TextEditingController();
+}
+
+class SaSiteRulesScreen extends StatefulWidget {
+  const SaSiteRulesScreen({super.key, required this.console, required this.site});
+  final SuperAdminState console;
+  final String site;
+  @override
+  State<SaSiteRulesScreen> createState() => _SaSiteRulesScreenState();
+}
+
+class _SaSiteRulesScreenState extends State<SaSiteRulesScreen> {
+  Map<String, dynamic>? r;
+  String err = '', day = '06:00';
+  bool busy = false, started = false;
+  final groupOn = <String, bool>{}, groupDays = {for (final k in const ['Own', 'Rental', 'Hired']) k: TextEditingController()};
+  final lines = <SaRuleLine>[];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (started) return;
+    started = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    for (final c in groupDays.values) {
+      c.dispose();
+    }
+    for (final l in lines) {
+      l.days.dispose();
+    }
+    super.dispose();
+  }
+
+  void _take(Map<String, dynamic> x) {
+    r = x;
+    day = '${x['dayStart'] ?? '06:00'}';
+    final t = (x['tank'] as Map?) ?? const {}, g = (t['groups'] as Map?) ?? const {};
+    for (final k in groupDays.keys) {
+      final v = '${g[k] ?? ''}';
+      groupOn[k] = v.isNotEmpty;
+      groupDays[k]!.text = v.isNotEmpty ? v : '7';
+    }
+    lines
+      ..clear()
+      ..addAll([for (final m in SaData._l(t['machines'])) SaRuleLine(m)]);
+  }
+
+  List<Map<String, dynamic>> get _machines => SaData._l(r?['machines']).cast<Map<String, dynamic>>();
+
+  Future<void> _load() async {
+    try {
+      final x = await widget.console.api.admin({'action': 'siteRulesGet', 'site': widget.site});
+      if (mounted) setState(() => _take(x));
+    } catch (e) {
+      if (mounted && !portalSignInEnded(context, e)) setState(() => err = portalMsg(e));
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => busy = true);
+    try {
+      final x = await widget.console.api.admin({
+        'action': 'siteRulesSave',
+        'site': widget.site,
+        'dayStart': day,
+        'tank': {
+          'groups': {for (final k in groupDays.keys) k: groupOn[k] == true ? groupDays[k]!.text.trim() : ''},
+          'machines': [for (final l in lines) if (l.no.isNotEmpty) {'no': l.no, 'on': l.on, 'days': l.days.text.trim()}],
+        },
+      });
+      if (!mounted) return;
+      setState(() {
+        busy = false;
+        _take(x);
+      });
+      toast(context, 'Day & tank check of ${widget.site} saved: the day starts at ${x['dayStart']}.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => busy = false);
+      widget.console.failed(e);
+    }
+  }
+
+  Future<void> _pickDay() async {
+    final p = day.split(':');
+    final t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: int.tryParse(p[0]) ?? 6, minute: int.tryParse(p.length > 1 ? p[1] : '0') ?? 0));
+    if (t == null) return;
+    setState(() => day = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}');
+  }
+
+  Future<void> _pickMachine(SaRuleLine l) async {
+    final ms = _machines;
+    final v = await pickFromList(context, 'Machinery', [for (final m in ms) '${m['no']}${'${m['type'] ?? ''}'.isNotEmpty ? ' · ${m['type']}' : ''} · ${m['ownership'] ?? '–'}${'${m['not'] ?? ''}'.isNotEmpty ? ' – ${m['not']}' : ''}']);
+    if (v == null) return;
+    setState(() => l.no = v.split(' · ').first.split(' – ').first);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.console.d!, x = r, t = (x?['tank'] as Map?) ?? const {}, ms = _machines;
+    final on = ms.where((m) => (num.tryParse('${m['days'] ?? 0}') ?? 0) > 0).length, why = <String, int>{};
+    for (final m in ms) {
+      final n = '${m['not'] ?? ''}';
+      if (n.isNotEmpty) why[n] = (why[n] ?? 0) + 1;
+    }
+    return Scaffold(
+      appBar: AppBar(actions: withAsk(), title: mt.Text('${tr('Day & tank check')} – ${d.siteName(widget.site)} (${widget.site})', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+      bottomNavigationBar: x == null
+          ? null
+          : SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('sr-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save')))),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 30), children: [
+        if (err.isNotEmpty)
+          InfoLine(err, bad: true)
+        else if (x == null)
+          const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('Loading from Mechanical…', style: TextStyle(color: C.muted))))
+        else ...[
+          const Text('The next day starts at', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(key: const Key('sr-day'), onPressed: _pickDay, icon: const Icon(Icons.schedule_rounded), label: mt.Text(day)),
+          const SizedBox(height: 4),
+          const Text('Before this hour the date is still the day before (a night\'s entries go to its day). 06:00 unless set.', style: TextStyle(fontSize: 13, color: C.muted)),
+          const SizedBox(height: 16),
+          const Text('Tank check before diesel – every how many days', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(
+              'When the days from the last tank check are over, a fill of that machinery in Diesel Issue first asks the diesel found in its tank (no check → nothing saved). Only Active machinery with its Tank Capacity; never Debit Basis.${'${t['since'] ?? ''}'.isNotEmpty ? ' On since ${showDate('${t['since']}')}.' : ' Off now.'}',
+              style: const TextStyle(fontSize: 13, color: C.muted)),
+          const SizedBox(height: 8),
+          for (final k in groupDays.keys)
+            Row(key: Key('sr-g-$k'), children: [
+              Checkbox(key: Key('sr-g-$k-on'), value: groupOn[k] == true, onChanged: (v) => setState(() => groupOn[k] = v == true)),
+              SizedBox(width: 80, child: Text(k, style: const TextStyle(fontWeight: FontWeight.w700))),
+              SizedBox(width: 90, child: TextBox(key: Key('sr-g-$k-days'), label: 'Days', controller: groupDays[k]!, kb: TextInputType.number)),
+            ]),
+          const SizedBox(height: 14),
+          const Text('Machinery-wise (its own line wins over its group)', style: TextStyle(fontWeight: FontWeight.w800)),
+          for (var i = 0; i < lines.length; i++)
+            Container(
+              key: Key('sr-m-$i'),
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: C.line)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  Expanded(child: OutlinedButton(key: Key('sr-m-$i-no'), onPressed: () => _pickMachine(lines[i]), child: mt.Text(lines[i].no.isEmpty ? tr('Pick machinery') : lines[i].no))),
+                  IconButton(key: Key('sr-m-$i-del'), tooltip: 'Delete', icon: const Icon(Icons.delete_outline_rounded, color: C.red), onPressed: () => setState(() => lines.removeAt(i))),
+                ]),
+                const SizedBox(height: 6),
+                Row(children: [
+                  Expanded(
+                    child: SegmentedButton<bool>(
+                      key: Key('sr-m-$i-on'),
+                      showSelectedIcon: false,
+                      segments: const [ButtonSegment(value: true, label: Text('Compulsory')), ButtonSegment(value: false, label: Text('Not'))],
+                      selected: {lines[i].on},
+                      onSelectionChanged: (v) => setState(() => lines[i].on = v.first),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(width: 100, child: TextBox(key: Key('sr-m-$i-days'), label: 'Days', controller: lines[i].days, kb: TextInputType.number, hint: 'its group')),
+                ]),
+              ]),
+            ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(key: const Key('sr-add'), onPressed: () => setState(() => lines.add(SaRuleLine())), icon: const Icon(Icons.add_rounded), label: const Text('Add machinery')),
+          const SizedBox(height: 10),
+          Text('Now for $on of ${ms.length} machinery${why.isEmpty ? '' : ' · not for: ${why.entries.map((e) => '${e.value} ${e.key}').join(', ')}'}.', style: const TextStyle(fontSize: 13, color: C.muted)),
         ],
       ]),
     );
