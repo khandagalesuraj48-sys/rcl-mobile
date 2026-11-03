@@ -1,3 +1,3 @@
-New: the Log Book print shows the diesel given and the reading at every fill (KM, Hrs or both) in every format – also the time sheets (F, G) and the water tanker (I) when diesel was given.
-नवीन: Log Book print मध्ये प्रत्येक format मध्ये दिलेले diesel आणि प्रत्येक वेळची reading (KM, Hrs किंवा दोन्ही) – diesel दिले असेल तर time sheet (F, G) आणि water tanker (I) मध्ये पण.
-नया: Log Book print में हर format में दिया गया diesel और हर बार की reading (KM, Hrs या दोनों) – diesel दिया हो तो time sheet (F, G) और water tanker (I) में भी।
+New: the Log Book print shows the diesel given and the reading at every fill in every format; a day with diesel but no Log Book entry is shown as a row of its own.
+नवीन: Log Book print मध्ये प्रत्येक format मध्ये दिलेले diesel आणि प्रत्येक वेळची reading; ज्या दिवशी diesel दिले पण entry नाही तो दिवस पण वेगळ्या ओळीत दिसतो.
+नया: Log Book print में हर format में दिया गया diesel और हर बार की reading; जिस दिन diesel दिया पर entry नहीं, वह दिन भी अलग पंक्ति में दिखता है।

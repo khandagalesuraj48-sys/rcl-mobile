@@ -85,6 +85,8 @@ String _dateAdd(String dk, int n) {
 int _dim(String d) => DateTime(int.parse(d.substring(0, 4)), int.parse(d.substring(5, 7)) + 1, 0).day;
 const _months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 
+/// (update-207) the printed row of a day with diesel and no Log Book entry
+const kLbDsl = 'No Log Book entry – diesel issued';
 String _mode(Map r) => _s(r['mode']).isNotEmpty ? _s(r['mode']) : _s(r['unit']);
 num dayPart(Map r) => r['half'] == true || _n(r['half']) == .5 ? .5 : 1;
 bool _isHol(Map r) => _mode(r) == 'Holiday' || _mode(r) == 'Breakdown';
@@ -496,6 +498,26 @@ LbPrint logBookPrint({
         }
       }
     }
+    // (3.82.0, Mechanical update-207: "jya diwshi diesel ghetley but tya day chi entry nahi … diesel ghetley ani kam nasel tr te entry
+    // disayla hawi kam nasel tr 0 0 sagle rahu de all format sathi") a day with diesel and no Log Book entry is a row of its own, in its
+    // date's place, in every format: its diesel and the reading at it; no work. Only printed – the days, hours, trips and amounts count
+    // the entries only.
+    if (sample.isEmpty) {
+      final dsl = [for (final k in iss0.keys) '$k']..sort();
+      for (final d0 in dsl) {
+        final d = iss0[d0] as Map?;
+        if (d == null || seenDay.contains(d0) || (from.isNotEmpty && d0.compareTo(from) < 0) || (to.isNotEmpty && d0.compareTo(to) > 0) || !(_n(d['qty']) > 0)) continue;
+        final f0 = d['fills'] is List && (d['fills'] as List).isNotEmpty ? (d['fills'] as List).first as Map : const {}, q = _n(d['qty']);
+        final r = <String, dynamic>{'no': no, 'date': d0, 'shift': f0['s'] == 'Night' ? 'Night' : 'Day', 'mode': kLbDsl, 'unit': u, '_dsl': true, 'work': '', 'remark': '', 'chFrom': '', 'chTo': '', 'challan': '', 'trip': '', 'okm': '', 'ckm': '', 'wkm': '', 'ohr': '', 'chr': '', 'whr': ''};
+        final x = <String, dynamic>{'r': r, 'i': 0, 'open': 0, 'iss': q, 'refill': fillReads(d), 'total': q, 'used': q, 'close': 0, 'avg': ''};
+        final at = lines.indexWhere((y) => _s((y['r'] as Map)['date']).compareTo(d0) > 0);
+        if (at == -1) {
+          lines.add(x);
+        } else {
+          lines.insert(at, x);
+        }
+      }
+    }
     for (var i = 0; i < lines.length; i++) {
       lines[i]['i'] = i;
     }
@@ -691,7 +713,7 @@ LbPrint logBookPrint({
         '<th colspan="6">DIESEL (LTR)</th><th rowspan="2">AVG<br><small>LTR / ${isHr ? 'HR' : 'KM'}</small></th><th rowspan="2">CHAINAGE<br><small>FROM – TO</small></th><th rowspan="2">WORK DESCRIPTION</th></tr>'
         '<tr><th>START</th><th>CLOSED</th><th>TOTAL</th><th>OPENING<br>BALANCE</th><th>ISSUED<br>QTY</th><th>CURRENT DIESEL<br>REFILLING READING</th><th>TOTAL<br>DIESEL</th><th>CONSUMED<br>DIESEL</th><th>CLOSING<br>BALANCE</th></tr></thead><tbody>');
     for (final x in lines) {
-      final r = x['r'] as Map<String, dynamic>, w = _mode(r).isNotEmpty ? _mode(r) : u, st = kDayStatus.contains(w);
+      final r = x['r'] as Map<String, dynamic>, w = _mode(r).isNotEmpty ? _mode(r) : u, st = kDayStatus.contains(w) || r['_dsl'] == true; // (update-207)
       final items = itemQtyText(r);
       table.write('<tr${st ? ' class="lb-st"' : ''}><td class="c">${_n(x['i']) + 1}</td><td class="c">${_e(showDate(_s(r['date'])))}</td><td class="c">${_e(shiftText(r))}</td><td class="c">${st ? '–' : _e(_up(w))}</td>'
           '${st ? '<td class="n">–</td><td class="n">–</td><td class="n">–</td>' : w == kNoReading ? '<td class="n">–</td><td class="n">–</td><td class="n"><b>${[if (!_blank(r['wkm'])) '${fmt(r['wkm'])} KM', if (!_blank(r['whr'])) '${fmt(r['whr'])} HR'].join(' / ')}</b> <small>EST.</small></td>' : lbPrintWork(r, w)}'
@@ -789,7 +811,7 @@ LbPrint logBookPrint({
     // ---------- the format set for this machinery (Master → Log Book Format); A = the table above ----------
     final colsF = kLbFmtCols[fm];
     if (fm != 'A' && colsF != null) {
-      bool stOf(Map r) => kDayStatus.contains(_mode(r));
+      bool stOf(Map r) => kDayStatus.contains(_mode(r)) || r['_dsl'] == true; // (update-207)
       String wOf(Map r) => _mode(r).isNotEmpty ? _mode(r) : u;
       num gross(Map r) {
         if (r.containsKey('_gross')) return _n(r['_gross']);
@@ -827,6 +849,7 @@ LbPrint logBookPrint({
         'vehno': _Col('VEHICLE NO', (x) => _e(_up(no)), c: 'c', wrap: true),
         'particular': _Col('PARTICULAR', (x) {
           final r = rOf(x);
+          if (r['_dsl'] == true) return '–'; // (update-207)
           return _e(_up(_s(r['_part']).isNotEmpty ? (_s(r['_prt']).isNotEmpty ? r['_prt'] : r['_part']) : (_s(r['remark']).isNotEmpty ? r['remark'] : _s(m['type']))));
         }),
         'challan': _Col('CHALLAN NO', (x) => _e(tOf(x) != null ? _s(tOf(x)!['c']) : _s(rOf(x)['challan'])), c: 'c', wrap: true),
