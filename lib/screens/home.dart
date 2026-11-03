@@ -16,6 +16,7 @@ import '../core/push.dart' show pushUpdateTick;
 import '../core/session.dart';
 import '../core/update.dart';
 import '../ui/ask_bot.dart';
+import '../ui/push_back.dart';
 import '../ui/help.dart' show showGuide;
 import 'approvals.dart';
 import 'me.dart' show KeptSheet;
@@ -344,10 +345,16 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     final total = multi ? byFuel[f0] : s.stockTotal;
     final pct = (!multi && total != null && opening != null && opening! > 0) ? ((total - opening!) / opening! * 100) : null;
     final picH = 236 + top;
+    // (3.83.0) ≡ – the menu BEHIND the page (ui/push_back.dart); a drawer over it only where the app has no push back
+    final pb = PushBack.maybeOf(context);
+    Widget menu({bool behind = true}) => _HomeMenu(mods: mods, onModule: _module, onHelp: () => openHelp(context), behind: behind);
     return Scaffold(
       backgroundColor: C.bg,
-      drawer: _HomeMenu(mods: mods, onModule: _module, onHelp: () => openHelp(context)),
-      body: Builder(
+      drawer: pb == null ? menu(behind: false) : null,
+      body: _EdgeOpen(
+        pb: pb,
+        menu: menu,
+        child: Builder(
         builder: (context) => AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
           child: RefreshIndicator(
@@ -390,7 +397,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                   padding: EdgeInsets.fromLTRB(6, top + 6, 12, 0),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      IconButton(key: const Key('home-menu'), tooltip: tr('Menu'), visualDensity: VisualDensity.compact, onPressed: () => Scaffold.of(context).openDrawer(), icon: const Icon(Icons.menu_rounded, size: 26, color: C.ink)),
+                      IconButton(key: const Key('home-menu'), tooltip: tr('Menu'), visualDensity: VisualDensity.compact, onPressed: () => pb == null ? Scaffold.of(context).openDrawer() : pb.open(menu()), icon: const Icon(Icons.menu_rounded, size: 26, color: C.ink)),
                       Container(
                         width: 40,
                         height: 40,
@@ -627,7 +634,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                     const Expanded(child: TwoLang('Modules', 'विभाग', size: 19, weight: FontWeight.w800)),
                     TextButton(
                       key: const Key('home-all'),
-                      onPressed: () => Scaffold.of(context).openDrawer(),
+                      onPressed: () => pb == null ? Scaffold.of(context).openDrawer() : pb.open(menu()),
                       style: TextButton.styleFrom(foregroundColor: C.goldInk, padding: const EdgeInsets.symmetric(horizontal: 6)),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [Text('View All', style: const TextStyle(fontWeight: FontWeight.w700, color: C.goldInk)), const Icon(Icons.arrow_forward_rounded, size: 18)]),
                     ),
@@ -667,8 +674,36 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
             ]),
           ),
         ),
-      ),
+      )),
     );
+  }
+}
+
+/// (3.83.0) Home's left edge: a swipe from it brings the page back over the menu behind it, as the drawer opened by a swipe.
+class _EdgeOpen extends StatelessWidget {
+  const _EdgeOpen({required this.pb, required this.menu, required this.child});
+  final PushBackState? pb;
+  final Widget Function({bool behind}) menu;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final pb = this.pb;
+    if (pb == null) return child;
+    return Stack(children: [
+      Positioned.fill(child: child),
+      Positioned(
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 18,
+        child: GestureDetector(
+          key: const Key('home-edge'),
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragUpdate: (d) => pb.drag(menu(), d.delta.dx),
+          onHorizontalDragEnd: (d) => pb.dragEnd(d.primaryVelocity ?? 0),
+        ),
+      ),
+    ]);
   }
 }
 
@@ -677,9 +712,12 @@ const _locTone = [C.goldLight, Color(0xFF90D7AE), Color(0xFFACC0F5), Color(0xFFE
 
 /// (3.31.0) ≡ – every module he may open, Call, Approvals, My settings, Help.
 class _HomeMenu extends StatelessWidget {
-  const _HomeMenu({required this.mods, required this.onModule, required this.onHelp});
+  const _HomeMenu({required this.mods, required this.onModule, required this.onHelp, this.behind = false});
   final List<ModuleTile> mods;
   final Future<void> Function(ModuleTile m) onModule;
+
+  /// (3.83.0) behind the page (push back) – else the drawer over it, as before
+  final bool behind;
 
   /// Help opens from Home (the menu closes first).
   final VoidCallback onHelp;
@@ -694,13 +732,16 @@ class _HomeMenu extends StatelessWidget {
           title: Text(en, mr: mr, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
           trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: C.faint),
           onTap: () {
-            Navigator.pop(context);
+            final pb = behind ? PushBack.maybeOf(context) : null;
+            if (pb != null) {
+              pb.close();
+            } else {
+              Navigator.pop(context);
+            }
             onTap();
           },
         );
-    return Drawer(
-      backgroundColor: C.bg,
-      child: SafeArea(
+    final list = SafeArea(
         child: ListView(padding: const EdgeInsets.fromLTRB(8, 12, 8, 24), children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
@@ -729,8 +770,9 @@ class _HomeMenu extends StatelessWidget {
           row('menu-settings', 'gear', 'My settings', 'माझ्या सेटिंग्ज', C.slateSoft, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()))),
           row('menu-help', 'robot', 'Help & Support', 'मदत', C.blueSoft, onHelp),
         ]),
-      ),
-    );
+      );
+    // (3.83.0) behind the page (push back): the menu on the ground behind it; else the drawer over the page, as before
+    return behind ? Material(type: MaterialType.transparency, child: list) : Drawer(backgroundColor: C.bg, child: list);
   }
 }
 

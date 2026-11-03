@@ -20,6 +20,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/api.dart';
 import '../core/format.dart';
 import '../ui/fields.dart';
+import '../ui/goo_toast.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
@@ -60,6 +61,7 @@ bool portalSignInEnded(BuildContext context, Object e) {
   ScaffoldMessenger.maybeOf(context)
     ?..clearSnackBars()
     ..removeCurrentSnackBar(); // at once – not with its closing animation
+  gooClear(); // (3.83.0) the app's messages are a gooey drop at the top now
   Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
   s.signOut(kPortalMr['session']!);
   return true;

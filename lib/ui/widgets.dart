@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as mat show Text;
 
 import '../core/api.dart';
+import 'goo_toast.dart';
 import 'help.dart';
 import 'theme.dart';
 import 't.dart';
@@ -217,28 +218,21 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
       );
 }
 
-/// A short message at the bottom of the screen.
+/// A short message – (3.83.0) at the top of the screen, as a gooey drop (goo_toast.dart); before: a bar at the bottom.
 void toast(BuildContext context, String msg, {bool bad = false}) {
   if (Api.isGood(msg)) bad = false;      // (14-10-2026 / update-114) sent for approval / verification: not a fault
+  if (!context.mounted) return;
   // (3.16.0) a red message has "Help" – what is wrong and what to do (the web's help card under every red message)
   final nav = bad ? Navigator.maybeOf(context, rootNavigator: true) : null;
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: bad ? C.red : C.ink,
-      duration: Duration(seconds: bad ? 6 : 3),
-      persist: false,
-      action: nav == null
+  gooToast(context, msg,
+      color: bad ? C.red : C.ink,
+      stay: Duration(seconds: bad ? 6 : 3),
+      action: nav == null ? null : tr('Help'),
+      onAction: nav == null
           ? null
-          : SnackBarAction(
-              label: tr('Help'),
-              textColor: Colors.white,
-              onPressed: () {
-                if (nav.mounted) showFixHelp(nav.context, msg);
-              },
-            ),
-    ));
+          : () {
+              if (nav.mounted) showFixHelp(nav.context, msg);
+            });
 }
 
 String errText(Object e) => e is ApiError ? e.toString() : 'Something went wrong – please try again.';

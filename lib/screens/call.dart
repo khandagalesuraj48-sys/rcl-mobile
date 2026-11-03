@@ -22,6 +22,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/rtc.dart';
+import '../ui/goo_toast.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
@@ -136,16 +137,13 @@ class _CallLayerState extends State<CallLayer> {
     final n = _r?.notice.value;
     final ctx = widget.nav.currentContext;
     if (n == null || ctx == null) return;
-    final m = ScaffoldMessenger.maybeOf(ctx);
-    if (m == null) return;
-    m
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(n.text),
-        backgroundColor: n.bad ? C.red : C.ink,
-        duration: Duration(seconds: n.act.isNotEmpty ? 12 : (n.text.length > 80 ? 7 : 4)),
-        action: n.act.isEmpty ? null : SnackBarAction(label: tr(n.act), textColor: const Color(0xFF7CE495), onPressed: () => launchUrl(Uri.parse(n.url), mode: LaunchMode.externalApplication)),
-      ));
+    // (3.83.0) as every message of the app: a gooey drop at the top (ui/goo_toast.dart)
+    gooToast(ctx, n.text,
+        color: n.bad ? C.red : C.ink,
+        stay: Duration(seconds: n.act.isNotEmpty ? 12 : (n.text.length > 80 ? 7 : 4)),
+        action: n.act.isEmpty ? null : tr(n.act),
+        actionColor: const Color(0xFF7CE495),
+        onAction: n.act.isEmpty ? null : () => launchUrl(Uri.parse(n.url), mode: LaunchMode.externalApplication));
   }
 
   @override

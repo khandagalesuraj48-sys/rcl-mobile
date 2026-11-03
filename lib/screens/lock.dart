@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../core/applock.dart';
 import '../core/session.dart';
+import '../ui/goo_toast.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
@@ -53,12 +54,8 @@ class _LockLayerState extends State<LockLayer> with WidgetsBindingObserver {
       _told = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final ctx = widget.nav.currentContext;
-        final m = ctx == null ? null : ScaffoldMessenger.maybeOf(ctx);
-        m?.showSnackBar(SnackBar(
-          content: const Text('This phone has no screen lock – set a PIN, pattern or fingerprint (the phone\'s Settings → Security), so that RCL ERP is locked.'),
-          backgroundColor: C.red,
-          duration: const Duration(seconds: 10),
-        ));
+        // (3.83.0) as every message of the app: a gooey drop at the top (ui/goo_toast.dart)
+        if (ctx != null) gooToast(ctx, 'This phone has no screen lock – set a PIN, pattern or fingerprint (the phone\'s Settings → Security), so that RCL ERP is locked.', color: C.red, stay: const Duration(seconds: 10));
       });
     }
     setState(() {});
