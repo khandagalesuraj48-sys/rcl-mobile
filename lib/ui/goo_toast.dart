@@ -94,7 +94,8 @@ class _GooState extends State<_Goo> with SingleTickerProviderStateMixin {
     super.initState();
     // the words are shown from when it has spread until it gathers – as long as the message stayed before
     _total = _fall + 260 + widget.stay.inMilliseconds + _gone;
-    _c = AnimationController(vsync: this, duration: Duration(milliseconds: _total))
+    // preserve: the message's time is how long it is read – the phone's "remove animations" must not cut it to a blink
+    _c = AnimationController(vsync: this, duration: Duration(milliseconds: _total), animationBehavior: AnimationBehavior.preserve)
       ..addStatusListener((s) {
         if (s == AnimationStatus.completed) widget.onDone();
       })
