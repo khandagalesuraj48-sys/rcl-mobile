@@ -162,7 +162,8 @@ class _GooState extends State<_Goo> with SingleTickerProviderStateMixin {
                   child: ImageFiltered(
                     imageFilter: ui.ImageFilter.compose(
                       outer: const ColorFilter.matrix(<double>[1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 19, -2040]),
-                      inner: ui.ImageFilter.blur(sigmaX: 7, sigmaY: 7),
+                      // decal: nothing is smeared in from the edges of the layer (a wide message near the sides of the screen)
+                      inner: ui.ImageFilter.blur(sigmaX: 7, sigmaY: 7, tileMode: TileMode.decal),
                     ),
                     child: CustomPaint(painter: _GooPaint(ms: ms, top: top, w: w, h: h, color: widget.color, fall: _fall, spread: _spread, out: out, gone: _gone)),
                   ),
