@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.82.0 (03-11-2026 – "jya diwshi diesel ghetley but tya day chi entry nahi mhanun dakhwat nahi tr as nko diesel ghetley ani
+kam nasel tr te entry disayla hawi kam nasel tr 0 0 sagle rahu de all format sathi"; with Mechanical update-207):** in the Log Book print
+(every format) a day with diesel and no Log Book entry is a row of its own in its date's place – its diesel and the reading at it, no work
+("No Log Book entry – diesel issued"); the days, hours, trips and amounts still count the entries only (`lb_print.dart`; the fixture
+`lbprint/web_sheets.json` made again by the web's own print, new case "diesel_days_207").
+
 **Version 3.81.0 (03-11-2026 – "mala pratek format madhe diesel issue haw aahe ok jr tya gadila dilech nasel tr nko deu but dile aahe
 tr haw aahe ani diesel diley reading nahi tr reading blank thew … sagle format la aple he lagu"; with Mechanical update-206, its second
 part):** every Log Book format shows the diesel given – Format F, G (time sheets) and I (water tanker) get "Diesel qty" and "Reading
