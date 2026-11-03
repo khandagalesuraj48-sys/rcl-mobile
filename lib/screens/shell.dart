@@ -5,11 +5,14 @@
  * (3.31.0, asked 20-10-2026: "jewa mi entry madhun diesel issue sathi jatoy tewa back dabale ki entry madhe yeyla haw … ek back
  * mhanje ekach back ek step madhe") Back goes one step back, to where he came from: the Entries list from a diesel page, the tab
  * he came from; on Home a second Back within 3 s leaves the app (as before). */
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/kinds.dart';
 import '../core/session.dart';
+import '../ui/push_back.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -33,6 +36,7 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> with WidgetsBindingObserver {
   String tab = 'home';
+  final _pb = GlobalKey<PushBackState>();
 
   /// (3.31.0) the tabs he came from – Back goes to them, one at a time
   final hist = <String>[];
@@ -202,6 +206,12 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        // (3.83.0) the menu behind the page is open: Back closes it first
+        final pb = _pb.currentState;
+        if (pb != null && pb.isOpen) {
+          pb.close();
+          return;
+        }
         // (3.31.0) one step back: a diesel page goes back to the Entries list first
         if (cur == 'entries' && (entriesBack?.call() ?? false)) return;
         while (hist.isNotEmpty) {
@@ -223,14 +233,18 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         lastBack = now;
         toast(context, 'Press Back again to leave the app.');
       },
-      child: Scaffold(
-        body: IndexedStack(index: keys.indexOf(cur), children: [for (final k in keys) pages[k]!]),
-        bottomNavigationBar: _Bar(
-          tab: cur,
-          tabs: keys,
-          meCount: meCount,
-          onTab: _go,
-          onPlus: _plus,
+      // (3.83.0) the whole screen – the page and the bar – shrinks back for Home's menu (ui/push_back.dart)
+      child: PushBack(
+        key: _pb,
+        child: Scaffold(
+          body: IndexedStack(index: keys.indexOf(cur), children: [for (final k in keys) pages[k]!]),
+          bottomNavigationBar: _Bar(
+            tab: cur,
+            tabs: keys,
+            meCount: meCount,
+            onTab: _go,
+            onPlus: _plus,
+          ),
         ),
       ),
     );
@@ -238,13 +252,63 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
 }
 
 /// (3.31.0) the bar at the bottom of his picture: green, rounded, the chosen tab in a pill, the gold + in the middle.
-class _Bar extends StatelessWidget {
+/// (3.83.0, asked 03-11-2026 with the preview he OK'd: "tab bar cha ui … ripple fill ok fill the tapped tab from its centre the old
+/// faded") RIPPLE FILL: the tapped tab's pill fills from its centre outwards; the pill of the tab before fades away.
+class _Bar extends StatefulWidget {
   const _Bar({required this.tab, required this.tabs, required this.meCount, required this.onTab, required this.onPlus});
   final String tab;
   final List<String> tabs;
   final int meCount;
   final ValueChanged<String> onTab;
   final VoidCallback onPlus;
+
+  @override
+  State<_Bar> createState() => _BarState();
+}
+
+class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 500), value: 1);
+  String? _was;
+
+  @override
+  void didUpdateWidget(_Bar old) {
+    super.didUpdateWidget(old);
+    if (old.tab != widget.tab) {
+      _was = old.tab;
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  String get tab => widget.tab;
+  List<String> get tabs => widget.tabs;
+  int get meCount => widget.meCount;
+  ValueChanged<String> get onTab => widget.onTab;
+  VoidCallback get onPlus => widget.onPlus;
+
+  /// the pill of tab [k]: the chosen one growing from its centre, the one before fading
+  Widget _fill(String k, bool on, bool gold) {
+    if (!on && k != _was) return const SizedBox.shrink();
+    final pill = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: gold ? null : Colors.white.withValues(alpha: .16),
+        gradient: gold ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.goldLight, C.gold]) : null,
+      ),
+    );
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, child) => on
+          ? ClipPath(clipper: _FromCentre(Curves.easeOutCubic.transform(_c.value)), child: child)
+          : Opacity(opacity: (1 - Curves.easeOut.transform((_c.value / .7).clamp(0.0, 1.0))).clamp(0.0, 1.0), child: child),
+      child: pill,
+    );
+  }
 
   static const _info = {
     'home': ('Home', Icons.home_outlined, Icons.home_rounded),
@@ -266,19 +330,17 @@ class _Bar extends StatelessWidget {
           key: Key('tab-$k'),
           borderRadius: BorderRadius.circular(18),
           onTap: () => onTab(k),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOut,
-            margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              color: on && !gold ? Colors.white.withValues(alpha: .16) : null,
-              gradient: on && gold ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.goldLight, C.gold]) : null,
-            ),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              icon,
-              const SizedBox(height: 2),
-              Text(i.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: Colors.white.withValues(alpha: on ? 1 : .8))),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+            child: Stack(children: [
+              Positioned.fill(child: _fill(k, on, gold)),
+              Positioned.fill(
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  icon,
+                  const SizedBox(height: 2),
+                  Text(i.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: Colors.white.withValues(alpha: on ? 1 : .8))),
+                ]),
+              ),
             ]),
           ),
         ),
@@ -346,4 +408,14 @@ class _Bar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// (3.83.0) a circle from the centre of the pill – [p] 0 → nothing, 1 → the whole pill (its corners too)
+class _FromCentre extends CustomClipper<Path> {
+  const _FromCentre(this.p);
+  final double p;
+  @override
+  Path getClip(Size size) => Path()..addOval(Rect.fromCircle(center: size.center(Offset.zero), radius: p * math.sqrt(size.width * size.width + size.height * size.height) / 2));
+  @override
+  bool shouldReclip(_FromCentre old) => old.p != p;
 }

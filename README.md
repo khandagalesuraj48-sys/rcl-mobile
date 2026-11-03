@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.83.0 (03-11-2026 – "app madhe aplela tab bar cha ui change kraycha … ripple fill … menu web plus app madhe push back … notification
+gooey drop madhe"; the preview he OK'd; with Mechanical update-209):** **Ripple fill** – the tapped tab of the bar fills from its centre,
+the one before fades (`screens/shell.dart`); **push back** – Home's ≡ / View All: the whole screen (page + bar) shrinks back and moves to
+the right, the menu behind it (light, as before); a tap on the page, a swipe to the left, Back or a row closes it; a swipe from Home's left
+edge opens it (`ui/push_back.dart`); **gooey drop** – every short message of the app (toast, the call's notices, the phone-lock warning)
+is at the top: a drop falls, melts and spreads into it; colours and times as before; only its action (Help …) catches a tap
+(`ui/goo_toast.dart`). Tests: `test/motion_test.dart` (+ pictures m1–m4).
+
 **Version 3.82.0 (03-11-2026 – "jya diwshi diesel ghetley but tya day chi entry nahi mhanun dakhwat nahi tr as nko diesel ghetley ani
 kam nasel tr te entry disayla hawi kam nasel tr 0 0 sagle rahu de all format sathi"; with Mechanical update-207):** in the Log Book print
 (every format) a day with diesel and no Log Book entry is a row of its own in its date's place – its diesel and the reading at it, no work

@@ -1,3 +1,3 @@
-New: the Log Book print shows the diesel given and the reading at every fill in every format; a day with diesel but no Log Book entry is shown as a row of its own.
-नवीन: Log Book print मध्ये प्रत्येक format मध्ये दिलेले diesel आणि प्रत्येक वेळची reading; ज्या दिवशी diesel दिले पण entry नाही तो दिवस पण वेगळ्या ओळीत दिसतो.
-नया: Log Book print में हर format में दिया गया diesel और हर बार की reading; जिस दिन diesel दिया पर entry नहीं, वह दिन भी अलग पंक्ति में दिखता है।
+New: the tabs fill from their centre when tapped; the menu opens behind the page (the page moves back to the right); messages come as a drop from the top that spreads into the message. The Log Book print shows the diesel given and the reading at every fill in every format; a day with diesel but no entry is a row of its own.
+नवीन: tab दाबल्यावर मध्यातून रंगाने भरतो; menu page च्या मागे उघडतो (page मागे-उजवीकडे सरकते); संदेश वरून थेंब पडून पसरतो. Log Book print मध्ये प्रत्येक format मध्ये दिलेले diesel आणि प्रत्येक वेळची reading; diesel दिले पण entry नाही तो दिवस वेगळ्या ओळीत.
+नया: tab दबाने पर बीच से रंग भरता है; menu page के पीछे खुलता है (page पीछे-दाईं ओर खिसकता है); संदेश ऊपर से बूँद गिरकर फैलता है। Log Book print में हर format में दिया गया diesel और हर बार की reading; diesel दिया पर entry नहीं वह दिन अलग पंक्ति में।
