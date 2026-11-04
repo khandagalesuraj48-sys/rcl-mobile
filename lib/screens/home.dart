@@ -484,6 +484,11 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                   ]),
                 ),
               ]),
+              // (3.85.0) no network / entries kept on this phone / entries kept as stock short – said at once
+              _PhoneLine(onApprovals: () async {
+                await openApprovals(context);
+                s.loadApprovals();
+              }),
               // ---------- the stock card (green) ----------
               // (3.45.0, Mechanical update-164) a site on fuel cards (HO) keeps no stock: the cards' balances in its place
               if (s.cardSite)
@@ -854,6 +859,56 @@ class _RoundBtn extends StatelessWidget {
           child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: Padding(padding: const EdgeInsets.all(7), child: Icon(icon, color: C.greenDark, size: 22))),
         ),
       );
+}
+
+/* (3.85.0, asked 04-11-2026) A LINE ON HOME: no network – the app works from this phone (Diesel Issue, Inward, Transfer are kept here and
+ * sent by themselves); entries kept on this phone; entries kept as stock short on the server (saved by themselves when the stock comes);
+ * the stock shown is less the diesel that waits. Nothing to say: nothing shown. */
+class _PhoneLine extends StatelessWidget {
+  const _PhoneLine({required this.onApprovals});
+  final VoidCallback onApprovals;
+  @override
+  Widget build(BuildContext context) {
+    final s = SessionScope.of(context), site = s.site?.code ?? '';
+    final wait = s.kept.where((x) => x['site'] == site && x['state'] != 'refused').length, bad = s.keptBad;
+    num held = 0;
+    for (final h in s.stockHeld.values) {
+      held += (h['wait'] ?? 0) + (h['short'] ?? 0);
+    }
+    final lines = <(String, Color, VoidCallback?)>[
+      if (s.offline) (bi('No network – working from this phone. Diesel Issue, Inward and Transfer are kept here and sent by themselves when the network is back.', 'नेटवर्क नाही – ॲप फोनवरून चालू आहे. Diesel Issue, Inward आणि Transfer इथे ठेवले जातात आणि नेटवर्क आल्यावर आपोआप पाठवले जातात.'), C.amberSoft, null),
+      if (wait > 0) (bi('$wait ${wait == 1 ? 'entry' : 'entries'} on this phone – sent by themselves when the network is back', '$wait entry फोनवर – नेटवर्क आल्यावर आपोआप जातील'), C.amberSoft, () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet())),
+      if (bad > 0) (bi('$bad kept on this phone not saved – open to see why', '$bad फोनवरच्या entry सेव्ह झाल्या नाहीत – कारण पहा'), C.redSoft, () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet())),
+      if (s.crShort > 0) (bi('${s.crShort} stock short – saved by themselves when the stock comes (Approvals)', '${s.crShort} stock कमी – stock आल्यावर आपोआप save होतील (Approvals)'), C.amberSoft, onApprovals),
+      if (held > 0 && !s.cardSite) (bi('Stock shown is less ${fmtNum(held)} L that waits (verification / stock short) – already given', 'दाखवलेला stock: थांबलेले ${fmtNum(held)} L (verification / stock कमी) आधीच वजा'), C.blueSoft, onApprovals),
+    ];
+    if (lines.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      key: const Key('home-phone-line'),
+      padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 0),
+      child: Column(children: [
+        for (final (t, bg, tap) in lines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Material(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: tap,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 9, 10, 9),
+                  child: Row(children: [
+                    Expanded(child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.3))),
+                    if (tap != null) const Icon(Icons.chevron_right_rounded, color: C.muted),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
 }
 
 class _MiniTile extends StatelessWidget {

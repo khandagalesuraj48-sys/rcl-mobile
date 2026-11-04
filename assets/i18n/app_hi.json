@@ -1455,5 +1455,11 @@
 "Open now": "अभी खुली",
 "You have no Purchase on this site – the Super Admin gives it in the Portal.": "इस साइट पर आपके पास Purchase नहीं है – Super Admin इसे Portal में देते हैं.",
 "Share app": "App share करें",
-"The app's link is copied – paste it in WhatsApp or a message.": "App की link copy हो गई – WhatsApp या message में paste करें."
+"The app's link is copied – paste it in WhatsApp or a message.": "App की link copy हो गई – WhatsApp या message में paste करें.",
+"Stock short": "Stock कम",
+"Saved": "सेव हुआ",
+"On this phone": "फ़ोन पर",
+"Take back": "वापस लें",
+"Saved by itself when the stock comes": "Stock आने पर अपने आप save होगा",
+"{0} approved – the stock is short: it is saved by itself when the stock comes.": "{0} मंज़ूर – stock कम है: stock आने पर अपने आप save होगा।"
 }

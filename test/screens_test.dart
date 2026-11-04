@@ -708,6 +708,61 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/8_issue_saved.png'));
   }, tags: ['golden']);
 
+  testWidgets('(3.85.0, asked 04-11-2026) NO NETWORK: the site opened before opens from this phone – Home says so; a Diesel Issue is kept on the phone at once (no question) with the stock as the phone knows it; the network back: sent by itself – kept as stock short when the stock cannot cover it', (t) async {
+    phone(t);
+    final srv = FakeServer(), keep = MemoryKeep();
+    Session mk() => Session(Api(portalUrl: 'https://erp.test/portal', keep: keep, client: srv.client))..clock = () => DateTime(2026, 10, 14, 10, 30);
+    final s1 = mk();
+    await t.runAsync(() async {
+      await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
+      await s1.chooseSite('S1');
+    });
+    srv
+      ..portalDown = true
+      ..down = true;
+    final s = mk();
+    await t.runAsync(s.start);
+    expect([s.stage, s.offline], [Stage.ready, true]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.textContaining('No network – working from this phone'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9a_offline_home.png'));
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await t.tap(find.text('New Entry').first);
+    await net(t);
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)'));
+    await settle(t, 800);
+    await t.enterText(find.byType(TextField).at(1), '60');
+    await settle(t, 300);
+    expect(find.textContaining('No network – stock at Dispenser as this phone knows it: 813 L → after this issue 753 L'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9b_offline_issue.png'));
+    await t.tap(find.text('Save Diesel Issue'));
+    await net(t);
+    expect(srv.saved, isEmpty, reason: 'nothing reached the server');
+    expect(s.kept.single['fn'], 'saveDieselIssue');
+    expect(s.kept.single['made'], FakeServer.stamp, reason: 'with the server\'s last stamp');
+    expect(find.textContaining('Kept on this phone'), findsWidgets);
+    // the network is back: the live tick – the Portal and the site again, then the entry, as stock short
+    srv
+      ..portalDown = false
+      ..down = false
+      ..short = true;
+    for (var i = 0; i < 6 && (s.offline || s.kept.isNotEmpty); i++) {      // (a tick of the live loop may be running: the next one)
+      await t.runAsync(s.liveTick);
+      await settle(t, 1000);
+    }
+    expect(s.offline, false);
+    expect(s.kept, isEmpty);
+    expect(srv.metas.lastWhere((m) => m['fn'] == 'saveDieselIssue'), {'fn': 'saveDieselIssue', 'made': FakeServer.stamp, 'short': true});
+  }, tags: ['golden']);
+
   testWidgets('(3.76.0, Mechanical update-203) Diesel Issue: a tank check due with the fill – its box; not saved without it; saved with it', (t) async {
     phone(t);
     final srv = FakeServer()..tankDueAns = {'no': 'Sany 210 (No.1)', 'date': '2026-10-14', 'due': true, 'days': 7, 'last': '2026-10-05', 'start': '2026-10-06', 'cap': 300, 'gone': 8};
@@ -3927,7 +3982,7 @@ void main() {
     expect(find.text('after 400 Ltr'), findsOneWidget);
     await t.enterText(find.byType(TextField).first, '870');
     await settle(t, 400);
-    expect(find.text('Can transfer up to 850 Ltr'), findsOneWidget);
+    expect(find.text('Can transfer up to 850 Ltr – saving asks to keep it as stock short'), findsOneWidget, reason: '(3.85.0) the save asks "keep it as stock short?"');
   });
 
   testWidgets('(3.43.0, Mechanical update-162) his diesel sources: Diesel Issue and the From of a transfer offer only them (To and Inward: every place); none given: a red line; changed in the Portal: at the next sync', (t) async {

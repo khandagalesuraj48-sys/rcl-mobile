@@ -14,7 +14,7 @@ import 'core/alerts.dart';
 import 'core/api.dart';
 import 'core/applock.dart';
 import 'core/device.dart';
-import 'core/lang.dart' show Lang;
+import 'core/lang.dart' show Lang, bi;
 import 'core/lock_gate.dart';
 import 'core/push.dart' show PushTap;
 import 'core/push_fcm.dart';
@@ -97,7 +97,8 @@ void main() {
   if (Platform.isAndroid) Session.callKit = () => WebrtcKit(); // (3.26.0) calls with the web – the Android phone first
   final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep())
         ..askApproval = askApprovalBox
-        ..askReason = askReasonBox)
+        ..askReason = askReasonBox
+        ..askShort = askShortBox)      // (3.85.0) the stock cannot cover it: keep as stock short?
       ..start();
   // (3.14.0) a fault of the app's own code goes to the Admin's "Faults of the app" (as the web's page reports its faults)
   FlutterError.onError = (d) {
@@ -189,6 +190,32 @@ Future<String?> askReasonBox(String message) async {
       ],
     ),
   );
+}
+
+/// (3.85.0 – Mechanical update-211) a diesel issue / transfer the stock cannot cover now: keep it as stock short? true = yes – it waits in
+/// Approvals and is saved by itself when the stock comes.
+Future<bool> askShortBox(String message) async {
+  final ctx = appNav.currentContext;
+  if (ctx == null) return false;
+  final r = await showDialog<bool>(
+    context: ctx,
+    builder: (c) => AlertDialog(
+      title: Text(bi('Stock short – keep this entry?', 'Stock कमी – ही entry ठेवायची?')),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(message.replaceFirst(RegExp(r'^(Line|Row) [^:]+: '), ''), style: const TextStyle(fontSize: 13)),
+          const SizedBox(height: 10),
+          Text(bi('If this diesel was really given and its Inward / Transfer is not entered yet (or waits for verification): keep it as stock short. It waits in Approvals and is saved by itself when the stock comes – nothing is saved until then. Otherwise Cancel and correct the litres.',
+              'हे diesel खरंच दिले असेल आणि त्याचा Inward / Transfer अजून भरलेला नसेल (किंवा verification मध्ये असेल): ही entry stock कमी म्हणून ठेवा. ती Approvals मध्ये थांबेल आणि stock आल्यावर आपोआप save होईल – तोपर्यंत काहीही save होत नाही. नाहीतर Cancel करा आणि लिटर दुरुस्त करा.'), style: const TextStyle(fontWeight: FontWeight.w600)),
+        ]),
+      ),
+      actions: [
+        TextButton(key: const ValueKey('short-no'), onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+        FilledButton(key: const ValueKey('short-yes'), onPressed: () => Navigator.pop(c, true), child: Text(bi('Keep as stock short', 'Stock कमी म्हणून ठेवा'))),
+      ],
+    ),
+  );
+  return r == true;
 }
 
 class RclApp extends StatelessWidget {
