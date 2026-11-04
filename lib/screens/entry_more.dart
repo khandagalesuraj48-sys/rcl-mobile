@@ -934,7 +934,6 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
     ])) {
       return;
     }
-    final total = r2(rows.fold<num>(0, (a, r) => a + (double.tryParse(r['qty']!) ?? 0)));
     final inactive = [for (final (i, r) in dRows.indexed) if (r.m != null && activeProblem(r.m!.m, date).isNotEmpty) (i + 1, activeProblem(r.m!.m, date))];
     if (!mounted) return;
     if (inactive.isNotEmpty) {
