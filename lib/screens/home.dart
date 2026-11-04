@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../core/app_share.dart';
 import '../core/device.dart';
 import '../core/format.dart';
 import '../core/kinds.dart';
@@ -768,6 +769,12 @@ class _HomeMenu extends StatelessWidget {
             s.loadApprovals();
           }, trailing: s.crForMe > 0 ? Badge(label: Text('${s.crForMe}'), child: const Icon(Icons.chevron_right_rounded, color: C.faint)) : null),
           row('menu-settings', 'gear', 'My settings', 'माझ्या सेटिंग्ज', C.slateSoft, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()))),
+          // (3.84.0) the app's link to another person – the latest version, he installs it and signs in (core/app_share.dart)
+          row('menu-share', 'outbox_tray', 'Share app', 'App share करा', C.goldSoft, () async {
+            final nav = Navigator.of(context, rootNavigator: true); // (the menu is gone when the share comes back)
+            final shared = await appShare(appShareText());
+            if (!shared && nav.mounted) toast(nav.context, 'The app\'s link is copied – paste it in WhatsApp or a message.');
+          }),
           row('menu-help', 'robot', 'Help & Support', 'मदत', C.blueSoft, onHelp),
         ]),
       );
