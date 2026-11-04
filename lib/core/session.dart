@@ -3,8 +3,11 @@
  * (machinery, drivers, pumps, locations, stock). Every number comes from Mechanical, as on the web. */
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'alerts.dart';
 import 'api.dart';
@@ -20,12 +23,21 @@ enum Stage { starting, signedOut, setPassword, pickSite, opening, ready, waiting
 class Module {
   Module(this.key, this.name, this.url);
   final String key, name, url;
+  Map<String, String> toJson() => {'key': key, 'name': name, 'url': url};      // (3.85.0) kept on the phone for opening with no network
 }
 
 class SiteChoice {
   SiteChoice(this.code, this.name, this.company, this.modules);
   final String code, name, company;
   final List<Module> modules;
+  Map<String, Object> toJson() => {'code': code, 'name': name, 'company': company, 'modules': [for (final m in modules) m.toJson()]};
+  static SiteChoice? fromJson(Object? j) {
+    if (j is! Map || '${j['code'] ?? ''}'.isEmpty) return null;
+    return SiteChoice('${j['code']}', '${j['name'] ?? j['code']}', '${j['company'] ?? ''}', [
+      for (final m in (j['modules'] as List? ?? const []).whereType<Map>())
+        if ('${m['url'] ?? ''}'.startsWith('https://')) Module('${m['key'] ?? ''}', '${m['name'] ?? ''}', '${m['url']}')
+    ]);
+  }
   Module? module(String key) {
     for (final m in modules) {
       if (m.key == key) return m;
@@ -337,6 +349,24 @@ class Session extends ChangeNotifier {
   }
   num? stockTotal;
   Map<String, num> stockByLoc = {};
+  /// (3.85.0, Mechanical update-211) what waits at each place – already taken out of [stockByLoc]: {place: {wait, short}}
+  Map<String, Map<String, num>> stockHeld = {};
+  /// (3.85.0) the litres kept on THIS phone (no network) to go out of [place] – not in the server's figures yet
+  num keptAt(String place) {
+    var q = 0.0;
+    for (final x in kept) {
+      if (x['site'] != (site?.code ?? '') || x['state'] == 'refused') continue;
+      final fn = '${x['fn']}', a = (x['args'] as List?) ?? const [], d = a.isNotEmpty && a[0] is Map ? a[0] as Map : const {};
+      if (fn == 'saveDieselIssue' && '${d['source'] ?? ''}' == place) q += asNum(d['qty'])?.toDouble() ?? 0;
+      if (fn == 'saveTransfer' && '${d['from'] ?? ''}' == place) q += asNum(d['qty'])?.toDouble() ?? 0;
+    }
+    return q;
+  }
+  /// "50 L waiting for verification, 20 L stock short" ('' = nothing waits there)
+  String heldWords(String place, [String u = 'L']) {
+    final h = stockHeld[place] ?? const {}, w = h['wait'] ?? 0, k = h['short'] ?? 0, p = keptAt(place);
+    return [if (w > 0) '${fmtNum(w)} $u waiting for verification', if (k > 0) '${fmtNum(k)} $u stock short', if (p > 0) '${fmtNum(p)} $u on this phone'].join(', ');
+  }
 
   /// May open the page (View or Edit) – as canSee on the web.
   bool canSee(String module) => admin || perms[module] == 'Edit' || perms[module] == 'View';
@@ -377,6 +407,112 @@ class Session extends ChangeNotifier {
    * connection – you are still signed in" – and tries again by itself every [retryEvery], or at once with "Try again". Only the
    * Portal saying it does not know him any more (and his own Sign out) shows the sign-in. */
   static bool notReached(ApiError e) => e.noConnection || e.status == 502 || e.status == 503 || e.status == 504; // no network / the server not reached now
+
+  /* (3.85.0, asked 04-11-2026: "jewa network naste tewa user app madhun entry kru shakt nahi … user network aso naso entry kru shakel")
+   * NO NETWORK – THE APP STILL OPENS. Every time a site's lists come (getInit) they are kept on this phone with his sites (_keepSnap).
+   * When the app opens – or a site is opened – with no network, and this phone has the lists of THAT site of THAT person, the app
+   * opens from them ([offline]: a line on Home says so): Diesel Issue (with its photos), Inward and Transfer are kept on the phone and
+   * sent by themselves when the network is back (sendKept – the server's stamp and "stock short" go with them). Every live tick tries
+   * the Portal and the site again; when they answer, the lists are the server's again (nothing changes on the screen). Signing out
+   * removes what was kept. Without those lists (the first opening on this phone): the waiting screen, as before (3.20.1). */
+  bool offline = false;
+  static const kSnap = 'snap_v1', kStamp = 'stamp_v1';
+  Future<void> _keepSnap(Map<String, dynamic> d) async {
+    final c = site?.code ?? '';
+    if (c.isEmpty || email.isEmpty) return;
+    try {
+      await api.keep.write(kSnap, jsonEncode({'email': email, 'name': name, 'tester': tester, 'site': c, 'sites': [for (final x in sites) x.toJson()], 'init': d, 'at': clock().toUtc().toIso8601String(), 'stamp': api.stamp}));
+    } catch (_) {/* only for opening with no network */}
+  }
+
+  /// the ERP's day on this phone's clock (the site's "next day starts at" – Mechanical update-203): only while the server is not reached
+  String phoneToday() {
+    final m = RegExp(r'^(\d{2}):(\d{2})$').firstMatch('${siteRules['dayStart'] ?? ''}');
+    final mins = m == null ? 360 : int.parse(m[1]!) * 60 + int.parse(m[2]!);
+    return dateKey(clock().subtract(Duration(minutes: mins)));
+  }
+
+  /// opens [code] from what this phone kept; false = nothing kept for it (or not this person's)
+  Future<bool> _openKept(String code) async {
+    if (code.isEmpty || (api.token ?? '').isEmpty || !api.hasPortal) return false;
+    Map? j;
+    try {
+      final v = await api.keep.read(kSnap);
+      final x = v == null ? null : jsonDecode(v);
+      j = x is Map ? x : null;
+    } catch (_) {
+      j = null;
+    }
+    if (j == null || j['site'] != code || j['init'] is! Map || '${j['email'] ?? ''}'.isEmpty || (email.isNotEmpty && email.toLowerCase() != '${j['email']}'.toLowerCase())) return false;
+    final list = [for (final x in (j['sites'] as List? ?? const [])) SiteChoice.fromJson(x)].whereType<SiteChoice>().toList();
+    final sc = list.where((x) => x.code == code).firstOrNull, mech = sc?.module('mechanical');
+    if (sc == null || mech == null) return false;
+    if (site?.code != code) clearMemory();
+    sites = list;
+    site = sc;
+    siteName = sc.name;
+    api.mechUrl = mech.url;
+    email = '${j['email']}';
+    if ('${j['name'] ?? ''}'.isNotEmpty) name = '${j['name']}';
+    tester = j['tester'] == true;
+    if (api.stamp.isEmpty && '${j['stamp'] ?? ''}'.isNotEmpty) api.stamp = '${j['stamp']}';
+    _applyInit((j['init'] as Map).cast<String, dynamic>());
+    today = phoneToday();
+    offline = true;
+    versions = {};
+    boot = 1;
+    _go(Stage.ready);
+    await loadKept();
+    return true;
+  }
+
+  /// the network is back (a live tick): the Portal and the site asked again, quietly – the screen stays as it is
+  bool _reconnecting = false;
+  Future<void> _backOnline() async {
+    if (_reconnecting || !offline) return;
+    _reconnecting = true;
+    try {
+      final code = site?.code ?? '';
+      await _loadSites();
+      final sc = sites.where((x) => x.code == code).firstOrNull, mech = sc?.module('mechanical');
+      if (sc == null || mech == null) {
+        offline = false;
+        _go(sites.length > 1 ? Stage.pickSite : Stage.signedOut, 'This site is not given to you any more.');
+        return;
+      }
+      site = sc;
+      siteName = sc.name;
+      api.mechUrl = mech.url;
+      await loadInit();
+      offline = false;
+      versions = {};
+      prefsReady = loadPrefs();
+      notifyListeners();
+    } on ApiError catch (e) {
+      if (e.code == 'mustchange') {
+        offline = false;
+        _go(Stage.setPassword);
+      } else if (e.code == 'signin' || e.needsSignIn || e.status == 401) {
+        offline = false;
+        await api.forget();
+        await api.keep.write(kSnap, null);
+        _go(Stage.signedOut, 'Your sign-in has ended – please sign in again.');
+      } // else: still no network – it stays as it is
+    } finally {
+      _reconnecting = false;
+    }
+  }
+
+  /// (3.85.0) the server's signed time of its last answer (getInit / sync) – in memory always, on the phone at most every 10 minutes
+  DateTime _stampKeptAt = DateTime.fromMillisecondsSinceEpoch(0);
+  void _stampSet(Object? v) {
+    final t = '${v ?? ''}';
+    if (!RegExp(r'^\d{13}\.[0-9a-f]{32}$').hasMatch(t)) return;
+    api.stamp = t;
+    if (DateTime.now().difference(_stampKeptAt) < const Duration(minutes: 10)) return;
+    _stampKeptAt = DateTime.now();
+    unawaited(api.keep.write(kStamp, t).catchError((_) {}));
+  }
   Duration retryEvery = const Duration(seconds: 10);
   Timer? _again;
   Future<void> Function()? _retry;
@@ -416,6 +552,7 @@ class Session extends ChangeNotifier {
   Future<void> start() async {
     boot = .05;
     await api.load();
+    if (api.stamp.isEmpty) api.stamp = await api.keep.read(kStamp) ?? ''; // (3.85.0)
     // (3.39.0, asked 25-10-2026: "app opening slow zal aahe … ultra fast") with the sign-in kept on this phone, the Portal ("is he
     // still signed in, which sites") and the kept site's first lists (getInit) are asked AT THE SAME TIME – one wait, not two – and
     // the language is read meanwhile. Nothing of the site's answer is used before the Portal says he is still signed in and still
@@ -447,9 +584,13 @@ class Session extends ChangeNotifier {
       if (e.code == 'mustchange') return _go(Stage.setPassword);
       if (e.needsSignIn || e.status == 401) {
         await api.forget();
+        await api.keep.write(kSnap, null); // (3.85.0) not his any more: not opened with no network either
         return _go(Stage.signedOut);
       }
-      if (notReached(e)) return _wait(e.toString(), start); // (3.20.1) no network: still signed in – it tries again
+      if (notReached(e)) {
+        if (await _openKept(api.site ?? '')) return; // (3.85.0) the site opened before: from what this phone kept – entries kept here
+        return _wait(e.toString(), start); // (3.20.1) no network: still signed in – it tries again
+      }
       _go(Stage.signedOut, e.toString());
     }
   }
@@ -569,9 +710,13 @@ class Session extends ChangeNotifier {
     } on ApiError catch (e) {
       if (e.needsSignIn) {
         await api.forget();
+        await api.keep.write(kSnap, null); // (3.85.0)
         return _go(Stage.signedOut, 'Your sign-in has ended – please sign in again.');
       }
-      if (notReached(e)) return _wait(e.toString(), () => chooseSite(code)); // (3.20.1) no network: still signed in
+      if (notReached(e)) {
+        if (await _openKept(code)) return; // (3.85.0) from what this phone kept
+        return _wait(e.toString(), () => chooseSite(code)); // (3.20.1) no network: still signed in
+      }
       _go(sites.length > 1 ? Stage.pickSite : Stage.signedOut, e.toString());
     }
   }
@@ -609,6 +754,12 @@ class Session extends ChangeNotifier {
       }
     }
     final d = ((got is Map ? got : await api.call('getInit')) as Map).cast<String, dynamic>();
+    _applyInit(d);
+    unawaited(_keepSnap(d)); // (3.85.0) kept on the phone: the app opens from it with no network
+  }
+
+  void _applyInit(Map<String, dynamic> d) {
+    _stampSet(d['stamp']);
     final u = d['user'];
     if (u is Map) _user({'user': u});
     today = (d['today'] ?? '').toString();
@@ -702,6 +853,9 @@ class Session extends ChangeNotifier {
     if (t is num) stockTotal = t;
     final by = s['byLoc'];
     if (by is Map) stockByLoc = by.map((k, v) => MapEntry(k.toString(), (v is num) ? v : 0));
+    final hd = s['held'];      // (3.85.0) what waits at each place (already taken out of byLoc)
+    if (hd is Map) stockHeld = {for (final e in hd.entries) if (e.value is Map) '${e.key}': {for (final x in (e.value as Map).entries) if (x.value is num) '${x.key}': x.value as num}};
+    if (by is Map && hd == null) stockHeld = {};
     setCards(s['cards']);      // (3.45.0) a site on fuel cards: the cards' balances
     notifyListeners();
   }
@@ -894,7 +1048,12 @@ class Session extends ChangeNotifier {
     if (stage != Stage.ready || _ticking) return;
     _ticking = true;
     try {
+      if (offline) {      // (3.85.0) opened with no network: first the Portal and the site again
+        await _backOnline();
+        if (offline || stage != Stage.ready) return;
+      }
       final r = await api.call('sync', [rtc?.beatArg() ?? <String, dynamic>{}]);
+      if (r is Map) _stampSet(r['stamp']);      // (3.85.0)
       unawaited(_markLive());
       if (r is Map && r['rtc'] != null) rtc?.inbox(r['rtc']); // (3.26.0) the notes of a call
       if (r is Map) _admin(r);
@@ -912,7 +1071,7 @@ class Session extends ChangeNotifier {
       } else if (changed.isNotEmpty) {
         if (changed.contains('master')) {
           await loadInit();
-        } else if (changed.contains('stock')) {
+        } else if (changed.contains('stock') || changed.contains('flow')) {      // (3.85.0) an entry waits / was decided: the stock shown is less what waits
           try {
             setStock(await api.call('getStock'));
           } catch (_) {/* the stock only */}
@@ -934,6 +1093,8 @@ class Session extends ChangeNotifier {
 
   /// (update-114) Approvals: [crWaiting] = waiting in his list (what he sent, what waits for him); [crForMe] = for him to decide.
   int crWaiting = 0, crForMe = 0, crBack = 0;
+  /// (3.85.0, Mechanical update-211) entries kept as stock short (in his list) – saved by themselves when the stock comes
+  int crShort = 0;
 
   /// (3.1.8) notifications on the phone (the tests switch them off)
   bool notify = true;
@@ -974,7 +1135,8 @@ class Session extends ChangeNotifier {
   /// (3.2.0) The Approvals answer [d] taken: the counts, his works under verification, his entries (the Approvals screen gives
   /// every answer of a decision here too).
   void takeApprovals(Map d) {
-    crWaiting = (d['pending'] is num) ? (d['pending'] as num).toInt() : 0;
+    crWaiting = ((d['pending'] is num) ? (d['pending'] as num).toInt() : 0) + ((d['short'] is num) ? (d['short'] as num).toInt() : 0);      // (3.85.0) and kept as stock short
+    crShort = (d['short'] is num) ? (d['short'] as num).toInt() : 0;
     crForMe = (d['forMe'] is num) ? (d['forMe'] as num).toInt() : 0;
     crBack = (d['backToMe'] is num) ? (d['backToMe'] as num).toInt() : 0;
     _flow(d['mine']);
@@ -1074,15 +1236,81 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Keeps a save that got no answer ([rid] = its number) to send it later.
-  Future<void> keepEntry(String fn, List<dynamic> args, String rid, String label) async {
-    kept.add({'rid': rid, 'fn': fn, 'args': args, 'label': label, 'site': site?.code ?? '', 'at': DateTime.now().toIso8601String(), 'state': 'waiting', 'msg': ''});
+  /// Keeps a save that got no answer ([rid] = its number) to send it later. (3.85.0) It carries the server's last stamp (its day is the
+  /// user's date rule then – Mechanical update-211) and [photos] taken with no network: each {kind, jpg, lat, lng, acc, at, no} – kept
+  /// as files on this phone, sent with the entry.
+  Future<void> keepEntry(String fn, List<dynamic> args, String rid, String label, {List<Map<String, dynamic>> photos = const []}) async {
+    final local = <Map<String, dynamic>>[];
+    for (final (i, p) in photos.indexed) {
+      final jpg = p['jpg'];
+      if (jpg is! Uint8List) continue;
+      try {
+        final f = File('${(await keptDir()).path}/kept_${rid.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_')}_$i.jpg');
+        await f.parent.create(recursive: true);
+        await f.writeAsBytes(jpg, flush: true);
+        local.add({for (final e in p.entries) if (e.key != 'jpg') e.key: e.value, 'file': f.path});
+      } catch (_) {/* this photo is not kept: the entry goes without it */}
+    }
+    kept.add({'rid': rid, 'fn': fn, 'args': args, 'label': label, 'site': site?.code ?? '', 'at': DateTime.now().toIso8601String(), 'state': 'waiting', 'msg': '',
+      if (api.stamp.isNotEmpty) 'made': api.stamp, if (local.isNotEmpty) 'local': local});
     await _saveKept();
   }
 
+  /// (3.85.0) where the photos of entries kept on this phone are (the app's own folder – not a cache the phone may empty)
+  static Future<Directory> Function() keptDir = () async {
+    try {
+      return Directory('${(await getApplicationSupportDirectory()).path}/kept');
+    } catch (_) {
+      return Directory('${Directory.systemTemp.path}/rcl_kept');
+    }
+  };
+
   Future<void> dropKept(String rid) async {
+    for (final x in kept.where((x) => x['rid'] == rid)) {
+      _dropFiles(x);
+    }
     kept.removeWhere((x) => x['rid'] == rid);
     await _saveKept();
+  }
+
+  void _dropFiles(Map<String, dynamic> x) {
+    for (final p in (x['local'] as List? ?? const []).whereType<Map>()) {
+      try {
+        File('${p['file']}').deleteSync();
+      } catch (_) {/* gone already */}
+    }
+  }
+
+  /// (3.85.0) a kept entry's photos sent first (the server remembers a photo 6 hours: sent again when older than 5): its args with
+  /// them; null = no network now (it waits); a refused photo throws its words
+  Future<List<dynamic>?> _keptArgs(Map<String, dynamic> x) async {
+    final args = [...((x['args'] as List?) ?? const [])];
+    final local = (x['local'] as List? ?? const []).whereType<Map>().toList();
+    if (local.isEmpty || args.isEmpty || args[0] is! Map) return args;
+    final up = x['up'] is Map ? x['up'] as Map : null, upAt = DateTime.tryParse('${up?['at'] ?? ''}');
+    List<dynamic>? list = up != null && upAt != null && DateTime.now().difference(upAt) < const Duration(hours: 5) ? up['list'] as List? : null;
+    if (list == null) {
+      final got = <Map<String, dynamic>>[];
+      for (final p in local) {
+        List<int> b;
+        try {
+          b = File('${p['file']}').readAsBytesSync();
+        } catch (_) {
+          continue; // its file is gone: the entry goes without it
+        }
+        try {
+          final r = await api.call('dieselPhoto', [{'kind': p['kind'], 'data': 'data:image/jpeg;base64,${base64Encode(b)}', 'lat': p['lat'], 'lng': p['lng'], 'acc': p['acc'], 'at': p['at'], 'no': p['no']}], true);
+          if (r is Map && '${r['path'] ?? ''}'.isNotEmpty) got.add({'k': '${p['kind']}', 'p': '${r['path']}'});
+        } on ApiError catch (e) {
+          if (e.noConnection) return null;
+          rethrow;
+        }
+      }
+      list = got;
+      x['up'] = {'at': DateTime.now().toIso8601String(), 'list': got};
+    }
+    args[0] = {...(args[0] as Map), if (list.isNotEmpty) 'photos': list};
+    return args;
   }
 
   /// Sends what is kept for the site open (in the order kept); stops at the first "no network".
@@ -1095,18 +1323,25 @@ class Session extends ChangeNotifier {
     try {
       for (final x in mine) {
         try {
-          final r = await api.call('${x['fn']}', (x['args'] as List?) ?? const [], true, '${x['rid']}');
+          final args = await _keptArgs(x); // (3.85.0) its photos first
+          if (args == null) break; // no network now
+          // (3.85.0, Mechanical update-211) the day it was made (the server's stamp); a diesel issue / transfer the stock cannot cover:
+          // kept on the server as stock short – saved by itself when the stock comes (he chose this for entries made with no network)
+          final with0 = <String, dynamic>{if ('${x['made'] ?? ''}'.isNotEmpty) 'made': '${x['made']}', if (Api.shortFns.contains('${x['fn']}')) 'short': true};
+          final r = await api.call('${x['fn']}', args, true, '${x['rid']}', with0);
           if (r is Map && (r['ok'] == false || (r['errors'] is List && (r['errors'] as List).isNotEmpty))) {
             final errs = (r['errors'] as List? ?? []).map((e) => e is Map ? '${e['msg'] ?? ''}' : '$e').where((e) => e.isNotEmpty).toList();
             x['state'] = 'refused';
             x['msg'] = errs.isEmpty ? '${r['error'] ?? r['warning'] ?? 'Not saved.'}' : errs.join(' | ');
           } else {
+            _dropFiles(x);
             kept.removeWhere((y) => y['rid'] == x['rid']);
             sent++;
           }
         } on ApiError catch (e) {
           if (e.noConnection) break;
           if (e.code == 'sent') {
+            _dropFiles(x);
             kept.removeWhere((y) => y['rid'] == x['rid']);
             sent++;
             keptNote.value = e.message;
@@ -1142,6 +1377,12 @@ class Session extends ChangeNotifier {
     stopLive();
     rtcOff();
     clearMemory(); // (update-155) nothing the screens kept stays after sign-out
+    offline = false;
+    try {
+      await api.keep.write(kSnap, null); // (3.85.0) what was kept for opening with no network
+      await api.keep.write(kStamp, null);
+    } catch (_) {/* signing out never waits for it */}
+    api.stamp = '';
     await api.signOut();
     site = null;
     machines = [];

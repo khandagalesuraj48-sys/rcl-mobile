@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/alerts.dart';
@@ -10,6 +11,7 @@ import 'package:rcl_mobile/core/format.dart' show parseKey;
 import 'package:rcl_mobile/core/kinds.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/screens/verify.dart';
+import 'package:rcl_mobile/screens/approvals.dart' show approvalsShown, decidedWords;
 import 'package:rcl_mobile/web/files.dart';
 
 import 'fake_server.dart';
@@ -256,6 +258,7 @@ void main() {
     final s1 = make();
     await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
     await s1.chooseSite('S1');
+    keep.data.remove(Session.kSnap); // (3.85.0) a phone that has not kept the site's lists yet (else it opens from them – the test below)
     srv.portalDown = true;
     srv.down = true;
     final s2 = make()..retryEvery = const Duration(milliseconds: 200);
@@ -280,6 +283,7 @@ void main() {
     final s1 = make();
     await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
     await s1.chooseSite('T2');
+    keep.data.remove(Session.kSnap); // (3.85.0) nothing kept on this phone yet
     srv.portalStatus = 503;
     final s2 = make()..retryEvery = const Duration(hours: 1);
     await s2.start();
@@ -488,6 +492,112 @@ void main() {
     await s.dropKept('rid-refused');
     expect(s.kept, isEmpty);
     expect(await keep.read('kept_sujit@rcl.test'), isNull);
+  });
+
+  test('(3.85.0, asked 04-11-2026) NO NETWORK when the app opens: the site opened before opens from what this phone kept (its lists, the ERP\'s day by the phone\'s clock); an entry kept here carries the server\'s stamp and its photo; the network back: the server again, the photo then the entry – as stock short when the stock cannot cover it; signing out removes what was kept', () async {
+    final dir = Directory.systemTemp.createTempSync('rcl_kept_');
+    final was = Session.keptDir;
+    Session.keptDir = () async => dir;
+    addTearDown(() => Session.keptDir = was);
+    final s1 = make();
+    await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s1.chooseSite('S1');
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(keep.data[Session.kSnap], isNotNull, reason: 'the site\'s lists kept on the phone');
+    expect(s1.api.stamp, FakeServer.stamp, reason: 'the server\'s signed time');
+    srv.portalDown = true;
+    srv.down = true;
+    final s2 = make()..clock = () => DateTime(2026, 10, 15, 5, 30); // before 06:00 – still the 14th for the ERP
+    await s2.start();
+    expect(s2.stage, Stage.ready, reason: 'not the waiting screen: the site from this phone');
+    expect(s2.offline, true);
+    expect(s2.site!.code, 'S1');
+    expect(s2.email, 'sujit@rcl.test');
+    expect(s2.machines.length, 3);
+    expect(s2.stockByLoc, {'Dispenser': 813, 'VTR Store': 320});
+    expect(s2.today, '2026-10-14', reason: 'the ERP\'s day on the phone\'s clock (the next day starts at 06:00)');
+    expect(s2.api.stamp, FakeServer.stamp);
+    await s2.keepEntry('saveDieselIssue', [{'no': 'Sany 210 (No.1)', 'qty': 40, 'hrReading': 4710, 'source': 'Dispenser', 'date': '2026-10-14'}], 'rid-off-1', 'Diesel Issue · 14-10-2026 · Sany 210 (No.1) · 40 L',
+        photos: [{'kind': 'dash', 'jpg': Uint8List.fromList([255, 216, 255, 1, 2, 3]), 'lat': 18.52, 'lng': 73.85, 'acc': 6, 'at': '2026-10-14T23:10:00.000Z', 'no': 'Sany 210 (No.1)'}]);
+    expect(s2.kept.single['made'], FakeServer.stamp);
+    expect(s2.keptAt('Dispenser'), 40);
+    expect(s2.heldWords('Dispenser'), '40 L on this phone');
+    expect(dir.listSync().length, 1, reason: 'its photo: a file of the app, not in the list of kept entries');
+    expect(jsonEncode(s2.kept), isNot(contains('216')), reason: 'no picture inside the list');
+    await s2.liveTick();
+    expect(s2.offline, true, reason: 'still no network: as it is');
+    expect(s2.kept.length, 1);
+    srv.portalDown = false;
+    srv.down = false;
+    srv.short = true;
+    srv.calls.clear();
+    await s2.liveTick();
+    expect(s2.offline, false, reason: 'the network is back');
+    expect(srv.calls, containsAllInOrder(['portal:me', 'mech:getInit', 'mech:sync', 'mech:dieselPhoto+rid', 'mech:saveDieselIssue+rid']));
+    expect(srv.photosSent, 1);
+    expect(srv.metas.lastWhere((m) => m['fn'] == 'saveDieselIssue'), {'fn': 'saveDieselIssue', 'made': FakeServer.stamp, 'short': true});
+    expect(srv.rids, contains('saveDieselIssue:rid-off-1'), reason: 'its own number');
+    expect(s2.kept, isEmpty, reason: 'kept as stock short on the server: off the phone');
+    expect(s2.keptNote.value, startsWith('Kept as stock short – VF-00008'));
+    expect(dir.listSync(), isEmpty, reason: 'its photo file removed');
+    await s2.signOut();
+    expect(keep.data.containsKey(Session.kSnap), false, reason: 'signed out: never opened with no network again');
+    expect(keep.data.containsKey(Session.kStamp), false);
+    // nothing kept on the phone (or another person's): the waiting screen, as before
+    srv.portalDown = true;
+    final s3 = make()..retryEvery = const Duration(hours: 1);
+    await s3.start();
+    expect(s3.stage, isNot(Stage.ready));
+    s3.dispose();
+  });
+
+  test('(3.85.0) the stock cannot cover a diesel issue: asked "keep it as stock short?" – no: refused as before; yes: the same save again with {short: true} under a new number, told as sent (green)', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    srv.short = true;
+    final asked = <String>[];
+    s.api.askShort = (m) async {
+      asked.add(m);
+      return false;
+    };
+    ApiError? e1;
+    try {
+      await s.api.call('saveDieselIssue', [{'no': 'Sany 210 (No.1)', 'qty': 40}], true);
+    } on ApiError catch (e) {
+      e1 = e;
+    }
+    expect(e1?.message, startsWith('Not enough diesel at Dispenser'));
+    expect(asked.single, startsWith('Not enough diesel at Dispenser'));
+    s.api.askShort = (m) async => true;
+    try {
+      await s.api.call('saveDieselIssue', [{'no': 'Sany 210 (No.1)', 'qty': 40}], true);
+      fail('kept as stock short');
+    } on ApiError catch (e) {
+      expect(e.code, 'sent');
+      expect(e.message, startsWith('Kept as stock short – VF-00008'));
+      expect(Api.isGood(e.message), true, reason: 'shown in green, not as an error');
+    }
+    final rids = srv.rids.where((r) => r.startsWith('saveDieselIssue:')).toList();
+    expect(rids.length, 3);
+    expect(rids[1] == rids[2], false, reason: 'the save with {short: true} has a number of its own');
+    expect(srv.metas.last, {'fn': 'saveDieselIssue', 'short': true});
+    expect(Api.shortOf({'ok': false, 'errors': [{'row': 0, 'msg': 'Not enough diesel at T1: 50 Ltr of entries that wait …'}]}), startsWith('Not enough'));
+    expect(Api.shortOf({'ok': false, 'errors': [{'row': 1, 'msg': 'X is not in Master.'}]}), '', reason: 'another refusal: never kept');
+    expect(Api.shortOf({'ok': false, 'warnings': [{'row': 1, 'msg': 'Not enough diesel at T1 …'}]}), '');
+  });
+
+  test('(3.85.0) Approvals: an entry kept as stock short is shown with what waits (as Pending); the last approval with the stock short says so; the count has them', () async {
+    final d = {'requests': [
+      {'id': 'VF-00011', 'status': 'Short', 'mine': false},
+      {'id': 'VF-00010', 'status': 'Approved', 'mine': false},
+      {'id': 'VF-00009', 'status': 'Pending', 'mine': false},
+    ], 'pending': 1, 'short': 1, 'forMe': 1, 'backToMe': 0};
+    expect(approvalsShown(d).map((r) => r['id']), ['VF-00011', 'VF-00009']);
+    expect(decidedWords({'id': 'VF-00011', 'status': 'Short'}), 'VF-00011 approved – the stock is short: it is saved by itself when the stock comes.');
+    final s = make();
+    s.takeApprovals(d);
+    expect([s.crWaiting, s.crShort], [2, 1]);
   });
 
   test('(3.1.7) live: a version that changes makes the screens load again; "flow" brings the Approvals count', () async {

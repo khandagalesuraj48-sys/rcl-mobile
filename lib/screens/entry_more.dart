@@ -126,6 +126,11 @@ class _ImportCheckScreenState extends State<ImportCheckScreen> {
       toast(context, k.key == 'transfer' ? '${res['count']} transfers saved (${fmt(res['qty'])} Ltr).' : '${res['count']} ${_what(k, 0)} imported (${fmt(res['qty'])} Ltr).');
       Navigator.pop(context, true);
     } catch (e) {
+      if (mounted && isSent(e)) {      // (3.85.0) kept as stock short / sent for verification
+        toast(context, errText(e));
+        Navigator.pop(context, true);
+        return;
+      }
       if (mounted) toast(context, errText(e), bad: true);
     } finally {
       if (mounted) setState(() => busy = false);
@@ -601,6 +606,11 @@ class _TransferManyScreenState extends State<TransferManyScreen> {
       toast(context, '${res['count']} transfers saved (${fmt(res['qty'])} Ltr).');
       _reset();
     } catch (e) {
+      if (mounted && isSent(e)) {      // (3.85.0) kept as stock short / sent for verification: nothing saved yet – the rows emptied
+        toast(context, errText(e));
+        _reset();
+        return;
+      }
       if (mounted) toast(context, errText(e), bad: true);
     } finally {
       if (mounted) setState(() => busy = false);
@@ -939,11 +949,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       await tellLines(context, 'Not the fuel of this source', [for (final x in wrong) 'Row ${x.$1}: ${x.$2}']);
       return;
     }
-    final avail = asNum(bal?['available']);
-    if (avail != null && total > avail) {
-      await tellLines(context, 'Not enough diesel in stock', ['At $source for ${showDate(date)} ($shift) you can issue up to ${fmt(avail)} Ltr, and these rows total ${fmt(total)} Ltr. Add a Diesel Inward entry first or reduce the quantities.']);
-      return;
-    }
+    // (3.85.0, Mechanical update-211) more than the stock: the server says so and the app asks "keep it as stock short?" – no stop here
     final fx = widget.fix, note = fx == null ? '' : await askFixNote(context, fx);      // (3.22.0) correcting: what he corrected (asked once)
     if (note == null || !mounted) return;
     setState(() => busy = true);
@@ -982,6 +988,18 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       });
       _loadBal();
     } catch (e) {
+      // (3.85.0) sent for verification, or kept as stock short (Mechanical update-211): nothing saved yet – the rows are emptied
+      if (mounted && isSent(e)) {
+        toast(context, errText(e));
+        setState(() {
+          dRows
+            ..clear()
+            ..addAll([_DRow(), _DRow()]);
+          dNotes = [];
+        });
+        _loadBal();
+        return;
+      }
       if (mounted) toast(context, errText(e), bad: true);
     } finally {
       if (mounted) setState(() => busy = false);

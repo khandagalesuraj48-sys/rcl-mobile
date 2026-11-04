@@ -59,6 +59,9 @@ class _Shot {
   Uint8List? jpg;
   String path = '';
   bool busy = false;
+  /// (3.85.0) the photo as taken (its place and time) – with no network it stays on this phone and goes with the kept entry
+  TakenPhoto? taken;
+  bool get onPhone => path.isEmpty && taken != null && jpg != null;
 }
 
 /// (3.1.13) a bill copy of an inward: just taken / picked (jpg, being sent until it has its path), or one the inward has (url).
@@ -341,10 +344,25 @@ class _EntryFormState extends State<EntryForm> {
     if (from == to) return const InfoLine('From and To cannot be the same.', bad: true);
     final s0 = SessionScope.read(context);
     if (s0.placeFuel(from) != s0.placeFuel(to)) return InfoLine('$from holds ${s0.placeFuel(from)}, $to holds ${s0.placeFuel(to)} – a transfer goes only between places of the same fuel.', bad: true);      // (3.44.0)
-    final b = tbal;
-    if (b == null) return const InfoLine('Loading stock…');
+    final b0 = tbal;
+    // (3.85.0) no network: the figures this phone knows (less what it keeps)
+    if (b0 == null && s0.offline) {
+      num here(String l) => (s0.stockByLoc[l] ?? 0) - s0.keptAt(l);
+      return InfoLine(bi('No network – as this phone knows it: $from ${fmtNum(here(from))} → after ${fmtNum(here(from) - q)} $_unit; $to ${fmtNum(here(to))} → after ${fmtNum(here(to) + q)} $_unit. The entry is kept on this phone and checked when it is sent.',
+          'नेटवर्क नाही – फोनला माहीत असलेला stock: $from ${fmtNum(here(from))}, $to ${fmtNum(here(to))} $_unit. Entry फोनवर ठेवली जाते आणि पाठवताना तपासली जाते.'), key: const Key('transfer-offline'));
+    }
+    if (b0 == null) return const InfoLine('Loading stock…');
+    // (3.85.0, Mechanical update-211) less what this phone keeps (the server's figures are already less what waits there)
+    final pf = s0.keptAt(from), pt = s0.keptAt(to);
+    Map<String, dynamic> less(Map? m, num p) => {...?m?.cast<String, dynamic>(), 'balance': (asNum(m?['balance']) ?? 0) - p, 'available': (asNum(m?['available']) ?? 0) - p};
+    final b = {...b0, 'from': less(b0['from'] as Map?, pf), 'to': less(b0['to'] as Map?, pt)};
     final f = (b['from'] as Map?) ?? const {}, t = (b['to'] as Map?) ?? const {};
     final short = q > (asNum(f['available']) ?? double.infinity);
+    String waits(Map h, num p) {
+      final w = asNum(h['held'] is Map ? (h['held'] as Map)['wait'] : null) ?? 0, k0 = asNum(h['held'] is Map ? (h['held'] as Map)['short'] : null) ?? 0;
+      final l = [if (w > 0) '${fmtNum(w)} $_unit waiting', if (k0 > 0) '${fmtNum(k0)} $_unit stock short', if (p > 0) '${fmtNum(p)} $_unit on this phone'];
+      return l.isEmpty ? '' : '${l.join(', ')} – already taken out';
+    }
     Widget side(String key, String head, Object? open, num after, {String note = '', bool bad = false}) => Expanded(
           child: Container(
             key: Key(key),
@@ -354,16 +372,16 @@ class _EntryFormState extends State<EntryForm> {
               Text(head, style: const TextStyle(fontSize: 12, color: C.muted)),
               Text(fmt(open), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               Text('after ${fmt(after)} $_unit', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-              if (note.isNotEmpty) Text(note, style: const TextStyle(fontSize: 12, color: C.red, fontWeight: FontWeight.w700)),
+              if (note.isNotEmpty) Text(note, style: TextStyle(fontSize: 12, color: bad ? C.red : C.muted, fontWeight: FontWeight.w700)),
             ]),
           ),
         );
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        side('t-from', '$from – opening ${showDate(date)} $shift', f['balance'], r2n((asNum(f['balance']) ?? 0) - q), note: short ? 'Can transfer up to ${fmt(f['available'])} $_unit' : '', bad: short),
+        side('t-from', '$from – opening ${showDate(date)} $shift', f['balance'], r2n((asNum(f['balance']) ?? 0) - q), note: [if (short) 'Can transfer up to ${fmt((asNum(f['available']) ?? 0) < 0 ? 0 : f['available'])} $_unit – saving asks to keep it as stock short', if (waits(f, pf).isNotEmpty) waits(f, pf)].join('\n'), bad: short),
         const Padding(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 22), child: Icon(Icons.arrow_forward_rounded, color: C.muted)),
-        side('t-to', '$to – opening', t['balance'], r2n((asNum(t['balance']) ?? 0) + q)),
+        side('t-to', '$to – opening', t['balance'], r2n((asNum(t['balance']) ?? 0) + q), note: waits(t, pt)),
       ]),
     );
   }
@@ -542,7 +560,19 @@ class _EntryFormState extends State<EntryForm> {
           _aiRead(pk.key, m.id, shot.jpg);
         }
       }
-      final r = (await s.api.call('dieselPhoto', [{'kind': pk.key, 'data': shot.dataUrl, 'lat': shot.spot.lat, 'lng': shot.spot.lng, 'acc': shot.spot.acc, 'at': shot.at.toUtc().toIso8601String(), 'no': m.id}], true) as Map);
+      sh.taken = shot;      // (3.85.0) kept with it: with no network it goes with the kept entry
+      if (s.offline) {
+        if (mounted) toast(context, bi('No network – the photo stays on this phone and goes with the entry.', 'नेटवर्क नाही – फोटो फोनवर राहतो आणि entry सोबत जाईल.'));
+        return;
+      }
+      Map r;
+      try {
+        r = (await s.api.call('dieselPhoto', [{'kind': pk.key, 'data': shot.dataUrl, 'lat': shot.spot.lat, 'lng': shot.spot.lng, 'acc': shot.spot.acc, 'at': shot.at.toUtc().toIso8601String(), 'no': m.id}], true) as Map);
+      } on ApiError catch (e) {
+        if (!e.noConnection) rethrow;
+        if (mounted) toast(context, bi('No network – the photo stays on this phone and goes with the entry.', 'नेटवर्क नाही – फोटो फोनवर राहतो आणि entry सोबत जाईल.'));
+        return;
+      }
       if (!mounted || machine?.id != m.id) return;
       setState(() => sh.path = (r['path'] ?? '').toString());
       final dr = _draft, jpg = sh.jpg;
@@ -550,7 +580,10 @@ class _EntryFormState extends State<EntryForm> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          if (sh.path.isEmpty) sh.jpg = null;
+          if (sh.path.isEmpty) {
+            sh.jpg = null;
+            sh.taken = null;
+          }
         });
         toast(context, e is PhotoProblem ? e.message : errText(e), bad: true);
       }
@@ -966,10 +999,7 @@ class _EntryFormState extends State<EntryForm> {
     if (!((asNum(qty.text) ?? 0) > 0)) return _unit == 'kg' ? 'Enter the kg.' : 'Enter the litres.';
     if (issue && s.cardSite && !((asNum(amount.text) ?? 0) > 0)) return 'Enter the Amount (₹) of this fill.';      // (3.45.0)
     if (issue && tcDue != null && ed == null && asNum(tcPh.text) == null) return 'Tank check due: type the diesel found in the tank before filling.';      // (3.76.0, update-203)
-    if (issue && bal != null && (asNum(qty.text) ?? 0) > (asNum(bal!['available']) ?? double.infinity)) {
-      final w = s.placeFuel(source) == 'Diesel' ? 'diesel' : s.placeFuel(source), u = _unit == 'kg' ? 'kg' : 'L';
-      return 'Not enough $w at $source for ${showDate(date)} ($shift): you can issue up to ${fmtNum(asNum(bal!['available']))} $u. Add a ${w == 'diesel' ? 'Diesel' : w} Inward first or reduce the ${u == 'kg' ? 'kg' : 'litres'}.';
-    }
+    // (3.85.0, Mechanical update-211) more than the stock: the server says so and the app asks "keep it as stock short?" – no stop here
     return null;
   }
 
@@ -1008,6 +1038,19 @@ class _EntryFormState extends State<EntryForm> {
       if (note == null) {
         setState(() => busy = false);
         return;
+      }
+      // (3.85.0) NO NETWORK: kept on this phone at once (no question) – sent by itself when the network is back
+      if (_keepable && s.offline) {
+        await _keepNow(s, d, s.api.newRid());
+        return;
+      }
+      // …the network is back: the photos that stayed on the phone go first
+      if (_keepable && shots.values.any((x) => x.onPhone)) {
+        if (!await _photosNow(s)) {
+          await _keepNow(s, d, s.api.newRid());
+          return;
+        }
+        if (_photoList.isNotEmpty) d['photos'] = _photoList;
       }
       final r = (fx != null ? await s.editFlow(fx.id, note, [d]) : await (ed == null ? s.api.call(k.save, [d], true) : s.api.call(_updateOf(k.key), [editId, d], true)) as Map).cast<String, dynamic>();
       if (!mounted) return;
@@ -1063,26 +1106,10 @@ class _EntryFormState extends State<EntryForm> {
       });
       _balance();
     } catch (e) {
-      // (3.1.7) no network: a NEW entry may be kept on the phone and sent by itself later (with the same save number)
-      if (mounted && ed == null && fx == null && sentD != null && e is ApiError && await offerKeep(context, e)) {
-        final m0 = machine;
-        _draft?.clear();
-        draftAt = '';
-        await s.keepEntry(k.save, [sentD], e.rid, '${tr(k.en)} · ${showDate(date)}${m0 != null ? ' · ${m0.id}' : ''} · ${qty.text.trim()} L');
-        if (!mounted) return;
-        setState(() {
-          busy = false;
-          err = Api.keptMsg;
-          machine = null;
-          way = '';
-          shots.clear();
-          ai.clear();
-          aiPut.clear();
-          _billsReset();
-          for (final c in [qty, km, hr, remark, rate, billNo]) {
-            c.clear();
-          }
-        });
+      // (3.1.7) no network: a NEW entry is kept on the phone and sent by itself later (with the same save number) – (3.85.0) without a
+      // question, with its photos
+      if (mounted && _keepable && sentD != null && e is ApiError && e.noConnection && e.rid.isNotEmpty) {
+        await _keepNow(s, sentD, e.rid);
         return;
       }
       if (mounted && isSent(e)) {
@@ -1117,6 +1144,82 @@ class _EntryFormState extends State<EntryForm> {
         });
       }
     }
+  }
+
+  /// (3.85.0) a new Diesel Issue / Inward / Transfer: kept on this phone when there is no network
+  bool get _keepable => ed == null && widget.fix == null && const ['issue', 'inward', 'transfer'].contains(k.key);
+
+  /// (3.85.0) kept on this phone – its photos with it (sent again with it: the server remembers a photo only 6 hours)
+  Future<void> _keepNow(Session s, Map<String, dynamic> d, String rid) async {
+    final m0 = machine, local = <Map<String, dynamic>>[], paths = <Map<String, String>>[];
+    for (final pk in kPhotoKinds) {
+      final sh = shots[pk.key], t = sh?.taken;
+      if (sh == null || sh.jpg == null) continue;
+      if (t != null) {
+        local.add({'kind': pk.key, 'jpg': sh.jpg, 'lat': t.spot.lat, 'lng': t.spot.lng, 'acc': t.spot.acc, 'at': t.at.toUtc().toIso8601String(), 'no': m0?.id ?? ''});
+      } else if (sh.path.isNotEmpty) {
+        paths.add({'k': pk.key, 'p': sh.path});
+      }
+    }
+    final d2 = {...d}..remove('photos');
+    if (paths.isNotEmpty) d2['photos'] = paths;
+    _draft?.clear();
+    draftAt = '';
+    await s.keepEntry(k.save, [d2], rid, '${tr(k.en)} · ${showDate(date)}${m0 != null ? ' · ${m0.id}' : ''} · ${qty.text.trim()} ${_unit == 'kg' ? 'kg' : 'L'}', photos: local);
+    if (!mounted) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      busy = false;
+      err = Api.keptMsg;
+      machine = null;
+      way = '';
+      shots.clear();
+      ai.clear();
+      aiPut.clear();
+      _billsReset();
+      for (final c in [qty, km, hr, remark, rate, billNo, amount, tcPh, tcRs]) {
+        c.clear();
+      }
+      tcDue = null;
+    });
+    _balance();
+  }
+
+  /// (3.85.0) the photos that stayed on the phone, sent now; false = still no network
+  Future<bool> _photosNow(Session s) async {
+    for (final pk in kPhotoKinds) {
+      final sh = shots[pk.key], t = sh?.taken, m = machine;
+      if (sh == null || !sh.onPhone || t == null || m == null) continue;
+      setState(() => sh.busy = true);
+      try {
+        final r = await s.api.call('dieselPhoto', [{'kind': pk.key, 'data': t.dataUrl, 'lat': t.spot.lat, 'lng': t.spot.lng, 'acc': t.spot.acc, 'at': t.at.toUtc().toIso8601String(), 'no': m.id}], true);
+        if (r is Map && mounted) setState(() => sh.path = '${r['path'] ?? ''}');
+      } on ApiError catch (e) {
+        if (e.noConnection) return false;
+        rethrow;
+      } finally {
+        if (mounted) setState(() => sh.busy = false);
+      }
+    }
+    return true;
+  }
+
+  /// (3.85.0, Mechanical update-211) the stock line of an issue: the server's figure is less what waits (verification, stock short)
+  /// and less what this phone keeps; with no network – the figure this phone knows
+  String _stockLine(Session s, num? q, num? avail) {
+    final u = _unit == 'kg' ? 'kg' : 'L', phone = s.keptAt(source);
+    if (bal == null) {
+      final here = (s.stockByLoc[source] ?? 0) - phone;
+      return bi('No network – stock at $source as this phone knows it: ${fmtNum(here)} $u${q != null && q > 0 ? ' → after this issue ${fmtNum(here - q)} $u' : ''}. The entry is kept on this phone and checked when it is sent.',
+          'नेटवर्क नाही – $source चा stock (फोनला माहीत असलेला): ${fmtNum(here)} $u. Entry फोनवर ठेवली जाते आणि पाठवताना तपासली जाते.');
+    }
+    final b0 = (asNum(bal!['balance']) ?? 0) - phone, a0 = avail == null ? null : avail - phone;
+    final h = (bal!['held'] as Map?) ?? const {}, w = asNum(h['wait']) ?? 0, k0 = asNum(h['short']) ?? 0;
+    final held = [if (w > 0) '${fmtNum(w)} $u waiting for verification', if (k0 > 0) '${fmtNum(k0)} $u stock short', if (phone > 0) '${fmtNum(phone)} $u on this phone'].join(', ');
+    final main = q == null || q == 0
+        ? 'Stock at $source on ${showDate(date)} ($shift): ${fmtNum(b0)} $u'
+        : (q > (a0 ?? double.infinity) ? 'Not enough stock at $source: you can issue up to ${fmtNum(a0 != null && a0 < 0 ? 0 : a0)} $u – saving asks to keep it as stock short.' : 'Stock after this issue: ${fmtNum(b0 - q)} $u');
+    return held.isEmpty ? main : '$main ($held – already taken out)';
   }
 
   Future<void> _savedSheet(String id, Map<String, dynamic> d) => showModalBottomSheet<void>(
@@ -1293,7 +1396,7 @@ class _EntryFormState extends State<EntryForm> {
             if ((pk.key != 'hrs' || (machine != null && _both(machine!))) && !(pk.key == 'reg' && SessionScope.read(context).cardSite))      // (3.45.0) no register at a site on fuel cards
             Builder(builder: (_) {
               final sh = shots[pk.key];
-              final done = sh != null && sh.path.isNotEmpty && sh.jpg != null;
+              final done = sh != null && sh.path.isNotEmpty && sh.jpg != null, here = sh != null && sh.onPhone && !sh.busy;      // (3.85.0) kept on the phone
               return Press(
                 key: Key('photo-${pk.key}'),
                 onTap: () => _shoot(pk),
@@ -1314,7 +1417,7 @@ class _EntryFormState extends State<EntryForm> {
                         Row(children: [
                           Icon(sh?.busy == true ? Icons.cloud_upload_outlined : done ? Icons.check_circle_rounded : onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 14, color: sh?.jpg != null ? Colors.white70 : C.green),
                           const SizedBox(width: 4),
-                          Text(sh?.busy == true ? 'Sending…' : done ? 'Sent' : onComputer ? 'Choose photo' : 'Take photo', style: TextStyle(fontSize: 12, color: sh?.jpg != null ? Colors.white70 : C.muted)),
+                          Text(sh?.busy == true ? 'Sending…' : done ? 'Sent' : here ? 'On this phone' : onComputer ? 'Choose photo' : 'Take photo', style: TextStyle(fontSize: 12, color: sh?.jpg != null ? Colors.white70 : C.muted)),
                         ]),
                       ]),
                     ),
@@ -1425,13 +1528,8 @@ class _EntryFormState extends State<EntryForm> {
               const SizedBox(height: 10),
               _chips<num>(const [(20, '20'), (50, '50'), (100, '100'), (150, '150'), (200, '200')], q, (v) => setState(() => qty.text = '$v')),
               if (s.cardSite) ..._cardPart(s, q),      // (3.45.0) the ₹ and the card's balance
-              if (bal != null)
-                InfoLine(
-                  q == null || q == 0
-                      ? 'Stock at $source on ${showDate(date)} ($shift): ${fmtNum(asNum(bal!['balance']))} ${_unit == 'kg' ? 'kg' : 'L'}'
-                      : (q > (avail ?? double.infinity) ? 'Not enough stock at $source: you can issue up to ${fmtNum(avail)} ${_unit == 'kg' ? 'kg' : 'L'}.' : 'Stock after this issue: ${fmtNum((asNum(bal!['balance']) ?? 0) - q)} ${_unit == 'kg' ? 'kg' : 'L'}'),
-                  bad: q != null && q > (avail ?? double.infinity),
-                ),
+              if (bal != null || (s.offline && !s.cardSite))
+                InfoLine(_stockLine(s, q, avail), key: const Key('issue-stock'), bad: bal != null && q != null && q > ((avail ?? double.infinity) - s.keptAt(source))),      // (3.85.0) what waits; no network
               _label('Driver / Operator', 'चालक'),
               Autocomplete<String>(
                 key: ValueKey('drv-$driverGen'), // (3.14.0) made again with the last fill's driver in it

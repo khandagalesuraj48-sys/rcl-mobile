@@ -105,6 +105,8 @@ void main() {
       final s1 = make();
       await s1.signIn('sujit@rcl.test', 'Nashik#Road848!');
       await s1.chooseSite('S1');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await s1.api.keep.write(Session.kSnap, null); // (3.85.0) nothing kept on this phone yet (else it opens from it – session_test)
       srv.down = true;
       final s2 = make();
       await s2.start();

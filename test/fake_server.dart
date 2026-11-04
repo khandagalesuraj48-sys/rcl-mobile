@@ -148,6 +148,12 @@ class FakeServer {
   final rulesSaved = <Map<String, dynamic>>[];
   final reportAsked = <Map<String, dynamic>>[]; // (3.2.0) the reports asked, with their filters
   bool down = false; // no network to Mechanical
+  /// (3.85.0, Mechanical update-211) what came with the saves (the 4th part: {short, made, reason}); the stock cannot cover the next
+  /// diesel issues / transfers ([short] – "Not enough …", or kept as stock short when {short: true} came); the photos sent
+  final metas = <Map<String, dynamic>>[];
+  bool short = false;
+  int photosSent = 0;
+  static const stamp = '1760420000000.0123456789abcdef0123456789abcdef';
   bool portalDown = false; // (3.20.1) no network to the Portal either
   int portalStatus = 0; // (3.20.1) the Portal not reached: answers this code (e.g. 503) without its own words
   final rids = <String>[]; // the save numbers that came
@@ -1174,6 +1180,8 @@ class FakeServer {
       }
       final action = args[1] as String, a = args[2] as List;
       calls.add('mech:$action${b['rid'] != null ? '+rid' : ''}');
+      final meta = args.length > 3 && args[3] is Map ? (args[3] as Map).cast<String, dynamic>() : null;
+      if (meta != null) metas.add({'fn': action, ...meta});
       if (!(args[0] as String).startsWith('tok-')) return _j({'error': 'SESSION_EXPIRED'}, 401);
       if (expireOnce == action) {
         expireOnce = '';
@@ -1204,7 +1212,7 @@ class FakeServer {
           rtcBeats.add(beat['r']);
           final m = [...rtcIn];
           rtcIn.clear();
-          return _j({'result': {'versions': versions, if (syncToday != null) 'today': syncToday, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m},
+          return _j({'result': {'versions': versions, 'stamp': stamp, if (syncToday != null) 'today': syncToday, if (beat.containsKey('r') || m.isNotEmpty) 'rtc': {'r': rtcN, 'top': rtcN, 'm': m},
             if (userInSync) 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc, if (pageAdmin != null) 'pageAdmin': pageAdmin}}});
         case 'rtcUsers':
           return _j({'result': {'me': 'u-sujit', 'name': 'Sujit Mule', 'users': rtcPeople, 'ice': [{'urls': ['stun:stun.l.google.com:19302']}], 'relay': false, 'max': 3}});
@@ -1354,7 +1362,7 @@ class FakeServer {
         case 'getStock':
           return _j({'result': stock});
         case 'getInit':
-          return _j({'result': {'flow': flowMine, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': card ? <String>[] : fuels ? ['DIESEL CARD', 'PETROL CARD', 'PETROL CAN', 'CNG CARD'] : ['Dispenser', 'VTR Store'],
+          return _j({'result': {'flow': flowMine, 'stamp': stamp, 'today': '2026-10-14', 'company': 'Rachana Construction Limited', 'locations': card ? <String>[] : fuels ? ['DIESEL CARD', 'PETROL CARD', 'PETROL CAN', 'CNG CARD'] : ['Dispenser', 'VTR Store'],
             if (card) ...{'fuelMode': 'card', 'siteFuels': ['Diesel', 'Petrol', 'CNG']},
             if (fuels && !card) 'placeFuels': {'DIESEL CARD': 'Diesel', 'PETROL CARD': 'Petrol', 'PETROL CAN': 'Petrol', 'CNG CARD': 'CNG'}, 'drivers': ['Gupta', 'Maruti'], 'pumps': ['IOC Bunk'], 'stock': stock,
             'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'admin': superAdmin, 'super': superAdmin, 'perms': perms, if (dsrc != null) 'dsrc': dsrc, if (pageAdmin != null) 'pageAdmin': pageAdmin},
@@ -2115,6 +2123,7 @@ class FakeServer {
           issueBal.add(a);      // (3.43.0) which source's stock was asked
           return _j({'result': {'balance': 813, 'available': 813, 'loc': 'Dispenser'}});
         case 'dieselPhoto':
+          photosSent++;
           return _j({'result': {'ok': true, 'kind': (a[0] as Map)['kind'], 'path': '2026-10/00000000-0000-0000-0000-000000000001.jpg'}});
         // (3.45.0, Mechanical update-164) the fuel cards
         case 'getCards':
@@ -2167,6 +2176,9 @@ class FakeServer {
         case 'tankDue':
           tankDueAsked.add((a[0] as Map));
           return _j({'result': tankDueAns ?? {'no': (a[0] as Map)['no'], 'date': (a[0] as Map)['date'], 'due': false}});
+        case 'saveDieselIssue' || 'saveTransfer' when short:      // (3.85.0) the stock cannot cover it
+          if (meta?['short'] == true) return _j({'error': 'Kept as stock short – VF-00008. Not enough diesel at Dispenser for 14-10-2026 (Day). Available: 0 Ltr, you are issuing: 40 Ltr. It is saved by itself when the stock comes (a Diesel Inward or Transfer); nothing is saved until then. See Approvals.'}, 500);
+          return _j({'error': 'Not enough diesel at Dispenser for 14-10-2026 (Day). Available: 0 Ltr, you are issuing: 40 Ltr.'}, 500);
         case 'saveDieselIssue':
           final d = (a[0] as Map).cast<String, dynamic>();
           if (tankDueAns != null && tankDueAns!['due'] == true && d['tc'] == null) return _j({'error': '${d['no']}: tank check due – the last one on 31-10-2026, a check every 7 days. Type the diesel found in the tank before filling (Tank check), then save.'}, 500);

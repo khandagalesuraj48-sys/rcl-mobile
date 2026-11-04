@@ -28,11 +28,12 @@ Future<void> openApprovals(BuildContext context) => Navigator.of(context).push(M
 
 /// The requests shown: what waits, everything he sent – and, with [all], what was decided too (as the web).
 List<Map<String, dynamic>> approvalsShown(Map? d, {bool all = false}) =>
-    ((d?['requests'] as List?) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).where((r) => all || r['status'] == 'Pending' || r['mine'] == true).toList();
+    ((d?['requests'] as List?) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).where((r) => all || r['status'] == 'Pending' || r['status'] == 'Short' || r['mine'] == true).toList();      // (3.85.0) Short: waiting too
 
 /// The words of a decision's answer, as the web says them.
 String decidedWords(Map<String, dynamic> res) {
   final st = '${res['status'] ?? ''}', id = '${res['id'] ?? ''}';
+  if (st == 'Short') return '$id approved – the stock is short: it is saved by itself when the stock comes.';      // (3.85.0, Mechanical update-211)
   return '$id ${st.toLowerCase()}${st == 'Approved' ? ' – saved.' : st == 'Pending' ? ' – sent on to level ${res['level']}.' : st == 'Returned' ? ' – not saved: ${res['result'] ?? ''}' : ' – nothing was saved.'}';
 }
 
@@ -429,6 +430,8 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       'Reverted' => (C.red, C.redSoft, 'Sent back'),
       'Approved' => (C.greenDark, C.greenSoft, 'Approved'),
       'Withdrawn' => (C.slate, C.slateSoft, 'Taken back'),
+      'Short' => (C.amber, C.amberSoft, 'Stock short'),      // (3.85.0, Mechanical update-211) saved by itself when the stock comes
+      'Saved' => (C.greenDark, C.greenSoft, 'Saved'),
       _ => (C.red, C.redSoft, st),
     };
     final waitFor = ((r['waitingFor'] as List?) ?? const []).map((e) => '$e').toList();
@@ -437,8 +440,12 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       'Pending' => (asNum(r['levels']) ?? 0) > 0 ? 'level ${r['level']} of ${r['levels']}${waitFor.isNotEmpty ? ': ${waitFor.join(', ')}' : ''}' : 'Super Admin',
       'Reverted' => '${rv['by'] ?? ''} · ${whenText('${rv['at'] ?? ''}')}',
       'Withdrawn' => '',
+      'Short' => 'Saved by itself when the stock comes${'${r['decidedBy'] ?? ''}'.isNotEmpty ? ' · approved by ${r['decidedBy']}' : ''}',
+      'Saved' => 'the stock came · ${whenText('${r['decidedAt'] ?? ''}')}',
       _ => [r['decidedBy'], whenText('${r['decidedAt'] ?? ''}')].where((x) => '${x ?? ''}'.isNotEmpty).join(' · '),
     };
+    // (3.85.0) what a Short entry needs now at each place (the server's, live)
+    final need = [for (final n in (r['need'] as List? ?? const []).whereType<Map>()) if ((asNum(n['more']) ?? 0) > 0) 'Needs ${fmtNum(asNum(n['more']))} L more at ${n['loc']} (free there now ${fmtNum(asNum(n['free']))} L)'];
     final ticks = r['canDecide'] == true;
     // (3.22.0) corrected by the sender: what changed, in sight of the people who approve it
     final lastSent = st == 'Pending' ? hist.lastWhere((h) => const ['Sent', 'Sent again', 'Corrected and sent again'].contains(h['step']), orElse: () => const {}) : const {};
@@ -498,6 +505,8 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
         if (st == 'Pending' && (asNum(r['reminds']) ?? 0) > 0) Padding(padding: const EdgeInsets.only(top: 2), child: Text('Reminded ${r['reminds']}× by ${r['by']} · ${whenText('${r['remindedAt'] ?? ''}')}', style: const TextStyle(fontSize: 12.5, color: C.amber))),
         if (st != 'Pending' && st != 'Reverted' && '${r['note'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text('${r['note']}', style: const TextStyle(fontSize: 13.5))),
         if (st == 'Returned' && '${r['result'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text('${r['result']}', style: const TextStyle(fontSize: 13.5, color: C.red))),
+        if (st == 'Short' && '${r['short'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text('${r['short']}', key: Key('short-$id'), style: const TextStyle(fontSize: 13.5, color: C.amber))),
+        for (final l in st == 'Short' ? need : const <String>[]) Padding(padding: const EdgeInsets.only(top: 2), child: Text(l, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
         if (hist.isNotEmpty)
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -519,7 +528,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               ],
             )),
           ),
-        if (r['canDecide'] == true || r['canAnswer'] == true || r['canRemind'] == true || r['canResend'] == true) ...[
+        if (r['canDecide'] == true || r['canAnswer'] == true || r['canRemind'] == true || r['canResend'] == true || r['canTakeBack'] == true) ...[
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             if (r['canDecide'] == true) ...[
@@ -531,6 +540,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               _btn('Answer and send again', 'ans:$id', () => _answer(r), filled: true),
               _btn('Take back', 'wd:$id', () => _takeBack(r), danger: true),
             ],
+            if (r['canTakeBack'] == true) _btn('Take back', 'wd:$id', () => _takeBack(r), danger: true),      // (3.85.0) kept as stock short
             if (r['canRemind'] == true) _btn('Remind', 'rem:$id', () => _remind(r)),
             if (r['canFix'] == true) _btn('Open & correct', 'fix:$id', () => _fix(r), filled: true),      // (3.22.0)
             if (r['canResend'] == true) _btn('Send again', 'again:$id', () => _sendAgain(r), filled: r['canFix'] != true),

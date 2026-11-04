@@ -270,6 +270,8 @@ class Api {
   }
 
   String _newRid() => 'm${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}${_rnd.nextInt(1 << 32).toRadixString(36)}';
+  /// (3.85.0) a save's own number for an entry kept on the phone before it was ever sent (no network)
+  String newRid() => _newRid();
 
   /* (14-10-2026, update-108 of Mechanical) A SAVE THE BILL LOCK REFUSED – its entry is in a submitted bill: as on the web page, the
    * person may send exactly that save to the Super Admin for approval, with a reason (sendChangeRequest). It is saved only when he
@@ -286,11 +288,38 @@ class Api {
   Future<String?> Function(String message)? askReason;
   /// (15-10-2026, update-114) A work the Super Admin put under verification: the server CHECKED the entry and sent it to the
   /// people who approve it ("Sent for verification to … – VF-00001 …"); it is saved when the last of them approves. Not a fault.
-  static bool isSent(String m) => m.startsWith('Sent for verification ') || m == crSent;
+  static bool isSent(String m) => m.startsWith('Sent for verification ') || m.startsWith('Kept as stock short ') || m == crSent;      // (3.85.0) kept as stock short: told the same way
+  /* (3.85.0, Mechanical update-211, asked 04-11-2026) STOCK SHORT: a diesel issue or transfer the stock cannot cover now – the person is
+   * asked ([askShort]); yes: the same save again with {short: true} (a new number) – the server checks everything but its stock and
+   * keeps it in Approvals ("Stock short"), saved by itself when the stock comes. An entry kept on the phone with no network is sent so
+   * by itself (sendKept). */
+  static const shortFns = {'saveDieselIssue', 'saveDieselBulk', 'saveTransfer', 'saveTransferBulk'};
+  static final shortRe = RegExp(r'^Not enough [^\n]*? at ');
+  /// the words when the stock alone refused it ('' = something else, or saved)
+  static String shortOf(Object? r) {
+    if (r is String) return shortRe.hasMatch(r) ? r : '';
+    if (r is! Map || r['ok'] != false || r['warning'] != null || (r['warnings'] is List && (r['warnings'] as List).isNotEmpty)) return '';
+    final l = [for (final e in (r['errors'] as List? ?? const [])) e is Map ? '${e['msg'] ?? ''}' : '$e'];
+    return l.isNotEmpty && l.every(shortRe.hasMatch) ? l.join(' | ') : '';
+  }
+  /// true = keep it as stock short (the screen asks); null / false = not kept
+  Future<bool> Function(String message)? askShort;
+  /// (3.85.0) the server's signed time from the last answer (getInit / sync): sent with an entry kept with no network – the server then
+  /// measures the user's date rule from that day (an entry of last night sent this morning is still his)
+  String stamp = '';
   /// (3.1.7) An entry kept on the phone (no network) – sent by itself later.
   static const keptMsg = 'Kept on this phone – it is sent by itself when the network is back (Me → Waiting on this phone).';
   static bool isGood(String m) => isSent(m) || m == keptMsg;
   Future<String?> Function(String message)? askApproval;
+  Future<bool> _askShort(String msg) async {
+    final f = askShort;
+    if (f == null) return false;
+    try {
+      return await f(msg);
+    } catch (_) {
+      return false;
+    }
+  }
   /// true = sent (with the person's reason); false = he did not send it.
   Future<bool> _offer(String fn, List<dynamic> args, String msg) async {
     final ask = askApproval;
@@ -310,10 +339,11 @@ class Api {
 
   /// One action of Mechanical (getInit, saveDieselIssue …) with the person's sign-in. [save]: it changes data – it gets its
   /// own number and is sent again after a lost connection (at most 4 tries); a question is asked again at most twice.
-  Future<dynamic> call(String fn, [List<dynamic> args = const [], bool save = false, String? sameRid]) async {
+  /// [with0] (3.85.0): what goes with it from the start – {short: true} (kept as stock short), {made: stamp} (made with no network)
+  Future<dynamic> call(String fn, [List<dynamic> args = const [], bool save = false, String? sameRid, Map<String, dynamic>? with0]) async {
     var rid = save ? (sameRid ?? _newRid()) : null;
     var renewed = false;
-    Map<String, dynamic>? meta; // (3.33.0) the Super Admin's reason, when the server asked for it
+    Map<String, dynamic>? meta = with0 == null || with0.isEmpty ? null : {...with0}; // (3.33.0) the Super Admin's reason, when the server asked for it
     for (var tryNo = 1;; tryNo++) {
       try {
         if ((token ?? '').isEmpty) throw ApiError('SESSION_EXPIRED', status: 401);
@@ -323,15 +353,28 @@ class Api {
           final lk = (res['errors'] as List).map((x) => x is Map ? (x['msg'] ?? '').toString() : x.toString()).where(crLocked).toList();
           if (lk.isNotEmpty && await _offer(fn, args, lk.first)) throw ApiError(crSent, code: 'sent');
         }
+        // (3.85.0) only the stock refused it ("Multiple entries" of transfers): kept as stock short?
+        final sw = shortFns.contains(fn) && meta?['short'] != true ? shortOf(res) : '';
+        if (sw.isNotEmpty && await _askShort(sw)) {
+          meta = {...?meta, 'short': true};
+          if (rid != null) rid = _newRid();
+          continue;
+        }
         return res;
       } on ApiError catch (e) {
         if (e.code == 'sent') rethrow;
         if (isSent(e.message)) throw ApiError(e.message, code: 'sent');      // sent for verification: told as it is, never sent again
         if (crFns.contains(fn) && crLocked(e.message) && await _offer(fn, args, e.message)) throw ApiError(crSent, code: 'sent');
-        if (saReason(e.message) && meta == null) {
+        // (3.85.0) the stock cannot cover it: kept as stock short? (a new number – the refused one keeps its answer on the server)
+        if (shortFns.contains(fn) && meta?['short'] != true && shortRe.hasMatch(e.message) && await _askShort(e.message)) {
+          meta = {...?meta, 'short': true};
+          if (rid != null) rid = _newRid();
+          continue;
+        }
+        if (saReason(e.message) && meta?['reason'] == null) {
           final ask = askReason, why = ask == null ? null : await ask(e.message.replaceFirst('SA_REASON: ', ''));
           if (why == null || why.trim().isEmpty) throw ApiError('Not saved – no reason was given.', code: 'noreason');
-          meta = {'reason': why.trim()};
+          meta = {...?meta, 'reason': why.trim()};
           if (rid != null) rid = _newRid(); // (the refused number keeps its answer on the server: the save with the reason is a new one)
           continue;
         }
