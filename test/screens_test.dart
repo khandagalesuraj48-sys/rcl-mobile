@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/app_share.dart';
+import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
 import 'package:rcl_mobile/core/applock.dart';
 import 'package:rcl_mobile/core/lang.dart';
 import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
@@ -5980,6 +5982,28 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/59_menu.png'));
     await t.tapAt(const Offset(350, 400));
     await settle(t, 600);
+    // (3.84.0) ≡ → Share app: the phone's share with the app's own page (the latest version; he installs it and signs in)
+    final shared = <String>[], was = appShare;
+    addTearDown(() => appShare = was);
+    appShare = (text) async {
+      shared.add(text);
+      return true;
+    };
+    await t.tap(find.byKey(const Key('home-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('menu-share')));
+    await settle(t, 600);
+    expect(shared.single, startsWith('RCL ERP app – https://oneclicksolution-erp.vercel.app/app\n'));
+    expect(find.byKey(const Key('menu-share')), findsNothing, reason: 'the menu closed first');
+    // a phone / computer that cannot share: the link copied, said
+    appShare = (text) async => false;
+    await t.tap(find.byKey(const Key('home-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('menu-share')));
+    await settle(t, 900);
+    expect(find.text('The app\'s link is copied – paste it in WhatsApp or a message.'), findsOneWidget);
+    gooClear();
+    await settle(t, 100);
     // the +
     await t.tap(find.byKey(const Key('tab-plus')));
     await settle(t, 600);

@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.84.0 (04-11-2026 – "app madhech share application asa option de user jewa he dabel to other la whats app aso ki link madhe
+to share ku shakel dusryala latest version app che … nantr dusra login krel"; his answers: in the ≡ menu, a download page at our address;
+with Mechanical update-210):** Home's ≡ → **Share app** – the phone's own share (WhatsApp, a message …) with the link of the app's page
+`<main address>/app` (always the latest version, the steps to install, then sign in) and one line in मराठी / English / हिंदी; a phone or
+computer that cannot share: the link is copied, said (`core/app_share.dart`; the picture `outbox_tray` – Fluent Emoji, MIT).
+
 **Version 3.83.0 (03-11-2026 – "app madhe aplela tab bar cha ui change kraycha … ripple fill … menu web plus app madhe push back … notification
 gooey drop madhe"; the preview he OK'd; with Mechanical update-209):** **Ripple fill** – the tapped tab of the bar fills from its centre,
 the one before fades (`screens/shell.dart`); **push back** – Home's ≡ / View All: the whole screen (page + bar) shrinks back and moves to
