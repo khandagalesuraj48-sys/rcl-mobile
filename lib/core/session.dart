@@ -1319,7 +1319,7 @@ class Session extends ChangeNotifier {
     final mine = kept.where((x) => x['site'] == (site?.code ?? '') && (x['state'] == 'waiting' || (again && x['state'] == 'refused'))).toList();
     if (mine.isEmpty) return;
     _sending = true;
-    var sent = 0;
+    var sent = 0, told = '';      // (3.85.0) told: the server's own words (kept as stock short / sent for verification)
     try {
       for (final x in mine) {
         try {
@@ -1344,7 +1344,7 @@ class Session extends ChangeNotifier {
             _dropFiles(x);
             kept.removeWhere((y) => y['rid'] == x['rid']);
             sent++;
-            keptNote.value = e.message;
+            told = e.message;
             continue;
           }
           x['state'] = 'refused';
@@ -1356,7 +1356,7 @@ class Session extends ChangeNotifier {
       await _saveKept();
     }
     if (sent > 0) {
-      keptNote.value = bi('Entries kept on this phone sent: $sent', 'फोनवर ठेवलेल्या एन्ट्री पाठवल्या: $sent');
+      keptNote.value = told.isNotEmpty && sent == 1 ? told : bi('Entries kept on this phone sent: $sent', 'फोनवर ठेवलेल्या एन्ट्री पाठवल्या: $sent') + (told.isNotEmpty ? '\n$told' : '');
       dataTick.value++;
     }
     if (kept.any((x) => x['state'] == 'refused' && x['site'] == (site?.code ?? ''))) keptNote.value = bi('An entry kept on this phone was not saved – see Me → Waiting on this phone.', 'फोनवर ठेवलेली एक एन्ट्री सेव्ह झाली नाही – Me पहा.');

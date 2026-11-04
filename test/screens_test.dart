@@ -3982,7 +3982,7 @@ void main() {
     expect(find.text('after 400 Ltr'), findsOneWidget);
     await t.enterText(find.byType(TextField).first, '870');
     await settle(t, 400);
-    expect(find.text('Can transfer up to 850 Ltr'), findsOneWidget);
+    expect(find.text('Can transfer up to 850 Ltr – saving asks to keep it as stock short'), findsOneWidget, reason: '(3.85.0) the save asks "keep it as stock short?"');
   });
 
   testWidgets('(3.43.0, Mechanical update-162) his diesel sources: Diesel Issue and the From of a transfer offer only them (To and Inward: every place); none given: a red line; changed in the Portal: at the next sync', (t) async {
