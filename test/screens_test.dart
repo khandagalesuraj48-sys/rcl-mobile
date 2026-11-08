@@ -4363,9 +4363,9 @@ void main() {
       await net(t);
       expect(srv.carCalls.lastWhere((x) => x['fn'] == 'getCarDetail')['x'], {'no': 'MH-12-HO-1163', 'from': '2026-10-01', 'to': '2026-10-14'});
       expect(find.byKey(const Key('car-pic-MH-12-HO-1163-f')), findsOneWidget, reason: 'its whole photo');
-      expect(find.textContaining('30 L · ₹ 3,200'), findsOneWidget);
       await tapK(t, 'cdt-fuel');      // (3.87.0) the car opens on its Overview
       await settle(t, 400);
+      expect(find.textContaining('30 L · ₹ 3,200'), findsOneWidget);
       expect(find.byKey(const Key('cf-0')), findsOneWidget);
       await tapK(t, 'cdt-log');
       await settle(t, 400);
