@@ -397,8 +397,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
 
   List<Widget> _body(Map<String, dynamic> x, Map<String, dynamic> car) {
     final sum = (x['sum'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{}, u = _u(car['unit']);
-    final tags = <(String, Color)>[('${car['fuel'] ?? ''}', C.ink), if ('${car['type'] ?? ''}'.isNotEmpty) ('${car['type']}', C.ink), ('● ${car['status'] ?? 'Active'}', '${car['status']}' == 'Inactive' ? C.red : C.green),
-      ('KM now ${asNum(car['kmNow']) != null ? fmtNum(asNum(car['kmNow'])) : '–'}', C.ink)];
+    // (text, colour, a dot before it – the status)
+    final tags = <(String, Color, bool)>[('${car['fuel'] ?? ''}', C.ink, false), if ('${car['type'] ?? ''}'.isNotEmpty) ('${car['type']}', C.ink, false),
+      ('${car['status'] ?? 'Active'}', '${car['status']}' == 'Inactive' ? C.red : C.green, true), ('KM now ${asNum(car['kmNow']) != null ? fmtNum(asNum(car['kmNow'])) : '–'}', C.ink, false)];
     final kpi = <(String, String)>[('Fuel filled', (asNum(sum['qty']) ?? 0) > 0 ? '${fmtNum(asNum(sum['qty']))} $u' : '–'), ('Expense', (asNum(sum['amount']) ?? 0) > 0 ? rupees(asNum(sum['amount'])) : '–'),
       ('Average', asNum(sum['avg']) != null ? '${fmtNum(asNum(sum['avg']))} km/$u' : '–'), ('By card', rupees(asNum(sum['card']))), ('Cash', rupees(asNum(sum['cash']))), ('Fills', fmtNum(asNum(sum['fills']) ?? 0))];
     return [
@@ -408,7 +409,10 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30), border: Border.all(color: C.line)),
-            child: Text(t.$1, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: t.$2)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (t.$3) ...[Icon(Icons.circle, size: 8, color: t.$2), const SizedBox(width: 4)],
+              Text(t.$1, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: t.$2)),
+            ]),
           ),
       ]),
       const SizedBox(height: 8),
