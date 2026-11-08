@@ -1,0 +1,136 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Maintenance Log Book – RIG-TB-1",
+ "from": "2026-11-03",
+ "to": "2026-11-08",
+ "generated": "08-11-2026 23:21",
+ "all": true,
+ "store": {
+  "on": true,
+  "lines": 0
+ },
+ "tyres": [
+  {
+   "kind": "Tyre",
+   "date": "2026-11-03",
+   "party": "MRF Tyres Nashik",
+   "billNo": "MRF-215",
+   "id": "MT-000002",
+   "work": "Tyre 10.00-20 MRF (FL)",
+   "qty": 1,
+   "uom": "Nos",
+   "type": "Paid",
+   "amount": 17700,
+   "reading": 5000,
+   "run": 320,
+   "days": 5
+  },
+  {
+   "kind": "Battery",
+   "date": "2026-11-03",
+   "party": "MRF Tyres Nashik",
+   "billNo": "MRF-215",
+   "id": "MT-000002",
+   "work": "Battery Exide 12V 150AH",
+   "qty": 1,
+   "uom": "Nos",
+   "type": "Paid",
+   "amount": 7500,
+   "reading": 5000,
+   "run": 320,
+   "days": 5
+  }
+ ],
+ "machine": {
+  "id": "RIG-TB-1",
+  "name": "Rig tipper 215",
+  "type": "Tipper",
+  "fuel": "Diesel",
+  "unit": "Ltr",
+  "meter": "KM"
+ },
+ "card": false,
+ "lines": [
+  {
+   "kind": "Maintenance",
+   "amount": 25350,
+   "id": "MT-000002",
+   "date": "2026-11-03",
+   "no": "RIG-TB-1",
+   "garage": "MRF Tyres Nashik",
+   "billNo": "MRF-215",
+   "km": 5000,
+   "total": 25350,
+   "lines": [
+    {
+     "work": "Tyre 10.00-20 MRF (FL)",
+     "type": "Paid",
+     "amount": 15000,
+     "qty": 1,
+     "rate": 15000,
+     "gst": 18,
+     "uom": "Nos"
+    },
+    {
+     "work": "Tyre puncture",
+     "type": "Paid",
+     "amount": 150
+    },
+    {
+     "work": "Battery Exide 12V 150AH",
+     "type": "Paid",
+     "amount": 7500,
+     "qty": 1,
+     "rate": 7500,
+     "uom": "Nos"
+    }
+   ],
+   "billTotal": 25350,
+   "insurance": null,
+   "free": 0,
+   "service": false,
+   "remark": "rig 215",
+   "files": 0,
+   "enteredBy": "Sujit Test",
+   "updatedBy": "",
+   "party": "MRF Tyres Nashik"
+  }
+ ],
+ "total": {
+  "fuel": {
+   "qty": 0,
+   "amount": 0,
+   "card": 0,
+   "cash": 0,
+   "fills": 0
+  },
+  "maint": {
+   "amount": 25350,
+   "bills": 1,
+   "billTotal": 25350,
+   "insurance": 0,
+   "free": 0
+  },
+  "byWork": [
+   {
+    "work": "Tyre 10.00-20 MRF (FL)",
+    "amount": 17700,
+    "n": 1
+   },
+   {
+    "work": "Battery Exide 12V 150AH",
+    "amount": 7500,
+    "n": 1
+   },
+   {
+    "work": "Tyre puncture",
+    "amount": 150,
+    "n": 1
+   }
+  ],
+  "all": 25350,
+  "km": 320,
+  "perKm": 79.22
+ },
+ "lastService": null
+}

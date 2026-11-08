@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.90.0 (08-11-2026 – the HO features, step C; with Mechanical update-215):** a fill at a site on fuel cards (HO) has a
+**Pump bill** photo too (`core/photo.dart` 'bill', the Diesel Issue form – not at a site with stock; kept and shown as the other photos).
+The **Maintenance Log Book** lists the machinery's **Tyres & batteries** (`core/report_defs.dart` kMaintLog – the server's maintLog
+`tyres`): every bill line (or Store issue) that names a tyre or a battery, not a repair of one – when, which, what was paid, the reading
+then, how far it has run since and how long ago. Nothing new to fill in.
+
 **Version 3.89.0 (08-11-2026 – the HO features, step B; with Mechanical update-214):** the **Driver-wise Report** (Reports → Machinery;
 `core/report_defs.dart` 'driver' – the server's rptDriver): each driver's days, KM / Hrs / trips (Log Book), fills and litres (a site on
 fuel cards: their ₹), and machinery by machinery his average against the standard; "(no driver written)" at the end. The **Machinery Cost
