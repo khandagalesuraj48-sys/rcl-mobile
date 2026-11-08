@@ -15,6 +15,20 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.87.0 (08-11-2026 – "RCL ERP – Premium Mobile App Redesign" Parts 1–3, with his picture; his answers: the new Home only
+at HO, the app first; no server change, no SQL):** a site on fuel cards (HO) has its **own Home** (`screens/home.dart`, `screens/ho_fleet.dart`):
+no site picture (a clean header – RCL ERP, greeting and name, Search, the bell, the AI, the site and Scan), the fuel cards' balance, then
+**My Fleet** – each car its **photo alone** (the same photos the Super Admin / Admin set on the web or the Portal – read with
+getCardDash of this month, Dashboard access; nothing is written on a photo), its **number under the photo**, make, model, kind, fuel,
+**KM now**, Active / Inactive; chips **All / each kind**; a **list** (as his picture) or a **grid of two**. No tiles, no Modules grid
+(the modules stay in ≡), no Today's Activity at HO (nothing of them is read there). A car opens **Vehicle Details**
+(`screens/car_detail.dart`): the photo with nothing on it (Add / Change photo, Remove under it), the number, make · model, status; Fuel,
+KM now, Engine Hrs (a machinery on hours) or its kind, its site; **Overview** – this month's fuel, running KM, average and ₹; **Quick
+Actions** – Diesel Issue, Log Book entry, Maintenance (each form opens with **this car already chosen**; each only for a person who may
+make it), **Vehicle History** (fills, Log Book days, bills – one list, the newest first; All / one kind; this month, 3 or 12 months);
+Key Information; Recent Activity; then Fuel / Log Book / Maintenance as 3.86.0. The Dashboard's gallery: nothing written on a photo
+either (its fuel, Inactive and "Add photo" under it). VTR, 18B and every site not on fuel cards: Home exactly as before.
+
 **Version 3.86.0 (08-11-2026 – "HEAD OFFICE VEHICLE GALLERY & INTERACTIVE VEHICLE MANAGEMENT … Android App – Vehicle Gallery, Details
 Screen and Camera Photo Upload"; his answers: the Super Admin sets / changes a car's photo from the Portal by its number, the Admin and
 the Super Admin from HO too, a preview first; with Mechanical update-212):** a site on fuel cards (HO), Dashboard → Fuel cards & cars:

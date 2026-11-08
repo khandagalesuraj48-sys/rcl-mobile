@@ -4363,6 +4363,8 @@ void main() {
       await net(t);
       expect(srv.carCalls.lastWhere((x) => x['fn'] == 'getCarDetail')['x'], {'no': 'MH-12-HO-1163', 'from': '2026-10-01', 'to': '2026-10-14'});
       expect(find.byKey(const Key('car-pic-MH-12-HO-1163-f')), findsOneWidget, reason: 'its whole photo');
+      await tapK(t, 'cdt-fuel');      // (3.87.0) the car opens on its Overview
+      await settle(t, 400);
       expect(find.textContaining('30 L · ₹ 3,200'), findsOneWidget);
       expect(find.byKey(const Key('cf-0')), findsOneWidget);
       await tapK(t, 'cdt-log');
@@ -4489,6 +4491,192 @@ void main() {
     await net(t);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9d_ho_car.png'));
+  }, tags: ['golden']);
+
+  // (3.87.0, asked 08-11-2026: "RCL ERP – Premium Mobile App Redesign" Parts 1–3 with his picture; his answer: the new Home "fakt HO")
+  Finder homeList() => find.ancestor(of: find.byKey(const Key('home-menu')), matching: find.byType(Scrollable)).first;
+
+  testWidgets('(3.87.0 – Premium Mobile App Redesign, HO only) HO\'s Home: no site picture, no tiles, no Modules grid, no Today\'s Activity – My Fleet: each car its photo alone with its number under it, make, model, kind, fuel, KM now, Active; All / each kind; a list or a grid of two', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View', 'Diesel Issue': 'Edit', 'Log Book': 'Edit'})
+      ..card = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    // a clean header – no site picture; the cards' balances; no tiles, no Modules, no Today's Activity
+    expect(find.byKey(const Key('home-ho-head')), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is Image && w.image is AssetImage && (w.image as AssetImage).assetName == 'assets/brand/site_home.jpg'), findsNothing);
+    expect([find.byKey(const Key('home-menu')), find.byKey(const Key('home-search')), find.byKey(const Key('home-bell')), find.byKey(const Key('home-ask'))].every((f) => f.evaluate().length == 1), true, reason: 'menu, search, bell, AI');
+    expect(find.byKey(const Key('home-cards')), findsOneWidget);
+    expect(find.byKey(const Key('home-all')), findsNothing, reason: 'no Modules grid – the modules stay in ≡');
+    expect(find.text('Running'), findsNothing, reason: 'no tiles');
+    expect(find.text("Today's Activity"), findsNothing);
+    expect(srv.cardCalls.where((x) => x['fn'] == 'getCardDash').map((x) => x['x']).toList(), [{'from': '2026-10-01', 'to': '2026-10-14'}], reason: 'the cars of this month – once');
+    await t.scrollUntilVisible(find.byKey(const Key('hf-car-MH-12-HO-1163')), 200, scrollable: homeList());
+    await net(t);
+    // the car: its photo (the same as the web's) – the number UNDER it, nothing on it; make, model, kind, fuel, KM now, Active
+    expect(find.byKey(const Key('car-pic-MH-12-HO-1163')), findsOneWidget);
+    final pic = t.getRect(find.byKey(const Key('car-pic-MH-12-HO-1163'))), no = t.getRect(find.byKey(const Key('hf-no-MH-12-HO-1163')));
+    expect(no.top >= pic.bottom, true, reason: 'the number under the photo');
+    final row = find.byKey(const Key('hf-car-MH-12-HO-1163'));
+    for (final w in ['Toyota', 'Hycross', 'Car', 'Petrol', '45,210 km', 'Active']) {
+      expect(find.descendant(of: row, matching: find.text(w)), findsOneWidget, reason: w);
+    }
+    expect(find.descendant(of: find.byKey(const Key('hf-car-MH-12-HO-2163')), matching: find.text('Maruti Suzuki')), findsOneWidget, reason: 'the make the server gave');
+    expect(find.text('Car (3)'), findsOneWidget);
+    expect(find.byKey(const Key('hf-car-Sany 210 (No.1)')), findsOneWidget);
+    // one kind
+    await tapK(t, 'hf-kind-Car');
+    await settle(t, 400);
+    expect([find.byKey(const Key('hf-car-Sany 210 (No.1)')).evaluate().length, find.byKey(const Key('hf-car-MH-12-HO-3163')).evaluate().length], [0, 1]);
+    await tapK(t, 'hf-kind-all');
+    await settle(t, 400);
+    expect(find.byKey(const Key('hf-car-Sany 210 (No.1)')), findsOneWidget);
+    // a grid of two
+    await tapK(t, 'hf-view-grid');
+    await settle(t, 400);
+    expect(t.getRect(find.byKey(const Key('hf-car-MH-12-HO-1163'))).top, t.getRect(find.byKey(const Key('hf-car-MH-12-HO-2163'))).top, reason: 'two in a row');
+    final gp = t.getRect(find.byKey(const Key('car-pic-MH-12-HO-1163'))), gn = t.getRect(find.byKey(const Key('hf-no-MH-12-HO-1163')));
+    expect(gn.top >= gp.bottom, true, reason: 'the number under the photo');
+    await tapK(t, 'hf-view-list');
+    await settle(t, 400);
+  });
+
+  testWidgets('(3.87.0) HO\'s Vehicle Details: the photo alone, the number under it; Fuel, KM now, kind, site; this month – fuel, running KM, average, ₹; the quick actions open their forms with THIS car chosen (only those he may make); Vehicle History – every kind, the newest first, by kind and by months', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View', 'Diesel Issue': 'Edit', 'Log Book': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('hf-car-MH-12-HO-1163')), 200, scrollable: homeList());
+    await net(t);
+    await tapK(t, 'hf-car-MH-12-HO-1163');
+    await net(t);
+    expect(srv.carCalls.lastWhere((x) => x['fn'] == 'getCarDetail')['x'], {'no': 'MH-12-HO-1163', 'from': '2026-10-01', 'to': '2026-10-14'});
+    expect(find.text('Vehicle Details'), findsOneWidget);
+    final pic = t.getRect(find.byKey(const Key('car-pic-MH-12-HO-1163-f'))), no = t.getRect(find.byKey(const Key('car-no')));
+    expect(no.top > pic.bottom, true, reason: 'nothing written on the photo');
+    expect(find.descendant(of: find.byKey(const Key('car-status')), matching: find.text('Active')), findsOneWidget);
+    for (final (i, w) in ['Petrol', '45,210 km', 'Car', s.siteName].indexed) {
+      expect(find.descendant(of: find.byKey(Key('car-tile-$i')), matching: find.textContaining(w.split(' ').first)), findsWidgets, reason: w);
+    }
+    expect(find.byKey(const Key('car-photo')), findsNothing, reason: 'not the Admin');
+    // this month
+    final sum = find.byKey(const Key('car-sum'));
+    for (final w in ['This month', '30 L', '690 km', '23 km/L', '₹ 3,200']) {
+      expect(find.descendant(of: sum, matching: find.text(w)), findsOneWidget, reason: w);
+    }
+    // the quick actions: Diesel Issue – the form with this car already chosen
+    expect(['qa-issue', 'qa-log', 'qa-maint', 'qa-hist'].every((k) => find.byKey(Key(k)).evaluate().length == 1), true);
+    await tapK(t, 'qa-issue');
+    await net(t);
+    expect(find.descendant(of: find.byKey(const Key('d-machine')), matching: find.textContaining('MH-12-HO-1163')), findsWidgets, reason: 'the car is in the box already');
+    Navigator.of(t.element(find.byKey(const Key('d-machine')))).pop();
+    await net(t);
+    // Log Book entry – this car
+    await tapK(t, 'qa-log');
+    await net(t);
+    final lf = find.byWidgetPredicate((w) => w.runtimeType.toString() == 'LogForm');
+    expect(lf, findsOneWidget);
+    expect(find.descendant(of: lf, matching: find.textContaining('MH-12-HO-1163')), findsWidgets);
+    Navigator.of(t.element(lf)).pop();
+    await net(t);
+    // Maintenance – a bill of this car (the words of earlier bills suggested)
+    final mc = srv.maintCalls.length;
+    await tapK(t, 'qa-maint');
+    await net(t);
+    expect(srv.maintCalls.skip(mc).first, {'fn': 'getMaint', 'x': {'from': '2026-10-01', 'to': '2026-10-14', 'no': ''}});
+    expect(find.descendant(of: find.byKey(const Key('mf-car')), matching: find.textContaining('MH-12-HO-1163')), findsOneWidget);
+    Navigator.of(t.element(find.byKey(const Key('mf-car')))).pop();
+    await net(t);
+    // the recent activity: every kind, the newest first
+    await t.scrollUntilVisible(find.byKey(const Key('car-recent')), 200, scrollable: find.descendant(of: find.byKey(const Key('car-detail')), matching: find.byType(Scrollable)).first);
+    expect(find.descendant(of: find.byKey(const Key('car-recent')), matching: find.byKey(const Key('ha-f0'))), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('car-recent')), matching: find.byKey(const Key('ha-m0'))), findsOneWidget);
+    // Vehicle History: 3 months to start with, every kind; one kind; this month
+    await tapK(t, 'qa-hist');
+    await net(t);
+    expect(srv.carCalls.lastWhere((x) => x['fn'] == 'getCarDetail')['x'], {'no': 'MH-12-HO-1163', 'from': '2026-08-01', 'to': '2026-10-14'});
+    final ys = [for (final k in ['ha-f0', 'ha-l0', 'ha-m0']) t.getRect(find.byKey(Key(k))).top];
+    expect(ys[0] < ys[2] && ys[1] < ys[2], true, reason: '13-10 (the fill, the Log Book day) before 05-10 (the bill)');
+    await tapK(t, 'vh-k-fuel');
+    await settle(t, 400);
+    expect([find.byKey(const Key('ha-f0')).evaluate().length, find.byKey(const Key('ha-l0')).evaluate().length, find.byKey(const Key('ha-m0')).evaluate().length], [1, 0, 0]);
+    await tapK(t, 'vh-p-1');
+    await net(t);
+    expect(srv.carCalls.lastWhere((x) => x['fn'] == 'getCarDetail')['x'], {'no': 'MH-12-HO-1163', 'from': '2026-10-01', 'to': '2026-10-14'});
+  });
+
+  testWidgets('(3.87.0) HO, a person without the Dashboard: My Fleet – his site\'s cars (no figures read); a car: its key information and only the quick actions he may make', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'View', 'Dashboard': 'None', 'Diesel Issue': 'Edit', 'Log Book': 'View', 'Maintenance': 'None'})
+      ..card = true;
+    final s = await ready(t, srv);
+    expect(s.canSee('Dashboard'), false);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('hf-car-MH-12-HO-1163')), 200, scrollable: homeList());
+    await net(t);
+    expect(srv.cardCalls.where((x) => x['fn'] == 'getCardDash'), isEmpty, reason: 'the server gives the figures only with the Dashboard');
+    expect(find.descendant(of: find.byKey(const Key('hf-car-MH-12-HO-1163')), matching: find.text('Hycross')), findsOneWidget);
+    await tapK(t, 'hf-car-MH-12-HO-1163');
+    await net(t);
+    expect(srv.carCalls.where((x) => x['fn'] == 'getCarDetail'), isEmpty);
+    expect(find.byKey(const Key('car-info')), findsOneWidget);
+    expect([for (final k in ['qa-issue', 'qa-log', 'qa-maint', 'qa-hist']) find.byKey(Key(k)).evaluate().length], [1, 0, 0, 0]);
+    expect(find.byKey(const Key('cdt-fuel')), findsNothing);
+  });
+
+  testWidgets('(3.87.0) a site NOT on fuel cards: Home as before – its picture, the tiles, the Modules; no My Fleet', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('home-ho-head')), findsNothing);
+    expect(find.byWidgetPredicate((w) => w is Image && w.image is AssetImage && (w.image as AssetImage).assetName == 'assets/brand/site_home.jpg'), findsOneWidget);
+    expect(find.byKey(const Key('home-stock')), findsOneWidget);
+    expect(find.byKey(const Key('home-all')), findsOneWidget);
+    expect(find.byKey(const Key('ho-fleet')), findsNothing);
+  });
+
+  testWidgets('(3.87.0) HO\'s new Home and Vehicle Details – pictures', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View', 'Diesel Issue': 'Edit', 'Log Book': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true
+      ..superAdmin = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9e_ho_home.png'));
+    await t.scrollUntilVisible(find.byKey(const Key('hf-car-MH-12-HO-2163')), 200, scrollable: homeList());
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9f_ho_fleet.png'));
+    await tapK(t, 'hf-view-grid');
+    await settle(t, 400);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9g_ho_fleet_grid.png'));
+    await tapK(t, 'hf-view-list');
+    await settle(t, 400);
+    await tapK(t, 'hf-car-MH-12-HO-1163');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9h_ho_vehicle.png'));
+    await t.scrollUntilVisible(find.byKey(const Key('car-recent')), 300, scrollable: find.descendant(of: find.byKey(const Key('car-detail')), matching: find.byType(Scrollable)).first);
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9i_ho_vehicle_more.png'));
+    await tapK(t, 'qa-hist');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9j_ho_history.png'));
   }, tags: ['golden']);
 
   testWidgets('(3.47.0 – Mechanical update-166) a fuel card\'s details: bank / company, the name on it, its expiry (a mark when it ends within 30 days), the customer ID – shown on the tile and its sheet, sent with the card; the number stays its last 4 digits', (t) async {
