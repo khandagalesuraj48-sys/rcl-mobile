@@ -24,7 +24,7 @@ import 'report_screen.dart';
 import '../ui/t.dart';
 
 const _diesel = {'dash', 'rdaily', 'rmonthly', 'ravg', 'rp-average', 'rp-ledger', 'rp-stock', 'rp-purchase', 'rp-watch', 'rp-tank', 'rp-compare'};
-const _machinery = {'rp-mcost', 'rp-owner', 'rp-type'};
+const _machinery = {'rp-mcost', 'rp-driver', 'rp-owner', 'rp-type'};      // (3.89.0) the Driver-wise Report
 
 /// Opens one report of the list (its own screen).
 void openReportOf(BuildContext context, String page) {

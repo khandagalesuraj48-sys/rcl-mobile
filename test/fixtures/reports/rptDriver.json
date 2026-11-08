@@ -1,0 +1,87 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Driver-wise Report",
+ "from": "2026-11-01",
+ "to": "2026-11-08",
+ "generated": "08-11-2026 23:10",
+ "card": true,
+ "drivers": [
+  {
+   "name": "Ramesh Pawar",
+   "none": false,
+   "days": 1,
+   "machines": 1,
+   "km": 480,
+   "hrs": 0,
+   "trips": 0,
+   "fills": 2,
+   "qty": 70,
+   "amount": 6650,
+   "more": 1,
+   "rows": [
+    {
+     "no": "RCL-HO-21",
+     "type": "Car",
+     "unit": "KM",
+     "days": 1,
+     "km": 480,
+     "hrs": "",
+     "trips": 0,
+     "fills": 2,
+     "qty": 70,
+     "fuelUnit": "Ltr",
+     "amount": 6650,
+     "actual": "6.86 km/L",
+     "std": "12 km/L",
+     "pct": 75,
+     "status": "Bad – 75% more diesel",
+     "statusCode": "bad"
+    }
+   ]
+  },
+  {
+   "name": "Sunil Jadhav",
+   "none": false,
+   "days": 1,
+   "machines": 1,
+   "km": 300,
+   "hrs": 0,
+   "trips": 0,
+   "fills": 2,
+   "qty": 45,
+   "amount": 4725,
+   "more": 1,
+   "rows": [
+    {
+     "no": "RCL-HO-22",
+     "type": "Car",
+     "unit": "KM",
+     "days": 1,
+     "km": 300,
+     "hrs": "",
+     "trips": 0,
+     "fills": 2,
+     "qty": 45,
+     "fuelUnit": "Ltr",
+     "amount": 4725,
+     "actual": "6.67 km/L",
+     "std": "12 km/L",
+     "pct": 80,
+     "status": "Bad – 80% more diesel",
+     "statusCode": "bad"
+    }
+   ]
+  }
+ ],
+ "total": {
+  "drivers": 2,
+  "days": 2,
+  "km": 780,
+  "hrs": 0,
+  "trips": 0,
+  "fills": 4,
+  "qty": 115,
+  "amount": 11375,
+  "more": 2
+ }
+}

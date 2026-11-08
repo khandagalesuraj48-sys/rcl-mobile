@@ -1545,5 +1545,17 @@
 "Alert below": "इशारा कधी",
 "Service every KM": "Service दर KM",
 "Service every Hrs": "Service दर तास",
-"Service every months": "Service दर महिने"
+"Service every months": "Service दर महिने",
+"Driver-wise Report": "ड्रायव्हर नुसार अहवाल",
+"Maintenance (₹)": "मेंटेनन्स (₹)",
+"Fuel cost (₹)": "इंधन खर्च (₹)",
+"Fuel (Ltr)": "इंधन (लिटर)",
+"His average": "त्याचा average",
+"More diesel on": "जास्त डिझेल",
+"Days driven": "चालवलेले दिवस",
+"Machinery by machinery": "Machinery नुसार",
+"Fuel ₹": "इंधन ₹",
+"Drivers": "ड्रायव्हर",
+"Fuel cost as the fills cost (card + cash)": "इंधन खर्च – भरण्यांप्रमाणे (card + cash)",
+"(no driver written)": "(ड्रायव्हर लिहिलेला नाही)"
 }
