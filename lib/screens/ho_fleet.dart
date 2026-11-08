@@ -11,10 +11,12 @@ import 'package:flutter/material.dart' hide Text;
 import '../core/car_photos.dart';
 import '../core/format.dart';
 import '../core/session.dart';
+import '../core/veh_alerts.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import 'car_detail.dart';
+import 'veh_alerts.dart' show vehAlertPill;
 
 /// HO's cars on Home: on the site today or at some day of this month; the Active first, then by number.
 List<Machine> hoFleet(Session s) {
@@ -44,6 +46,7 @@ class _HoFleetState extends State<HoFleet> {
   void initState() {
     super.initState();
     CarPhotos.i.addListener(_changed);
+    VehAlerts.i.addListener(_changed);      // (3.88.0) the cars' alerts
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -56,6 +59,7 @@ class _HoFleetState extends State<HoFleet> {
   @override
   void dispose() {
     CarPhotos.i.removeListener(_changed);
+    VehAlerts.i.removeListener(_changed);
     super.dispose();
   }
 
@@ -174,6 +178,19 @@ Widget _status(Machine m, Map<String, dynamic>? x) {
   ]);
 }
 
+/// (3.88.0, Mechanical update-213) a car's alerts under it – the first [max], then "+ n more"
+List<Widget> _alerts(String no, int max) {
+  final l = VehAlerts.i.of(no);
+  if (l.isEmpty) return const [];
+  return [
+    const SizedBox(height: 6),
+    Wrap(key: Key('hf-va-$no'), children: [
+      for (final a in l.take(max)) vehAlertPill(a, size: 11),
+      if (l.length > max) Padding(padding: const EdgeInsets.only(top: 3), child: Text('+${l.length - max} ${tr('more')}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: C.red))),
+    ]),
+  ];
+}
+
 Widget _line(IconData ic, String t) => Padding(
       padding: const EdgeInsets.only(top: 5),
       child: Row(children: [
@@ -221,6 +238,7 @@ class _FleetRow extends StatelessWidget {
                 _line(Icons.speed_rounded, _kmNow(x)),
                 const SizedBox(height: 6),
                 _status(m, x),
+                ..._alerts(m.id, 2),
               ]),
             ),
             const Padding(padding: EdgeInsets.only(top: 34), child: Icon(Icons.chevron_right_rounded, color: C.faint)),
@@ -258,6 +276,7 @@ class _FleetTile extends StatelessWidget {
               Text('${m.fuel} · ${_kmNow(x)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5)),
               const SizedBox(height: 4),
               _status(m, x),
+              ..._alerts(m.id, 1),
             ]),
           ),
         ]),

@@ -42,6 +42,9 @@ class FakeServer {
     'MH-12-HO-1163': {'t': 'https://store.test/car/t1?token=a', 'f': 'https://store.test/car/f1?token=a', 'exp': DateTime.now().millisecondsSinceEpoch + 900000, 'v': 'v1hycross'},
   };
   final carCalls = <Map<String, dynamic>>[];
+  // (3.88.0, Mechanical update-213) the vehicle alerts it gives (none unless a test sets them) and how often they were asked
+  Map<String, dynamic>? vehAlerts;
+  int vaCalls = 0;
   bool carLinksEnd = false;
   String carRefuse = '';
   Map<String, dynamic> carLink(String no, String v, int n) => {'t': 'https://store.test/car/t-$v?token=$n', 'f': 'https://store.test/car/f-$v?token=$n', 'exp': DateTime.now().millisecondsSinceEpoch + (carLinksEnd ? 1000 : 900000), 'v': v};
@@ -1384,6 +1387,12 @@ class FakeServer {
         case 'saveMaster':
           final m = (a[0] as Map).cast<String, dynamic>();
           masterCalls.add({'fn': action, 'm': m, 'mode': a[1], 'id': a.length > 2 ? a[2] : null});
+          // (3.88.0) Service every → kept as the server keeps it: { km, hrs, months } or none
+          if (m.containsKey('svcKm') || m.containsKey('svcHrs') || m.containsKey('svcMon')) {
+            dynamic nv(Object? v) => '${v ?? ''}'.trim().isEmpty ? '' : (num.tryParse('$v'.replaceAll(',', '')) ?? '');
+            final sv = {'km': nv(m['svcKm']), 'hrs': nv(m['svcHrs']), 'months': nv(m['svcMon'])};
+            m['svc'] = sv.values.every((v) => v == '') ? null : sv;
+          }
           final id = '${m['no'] ?? ''}'.isNotEmpty ? '${m['no']}' : '${m['name']}';
           if (a[1] == 'add') {
             master.add({...m, 'id': id, 'worksOn': _works(m['worksOn'])});
@@ -2146,6 +2155,7 @@ class FakeServer {
           final i = cards.indexWhere((c) => c['name'] == (x['was'] ?? x['name']));
           final c = {'cars': <String>[], 'paid': 0, 'spent': 0, 'fills': 0, 'payments': 0, 'lastFill': '', 'used': false, ...(i < 0 ? <String, dynamic>{} : cards[i]), ...x}..remove('was');
           c['balance'] = (c['opening'] as num? ?? 0) + (c['paid'] as num) - (c['spent'] as num);
+          if (c['lowAt'] is String) c['lowAt'] = num.tryParse('${c['lowAt']}') ?? '';      // (3.88.0) a number, as the server's
           if (i < 0) { cards.add(c); } else { cards[i] = c; }
           return _j({'result': {'ok': true, 'added': i < 0, 'name': x['name'], 'summary': '${i < 0 ? 'Fuel card added: ' : 'Fuel card changed: '}${x['name']}', 'changes': '', 'cards': cards, 'stock': cardStock}});
         case 'saveCardPayment' || 'updateCardPayment':
@@ -2184,6 +2194,10 @@ class FakeServer {
             ],
             'total': {'byFuel': {'Petrol': 30, 'CNG': 12}, 'amount': 4300, 'card': 3200, 'cash': 1100, 'fills': 2, 'km': 990, 'cars': 2}}});
         // (3.86.0, Mechanical update-212) HO's cars: one car's details, new links of the photos, a photo set / removed
+        // (3.88.0, Mechanical update-213) the vehicle alerts of the site
+        case 'getVehAlerts':
+          vaCalls++;
+          return _j({'result': vehAlerts ?? {'today': '2026-10-14', 'cars': <String, dynamic>{}, 'cards': <dynamic>[], 'n': 0, 'count': {'paper': 0, 'svc': 0, 'avg': 0, 'card': 0}}});
         case 'getCarDetail':
           final x = (a[0] as Map).cast<String, dynamic>(), no = '${x['no']}';
           carCalls.add({'fn': action, 'x': x});

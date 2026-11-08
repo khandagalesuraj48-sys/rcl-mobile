@@ -181,17 +181,23 @@ const kMasterDiff = [
   ('supply', 'Diesel Supply'), ('status', 'Status'), ('activeFrom', 'Active From'), ('inactiveFrom', 'Inactive From'),
   ('engineNo', 'Engine Number'), ('chassisNo', 'Chassis Number'), ('engineMake', 'Engine Make'),
   ('taxUpto', 'Tax'), ('pucUpto', 'PUC'), ('permitUpto', 'Permit'), ('fitnessUpto', 'Fitness'), ('insuranceUpto', 'Insurance'),
+  ('svcKm', 'Service every KM'), ('svcHrs', 'Service every Hrs'), ('svcMon', 'Service every months'),      // (3.88.0, Mechanical update-213)
 ];
 
 /// (3.72.1, Mechanical update-197 – asked 02-11-2026: "tank capacity takli ani save krtoy tr nothing change as yetey") these were not
 /// compared, so a change of only them said "Nothing changed." and was not saved; compared only when the form sends them
-const kMasterDiffSent = {'tankCap', 'engineNo', 'chassisNo', 'engineMake', 'taxUpto', 'pucUpto', 'permitUpto', 'fitnessUpto', 'insuranceUpto'};
+const kMasterDiffSent = {'tankCap', 'engineNo', 'chassisNo', 'engineMake', 'taxUpto', 'pucUpto', 'permitUpto', 'fitnessUpto', 'insuranceUpto', 'svcKm', 'svcHrs', 'svcMon'};
 
 /// What an edit changes: [field, now, new] – the same lines as the web's "Update …?" (and the earlier periods, came back / never left).
 List<(String, String, String)> masterChanges(Map<String, dynamic> before, Map<String, dynamic> after) {
   // (3.44.0, update-163) its fuel: none = Diesel (a machinery of before)
   final b = {...before, 'worksOn': worksOf(before).join(', '), 'fuel': const ['Diesel', 'Petrol', 'CNG', 'Electric'].contains('${before['fuel'] ?? ''}') ? '${before['fuel']}' : 'Diesel'};
   if (!after.containsKey('fuel')) b.remove('fuel');
+  // (3.88.0, Mechanical update-213) "Service every" as the form shows it
+  final sv = before['svc'] is Map ? before['svc'] as Map : const {};
+  b['svcKm'] = _s(sv['km']);
+  b['svcHrs'] = _s(sv['hrs']);
+  b['svcMon'] = _s(sv['months']);
   // (3.72.1) a paper as the form shows it: N/A, Lifetime, a date or nothing
   for (final d in kDocs) {
     final v = _s(b[d.$3]);

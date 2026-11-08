@@ -22,6 +22,7 @@ import '../core/device.dart';
 import '../core/format.dart';
 import '../core/kinds.dart';
 import '../core/session.dart';
+import '../core/veh_alerts.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
@@ -30,6 +31,7 @@ import 'forms.dart' show newEntry;
 import 'fuel_cards.dart' show rupees;
 import 'logbook.dart' show LogForm, TankerScreen;
 import 'maintenance.dart' show MaintForm;
+import 'veh_alerts.dart' show vehAlertPill;
 
 /// How the picture is taken / picked (tests put their own).
 class CarPhotoPick {
@@ -335,12 +337,14 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
   void initState() {
     super.initState();
     CarPhotos.i.addListener(_changed);
+    VehAlerts.i.addListener(_changed);      // (3.88.0) its alerts
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
   void dispose() {
     CarPhotos.i.removeListener(_changed);
+    VehAlerts.i.removeListener(_changed);
     super.dispose();
   }
 
@@ -350,6 +354,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
 
   Future<void> _load() async {
     final s = SessionScope.read(context);
+    VehAlerts.i.load(s);      // (3.88.0) after a save here: its alerts read again too
     if (!s.canSee('Dashboard')) return;      // (the server gives the figures only with the Dashboard)
     setState(() => loading = true);
     try {
@@ -513,7 +518,17 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
     ];
     Widget card(Widget child, {Key? key}) => Container(key: key, margin: const EdgeInsets.only(top: 12), padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: child);
     final recent = x == null ? <(String, Widget)>[] : carHistory(x, 'all').take(4).toList();
+    final va = VehAlerts.i.of(widget.no);      // (3.88.0, Mechanical update-213) papers, service, more diesel
     return [
+      if (va.isNotEmpty)
+        card(
+          key: const Key('car-va'),
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [const Icon(Icons.warning_amber_rounded, color: C.red, size: 20), const SizedBox(width: 6), Text('Alerts', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800))]),
+            const SizedBox(height: 8),
+            Wrap(children: [for (final (i, a) in va.indexed) vehAlertPill(a, key: Key('car-va-$i'), size: 12.5)]),
+          ]),
+        ),
       if (x != null)
         card(
           key: const Key('car-sum'),
