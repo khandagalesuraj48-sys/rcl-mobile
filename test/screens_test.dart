@@ -32,6 +32,9 @@ import 'package:rcl_mobile/screens/start_page.dart' show startPagesFor;
 import 'package:rcl_mobile/core/attach.dart' show attCompute;
 import 'package:rcl_mobile/screens/attach_box.dart' show pickAttFiles, CaptureScreen;
 import 'package:image/image.dart' as img;
+import 'package:http/http.dart' as http;
+import 'package:rcl_mobile/core/car_photos.dart';
+import 'package:rcl_mobile/screens/car_detail.dart' show CarPhotoPick;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
@@ -56,6 +59,26 @@ Future<void> loadFonts() async {
     }
     await loader.load();
   }
+}
+
+/// (3.86.0) a drawn picture of a car (the tests' "photo"): sky, road, body, windows, wheels
+Uint8List carPng({int w = 320, int h = 240, int r = 238, int g = 240, int b = 242}) {
+  final im = img.Image(width: w, height: h);
+  for (var y = 0; y < h; y++) {
+    final k = y / h;
+    final c = y < h * .72 ? img.ColorRgb8((120 - 40 * k).round(), (150 - 40 * k).round(), (175 - 40 * k).round()) : img.ColorRgb8(60, 66, 72);
+    img.drawLine(im, x1: 0, y1: y, x2: w - 1, y2: y, color: c);
+  }
+  double sx(double x) => x * w / 320;
+  double sy(double y) => y * h / 200;
+  img.fillPolygon(im, vertices: [for (final p in const [[52, 140], [70, 108], [96, 94], [206, 92], [236, 104], [262, 124], [278, 140], [278, 150], [52, 150]]) img.Point(sx(p[0].toDouble()), sy(p[1].toDouble()))], color: img.ColorRgb8(r, g, b));
+  img.fillPolygon(im, vertices: [for (final p in const [[92, 106], [108, 98], [156, 97], [156, 120], [84, 121]]) img.Point(sx(p[0].toDouble()), sy(p[1].toDouble()))], color: img.ColorRgb8(40, 55, 68));
+  img.fillPolygon(im, vertices: [for (final p in const [[164, 97], [204, 97], [226, 108], [236, 120], [164, 120]]) img.Point(sx(p[0].toDouble()), sy(p[1].toDouble()))], color: img.ColorRgb8(40, 55, 68));
+  for (final cx in const [102.0, 234.0]) {
+    img.fillCircle(im, x: sx(cx).round(), y: sy(150).round(), radius: sy(17).round(), color: img.ColorRgb8(27, 34, 40));
+    img.fillCircle(im, x: sx(cx).round(), y: sy(150).round(), radius: sy(7).round(), color: img.ColorRgb8(154, 164, 172));
+  }
+  return Uint8List.fromList(img.encodePng(im));
 }
 
 Future<void> settle(WidgetTester t, [int ms = 1800]) async {
@@ -120,6 +143,11 @@ Future<void> tapK(WidgetTester t, String key) async {
 void main() {
   setUpAll(loadFonts);
   tearDown(() => Lang.i.set('')); // (15-10-2026) every test starts in the app's usual language
+  // (3.86.0) HO's cars: a picture is read from its link with no network in the tests (no timer left behind); every test starts with none kept
+  setUp(() {
+    CarPhotos.i.clear();
+    CarPhotos.fetch = (u) async => http.Response.bytes(carPng(), 200);
+  });
   void phone(WidgetTester t) {
     t.view.physicalSize = const Size(1080, 2340);
     t.view.devicePixelRatio = 3;
@@ -4271,6 +4299,197 @@ void main() {
     expect(find.byKey(const Key('cd-car-MH-12-HO-1163')), findsOneWidget);
     expect(find.textContaining('Fuel Petrol 30 L · CNG 12 kg · ₹ 4,300 (by card ₹ 3,200, cash ₹ 1,100)'), findsOneWidget, reason: 'each fuel on its own');
   });
+
+  testWidgets('(3.86.0 – Mechanical update-212) HO\'s cars: a gallery with their photos (a link that ended is renewed by itself, the picture kept by its mark), the search, Gallery / List; a car\'s details – its fills, Log Book, maintenance; the Admin: a photo from the camera or the gallery – made smaller here, shown first, saved; refused – said, nothing changed; Remove asks first', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View'})
+      ..card = true
+      ..superAdmin = true;
+    final asked = <String>[], picks = <bool>[];
+    final c0 = carCompute, p0 = CarPhotoPick.pick;
+    CarPhotos.fetch = (u) async {
+      asked.add('$u');
+      final ended = u.query.contains('token=a');      // the first link of the Hycross has ended
+      return http.Response.bytes(ended ? Uint8List(0) : carPng(), ended ? 400 : 200);
+    };
+    carCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);
+    final shot = Uint8List.fromList(img.encodeJpg(img.fill(img.Image(width: 2400, height: 1800), color: img.ColorRgb8(200, 40, 40))));
+    CarPhotoPick.pick = (camera) async {
+      picks.add(camera);
+      return shot;
+    };
+    try {
+      final s = await ready(t, srv);
+      expect(s.admin, true);
+      await t.pumpWidget(RclApp(session: s));
+      await net(t);
+      await t.tap(find.text('Reports').last);
+      await net(t);
+      await t.tap(find.byKey(const Key('rt-diesel')));
+      await net(t);
+      await t.tap(find.text('Dashboard'));
+      await net(t);
+      final sc = find.descendant(of: find.byKey(const Key('dash-cards')), matching: find.byType(Scrollable)).first;
+      await t.scrollUntilVisible(find.byKey(const Key('cd-car-MH-12-HO-1163')), 200, scrollable: sc);
+      await net(t);
+      // the gallery: the photo of the Hycross – its first link had ended: new links asked once, the picture shown; the Ertiga: "Add photo"
+      expect(asked.first, 'https://store.test/car/t1?token=a');
+      expect(srv.carCalls.where((x) => x['fn'] == 'getCarPhotoLinks').length, 1, reason: 'new links asked by itself – no reload');
+      expect(asked.last, startsWith('https://store.test/car/t-v1hycross?token='));
+      expect(find.byKey(const Key('car-pic-MH-12-HO-1163')), findsOneWidget);
+      expect(find.byKey(const Key('cg-add-MH-12-HO-2163')), findsOneWidget);
+      expect(find.byKey(const Key('cg-add-MH-12-HO-1163')), findsNothing);
+      // the search: a part of the number, the model
+      await t.enterText(find.byKey(const Key('cg-q')), 'ertiga');
+      await settle(t, 400);
+      expect([find.byKey(const Key('cd-car-MH-12-HO-1163')).evaluate().length, find.byKey(const Key('cd-car-MH-12-HO-2163')).evaluate().length], [0, 1]);
+      await t.enterText(find.byKey(const Key('cg-q')), 'ho-11');
+      await settle(t, 400);
+      expect([find.byKey(const Key('cd-car-MH-12-HO-1163')).evaluate().length, find.byKey(const Key('cd-car-MH-12-HO-2163')).evaluate().length], [1, 0]);
+      await t.enterText(find.byKey(const Key('cg-q')), 'zzz');
+      await settle(t, 400);
+      expect(find.text('No car matches "zzz".'), findsOneWidget);
+      await t.enterText(find.byKey(const Key('cg-q')), '');
+      await settle(t, 400);
+      // the list as before, the search kept; back to the gallery
+      await tapK(t, 'cg-view-list');
+      await settle(t, 400);
+      expect(find.textContaining('· HDFC FUEL · 45,210 km'), findsOneWidget, reason: 'the list as before');
+      await tapK(t, 'cg-view-gal');
+      await settle(t, 400);
+      // a car's details
+      await tapK(t, 'cd-car-MH-12-HO-1163');
+      await net(t);
+      expect(srv.carCalls.lastWhere((x) => x['fn'] == 'getCarDetail')['x'], {'no': 'MH-12-HO-1163', 'from': '2026-10-01', 'to': '2026-10-14'});
+      expect(find.byKey(const Key('car-pic-MH-12-HO-1163-f')), findsOneWidget, reason: 'its whole photo');
+      expect(find.textContaining('30 L · ₹ 3,200'), findsOneWidget);
+      expect(find.byKey(const Key('cf-0')), findsOneWidget);
+      await tapK(t, 'cdt-log');
+      await settle(t, 400);
+      expect(find.textContaining('44,520 → 45,210 · 690 km'), findsOneWidget);
+      expect(find.textContaining('Gupta'), findsOneWidget);
+      await tapK(t, 'cdt-maint');
+      await settle(t, 400);
+      expect(find.textContaining('Toyota Service · TS-101'), findsOneWidget);
+      // the Admin: Change photo – the camera; made smaller here (2400 × 1800 → 1600 × 1200), shown first, saved
+      final fetched = asked.length;
+      await tapK(t, 'car-photo');
+      await settle(t, 600);
+      await t.tap(find.byKey(const Key('cp-camera')));
+      await net(t);
+      expect(picks, [true]);
+      expect(find.byKey(const Key('cp-preview')), findsOneWidget);
+      expect(find.textContaining('New photo – 1600 × 1200'), findsOneWidget);
+      expect(find.text('Nothing is saved until you press Save photo.'), findsOneWidget);
+      expect(srv.carCalls.where((x) => x['fn'] == 'carPhotoSet'), isEmpty, reason: 'nothing saved before Save photo');
+      await t.tap(find.byKey(const Key('cp-save')));
+      await net(t);
+      final set1 = srv.carCalls.lastWhere((x) => x['fn'] == 'carPhotoSet')['x'] as Map;
+      expect([set1['no'], set1['was'], '${set1['full']}'.substring(0, 27), '${set1['thumb']}'.substring(0, 27)], ['MH-12-HO-1163', 'v1hycross', 'data:image/jpeg;base64,/9j/', 'data:image/jpeg;base64,/9j/'], reason: 'two real JPGs');
+      expect((set1['thumbLen'] as int) < (set1['fullLen'] as int), true);
+      expect(find.byKey(const Key('cp-preview')), findsNothing);
+      expect(CarPhotos.i.of('MH-12-HO-1163')!.v, startsWith('v'), reason: 'the new photo');
+      expect(CarPhotos.i.of('MH-12-HO-1163')!.v, isNot('v1hycross'));
+      expect(asked.length, fetched, reason: 'its pictures are on the phone already – nothing downloaded again');
+      // refused by the server: said; nothing changed
+      srv.carRefuse = 'Only Admin can open this.';
+      final v1 = CarPhotos.i.of('MH-12-HO-1163')!.v;
+      await tapK(t, 'car-photo');
+      await settle(t, 600);
+      await t.tap(find.byKey(const Key('cp-gallery')));
+      await net(t);
+      expect(picks, [true, false]);
+      await t.tap(find.byKey(const Key('cp-save')));
+      await net(t);
+      expect(find.byKey(const Key('cp-preview')), findsOneWidget, reason: 'stays open – nothing saved');
+      expect(CarPhotos.i.of('MH-12-HO-1163')!.v, v1);
+      await t.tap(find.text('Cancel'));
+      await settle(t, 600);
+      srv.carRefuse = '';
+      // Remove: asks first
+      await tapK(t, 'car-remove');
+      await settle(t, 600);
+      expect(find.text('Remove the photo of MH-12-HO-1163?'), findsOneWidget);
+      await t.tap(find.text('Remove photo'));
+      await net(t);
+      expect(srv.carCalls.lastWhere((x) => x['fn'] == 'carPhotoRemove')['x'], {'no': 'MH-12-HO-1163', 'was': v1});
+      expect(CarPhotos.i.of('MH-12-HO-1163'), isNull);
+      expect(find.text('No photo yet'), findsOneWidget);
+      expect(find.byKey(const Key('car-remove')), findsNothing);
+      await t.pageBack();
+      await net(t);
+      expect(find.byKey(const Key('cg-add-MH-12-HO-1163')), findsOneWidget, reason: 'the Dashboard at once');
+      // "Add photo" on a card: the gallery
+      await tapK(t, 'cg-add-MH-12-HO-2163');
+      await settle(t, 600);
+      await t.tap(find.byKey(const Key('cp-gallery')));
+      await net(t);
+      await t.tap(find.byKey(const Key('cp-save')));
+      await net(t);
+      final set2 = srv.carCalls.lastWhere((x) => x['fn'] == 'carPhotoSet')['x'] as Map;
+      expect([set2['no'], set2['was']], ['MH-12-HO-2163', '']);
+      expect(find.byKey(const Key('cg-add-MH-12-HO-2163')), findsNothing);
+    } finally {
+      carCompute = c0;
+      CarPhotoPick.pick = p0;
+    }
+  });
+
+  testWidgets('(3.86.0 – Mechanical update-212) HO\'s cars, a person without the right: the photos, no Add / Change / Remove; the Log Book "no access" (the server gives none)', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'View', 'Dashboard': 'View', 'Log Book': 'None'})
+      ..card = true;
+    final s = await ready(t, srv);
+    expect(s.admin, false);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel')));
+    await net(t);
+    await t.tap(find.text('Dashboard'));
+    await net(t);
+    final sc = find.descendant(of: find.byKey(const Key('dash-cards')), matching: find.byType(Scrollable)).first;
+    await t.scrollUntilVisible(find.byKey(const Key('cd-car-MH-12-HO-2163')), 200, scrollable: sc);
+    await net(t);
+    expect(find.byKey(const Key('car-pic-MH-12-HO-1163')), findsOneWidget);
+    expect(find.byKey(const Key('cg-add-MH-12-HO-2163')), findsNothing);
+    await tapK(t, 'cd-car-MH-12-HO-1163');
+    await net(t);
+    expect([find.byKey(const Key('car-photo')).evaluate().length, find.byKey(const Key('car-remove')).evaluate().length], [0, 0]);
+    await tapK(t, 'cdt-log');
+    await settle(t, 400);
+    expect(find.text('You have no access to the Log Book – ask the Admin.'), findsOneWidget);
+  });
+
+  testWidgets('(3.86.0) HO\'s cars – pictures: the gallery, a car\'s details', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View'})
+      ..card = true
+      ..superAdmin = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel')));
+    await net(t);
+    await t.tap(find.text('Dashboard'));
+    await net(t);
+    final sc = find.descendant(of: find.byKey(const Key('dash-cards')), matching: find.byType(Scrollable)).first;
+    await t.scrollUntilVisible(find.byKey(const Key('cg-q')), 300, scrollable: sc);
+    await t.drag(sc, const Offset(0, -260));
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9c_ho_gallery.png'));
+    await tapK(t, 'cd-car-MH-12-HO-1163');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9d_ho_car.png'));
+  }, tags: ['golden']);
 
   testWidgets('(3.47.0 – Mechanical update-166) a fuel card\'s details: bank / company, the name on it, its expiry (a mark when it ends within 30 days), the customer ID – shown on the tile and its sheet, sent with the card; the number stays its last 4 digits', (t) async {
     phone(t);

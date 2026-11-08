@@ -22,6 +22,8 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/print_view.dart';
+import '../core/car_photos.dart' show CarPhotos;
+import 'car_detail.dart' show CarGalleryCard, carMatches, openCar, setCarPhoto;
 import 'compliance.dart' show openCompliance;
 import 'fuel_cards.dart' show CardTile, FuelCardsScreen, rupees;
 import 'logbook.dart' show LogForm;
@@ -49,6 +51,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? d, led, cp;
   /// (3.45.0, Mechanical update-164) a site on fuel cards: its own dashboard – the cards' balances, each car (getCardDash)
   Map<String, dynamic>? cd;
+  /// (3.86.0, Mechanical update-212) the cars as a gallery (their photos) or the list as before; the search
+  bool gal = true;
+  String cq = '';
   bool loading = true, daily = false;
   String err = '';
   int _seq = 0;
@@ -65,6 +70,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final s = SessionScope.read(context);
       _ls = s..dataTick.addListener(_live);
+      CarPhotos.i.addListener(_photos);      // (3.86.0) a car's photo set / removed: its card at once
       from = to = s.today; // (as the web: the Dashboard opens on Today)
       if (s.cardSite) from = '${s.today.substring(0, 8)}01';      // (3.45.0) a site on fuel cards: this month to start with
       fuel = s.multiFuel ? s.siteFuels.first : '';
@@ -81,7 +87,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _ls?.dataTick.removeListener(_live);
+    CarPhotos.i.removeListener(_photos);
     super.dispose();
+  }
+
+  void _photos() {
+    if (mounted && cd != null) setState(() {});
   }
 
   // another person saved something (the live sync): the figures again, quietly
@@ -123,6 +134,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final r = (await s.api.call('getCardDash', [{'from': from, 'to': to}]) as Map).cast<String, dynamic>();
       if (!mounted || seq != _seq) return;
       s.setCards(r['cards']);
+      CarPhotos.i.putAll([for (final c in (r['cars'] as List? ?? const []).whereType<Map>()) c.cast<String, dynamic>()]);      // (3.86.0) their photos
       setState(() {
         cd = r;
         loading = false;
@@ -281,10 +293,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w600, color: C.blue, height: 1.35)),
           ),
         FormHead('Cars'),
+        // (3.86.0, Mechanical update-212) the search (number, make, model) and Gallery / List – the list as before
+        if (cars.isNotEmpty)
+          Row(children: [
+            Expanded(
+              child: TextField(
+                key: const Key('cg-q'),
+                onChanged: (v) => setState(() => cq = v),
+                decoration: InputDecoration(isDense: true, prefixIcon: const Icon(Icons.search_rounded, size: 20), hintText: tr('Number, make or model'), filled: true, fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: C.line)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: C.line))),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              decoration: BoxDecoration(color: const Color(0xFFEFEADF), borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.all(3),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                for (final v in const [(true, Icons.grid_view_rounded, 'Gallery'), (false, Icons.view_list_rounded, 'List')])
+                  Material(
+                    color: gal == v.$1 ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9),
+                    child: InkWell(
+                      key: Key(v.$1 ? 'cg-view-gal' : 'cg-view-list'),
+                      borderRadius: BorderRadius.circular(9),
+                      onTap: () => setState(() => gal = v.$1),
+                      child: Tooltip(message: tr(v.$3), child: Padding(padding: const EdgeInsets.all(7), child: Icon(v.$2, size: 20, color: gal == v.$1 ? C.ink : C.muted))),
+                    ),
+                  ),
+              ]),
+            ),
+          ]),
+        if (cars.isNotEmpty) const SizedBox(height: 10),
         if (loading && x == null) const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
         if (x != null && cars.isEmpty) Text('No car on this site in these dates.', style: const TextStyle(color: C.muted)),
-        for (final c in cars)
-          Container(
+        if (cars.isNotEmpty && !cars.any((c) => carMatches(c, cq))) Text('No car matches "${cq.trim()}".', style: const TextStyle(color: C.muted)),
+        if (gal)
+          LayoutBuilder(builder: (_, bc) {
+            final shown = cars.where((c) => carMatches(c, cq)).toList(), n = (bc.maxWidth / 190).floor().clamp(2, 4), w = (bc.maxWidth - 12 * (n - 1)) / n;
+            return Wrap(spacing: 12, runSpacing: 12, children: [
+              for (final c in shown)
+                SizedBox(
+                  width: w,
+                  child: CarGalleryCard(c,
+                      key: Key('cd-car-${c['no']}'),
+                      onTap: () => openCar(context, '${c['no']}', from, to),
+                      onAdd: s.admin ? () => setCarPhoto(context, '${c['no']}') : null),
+                ),
+            ]);
+          }),
+        for (final c in gal ? const <Map<String, dynamic>>[] : cars.where((c) => carMatches(c, cq)))
+          GestureDetector(onTap: () => openCar(context, '${c['no']}', from, to), child: Container(      // (3.86.0) a car opens from the list too
             key: Key('cd-car-${c['no']}'),
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
@@ -310,7 +368,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: const TextStyle(fontSize: 12.5, color: C.muted));
               }),
             ]),
-          ),
+          )),
       ]),
     );
   }
