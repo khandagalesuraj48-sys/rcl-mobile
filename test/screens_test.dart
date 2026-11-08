@@ -4677,8 +4677,8 @@ void main() {
     await t.tapAt(const Offset(20, 100));
     await settle(t, 600);
     srv.vehAlerts = vaSample();
-    await t.drag(find.ancestor(of: find.byKey(const Key('home-menu')), matching: find.byType(Scrollable)).first, const Offset(0, 400));
-    await net(t);
+    await t.runAsync(() => VehAlerts.i.load(s));      // (Home's next load reads them – as here)
+    await settle(t, 600);
     await tapK(t, 'home-bell');
     await settle(t, 800);
     expect(find.text('Vehicle alerts'), findsOneWidget);
