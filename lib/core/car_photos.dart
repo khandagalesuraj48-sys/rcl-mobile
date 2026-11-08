@@ -22,8 +22,15 @@ class CarPhoto {
   final String t, f, v;
   final int exp;
   final bool err;
+  /// [exp] is counted from the phone's own clock: the server says how long the links have left (`left`) – a phone clock that is wrong
+  /// does not matter
   static CarPhoto? of(Object? x) => x is Map
-      ? CarPhoto(t: '${x['t'] ?? ''}', f: '${x['f'] ?? ''}', exp: (x['exp'] is num) ? (x['exp'] as num).toInt() : 0, v: '${x['v'] ?? ''}', err: x['err'] == true)
+      ? CarPhoto(
+          t: '${x['t'] ?? ''}',
+          f: '${x['f'] ?? ''}',
+          exp: x['left'] is num ? DateTime.now().millisecondsSinceEpoch + (x['left'] as num).toInt() : (x['exp'] is num) ? (x['exp'] as num).toInt() : 0,
+          v: '${x['v'] ?? ''}',
+          err: x['err'] == true)
       : null;
   /// its links end within a minute and a half (or there are none now)
   bool get ending => err || t.isEmpty || exp - DateTime.now().millisecondsSinceEpoch < 90000;
@@ -31,7 +38,9 @@ class CarPhoto {
 
 /// The cars' photos of this site: their links (renewed by themselves) and their pictures (in memory, by the photo's mark).
 class CarPhotos extends ChangeNotifier {
-  CarPhotos._();
+  CarPhotos._() {
+    Session.memoryClears.add(clear);      // another site / signing out: nothing of these photos stays (update-155)
+  }
   static final CarPhotos i = CarPhotos._();
   /// (tests) how a picture is read from its link
   static Future<http.Response> Function(Uri) fetch = (u) => http.get(u).timeout(const Duration(seconds: 40));
@@ -63,17 +72,18 @@ class CarPhotos extends ChangeNotifier {
     _order.clear();
   }
 
-  /// new links of every car with a photo – one ask at a time; not again within 20 seconds unless [force]
+  /// new links of every car with a photo – one ask at a time; not again within 20 seconds unless [force]; [force] also asks for links
+  /// never given before (a picture did not open with its link)
   Future<void> renew(Session s, {bool force = false}) {
     if (_fresh != null) return _fresh!;
     final now = DateTime.now().millisecondsSinceEpoch;
-    if (!force && now - _freshAt < 20000) return Future.value();
+    if (now - _freshAt < (force ? 3000 : 20000)) return Future.value();      // (a few pictures failing together: one ask)
     final nos = [for (final e in links.entries) if (e.value != null) e.key];
     if (nos.isEmpty) return Future.value();
     _freshAt = now;
     return _fresh = () async {
       try {
-        final r = await s.api.call('getCarPhotoLinks', [{'nos': nos}]);
+        final r = await s.api.call('getCarPhotoLinks', [{'nos': nos, if (force) 'fresh': true}]);
         final p = (r is Map ? r['photos'] : null);
         if (p is Map) {
           for (final no in nos) {

@@ -59,6 +59,9 @@ class CarPic extends StatefulWidget {
 class _CarPicState extends State<CarPic> {
   Future<Uint8List?>? _f;
   String _mark = '';
+  /// the last try did not open the picture: tried again when NEW links come (another link than the one that failed – never a loop)
+  bool _failed = false;
+  String _failedT = '';
 
   @override
   void initState() {
@@ -82,7 +85,14 @@ class _CarPicState extends State<CarPic> {
   }
 
   void _changed() {
-    if (mounted && (CarPhotos.i.of(widget.no)?.v ?? '') != _mark) setState(() {});
+    if (!mounted) return;
+    if (_failed && (CarPhotos.i.of(widget.no)?.t ?? '') != _failedT) {
+      _failed = false;
+      _f = null;
+      setState(() {});
+    } else if ((CarPhotos.i.of(widget.no)?.v ?? '') != _mark) {
+      setState(() {});
+    }
   }
 
   Widget _none(String w) => ColoredBox(
@@ -109,7 +119,11 @@ class _CarPicState extends State<CarPic> {
       future: _f,
       builder: (_, snap) {
         if (snap.hasData && snap.data != null) return Image.memory(snap.data!, key: Key('car-pic-${widget.no}${widget.full ? '-f' : ''}'), fit: BoxFit.cover, gaplessPlayback: true, width: double.infinity, height: double.infinity);
-        if (snap.hasError) return _none('Photo could not open');
+        if (snap.hasError) {
+          _failed = true;
+          _failedT = CarPhotos.i.of(widget.no)?.t ?? '';
+          return _none('Photo could not open');
+        }
         return _none('');
       },
     );
@@ -224,7 +238,9 @@ Future<bool> setCarPhoto(BuildContext context, String no) async {
     barrierDismissible: false,
     builder: (_) {
       var busy = false;
-      return StatefulBuilder(builder: (c, setD) => AlertDialog(
+      return StatefulBuilder(builder: (c, setD) => PopScope(
+          canPop: !busy,      // (no going back while it is being saved)
+          child: AlertDialog(
             key: const Key('cp-preview'),
             title: Text(was.isEmpty ? 'Photo – $no' : 'Change photo – $no'),
             scrollable: true,
@@ -252,14 +268,16 @@ Future<bool> setCarPhoto(BuildContext context, String no) async {
                           CarPhotos.i.put(no, r is Map ? r['photo'] : null);
                           if (c.mounted) Navigator.pop(c, true);
                         } catch (e) {
-                          setD(() => busy = false);
-                          if (c.mounted) toast(c, tr(errText(e)), bad: true);
+                          if (c.mounted) {
+                            setD(() => busy = false);
+                            toast(c, tr(errText(e)), bad: true);
+                          }
                         }
                       },
                 child: Text('Save photo'),
               ),
             ],
-          ));
+          )));
     },
   );
   if (saved == true && context.mounted) toast(context, tr('Photo saved – {0}.').replaceAll('{0}', no));
