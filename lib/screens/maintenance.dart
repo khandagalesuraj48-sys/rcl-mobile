@@ -490,9 +490,11 @@ class _Line {
 
 /// A maintenance bill: new, or one being changed ([edit])
 class MaintForm extends StatefulWidget {
-  const MaintForm({super.key, this.edit, this.works = const [], this.garages = const []});
+  const MaintForm({super.key, this.edit, this.works = const [], this.garages = const [], this.no = ''});
   final Map<String, dynamic>? edit;
   final List<String> works, garages;
+  /// (3.87.0) a new bill opened from a car's screen: that car already chosen (it can still be changed)
+  final String no;
   @override
   State<MaintForm> createState() => _MaintFormState();
 }
@@ -529,6 +531,8 @@ class _MaintFormState extends State<MaintForm> {
       }
       _insPut(e['insurance']);
       if ((e['files'] as List? ?? const []).isNotEmpty) WidgetsBinding.instance.addPostFrameCallback((_) => _loadFiles());
+    } else if (widget.no.isNotEmpty) {
+      car = s.machine(widget.no);
     }
     if (lines.isEmpty) lines.add(_Line());
   }

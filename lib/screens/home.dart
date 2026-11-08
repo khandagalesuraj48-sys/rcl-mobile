@@ -33,6 +33,7 @@ import 'billing.dart';
 import 'breakdown.dart';
 import 'call.dart';
 import 'fuel_cards.dart' show FuelCardsScreen, rupees;
+import 'ho_fleet.dart';
 import 'verify.dart';
 import 'logbook.dart';
 import 'store.dart';
@@ -119,6 +120,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   num? opening; // (3.31.0) the stock at the start of today (the Dashboard's opening) – for the change on the stock card
   List<_Act> acts = [];
   AppUpdate? update;
+  /// (3.87.0) HO's My Fleet reads its cars again with each load of Home
+  int fleetTick = 0;
 
   Session? _ls;
   // (3.1.7) live: something changed on the server (another person, the web) – the figures load again by themselves
@@ -177,7 +180,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       final day = s.today;
       final jobs = <Future<void>>[];
       final got = <_Act>[];
-      for (final k in kKinds.where((k) => s.canSee(k.module))) {
+      final ho = s.cardSite;      // (3.87.0) HO's Home shows no tiles and no Today's Activity – nothing of them is read there
+      for (final k in kKinds.where((k) => !ho && s.canSee(k.module))) {
         jobs.add(s.api.call(k.list, [{'from': day, 'to': day, 'all': true}]).then((r) {
           for (final x in ((r as Map)['rows'] as List? ?? []).whereType<Map>()) {
             got.add(_Act(k, x.cast<String, dynamic>()));
@@ -185,7 +189,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         }).catchError((_) {}));
       }
       int? le, run;
-      if (s.canSee('Log Book')) {
+      if (!ho && s.canSee('Log Book')) {
         jobs.add(s.api.call('getLogBookList', [{'from': day, 'to': day, 'all': true}]).then((r) {
           final rows = ((r as Map)['rows'] as List? ?? []).whereType<Map>().toList();
           le = rows.length;
@@ -194,7 +198,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         }).catchError((_) {}));
       }
       num? open;
-      if (s.canSee('Dashboard')) {
+      if (!ho && s.canSee('Dashboard')) {
         jobs.add(s.api.call('getDashboard', [{'from': day, 'to': day}]).then((r) {
           final locs = ((r as Map)['locations'] as List? ?? []).whereType<Map>().toList();
           if (locs.isNotEmpty) open = locs.fold<num>(0, (a, x) => a + (asNum(x['opening']) ?? 0));
@@ -210,6 +214,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         opening = open;
         at = DateTime.now();
         loading = false;
+        fleetTick++;
       });
     } catch (e) {
       if (!mounted) return;
@@ -328,6 +333,9 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     final s = SessionScope.of(context);
     final top = MediaQuery.of(context).padding.top;
     final first = s.name.split(' ').first;
+    // (3.87.0, asked 08-11-2026 – "Premium Mobile App Redesign", his answer "fakt HO") HO's own Home: no site picture (a clean
+    // header), no tiles, no Modules grid (they stay in ≡), no Today's Activity – My Fleet, the cars with their photos
+    final ho = s.cardSite;
     final mods = kModules.where((m) => m.visible(s)).toList();
     final locs = s.stockByLoc.entries.toList();
     final tiles = <Widget>[
@@ -365,6 +373,20 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
             child: ListView(padding: EdgeInsets.zero, children: [
               // ---------- his site's photo, the bar, "Good Morning, Sujit", the site ----------
               Stack(children: [
+                if (ho)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    height: picH,
+                    child: const DecoratedBox(
+                      key: Key('home-ho-head'),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFE3F1E8), C.bg]),
+                      ),
+                    ),
+                  )
+                else ...[
                 Positioned(
                   left: 70,
                   right: 0,
@@ -394,6 +416,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                     ),
                   ),
                 ),
+                ],
                 Padding(
                   padding: EdgeInsets.fromLTRB(6, top + 6, 12, 0),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -594,6 +617,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                 ),
               ),
               // ---------- the four tiles ----------
+              if (!ho)
               Padding(
                 padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
                 child: tiles.length <= 4
@@ -632,6 +656,10 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                 ),
               // (3.1.11, update-118) his entries in verification: waiting / sent back / approved – tap: each, with "Remind"
               const VerifyStrip(days: 1, margin: EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.block)),
+              // ---------- (3.87.0) HO: My Fleet ----------
+              if (ho)
+                Padding(padding: const EdgeInsets.fromLTRB(Sp.edge, 4, Sp.edge, 28), child: HoFleet(tick: fleetTick))
+              else
               // ---------- the modules ----------
               Padding(
                 padding: const EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, 0),
