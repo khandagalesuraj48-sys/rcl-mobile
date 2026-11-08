@@ -36,6 +36,15 @@ class FakeServer {
     {'name': 'OLD CARD', 'last4': '1111', 'type': 'Debit card', 'cars': <String>[], 'opening': 0, 'openDate': '2026-09-01', 'active': false, 'paid': 0, 'spent': 0, 'balance': 0, 'fills': 0, 'payments': 0, 'lastFill': '', 'used': false},
   ];
   final cardCalls = <Map<String, dynamic>>[];
+  /// (3.86.0, Mechanical update-212) HO's cars: their photos (number → { t, f, exp, v } as the server gives them), the calls about them;
+  /// [carLinksEnd]: the links given end at once (the phone must ask for new ones); [carRefuse]: the server refuses a photo (not the Admin)
+  final carPhotos = <String, Map<String, dynamic>>{
+    'MH-12-HO-1163': {'t': 'https://store.test/car/t1?token=a', 'f': 'https://store.test/car/f1?token=a', 'exp': DateTime.now().millisecondsSinceEpoch + 900000, 'v': 'v1hycross'},
+  };
+  final carCalls = <Map<String, dynamic>>[];
+  bool carLinksEnd = false;
+  String carRefuse = '';
+  Map<String, dynamic> carLink(String no, String v, int n) => {'t': 'https://store.test/car/t-$v?token=$n', 'f': 'https://store.test/car/f-$v?token=$n', 'exp': DateTime.now().millisecondsSinceEpoch + (carLinksEnd ? 1000 : 900000), 'v': v};
   /// (3.46.0, Mechanical update-165) the maintenance bills of the cars at a site on fuel cards; [maintMissing]: step 1zi not run yet
   bool maintMissing = false;
   final maintCalls = <Map<String, dynamic>>[];
@@ -2168,10 +2177,42 @@ class FakeServer {
           cardCalls.add({'fn': action, 'x': a[0]});
           return _j({'result': {'from': '2026-10-01', 'to': '2026-10-14', 'today': '2026-10-14', 'cards': cards,
             'cars': [
-              {'no': 'MH-12-HO-1163', 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr', 'std': 23, 'km': 690, 'qty': 30, 'amount': 3200, 'card': 3200, 'cash': 0, 'fills': 1, 'avg': 23, 'last': {'date': '2026-10-13', 'qty': 30, 'amount': 3200, 'km': 45210, 'paidBy': 'HDFC FUEL'}},
-              {'no': 'MH-12-HO-2163', 'name': 'Ertiga', 'type': 'Car', 'fuel': 'CNG', 'unit': 'kg', 'std': 25, 'km': 300, 'qty': 12, 'amount': 1100, 'card': 0, 'cash': 1100, 'fills': 1, 'avg': 25, 'last': {'date': '2026-10-12', 'qty': 12, 'amount': 1100, 'km': 30100, 'paidBy': 'Cash'}},
+              {'no': 'MH-12-HO-1163', 'name': 'Hycross', 'type': 'Car', 'fuel': 'Petrol', 'unit': 'Ltr', 'std': 23, 'km': 690, 'qty': 30, 'amount': 3200, 'card': 3200, 'cash': 0, 'fills': 1, 'avg': 23, 'last': {'date': '2026-10-13', 'qty': 30, 'amount': 3200, 'km': 45210, 'paidBy': 'HDFC FUEL'},
+                'make': 'Toyota', 'status': 'Active', 'kmNow': 45210, 'photo': carPhotos['MH-12-HO-1163']},
+              {'no': 'MH-12-HO-2163', 'name': 'Ertiga', 'type': 'Car', 'fuel': 'CNG', 'unit': 'kg', 'std': 25, 'km': 300, 'qty': 12, 'amount': 1100, 'card': 0, 'cash': 1100, 'fills': 1, 'avg': 25, 'last': {'date': '2026-10-12', 'qty': 12, 'amount': 1100, 'km': 30100, 'paidBy': 'Cash'},
+                'make': 'Maruti Suzuki', 'status': 'Active', 'kmNow': 30100, 'photo': carPhotos['MH-12-HO-2163']},
             ],
             'total': {'byFuel': {'Petrol': 30, 'CNG': 12}, 'amount': 4300, 'card': 3200, 'cash': 1100, 'fills': 2, 'km': 990, 'cars': 2}}});
+        // (3.86.0, Mechanical update-212) HO's cars: one car's details, new links of the photos, a photo set / removed
+        case 'getCarDetail':
+          final x = (a[0] as Map).cast<String, dynamic>(), no = '${x['no']}';
+          carCalls.add({'fn': action, 'x': x});
+          final one = no == 'MH-12-HO-1163';
+          return _j({'result': {'from': x['from'], 'to': x['to'],
+            'car': {'no': no, 'name': one ? 'Hycross' : 'Ertiga', 'make': one ? 'Toyota' : 'Maruti Suzuki', 'type': 'Car', 'fuel': one ? 'Petrol' : 'CNG', 'unit': one ? 'Ltr' : 'kg', 'status': 'Active', 'std': 23, 'kmNow': one ? 45210 : 30100, 'kmAt': '2026-10-13', 'photo': carPhotos[no]},
+            'sum': {'qty': one ? 30 : 12, 'amount': one ? 3200 : 1100, 'card': one ? 3200 : 0, 'cash': one ? 0 : 1100, 'fills': 1, 'km': one ? 690 : 300, 'avg': one ? 23 : 25},
+            'fills': [if (one) {'date': '2026-10-13', 'fuel': 'Petrol', 'qty': 30, 'unit': 'Ltr', 'amount': 3200, 'paidBy': 'HDFC FUEL', 'cash': false, 'km': 45210} else {'date': '2026-10-12', 'fuel': 'CNG', 'qty': 12, 'unit': 'kg', 'amount': 1100, 'paidBy': 'Cash', 'cash': true, 'km': 30100}],
+            'log': perms['Log Book'] == 'None' && !superAdmin ? null : [{'date': '2026-10-13', 'shift': 'Full Day', 'okm': 44520, 'ckm': 45210, 'km': 690, 'driver': 'Gupta', 'work': ''}],
+            'maint': [for (final m in maint) if (m['no'] == no) {'id': m['id'], 'date': m['date'], 'garage': m['garage'], 'billNo': m['billNo'], 'km': m['km'], 'amount': m['total'], 'service': m['service'], 'works': [for (final l in (m['lines'] as List)) (l as Map)['work']], 'files': 1}],
+            'may': {'photo': superAdmin, 'log': true, 'maint': true}}});
+        case 'getCarPhotoLinks':
+          carCalls.add({'fn': action, 'x': a[0]});
+          final nos = [for (final n in ((a[0] as Map)['nos'] as List? ?? const [])) '$n'];
+          carLinksEnd = false;
+          return _j({'result': {'photos': {for (final n in nos) if (carPhotos[n] != null) n: carPhotos[n] = carLink(n, '${carPhotos[n]!['v']}', carCalls.length)}}});
+        case 'carPhotoSet':
+          final x = (a[0] as Map).cast<String, dynamic>(), no = '${x['no']}';
+          carCalls.add({'fn': action, 'x': {...x, 'full': '${x['full']}'.substring(0, 30), 'thumb': '${x['thumb']}'.substring(0, 30), 'fullLen': '${x['full']}'.length, 'thumbLen': '${x['thumb']}'.length}});
+          if (carRefuse.isNotEmpty) return _j({'error': carRefuse}, 500);
+          if ('${x['was']}' != '${carPhotos[no]?['v'] ?? ''}') return _j({'error': 'The photo of $no was changed by someone else after you opened it – open it again, nothing was saved.'}, 500);
+          carPhotos[no] = carLink(no, 'v${carCalls.length}new', carCalls.length);
+          return _j({'result': {'ok': true, 'no': no, 'photo': carPhotos[no]}});
+        case 'carPhotoRemove':
+          final x = (a[0] as Map).cast<String, dynamic>(), no = '${x['no']}';
+          carCalls.add({'fn': action, 'x': x});
+          if (carRefuse.isNotEmpty) return _j({'error': carRefuse}, 500);
+          carPhotos.remove(no);
+          return _j({'result': {'ok': true, 'no': no, 'photo': null}});
         // (3.76.0, Mechanical update-203) a tank check due with this fill?
         case 'tankDue':
           tankDueAsked.add((a[0] as Map));

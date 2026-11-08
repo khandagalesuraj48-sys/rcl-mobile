@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.86.0 (08-11-2026 – "HEAD OFFICE VEHICLE GALLERY & INTERACTIVE VEHICLE MANAGEMENT … Android App – Vehicle Gallery, Details
+Screen and Camera Photo Upload"; his answers: the Super Admin sets / changes a car's photo from the Portal by its number, the Admin and
+the Super Admin from HO too, a preview first; with Mechanical update-212):** a site on fuel cards (HO), Dashboard → Fuel cards & cars:
+the cars as a **gallery** with their photos (2 a row on a phone, more on a tablet) – search by a part of the number, the make or the
+model; **Gallery / List** (the list as before); a car opens its **details** (`screens/car_detail.dart`): its photo over the top, number,
+make · model, fuel, kind, status, KM now; fuel filled, expense, average, by card / cash, fills; its fills, Log Book days and maintenance
+bills of the dates (each only for a person who may see them – getCarDetail). The Admin / Super Admin: **Add / Change photo** – the
+camera or the gallery (a computer: a file), turned upright and made a JPG of at most 1600 px (and 480 px) on the phone, shown first,
+sent by "Save photo" (carPhotoSet); **Remove** asks first (carPhotoRemove; its file stays). The photos' links last 15 minutes: the
+phone asks for new ones by itself when they end or a picture does not open, and keeps each picture by its own mark – the same photo
+is never downloaded twice (`core/car_photos.dart`).
+
 **Version 3.84.0 (04-11-2026 – "app madhech share application asa option de user jewa he dabel to other la whats app aso ki link madhe
 to share ku shakel dusryala latest version app che … nantr dusra login krel"; his answers: in the ≡ menu, a download page at our address;
 with Mechanical update-210):** Home's ≡ → **Share app** – the phone's own share (WhatsApp, a message …) with the link of the app's page
