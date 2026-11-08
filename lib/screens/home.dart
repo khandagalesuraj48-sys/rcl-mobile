@@ -212,9 +212,9 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         logEntries = le;
         running = run;
         opening = open;
+        if (at != null) fleetTick++;      // (a load again – not the first: My Fleet reads its own at its start)
         at = DateTime.now();
         loading = false;
-        fleetTick++;
       });
     } catch (e) {
       if (!mounted) return;

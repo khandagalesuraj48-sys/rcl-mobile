@@ -428,9 +428,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                if (hasPhoto) OutlinedButton.icon(key: const Key('car-remove'), onPressed: () => removeCarPhoto(context, widget.no), style: OutlinedButton.styleFrom(foregroundColor: C.red, visualDensity: VisualDensity.compact), icon: const Icon(Icons.delete_outline_rounded, size: 18), label: Text('Remove')),
+                if (hasPhoto) OutlinedButton.icon(key: const Key('car-remove'), onPressed: () => removeCarPhoto(context, widget.no), style: OutlinedButton.styleFrom(foregroundColor: C.red, visualDensity: VisualDensity.compact, minimumSize: const Size(0, 40)), icon: const Icon(Icons.delete_outline_rounded, size: 18), label: Text('Remove')),
                 if (hasPhoto) const SizedBox(width: 8),
-                FilledButton.tonalIcon(key: const Key('car-photo'), onPressed: () => setCarPhoto(context, widget.no), style: FilledButton.styleFrom(visualDensity: VisualDensity.compact), icon: const Icon(Icons.photo_camera_rounded, size: 18), label: Text(hasPhoto ? 'Change photo' : 'Add photo')),
+                FilledButton.tonalIcon(key: const Key('car-photo'), onPressed: () => setCarPhoto(context, widget.no), style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, minimumSize: const Size(0, 40)), icon: const Icon(Icons.photo_camera_rounded, size: 18), label: Text(hasPhoto ? 'Change photo' : 'Add photo')),
               ]),
             ),
           const SizedBox(height: 12),
