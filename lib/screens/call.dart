@@ -33,7 +33,8 @@ import '../core/applock.dart';
 const _bg = Color(0xFF0B1410), _panel = Color(0xFF16231C), _btn = Color(0xFF243329), _red = Color(0xFFE53935), _blue = Color(0xFF1E88E5);
 
 String _initials(String n) {
-  final p = n.trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).toList();
+  // (3.92.0) a person of another site is named "Kiran Far (18B)": the site in brackets is not part of his initials
+  final p = n.replaceAll(RegExp(r'\s*\([^)]*\)\s*$'), '').trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).toList();
   if (p.isEmpty) return '?';
   return (p.first.substring(0, 1) + (p.length > 1 ? p.last.substring(0, 1) : '')).toUpperCase();
 }
