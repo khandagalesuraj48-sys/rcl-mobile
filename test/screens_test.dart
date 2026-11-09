@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show ComputeCallback;
+import 'package:flutter/foundation.dart' show ComputeCallback, TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6651,6 +6651,45 @@ void main() {
     expect(find.descendant(of: find.byType(Badge), matching: find.text('1')), findsWidgets);
   });
 
+  // (3.92.0 – Mechanical update-217, asked 09-11-2026: "user online asla ki bas zal call lawta yeil mgg to kuthe pn aso") a user of another site
+  testWidgets('(3.92.0) Call: a user of another site ("Kiran Far (18B)") is on the list once he is at the app – and is called as any other', (t) async {
+    phone(t);
+    final kit = FakeKit();
+    Session.callKit = () => kit;
+    addTearDown(() => Session.callKit = null);
+    final srv = FakeServer()..rtcPeople.add({'uid': 'u-kiran', 'name': 'Kiran Far (18B)', 'admin': false, 'far': true, 'site': '18B'});
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    final rtc = s.rtc!;
+    var clock = DateTime(2026, 10, 14, 10, 30).millisecondsSinceEpoch;
+    rtc.now = () => clock;
+    await t.tap(find.byKey(const Key('home-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('home-call')));
+    await net(t);
+    await settle(t, 1600);
+    expect(rtc.users.firstWhere((u) => u.uid == 'u-kiran').far, true);
+    expect(find.byKey(const Key('call-u-u-kiran')), findsNothing, reason: 'not at the app: not on the list');
+    expect(find.byKey(const Key('call-u-u-office')), findsOneWidget, reason: 'his own site\'s people: as before');
+    expect(find.text('Users of the other sites are shown here while they are at the app.'), findsOneWidget);
+    rtc.inbox({'r': 41, 'top': 41, 'm': [rtcNote('h2', 'here', 'u-kiran', 'Kiran Far (18B)', '', {'busy': false, 'share': false, 'dev': 'dK'})]});
+    clock += 3000;
+    await settle(t, 1200);
+    expect(find.byKey(const Key('call-u-u-kiran')), findsOneWidget);
+    expect(t.widget<Text>(find.descendant(of: find.byKey(const Key('call-st-u-kiran')), matching: find.byType(Text))).data, 'at the app now');
+    await tapK(t, 'call-u-u-kiran');
+    await settle(t, 300);
+    expect(find.text('Call Kiran Far (18B)'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/55b_call_far.png'));
+    await t.tap(find.byKey(const Key('call-go')));
+    await net(t);
+    expect(srv.rtcSent.lastWhere((m) => m['t'] == 'ring')['to'], ['u-kiran']);
+    rtc.end(quiet: true);
+    await settle(t, 600);
+  }, tags: ['golden']);
+
   // ---------------- (3.27.0) the app lock ----------------
   testWidgets('(3.27.0) The app lock: the app opens locked – the phone is asked by itself; not him → still locked; Unlock → the app; more than a minute away → locked again', (t) async {
     phone(t);
@@ -6689,6 +6728,34 @@ void main() {
     await t.tap(find.byKey(const Key('lock-unlock')));
     await settle(t, 600);
     expect(find.byKey(const Key('lock-screen')), findsNothing);
+  }, tags: ['golden']);
+
+  // (3.92.0, asked 09-11-2026: "iphone madhe finer nahi face login aste … face login haway") an iPhone with Face ID: its own words
+  testWidgets('(3.92.0) The app lock on an iPhone with Face ID: "Use Face ID or the iPhone\'s passcode." and "Unlock with Face ID"', (t) async {
+    phone(t);
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final srv = FakeServer();
+      final s = await ready(t, srv);
+      final g = FakeGate()
+        ..has = 'face'
+        ..answers.add(const LockAnswer(LockOutcome.no));
+      await t.pumpWidget(RclApp(session: s, lock: AppLock(g)));
+      await net(t);
+      expect(g.kinds, 1);
+      expect(find.byKey(const Key('lock-screen')), findsOneWidget);
+      expect(find.text("Use Face ID or the iPhone's passcode."), findsOneWidget);
+      expect(find.text('Unlock with Face ID'), findsOneWidget);
+      expect(find.byIcon(Icons.face_rounded), findsOneWidget);
+      await pics(t);
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58b_lock_faceid.png'));
+      await t.tap(find.byKey(const Key('lock-unlock')));
+      await settle(t, 600);
+      expect(find.byKey(const Key('lock-screen')), findsNothing);
+      await t.pumpWidget(const SizedBox());
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   }, tags: ['golden']);
 
   testWidgets('(3.27.0) A phone with no screen lock: the app opens, with a red line to set one; signed out: no lock screen', (t) async {

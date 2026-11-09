@@ -277,7 +277,8 @@ class _CallPickScreenState extends State<CallPickScreen> {
   @override
   Widget build(BuildContext context) {
     final rr = r;
-    final list = rr == null ? <RtcUser>[] : rr.users.where((u) => q.isEmpty || u.name.toLowerCase().contains(q.toLowerCase())).toList();
+    // (3.92.0) a user of another site: on the list while he is at the app (or picked)
+    final list = rr == null ? <RtcUser>[] : rr.users.where((u) => (!u.far || rr.online(u.uid) || sel == u.uid) && (q.isEmpty || u.name.toLowerCase().contains(q.toLowerCase()))).toList();
     return Scaffold(
       backgroundColor: C.bg,
       appBar: AppBar(actions: withAsk(), title: const Text('Call', mr: 'कॉल')),
@@ -335,6 +336,8 @@ class _CallPickScreenState extends State<CallPickScreen> {
                       ),
                     ),
                   for (final u in list) _person(rr!, u),
+                  if (rr?.users.any((u) => u.far) ?? false)
+                    const Padding(padding: EdgeInsets.only(top: 2), child: Text('Users of the other sites are shown here while they are at the app.', style: TextStyle(color: C.muted, fontSize: 13))),
                   const SizedBox(height: 14),
                   const Text('What to show', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),

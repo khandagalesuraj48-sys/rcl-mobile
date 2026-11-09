@@ -33,4 +33,16 @@ class PhoneLockGate implements LockGate {
       return LockAnswer(LockOutcome.error, e.message ?? e.code);
     }
   }
+
+  /// (3.92.0) Face ID / face only → 'face'; Touch ID / fingerprint only → 'finger'; else ''.
+  @override
+  Future<String> kind() async {
+    try {
+      final l = await _a.getAvailableBiometrics();
+      final face = l.contains(BiometricType.face), finger = l.contains(BiometricType.fingerprint);
+      return face && !finger ? 'face' : finger && !face ? 'finger' : '';
+    } catch (_) {
+      return ''; // (not known: the words for every phone)
+    }
+  }
 }

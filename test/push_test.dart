@@ -35,6 +35,18 @@ void main() {
     expect(pushNoteOf({'t': 'something new'}), isNull, reason: 'a message the app does not know: nothing');
   });
 
+  test('(3.92.0 – Mechanical update-217) a call of a server where calls go between sites (x): pressed, it opens where the app is – no site', () {
+    final d = {'t': 'ring', 'call': 'k9', 'name': 'Hari (HO)', 'from': 'u-hari', 'mode': 'voice', 'site': 'S1', 'x': '1'};
+    expect(pushAnySite(d), true);
+    final n = pushNoteOf(d)!;
+    expect(n.title, 'Hari (HO) is calling');
+    expect(jsonDecode(n.payload), {'t': 'ring', 'site': '', 'call': 'k9', 'from': 'u-hari'});
+    expect(PushTap.of(n.payload, 'answer')!.site, '', reason: 'answered at the site the app is at');
+    expect(jsonDecode(pushNoteOf({'t': 'missed', 'call': 'k9', 'name': 'Hari (HO)', 'site': 'S1', 'x': '1'})!.payload)['site'], '');
+    expect(pushAnySite({'t': 'cr', 'id': 'VF-1', 'title': 'x', 'site': 'S1', 'x': '1'}), false, reason: 'an approval opens its own site, as before');
+    expect(jsonDecode(pushNoteOf({'t': 'ring', 'call': 'k8', 'name': 'Asha', 'site': 'T2'})!.payload)['site'], 'T2', reason: 'a server of before: as before');
+  });
+
   test('approvals: the same numbers as the 15-minute check – one thing is told once; the others their own number', () {
     final d = {
       'requests': [
