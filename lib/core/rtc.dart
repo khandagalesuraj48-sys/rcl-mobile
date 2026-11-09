@@ -107,9 +107,13 @@ abstract class RtcPc {
 const rtcReplies = {1: 'I will call you back in 5 minutes.', 2: 'I am in a meeting – later, please.', 3: 'Please call me on the phone.'};
 
 class RtcUser {
-  RtcUser(this.uid, this.name, this.admin);
+  RtcUser(this.uid, this.name, this.admin, {this.far = false, this.site = ''});
   final String uid, name;
   final bool admin;
+  /// (3.92.0 – Mechanical update-217) a user of ANOTHER site ([name] already says which: "Kiran (18B)") – on the list while he is at
+  /// the app; [site]: his site's name.
+  final bool far;
+  final String site;
 }
 
 class RtcShare {
@@ -432,7 +436,7 @@ class Rtc extends ChangeNotifier {
     if (x is! Map) return;
     me = '${x['me'] ?? ''}';
     myName = '${x['name'] ?? ''}';
-    users = [for (final u in (x['users'] as List? ?? const []).whereType<Map>()) RtcUser('${u['uid'] ?? ''}', '${u['name'] ?? ''}', u['admin'] == true)];
+    users = [for (final u in (x['users'] as List? ?? const []).whereType<Map>()) RtcUser('${u['uid'] ?? ''}', '${u['name'] ?? ''}', u['admin'] == true, far: u['far'] == true, site: '${u['site'] ?? ''}')];
     ice = [for (final s in (x['ice'] as List? ?? const []).whereType<Map>()) s.cast<String, dynamic>()];
     relay = x['relay'] == true;
     most = _int(x['max'], 3);
@@ -466,6 +470,12 @@ class Rtc extends ChangeNotifier {
   void closePick() {
     picking = false;
     _changed();
+  }
+
+  /// (3.92.0) answered "here" in the last 30 s – a user of another site is on the list only then (the web's rtcPickDraw).
+  bool online(String uid) {
+    final h = here[uid];
+    return h != null && now() - h.$1 < 30000;
   }
 
   /// In the list: "at the app now" / "in another call" / "not at the app now" / "checking…" (the web's rtcPickDraw).

@@ -3,7 +3,8 @@
  *   – Signed in at a site, the phone gives Mechanical its Firebase address (fcmSave – Mechanical update-161 keeps it at the first site,
  *     so EVERY site reaches it); one phone = one person (another person signing in takes it); Sign out takes it off (fcmOff).
  *   – Whatever Mechanical tells the web reaches the phone as a data message (with the site it is from):
- *       ring   a call – its ringtone, "Answer" (the app opens at that site and answers) and "Decline" (said to the caller)
+ *       ring   a call – its ringtone, "Answer" (the app opens at that site and answers) and "Decline" (said to the caller); (3.92.0) a
+ *              call that can be answered from any site (x – Mechanical update-217): answered where the app is, no site opened
  *       done   answered on another device – the ring stops;  missed – "Missed call from …"
  *       cr     verification and approvals: waiting for you, the next level, approved / rejected, sent back, answered, sent again,
  *              a reminder – pressed: Approvals at that site
@@ -56,7 +57,9 @@ String _what(String mode, String page) {
 /// What a Firebase message of Mechanical (or of the release) shows. [myBuild]: this app's build (a release that is not newer: nothing).
 /// null = nothing to show.
 PushNote? pushNoteOf(Map<String, dynamic> d, {int myBuild = 0}) {
-  final t = '${d['t'] ?? ''}', site = '${d['site'] ?? ''}';
+  final t = '${d['t'] ?? ''}';
+  // (3.92.0 – Mechanical update-217) a call that can be answered from ANY site (x): pressed, it opens where the app is – no site
+  final site = pushAnySite(d) ? '' : '${d['site'] ?? ''}';
   String pay(Map<String, dynamic> m) => jsonEncode({'t': t, 'site': site, ...m});
   switch (t) {
     case 'ring':
@@ -93,6 +96,9 @@ PushNote? pushNoteOf(Map<String, dynamic> d, {int myBuild = 0}) {
   }
   return null;
 }
+
+/// (3.92.0) a call of a server where calls go between sites (Mechanical update-217): answered at the site the app is at.
+bool pushAnySite(Map<String, dynamic> d) => '${d['x'] ?? ''}' == '1' && const {'ring', 'done', 'missed'}.contains('${d['t'] ?? ''}');
 
 /// What a pressed notification asks (its payload, and Answer / Decline of a ring).
 class PushTap {

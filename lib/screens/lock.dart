@@ -1,5 +1,6 @@
 /* (3.27.0) THE LOCK SCREEN over the whole app (lib/core/applock.dart) – (3.39.0) on the approved design: the mark, "RCL ERP is locked", Unlock – the phone's own
  * box (fingerprint / face / PIN) opens by itself when the lock screen comes. Over the call's bar too (the names are not shown). */
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
@@ -55,7 +56,10 @@ class _LockLayerState extends State<LockLayer> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final ctx = widget.nav.currentContext;
         // (3.83.0) as every message of the app: a gooey drop at the top (ui/goo_toast.dart)
-        if (ctx != null) gooToast(ctx, 'This phone has no screen lock – set a PIN, pattern or fingerprint (the phone\'s Settings → Security), so that RCL ERP is locked.', color: C.red, stay: const Duration(seconds: 10));
+        if (ctx != null) {
+          gooToast(ctx, _iphone ? 'This iPhone has no passcode – set one (Settings → Face ID & Passcode), so that RCL ERP is locked.' : 'This phone has no screen lock – set a PIN, pattern or fingerprint (the phone\'s Settings → Security), so that RCL ERP is locked.',
+              color: C.red, stay: const Duration(seconds: 10));
+        }
       });
     }
     setState(() {});
@@ -84,6 +88,9 @@ class _LockLayerState extends State<LockLayer> with WidgetsBindingObserver {
 /// pahije but new screen war") The lock on the approved design (screens/splash.dart): the same navy, road, mark and RCL ERP as the
 /// opening; at the bottom "RCL ERP is locked", his name, what the phone said (not unlocked, wrong, …) and Unlock – the old green
 /// screen is gone. What it does is as before.
+/// (3.92.0) an iPhone (or an iPad): its own words – Face ID / Touch ID / passcode
+bool get _iphone => defaultTargetPlatform == TargetPlatform.iOS;
+
 class _LockScreen extends StatelessWidget {
   const _LockScreen({required this.lock, required this.name});
   final AppLock lock;
@@ -106,7 +113,7 @@ class _LockScreen extends StatelessWidget {
                 Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, color: Color(0xE6FFFFFF))),
               ],
               const SizedBox(height: 8),
-              const Text('Use your fingerprint, face or the phone\'s PIN.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14.5, height: 1.35, color: Color(0xCCFFFFFF))),
+              Text(lockHow(lock.kind, _iphone), key: const Key('lock-how'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 14.5, height: 1.35, color: Color(0xCCFFFFFF))),
               if (lock.said.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -119,8 +126,8 @@ class _LockScreen extends StatelessWidget {
               SplashButton(
                 key: const Key('lock-unlock'),
                 onPressed: lock.asking ? null : () => lock.unlock(tr('Unlock RCL ERP')),
-                icon: Icons.fingerprint_rounded,
-                label: const Text('Unlock'),
+                icon: lock.kind == 'face' ? Icons.face_rounded : Icons.fingerprint_rounded,
+                label: Text(lockButton(lock.kind, _iphone)),
               ),
             ]),
           ),

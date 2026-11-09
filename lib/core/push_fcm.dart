@@ -72,7 +72,7 @@ class Fcm {
 
   static Future<void> foreground(Session s, Map<String, dynamic> d) async {
     final t = '${d['t'] ?? ''}', site = '${d['site'] ?? ''}';
-    final here = s.stage == Stage.ready && (site.isEmpty || s.site?.code == site);
+    final here = s.stage == Stage.ready && (site.isEmpty || s.site?.code == site || pushAnySite(d)); // (3.92.0) a call of any site comes here
     if ((t == 'ring' || t == 'missed') && here) {
       unawaited(s.liveTick()); // the app's own ring screen / its "missed" – asked now, not at the next beat
       return;

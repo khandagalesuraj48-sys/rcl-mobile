@@ -13,6 +13,15 @@ class FakeGate implements LockGate {
     this.reason = reason;
     return answers.isNotEmpty ? answers.removeAt(0) : const LockAnswer(LockOutcome.ok);
   }
+
+  /// (3.92.0) what the pretend phone opens with ('face' = Face ID)
+  String has = '';
+  int kinds = 0;
+  @override
+  Future<String> kind() async {
+    kinds++;
+    return has;
+  }
 }
 
 void main() {
@@ -72,7 +81,7 @@ void main() {
     final l2 = AppLock(g2);
     await l2.unlock('x');
     expect(l2.locked, true);
-    expect(l2.said, 'The phone could not ask for the fingerprint – press Unlock to try again.');
+    expect(l2.said, 'The phone could not open its lock – press Unlock to try again.');
     await l2.unlock('x');
     expect(l2.locked, false);
     expect(l2.noLock, true);
@@ -109,5 +118,22 @@ void main() {
     now = now.add(const Duration(minutes: 2));
     l.back();
     expect(l.locked, true, reason: 'away in another app: as before');
+  });
+
+  // (3.92.0, asked 09-11-2026: "iphone madhe finer nahi face login aste … face login haway") the words of the lock for this phone
+  test('(3.92.0) the lock says Face ID on an iPhone with Face ID, Touch ID with Touch ID; an Android phone what it has; learnt once', () async {
+    expect([lockHow('face', true), lockButton('face', true)], ["Use Face ID or the iPhone's passcode.", 'Unlock with Face ID']);
+    expect([lockHow('finger', true), lockButton('finger', true)], ["Use Touch ID or the iPhone's passcode.", 'Unlock with Touch ID']);
+    expect([lockHow('', true), lockButton('', true)], ["Use the iPhone's passcode.", 'Unlock']);
+    expect([lockHow('face', false), lockHow('finger', false), lockHow('', false)], ["Use your face or the phone's PIN.", "Use your fingerprint or the phone's PIN.", "Use your fingerprint, face or the phone's PIN."]);
+    expect([lockButton('face', false), lockButton('finger', false)], ['Unlock', 'Unlock'], reason: 'Android: its own box says face / fingerprint');
+    final g = FakeGate()..has = 'face';
+    g.answers.add(const LockAnswer(LockOutcome.no));
+    final l = AppLock(g);
+    expect(l.kind, '');
+    await l.unlock('Unlock RCL ERP');
+    expect(l.kind, 'face');
+    await l.unlock('Unlock RCL ERP');
+    expect([l.locked, g.kinds], [false, 1], reason: 'asked of the phone once');
   });
 }

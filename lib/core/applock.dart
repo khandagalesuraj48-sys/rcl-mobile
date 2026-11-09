@@ -13,7 +13,19 @@ import 'package:flutter/foundation.dart';
 abstract class LockGate {
   /// Asks the phone; [reason] is shown in the phone's own box.
   Future<LockAnswer> ask(String reason);
+  /// (3.92.0) what the phone opens with: 'face' (an iPhone's Face ID, a phone with only face unlock), 'finger' (Touch ID, a phone with
+  /// only a fingerprint) or '' (both, or only the PIN / passcode, or not known).
+  Future<String> kind();
 }
+
+/* (3.92.0, asked 09-11-2026: "iphone madhe finer nahi face login aste ata user iphone warun jewa app gheil tewa face login haway mala ok
+ * fkt app sathi face android and ios 2 ni sathi pn theu") THE WORDS OF THE LOCK FOR THIS PHONE: an iPhone with Face ID says "Face ID"
+ * (its button "Unlock with Face ID"), one with Touch ID "Touch ID"; an Android phone says what it has – face, fingerprint or both.
+ * What opens the app is the phone's own lock, as before (local_auth: Face ID / Touch ID / passcode, BiometricPrompt on Android). */
+String lockHow(String kind, bool iphone) => iphone
+    ? (kind == 'face' ? "Use Face ID or the iPhone's passcode." : kind == 'finger' ? "Use Touch ID or the iPhone's passcode." : "Use the iPhone's passcode.")
+    : (kind == 'face' ? "Use your face or the phone's PIN." : kind == 'finger' ? "Use your fingerprint or the phone's PIN." : "Use your fingerprint, face or the phone's PIN.");
+String lockButton(String kind, bool iphone) => !iphone ? 'Unlock' : kind == 'face' ? 'Unlock with Face ID' : kind == 'finger' ? 'Unlock with Touch ID' : 'Unlock';
 
 /// ok – it is him; no – he did not (cancelled, wrong finger); noLock – the phone has no screen lock / cannot ask; busy – asked already;
 /// error – something else (said in [LockAnswer.text]).
@@ -39,6 +51,9 @@ class AppLock extends ChangeNotifier {
   bool noLock = false;
   /// The last "no" / problem, for the lock screen.
   String said = '';
+  /// (3.92.0) what this phone opens with (LockGate.kind) – learnt once, the first time the lock asks.
+  String kind = '';
+  bool _learnt = false;
   int _errors = 0;
   DateTime? _left;
   bool _leftForPicker = false;
@@ -93,6 +108,14 @@ class AppLock extends ChangeNotifier {
     asking = true;
     said = '';
     notifyListeners();
+    if (!_learnt) {
+      _learnt = true;
+      try {
+        kind = await gate.kind();
+      } catch (_) {
+        kind = '';
+      }
+    }
     LockAnswer a;
     try {
       a = await gate.ask(reason);
@@ -119,7 +142,7 @@ class AppLock extends ChangeNotifier {
           locked = false;
           noLock = true;
         } else {
-          said = 'The phone could not ask for the fingerprint – press Unlock to try again.';
+          said = 'The phone could not open its lock – press Unlock to try again.';
         }
     }
     _left = null;

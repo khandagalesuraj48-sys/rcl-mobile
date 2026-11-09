@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.92.0 (09-11-2026 – calls between sites, Face ID; with Mechanical update-217, no SQL):** **Calls with anyone of any site**
+(`core/rtc.dart`, `screens/call.dart`): the Call list has this site's people as before and the people of the other sites ("Kiran (18B)",
+`RtcUser.far`) – shown while they are at the app (or picked); a call's notification from a server where calls go between sites (`x`)
+is answered where the app is – it no longer opens the caller's site (`core/push.dart pushAnySite`, `push_fcm.dart`). **The app lock in
+the phone's own words** (`core/applock.dart lockHow / lockButton`, `LockGate.kind` – local_auth's getAvailableBiometrics): an iPhone with
+Face ID says "Use Face ID or the iPhone's passcode." and "Unlock with Face ID" (Touch ID likewise); an Android phone says face,
+fingerprint or both; "The phone could not open its lock" instead of "… the fingerprint"; an iPhone with no passcode is told where to
+set one. What opens the app is the phone's own lock, as before.
+
 **Version 3.91.0 (09-11-2026 – the HO features, part 2; with Mechanical update-216 and its database step 1zm):** **Vehicle Booking**
 (`screens/vehicle_booking.dart`): a person with the page asks for a vehicle (from / until, places, purpose, people, the vehicle he wants);
 those given "Vehicle Booking – approve" see every booking and give it with the vehicle and its driver, or say no with why; cancelled by
