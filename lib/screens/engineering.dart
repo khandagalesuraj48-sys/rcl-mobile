@@ -5,6 +5,7 @@
  * 'engineering'). My work, the dashboard and the strip chart stay on the web, as before. */
 import 'package:flutter/material.dart' hide Text;
 
+import '../core/format.dart';
 import '../ui/ask_bot.dart';
 import '../ui/fields.dart';
 import '../ui/scope.dart';
