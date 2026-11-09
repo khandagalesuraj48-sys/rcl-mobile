@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.91.0 (09-11-2026 – the HO features, part 2; with Mechanical update-216 and its database step 1zm):** **Vehicle Booking**
+(`screens/vehicle_booking.dart`): a person with the page asks for a vehicle (from / until, places, purpose, people, the vehicle he wants);
+those given "Vehicle Booking – approve" see every booking and give it with the vehicle and its driver, or say no with why; cancelled by
+the person who asked (or one who approves) before it is over; messages from the server. **Vehicle Expenses**
+(`screens/vehicle_expenses.dart`): toll / parking … typed, or the bank's **FASTag statement** (PDF, photo, Excel / CSV – its rows sent as
+text) read by the AI, each line on the vehicle of its number, seen first, the ticked lines saved (never twice); each vehicle's total.
+Both under Entries → Machinery (and as a start page). A site whose step 1zm is not run yet: the screens say so.
+
 **Version 3.90.0 (08-11-2026 – the HO features, step C; with Mechanical update-215):** a fill at a site on fuel cards (HO) has a
 **Pump bill** photo too (`core/photo.dart` 'bill', the Diesel Issue form – not at a site with stock; kept and shown as the other photos).
 The **Maintenance Log Book** lists the machinery's **Tyres & batteries** (`core/report_defs.dart` kMaintLog – the server's maintLog

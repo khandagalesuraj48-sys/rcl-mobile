@@ -48,6 +48,8 @@ import 'package:rcl_mobile/screens/machinery.dart' show vendorNames;
 import 'package:rcl_mobile/screens/store_work.dart' show storePaperSink, rs, PoDetailScreen;
 import 'package:rcl_mobile/core/grn_reg.dart';
 
+import 'package:rcl_mobile/screens/vehicle_booking.dart' show openBooking;
+import 'package:rcl_mobile/screens/vehicle_expenses.dart' show openVexp;
 import 'fake_rtc.dart';
 import 'lock_test.dart' show FakeGate;
 import 'fake_server.dart';
@@ -688,6 +690,102 @@ void main() {
     expect(find.text('Maintenance (₹)'), findsWidgets);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9o_report_mcost.png'));
+  }, tags: ['golden']);
+
+  testWidgets('(3.91.0, Mechanical update-216) Vehicle Booking: asked (the form), decided with the vehicle and driver by one who approves, cancelled', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms['Vehicle Booking'] = 'Edit'
+      ..perms['Booking Approve'] = 'Edit';
+    srv.bookings.addAll([
+      {'id': 'VB-000001', 'from': '2099-01-10T09:00', 'to': '2099-01-10T13:00', 'placeFrom': 'Head Office', 'placeTo': 'Pune site', 'purpose': 'Site visit', 'people': 3, 'no': '', 'driver': '', 'status': 'Requested', 'by': 'ram@rcl.test', 'byName': 'Ram Patil', 'reply': '', 'remark': ''},
+      {'id': 'VB-000002', 'from': '2099-01-11T10:00', 'to': '2099-01-12T18:00', 'placeFrom': 'Head Office', 'placeTo': 'Mumbai', 'purpose': 'Bank meeting', 'people': 2, 'no': 'MH-46-TM-1001', 'driver': 'Ganesh', 'status': 'Approved', 'by': 'sujit@rcl.test', 'byName': 'Sujit Mule', 'reply': 'OK', 'remark': ''},
+    ]);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    openBooking(t.element(find.byType(Scaffold).first));
+    await net(t);
+    expect(find.byKey(const Key('vb-VB-000001')), findsOneWidget);
+    expect(find.byKey(const Key('vb-decide-VB-000001')), findsOneWidget, reason: 'one who approves decides a request');
+    expect(find.byKey(const Key('vb-cancel-VB-000002')), findsOneWidget, reason: 'his own, not over: cancel');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9q_vehicle_booking.png'));
+    // decided: the vehicle picked, the driver typed
+    await tapK(t, 'vb-decide-VB-000001');
+    await settle(t, 600);
+    await tapK(t, 'vbd-no');
+    await settle(t, 600);
+    await t.tap(find.text('MH-46-TM-1001').last);
+    await settle(t, 600);
+    await t.enterText(find.descendant(of: find.byKey(const Key('vbd-driver')), matching: find.byType(TextField)), 'Suresh');
+    await tapK(t, 'vbd-ok');
+    await net(t);
+    expect(srv.vbCalls.last, {'fn': 'decideBooking', 'id': 'VB-000001', 'x': {'approve': true, 'no': 'MH-46-TM-1001', 'driver': 'Suresh', 'reply': ''}});
+    // asked: the form
+    await tapK(t, 'vb-ask');
+    await net(t);
+    await t.enterText(find.descendant(of: find.byKey(const Key('vbf-pto')), matching: find.byType(TextField)), 'Kolhapur 18B');
+    await t.enterText(find.descendant(of: find.byKey(const Key('vbf-purpose')), matching: find.byType(TextField)), 'Inspection');
+    await t.enterText(find.descendant(of: find.byKey(const Key('vbf-people')), matching: find.byType(TextField)), '4');
+    await tapK(t, 'vbf-send');
+    await net(t);
+    final x = srv.vbCalls.last['x'] as Map;
+    expect([srv.vbCalls.last['fn'], x['from'], x['to'], x['placeTo'], x['purpose'], x['people']], ['saveBooking', '2026-10-14T09:00', '2026-10-14T18:00', 'Kolhapur 18B', 'Inspection', '4']);
+    expect(find.byKey(const Key('vb-VB-000003')), findsOneWidget, reason: 'back on the list, read again');
+  }, tags: ['golden']);
+
+  testWidgets('(3.91.0, Mechanical update-216) Vehicle Expenses: typed; the FASTag statement read, its lines on their vehicles, the ticked ones saved', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms['Vehicle Expenses'] = 'Edit';
+    srv.vexp.addAll([
+      {'id': 'VX-000001', 'date': '2026-10-05', 'no': 'MH-46-TM-1001', 'kind': 'Toll', 'place': 'Khalapur toll', 'amount': 320, 'paidBy': 'FASTag', 'ref': '', 'txn': 'TX-1', 'source': 'Statement', 'remark': ''},
+      {'id': 'VX-000002', 'date': '2026-10-09', 'no': 'MH-46-TM-1001', 'kind': 'Parking', 'place': 'Phoenix Mall', 'amount': 80, 'paidBy': 'Cash', 'ref': '', 'txn': '', 'source': 'Hand', 'remark': ''},
+    ]);
+    srv.stmtAnswer = {'read': 3, 'matched': 2, 'saved': 1, 'rows': [
+      {'date': '2026-10-05', 'time': '10:15', 'vehicle': 'MH46TM1001', 'no': 'MH-46-TM-1001', 'place': 'Khalapur toll', 'amount': 320, 'txn': 'TX-1', 'saved': 'VX-000001'},
+      {'date': '2026-10-12', 'time': '11:40', 'vehicle': 'MH46TM1001', 'no': 'MH-46-TM-1001', 'place': 'Talegaon toll', 'amount': 1045, 'txn': 'TX-2', 'saved': ''},
+      {'date': '2026-10-13', 'time': '12:00', 'vehicle': 'MH12ZZ0000', 'no': '', 'place': 'Urse toll', 'amount': 190, 'txn': 'TX-3', 'saved': ''},
+    ]};
+    pickStatementFile = () async => (name: 'fastag.csv', bytes: Uint8List.fromList(utf8.encode('Date,Vehicle,Plaza,Amount\n12-10-2026,MH46TM1001,Talegaon,1045\n')));
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    openVexp(t.element(find.byType(Scaffold).first));
+    await net(t);
+    expect(find.byKey(const Key('vx-cars')), findsOneWidget);
+    expect(find.byKey(const Key('vx-VX-000002')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9r_vehicle_expenses.png'));
+    // typed
+    await tapK(t, 'vx-add');
+    await net(t);
+    await tapK(t, 'vxf-no');
+    await settle(t, 600);
+    await t.tap(find.text('MH-46-TM-1001').last);
+    await settle(t, 600);
+    await t.enterText(find.descendant(of: find.byKey(const Key('vxf-place')), matching: find.byType(TextField)), 'Khed Shivapur toll');
+    await t.enterText(find.descendant(of: find.byKey(const Key('vxf-amt')), matching: find.byType(TextField)), '245');
+    await tapK(t, 'vxf-save');
+    await net(t);
+    expect(srv.vbCalls.last, {'fn': 'saveVexp', 'x': {'date': '2026-10-14', 'no': 'MH-46-TM-1001', 'kind': 'Toll', 'place': 'Khed Shivapur toll', 'amount': '245', 'paidBy': 'FASTag', 'ref': '', 'remark': ''}});
+    // the statement: an Excel / CSV sent as its rows; the line already saved not ticked, the one with no vehicle picked
+    await tapK(t, 'vx-statement');
+    await net(t);
+    await tapK(t, 'vxs-pick');
+    await net(t);
+    expect((srv.vbCalls.last['x'] as Map)['text'], 'Date | Vehicle | Plaza | Amount\n12-10-2026 | MH46TM1001 | Talegaon | 1045');
+    expect(find.byKey(const Key('vxs-2')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9s_fastag_statement.png'));
+    await tapK(t, 'vxs-no-2');
+    await settle(t, 600);
+    await t.tap(find.text('Sany 210 (No.1)').last);
+    await settle(t, 600);
+    await tapK(t, 'vxs-save');
+    await net(t);
+    final rs = srv.vbCalls.last['rows'] as List;
+    expect([srv.vbCalls.last['fn'], rs.map((r) => '${r['txn']}:${r['no']}').toList()], ['importVexp', ['TX-2:MH-46-TM-1001', 'TX-3:Sany 210 (No.1)']], reason: 'the saved line not sent; the picked vehicle sent');
   }, tags: ['golden']);
 
   testWidgets('(3.2.0) Monthly Diesel & Average: the day-by-day table with its status, sideways on the phone', (t) async {

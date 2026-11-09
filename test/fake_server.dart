@@ -45,6 +45,11 @@ class FakeServer {
   // (3.88.0, Mechanical update-213) the vehicle alerts it gives (none unless a test sets them) and how often they were asked
   Map<String, dynamic>? vehAlerts;
   int vaCalls = 0;
+  // (3.91.0, Mechanical update-216) Vehicle Booking and Vehicle Expenses, as the server keeps them
+  final bookings = <Map<String, dynamic>>[];
+  final vexp = <Map<String, dynamic>>[];
+  final vbCalls = <Map<String, dynamic>>[];
+  Map<String, dynamic>? stmtAnswer;
   bool carLinksEnd = false;
   String carRefuse = '';
   Map<String, dynamic> carLink(String no, String v, int n) => {'t': 'https://store.test/car/t-$v?token=$n', 'f': 'https://store.test/car/f-$v?token=$n', 'exp': DateTime.now().millisecondsSinceEpoch + (carLinksEnd ? 1000 : 900000), 'v': v};
@@ -2195,6 +2200,67 @@ class FakeServer {
             'total': {'byFuel': {'Petrol': 30, 'CNG': 12}, 'amount': 4300, 'card': 3200, 'cash': 1100, 'fills': 2, 'km': 990, 'cars': 2}}});
         // (3.86.0, Mechanical update-212) HO's cars: one car's details, new links of the photos, a photo set / removed
         // (3.88.0, Mechanical update-213) the vehicle alerts of the site
+        // (3.91.0, Mechanical update-216) Vehicle Booking – the person's own, or all for one who approves (as the server)
+        case 'getBookings':
+          final dec = perms['Booking Approve'] == 'Edit';
+          final mine = [for (final b in bookings) if (dec || b['by'] == 'sujit@rcl.test') b];
+          int n(String st) => mine.where((b) => b['status'] == st).length;
+          return _j({'result': {'canDecide': dec, 'me': 'sujit@rcl.test', 'rows': mine, 'count': {'Requested': n('Requested'), 'Approved': n('Approved'), 'Rejected': n('Rejected'), 'Cancelled': n('Cancelled')}}});
+        case 'saveBooking':
+          final x = (a[0] as Map).cast<String, dynamic>();
+          vbCalls.add({'fn': action, 'x': x});
+          if ('${x['placeTo'] ?? ''}'.trim().isEmpty) return _j({'error': 'Vehicle booking: type where the vehicle is to go.'}, 500);
+          if ('${x['purpose'] ?? ''}'.trim().isEmpty) return _j({'error': 'Vehicle booking: type the purpose (why the vehicle is needed).'}, 500);
+          final id = 'VB-${(bookings.length + 1).toString().padLeft(6, '0')}';
+          bookings.add({'id': id, 'from': x['from'], 'to': x['to'], 'placeFrom': x['placeFrom'], 'placeTo': x['placeTo'], 'purpose': x['purpose'], 'people': x['people'] == '' ? '' : int.tryParse('${x['people']}') ?? '', 'no': x['no'] ?? '', 'driver': '', 'status': 'Requested', 'by': 'sujit@rcl.test', 'byName': 'Sujit Mule', 'reply': '', 'remark': x['remark'] ?? ''});
+          return _j({'result': {'ok': true, 'id': id}});
+        case 'decideBooking':
+          final x = (a[1] as Map).cast<String, dynamic>(), b = bookings.firstWhere((b) => b['id'] == a[0]);
+          vbCalls.add({'fn': action, 'id': a[0], 'x': x});
+          if (x['approve'] == true && '${x['no'] ?? ''}'.isEmpty) return _j({'error': 'Vehicle booking: pick the vehicle that goes.'}, 500);
+          b.addAll({'status': x['approve'] == true ? 'Approved' : 'Rejected', if (x['approve'] == true) 'no': x['no'], if (x['approve'] == true) 'driver': x['driver'], 'reply': x['reply'], 'decidedBy': 'Sujit Mule'});
+          return _j({'result': {'ok': true, 'id': a[0]}});
+        case 'cancelBooking':
+          vbCalls.add({'fn': action, 'id': a[0]});
+          bookings.firstWhere((b) => b['id'] == a[0])['status'] = 'Cancelled';
+          return _j({'result': {'ok': true, 'id': a[0]}});
+        // (3.91.0, Mechanical update-216) Vehicle Expenses
+        case 'getVexp':
+          final f = (a[0] as Map).cast<String, dynamic>(), rs = [for (final r in vexp) if ('${r['date']}'.compareTo('${f['from']}') >= 0 && '${r['date']}'.compareTo('${f['to']}') <= 0) r];
+          final by = <String, Map<String, dynamic>>{};
+          for (final r in rs) {
+            final c = by.putIfAbsent('${r['no']}', () => {'no': r['no'], 'n': 0, 'amount': 0, 'toll': 0, 'parking': 0, 'other': 0});
+            c['n'] = (c['n'] as int) + 1;
+            c['amount'] = (c['amount'] as num) + (r['amount'] as num);
+          }
+          return _j({'result': {'from': f['from'], 'to': f['to'], 'rows': rs.reversed.toList(), 'cars': by.values.toList(), 'total': rs.fold<num>(0, (t, r) => t + (r['amount'] as num))}});
+        case 'saveVexp' || 'updateVexp':
+          final x = ((action == 'saveVexp' ? a[0] : a[1]) as Map).cast<String, dynamic>();
+          vbCalls.add({'fn': action, 'x': x});
+          final amt = num.tryParse('${x['amount']}') ?? 0;
+          if (amt <= 0) return _j({'error': 'Vehicle expense: enter the amount (₹, above 0 and up to 1,00,000).'}, 500);
+          final id = action == 'saveVexp' ? 'VX-${(vexp.length + 1).toString().padLeft(6, '0')}' : '${a[0]}';
+          final row = {'id': id, 'date': x['date'], 'no': x['no'], 'kind': x['kind'], 'place': x['place'], 'amount': amt, 'paidBy': x['paidBy'], 'ref': x['ref'], 'txn': '', 'source': 'Hand', 'remark': x['remark']};
+          if (action == 'saveVexp') {
+            vexp.add(row);
+          } else {
+            vexp[vexp.indexWhere((r) => r['id'] == id)] = row;
+          }
+          return _j({'result': {'ok': true, 'id': id}});
+        case 'deleteVexp':
+          vbCalls.add({'fn': action, 'id': a[0]});
+          vexp.removeWhere((r) => r['id'] == a[0]);
+          return _j({'result': {'ok': true, 'id': a[0]}});
+        case 'readVexpStatement':
+          vbCalls.add({'fn': action, 'x': (a[0] as Map).cast<String, dynamic>()});
+          return _j({'result': stmtAnswer ?? {'rows': [], 'read': 0, 'matched': 0, 'saved': 0}});
+        case 'importVexp':
+          final rs = ((a[0] as Map)['rows'] as List).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
+          vbCalls.add({'fn': action, 'rows': rs});
+          for (final r in rs) {
+            vexp.add({'id': 'VX-${(vexp.length + 1).toString().padLeft(6, '0')}', 'date': r['date'], 'no': r['no'], 'kind': 'Toll', 'place': r['place'], 'amount': r['amount'], 'paidBy': 'FASTag', 'ref': '', 'txn': r['txn'], 'source': 'Statement', 'remark': ''});
+          }
+          return _j({'result': {'ok': true, 'added': rs.length, 'skipped': 0}});
         case 'getVehAlerts':
           vaCalls++;
           return _j({'result': vehAlerts ?? {'today': '2026-10-14', 'cars': <String, dynamic>{}, 'cards': <dynamic>[], 'n': 0, 'count': {'paper': 0, 'svc': 0, 'avg': 0, 'card': 0}}});

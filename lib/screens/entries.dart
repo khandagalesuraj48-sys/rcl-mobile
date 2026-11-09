@@ -15,6 +15,8 @@ import 'entry_more.dart';
 import 'forms.dart';
 import 'fuel_cards.dart' show FuelCardsScreen;
 import 'maintenance.dart' show MaintScreen;
+import 'vehicle_booking.dart' show BookingScreen;
+import 'vehicle_expenses.dart' show VexpScreen;
 import 'logbook.dart';
 import 'breakdown.dart';
 import 'store.dart';
@@ -210,12 +212,15 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
       if (s.cardSite && s.canSee('Fuel Cards')) ('Fuel Cards', 'Fuel Cards', 'फ्युएल कार्ड', 'The cards, their balance, payments and statement', C.amberSoft, 'Diesel', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen()))),
       // (3.46.0, Mechanical update-165) the bills of the cars at a site on fuel cards – its page Maintenance
       if (s.canSee('Maintenance')) ('Maintenance', 'Maintenance', 'मेंटेनन्स', 'The bills of a machinery, their files, its log book', C.blueSoft, 'Diesel', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MaintScreen()))),
+      // (3.91.0, Mechanical update-216) Vehicle Booking (asked; decided by those given "Vehicle Booking – approve"), Vehicle Expenses
+      if (s.canSee('Vehicle Booking') || s.canSee('Booking Approve')) ('Vehicle Booking', 'Vehicle Booking', 'गाडी बुकिंग', 'Ask for a vehicle; who approves gives it', C.greenSoft, 'Machinery', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BookingScreen()))),
+      if (s.canSee('Vehicle Expenses')) ('Vehicle Expenses', 'Vehicle Expenses', 'गाडी खर्च', 'Toll, parking – typed or the FASTag statement', C.blueSoft, 'Machinery', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VexpScreen()))),
       if (s.canSee('Log Book')) ('Log Book', 'Log Book', 'लॉग बुक', 'Daily running & working hours', C.purpleSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()))),
       if (s.canSee('Breakdown')) ('Breakdown', 'Breakdown', 'ब्रेकडाऊन', 'Machinery working / breakdown', C.orangeSoft, 'Machinery', () => openBreakdown(context)),
       if (tankers) ('Tanker Trips', 'Tanker Trips', 'टँकर फेऱ्या', 'Water tanker trips & challans', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: s.today)))),
       if (s.hasModule('store')) ('Store', 'Store', 'स्टोअर', 'Items inward / outward', C.amberSoft, 'Store', () => openStore(context)),
     ];
-    const pics = {'Log Book': 'notebook', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package', 'Fuel Cards': 'ledger', 'Maintenance': 'wrench'};
+    const pics = {'Log Book': 'notebook', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package', 'Fuel Cards': 'ledger', 'Maintenance': 'wrench', 'Vehicle Booking': 'calendar', 'Vehicle Expenses': 'receipt'};
     final groups = ['Diesel', 'Machinery', 'Log Book', 'Store'].where((g) => items.any((x) => x.$6 == g)).toList();
     final shown = group.isEmpty || !groups.contains(group) ? items : items.where((x) => x.$6 == group).toList();
     Widget chip(String g, String label) {
