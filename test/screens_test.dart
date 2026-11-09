@@ -6690,6 +6690,107 @@ void main() {
     await settle(t, 600);
   }, tags: ['golden']);
 
+  // (3.93.0, rcl-engineering "Engineering 2A", asked 09-11-2026: "aple app la banwayla chalu kr … enginnering modual") the app's own Engineering screens
+  testWidgets('(3.93.0) Engineering: Home → Engineering – RFI (asked, the IE\'s answer), Hindrances (added), PPC; a User: no IE\'s answer, no PPC', (t) async {
+    phone(t);
+    final srv = FakeServer()..engSite = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.ensureVisible(find.text('Engineering'));
+    await settle(t, 400);
+    await t.tap(find.text('Engineering'));
+    await net(t);
+    expect(find.byKey(const Key('eng-home')), findsOneWidget);
+    expect(find.textContaining('1 waiting for the IE'), findsOneWidget);
+    expect(find.textContaining('1 still on'), findsOneWidget);
+    expect(find.byKey(const Key('eng-ppc')), findsOneWidget, reason: 'the Admin: PPC');
+    expect([for (final x in srv.engSent) x['fn'] ?? x['action']].take(4).toList(), ['sso', 'init', 'rfiList', 'hindList'], reason: 'its own sign-in (a ticket of the Portal), then the same actions as the web');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9t_eng_home.png'));
+    // ---- RFI: the waiting ones, then all; one asked here; the IE's answer recorded
+    await t.tap(find.byKey(const Key('eng-rfi')));
+    await net(t);
+    expect(find.byKey(const Key('erf-row-RFI-0002')), findsOneWidget);
+    expect(find.byKey(const Key('erf-row-RFI-0001')), findsNothing, reason: 'Waiting only');
+    await t.tap(find.byKey(const Key('erf-st-')));
+    await net(t);
+    expect(find.byKey(const Key('erf-row-RFI-0001')), findsOneWidget);
+    expect(find.textContaining('IE: 11-10-2026 · Mr IE · RFI/18B/42'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9u_eng_rfi.png'));
+    await t.tap(find.byKey(const Key('erf-new')));
+    await net(t);
+    expect(find.byKey(const Key('erf-form')), findsOneWidget);
+    await t.tap(find.byKey(const Key('erf-save')));
+    await net(t);
+    expect(find.textContaining('give the chainage from and to'), findsOneWidget, reason: 'the server\'s refusal, said on the form');
+    await t.enterText(find.descendant(of: find.byKey(const Key('erf-from')), matching: find.byType(TextField)), '40+400');
+    await t.enterText(find.descendant(of: find.byKey(const Key('erf-to')), matching: find.byType(TextField)), '40+500');
+    await t.enterText(find.descendant(of: find.byKey(const Key('erf-note')), matching: find.byType(TextField)), 'ready for the IE');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9v_eng_rfi_ask.png'));
+    await t.tap(find.byKey(const Key('erf-save')));
+    await net(t);
+    final asked = srv.engSent.lastWhere((x) => x['action'] == 'rfiSave');
+    expect([asked['day'], asked['work'], asked['layer'], asked['side'], asked['from'], asked['to'], asked['note']], ['2026-10-14', 'W-001', 'L1', 'LHS', '40+400', '40+500', 'ready for the IE']);
+    expect(find.byKey(const Key('erf-row-RFI-0003')), findsOneWidget, reason: 'back on the list');
+    await t.tap(find.byKey(const Key('erf-dec-RFI-0002')));
+    await net(t);
+    await t.enterText(find.descendant(of: find.byKey(const Key('erd-name')), matching: find.byType(TextField)), 'Mr IE');
+    await t.tap(find.byKey(const Key('erd-save')));
+    await net(t);
+    final dec = srv.engSent.lastWhere((x) => x['action'] == 'rfiDecide');
+    expect([dec['no'], dec['ver'], dec['status'], dec['ie_day'], dec['ie_name']], ['RFI-0002', 1, 'Approved', '2026-10-14', 'Mr IE']);
+    expect(srv.engRfi.firstWhere((x) => x['no'] == 'RFI-0002')['status'], 'Approved');
+    await t.pageBack();
+    await net(t);
+    // ---- Hindrances: the list; one added
+    await t.tap(find.byKey(const Key('eng-hind')));
+    await net(t);
+    expect(find.byKey(const Key('ehd-row-H-0001')), findsOneWidget);
+    expect(find.text('Land not handed over'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9w_eng_hindrances.png'));
+    await t.tap(find.byKey(const Key('ehd-new')));
+    await net(t);
+    await t.enterText(find.descendant(of: find.byKey(const Key('ehd-kind')), matching: find.byType(TextField)), 'Utility shifting');
+    await t.enterText(find.descendant(of: find.byKey(const Key('ehd-cf')), matching: find.byType(TextField)), '44+000');
+    await t.enterText(find.descendant(of: find.byKey(const Key('ehd-ct')), matching: find.byType(TextField)), '44+200');
+    await t.ensureVisible(find.byKey(const Key('ehd-w-W-002')));
+    await t.tap(find.byKey(const Key('ehd-w-W-002')));
+    await settle(t, 300);
+    await t.ensureVisible(find.byKey(const Key('ehd-save')));
+    await t.tap(find.byKey(const Key('ehd-save')));
+    await net(t);
+    final h = srv.engSent.lastWhere((x) => x['action'] == 'hindSave');
+    expect([h['from_day'], h['to_day'], h['ch_from'], h['ch_to'], h['works'], h['kind']], ['2026-10-14', '', '44+000', '44+200', ['W-002'], 'Utility shifting']);
+    expect(find.byKey(const Key('ehd-row-H-0002')), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // ---- PPC
+    await t.tap(find.byKey(const Key('eng-ppc')));
+    await net(t);
+    expect(find.text('71%'), findsOneWidget);
+    expect(find.textContaining('17 of 24 plan lines done as planned'), findsOneWidget);
+    expect(find.text('Water tanker late · Engineer One'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_eng_ppc.png'));
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- a User: no PPC; no "IE's answer"
+    srv.engRole = 'user';
+    await t.tap(find.text('Engineering'));
+    await net(t);
+    expect(find.byKey(const Key('eng-ppc')), findsNothing);
+    await t.tap(find.byKey(const Key('eng-rfi')));
+    await net(t);
+    expect(find.byKey(const Key('erf-row-RFI-0003')), findsOneWidget);
+    expect(find.byKey(const Key('erf-dec-RFI-0003')), findsNothing);
+  }, tags: ['golden']);
+
   // ---------------- (3.27.0) the app lock ----------------
   testWidgets('(3.27.0) The app lock: the app opens locked – the phone is asked by itself; not him → still locked; Unlock → the app; more than a minute away → locked again', (t) async {
     phone(t);

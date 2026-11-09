@@ -1,3 +1,3 @@
-New: Call anyone of any site – people of the other sites are on the Call list (with their site's name) while they are at the app. On an iPhone the app lock now says Face ID ("Unlock with Face ID").
-नवीन: कोणत्याही site च्या माणसाला call – इतर sites चे लोक app वर असताना Call list मध्ये (site च्या नावासह) दिसतात. iPhone वर app lock आता Face ID म्हणतो ("Face ID ने उघडा").
-नया: किसी भी site के व्यक्ति को call – दूसरी sites के लोग app पर होने तक Call list में (site के नाम के साथ) दिखते हैं। iPhone पर app lock अब Face ID कहता है ("Face ID से खोलें")।
+New: Engineering in the app – RFI (ask the IE to inspect a layer; the Admin records the IE's answer), Hindrances (what stopped the work – for an extension of time) and PPC (plan lines done as planned). Home → Engineering.
+नवीन: app मध्ये Engineering – RFI (layer तपासण्यासाठी IE ला सांगा; Admin IE चे उत्तर नोंदवतो), अडथळे (काम कशामुळे थांबले – मुदतवाढीसाठी) आणि PPC (नियोजनाप्रमाणे झालेले काम). Home → Engineering.
+नया: app में Engineering – RFI (layer जाँचने के लिए IE से कहें; Admin IE का जवाब दर्ज करते हैं), बाधाएँ (काम किस कारण रुका – समय विस्तार के लिए) और PPC (योजना अनुसार हुआ काम)। Home → Engineering।

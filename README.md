@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.93.0 (09-11-2026 – Engineering 2A; with rcl-engineering's step 3):** **Engineering** – its own screens for the first time
+(`screens/engineering.dart`, Home → Engineering, when the site has the module): **RFI** (the waiting ones / approved / rejected / all;
+"Ask RFI" – day, work, layer, side, chainage from–to or a quantity, note; the Engineering Admin / Super Admin records "IE's answer";
+the person who asked or the Admin changes or cancels a waiting one), **Hindrances** (the last 90 days: how many, still on, days; each
+with its stretch, side, works, letter; "Add hindrance"; the person who added it or the Admin changes / ends it) and **PPC** (the Admin
+and the Super Admin: this month / last month – the site's PPC, week by week, person by person, the reasons for the work left). The
+same actions as the web page (`api.eng` with the Portal's ticket for 'engineering'). My work, the dashboard and the strip chart stay
+on the web.
+
 **Version 3.92.0 (09-11-2026 – calls between sites, Face ID; with Mechanical update-217, no SQL):** **Calls with anyone of any site**
 (`core/rtc.dart`, `screens/call.dart`): the Call list has this site's people as before and the people of the other sites ("Kiran (18B)",
 `RtcUser.far`) – shown while they are at the app (or picked); a call's notification from a server where calls go between sites (`x`)
