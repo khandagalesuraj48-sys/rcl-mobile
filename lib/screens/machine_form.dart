@@ -28,7 +28,7 @@ class MachineFormScreen extends StatefulWidget {
 }
 
 class _MachineFormScreenState extends State<MachineFormScreen> {
-  final t = <String, TextEditingController>{for (final k in ['no', 'name', 'type', 'make', 'kmStd', 'hrStd', 'tankCap', 'owner', 'engineNo', 'chassisNo', 'engineMake']) k: TextEditingController()};
+  final t = <String, TextEditingController>{for (final k in ['no', 'name', 'type', 'make', 'kmStd', 'hrStd', 'tankCap', 'owner', 'engineNo', 'chassisNo', 'engineMake', 'svcKm', 'svcHrs', 'svcMon']) k: TextEditingController()};
   final works = <String>{};
   String ownership = '', supply = 'Company', status = 'Active', activeFrom = '', inactiveFrom = '';
   String fuel = 'Diesel';      // (3.44.0, Mechanical update-163) Diesel / Petrol / CNG / Electric
@@ -53,6 +53,11 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
         t[k]!.text = v(k);
       }
       works.addAll(worksOf(m));
+      // (3.88.0, Mechanical update-213) Service every – kept with the machinery as { km, hrs, months }
+      final sv = m['svc'] is Map ? m['svc'] as Map : const {};
+      t['svcKm']!.text = '${sv['km'] ?? ''}';
+      t['svcHrs']!.text = '${sv['hrs'] ?? ''}';
+      t['svcMon']!.text = '${sv['months'] ?? ''}';
       ownership = kOwnerships.contains(v('ownership')) ? v('ownership') : '';
       fuel = kFuels.contains(v('fuel')) ? v('fuel') : 'Diesel';
       wasOwn = ownership;
@@ -159,6 +164,8 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
       'unit': unit, 'worksOn': worksList.join(', '),
       'kmStd': hasKm(unit) ? nv('kmStd') : '', 'hrStd': hasHr(unit) ? nv('hrStd') : '', 'tankCap': nv('tankCap'), 'owner': t['owner']!.text.trim(), 'ownership': ownership,
       'engineNo': t['engineNo']!.text.trim(), 'chassisNo': t['chassisNo']!.text.trim(), 'engineMake': t['engineMake']!.text.trim(), 'fuel': fuel,
+      // (3.88.0, Mechanical update-213) Service every – only for the meter it runs on
+      'svcKm': hasKm(unit) ? _num('svcKm') : '', 'svcHrs': hasHr(unit) ? _num('svcHrs') : '', 'svcMon': _num('svcMon'),
       for (final d in kDocs) d.$3: docs[d.$1] ?? '',
       'supply': supply, 'status': status, 'activeFrom': activeFrom, 'inactiveFrom': status == 'Inactive' ? inactiveFrom : '',
     };
@@ -293,6 +300,13 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
         TextBox(key: const Key('mf-chassis'), label: 'Chassis Number', controller: t['chassisNo']!, upper: true),
         gap(),
         TextBox(key: const Key('mf-engmake'), label: 'Engine Make (company)', controller: t['engineMake']!, options: uniqOf(s.machines, 'engineMake'), hint: 'e.g. Cummins, Tata'),
+        // (3.88.0, Mechanical update-213) the service reminder – counted from its last maintenance bill marked Service
+        FormHead('Service every', sub: 'Empty = no reminder · counted from its last maintenance bill marked Service'),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (hasKm(unit)) ...[Expanded(child: TextBox(key: const Key('mf-svc-km'), label: 'KM', controller: t['svcKm']!, kb: TextInputType.number, hint: 'e.g. 10000')), const SizedBox(width: 8)],
+          if (hasHr(unit)) ...[Expanded(child: TextBox(key: const Key('mf-svc-hrs'), label: 'Hrs', controller: t['svcHrs']!, kb: TextInputType.number, hint: 'e.g. 250')), const SizedBox(width: 8)],
+          Expanded(child: TextBox(key: const Key('mf-svc-mon'), label: 'Months', controller: t['svcMon']!, kb: TextInputType.number, hint: 'e.g. 6')),
+        ]),
         // (3.59.0, Mechanical update-184, "asset master madhe papers fkt own mhanje rachana che ghenar") the papers only for Own machinery –
         // another one's dates stay as they were (not shown, not changed)
         if (ownership == 'Own') ...[

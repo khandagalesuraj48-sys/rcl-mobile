@@ -157,6 +157,7 @@ class _FuelCardsScreenState extends State<FuelCardsScreen> {
             if (c.holder.isNotEmpty) InfoRow('Name on the card', c.holder),
             if (c.expiry.isNotEmpty) InfoRow('Expiry', cardExpNote(c)?.text ?? c.expiryMY, tone: cardExpNote(c)?.fg ?? C.ink),
             if (c.custId.isNotEmpty) InfoRow('Customer / Account ID', c.custId),
+            if (c.lowAt != null) InfoRow('Alert below', rupees(c.lowAt), tone: c.low ? C.red : C.ink),      // (3.88.0)
             InfoRow('Cars', c.cars.isEmpty ? tr('every car') : c.cars.join(', ')),
             InfoRow('Opening', '${rupees(c.opening)} · ${showDate(c.openDate)}'),
             InfoRow('Paid in', rupees(c.paid)),
@@ -253,6 +254,8 @@ class CardTile extends StatelessWidget {
               Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               Text([c.type, if (c.last4.isNotEmpty) '···· ${c.last4}', if (c.issuer.isNotEmpty) c.issuer, if (!c.active) 'Inactive', if (c.lastFill.isNotEmpty) 'last fill ${showDate(c.lastFill)}'].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
               if (cardExpNote(c) case final ex?) Padding(padding: const EdgeInsets.only(top: 4), child: Pill(ex.text, key: Key('fc-exp-${c.name}'), color: ex.fg, bg: ex.bg)),
+              // (3.88.0, Mechanical update-213) below its "Alert below ₹"
+              if (c.low) Padding(padding: const EdgeInsets.only(top: 4), child: Pill('${tr('Low – below')} ${rupees(c.lowAt)}', key: Key('fc-low-${c.name}'), color: C.red, bg: C.redSoft)),
             ])),
             Text(rupees(c.balance), key: Key('fc-bal-${c.name}'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: c.balance < 0 ? C.red : C.greenDark)),
           ]),
@@ -272,6 +275,7 @@ class _CardFormState extends State<CardForm> {
   final name = TextEditingController(), last4 = TextEditingController(), opening = TextEditingController();
   // (3.47.0) its details: bank / company, the name on it, its expiry (month / year), the customer / account ID
   final issuer = TextEditingController(), holder = TextEditingController(), expiry = TextEditingController(), custId = TextEditingController();
+  final lowAt = TextEditingController();      // (3.88.0, Mechanical update-213) Alert below ₹
   String type = kCardTypes.first, openDate = '', err = '';
   bool active = true, busy = false;
   final cars = <String>{};
@@ -292,6 +296,7 @@ class _CardFormState extends State<CardForm> {
       holder.text = c.holder;
       expiry.text = c.expiryMY;
       custId.text = c.custId;
+      lowAt.text = c.lowAt == null ? '' : '${c.lowAt}'.replaceAll(RegExp(r'\.0$'), '');
     }
   }
 
@@ -303,7 +308,7 @@ class _CardFormState extends State<CardForm> {
 
   @override
   void dispose() {
-    for (final x in [name, last4, opening, issuer, holder, expiry, custId]) {
+    for (final x in [name, last4, opening, issuer, holder, expiry, custId, lowAt]) {
       x.dispose();
     }
     super.dispose();
@@ -317,7 +322,7 @@ class _CardFormState extends State<CardForm> {
     });
     try {
       final r = (await s.api.call('saveCard', [{'was': widget.card?.name ?? '', 'name': name.text.trim(), 'type': type, 'last4': last4.text.trim(), 'opening': asNum(opening.text) ?? '', 'openDate': openDate, 'active': active, 'cars': cars.toList(),
-        'issuer': issuer.text.trim(), 'holder': holder.text.trim(), 'expiry': expiry.text.trim(), 'custId': custId.text.trim()}], true) as Map).cast<String, dynamic>();
+        'issuer': issuer.text.trim(), 'holder': holder.text.trim(), 'expiry': expiry.text.trim(), 'custId': custId.text.trim(), 'lowAt': lowAt.text.trim()}], true) as Map).cast<String, dynamic>();
       s.setCards(r['cards']);
       if (r['stock'] != null) s.setStock(r['stock']);
       if (!mounted) return;
@@ -352,6 +357,8 @@ class _CardFormState extends State<CardForm> {
         TextBox(key: const Key('cf-exp'), label: 'Expiry (month / year)', controller: expiry, kb: TextInputType.datetime, hint: 'e.g. 08/2029'),
         const SizedBox(height: 10),
         TextBox(key: const Key('cf-cust'), label: 'Customer / Account ID', controller: custId, hint: 'of the card programme – not the card number'),
+        const SizedBox(height: 12),
+        TextBox(key: const Key('cf-low'), label: 'Alert below ₹ (empty = no alert)', controller: lowAt, kb: TextInputType.number, hint: 'e.g. 5000'),
         const SizedBox(height: 10),
         TextBox(key: const Key('cf-open'), label: 'Opening balance (₹)', controller: opening, kb: const TextInputType.numberWithOptions(decimal: true)),
         const SizedBox(height: 10),

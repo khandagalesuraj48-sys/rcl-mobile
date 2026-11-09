@@ -34,9 +34,11 @@ import 'package:rcl_mobile/screens/attach_box.dart' show pickAttFiles, CaptureSc
 import 'package:image/image.dart' as img;
 import 'package:http/http.dart' as http;
 import 'package:rcl_mobile/core/car_photos.dart';
+import 'package:rcl_mobile/core/veh_alerts.dart';
 import 'package:rcl_mobile/screens/car_detail.dart' show CarPhotoPick;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
+import 'package:rcl_mobile/ui/theme.dart' show C;
 import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
@@ -146,6 +148,7 @@ void main() {
   // (3.86.0) HO's cars: a picture is read from its link with no network in the tests (no timer left behind); every test starts with none kept
   setUp(() {
     CarPhotos.i.clear();
+    VehAlerts.i.clear();      // (3.88.0) no test sees another's alerts
     CarPhotos.fetch = (u) async => http.Response.bytes(carPng(), 200);
   });
   void phone(WidgetTester t) {
@@ -4643,6 +4646,175 @@ void main() {
     expect(find.byKey(const Key('home-all')), findsOneWidget);
     expect(find.byKey(const Key('ho-fleet')), findsNothing);
   });
+
+  // (3.88.0, Mechanical update-213, asked 08-11-2026) the vehicle alerts – as the server gives them
+  Map<String, dynamic> vaSample({bool ho = false}) => {
+        'today': '2026-10-14',
+        'cars': {
+          if (ho)
+            'MH-12-HO-1163': [
+              {'k': 'paper', 'doc': 'Insurance', 's': 'due', 'upto': '2026-10-24', 'days': 10},
+              {'k': 'svc', 's': 'soon', 'last': '2026-10-05', 'lastReading': 45210, 'unit': 'KM', 'parts': [{'by': 'KM', 'every': 10000, 'run': 9200, 'left': 800, 's': 'soon'}], 'rule': {'km': 10000, 'hrs': '', 'months': ''}},
+            ],
+          'MH-25-AJ-2169': [{'k': 'avg', 's': 'more', 'actual': '3 km/L', 'std': '3.5 km/L', 'pct': 17, 'used': 120}],
+          'Sany 210 (No.1)': [{'k': 'svc', 's': 'over', 'last': '2026-08-01', 'lastReading': 1200, 'unit': 'Hrs', 'parts': [{'by': 'Hrs', 'every': 250, 'run': 270, 'left': -20, 's': 'over'}], 'rule': {'km': '', 'hrs': 250, 'months': ''}}],
+        },
+        'cards': ho ? [{'name': 'HDFC FUEL', 'last4': '4321', 'balance': 21800, 'lowAt': 25000}] : <dynamic>[],
+        'n': ho ? 5 : 2,
+        'count': {'paper': ho ? 1 : 0, 'svc': ho ? 2 : 1, 'avg': 1, 'card': ho ? 1 : 0},
+      };
+
+  testWidgets('(3.88.0 – Mechanical update-213) a site with stock: the vehicle alerts in the bell and at the top of the Dashboard – each machinery with its alerts (red: overdue, amber: more diesel); none = no line, no bell row', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms.addAll({'Dashboard': 'View', 'Reports': 'View'});
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(srv.vaCalls, greaterThan(0), reason: 'read with Home');
+    await tapK(t, 'home-bell');
+    await settle(t, 800);
+    expect(find.text('Vehicle alerts'), findsNothing, reason: 'none – no row');
+    await t.tapAt(const Offset(20, 100));
+    await settle(t, 600);
+    srv.vehAlerts = vaSample();
+    await t.runAsync(() => VehAlerts.i.load(s));      // (Home's next load reads them – as here)
+    await settle(t, 600);
+    await tapK(t, 'home-bell');
+    await settle(t, 800);
+    expect(find.text('Vehicle alerts'), findsOneWidget);
+    expect(find.textContaining('2 to look at'), findsOneWidget);
+    await t.tap(find.text('Vehicle alerts'));
+    await net(t);
+    expect(find.descendant(of: find.byKey(const Key('va-car-Sany 210 (No.1)')), matching: find.text('Service overdue: 20 Hrs over')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('va-car-MH-25-AJ-2169')), matching: find.text('More diesel: 3 km/L (standard 3.5 km/L), +17%')), findsOneWidget);
+    final red = t.widget<Container>(find.byKey(const Key('va-Sany 210 (No.1)-0'))), amber = t.widget<Container>(find.byKey(const Key('va-MH-25-AJ-2169-0')));
+    expect([(red.decoration as BoxDecoration).color, (amber.decoration as BoxDecoration).color], [C.redSoft, C.amberSoft]);
+    await t.pageBack();
+    await net(t);
+    // the Dashboard: the line at its top – a tap opens the alerts
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-diesel')));
+    await net(t);
+    await t.tap(find.text('Dashboard'));
+    await net(t);
+    expect(find.descendant(of: find.byKey(const Key('dash-va')), matching: find.text('1 service · 1 more diesel')), findsOneWidget);
+    await tapK(t, 'dash-va');
+    await net(t);
+    expect(find.byKey(const Key('va-list')), findsOneWidget);
+  });
+
+  testWidgets('(3.88.0 – Mechanical update-213) HO: a card below its "Alert below ₹" marked on Home and in Fuel Cards (its amount sent with the card); each car\'s alerts under it in My Fleet and on its Vehicle Details', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View', 'Diesel Issue': 'Edit', 'Log Book': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true;
+    srv.cards.firstWhere((c) => c['name'] == 'HDFC FUEL')['lowAt'] = 25000;
+    srv.vehAlerts = vaSample(ho: true);
+    final s = await ready(t, srv);
+    expect([s.card('HDFC FUEL')!.lowAt, s.card('HDFC FUEL')!.low, s.card('SBI CREDIT')!.low], [25000, true, false]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.descendant(of: find.byKey(const Key('home-card-HDFC FUEL')), matching: find.byIcon(Icons.warning_amber_rounded)), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('home-card-SBI CREDIT')), matching: find.byIcon(Icons.warning_amber_rounded)), findsNothing);
+    await t.scrollUntilVisible(find.byKey(const Key('hf-car-MH-12-HO-1163')), 200, scrollable: homeList());
+    await net(t);
+    final va = find.byKey(const Key('hf-va-MH-12-HO-1163'));
+    expect(find.descendant(of: va, matching: find.text('Insurance due 24-10-2026 (10 days)')), findsOneWidget);
+    expect(find.descendant(of: va, matching: find.text('Service due: 800 KM left')), findsOneWidget);
+    expect(find.byKey(const Key('hf-va-MH-12-HO-2163')), findsNothing, reason: 'no alert, no line');
+    await tapK(t, 'hf-car-MH-12-HO-1163');
+    await net(t);
+    expect([find.byKey(const Key('car-va-0')).evaluate().length, find.byKey(const Key('car-va-1')).evaluate().length], [1, 1]);
+    await t.pageBack();
+    await net(t);
+    // Fuel Cards: the mark, and its amount sent with the card
+    await t.tap(find.text('Entries'));
+    await net(t);
+    await tapK(t, 'entries-Fuel Cards');
+    await net(t);
+    expect(find.descendant(of: find.byKey(const Key('fc-low-HDFC FUEL')), matching: find.text('Low – below ₹ 25,000')), findsOneWidget);
+    await t.tap(find.byKey(const Key('fc-c-HDFC FUEL')));
+    await settle(t, 800);
+    await t.tap(find.byKey(const Key('fc-edit')));
+    await net(t);
+    expect((t.widget(find.byKey(const Key('cf-low'))) as TextBox).controller.text, '25000');
+    await t.enterText(find.descendant(of: find.byKey(const Key('cf-low')), matching: find.byType(TextField)), '20000');
+    await settle(t, 300);
+    await tapK(t, 'cf-save');
+    await net(t);
+    expect((srv.cardCalls.lastWhere((c) => c['fn'] == 'saveCard')['x'] as Map)['lowAt'], '20000');
+    expect(find.byKey(const Key('fc-low-HDFC FUEL')), findsNothing, reason: '21,800 is not below 20,000 any more');
+  });
+
+  testWidgets('(3.88.0 – Mechanical update-213) Asset Master: "Service every" – the boxes of the meter it runs on and months, shown as kept, compared before the save, sent with it', (t) async {
+    phone(t);
+    final srv = editor();
+    final s = await ready(t, srv);
+    await openMaster(t, s, 'Asset Master');
+    await t.tap(find.text('MH-25-AJ-2169'));
+    await settle(t, 800);
+    await tapK(t, 'md-edit');
+    await net(t);
+    expect([find.byKey(const Key('mf-svc-km')).evaluate().length, find.byKey(const Key('mf-svc-hrs')).evaluate().length, find.byKey(const Key('mf-svc-mon')).evaluate().length], [1, 0, 1], reason: 'it runs on KM');
+    await t.enterText(box('mf-svc-km'), '10000');
+    await t.enterText(box('mf-svc-mon'), '6');
+    await tapK(t, 'mf-save');
+    await settle(t, 600);
+    expect(find.text('Service every KM'), findsWidgets);
+    expect(find.text('Service every months'), findsWidgets);
+    await t.tap(find.byKey(const Key('ask-yes')));
+    await net(t);
+    final m = srv.masterCalls.last['m'] as Map;
+    expect([m['svcKm'], m['svcHrs'], m['svcMon']], ['10000', '', '6']);
+    expect(s.machine('MH-25-AJ-2169')!.m['svc'], {'km': 10000, 'hrs': '', 'months': 6}, reason: 'kept as the server keeps it');
+    await t.tap(find.text('MH-25-AJ-2169'));
+    await settle(t, 800);
+    await tapK(t, 'md-edit');
+    await net(t);
+    expect([(t.widget(find.byKey(const Key('mf-svc-km'))) as TextBox).controller.text, (t.widget(find.byKey(const Key('mf-svc-mon'))) as TextBox).controller.text], ['10000', '6']);
+    await tapK(t, 'mf-save');
+    await settle(t, 600);
+    expect(find.text('Nothing changed.'), findsOneWidget, reason: 'the same values: nothing to save');
+  });
+
+  testWidgets('(3.88.0) the vehicle alerts – pictures', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View', 'Diesel Issue': 'Edit', 'Log Book': 'Edit', 'Maintenance': 'Edit'})
+      ..card = true;
+    srv.cards.firstWhere((c) => c['name'] == 'HDFC FUEL')['lowAt'] = 25000;
+    srv.vehAlerts = vaSample(ho: true);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('hf-car-MH-12-HO-1163')), 200, scrollable: homeList());
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9k_ho_fleet_alerts.png'));
+    await tapK(t, 'hf-car-MH-12-HO-1163');
+    await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('car-va')), 200, scrollable: find.descendant(of: find.byKey(const Key('car-detail')), matching: find.byType(Scrollable)).first);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9l_ho_vehicle_alerts.png'));
+  }, tags: ['golden']);
+
+  testWidgets('(3.88.0) the vehicle alerts screen – picture', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View'})
+      ..card = true;
+    srv.vehAlerts = vaSample(ho: true);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await tapK(t, 'home-bell');
+    await settle(t, 800);
+    await t.tap(find.text('Vehicle alerts'));
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9m_vehicle_alerts.png'));
+  }, tags: ['golden']);
 
   testWidgets('(3.87.0) HO\'s new Home and Vehicle Details – pictures', (t) async {
     phone(t);

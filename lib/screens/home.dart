@@ -34,6 +34,8 @@ import 'breakdown.dart';
 import 'call.dart';
 import 'fuel_cards.dart' show FuelCardsScreen, rupees;
 import 'ho_fleet.dart';
+import 'veh_alerts.dart' show openVehAlerts;
+import '../core/veh_alerts.dart';
 import 'verify.dart';
 import 'logbook.dart';
 import 'store.dart';
@@ -181,6 +183,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       final jobs = <Future<void>>[];
       final got = <_Act>[];
       final ho = s.cardSite;      // (3.87.0) HO's Home shows no tiles and no Today's Activity – nothing of them is read there
+      VehAlerts.i.load(s);      // (3.88.0, Mechanical update-213) the vehicle alerts – the bell, the Dashboard, HO's cars
       for (final k in kKinds.where((k) => !ho && s.canSee(k.module))) {
         jobs.add(s.api.call(k.list, [{'from': day, 'to': day, 'all': true}]).then((r) {
           for (final x in ((r as Map)['rows'] as List? ?? []).whereType<Map>()) {
@@ -289,6 +292,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       if (miss > 0) ('Missed calls', bi('$miss missed – call back', '$miss चुकलेले कॉल – परत कॉल करा'), 'mobile_phone', C.greenSoft, () => openCallPick(context)),
       if (s.kept.isNotEmpty) ('Waiting on this phone', s.keptBad > 0 ? bi('${s.keptBad} not saved – open to see why', '${s.keptBad} सेव्ह झाल्या नाहीत – कारण पहा') : bi('${s.kept.length} to send when the network is back', 'नेटवर्क आल्यावर ${s.kept.length} पाठवायच्या'), 'calendar', s.keptBad > 0 ? C.redSoft : C.amberSoft, () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet())),
       if (update != null) ('New version ${update!.version}', bi('Update the app', 'ॲप update करा'), 'mobile_phone', C.blueSoft, () => runUpdate(context, update!)),
+      // (3.88.0, Mechanical update-213) papers, service, more diesel, a fuel card low
+      if (VehAlerts.i.n > 0) ('Vehicle alerts', bi('${VehAlerts.i.n} to look at – papers, service, diesel', '${VehAlerts.i.n} पाहायचे – कागदपत्रे, service, डिझेल'), 'shield', C.redSoft, () => openVehAlerts(context)),
     ];
     final pick = await showModalBottomSheet<int>(
       context: context,
@@ -440,9 +445,9 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                       _RoundBtn(key: const Key('home-search'), icon: Icons.search_rounded, tip: 'Search', onTap: () => openSearch(context, entries: widget.onOpenEntries, reports: widget.onOpenReports)),
                       const SizedBox(width: 6),
                       ListenableBuilder(
-                        listenable: s.rtc ?? ValueNotifier(0),
+                        listenable: Listenable.merge([s.rtc ?? ValueNotifier(0), VehAlerts.i]),
                         builder: (_, __) {
-                          final n = s.crForMe + (s.rtc?.missN ?? 0) + s.keptBad + (update == null ? 0 : 1);
+                          final n = s.crForMe + (s.rtc?.missN ?? 0) + s.keptBad + (update == null ? 0 : 1) + (VehAlerts.i.n > 0 ? 1 : 0);
                           return Badge(
                           isLabelVisible: n > 0,
                           label: Text('$n'),
@@ -1084,8 +1089,12 @@ class _HomeCards extends StatelessWidget {
                     Container(
                       key: Key('home-card-${c.name}'),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: c.balance < 0 ? C.red : Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
-                      child: Text('${c.name}${c.last4.isEmpty ? '' : ' ••${c.last4}'}  ${rupees(c.balance)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                      // (3.88.0, Mechanical update-213) below its "Alert below ₹": red, with a mark
+                      decoration: BoxDecoration(color: c.balance < 0 || c.low ? C.red : Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        if (c.low) const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.warning_amber_rounded, size: 15, color: Colors.white)),
+                        Text('${c.name}${c.last4.isEmpty ? '' : ' ••${c.last4}'}  ${rupees(c.balance)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                      ]),
                     ),
                 ]),
               if (at != null)

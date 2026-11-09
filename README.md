@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.88.0 (08-11-2026 – the HO features "ek sath … ho sathi pn ani other site sathi pn", step A; with Mechanical update-213):**
+**vehicle alerts** at every site (`core/veh_alerts.dart`, `screens/veh_alerts.dart`): the server's getVehAlerts – papers expired / due
+within 30 days, the service (Asset Master → **Service every** KM / Hrs / months, `screens/machine_form.dart`; from the last maintenance
+bill marked Service), more diesel than the standard this month, a fuel card below its **Alert below ₹** (`screens/fuel_cards.dart`).
+Shown in the bell ("Vehicle alerts", counted on its badge), as a line at the top of the Dashboard (a tap: the list), under each of HO's
+cars in My Fleet and on a car's Vehicle Details; a low card red on Home and in Fuel Cards. Each part only for a person who may see it
+(the server). The morning message (once a day after 08:00, to the site's Admins and the Super Admin) comes from the server.
+
 **Version 3.87.0 (08-11-2026 – "RCL ERP – Premium Mobile App Redesign" Parts 1–3, with his picture; his answers: the new Home only
 at HO, the app first; no server change, no SQL):** a site on fuel cards (HO) has its **own Home** (`screens/home.dart`, `screens/ho_fleet.dart`):
 no site picture (a clean header – RCL ERP, greeting and name, Search, the bell, the AI, the site and Scan), the fuel cards' balance, then

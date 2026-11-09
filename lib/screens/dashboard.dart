@@ -25,6 +25,8 @@ import '../web/print_view.dart';
 import '../core/car_photos.dart' show CarPhotos;
 import 'car_detail.dart' show CarGalleryCard, carMatches, openCar, setCarPhoto;
 import 'compliance.dart' show openCompliance;
+import 'veh_alerts.dart' show openVehAlerts;
+import '../core/veh_alerts.dart';
 import 'fuel_cards.dart' show CardTile, FuelCardsScreen, rupees;
 import 'logbook.dart' show LogForm;
 import 'pend_print.dart' show openPendPrint;
@@ -71,6 +73,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final s = SessionScope.read(context);
       _ls = s..dataTick.addListener(_live);
       CarPhotos.i.addListener(_photos);      // (3.86.0) a car's photo set / removed: its card at once
+      VehAlerts.i.addListener(_alerts);      // (3.88.0) the vehicle alerts' line
+      VehAlerts.i.load(s);
       from = to = s.today; // (as the web: the Dashboard opens on Today)
       if (s.cardSite) from = '${s.today.substring(0, 8)}01';      // (3.45.0) a site on fuel cards: this month to start with
       fuel = s.multiFuel ? s.siteFuels.first : '';
@@ -88,7 +92,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     _ls?.dataTick.removeListener(_live);
     CarPhotos.i.removeListener(_photos);
+    VehAlerts.i.removeListener(_alerts);
     super.dispose();
+  }
+
+  void _alerts() {
+    if (mounted) setState(() {});
+  }
+
+  /// (3.88.0, Mechanical update-213) as the web's "⚠ Vehicle alerts" at the top of the Dashboard: how many, a tap opens them
+  Widget _alertsLine() {
+    final v = VehAlerts.i;
+    if (v.n == 0) return const SizedBox.shrink();
+    final parts = [('papers', v.count['paper'] ?? 0), ('service', v.count['svc'] ?? 0), ('more diesel', v.count['avg'] ?? 0), ('fuel card low', v.count['card'] ?? 0)].where((x) => x.$2 > 0).map((x) => '${fmtNum(x.$2)} ${tr(x.$1)}');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: C.amberSoft,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          key: const Key('dash-va'),
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => openVehAlerts(context),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            child: Row(children: [
+              const Icon(Icons.warning_amber_rounded, color: C.red),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Vehicle alerts', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                  Text(parts.join(' · '), style: const TextStyle(fontSize: 12.5, color: C.ink)),
+                ]),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: C.faint),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 
   void _photos() {
@@ -258,6 +300,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(key: const Key('dash-cards'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
+        _alertsLine(),
         Row(children: [
           Expanded(child: Text('Fuel cards and cars', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
           Pill(rangeText(from, to), color: C.blue, bg: C.blueSoft),
@@ -381,6 +424,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: FuelScope(fuel: fuel, child: ListView(key: const Key('dash-diesel'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
+        _alertsLine(),
         Row(children: [
           Expanded(child: Text('Diesel summary – all locations', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
           Pill(rangeText(from, to), color: C.blue, bg: C.blueSoft),

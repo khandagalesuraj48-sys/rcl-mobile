@@ -73,6 +73,9 @@ class FuelCard {
   String get custId => '${m['custId'] ?? ''}';
   /// the days to its last good day (the end of its expiry month) – the server's; null = no expiry; below 0 = expired
   int? get expDays => m['expDays'] is num ? (m['expDays'] as num).toInt() : null;
+  /// (3.88.0, Mechanical update-213) "Alert below ₹" – null = no alert; low = Active and its balance below it
+  num? get lowAt => m['lowAt'] is num && (m['lowAt'] as num) > 0 ? m['lowAt'] as num : null;
+  bool get low => active && lowAt != null && balance < lowAt!;
   /// 08/2029
   String get expiryMY => RegExp(r'^\d{4}-\d{2}$').hasMatch(expiry) ? '${expiry.substring(5)}/${expiry.substring(0, 4)}' : '';
 }
