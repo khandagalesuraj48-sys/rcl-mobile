@@ -159,7 +159,10 @@ class _BookingScreenState extends State<BookingScreen> {
         ]),
         const SizedBox(height: 6),
         Text(_when(b), style: const TextStyle(fontWeight: FontWeight.w700)),
-        Text('${'${b['placeFrom'] ?? ''}'.isEmpty ? '' : '${b['placeFrom']} → '}${b['placeTo'] ?? ''}', style: const TextStyle(color: C.ink)),
+        Row(children: [      // (the arrow drawn – the app's font has no "→")
+          if ('${b['placeFrom'] ?? ''}'.isNotEmpty) ...[Flexible(child: Text('${b['placeFrom']}')), const Padding(padding: EdgeInsets.symmetric(horizontal: 5), child: Icon(Icons.arrow_forward_rounded, size: 15, color: C.muted))],
+          Flexible(child: Text('${b['placeTo'] ?? ''}')),
+        ]),
         Text('${b['purpose'] ?? ''}${'${b['people'] ?? ''}'.isEmpty ? '' : ' · ${b['people']} ${tr('people')}'}', style: const TextStyle(color: C.muted)),
         if (canDecide) Text('${tr('Asked by')} ${b['byName'] ?? b['by']}', style: const TextStyle(color: C.muted, fontSize: 13)),
         if ('${b['no'] ?? ''}'.isNotEmpty) Text('${b['no']}${'${b['driver'] ?? ''}'.isEmpty ? '' : ' · ${tr('driver')} ${b['driver']}'}', style: const TextStyle(color: C.green, fontWeight: FontWeight.w700)),

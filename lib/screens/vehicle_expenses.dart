@@ -410,7 +410,11 @@ class _StatementScreenState extends State<StatementScreen> {
                           });
                         }
                       },
-                      child: Text('${r['vehicle'] ?? ''} → ${'${r['no'] ?? ''}'.isEmpty ? tr('pick the vehicle') : r['no']}', style: TextStyle(fontWeight: FontWeight.w700, color: '${r['no'] ?? ''}'.isEmpty ? C.amber : C.green)),
+                      child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [      // (the arrow drawn – the app's font has no "→")
+                        Text('${r['vehicle'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, color: C.muted)),
+                        const Padding(padding: EdgeInsets.symmetric(horizontal: 5), child: Icon(Icons.arrow_forward_rounded, size: 15, color: C.muted)),
+                        Text('${r['no'] ?? ''}'.isEmpty ? tr('pick the vehicle') : '${r['no']}', style: TextStyle(fontWeight: FontWeight.w700, color: '${r['no'] ?? ''}'.isEmpty ? C.amber : C.green)),
+                      ]),
                     ),
                 ]),
                 ),

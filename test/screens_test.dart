@@ -785,6 +785,7 @@ void main() {
     await net(t);
     expect((srv.vbCalls.last['x'] as Map)['text'], 'Date | Vehicle | Plaza | Amount\n12-10-2026 | MH25AJ2169 | Talegaon | 1045');
     expect(find.byKey(const Key('vxs-2')), findsOneWidget);
+    await settle(t, 6500);      // (the toast "Saved …" of the form gone before the picture)
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9s_fastag_statement.png'));
     await tapK(t, 'vxs-no-2');
