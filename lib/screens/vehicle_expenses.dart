@@ -383,11 +383,14 @@ class _StatementScreenState extends State<StatementScreen> {
         for (var i = 0; i < lines.length; i++)
           Builder(builder: (_) {
             final r = lines[i], saved = '${r['saved'] ?? ''}'.isNotEmpty;
-            return Container(
+            return Padding(
               key: Key('vxs-$i'),
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-              child: CheckboxListTile(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                clipBehavior: Clip.antiAlias,
+                child: CheckboxListTile(
                 value: ticked.contains(i),
                 onChanged: saved ? null : (v) => setState(() => v == true ? ticked.add(i) : ticked.remove(i)),
                 title: Text('${showDate('${r['date']}')} ${r['time'] ?? ''} · ${rupees(asNum(r['amount']))}', style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -410,6 +413,7 @@ class _StatementScreenState extends State<StatementScreen> {
                       child: Text('${r['vehicle'] ?? ''} → ${'${r['no'] ?? ''}'.isEmpty ? tr('pick the vehicle') : r['no']}', style: TextStyle(fontWeight: FontWeight.w700, color: '${r['no'] ?? ''}'.isEmpty ? C.amber : C.green)),
                     ),
                 ]),
+                ),
               ),
             );
           }),
