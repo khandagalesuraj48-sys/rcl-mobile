@@ -110,6 +110,17 @@ Future<Session> ready(WidgetTester t, FakeServer srv) async {
   return s;
 }
 
+/// (3.91.0) picks [v] in an open pickFromList sheet: its search box first (a long list builds only what is on the screen)
+Future<void> pickIn(WidgetTester t, String v) async {
+  final box = find.descendant(of: find.byType(BottomSheet), matching: find.byType(TextField));
+  if (box.evaluate().isNotEmpty) {
+    await t.enterText(box.first, v);
+    await settle(t, 400);
+  }
+  await t.tap(find.byKey(Key('pick-$v')));
+  await settle(t, 600);
+}
+
 /// Pictures (the 3D icons, the logo) are read before the picture of the screen is taken.
 Future<void> pics(WidgetTester t) async {
   await t.runAsync(() async {
@@ -716,8 +727,7 @@ void main() {
     await settle(t, 600);
     await tapK(t, 'vbd-no');
     await settle(t, 600);
-    await t.tap(find.text('MH-46-TM-1001').last);
-    await settle(t, 600);
+    await pickIn(t, 'MH-46-TM-1001');
     await t.enterText(find.descendant(of: find.byKey(const Key('vbd-driver')), matching: find.byType(TextField)), 'Suresh');
     await tapK(t, 'vbd-ok');
     await net(t);
@@ -762,8 +772,7 @@ void main() {
     await net(t);
     await tapK(t, 'vxf-no');
     await settle(t, 600);
-    await t.tap(find.text('MH-46-TM-1001').last);
-    await settle(t, 600);
+    await pickIn(t, 'MH-46-TM-1001');
     await t.enterText(find.descendant(of: find.byKey(const Key('vxf-place')), matching: find.byType(TextField)), 'Khed Shivapur toll');
     await t.enterText(find.descendant(of: find.byKey(const Key('vxf-amt')), matching: find.byType(TextField)), '245');
     await tapK(t, 'vxf-save');
@@ -780,8 +789,7 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9s_fastag_statement.png'));
     await tapK(t, 'vxs-no-2');
     await settle(t, 600);
-    await t.tap(find.text('Sany 210 (No.1)').last);
-    await settle(t, 600);
+    await pickIn(t, 'Sany 210 (No.1)');
     await tapK(t, 'vxs-save');
     await net(t);
     final rs = srv.vbCalls.last['rows'] as List;
