@@ -710,7 +710,7 @@ void main() {
       ..perms['Booking Approve'] = 'Edit';
     srv.bookings.addAll([
       {'id': 'VB-000001', 'from': '2099-01-10T09:00', 'to': '2099-01-10T13:00', 'placeFrom': 'Head Office', 'placeTo': 'Pune site', 'purpose': 'Site visit', 'people': 3, 'no': '', 'driver': '', 'status': 'Requested', 'by': 'ram@rcl.test', 'byName': 'Ram Patil', 'reply': '', 'remark': ''},
-      {'id': 'VB-000002', 'from': '2099-01-11T10:00', 'to': '2099-01-12T18:00', 'placeFrom': 'Head Office', 'placeTo': 'Mumbai', 'purpose': 'Bank meeting', 'people': 2, 'no': 'MH-46-TM-1001', 'driver': 'Ganesh', 'status': 'Approved', 'by': 'sujit@rcl.test', 'byName': 'Sujit Mule', 'reply': 'OK', 'remark': ''},
+      {'id': 'VB-000002', 'from': '2099-01-11T10:00', 'to': '2099-01-12T18:00', 'placeFrom': 'Head Office', 'placeTo': 'Mumbai', 'purpose': 'Bank meeting', 'people': 2, 'no': 'MH-25-AJ-2169', 'driver': 'Ganesh', 'status': 'Approved', 'by': 'sujit@rcl.test', 'byName': 'Sujit Mule', 'reply': 'OK', 'remark': ''},
     ]);
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
@@ -727,11 +727,11 @@ void main() {
     await settle(t, 600);
     await tapK(t, 'vbd-no');
     await settle(t, 600);
-    await pickIn(t, 'MH-46-TM-1001');
+    await pickIn(t, 'MH-25-AJ-2169');
     await t.enterText(find.descendant(of: find.byKey(const Key('vbd-driver')), matching: find.byType(TextField)), 'Suresh');
     await tapK(t, 'vbd-ok');
     await net(t);
-    expect(srv.vbCalls.last, {'fn': 'decideBooking', 'id': 'VB-000001', 'x': {'approve': true, 'no': 'MH-46-TM-1001', 'driver': 'Suresh', 'reply': ''}});
+    expect(srv.vbCalls.last, {'fn': 'decideBooking', 'id': 'VB-000001', 'x': {'approve': true, 'no': 'MH-25-AJ-2169', 'driver': 'Suresh', 'reply': ''}});
     // asked: the form
     await tapK(t, 'vb-ask');
     await net(t);
@@ -749,15 +749,15 @@ void main() {
     phone(t);
     final srv = FakeServer()..perms['Vehicle Expenses'] = 'Edit';
     srv.vexp.addAll([
-      {'id': 'VX-000001', 'date': '2026-10-05', 'no': 'MH-46-TM-1001', 'kind': 'Toll', 'place': 'Khalapur toll', 'amount': 320, 'paidBy': 'FASTag', 'ref': '', 'txn': 'TX-1', 'source': 'Statement', 'remark': ''},
-      {'id': 'VX-000002', 'date': '2026-10-09', 'no': 'MH-46-TM-1001', 'kind': 'Parking', 'place': 'Phoenix Mall', 'amount': 80, 'paidBy': 'Cash', 'ref': '', 'txn': '', 'source': 'Hand', 'remark': ''},
+      {'id': 'VX-000001', 'date': '2026-10-05', 'no': 'MH-25-AJ-2169', 'kind': 'Toll', 'place': 'Khalapur toll', 'amount': 320, 'paidBy': 'FASTag', 'ref': '', 'txn': 'TX-1', 'source': 'Statement', 'remark': ''},
+      {'id': 'VX-000002', 'date': '2026-10-09', 'no': 'MH-25-AJ-2169', 'kind': 'Parking', 'place': 'Phoenix Mall', 'amount': 80, 'paidBy': 'Cash', 'ref': '', 'txn': '', 'source': 'Hand', 'remark': ''},
     ]);
     srv.stmtAnswer = {'read': 3, 'matched': 2, 'saved': 1, 'rows': [
-      {'date': '2026-10-05', 'time': '10:15', 'vehicle': 'MH46TM1001', 'no': 'MH-46-TM-1001', 'place': 'Khalapur toll', 'amount': 320, 'txn': 'TX-1', 'saved': 'VX-000001'},
-      {'date': '2026-10-12', 'time': '11:40', 'vehicle': 'MH46TM1001', 'no': 'MH-46-TM-1001', 'place': 'Talegaon toll', 'amount': 1045, 'txn': 'TX-2', 'saved': ''},
+      {'date': '2026-10-05', 'time': '10:15', 'vehicle': 'MH25AJ2169', 'no': 'MH-25-AJ-2169', 'place': 'Khalapur toll', 'amount': 320, 'txn': 'TX-1', 'saved': 'VX-000001'},
+      {'date': '2026-10-12', 'time': '11:40', 'vehicle': 'MH25AJ2169', 'no': 'MH-25-AJ-2169', 'place': 'Talegaon toll', 'amount': 1045, 'txn': 'TX-2', 'saved': ''},
       {'date': '2026-10-13', 'time': '12:00', 'vehicle': 'MH12ZZ0000', 'no': '', 'place': 'Urse toll', 'amount': 190, 'txn': 'TX-3', 'saved': ''},
     ]};
-    pickStatementFile = () async => (name: 'fastag.csv', bytes: Uint8List.fromList(utf8.encode('Date,Vehicle,Plaza,Amount\n12-10-2026,MH46TM1001,Talegaon,1045\n')));
+    pickStatementFile = () async => (name: 'fastag.csv', bytes: Uint8List.fromList(utf8.encode('Date,Vehicle,Plaza,Amount\n12-10-2026,MH25AJ2169,Talegaon,1045\n')));
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
@@ -772,18 +772,18 @@ void main() {
     await net(t);
     await tapK(t, 'vxf-no');
     await settle(t, 600);
-    await pickIn(t, 'MH-46-TM-1001');
+    await pickIn(t, 'MH-25-AJ-2169');
     await t.enterText(find.descendant(of: find.byKey(const Key('vxf-place')), matching: find.byType(TextField)), 'Khed Shivapur toll');
     await t.enterText(find.descendant(of: find.byKey(const Key('vxf-amt')), matching: find.byType(TextField)), '245');
     await tapK(t, 'vxf-save');
     await net(t);
-    expect(srv.vbCalls.last, {'fn': 'saveVexp', 'x': {'date': '2026-10-14', 'no': 'MH-46-TM-1001', 'kind': 'Toll', 'place': 'Khed Shivapur toll', 'amount': '245', 'paidBy': 'FASTag', 'ref': '', 'remark': ''}});
+    expect(srv.vbCalls.last, {'fn': 'saveVexp', 'x': {'date': '2026-10-14', 'no': 'MH-25-AJ-2169', 'kind': 'Toll', 'place': 'Khed Shivapur toll', 'amount': '245', 'paidBy': 'FASTag', 'ref': '', 'remark': ''}});
     // the statement: an Excel / CSV sent as its rows; the line already saved not ticked, the one with no vehicle picked
     await tapK(t, 'vx-statement');
     await net(t);
     await tapK(t, 'vxs-pick');
     await net(t);
-    expect((srv.vbCalls.last['x'] as Map)['text'], 'Date | Vehicle | Plaza | Amount\n12-10-2026 | MH46TM1001 | Talegaon | 1045');
+    expect((srv.vbCalls.last['x'] as Map)['text'], 'Date | Vehicle | Plaza | Amount\n12-10-2026 | MH25AJ2169 | Talegaon | 1045');
     expect(find.byKey(const Key('vxs-2')), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9s_fastag_statement.png'));
@@ -793,7 +793,7 @@ void main() {
     await tapK(t, 'vxs-save');
     await net(t);
     final rs = srv.vbCalls.last['rows'] as List;
-    expect([srv.vbCalls.last['fn'], rs.map((r) => '${r['txn']}:${r['no']}').toList()], ['importVexp', ['TX-2:MH-46-TM-1001', 'TX-3:Sany 210 (No.1)']], reason: 'the saved line not sent; the picked vehicle sent');
+    expect([srv.vbCalls.last['fn'], rs.map((r) => '${r['txn']}:${r['no']}').toList()], ['importVexp', ['TX-2:MH-25-AJ-2169', 'TX-3:Sany 210 (No.1)']], reason: 'the saved line not sent; the picked vehicle sent');
   }, tags: ['golden']);
 
   testWidgets('(3.2.0) Monthly Diesel & Average: the day-by-day table with its status, sideways on the phone', (t) async {
