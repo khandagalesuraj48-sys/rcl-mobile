@@ -13,6 +13,8 @@ import 'breakdown.dart';
 import 'compliance.dart';
 import 'fuel_cards.dart' show FuelCardsScreen;
 import 'maintenance.dart' show MaintScreen;
+import 'vehicle_booking.dart' show BookingScreen;
+import 'vehicle_expenses.dart' show VexpScreen;
 import 'lb_formats.dart';
 import 'log_edit.dart';
 import 'logbook.dart';
@@ -28,6 +30,8 @@ const kStartPages = <(String, String, String)>[
   ('transfer', 'Diesel Transfer', 'Diesel Transfer'),
   ('cards', 'Fuel Cards', 'Fuel Cards'),      // (3.45.0, update-164) only at a site on fuel cards
   ('mnt', 'Maintenance', 'Maintenance'),      // (3.46.0, update-165; 3.50.0, update-170: at every site)
+  ('vbook', 'Vehicle Booking', 'Vehicle Booking'),      // (3.91.0, update-216)
+  ('vexp', 'Vehicle Expenses', 'Vehicle Expenses'),      // (3.91.0, update-216)
   ('log', 'Log Book', 'Log Book'),
   ('logedit', 'Edit Log Book', 'Log Book'),
   ('tankcheck', 'Tank Check', 'Log Book'),
@@ -77,6 +81,10 @@ Future<void> openStartPage(BuildContext context, Session s, String page, {requir
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen()));
     case 'mnt':
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MaintScreen()));
+    case 'vbook':
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BookingScreen()));
+    case 'vexp':
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VexpScreen()));
     case 'log':
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()));
     case 'logedit':
