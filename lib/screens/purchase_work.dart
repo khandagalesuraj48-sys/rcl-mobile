@@ -69,6 +69,8 @@ Widget _card(Widget child, {Key? key, Color? border}) => Container(
       child: child,
     );
 Widget _small(String t, {Color color = C.muted}) => Text(t, style: TextStyle(fontSize: 12.5, color: color, height: 1.3));
+// a button beside others (a Row or a Wrap): its own width – the theme's buttons fill the width
+final _fs = FilledButton.styleFrom(minimumSize: const Size(0, 44)), _os = OutlinedButton.styleFrom(minimumSize: const Size(0, 44));
 Widget _wait() => const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator()));
 
 /* ======================================== INBOX – to order ======================================== */
@@ -182,7 +184,7 @@ class _PurInboxScreenState extends State<PurInboxScreen> {
                 child: Row(children: [
                   Expanded(child: Text(tr('{0} lines ticked').replaceAll('{0}', '${pick.length}'), style: const TextStyle(fontWeight: FontWeight.w700))),
                   TextButton(key: const Key('pin-clear'), onPressed: () => setState(pick.clear), child: const Text('Clear')),
-                  FilledButton(key: const Key('pin-make'), onPressed: _make, child: const Text('Make enquiry')),
+                  FilledButton(key: const Key('pin-make'), style: _fs, onPressed: _make, child: const Text('Make enquiry')),
                 ]),
               ),
             ),
@@ -450,10 +452,10 @@ class _PurRfqViewState extends State<PurRfqView> {
               if (_s(q['remark']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('${tr('Remark')}: ${q['remark']}', style: const TextStyle(fontSize: 13.5))),
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: [
-                if (may['edit'] == true) OutlinedButton(key: const Key('prv-edit'), onPressed: busy ? null : () => _edit(q), child: const Text('Change')),
-                if (may['send'] == true) FilledButton(key: const Key('prv-send'), onPressed: busy ? null : () => _send(q), child: const Text('Mark as sent')),
+                if (may['edit'] == true) OutlinedButton(key: const Key('prv-edit'), style: _os, onPressed: busy ? null : () => _edit(q), child: const Text('Change')),
+                if (may['send'] == true) FilledButton(key: const Key('prv-send'), style: _fs, onPressed: busy ? null : () => _send(q), child: const Text('Mark as sent')),
                 if (may['cs'] == true || cs != null)
-                  FilledButton.tonal(key: const Key('prv-cs'), onPressed: busy ? null : _cs, child: Text(cs != null ? '${tr('Open')} ${cs['ref']}' : 'Make the CS')),
+                  FilledButton.tonal(key: const Key('prv-cs'), style: _fs, onPressed: busy ? null : _cs, child: Text(cs != null ? '${tr('Open')} ${cs['ref']}' : 'Make the CS')),
                 if (may['cancel'] == true) TextButton(key: const Key('prv-cancel'), onPressed: busy ? null : () => _cancel(q), child: const Text('Cancel enquiry', style: TextStyle(color: C.red))),
               ]),
             ])),
@@ -486,13 +488,13 @@ class _PurRfqViewState extends State<PurRfqView> {
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     if (_s(v['wa']).isNotEmpty)
                       OutlinedButton.icon(
-                          key: Key('prv-wa-${v['id']}'),
+                          key: Key('prv-wa-${v['id']}'), style: _os,
                           onPressed: () => launchUrl(Uri.parse('https://wa.me/${v['wa']}?text=${Uri.encodeComponent(_waText(q, v))}'), mode: LaunchMode.externalApplication),
                           icon: const Icon(Icons.chat_rounded, size: 18),
                           label: const Text('Share on WhatsApp')),
                     if (may['quote'] == true || v['quote'] != null)
                       FilledButton.tonal(
-                          key: Key('prv-q-${v['id']}'), onPressed: () => _quote(v), child: Text(may['quote'] == true ? (v['quote'] == null ? 'Enter quotation' : 'Change quotation') : 'See quotation')),
+                          key: Key('prv-q-${v['id']}'), style: _fs, onPressed: () => _quote(v), child: Text(may['quote'] == true ? (v['quote'] == null ? 'Enter quotation' : 'Change quotation') : 'See quotation')),
                   ]),
                 ]),
               ),
@@ -1080,18 +1082,18 @@ class _PurCsScreenState extends State<PurCsScreen> {
       Wrap(spacing: 8, runSpacing: 8, children: [
         if (ed) ...[
           OutlinedButton(
-              key: const Key('pcs-again'),
+              key: const Key('pcs-again'), style: _os,
               onPressed: busy ? null : () => _do({'action': 'csMake', 'rfq': widget.rfq, 'version': c['version']}, (r) => '${_map(r['cs'])['ref']} – ${tr('worked out from the quotations.')}'),
               child: const Text('Work out again')),
           OutlinedButton(
-              key: const Key('pcs-save'),
+              key: const Key('pcs-save'), style: _os,
               onPressed: busy ? null : () => _do({'action': 'csSave', 'no': c['no'], 'version': c['version'], 'award': _award(), 'few_reason': few.text.trim()}, (_) => '${c['ref']} ${tr('saved')}.'),
               child: const Text('Save')),
-          FilledButton(key: const Key('pcs-send'), onPressed: busy || prob.isNotEmpty ? null : () => _send(c, tot, needText), child: const Text('Send for approval')),
+          FilledButton(key: const Key('pcs-send'), style: _fs, onPressed: busy || prob.isNotEmpty ? null : () => _send(c, tot, needText), child: const Text('Send for approval')),
         ],
         if (may['decide'] == true) ...[
-          FilledButton(key: const Key('pcs-ok'), onPressed: busy ? null : () => _decide(c, 'approve'), child: const Text('Approve')),
-          OutlinedButton(key: const Key('pcs-back'), onPressed: busy ? null : () => _decide(c, 'back'), child: const Text('Send back')),
+          FilledButton(key: const Key('pcs-ok'), style: _fs, onPressed: busy ? null : () => _decide(c, 'approve'), child: const Text('Approve')),
+          OutlinedButton(key: const Key('pcs-back'), style: _os, onPressed: busy ? null : () => _decide(c, 'back'), child: const Text('Send back')),
           TextButton(key: const Key('pcs-rej'), onPressed: busy ? null : () => _decide(c, 'reject'), child: const Text('Reject', style: TextStyle(color: C.red))),
         ],
       ]),
