@@ -48,6 +48,18 @@ void main() {
     });
   }
 
+  test('(3.90.0, Mechanical update-215) the Maintenance Log Book\'s tyres & batteries – the bill lines that name one, not the puncture (the real answer of the rig)', () {
+    String row(RRow r) => r.cells.map((c) => c.text).join('|');
+    final doc = kMaintLog.build(fx('maintLog')), tb = doc.tables.firstWhere((t) => t.sheet == 'Tyres and batteries');
+    expect(tb.head, ['Sr', 'Date', 'Tyre / Battery', 'Particulars', 'Qty', 'Party / bill', 'Paid (₹)', 'Reading then', 'Run since (km)', 'Age']);
+    expect(tb.rows.map(row).toList(), [
+      '1|03-11-2026|Tyre|Tyre 10.00-20 MRF (FL)|1 Nos|MRF Tyres Nashik · Bill MRF-215|17,700.00|5,000|320|5 days',
+      '2|03-11-2026|Battery|Battery Exide 12V 150AH|1 Nos|MRF Tyres Nashik · Bill MRF-215|7,500.00|5,000|320|5 days',
+    ]);
+    final log = doc.tables.firstWhere((t) => t.sheet == 'Log Book');
+    expect(log.rows.map(row).where((r) => r.contains('Tyre puncture')).length, 1, reason: 'the puncture stays a line of the bill – not a tyre of the list');
+  });
+
   test('(3.89.0, Mechanical update-214) the Driver-wise Report (HO: its fuel ₹) and the cost sheet\'s Maintenance (the real answers of the rig)', () {
     String row(RRow r) => r.cells.map((c) => c.text).join('|');
     final dd = kDieselReports.firstWhere((x) => x.key == 'driver').build(fx('rptDriver'));

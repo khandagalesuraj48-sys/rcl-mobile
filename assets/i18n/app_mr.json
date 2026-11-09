@@ -1557,5 +1557,18 @@
 "Fuel ₹": "इंधन ₹",
 "Drivers": "ड्रायव्हर",
 "Fuel cost as the fills cost (card + cash)": "इंधन खर्च – भरण्यांप्रमाणे (card + cash)",
-"(no driver written)": "(ड्रायव्हर लिहिलेला नाही)"
+"(no driver written)": "(ड्रायव्हर लिहिलेला नाही)",
+"Tyres & batteries": "टायर व बॅटरी",
+"Tyre / Battery": "टायर / बॅटरी",
+"Tyre": "टायर",
+"Battery": "बॅटरी",
+"Paid (₹)": "दिलेले (₹)",
+"Reading then": "तेव्हाचे reading",
+"Run since": "तेव्हापासून चालली",
+"Run since (km)": "तेव्हापासून चालली (km)",
+"Run since (hrs)": "तेव्हापासून चालली (तास)",
+"Age": "किती दिवस झाले",
+"Pump bill": "पंप बिल",
+"Party / bill": "Party / bill क्र.",
+"No tyre or battery in these dates (a bill line that names a tyre or a battery comes here by itself).": "या तारखांमध्ये टायर किंवा बॅटरी नाही (bill मध्ये टायर किंवा बॅटरी लिहिलेली ओळ इथे आपोआप येते)."
 }

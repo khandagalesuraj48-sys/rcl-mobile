@@ -1393,7 +1393,7 @@ class _EntryFormState extends State<EntryForm> {
         childAspectRatio: 1.35,
         children: [
           for (final pk in kPhotoKinds)
-            if ((pk.key != 'hrs' || (machine != null && _both(machine!))) && !(pk.key == 'reg' && SessionScope.read(context).cardSite))      // (3.45.0) no register at a site on fuel cards
+            if ((pk.key != 'hrs' || (machine != null && _both(machine!))) && !(pk.key == 'reg' && SessionScope.read(context).cardSite) && !(pk.key == 'bill' && !SessionScope.read(context).cardSite))      // (3.45.0) no register at a site on fuel cards; (3.90.0) the Pump bill only there
             Builder(builder: (_) {
               final sh = shots[pk.key];
               final done = sh != null && sh.path.isNotEmpty && sh.jpg != null, here = sh != null && sh.onPhone && !sh.busy;      // (3.85.0) kept on the phone

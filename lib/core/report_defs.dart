@@ -996,7 +996,26 @@ final kMaintLog = ReportDef(
           ],
           RRow([RCell(nOf(mn['insurance']) > 0 ? 'We paid' : 'Total', bold: true, span: 3), mc(mn['amount'], bold: true)], kind: RKind.grand),
         ]),
+        // (3.90.0, Mechanical update-215) its tyres and batteries – the bill lines (and the Store's issues) that name one, not a repair of one
+        const RNote('Tyres & batteries', heading: true),
+        RTable(sheet: 'Tyres and batteries', head: ['Sr', 'Date', 'Tyre / Battery', 'Particulars', 'Qty', 'Party / bill', 'Paid (₹)', 'Reading then', ru.isEmpty ? 'Run since' : 'Run since ($ru)', 'Age'], numCols: const {4, 6, 7, 8},
+          empty: 'No tyre or battery in these dates (a bill line that names a tyre or a battery comes here by itself).', rows: [
+          for (final (i, x) in listOf(d['tyres']).indexed)
+            RRow([
+              sc(i + 1), tc(dmy(x['date'])), tc(x['kind'], bold: true), tc(x['work']), RCell(blankV(x['qty']) ? '' : '${fmt(x['qty'])}${blankV(x['uom']) ? '' : ' ${x['uom']}'}', n: true, value: blankV(x['qty']) ? null : nOf(x['qty'])),
+              tc([if (!blankV(x['party'])) '${x['party']}', if (!blankV(x['billNo'])) 'Bill ${x['billNo']}'].join(' · ')),
+              nOf(x['amount']) != 0 ? mc(x['amount']) : RCell(x['type'] == 'Paid' || blankV(x['type']) ? '0.00' : '${x['type']}', n: true, value: 0),
+              blankV(x['reading']) ? const RCell('–', n: true) : nc(x['reading']), blankV(x['run']) ? const RCell('–', n: true) : nc(x['run']), tc(_age(x['days'])),
+            ]),
+        ]),
       ],
     );
   },
 );
+
+/// (3.90.0) how long ago, as the web: up to 59 days in days, then in months
+String _age(dynamic v) {
+  if (blankV(v)) return '';
+  final n = nOf(v).toInt();
+  return n < 60 ? '$n day${n == 1 ? '' : 's'}' : '${(n / 30.44).floor()} months';
+}

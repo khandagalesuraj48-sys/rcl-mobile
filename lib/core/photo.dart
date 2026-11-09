@@ -33,6 +33,8 @@ const kPhotoKinds = [
   PhotoKind('veh', 'Vehicle + driver', 'गाडी + चालक', 'articulated_lorry'),
   PhotoKind('pump', 'Dispenser litres', 'डिस्पेन्सर लिटर', 'fuel_pump'),
   PhotoKind('reg', 'Register', 'रजिस्टर', 'notebook'),
+  // (3.90.0, Mechanical update-215) the receipt of a fill at a petrol pump – only at a site on fuel cards (HO)
+  PhotoKind('bill', 'Pump bill', 'पंप बिल', 'receipt'),
 ];
 
 /// Why a photo could not be taken – said to the person as it is.

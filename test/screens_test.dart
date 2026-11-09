@@ -894,6 +894,7 @@ void main() {
     for (final k in ['dash', 'hrs', 'veh', 'pump', 'reg']) {
       expect(find.byKey(Key('photo-$k')), findsOneWidget, reason: k);
     }
+    expect(find.byKey(const Key('photo-bill')), findsNothing, reason: '(3.90.0) no Pump bill at a site with stock');
     await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, 1400));
     await settle(t, 500);
     await t.tap(find.text('MH-46-TM-1001').first);
@@ -4284,6 +4285,7 @@ void main() {
     expect(chip('SBI CREDIT · ₹−500'), findsOneWidget, reason: 'its own card');
     expect(find.byKey(const Key('photo-reg')), findsNothing, reason: 'no Register at a site on fuel cards');
     expect(find.byKey(const Key('photo-pump')), findsOneWidget);
+    expect(find.byKey(const Key('photo-bill')), findsOneWidget, reason: '(3.90.0, update-215) the Pump bill at a site on fuel cards');
     await t.tap(chip('SBI CREDIT · ₹−500'));
     await settle(t, 400);
     await t.enterText(find.byKey(const Key('d-qty')), '15');
