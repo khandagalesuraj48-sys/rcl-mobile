@@ -18,8 +18,8 @@ void main() {
   final all = [...kDieselReports, kDailyReport, kMonthlyReport, kAvgReport];
 
   test('every report of the web is here, each from its own server report', () {
-    expect(kDieselReports.map((d) => d.key).toList(), ['debit', 'ldebit', 'mcost', 'cost', 'purchase', 'ledger', 'watch', 'owner', 'type', 'stock', 'compare', 'tank', 'average']);
-    for (final p in ['rdaily', 'rmonthly', 'ravg', 'rp-average', 'rp-ledger', 'rp-stock', 'rp-purchase', 'rp-cost', 'rp-mcost', 'rp-owner', 'rp-type', 'rp-compare', 'rp-watch', 'rp-tank', 'rp-debit', 'rp-ldebit']) {
+    expect(kDieselReports.map((d) => d.key).toList(), ['debit', 'ldebit', 'mcost', 'driver', 'cost', 'purchase', 'ledger', 'watch', 'owner', 'type', 'stock', 'compare', 'tank', 'average']);
+    for (final p in ['rdaily', 'rmonthly', 'ravg', 'rp-average', 'rp-ledger', 'rp-stock', 'rp-purchase', 'rp-cost', 'rp-mcost', 'rp-driver', 'rp-owner', 'rp-type', 'rp-compare', 'rp-watch', 'rp-tank', 'rp-debit', 'rp-ldebit']) {
       expect(reportOfPage(p), isNotNull, reason: p);
     }
     expect(reportOfPage('dash'), isNull, reason: 'the Dashboard is its own screen');
@@ -47,6 +47,26 @@ void main() {
       expect(sheet1, contains('Rachana Construction Limited'));
     });
   }
+
+  test('(3.89.0, Mechanical update-214) the Driver-wise Report (HO: its fuel ₹) and the cost sheet\'s Maintenance (the real answers of the rig)', () {
+    String row(RRow r) => r.cells.map((c) => c.text).join('|');
+    final dd = kDieselReports.firstWhere((x) => x.key == 'driver').build(fx('rptDriver'));
+    final sum = dd.tables.firstWhere((t) => t.sheet == 'Summary'), det = dd.tables.firstWhere((t) => t.sheet == 'Details');
+    expect(sum.head, ['Sr', 'Driver', 'Days', 'Machinery', 'KM', 'Hrs', 'Trips', 'Fills', 'Fuel (Ltr)', 'Fuel (₹)', 'More diesel on'], reason: 'a site on fuel cards: the ₹ of his fills');
+    expect(sum.rows.map(row).toList(), ['1|Ramesh Pawar|1|1|480|–|–|2|70|6,650.00|1 machinery', '2|Sunil Jadhav|1|1|300|–|–|2|45|4,725.00|1 machinery']);
+    expect(row(sum.foot.single), 'Total – 2 drivers|2||780|–|–|4|115|11,375.00|');
+    expect(row(det.rows.first), 'Ramesh Pawar  |  1 day  |  1 machinery');
+    expect(row(det.rows[1]), '1|RCL-HO-21|Car|1|480|–|–|2|70 Ltr|6,650.00|6.86 km/L|12 km/L|Bad – 75% more diesel');
+    expect(det.rows[1].cells.last.tone, 'bad');
+    expect(dd.kpis.map((k) => k.$1).toList(), ['Drivers', 'Days driven', 'KM', 'Hrs', 'Fuel', 'Fuel ₹', 'More diesel']);
+    final mc = kDieselReports.firstWhere((x) => x.key == 'mcost').build(fx('rptMachineCost'));
+    final tb = mc.tables.single;
+    expect(tb.head[9], 'Diesel cost (₹)'); expect(tb.head[10], 'Maintenance (₹)');
+    final how = tb.rows.map(row).firstWhere((r) => r.contains('Maintenance 2,440.00'));
+    expect(how, contains('Maintenance 2,440.00 (1 bill 1,800.00 + 1 store outward 640.00)'), reason: 'the bill and the RCL Store\'s outward (the debit issue not ours)');
+    expect(mc.kpis.map((k) => k.$1).take(4).toList(), ['Machinery', 'Rent', 'Diesel cost', 'Maintenance']);
+    expect(mc.kpis[3].$2, '₹2,440.00');
+  });
 
   test('(3.31.7) the Log Book Debit Statement: party by party, each entry, the totals, its Debit Note (the real answer of the server)', () {
     final doc = kDieselReports.firstWhere((x) => x.key == 'ldebit').build(fx('rptLogDebit'));

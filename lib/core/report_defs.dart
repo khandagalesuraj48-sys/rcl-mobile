@@ -153,15 +153,24 @@ final kDieselReports = <ReportDef>[
     pic: 'tractor',
     portrait: false,
     filters: const ['range', 'owns'],
-    note: 'What every machinery cost in the period, with the working: Rent (as the bill works it out) + Diesel issued × diesel rate − Diesel recovered from the party = Net cost; and the cost per hour / per KM. Own machinery has no rent in the app (salary, repairs and EMI are not recorded here).',
+    note: 'What every machinery cost in the period, with the working: Rent (as the bill works it out) + Diesel issued × diesel rate (a site on fuel cards: what its fills cost) + Maintenance (its bills + the RCL Store\'s outward to it) − Diesel recovered from the party = Net cost; and the cost per hour / per KM. Own machinery has no rent in the app (salary and EMI are not recorded here).',
     build: (d) {
-      final gs = listOf(d['groups']), tot = mapOf(d['total']);
+      // (3.89.0, Mechanical update-214) Maintenance; at a site on fuel cards the fuel's ₹ as the fills cost
+      final gs = listOf(d['groups']), tot = mapOf(d['total']), card = d['card'] == true, fu = card ? 'Fuel' : 'Diesel';
       String n(dynamic v) => nOf(v) != 0 ? money(v) : '–';
       String q(dynamic v) => nOf(v) != 0 ? fmt(v) : '–';
       String how(Map<String, dynamic> r) {
         final parts = <String>[];
         if (nOf(r['rent']) != 0) parts.add('Rent ${money(r['rent'])}${'${r['basis'] ?? ''}'.isNotEmpty ? ' (${r['basis']})' : ''}');
-        if (nOf(r['issued']) != 0) parts.add('Diesel ${fmt(r['issued'])} L × ₹${fmt(d['rate'])} = ${money(r['dieselCost'])}');
+        if (card) {
+          if (nOf(r['issued']) != 0 || nOf(r['dieselCost']) != 0) parts.add('Fuel ${fmt(r['issued'])} L = ${money(r['dieselCost'])} (as the fills cost)');
+        } else if (nOf(r['issued']) != 0) {
+          parts.add('Diesel ${fmt(r['issued'])} L × ₹${fmt(d['rate'])} = ${money(r['dieselCost'])}');
+        }
+        if (nOf(r['maint']) != 0) {
+          final bn = nOf(r['maintN']).toInt(), sn = nOf(r['maintSn']).toInt();
+          parts.add('Maintenance ${money(r['maint'])} (${[if (bn > 0) '$bn bill${bn == 1 ? '' : 's'} ${money(r['maintBills'])}', if (sn > 0) '$sn store outward ${money(r['maintStore'])}'].join(' + ')})');
+        }
         if (nOf(r['rent']) == 0 && nOf(r['workDays']) != 0 && (r['ownership'] == 'Rental' || r['ownership'] == 'Hired')) parts.insert(0, 'Rent 0.00 – NO BOQ RATE for this machinery in the period');
         var s = parts.isEmpty ? 'no rent, no diesel' : parts.join(' + ');
         if (nOf(r['recover']) != 0) s += ' − recovered ${money(r['recover'])}';
@@ -175,18 +184,18 @@ final kDieselReports = <ReportDef>[
       final rows = <RRow>[];
       for (final g in gs) {
         final rs = listOf(g['rows']);
-        rows.add(grp('${g['ownership']} machinery – ${rs.length}', 15));
+        rows.add(grp('${g['ownership']} machinery – ${rs.length}', 16));
         for (final r in rs) {
           rows.add(RRow([
             sc(++no), tc(r['no'], bold: true), tc(r['type']), tc(r['owner']), RCell(nOf(r['workDays']) != 0 ? fmt(r['workDays']) : '–', n: true, value: r['workDays']), RCell(q(r['hrs']), n: true, value: r['hrs']), RCell(q(r['km']), n: true, value: r['km']),
-            RCell(n(r['rent']), n: true, value: r['rent']), RCell(q(r['issued']), n: true, value: r['issued']), RCell(n(r['dieselCost']), n: true, value: r['dieselCost']),
+            RCell(n(r['rent']), n: true, value: r['rent']), RCell(q(r['issued']), n: true, value: r['issued']), RCell(n(r['dieselCost']), n: true, value: r['dieselCost']), RCell(n(r['maint']), n: true, value: r['maint']),
             RCell(nOf(r['recover']) != 0 ? '− ${money(r['recover'])}' : '–', n: true, value: r['recover']), mc(r['net'], bold: true),
             RCell(blankV(r['perHr']) ? '–' : money(r['perHr']), n: true, value: r['perHr']), RCell(blankV(r['perKm']) ? '–' : money(r['perKm']), n: true, value: r['perKm']),
             tc('${blankV(r['actualAvg']) ? '–' : fmt(r['actualAvg'])} / ${nOf(r['stdAvg']) != 0 ? fmt(r['stdAvg']) : '–'} ${r['avgUnit'] ?? ''}'),
           ]));
-          rows.add(RRow([const RCell(''), RCell(how(r), span: 14, tone: 'muted')]));
+          rows.add(RRow([const RCell(''), RCell(how(r), span: 15, tone: 'muted')]));
         }
-        rows.add(RRow([RCell('${g['ownership']} total', bold: true, span: 5), RCell(q(g['hrs']), n: true), RCell(q(g['km']), n: true), RCell(n(g['rent']), n: true), RCell(q(g['issued']), n: true), RCell(n(g['dieselCost']), n: true),
+        rows.add(RRow([RCell('${g['ownership']} total', bold: true, span: 5), RCell(q(g['hrs']), n: true), RCell(q(g['km']), n: true), RCell(n(g['rent']), n: true), RCell(q(g['issued']), n: true), RCell(n(g['dieselCost']), n: true), RCell(n(g['maint']), n: true),
           RCell(nOf(g['recover']) != 0 ? '− ${money(g['recover'])}' : '–', n: true), mc(g['net']), const RCell(''), const RCell(''), const RCell('')], kind: RKind.sub));
       }
       return RDoc(
@@ -194,13 +203,66 @@ final kDieselReports = <ReportDef>[
         period: _period(d),
         portrait: false,
         file: _file('Machinery_Cost', d),
-        meta: _meta(d, 'Diesel rate ₹${fmt(d['rate'])} per Ltr (the rate the bills use)'),
-        kpis: [('Machinery', '${tot['machines'] ?? 0}'), ('Rent', '₹${money(tot['rent'])}'), ('Diesel cost', '₹${money(tot['dieselCost'])}'), ('Recovered from parties', '₹${money(tot['recover'])}'), ('Net cost', '₹${money(tot['net'])}'), for (final g in gs) ('${g['ownership']}', '₹${money(g['net'])}')],
+        meta: _meta(d, card ? 'Fuel cost as the fills cost (card + cash)' : 'Diesel rate ₹${fmt(d['rate'])} per Ltr (the rate the bills use)'),
+        kpis: [('Machinery', '${tot['machines'] ?? 0}'), ('Rent', '₹${money(tot['rent'])}'), ('$fu cost', '₹${money(tot['dieselCost'])}'), ('Maintenance', '₹${money(tot['maint'])}'), ('Recovered from parties', '₹${money(tot['recover'])}'), ('Net cost', '₹${money(tot['net'])}'), for (final g in gs) ('${g['ownership']}', '₹${money(g['net'])}')],
         blocks: [
-          RTable(sheet: 'Machinery cost', head: const ['Sr', 'Machinery', 'Type', 'Owner', 'Days worked', 'Hrs', 'KM', 'Rent (₹)', 'Diesel (Ltr)', 'Diesel cost (₹)', 'Recovered (₹)', 'Net cost (₹)', '₹ / Hr', '₹ / KM', 'Average (actual / standard)'], numCols: const {4, 5, 6, 7, 8, 9, 10, 11, 12, 13}, rows: rows, foot: [
-            RRow([const RCell('Grand total', bold: true, span: 5), RCell(q(tot['hrs']), n: true), RCell(q(tot['km']), n: true), RCell(n(tot['rent']), n: true), RCell(q(tot['issued']), n: true), RCell(n(tot['dieselCost']), n: true),
+          RTable(sheet: 'Machinery cost', head: ['Sr', 'Machinery', 'Type', 'Owner', 'Days worked', 'Hrs', 'KM', 'Rent (₹)', '$fu (Ltr)', '$fu cost (₹)', 'Maintenance (₹)', 'Recovered (₹)', 'Net cost (₹)', '₹ / Hr', '₹ / KM', 'Average (actual / standard)'], numCols: const {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, rows: rows, foot: [
+            RRow([const RCell('Grand total', bold: true, span: 5), RCell(q(tot['hrs']), n: true), RCell(q(tot['km']), n: true), RCell(n(tot['rent']), n: true), RCell(q(tot['issued']), n: true), RCell(n(tot['dieselCost']), n: true), RCell(n(tot['maint']), n: true),
               RCell(nOf(tot['recover']) != 0 ? '− ${money(tot['recover'])}' : '–', n: true), mc(tot['net']), const RCell(''), const RCell(''), const RCell('')], kind: RKind.grand),
           ]),
+        ],
+      );
+    },
+  ),
+  /* (3.89.0, Mechanical update-214, asked 08-11-2026 – the HO features, step B: "Driver nusar report") THE DRIVER-WISE REPORT – the
+   * server's rptDriver: each driver's days, KM / Hrs / trips (Log Book), fills (litres; at a site on fuel cards their ₹), and machinery by
+   * machinery his average against the standard. As the web draws it. */
+  ReportDef(
+    key: 'driver',
+    label: 'Driver-wise Report',
+    mr: 'ड्रायव्हर नुसार',
+    fn: 'rptDriver',
+    pic: 'sport_utility_vehicle',
+    portrait: false,
+    filters: const ['range'],
+    note: 'Every driver (the name written in the Log Book and on the fills) in the dates: the days he drove, his KM / Hrs / trips (Log Book), his fills and litres (a site on fuel cards: their ₹), and machinery by machinery his average – his work ÷ his fills – against the standard.',
+    build: (d) {
+      final ds = listOf(d['drivers']), tot = mapOf(d['total']), card = d['card'] == true;
+      const tone = {'bad': 'bad', 'more': 'warn', 'ok': 'good', 'less': 'good', 'check': 'info'};
+      String q(dynamic v) => blankV(v) || nOf(v) == 0 ? '–' : fmt(v);
+      RCell qc(dynamic v) => RCell(q(v), n: true, value: blankV(v) ? null : nOf(v));
+      final sum = <RRow>[];
+      for (var i = 0; i < ds.length; i++) {
+        final x = ds[i], more = nOf(x['more']).toInt();
+        sum.add(RRow([sc(i + 1), tc(x['name'], bold: true), qc(x['days']), nc(x['machines']), qc(x['km']), qc(x['hrs']), qc(x['trips']), qc(x['fills']), qc(x['qty']),
+          if (card) RCell(nOf(x['amount']) != 0 ? money(x['amount']) : '–', n: true, value: x['amount']), RCell(more > 0 ? '$more machinery' : '–', bold: more > 0, tone: more > 0 ? 'warn' : '')]));
+      }
+      final det = <RRow>[];
+      for (final x in ds) {
+        final rs = listOf(x['rows']), days = nOf(x['days']).toInt();
+        det.add(grp('${x['name']}  |  $days day${days == 1 ? '' : 's'}  |  ${x['machines']} machinery', card ? 13 : 12));
+        for (var i = 0; i < rs.length; i++) {
+          final r = rs[i];
+          det.add(RRow([sc(i + 1), tc(r['no'], bold: true), tc(r['type']), qc(r['days']), qc(r['km']), qc(r['hrs']), qc(r['trips']), qc(r['fills']), RCell(nOf(r['qty']) != 0 ? '${fmt(r['qty'])} ${r['fuelUnit'] ?? ''}' : '–', n: true, value: r['qty']),
+            if (card) RCell(nOf(r['amount']) != 0 ? money(r['amount']) : '–', n: true, value: r['amount']), tc(blankV(r['actual']) ? '–' : r['actual'], bold: true), tc(blankV(r['std']) ? '–' : r['std']),
+            tc(blankV(r['status']) ? '–' : r['status'], bold: true, tone: tone['${r['statusCode']}'] ?? 'muted')]));
+        }
+      }
+      final nd = nOf(tot['drivers']).toInt();
+      return RDoc(
+        title: '${d['title'] ?? 'Driver-wise Report'}',
+        period: _period(d),
+        portrait: false,
+        file: _file('Driver_wise', d),
+        meta: _meta(d, 'His average = his KM ÷ his litres (or his litres ÷ his Hrs) on that machinery; More diesel over 10 %, Bad over 30 % of the standard'),
+        kpis: [('Drivers', '$nd'), ('Days driven', q(tot['days'])), ('KM', q(tot['km'])), ('Hrs', q(tot['hrs'])), ('Fuel', '${q(tot['qty'])} Ltr'), if (card) ('Fuel ₹', '₹${money(tot['amount'])}'), ('More diesel', nOf(tot['more']) > 0 ? '${fmt(tot['more'])} machinery' : '–')],
+        blocks: [
+          RTable(sheet: 'Summary', title: 'Summary', head: ['Sr', 'Driver', 'Days', 'Machinery', 'KM', 'Hrs', 'Trips', 'Fills', 'Fuel (Ltr)', if (card) 'Fuel (₹)', 'More diesel on'], numCols: {2, 3, 4, 5, 6, 7, 8, if (card) 9}, rows: sum,
+            empty: 'No Log Book day or fill in these dates.', foot: [
+              RRow([RCell('Total – $nd driver${nd == 1 ? '' : 's'}', bold: true, span: 2), qc(tot['days']), const RCell(''), qc(tot['km']), qc(tot['hrs']), qc(tot['trips']), qc(tot['fills']), qc(tot['qty']), if (card) mc(tot['amount']), const RCell('')], kind: RKind.grand),
+            ]),
+          if (ds.isNotEmpty)
+            RTable(sheet: 'Details', title: 'Machinery by machinery', head: ['Sr', 'Machinery', 'Type', 'Days', 'KM', 'Hrs', 'Trips', 'Fills', 'Fuel', if (card) 'Fuel (₹)', 'His average', 'Standard', 'Status'], numCols: {3, 4, 5, 6, 7, 8, if (card) 9}, rows: det),
         ],
       );
     },

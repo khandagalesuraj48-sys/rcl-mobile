@@ -648,6 +648,48 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/16_report_stock.png'));
   }, tags: ['golden']);
 
+  testWidgets('(3.89.0, Mechanical update-214) Reports → Machinery: the Driver-wise Report and the Machinery Cost Sheet with Maintenance', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-machinery')));
+    await net(t);
+    expect(find.text('Driver-wise Report'), findsOneWidget);
+    await t.tap(find.text('Driver-wise Report'));
+    await net(t);
+    await tapK(t, 'rep-go');
+    await net(t);
+    expect(srv.reportAsked.last['fn'], 'rptDriver');
+    expect(find.byKey(const Key('rtable-Summary')), findsOneWidget);
+    expect(find.text('Ramesh Pawar'), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9n_report_driver.png'));
+  }, tags: ['golden']);
+
+  testWidgets('(3.89.0, Mechanical update-214) the Machinery Cost Sheet with Maintenance (its bills + the Store\'s outward)', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Reports').last);
+    await net(t);
+    await t.tap(find.byKey(const Key('rt-machinery')));
+    await net(t);
+    await t.tap(find.text('Machinery Cost Sheet'));
+    await net(t);
+    await tapK(t, 'rep-go');
+    await net(t);
+    expect(srv.reportAsked.last['fn'], 'rptMachineCost');
+    expect(find.text('Maintenance (₹)'), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9o_report_mcost.png'));
+  }, tags: ['golden']);
+
   testWidgets('(3.2.0) Monthly Diesel & Average: the day-by-day table with its status, sideways on the phone', (t) async {
     phone(t);
     final srv = FakeServer();

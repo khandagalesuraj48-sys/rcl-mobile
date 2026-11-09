@@ -85,6 +85,7 @@ List<(String, String, String, String)> reportsOf(Session s) => [
         if (!s.cardSite) ...[('Stock Register', 'स्टॉक रजिस्टर', 'rp-stock', 'oil_drum'), ('Diesel Purchase Register', 'डिझेल खरेदी रजिस्टर', 'rp-purchase', 'receipt')],
         ('Diesel Cost Report', 'डिझेल खर्च', 'rp-cost', 'receipt'),
         ('Machinery Cost Sheet', 'यंत्र खर्च', 'rp-mcost', 'tractor'),
+        ('Driver-wise Report', 'ड्रायव्हर नुसार', 'rp-driver', 'sport_utility_vehicle'),      // (3.89.0, Mechanical update-214)
         ('Owner / Vendor-wise Summary', 'मालक / vendor नुसार', 'rp-owner', 'office_building'),
         ('Type-wise Summary', 'प्रकारानुसार', 'rp-type', 'articulated_lorry'),
         ('Month vs Month', 'महिना विरुद्ध महिना', 'rp-compare', 'calendar'),

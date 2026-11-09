@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.89.0 (08-11-2026 – the HO features, step B; with Mechanical update-214):** the **Driver-wise Report** (Reports → Machinery;
+`core/report_defs.dart` 'driver' – the server's rptDriver): each driver's days, KM / Hrs / trips (Log Book), fills and litres (a site on
+fuel cards: their ₹), and machinery by machinery his average against the standard; "(no driver written)" at the end. The **Machinery Cost
+Sheet** has **Maintenance (₹)** – its bills + the RCL Store's outward (an issue on debit not counted) – in the net cost and the ₹ / KM; at a
+site on fuel cards the fuel cost is what its fills cost. Excel and PDF as every report.
+
 **Version 3.88.0 (08-11-2026 – the HO features "ek sath … ho sathi pn ani other site sathi pn", step A; with Mechanical update-213):**
 **vehicle alerts** at every site (`core/veh_alerts.dart`, `screens/veh_alerts.dart`): the server's getVehAlerts – papers expired / due
 within 30 days, the service (Asset Master → **Service every** KM / Hrs / months, `screens/machine_form.dart`; from the last maintenance
