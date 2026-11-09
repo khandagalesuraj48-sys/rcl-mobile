@@ -1,7 +1,8 @@
 /* PURCHASE – the app's own screen (3.72.0) of the Purchase module (rcl-purchase, the Purchase Department – one for every site):
  * Home → Purchase. Its Dashboard as the web's: the sites where he has Purchase (the site open now marked) and his role there. Its
- * own sign-in (a ticket of the Portal for 'purchase', used once – api.purOpen); nothing is saved from here. The purchase work
- * comes page by page on the web – each with its own screen here in the same piece of work. */
+ * own sign-in (a ticket of the Portal for 'purchase', used once – api.purOpen). The purchase work comes page by page on the web –
+ * each with its own screen here in the same piece of work: (3.94.0, Purchase Phase 1) the Inbox, Enquiries, Quotations, the
+ * Comparative Statement, Waiting for my approval (Admin), Suppliers and the CS limit (Super Admin) – purchase_work.dart. */
 import 'package:flutter/material.dart' hide Text;
 
 import '../ui/ask_bot.dart';
@@ -9,6 +10,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'purchase_work.dart';
 
 Future<void> openPurchase(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PurchaseScreen()));
 
@@ -59,6 +61,33 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     }
   }
 
+  // (3.94.0) the pages of Purchase as the web's menu: the Admin – Waiting for my approval; the Super Admin – the CS limit
+  List<Widget> _pages(PurMe m) {
+    Widget card(String key, String en, String mr, String sub, IconData ic, Color c, Color soft, Widget Function() page) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Press(
+            key: Key(key),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page())),
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
+              Container(width: 46, height: 46, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(14)), child: Icon(ic, color: c, size: 25)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [TwoLang(en, mr, size: 16, weight: FontWeight.w700), const SizedBox(height: 2), Text(sub, style: const TextStyle(fontSize: 12.5, color: C.muted))])),
+              const Icon(Icons.chevron_right_rounded, color: C.faint),
+            ]),
+          ),
+        );
+    return [
+      card('pur-inbox', 'Inbox – to order', 'Inbox – मागवायचे', 'The approved requirements of your sites', Icons.move_to_inbox_rounded, C.blue, C.blueSoft, () => PurInboxScreen(me: m)),
+      card('pur-rfq', 'Enquiries (RFQ)', 'Enquiry (RFQ)', 'Made from the Inbox, sent to the suppliers', Icons.forward_to_inbox_rounded, C.purple, C.purpleSoft, () => PurRfqListScreen(me: m)),
+      card('pur-quotes', 'Quotations', 'दरपत्रके', 'Each supplier\'s rates, as he gave them', Icons.request_quote_rounded, C.amber, C.amberSoft, () => PurRfqListScreen(me: m, mode: 'quotes')),
+      card('pur-cs', 'Comparative Statement', 'तुलनात्मक तक्ता', 'Without GST, L1 marked, given line by line', Icons.compare_arrows_rounded, C.green, C.greenSoft, () => PurRfqListScreen(me: m, mode: 'cs')),
+      if (m.admin) card('pur-approve', 'Waiting for my approval', 'माझ्या मंजुरीसाठी', 'Comparative statements to decide', Icons.how_to_reg_rounded, C.orange, C.orangeSoft, () => PurApproveScreen(me: m)),
+      card('pur-vendors', 'Suppliers', 'पुरवठादार', 'One list for every site', Icons.storefront_rounded, C.slate, C.slateSoft, () => PurVendorsScreen(me: m)),
+      if (m.superAdmin) card('pur-settings', 'CS approval limit', 'CS मंजुरी मर्यादा', 'Up to it a Purchase Admin, above it the Super Admin', Icons.tune_rounded, C.slate, C.slateSoft, () => const PurSettingsScreen()),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), u = (me?['user'] as Map?) ?? const {}, role = purRole('${u['role'] ?? ''}');
@@ -83,6 +112,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   const SizedBox(height: 4),
                   Text(bi('One Purchase for every site – the sites of today and every new one.', 'सर्व sites साठी एकच खरेदी विभाग.'), style: const TextStyle(fontSize: 13.5, color: C.muted, height: 1.35)),
                   const SizedBox(height: 14),
+                  for (final p in _pages(PurMe('${u['role'] ?? ''}', '${u['name'] ?? ''}', '${u['email'] ?? ''}'))) p,
+                  const SizedBox(height: 6),
                   Container(
                     key: const Key('pur-count'),
                     padding: const EdgeInsets.all(14),

@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.94.0 (09-11-2026 – Purchase Phase 1; with rcl-purchase's step 2 and the Store's `api/purinbox.js`):** **Purchase** –
+its work in the app (`screens/purchase_work.dart`, Home → Purchase, the cards under the Dashboard): **Inbox – to order** (the approved
+requirement lines of his sites still to order, from each site's Store; a line already in an enquiry shown with it; tick → "Make
+enquiry"), **Enquiries (RFQ)** (status chips; the enquiry – lines, the suppliers asked, "Share on WhatsApp", "Mark as sent", "Change",
+"Cancel enquiry" with why; the form – date, need-by, remark, each line's quantity, at least 2 suppliers), **Quotations** (each
+supplier's rate, discount %, GST %, delivery days a line; freight, loading, terms, valid till; the net, the amount and the total
+without GST as typed; the earlier versions), **Comparative Statement** (WITHOUT GST, L1 marked, each line given to its supplier by a
+tap, "Why not L1", fewer than 2 quotations – why; who approves it by the amount; Save / Send for approval / Approve / Send back /
+Reject; the decisions), **Waiting for my approval** (Purchase Admin / Super Admin), **Suppliers** (add / change; Block with why /
+Approve again – the Admin) and the **CS approval limit** (the Super Admin). The same actions, checks and access as the web
+(`api.pur` – Purchase's own sign-in by a Portal ticket, kept, a new one when it has ended). The printed enquiry and CS stay on the web.
+
 **Version 3.93.0 (09-11-2026 – Engineering 2A; with rcl-engineering's step 3):** **Engineering** – its own screens for the first time
 (`screens/engineering.dart`, Home → Engineering, when the site has the module): **RFI** (the waiting ones / approved / rejected / all;
 "Ask RFI" – day, work, layer, side, chainage from–to or a quantity, note; the Engineering Admin / Super Admin records "IE's answer";

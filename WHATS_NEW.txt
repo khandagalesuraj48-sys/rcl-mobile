@@ -1,3 +1,3 @@
-New: Engineering in the app – RFI (ask the IE to inspect a layer; the Admin records the IE's answer), Hindrances (what stopped the work – for an extension of time) and PPC (plan lines done as planned). Home → Engineering.
-नवीन: app मध्ये Engineering – RFI (layer तपासण्यासाठी IE ला सांगा; Admin IE चे उत्तर नोंदवतो), अडथळे (काम कशामुळे थांबले – मुदतवाढीसाठी) आणि PPC (नियोजनाप्रमाणे झालेले काम). Home → Engineering.
-नया: app में Engineering – RFI (layer जाँचने के लिए IE से कहें; Admin IE का जवाब दर्ज करते हैं), बाधाएँ (काम किस कारण रुका – समय विस्तार के लिए) और PPC (योजना अनुसार हुआ काम)। Home → Engineering।
+New: Purchase in the app – the Inbox of approved requirements, enquiries to suppliers (share on WhatsApp), their quotations, the comparative statement (without GST, L1 marked) and its approval by amount, suppliers. Home → Purchase.
+नवीन: app मध्ये खरेदी – मंजूर requirement चा Inbox, पुरवठादारांना enquiry (WhatsApp वर), त्यांची दरपत्रके, तुलनात्मक तक्ता (GST शिवाय, L1 दाखवलेले) व रकमेनुसार मंजुरी, पुरवठादार. Home → Purchase.
+नया: app में खरीद – मंज़ूर requirement का Inbox, सप्लायरों को enquiry (WhatsApp पर), उनके कोटेशन, तुलनात्मक विवरण (GST के बिना, L1 दिखाया) और रकम के हिसाब से मंज़ूरी, सप्लायर। Home → Purchase।
