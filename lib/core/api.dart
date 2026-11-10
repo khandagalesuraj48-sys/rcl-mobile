@@ -101,6 +101,8 @@ class Api {
     _storeKey = '';
     _engCookie = '';
     _engKey = '';
+    _purCookie = '';
+    _purKey = '';
     for (final k in [kCookie, kToken, kSite, 'mech_url', 'alerts_seen', 'live_at']) {
       await keep.write(k, null);
     }
@@ -512,16 +514,37 @@ class Api {
   }
 
   // ---------------- Purchase (3.72.0) ----------------
+  String _purCookie = '', _purKey = '';
+
   /// (3.72.0, rcl-purchase – the Purchase Department, one for every site) Purchase's sign-in on [siteCode] – as Engineering's: a
   /// ticket of the Portal for the module 'purchase', POST <purchase>/api/sso { ticket }. The answer: who, his role (super / admin /
-  /// user), the site open now and every site where he has Purchase (its Dashboard). Its cookie (rcl_pur) is kept when Purchase has
-  /// pages that ask its server.
+  /// user), the site open now and every site where he has Purchase (its Dashboard). (3.94.0) Its cookie (rcl_pur) is kept for the
+  /// Purchase pages (api.pur).
   Future<Map<String, dynamic>> purOpen(String siteCode, String purUrl) async {
     final t = await ticket(siteCode, 'purchase');
     final r = await _send(() => _c.post(Uri.parse('$purUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
     final j = _json(r, 'Purchase');
     if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
+    final m = RegExp(r'rcl_pur=([^;]*)').firstMatch(r.headers['set-cookie'] ?? '');
+    _purCookie = m == null ? '' : 'rcl_pur=${m.group(1)}';
+    _purKey = '$siteCode|$purUrl';
     return j;
+  }
+
+  /// (3.94.0, Purchase Phase 1) POST <purchase>/api/pur { action, … } with his Purchase sign-in of this site – the same actions,
+  /// checks and access as the web's pages; a new sign-in when it has ended (once).
+  Future<Map<String, dynamic>> pur(String siteCode, String purUrl, Map<String, dynamic> body) async {
+    for (var tryNo = 1;; tryNo++) {
+      if (_purCookie.isEmpty || _purKey != '$siteCode|$purUrl') await purOpen(siteCode, purUrl);
+      final r = await _send(() => _c.post(Uri.parse('$purUrl/api/pur'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _purCookie}, body: jsonEncode(body)));
+      final j = _json(r, 'Purchase');
+      if (r.statusCode == 401 && j['code'] == 'session' && tryNo == 1) {
+        _purCookie = '';
+        continue;
+      }
+      if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
+      return j;
+    }
   }
 
   /// Signs out of Mechanical and of the Portal (one sign-out for every module, as on the web).

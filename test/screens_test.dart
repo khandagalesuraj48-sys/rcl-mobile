@@ -2464,6 +2464,9 @@ void main() {
     expect(srv.purSent.length, 2, reason: 'a fresh sign-in each time it is opened');
     expect(find.byKey(const Key('pur-dash')), findsOneWidget);
     expect(find.text('Purchase Department'), findsOneWidget);
+    // (3.94.0) the cards of Purchase's work come first – his sites below them
+    await t.scrollUntilVisible(find.byKey(const Key('pur-site-T2')), 200, scrollable: find.byType(Scrollable).first);
+    await settle(t, 300);
     expect(find.descendant(of: find.byKey(const Key('pur-count')), matching: find.text('2')), findsOneWidget);
     expect(find.byKey(const Key('pur-site-S1')), findsOneWidget);
     expect(find.byKey(const Key('pur-site-T2')), findsOneWidget);
@@ -2478,6 +2481,8 @@ void main() {
     srv.purRole = 'user';
     await t.tap(find.text('Purchase'));
     await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('pur-count')), 200, scrollable: find.byType(Scrollable).first);
+    await settle(t, 300);
     expect(find.descendant(of: find.byKey(const Key('pur-count')), matching: find.text('1')), findsOneWidget);
     expect(find.byKey(const Key('pur-site-T2')), findsNothing);
     expect(find.textContaining('Purchase User'), findsWidgets);
@@ -6789,6 +6794,156 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('erf-row-RFI-0003')), findsOneWidget);
     expect(find.byKey(const Key('erf-dec-RFI-0003')), findsNothing);
+  }, tags: ['golden']);
+
+  // (3.94.0, rcl-purchase "Purchase Phase 1", asked 09-11-2026: "ek sath enginnering modual purchase modual banwayla surwat kr") the app's own Purchase screens
+  testWidgets('(3.94.0) Purchase: Inbox → enquiry (2 suppliers) → sent → a quotation; a CS approved from "Waiting for my approval"; a supplier added, one blocked; the CS limit (Super Admin); a User', (t) async {
+    phone(t);
+    final srv = FakeServer()..purSite = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    Future<void> openPurchase() async {
+      await t.ensureVisible(find.text('Purchase'));
+      await settle(t, 400);
+      await t.tap(find.text('Purchase'));
+      await net(t);
+    }
+
+    Future<void> card(String key) async {
+      // (a long screen builds what is near the view only: scrolled to it first)
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    Future<void> type(String key, String v) => t.enterText(find.descendant(of: find.byKey(Key(key)), matching: find.byType(TextField)), v);
+    await openPurchase();
+    expect(find.byKey(const Key('pur-inbox')), findsOneWidget);
+    expect(find.byKey(const Key('pur-approve')), findsOneWidget, reason: 'a Purchase Admin: Waiting for my approval');
+    expect(find.byKey(const Key('pur-settings')), findsNothing, reason: 'the CS limit: the Super Admin only');
+    expect([for (final x in srv.purSent) x['fn'] ?? x['action']], ['sso'], reason: 'the cards ask nothing until opened');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_pur_home.png'));
+    // ---- the Inbox: a line already in an enquiry cannot be ticked; two free lines (two sites) → a new enquiry with two suppliers
+    await card('pur-inbox');
+    expect(find.text('RFQ-0001 · Quotes in'), findsWidgets, reason: 'a line already in an enquiry: shown with it');
+    await t.tap(find.byKey(const Key('pin-S1:7:1')));
+    await settle(t, 300);
+    expect(find.byKey(const Key('pin-make')), findsNothing, reason: 'the taken line is not ticked');
+    await t.tap(find.byKey(const Key('pin-S1:7:2')));
+    await settle(t, 300);
+    await t.ensureVisible(find.byKey(const Key('pin-T2:3:1')));
+    await t.tap(find.byKey(const Key('pin-T2:3:1')));
+    await settle(t, 300);
+    expect(find.text('2 lines ticked'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_pur_inbox.png'));
+    await t.tap(find.byKey(const Key('pin-make')));
+    await net(t);
+    expect(find.byKey(const Key('prf-form')), findsOneWidget);
+    expect(find.byKey(const Key('prf-v-3')), findsNothing, reason: 'a Blocked supplier is not asked');
+    await card('prf-v-1');
+    await card('prf-v-2');
+    await card('prf-save');
+    final made = srv.purSent.lastWhere((x) => x['action'] == 'rfqSave');
+    expect(made['lines'], [{'site': 'S1', 'req_no': 7, 'req_line': 2, 'qty': '40'}, {'site': 'T2', 'req_no': 3, 'req_line': 1, 'qty': '4'}]);
+    expect([made['date'], made['need_by'], made['vendors']], ['2026-10-14', '2026-10-18', [1, 2]], reason: 'the earliest need-by of its lines');
+    expect(find.byKey(const Key('prv-view')), findsOneWidget, reason: 'the new enquiry opened');
+    // ---- marked as sent; Asha's quotation typed as she gave it
+    await card('prv-send');
+    await t.tap(find.text('Mark as sent').last);
+    await net(t);
+    expect([srv.purRfqs.last['no'], srv.purRfqs.last['status']], [2, 'Sent']);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9za_pur_rfq.png'));
+    await card('prv-q-1');
+    expect(find.byKey(const Key('pqf-form')), findsOneWidget);
+    await type('pqf-rate-1', '120');
+    await type('pqf-gst-1', '18');
+    await type('pqf-rate-2', '850');
+    await type('pqf-disc-2', '5');
+    await t.ensureVisible(find.byKey(const Key('pqf-fr')));
+    await type('pqf-fr', '300');
+    await settle(t, 300);
+    await t.ensureVisible(find.byKey(const Key('pqf-sum')));
+    expect(find.text('₹8,330.00 without GST'), findsOneWidget, reason: '40 × 120 + 4 × 850 less 5 % + freight 300');
+    expect(find.text('GST beside: ₹864.00'), findsOneWidget);
+    await card('pqf-save');
+    final qs = srv.purSent.lastWhere((x) => x['action'] == 'quoteSave');
+    expect([qs['rfq'], qs['vendor'], qs['freight'], (qs['lines'] as List).first, (qs['lines'] as List).last], [2, 1, '300', {'line': 1, 'rate': '120', 'disc': '', 'gst': '18', 'days': ''}, {'line': 2, 'rate': '850', 'disc': '5', 'gst': '', 'days': ''}]);
+    expect(find.byKey(const Key('prv-view')), findsOneWidget, reason: 'back on the enquiry');
+    expect(find.textContaining('Quotation entered'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- Waiting for my approval → CS-0001 (Purchase One's, up to the limit): approved
+    await card('pur-approve');
+    expect(find.byKey(const Key('pap-row-1')), findsOneWidget);
+    await card('pap-row-1');
+    expect(find.byKey(const Key('pcs-view')), findsOneWidget);
+    expect(find.textContaining('a Purchase Admin of S1'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('pcs-c-1-1'), skipOffstage: false), matching: find.text('L1', skipOffstage: false), skipOffstage: false), findsOneWidget, reason: 'L1 marked: line 1 – Asha');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9zb_pur_cs.png'));
+    await card('pcs-ok');
+    await t.tap(find.text('Approve').last);
+    await net(t);
+    final dec = srv.purSent.lastWhere((x) => x['action'] == 'csDecide');
+    expect([dec['no'], dec['version'], dec['act']], [1, 2, 'approve']);
+    expect(srv.purCs[1]!['status'], 'Approved');
+    expect(find.byKey(const Key('pcs-ok')), findsNothing, reason: 'decided once');
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- Suppliers: one added (his PAN from the GST no.), Asha blocked with a reason
+    await card('pur-vendors');
+    expect(find.byKey(const Key('pvn-row-3')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9zc_pur_suppliers.png'));
+    await t.tap(find.byKey(const Key('pvn-new')));
+    await net(t);
+    await type('pvf-name', 'Deepak Cement');
+    await type('pvf-gst', '27PQRST6789K1Z2');
+    await type('pvf-phone', '9890011122');
+    await type('pvf-sup', 'Cement, Sand');
+    await card('pvf-save');
+    final vs = srv.purSent.lastWhere((x) => x['action'] == 'vendorSave');
+    expect([vs['name'], vs['gstin'], vs['pan'], vs['supplies']], ['Deepak Cement', '27PQRST6789K1Z2', 'PQRST6789K', 'Cement, Sand']);
+    expect([srv.purVendors.length, find.byKey(const Key('pvf-form')).evaluate().isEmpty], [4, true], reason: 'saved; back on the list');
+    await card('pvn-st-1');
+    await t.enterText(find.byKey(const Key('note-box')), 'Wrong bills');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    final st = srv.purSent.lastWhere((x) => x['action'] == 'vendorStatus');
+    expect([st['id'], st['ver'], st['status'], st['why']], [1, 1, 'Blocked', 'Wrong bills']);
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- the Super Admin: the CS limit
+    srv.purRole = 'super';
+    await openPurchase();
+    await card('pur-settings');
+    expect(find.text('₹2,00,000.00'), findsOneWidget);
+    await type('pse-lim', '250000');
+    await card('pse-save');
+    expect(srv.purSent.lastWhere((x) => x['action'] == 'settingsSave')['limit'], '250000');
+    expect(find.text('₹2,50,000.00'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- a Purchase User: no approval, no limit
+    srv.purRole = 'user';
+    await openPurchase();
+    expect(find.byKey(const Key('pur-inbox')), findsOneWidget);
+    expect(find.byKey(const Key('pur-approve')), findsNothing);
+    expect(find.byKey(const Key('pur-settings')), findsNothing);
   }, tags: ['golden']);
 
   // ---------------- (3.27.0) the app lock ----------------

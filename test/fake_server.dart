@@ -193,6 +193,38 @@ class FakeServer {
   bool purSite = false;
   String purRole = 'admin';
   final purSent = <Map<String, dynamic>>[];
+  /// (3.94.0, Purchase Phase 1) what Purchase's server keeps: suppliers, enquiries, quotations, comparative statements, the CS limit
+  num? purLimit = 200000;
+  final purVendors = <Map<String, dynamic>>[
+    {'id': 1, 'name': 'Asha Traders', 'gstin': '27ABCDE1234F1Z5', 'pan': 'ABCDE1234F', 'address': 'Nashik', 'phone': '9876543210', 'email': 'sales@asha.test', 'supplies': ['Cement', 'Steel'], 'status': 'Approved', 'status_note': '', 'ver': 1, 'wa': '919876543210'},
+    {'id': 2, 'name': 'Bharat Steel', 'gstin': '', 'pan': '', 'address': '', 'phone': '9822012345', 'email': '', 'supplies': ['Steel'], 'status': 'Approved', 'status_note': '', 'ver': 1, 'wa': '919822012345'},
+    {'id': 3, 'name': 'Chetan Hardware', 'gstin': '', 'pan': '', 'address': 'Pune', 'phone': '9011122233', 'email': '', 'supplies': <String>[], 'status': 'Blocked', 'status_note': 'Late deliveries', 'ver': 2, 'wa': '919011122233'},
+  ];
+  final purRfqs = <Map<String, dynamic>>[
+    {'no': 1, 'site': 'S1', 'date': '2026-10-11', 'need_by': '2026-10-20', 'remark': '', 'status': 'Quotes in', 'status_note': '', 'sent_at': '2026-10-11T06:00:00Z', 'created_name': 'Purchase One', 'ver': 3,
+      'lines': [
+        {'line': 1, 'site': 'S1', 'req_no': 7, 'req_line': 1, 'ref': 'IND-0007', 'code': 'ITM-0001', 'name': 'Cement OPC 53', 'unit': 'Bag', 'qty': 50, 'brand': 'UltraTech', 'spec': ''},
+        {'line': 2, 'site': 'S1', 'req_no': 7, 'req_line': 3, 'ref': 'IND-0007', 'code': 'ITM-0004', 'name': 'TMT bar 12 mm', 'unit': 'MT', 'qty': 2, 'brand': '', 'spec': 'Fe 500D'},
+      ],
+      'vendors': [{'id': 1, 'name': 'Asha Traders'}, {'id': 2, 'name': 'Bharat Steel'}]},
+  ];
+  final purQuotes = <String, Map<String, dynamic>>{
+    '1:1': {'lines': [{'line': 1, 'rate': 380, 'disc': 0, 'gst': 28, 'days': 3}, {'line': 2, 'rate': 56000, 'disc': 0, 'gst': 18, 'days': 7}], 'freight': 500, 'loading': 0, 'pay_terms': '30 days', 'valid_till': '2026-10-30', 'remark': '', 'history': [], 'locked': true, 'ver': 1, 'at': '2026-10-12T05:00:00Z', 'by': 'Purchase One'},
+    '1:2': {'lines': [{'line': 1, 'rate': 385, 'disc': 0, 'gst': 28, 'days': 5}, {'line': 2, 'rate': 55000, 'disc': 0, 'gst': 18, 'days': 4}], 'freight': 1000, 'loading': 0, 'pay_terms': 'Advance', 'valid_till': '2026-10-25', 'remark': '', 'history': [], 'locked': true, 'ver': 1, 'at': '2026-10-12T05:30:00Z', 'by': 'Purchase One'},
+  };
+  final purCs = <int, Map<String, dynamic>>{
+    1: {'no': 1, 'rfq_no': 1, 'site': 'S1', 'status': 'Sent', 'need': 'admin', 'cs_limit': 200000, 'version': 2, 'few_reason': '', 'created_by': 'p1@rcl.test', 'created_name': 'Purchase One', 'sent_name': 'Purchase One', 'sent_at': '2026-10-13T06:00:00Z',
+      'award': {'1': {'vendor': 1, 'reason': ''}, '2': {'vendor': 2, 'reason': ''}}, 'total': 130500, 'gst': 25300, 'trail': <Map<String, dynamic>>[{'at': '2026-10-13T06:00:00Z', 'by': 'p1@rcl.test', 'name': 'Purchase One', 'act': 'Sent', 'why': '', 'total': 130500}],
+      'sheet': {'at': '2026-10-13T05:55:00Z', 'lines': [
+        {'line': 1, 'site': 'S1', 'ref': 'IND-0007', 'code': 'ITM-0001', 'name': 'Cement OPC 53', 'unit': 'Bag', 'qty': 50, 'n': 2, 'l1': [1], 'l1_rate': 390,
+          'q': {'1': {'rate': 380, 'disc': 0, 'net': 380, 'landed': 390, 'value': 19500, 'gst': 28, 'gst_amt': 5320, 'days': 3}, '2': {'rate': 385, 'disc': 0, 'net': 385, 'landed': 400, 'value': 20000, 'gst': 28, 'gst_amt': 5390, 'days': 5}}},
+        {'line': 2, 'site': 'S1', 'ref': 'IND-0007', 'code': 'ITM-0004', 'name': 'TMT bar 12 mm', 'unit': 'MT', 'qty': 2, 'n': 2, 'l1': [2], 'l1_rate': 55500,
+          'q': {'1': {'rate': 56000, 'disc': 0, 'net': 56000, 'landed': 56000, 'value': 112000, 'gst': 18, 'gst_amt': 20160, 'days': 7}, '2': {'rate': 55000, 'disc': 0, 'net': 55000, 'landed': 55500, 'value': 111000, 'gst': 18, 'gst_amt': 19800, 'days': 4}}},
+      ], 'vendors': [
+        {'id': 1, 'name': 'Asha Traders', 'freight': 500, 'loading': 0, 'extra': 500, 'base': 19000, 'pay_terms': '30 days', 'valid_till': '2026-10-30', 'remark': '', 'quoted': 2, 'total': 131500, 'gst': 25480, 'l1': 1},
+        {'id': 2, 'name': 'Bharat Steel', 'freight': 1000, 'loading': 0, 'extra': 1000, 'base': 110000, 'pay_terms': 'Advance', 'valid_till': '2026-10-25', 'remark': '', 'quoted': 2, 'total': 131000, 'gst': 25190, 'l1': 1},
+      ]}},
+  };
   final engSent = <Map<String, dynamic>>[];
   /// (3.93.0, Engineering 2A) Engineering's RFIs and hindrances (what its server keeps); his role there
   String engRole = 'admin';
@@ -698,6 +730,122 @@ class FakeServer {
       };
   List<String> _works(dynamic w) => '${w ?? ''}'.split(',').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
 
+  // (3.94.0, Purchase Phase 1) the answers of rcl-purchase's api/pur.js, kept simple: the same shapes and the checks the screens show
+  http.Response _purAct(Map<String, dynamic> b) {
+    final admin = purRole != 'user', sup = purRole == 'super';
+    String ref(Object? n) => 'RFQ-${'$n'.padLeft(4, '0')}';
+    String csRef(Object? n) => 'CS-${'$n'.padLeft(4, '0')}';
+    Map<String, dynamic>? rfqOf(Object? no) => purRfqs.where((x) => '${x['no']}' == '$no').firstOrNull;
+    bool locked(int no) => ['Sent', 'Approved', 'Rejected'].contains(purCs[no]?['status']);
+    int quotes(int no) => purQuotes.keys.where((k) => k.startsWith('$no:')).length;
+    Map<String, dynamic> rfqOut(Map<String, dynamic> q) => {...q, 'ref': ref(q['no'])};
+    Map<String, dynamic>? csBrief(int no) => purCs[no] == null ? null : {'no': purCs[no]!['no'], 'ref': csRef(purCs[no]!['no']), 'status': purCs[no]!['status'], 'total': purCs[no]!['total']};
+    Map<String, dynamic> rfqGet(Map<String, dynamic> q) {
+      final no = q['no'] as int, st = '${q['status']}', open = st == 'Sent' || st == 'Quotes in';
+      return {'ok': true, 'rfq': rfqOut(q), 'cs': csBrief(no),
+        'vendors': [for (final v in q['vendors'] as List) {...purVendors.firstWhere((y) => y['id'] == v['id']), 'quote': purQuotes['$no:${v['id']}'] == null ? null : {'at': purQuotes['$no:${v['id']}']!['at'], 'by': purQuotes['$no:${v['id']}']!['by'], 'locked': locked(no)}}],
+        'may': {'edit': (st == 'Draft' || open) && !locked(no), 'send': st == 'Draft', 'cancel': st == 'Draft' || open, 'quote': open && !locked(no), 'cs': open && quotes(no) > 0}};
+    }
+    Map<String, dynamic> csGet(int rfq) {
+      final c = purCs[rfq], q = rfqOf(rfq)!;
+      if (c == null) return {'ok': true, 'cs': null, 'rfq': rfqOut(q), 'limit': purLimit, 'quotes': quotes(rfq)};
+      final edit = c['status'] == 'Draft' || c['status'] == 'Sent back', decide = admin && c['status'] == 'Sent' && c['created_by'] != 'sujit@rcl.test' && (c['need'] == 'admin' || sup);
+      return {'ok': true, 'rfq': rfqOut(q), 'limit': purLimit,
+        'cs': {...c, 'ref': csRef(c['no']), 'rfq_ref': ref(rfq), 'limit': purLimit, 'problems': [], 'may': {'edit': edit, 'send': edit, 'decide': decide, 'why': decide ? '' : 'Only a Purchase Admin of S1 or the Super Admin decides it.'}}};
+    }
+    switch (b['action']) {
+      case 'inbox':
+        final taken = {for (final q in purRfqs) if (q['status'] != 'Cancelled') for (final l in q['lines'] as List) '${l['site']}:${l['req_no']}:${l['req_line']}': {'rfq': q['no'], 'status': q['status'], 'cs': purCs[q['no']]?['no']}};
+        Map<String, dynamic> ln(String site, int req, int line, String code, String name, String unit, num qty, num ordered, String brand) =>
+            {'line': line, 'code': code, 'name': name, 'unit': unit, 'qty': qty, 'ordered': ordered, 'left': qty - ordered, 'brand': brand, 'spec': '', 'note': '', 'taken': taken['$site:$req:$line']};
+        return _j({'ok': true, 'link': true, 'today': '2026-10-14', 'sites': [
+          {'site': 'S1', 'name': 'VTR Site – NH 848', 'reqs': [
+            {'no': 7, 'ref': 'IND-0007', 'date': '2026-10-10', 'need_by': '2026-10-20', 'for_kind': 'Machine', 'for_text': 'JCB 3DX', 'remark': '', 'since': '2026-10-10', 'made_by': 'Store One',
+              'lines': [ln('S1', 7, 1, 'ITM-0001', 'Cement OPC 53', 'Bag', 50, 0, 'UltraTech'), ln('S1', 7, 2, 'ITM-0003', 'Binding wire', 'Kg', 40, 0, ''), ln('S1', 7, 3, 'ITM-0004', 'TMT bar 12 mm', 'MT', 2, 0, '')]},
+          ]},
+          {'site': 'T2', 'name': '18B Kolhapur', 'reqs': [
+            {'no': 3, 'ref': 'IND-0003', 'date': '2026-10-12', 'need_by': '2026-10-18', 'for_kind': 'Site', 'for_text': '', 'remark': '', 'since': '2026-10-12', 'made_by': 'Store Two', 'lines': [ln('T2', 3, 1, 'ITM-0002', 'Diesel filter', 'Nos', 6, 2, 'Fleetguard')]},
+          ]},
+        ]});
+      case 'rfqList':
+        return _j({'ok': true, 'rfqs': [
+          for (final q in purRfqs.reversed)
+            if ('${b['status'] ?? ''}'.isEmpty || q['status'] == b['status'])
+              {...rfqOut(q), 'nlines': (q['lines'] as List).length, 'items': (q['lines'] as List).map((l) => l['name']).join(', '), 'sites': {for (final l in q['lines'] as List) l['site']}.toList(), 'quotes': quotes(q['no'] as int), 'cs': csBrief(q['no'] as int)},
+        ]});
+      case 'rfqGet':
+        return _j(rfqGet(rfqOf(b['no'])!));
+      case 'rfqSave':
+        if ((b['lines'] as List).isEmpty) return _j({'error': 'Add at least one line.', 'code': 'field'}, 400);
+        final names = {'S1:7:2': ['ITM-0003', 'Binding wire', 'Kg'], 'S1:7:1': ['ITM-0001', 'Cement OPC 53', 'Bag'], 'T2:3:1': ['ITM-0002', 'Diesel filter', 'Nos']};
+        final no = purRfqs.length + 1;
+        final q = <String, dynamic>{'no': no, 'site': 'S1', 'date': b['date'], 'need_by': b['need_by'], 'remark': b['remark'], 'status': 'Draft', 'status_note': '', 'sent_at': null, 'created_name': 'Sujit Mule', 'ver': 1,
+          'lines': [for (final (i, l) in (b['lines'] as List).indexed) {'line': i + 1, 'site': l['site'], 'req_no': l['req_no'], 'req_line': l['req_line'], 'ref': l['site'] == 'S1' ? 'IND-0007' : 'IND-0003', 'code': names['${l['site']}:${l['req_no']}:${l['req_line']}']![0], 'name': names['${l['site']}:${l['req_no']}:${l['req_line']}']![1], 'unit': names['${l['site']}:${l['req_no']}:${l['req_line']}']![2], 'qty': num.parse('${l['qty']}'), 'brand': '', 'spec': ''}],
+          'vendors': [for (final id in b['vendors'] as List) {'id': id, 'name': purVendors.firstWhere((v) => v['id'] == id)['name']}]};
+        purRfqs.add(q);
+        return _j({...rfqGet(q), 'saved': true});
+      case 'rfqSend':
+        final q = rfqOf(b['no'])!;
+        q['status'] = 'Sent';
+        q['sent_at'] = '2026-10-14T07:00:00Z';
+        q['ver'] = (q['ver'] as int) + 1;
+        return _j({...rfqGet(q), 'saved': true});
+      case 'rfqCancel':
+        final q = rfqOf(b['no'])!;
+        q['status'] = 'Cancelled';
+        q['status_note'] = b['why'];
+        return _j({...rfqGet(q), 'saved': true});
+      case 'quoteGet':
+      case 'quoteSave':
+        final no = b['rfq'] as int, q = rfqOf(no)!, k = '$no:${b['vendor']}';
+        if (b['action'] == 'quoteSave') {
+          purQuotes[k] = {'lines': [for (final l in b['lines'] as List) {'line': l['line'], 'rate': num.tryParse('${l['rate']}'), 'disc': num.tryParse('${l['disc']}') ?? 0, 'gst': num.tryParse('${l['gst']}'), 'days': num.tryParse('${l['days']}')}],
+            'freight': num.tryParse('${b['freight']}') ?? 0, 'loading': num.tryParse('${b['loading']}') ?? 0, 'pay_terms': b['pay_terms'], 'valid_till': '${b['valid_till']}'.isEmpty ? null : b['valid_till'], 'remark': b['remark'], 'history': [], 'locked': false, 'ver': 1, 'at': '2026-10-14T07:10:00Z', 'by': 'Sujit Mule'};
+          if (q['status'] == 'Sent') q['status'] = 'Quotes in';
+        }
+        return _j({'ok': true, if (b['action'] == 'quoteSave') 'saved': true, 'rfq': rfqOut(q), 'vendor': {'id': b['vendor'], 'name': purVendors.firstWhere((v) => v['id'] == b['vendor'])['name']}, 'quote': purQuotes[k], 'may': {'save': (q['status'] == 'Sent' || q['status'] == 'Quotes in') && !locked(no)}, 'cs': csBrief(no)});
+      case 'csGet':
+        return _j(csGet(b['rfq'] as int));
+      case 'csDecide':
+        final c = purCs.values.firstWhere((x) => x['no'] == b['no']);
+        if (c['version'] != b['version']) return _j({'error': 'It was changed by someone else just now – it is loaded again: look and save once more.', 'code': 'changed'}, 409);
+        c['status'] = {'approve': 'Approved', 'back': 'Sent back', 'reject': 'Rejected'}[b['act']];
+        c['decided_name'] = 'Sujit Mule';
+        c['decided_at'] = '2026-10-14T08:00:00Z';
+        c['version'] = (c['version'] as int) + 1;
+        (c['trail'] as List).add({'at': '2026-10-14T08:00:00Z', 'by': 'sujit@rcl.test', 'name': 'Sujit Mule', 'act': c['status'], 'why': b['why'], 'total': c['total']});
+        return _j({...csGet(c['rfq_no'] as int), 'saved': true});
+      case 'csList':
+        return _j({'ok': true, 'list': [
+          for (final c in purCs.values)
+            if (admin && c['status'] == 'Sent')
+              {'no': c['no'], 'ref': csRef(c['no']), 'rfq_no': c['rfq_no'], 'rfq_ref': ref(c['rfq_no']), 'site': c['site'], 'status': c['status'], 'total': c['total'], 'gst': c['gst'], 'items': (rfqOf(c['rfq_no'])!['lines'] as List).map((l) => l['name']).join(', '), 'sent_name': c['sent_name'], 'sent_at': c['sent_at']},
+        ]});
+      case 'vendorList':
+        return _j({'ok': true, 'vendors': purVendors, 'mayStatus': admin});
+      case 'vendorSave':
+        if ('${b['name']}'.trim().length < 2) return _j({'error': 'Enter the supplier\'s name.', 'code': 'field'}, 400);
+        final v = <String, dynamic>{'id': purVendors.length + 1, 'name': b['name'], 'gstin': b['gstin'], 'pan': b['pan'], 'address': b['address'], 'phone': b['phone'], 'email': b['email'],
+          'supplies': [for (final t in '${b['supplies']}'.split(',')) if (t.trim().isNotEmpty) t.trim()], 'status': 'Approved', 'status_note': '', 'ver': 1, 'wa': '91${b['phone']}'};
+        purVendors.add(v);
+        return _j({'ok': true, 'saved': true, 'vendor': v});
+      case 'vendorStatus':
+        final v = purVendors.firstWhere((x) => x['id'] == b['id']);
+        v['status'] = b['status'];
+        v['status_note'] = b['status'] == 'Blocked' ? b['why'] : '';
+        v['ver'] = (v['ver'] as int) + 1;
+        return _j({'ok': true, 'saved': true, 'vendor': v});
+      case 'settings':
+      case 'settingsSave':
+        if (b['action'] == 'settingsSave') {
+          if (!sup) return _j({'error': 'Only the Super Admin sets the CS limit.', 'code': 'access'}, 403);
+          purLimit = num.parse('${b['limit']}'.replaceAll(',', ''));
+        }
+        return _j({'ok': true, 'limit': purLimit, 'by': 'sujit@rcl.test', 'at': '2026-10-14T08:00:00Z', 'maySet': sup});
+    }
+    return _j({'error': 'Unknown action.', 'code': 'action'}, 404);
+  }
+
   http.Response _j(Object o, [int code = 200, Map<String, String> h = const {}]) => http.Response(jsonEncode(o), code, headers: {'content-type': 'application/json', ...h});
 
   /* ---- (3.17.0) the Portal's Super Admin console (api/admin): its data and its checks, as the Portal's (the same words) ---- */
@@ -1154,6 +1302,12 @@ class FakeServer {
       if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the Purchase page.'}, 403);
       return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': purRole}, 'site': 'S1', 'siteName': 'VTR Site – NH 848',
         'sites': [{'code': 'S1', 'name': 'VTR Site – NH 848'}, if (purRole != 'user') {'code': 'T2', 'name': '18B Kolhapur'}]}, 200, {'set-cookie': 'rcl_pur=S1.pur1; Path=/; HttpOnly; SameSite=Lax'});
+    }
+    if (path.endsWith('/purchase/api/pur')) {
+      final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      purSent.add({'cookie': r.headers['Cookie'], ...b});
+      if (!'${r.headers['Cookie']}'.startsWith('rcl_pur=S1.pur')) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      return _purAct(b);
     }
     if (path.endsWith('/engineering/api/eng')) {
       final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
