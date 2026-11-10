@@ -19,7 +19,7 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 (`ask`, `askNote`, `askLines`, `askChanges` and the other 30 boxes) opens with a **Scale Pop** – from 72 % with a small overshoot – and
 closes with a fade and scale-down (`ui/motion.dart` `popDialog`, the same builder, the same answer, a tap outside as before); every new
 screen **zooms in / out** on Android (theme `pageTransitionsTheme`), the iPhone keeps its own slide and swipe back. The phone's "remove
-animations" stops it all. Visual only – no request waits for a movement.
+animations" stops it all. Visual only – no request waits for a movement. Tests: `test/pop_box_test.dart`.
 
 **Version 3.95.0 (10-11-2026 – Purchase Phase 2 and Engineering 2B; with rcl-purchase step 3, rcl-store step 10, rcl-engineering
 step 4):** **Purchase Orders** (`screens/purchase_work.dart`: an approved CS lists its POs – one a supplier × site – "Make PO": date,
