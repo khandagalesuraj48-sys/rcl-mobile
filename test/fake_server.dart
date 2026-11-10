@@ -194,6 +194,15 @@ class FakeServer {
   String purRole = 'admin';
   final purSent = <Map<String, dynamic>>[];
   final engSent = <Map<String, dynamic>>[];
+  /// (3.93.0, Engineering 2A) Engineering's RFIs and hindrances (what its server keeps); his role there
+  String engRole = 'admin';
+  final engRfi = <Map<String, dynamic>>[
+    {'no': 'RFI-0002', 'day': '2026-10-12', 'work': 'W-001', 'layer': 'L2', 'side': 'LHS', 'ch_from': 40000, 'ch_to': 40400, 'qty': 400, 'note': 'ready', 'status': 'Pending', 'asked_by': 'eng1@rcl.test', 'asked_name': 'Engineer One', 'ver': 1},
+    {'no': 'RFI-0001', 'day': '2026-10-10', 'work': 'W-001', 'layer': 'L1', 'side': 'Both', 'ch_from': 39000, 'ch_to': 40000, 'qty': 1000, 'note': '', 'status': 'Approved', 'ie_day': '2026-10-11', 'ie_name': 'Mr IE', 'ie_ref': 'RFI/18B/42', 'ie_remark': '', 'asked_by': 'sujit@rcl.test', 'asked_name': 'Sujit Mule', 'ver': 2},
+  ];
+  final engHind = <Map<String, dynamic>>[
+    {'no': 'H-0001', 'from_day': '2026-10-04', 'to_day': null, 'ch_from': 55000, 'ch_to': 56000, 'side': 'LHS', 'works': ['W-002'], 'kind': 'Land not handed over', 'detail': 'private land, court case', 'letter': 'NHAI/18B/311', 'status': 'Open', 'created_by': 'eng1@rcl.test', 'days': 11, 'ver': 1},
+  ];
   int engSessions = 0;
   /// (3.61.0, Mechanical update-186) the answer word by word (/api/ai): on or not (off – a server without it: 404); what it was sent;
   /// how a step ends ('end' – its parts from [aiScript]; 'busy' – cut after some words: an err line with cut; 'busy0' / 'credit' – the
@@ -1152,6 +1161,48 @@ class FakeServer {
       if (!'${r.headers['Cookie']}'.startsWith('rcl_eng=S1.eng') || engEnded) {
         engEnded = false;
         return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      }
+      // (3.93.0, Engineering 2A) the set-up, RFIs, hindrances and PPC – the same answers as rcl-engineering's api/eng.js
+      final w = (String item, String name, int sort, List<List<String>> layers) => {'kind': 'work', 'item': item, 'valid_from': '2026-09-01', 'valid_to': null, 'active': true,
+            'data': {'name': name, 'unit': 'm', 'sides': [], 'strip': true, 'sort': sort, 'layers': [for (final l in layers) {'key': l[0], 'name': l[1], 'mm': 200}]}};
+      switch (b['action']) {
+        case 'init':
+          return _j({'ok': true, 'today': '2026-10-14', 'me': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': engRole}, 'road': {'name': 'Package 18B', 'ch_from': 8000, 'ch_to': 61055},
+            'masters': [w('W-001', 'Embankment', 20, [['L1', 'Layer 1'], ['L2', 'Top']]), w('W-002', 'GSB', 40, [['L1', 'Layer 1']])],
+            'assign': [{'email': 'sujit@rcl.test', 'work': 'W-001', 'active': true}], 'people': [], 'reasons': [], 'units': ['m'], 'sides': ['LHS', 'Median', 'RHS'], 'remind': {'due': false},
+            'rfiRule': {'on': true, 'from': '2026-10-01'}});
+        case 'rfiList':
+          final st = '${b['status'] ?? ''}';
+          return _j({'ok': true, 'rows': [for (final x in engRfi) if (st.isEmpty || x['status'] == st) x], 'rule': {'on': true, 'from': '2026-10-01'}, 'decide': engRole != 'user'});
+        case 'rfiSave':
+          if ('${b['from']}'.isEmpty) return _j({'error': 'The RFI: Embankment is measured in metres – give the chainage from and to.', 'code': 'ch'}, 400);
+          final no = 'RFI-${(engRfi.length + 1).toString().padLeft(4, '0')}';
+          final row = {'no': no, 'day': b['day'], 'work': b['work'], 'layer': b['layer'], 'side': b['side'], 'ch_from': _chM('${b['from']}'), 'ch_to': _chM('${b['to']}'), 'note': b['note'], 'status': 'Pending', 'asked_by': 'sujit@rcl.test', 'asked_name': 'Sujit Mule', 'ver': 1};
+          engRfi.insert(0, row);
+          return _j({'ok': true, 'rfi': row});
+        case 'rfiDecide':
+          final x = engRfi.firstWhere((y) => y['no'] == b['no']);
+          if (b['status'] == 'Rejected' && '${b['ie_remark']}'.trim().length < 3) return _j({'error': 'Write why the IE rejected it.', 'code': 'remark'}, 400);
+          x.addAll({'status': b['status'], 'ie_day': b['ie_day'], 'ie_name': b['ie_name'], 'ie_ref': b['ie_ref'], 'ie_remark': b['ie_remark'], 'ver': (x['ver'] as int) + 1});
+          return _j({'ok': true, 'rfi': x});
+        case 'rfiCancel':
+          final x = engRfi.firstWhere((y) => y['no'] == b['no']);
+          x.addAll({'status': 'Cancelled', 'ver': (x['ver'] as int) + 1});
+          return _j({'ok': true, 'rfi': x});
+        case 'hindList':
+          return _j({'ok': true, 'from': b['from'], 'to': b['to'], 'rows': engHind, 'kinds': ['Land not handed over', 'Utility shifting', 'Heavy rain'], 'open': engHind.where((h) => h['to_day'] == null).length,
+            'works': [{'work': 'W-002', 'name': 'GSB', 'days': 11, 'count': 1, 'open': 1}]});
+        case 'hindSave':
+          if ('${b['kind']}'.trim().isEmpty) return _j({'error': 'Say what the hindrance is (e.g. land not handed over, utility shifting, rain).', 'code': 'kind'}, 400);
+          final row = {'no': 'H-${(engHind.length + 1).toString().padLeft(4, '0')}', 'from_day': b['from_day'], 'to_day': '${b['to_day']}'.isEmpty ? null : b['to_day'], 'ch_from': '${b['ch_from']}'.isEmpty ? null : _chM('${b['ch_from']}'), 'ch_to': '${b['ch_to']}'.isEmpty ? null : _chM('${b['ch_to']}'),
+            'side': b['side'], 'works': b['works'], 'kind': b['kind'], 'detail': b['detail'], 'letter': b['letter'], 'status': '${b['to_day']}'.isEmpty ? 'Open' : 'Closed', 'created_by': 'sujit@rcl.test', 'days': 3, 'ver': 1};
+          engHind.insert(0, row);
+          return _j({'ok': true, 'hindrance': row});
+        case 'perf':
+          return _j({'ok': true, 'from': b['from'], 'to': b['to'], 'ppc': {'lines': 24, 'done': 17, 'pct': 71},
+            'weeks': [{'from': '2026-10-01', 'to': '2026-10-07', 'lines': 12, 'done': 9, 'pct': 75}, {'from': '2026-10-08', 'to': '2026-10-14', 'lines': 12, 'done': 8, 'pct': 67}],
+            'people': [{'name': 'Engineer One', 'ppc': {'lines': 14, 'done': 11, 'pct': 79}}, {'name': 'Engineer Two', 'ppc': {'lines': 10, 'done': 6, 'pct': 60}}],
+            'reasons': [{'text': 'Water tanker late', 'times': 4, 'people': ['Engineer One']}, {'text': 'Grader breakdown', 'times': 2, 'people': ['Engineer Two']}]});
       }
       if (b['action'] != 'aiLook') return _j({'error': 'Unknown action.', 'code': 'action'}, 400);
       return _j({'ok': true, 'date': '2026-10-13', 'works': [{'name': 'PQC', 'unit': 'm', 'planned': 120, 'done': 100, 'pct': 83}], 'page': 'eng-dash'});
@@ -2317,4 +2368,10 @@ class FakeServer {
     }
     return _j({'error': 'not found'}, 404);
   });
+}
+
+/// (3.93.0) "40+300" → 40300 (the fake Engineering's chainage)
+num? _chM(String v) {
+  final m = RegExp(r'^(\d+)\+(\d+)$').firstMatch(v.trim());
+  return m == null ? num.tryParse(v.trim()) : int.parse(m.group(1)!) * 1000 + int.parse(m.group(2)!);
 }
