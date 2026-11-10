@@ -18,6 +18,7 @@ import '../ui/t.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
 import '../core/applock.dart';
+import '../ui/motion.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -61,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _password() async {
     final old = TextEditingController(), now = TextEditingController(), again = TextEditingController();
-    final ok = await showDialog<bool>(
+    final ok = await popDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Change password'),
@@ -130,7 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _mobile() async {
     final s = SessionScope.read(context);
     final c = TextEditingController(text: s.pref('mobile'));
-    final v = await showDialog<String>(
+    final v = await popDialog<String>(
       context: context,
       builder: (d) => AlertDialog(
         title: const Text('Mobile number'),

@@ -42,6 +42,7 @@ import 'device.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
+import '../ui/motion.dart';
 
 class AppUpdate {
   AppUpdate({required this.build, required this.version, this.notes = '', this.url = '', this.sha256 = '', this.store = ''});
@@ -162,7 +163,7 @@ Future<void> runUpdate(BuildContext context, AppUpdate u) async {
     return;
   }
   final progress = ValueNotifier<String>('Starting…');
-  showDialog<void>(
+  popDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (c) => AlertDialog(
@@ -524,7 +525,7 @@ Future<void> _updateComputer(BuildContext context, AppUpdate u) async {
       plain: u.notes, yes: 'Update');
   if (!ok || !context.mounted) return;
   final progress = ValueNotifier<String>('Starting…');
-  showDialog<void>(
+  popDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (c) => AlertDialog(

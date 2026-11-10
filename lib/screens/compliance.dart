@@ -25,6 +25,7 @@ import '../ui/widgets.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
 import 'compliance_docs.dart';
+import '../ui/motion.dart';
 
 Future<void> openCompliance(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ComplianceScreen()));
 
@@ -277,7 +278,7 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     final s = SessionScope.read(context), cur = cmpDoc(m, doc), st = '${cur['s']}', no = '${m['no']}';
     var to = '', on = s.today, na = false, lt = st == 'life';
     final docNo = TextEditingController(), amt = TextEditingController(), rem = TextEditingController();
-    final ok = await showDialog<bool>(
+    final ok = await popDialog<bool>(
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(

@@ -14,6 +14,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/print_view.dart';
+import '../ui/motion.dart';
 
 class LbPrintAsk {
   LbPrintAsk(this.head, this.typed, this.bad, this.portrait);
@@ -31,7 +32,7 @@ Future<LbPrintAsk?> askLbPrint(BuildContext context, List<String> names, {requir
   var head = all.contains(_lastHead) ? _lastHead : all.first;
   var portrait = _lastPortrait;
   final rc = TextEditingController(text: value > 0 ? '$value' : '');
-  return showDialog<LbPrintAsk>(
+  return popDialog<LbPrintAsk>(
     context: context,
     builder: (dc) => StatefulBuilder(
       builder: (dc, set) => AlertDialog(

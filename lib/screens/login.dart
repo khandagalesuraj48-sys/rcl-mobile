@@ -18,6 +18,7 @@ import '../ui/brand.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/t.dart';
+import '../ui/motion.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.setPassword = false});
@@ -113,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     if (mounted) setState(() => _busy = false);
   }
 
-  Future<void> _forgot() => showDialog<void>(
+  Future<void> _forgot() => popDialog<void>(
         context: context,
         builder: (c) => AlertDialog(
           title: const Text('Forgot your password?'),

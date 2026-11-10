@@ -8,6 +8,7 @@ import 'goo_toast.dart';
 import 'help.dart';
 import 'theme.dart';
 import 't.dart';
+import 'motion.dart';
 
 /// A 3D picture from assets/icons3d (Microsoft Fluent Emoji, MIT).
 class Pic extends StatelessWidget {
@@ -241,7 +242,7 @@ String errText(Object e) => e is ApiError ? e.toString() : 'Something went wrong
 /// [plain] (3.24.0): a text shown as it is above [body] – never turned into the chosen language (an update's "what is new", written
 /// in English, मराठी and हिंदी).
 Future<bool> ask(BuildContext context, String title, String body, {String yes = 'Yes', String no = 'Cancel', bool danger = false, String plain = ''}) async =>
-    await showDialog<bool>(
+    await popDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         title: Text(title),
@@ -264,7 +265,7 @@ Future<bool> ask(BuildContext context, String title, String body, {String yes = 
 Future<String?> askNote(BuildContext context, String title, {List<Widget> body = const [], String label = '', String ok = 'OK', bool needed = true, String neededMsg = 'Write it first.', bool danger = false, int max = 300}) {
   final c = TextEditingController();
   String err = '';
-  return showDialog<String>(
+  return popDialog<String>(
     context: context,
     builder: (dc) => StatefulBuilder(
       builder: (dc, set) => AlertDialog(
@@ -299,7 +300,7 @@ Future<String?> askNote(BuildContext context, String title, {List<Widget> body =
 
 /// (3.2.0) "Are you sure?" with what it is about as lines (Yes returns true).
 Future<bool> askLines(BuildContext context, String title, List<String> lines, {String note = '', String yes = 'Yes', bool danger = false}) async =>
-    await showDialog<bool>(
+    await popDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         title: Text(title),

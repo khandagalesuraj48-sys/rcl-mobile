@@ -22,6 +22,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/ask_bot.dart';
 import 'store_work.dart';
+import '../ui/motion.dart';
 
 /// The columns of the web's item files (Export, Import template).
 const kStoreHead = ['Item Code', 'Item Name', 'Unit', 'Category', 'HSN Code', 'GST %', 'Min Stock', 'Status'];
@@ -573,7 +574,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     }
   }
 
-  Future<String?> _choose(String title, List<String> lines, List<(String, String)> options) => showDialog<String>(
+  Future<String?> _choose(String title, List<String> lines, List<(String, String)> options) => popDialog<String>(
         context: context,
         builder: (dc) => AlertDialog(
           title: Text(title),

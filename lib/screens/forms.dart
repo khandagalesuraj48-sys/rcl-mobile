@@ -32,6 +32,7 @@ import 'verify.dart';
 import 'flow_fix.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../ui/motion.dart';
 
 /// (3.43.0, Mechanical update-162) the Super Admin gave him no diesel source for this page
 const _noSource = 'No diesel source is given to you – ask the Super Admin (Portal → Users & Access → Pages).';
@@ -839,7 +840,7 @@ class _EntryFormState extends State<EntryForm> {
     billMode = 'new';
   }
 
-  void _billBig(_Bill b) => showDialog<void>(
+  void _billBig(_Bill b) => popDialog<void>(
         context: context,
         builder: (c) => Dialog(
           insetPadding: const EdgeInsets.all(12),

@@ -34,6 +34,7 @@ import 'ui/theme.dart';
 import 'ui/t.dart';
 import 'ui/live.dart' show appRoutes;
 import 'ui/voice_box.dart' show VoiceLayer;
+import 'ui/motion.dart';
 
 /// The sign-in kept in the phone's own safe (Android Keystore / iOS Keychain) – never in plain files.
 class SecureKeep implements Keep {
@@ -146,7 +147,7 @@ Future<String?> askApprovalBox(String message) async {
   final ctx = appNav.currentContext;
   if (ctx == null) return null;
   final why = TextEditingController();
-  return showDialog<String>(
+  return popDialog<String>(
     context: ctx,
     builder: (c) => AlertDialog(
       title: Text(Api.crApproved(message) ? 'An approved entry – send it to the Super Admin?' : 'In a submitted bill – send it to the Super Admin?'),
@@ -173,7 +174,7 @@ Future<String?> askReasonBox(String message) async {
   final ctx = appNav.currentContext;
   if (ctx == null) return null;
   final why = TextEditingController();
-  return showDialog<String>(
+  return popDialog<String>(
     context: ctx,
     builder: (c) => AlertDialog(
       title: const Text('Locked entry – give the reason'),
@@ -197,7 +198,7 @@ Future<String?> askReasonBox(String message) async {
 Future<bool> askShortBox(String message) async {
   final ctx = appNav.currentContext;
   if (ctx == null) return false;
-  final r = await showDialog<bool>(
+  final r = await popDialog<bool>(
     context: ctx,
     builder: (c) => AlertDialog(
       title: Text(bi('Stock short – keep this entry?', 'Stock कमी – ही entry ठेवायची?')),

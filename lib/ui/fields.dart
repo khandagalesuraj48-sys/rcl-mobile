@@ -7,6 +7,7 @@ import '../core/format.dart';
 import 't.dart';
 import 'theme.dart';
 import 'widgets.dart';
+import 'motion.dart';
 
 /// A date (yyyy-mm-dd, '' = none). [clear]: it may be emptied.
 class DateField extends StatelessWidget {
@@ -184,7 +185,7 @@ class FormHead extends StatelessWidget {
 
 /// "Field / Now / New" – what a save will change (as the web's changeTable), in a question. true = go on.
 Future<bool> askChanges(BuildContext context, String title, List<(String, String, String)> rows, {List<String> before = const [], String beforeHead = '', String yes = 'Update'}) async =>
-    await showDialog<bool>(
+    await popDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         title: Text(title),
@@ -217,7 +218,7 @@ Future<bool> askChanges(BuildContext context, String title, List<(String, String
     false;
 
 /// A message to read (OK only) – a list of what went wrong (as the web's "Nothing saved").
-Future<void> tellLines(BuildContext context, String title, List<String> lines) => showDialog<void>(
+Future<void> tellLines(BuildContext context, String title, List<String> lines) => popDialog<void>(
       context: context,
       builder: (c) => AlertDialog(
         title: Text(title),

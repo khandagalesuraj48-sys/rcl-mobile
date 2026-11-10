@@ -25,6 +25,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../ui/motion.dart';
 
 Future<void> openBoq(BuildContext context, {String vendor = '', bool newIfNone = false}) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => BoqScreen(vendor: vendor, newIfNone: newIfNone)));
@@ -605,7 +606,7 @@ class _BoqFormScreenState extends State<BoqFormScreen> {
       return;
     }
     final picked = <String>{};
-    final ok = await showDialog<bool>(
+    final ok = await popDialog<bool>(
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(

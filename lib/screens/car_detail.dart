@@ -32,6 +32,7 @@ import 'fuel_cards.dart' show rupees;
 import 'logbook.dart' show LogForm, TankerScreen;
 import 'maintenance.dart' show MaintForm;
 import 'veh_alerts.dart' show vehAlertPill;
+import '../ui/motion.dart';
 
 /// How the picture is taken / picked (tests put their own).
 class CarPhotoPick {
@@ -234,7 +235,7 @@ Future<bool> setCarPhoto(BuildContext context, String no) async {
   }
   if (!context.mounted) return false;
   final was = CarPhotos.i.of(no)?.v ?? '';
-  final saved = await showDialog<bool>(
+  final saved = await popDialog<bool>(
     context: context,
     barrierDismissible: false,
     builder: (_) {
