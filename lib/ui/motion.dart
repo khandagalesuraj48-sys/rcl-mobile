@@ -32,10 +32,11 @@ const appPageTransitions = PageTransitionsTheme(builders: {
 /// false), with the SCALE POP: in from 72 % with a small overshoot and a fade, out with a fade and a slight scale-down.
 Future<T?> popDialog<T>({required BuildContext context, required WidgetBuilder builder, bool barrierDismissible = true}) {
   final still = Mo.still(context);
+  final nav = Navigator.of(context, rootNavigator: true);
   // the themes around the asking screen go with the box (as showDialog does)
-  final themes = InheritedTheme.capture(from: context, to: Navigator.of(context, rootNavigator: true).context);
-  return showGeneralDialog<T>(
-    context: context,
+  final themes = InheritedTheme.capture(from: context, to: nav.context);
+  return nav.push<T>(_PopRoute<T>(
+    out: still ? Duration.zero : Mo.boxOut,
     barrierDismissible: barrierDismissible,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black54,
@@ -53,5 +54,21 @@ Future<T?> popDialog<T>({required BuildContext context, required WidgetBuilder b
         ),
       );
     },
-  );
+  ));
+}
+
+/// showGeneralDialog's own route, with a shorter way out (the box goes faster than it comes, 170 ms – as showDialog's 150 ms).
+class _PopRoute<T> extends RawDialogRoute<T> {
+  _PopRoute({
+    required this.out,
+    required super.pageBuilder,
+    required super.barrierDismissible,
+    required super.barrierLabel,
+    required super.barrierColor,
+    required super.transitionDuration,
+    required super.transitionBuilder,
+  });
+  final Duration out;
+  @override
+  Duration get reverseTransitionDuration => out;
 }

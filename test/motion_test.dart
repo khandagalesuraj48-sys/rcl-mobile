@@ -18,16 +18,19 @@ void main() {
     await t.tap(find.text('go'));
     await t.pump();      // the first frame: the box is there (small, coming in)
     expect(find.text('Delete this entry?'), findsOneWidget);
-    double scale() => t.widget<Transform>(find.ancestor(of: find.byType(AlertDialog), matching: find.byType(Transform)).first).transform.getMaxScaleOnAxis();
+    double scale() => t.widget<Transform>(find.ancestor(of: find.byType(AlertDialog), matching: find.byType(Transform)).first).transform.entry(0, 0);      // the width's scale (z stays 1)
     expect(scale(), closeTo(.72, .02), reason: 'starts at 72 %');
     await t.pump(const Duration(milliseconds: 160));
     expect(scale(), greaterThan(1.0), reason: 'the small overshoot');
     await t.pumpAndSettle();
     expect(scale(), closeTo(1.0, .001));
     await t.tap(find.text('Delete'));
-    await t.pumpAndSettle();
-    expect(got, isTrue);
-    expect(find.byType(AlertDialog), findsNothing);
+    await t.pump();
+    expect(got, isTrue, reason: 'answered at once – the closing plays after');
+    await t.pump(const Duration(milliseconds: 100));
+    expect(scale(), lessThan(1.0), reason: 'closing: a slight scale-down');
+    await t.pump(const Duration(milliseconds: 100));
+    expect(find.byType(AlertDialog), findsNothing, reason: 'gone within 0.2 s (170 ms – showDialog took 150 ms)');
     await t.tap(find.text('go'));
     await t.pumpAndSettle();
     await t.tapAt(const Offset(5, 5));      // outside the box
