@@ -195,6 +195,17 @@ class FakeServer {
   final purSent = <Map<String, dynamic>>[];
   /// (3.94.0, Purchase Phase 1) what Purchase's server keeps: suppliers, enquiries, quotations, comparative statements, the CS limit
   num? purLimit = 200000;
+  /// (3.95.0, Purchase Phase 2) the POs made here (the master – D-2); the site's copy is "at the site" as its PO 21 at once
+  final purPos = <Map<String, dynamic>>[];
+  /// (3.95.0) the Store's list holds a PO of the Purchase Department (read-only at the site)
+  bool storePurPo = false;
+  /// (3.95.0, Engineering 2B) the Measurement Book's pages
+  final engMb = <Map<String, dynamic>>[
+    {'no': 'MB-0001', 'work': 'W-001', 'layer': 'L2', 'from_day': '2026-10-10', 'to_day': '2026-10-12', 'mb_day': '2026-10-13', 'status': 'Measured', 'note': '', 'ver': 1,
+      'measured_by': 'eng1@rcl.test', 'measured_name': 'Engineer One', 'measured_at': '2026-10-13T10:00:00Z', 'checked_name': '', 'chk_day': null, 'back_name': '', 'back_why': '',
+      'lines': [{'ln': 1, 'key': 'a1', 'src': 'r0', 'day': '2026-10-12', 'email': 'eng1@rcl.test', 'name': 'Engineer One', 'line': 1, 'outside': false, 'side': 'LHS', 'from': 40000, 'to': 40400, 'len': 400, 'w_m': 7.5, 'mm_m': 250, 'w': 7.5, 'mm': 250, 'qty': 750, 'unit': 'cum', 'how': 'LxWxT', 'appr': 'yes', 'rfi': ['RFI-0001'], 'remark': '', 'skip': ''}],
+      'history': <Map<String, dynamic>>[{'at': '2026-10-13T10:00:00Z', 'by': 'eng1@rcl.test', 'name': 'Engineer One', 'what': 'Measured'}]},
+  ];
   final purVendors = <Map<String, dynamic>>[
     {'id': 1, 'name': 'Asha Traders', 'gstin': '27ABCDE1234F1Z5', 'pan': 'ABCDE1234F', 'address': 'Nashik', 'phone': '9876543210', 'email': 'sales@asha.test', 'supplies': ['Cement', 'Steel'], 'status': 'Approved', 'status_note': '', 'ver': 1, 'wa': '919876543210'},
     {'id': 2, 'name': 'Bharat Steel', 'gstin': '', 'pan': '', 'address': '', 'phone': '9822012345', 'email': '', 'supplies': ['Steel'], 'status': 'Approved', 'status_note': '', 'ver': 1, 'wa': '919822012345'},
@@ -592,7 +603,12 @@ class FakeServer {
         if (storeStep8 && req1Po == null) return _j({'pos': []});
         final po0 = storeStep8 ? {...storePo, 'state': 'Open', 'lines': [{...((storePo['lines'] as List).first as Map), 'received': 0, 'left': 20, 'req_ref': 'RCL/VTR/2026-27/P/0001'}]} : storePo;
         final v1 = storeWf && wait && !wfDone.contains('PO 1');
-        return _j({'pos': [{...po0, ...(storeStep5 ? po1Appr : {'appr': 'Approved'}), 'mayApprove': wait, 'waitFor': wait ? ['Sujit Mule'] : [], if (storeWf) 'grns': 1, if (v1) 'step': 'verify', if (v1) 'mayVerify': true}], 'buy': storePages['purchase'] == 'Edit' || (storeWf && storeAdmin), 'today': '2026-10-14'});
+        return _j({'pos': [{...po0, ...(storeStep5 ? po1Appr : {'appr': 'Approved'}), 'mayApprove': wait, 'waitFor': wait ? ['Sujit Mule'] : [], if (storeWf) 'grns': 1, if (v1) 'step': 'verify', if (v1) 'mayVerify': true},
+          // (3.95.0) a PO of the Purchase Department – its copy here, approved (G-6), read-only at the site
+          if (storePurPo)
+            {'no': 21, 'site': 'S1', 'date': '2026-10-14', 'vendor': 'Bharat Steel', 'status': 'Open', 'state': 'Open', 'appr': 'Approved', 'appr_name': 'Purchase (Sujit Mule)', 'mayApprove': false, 'waitFor': [], 'total': 130800,
+              'lines': [{'line': 1, 'code': 'ITM-0004', 'name': 'TMT bar 12 mm', 'unit': 'MT', 'qty': 2, 'received': 0, 'left': 2, 'req_no': 7, 'req_line': 3}], 'pur_no': 1, 'pur_rev': 1, 'pur': {'ref': 'PO-0001'}},
+        ], 'buy': storePages['purchase'] == 'Edit' || (storeWf && storeAdmin), 'today': '2026-10-14'});
       // (3.71.0) one PO with every GRN against it – ordered / came / balance, each GRN checked with the PO
       case 'poGrns':
         return _j({'po': {...storePo, 'ref': 'RCL/VTR/PO/2026/0001'}, 'today': '2026-10-14', 'lines': [{'line': 1, 'code': 'ITM-0002', 'name': 'Sugar', 'unit': 'Kg', 'qty': 20, 'rate': 100, 'came': 5, 'left': 15, 'value': 2000, 'cameValue': 500, 'leftValue': 1500}],
@@ -751,7 +767,25 @@ class FakeServer {
       if (c == null) return {'ok': true, 'cs': null, 'rfq': rfqOut(q), 'limit': purLimit, 'quotes': quotes(rfq)};
       final edit = c['status'] == 'Draft' || c['status'] == 'Sent back', decide = admin && c['status'] == 'Sent' && c['created_by'] != 'sujit@rcl.test' && (c['need'] == 'admin' || sup);
       return {'ok': true, 'rfq': rfqOut(q), 'limit': purLimit,
-        'cs': {...c, 'ref': csRef(c['no']), 'rfq_ref': ref(rfq), 'limit': purLimit, 'problems': [], 'may': {'edit': edit, 'send': edit, 'decide': decide, 'why': decide ? '' : 'Only a Purchase Admin of S1 or the Super Admin decides it.'}}};
+        'cs': {...c, 'ref': csRef(c['no']), 'rfq_ref': ref(rfq), 'limit': purLimit, 'problems': [], 'may': {'edit': edit, 'send': edit, 'decide': decide, 'why': decide ? '' : 'Only a Purchase Admin of S1 or the Super Admin decides it.'}},
+        // (3.95.0) an approved CS: its POs – one a supplier × site
+        if (c['status'] == 'Approved')
+          'po': {'step3': true, 'groups': [
+            for (final g in [(1, 'Asha Traders', 'Cement OPC 53', 24820), (2, 'Bharat Steel', 'TMT bar 12 mm', 130800)])
+              {'vendor': g.$1, 'vendor_name': g.$2, 'site': 'S1', 'lines': 1, 'items': g.$3, 'total': g.$4, 'missing': g.$1 == 2 ? 1 : 0,
+                'po': purPos.where((p) => p['vendor_id'] == g.$1).map((p) => {'no': p['no'], 'ref': 'PO-${'${p['no']}'.padLeft(4, '0')}', 'status': p['status'], 'state': p['status'] == 'Cancelled' ? 'Cancelled' : 'At the site', 'total': p['total']}).firstOrNull,
+                'may': admin && !purPos.any((p) => p['vendor_id'] == g.$1)},
+          ]},
+      };
+    }
+    Map<String, dynamic> poGet(Map<String, dynamic> p) {
+      final st = p['status'] == 'Cancelled' ? 'Cancelled' : 'At the site';
+      return {'ok': true, 'site_name': 'VTR Site – NH 848', 'site_error': '', 'heading': {'company': 'Rachana Construction Limited'},
+        'po': {...p, 'ref': 'PO-${'${p['no']}'.padLeft(4, '0')}', 'state': st, 'words': 'One Lakh Thirty Thousand Eight Hundred Only', 'wa': '919822012345', 'cs_ref': 'CS-0001', 'rfq_ref': 'RFQ-0001',
+          'approved': {'by': 'sujit@rcl.test', 'name': 'Sujit Mule', 'at': '2026-10-14T08:00:00Z'}, 'sent': {'rev': 1, 'at': '2026-10-14T08:10:00Z', 'store_no': 21, 'error': '', 'tries': 1, 'last': '2026-10-14T08:10:00Z'}},
+        'site': {'no': 21, 'ref': 'RCL/VTR/PO/2026/0021', 'status': p['status'], 'state': p['status'] == 'Cancelled' ? 'Cancelled' : 'Open', 'grn_count': 0, 'grns': [],
+          'lines': [for (final l in p['lines'] as List) {'line': l['line'], 'name': l['name'], 'unit': l['unit'], 'qty': l['qty'], 'came': 0, 'left': p['status'] == 'Cancelled' ? 0 : l['qty']}]},
+        'may': {'send': false, 'cancel': admin && p['status'] == 'Open'}};
     }
     switch (b['action']) {
       case 'inbox':
@@ -821,6 +855,41 @@ class FakeServer {
             if (admin && c['status'] == 'Sent')
               {'no': c['no'], 'ref': csRef(c['no']), 'rfq_no': c['rfq_no'], 'rfq_ref': ref(c['rfq_no']), 'site': c['site'], 'status': c['status'], 'total': c['total'], 'gst': c['gst'], 'items': (rfqOf(c['rfq_no'])!['lines'] as List).map((l) => l['name']).join(', '), 'sent_name': c['sent_name'], 'sent_at': c['sent_at']},
         ]});
+      // (3.95.0, Purchase Phase 2) the POs
+      case 'poNew':
+        final two = b['vendor'] == 2;
+        return _j({'ok': true, 'cs': {'no': 1, 'ref': 'CS-0001', 'approved_name': 'Sujit Mule', 'approved_at': '2026-10-14T08:00:00Z'}, 'rfq': {'no': 1, 'ref': 'RFQ-0001'}, 'site': 'S1', 'site_name': 'VTR Site – NH 848',
+          'vendor': {...purVendors.firstWhere((v) => v['id'] == b['vendor'])}, 'papers_error': '',
+          'money': {'vendor': b['vendor'], 'site': 'S1', 'freight': two ? 1000 : 500, 'loading': 0, 'missing': two ? [2] : [], 'pay_terms': two ? 'Advance' : '30 days',
+            'lines': [two
+                ? {'line': 1, 'cs_line': 2, 'site': 'S1', 'req_no': 7, 'req_line': 3, 'ref': 'IND-0007', 'code': 'ITM-0004', 'name': 'TMT bar 12 mm', 'unit': 'MT', 'qty': 2, 'rate': 55000, 'disc_pct': 0, 'gst_pct': null, 'gst_quoted': false, 'landed': 55500, 'brand': '', 'spec': 'Fe 500D'}
+                : {'line': 1, 'cs_line': 1, 'site': 'S1', 'req_no': 7, 'req_line': 1, 'ref': 'IND-0007', 'code': 'ITM-0001', 'name': 'Cement OPC 53', 'unit': 'Bag', 'qty': 50, 'rate': 380, 'disc_pct': 0, 'gst_pct': 28, 'gst_quoted': true, 'landed': 390, 'brand': 'UltraTech', 'spec': ''}]},
+          'start': {'date': '2026-10-14', 'need_by': '2026-10-20', 'pay_terms': two ? 'Advance' : '30 days', 'ship_to': 'VTR site office, Bhiwandi', 'site_contact': 'Site office: 9000000000', 'terms': '1. Delivery: as agreed'}});
+      case 'poMake':
+        final two = b['vendor'] == 2, g = num.tryParse('${(b['gst'] as Map?)?['2'] ?? ''}');
+        if (two && g == null) return _j({'error': 'Enter the GST % of TMT bar 12 mm.', 'code': 'field'}, 400);
+        final po = <String, dynamic>{'no': purPos.length + 1, 'rev': 1, 'site': 'S1', 'cs_no': 1, 'rfq_no': 1, 'vendor_id': b['vendor'], 'vendor': {'name': purVendors.firstWhere((v) => v['id'] == b['vendor'])['name'], 'gstin': '', 'phone': '9822012345', 'address': ''},
+          'date': b['date'], 'need_by': b['need_by'], 'pay_terms': b['pay_terms'], 'ship_to': b['ship_to'], 'site_contact': b['site_contact'], 'terms': b['terms'], 'remark': b['remark'], 'status': 'Open', 'status_note': '', 'ver': 1, 'created_name': 'Sujit Mule',
+          'lines': [{'line': 1, 'site': 'S1', 'req_no': 7, 'req_line': 3, 'ref': 'IND-0007', 'name': 'TMT bar 12 mm', 'unit': 'MT', 'qty': 2, 'rate': 55000, 'disc_pct': 0, 'gst_pct': g ?? 18, 'taxable': 110000, 'gst': 19800, 'total': 129800, 'brand': '', 'spec': 'Fe 500D'}],
+          'freight': 1000, 'loading': 0, 'taxable': 110000, 'gst': 19800, 'total': 130800};
+        purPos.add(po);
+        return _j({...poGet(po), 'saved': true, 'sent': true, 'send_error': ''});
+      case 'poGet':
+        return _j(poGet(purPos.firstWhere((p) => p['no'] == b['no'])));
+      case 'poList':
+        return _j({'ok': true, 'store': {'ok': true}, 'pos': [
+          for (final p in purPos.reversed)
+            {'no': p['no'], 'ref': 'PO-${'${p['no']}'.padLeft(4, '0')}', 'rev': 1, 'site': 'S1', 'date': p['date'], 'need_by': p['need_by'], 'vendor': (p['vendor'] as Map)['name'], 'vendor_id': p['vendor_id'], 'items': 'TMT bar 12 mm', 'nlines': 1, 'total': p['total'],
+              'cs_no': 1, 'cs_ref': 'CS-0001', 'status': p['status'], 'state': p['status'] == 'Cancelled' ? 'Cancelled' : 'At the site', 'store_no': 21, 'grns': 0, 'send_error': ''},
+        ]});
+      case 'poCancel':
+        final p = purPos.firstWhere((x) => x['no'] == b['no']);
+        if ('${b['why']}'.trim().length < 3) return _j({'error': 'Write why it is cancelled.', 'code': 'field'}, 400);
+        p['status'] = 'Cancelled';
+        p['status_note'] = b['why'];
+        p['cancelled_name'] = 'Sujit Mule';
+        p['cancelled_at'] = '2026-10-14T09:00:00Z';
+        return _j({...poGet(p), 'saved': true});
       case 'vendorList':
         return _j({'ok': true, 'vendors': purVendors, 'mayStatus': admin});
       case 'vendorSave':
@@ -1352,6 +1421,54 @@ class FakeServer {
             'side': b['side'], 'works': b['works'], 'kind': b['kind'], 'detail': b['detail'], 'letter': b['letter'], 'status': '${b['to_day']}'.isEmpty ? 'Open' : 'Closed', 'created_by': 'sujit@rcl.test', 'days': 3, 'ver': 1};
           engHind.insert(0, row);
           return _j({'ok': true, 'hindrance': row});
+        // (3.95.0, Engineering 2B) the Measurement Book
+        case 'mbList':
+          final st = '${b['status'] ?? ''}';
+          return _j({'ok': true, 'from': '2026-07-17', 'to': '2026-10-14', 'rows': [
+            for (final m in engMb.reversed)
+              if (st.isEmpty || m['status'] == st)
+                {...m, 'name': m['layer'] == 'L2' ? 'Embankment · Top' : 'Embankment · Layer 1', 'lines': (m['lines'] as List).length,
+                  'totals': [{'unit': 'cum', 'qty': (m['lines'] as List).fold<num>(0, (a, l) => a + ((l as Map)['qty'] as num))}]},
+          ]});
+        case 'mbGet':
+          final m = engMb.firstWhere((x) => x['no'] == b['no']);
+          return _j({'ok': true, 'mb': m, 'name': m['layer'] == 'L2' ? 'Embankment · Top' : 'Embankment · Layer 1', 'unit': 'cum', 'totals': [{'unit': 'cum', 'qty': (m['lines'] as List).fold<num>(0, (a, l) => a + ((l as Map)['qty'] as num))}]});
+        case 'mbCheck':
+        case 'mbBack':
+          final m = engMb.firstWhere((x) => x['no'] == b['no']);
+          if (m['ver'] != b['ver']) return _j({'error': 'It was changed by someone else just now.', 'code': 'changed'}, 409);
+          if (m['measured_by'] == 'sujit@rcl.test') return _j({'error': 'You measured it – another Admin or the Super Admin check-measures it.', 'code': 'own'}, 403);
+          if (b['action'] == 'mbCheck') {
+            m['status'] = 'Check-measured';
+            m['checked_name'] = 'Sujit Mule';
+            m['chk_day'] = b['chk_day'];
+            m['chk_remark'] = b['remark'];
+          } else {
+            m['status'] = 'Sent back';
+            m['back_name'] = 'Sujit Mule';
+            m['back_why'] = b['why'];
+          }
+          m['ver'] = (m['ver'] as int) + 1;
+          (m['history'] as List<Map<String, dynamic>>).add({'at': '2026-10-14T11:00:00Z', 'by': 'sujit@rcl.test', 'name': 'Sujit Mule', 'what': m['status'], 'why': b['why'] ?? '', 'remark': b['remark'] ?? ''});
+          return _j({'ok': true, 'mb': m});
+        case 'mbOffer':
+          Map<String, dynamic> ln(String k, String side, num f, num t, num w, String appr, List<String> rfi) =>
+              {'key': k, 'src': 'r1', 'day': '2026-10-13', 'email': 'eng1@rcl.test', 'name': 'Engineer One', 'line': 1, 'outside': false, 'rep': null, 'side': side, 'from': f, 'to': t, 'len': t - f, 'w_m': w, 'mm_m': 300, 'qty': (t - f) * w * 0.3, 'unit': 'cum', 'how': 'LxWxT', 'appr': appr, 'rfi': rfi};
+          return _j({'ok': true, 'work': b['work'], 'layer': b['layer'], 'name': 'Embankment · Layer 1', 'unit': 'm', 'from': b['from'], 'to': b['to'], 'rule': {'on': true, 'from': '2026-10-01'},
+            'lines': [ln('k1', 'LHS', 44000, 44300, 8, 'yes', ['RFI-0003']), ln('k2', 'RHS', 44000, 44200, 7.5, 'off', []), ln('k3', 'LHS', 45000, 45100, 8, 'no', [])],
+            'skipped': [{'why': 'in the MB', 'side': 'LHS', 'from': 40000, 'to': 40400}], 'gone': [], 'no': null, 'ver': 0, 'mb_day': null, 'note': ''});
+        case 'mbSave':
+          final m = <String, dynamic>{'no': 'MB-${(engMb.length + 1).toString().padLeft(4, '0')}', 'work': b['work'], 'layer': b['layer'], 'from_day': b['from'], 'to_day': b['to'], 'mb_day': b['mb_day'], 'status': 'Measured', 'note': b['note'], 'ver': 1,
+            'measured_by': 'sujit@rcl.test', 'measured_name': 'Sujit Mule', 'measured_at': '2026-10-14T11:30:00Z', 'checked_name': '', 'chk_day': null,
+            'lines': [for (final (i, l) in (b['lines'] as List).indexed) {'ln': i + 1, 'key': l['key'], 'day': '2026-10-13', 'name': 'Engineer One', 'side': l['key'] == 'k2' ? 'RHS' : 'LHS', 'from': 44000, 'to': l['key'] == 'k2' ? 44200 : 44300,
+              'len': l['key'] == 'k2' ? 200 : 300, 'w_m': l['key'] == 'k2' ? 7.5 : 8, 'mm_m': 300, 'w': num.parse('${l['w']}'), 'mm': num.parse('${l['mm']}'), 'qty': (l['key'] == 'k2' ? 200 : 300) * num.parse('${l['w']}') * num.parse('${l['mm']}') / 1000,
+              'unit': 'cum', 'how': 'LxWxT', 'appr': 'yes', 'rfi': l['key'] == 'k1' ? ['RFI-0003'] : [], 'remark': l['remark'], 'skip': l['skip']}],
+            'history': <Map<String, dynamic>>[{'at': '2026-10-14T11:30:00Z', 'by': 'sujit@rcl.test', 'name': 'Sujit Mule', 'what': 'Measured'}]};
+          engMb.add(m);
+          return _j({'ok': true, 'mb': m, 'site': 'S1'});
+        case 'mbAbstract':
+          return _j({'ok': true, 'from': b['from'], 'to': b['to'], 'rows': [{'work': 'W-001', 'layer': 'L2', 'unit': 'cum', 'prev': 2262.5, 'now': 225, 'cum': 2487.5, 'pages': ['MB-0001'], 'name': 'Embankment', 'layerName': 'Top'}],
+            'waiting': [for (final m in engMb) if (m['status'] != 'Check-measured') {'no': m['no'], 'status': m['status'], 'name': 'Embankment'}]});
         case 'perf':
           return _j({'ok': true, 'from': b['from'], 'to': b['to'], 'ppc': {'lines': 24, 'done': 17, 'pct': 71},
             'weeks': [{'from': '2026-10-01', 'to': '2026-10-07', 'lines': 12, 'done': 9, 'pct': 75}, {'from': '2026-10-08', 'to': '2026-10-14', 'lines': 12, 'done': 8, 'pct': 67}],

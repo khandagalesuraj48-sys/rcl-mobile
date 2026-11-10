@@ -1,10 +1,13 @@
-/* ENGINEERING – the app's own screens (3.93.0, with rcl-engineering "Engineering 2A", asked 09-11-2026: "aple app la banwayla chalu kr …
+/* (3.95.0, with rcl-engineering "Engineering 2B") + the MEASUREMENT BOOK (the Admin and the Super Admin): the quantity of a finished layer
+ * worked out from the reports → measured → check-measured by another → the abstract for the RA bill.
+ * ENGINEERING – the app's own screens (3.93.0, with rcl-engineering "Engineering 2A", asked 09-11-2026: "aple app la banwayla chalu kr …
  * enginnering modual"). Home → Engineering: RFI (the IE's approval of a layer – asked here, the IE's answer recorded by the Engineering
  * Admin / Super Admin), Hindrances (the evidence for an extension of time) and PPC (plan lines done as planned – the Admin and the Super
  * Admin). The same actions, checks and access as the web page (POST <engineering>/api/eng – api.eng, the Portal's ticket for
  * 'engineering'). My work, the dashboard and the strip chart stay on the web, as before. */
 import 'package:flutter/material.dart' hide Text;
 
+import '../core/api.dart' show ApiError;
 import '../core/format.dart';
 import '../ui/ask_bot.dart';
 import '../ui/fields.dart';
@@ -169,6 +172,7 @@ class _EngineeringScreenState extends State<EngineeringScreen> {
                   _card('eng-rfi', 'RFI – layer approval', 'RFI – layer मंजुरी', waiting > 0 ? tr('{0} waiting for the IE').replaceAll('{0}', '$waiting') : tr('Ask the IE to inspect a layer'), Icons.verified_rounded, C.green, C.greenSoft, () => EngRfiScreen(setup: j)),
                   _card('eng-hind', 'Hindrances', 'अडथळे', open > 0 ? tr('{0} still on').replaceAll('{0}', '$open') : tr('What stopped the work – for EOT'), Icons.block_rounded, C.red, C.redSoft, () => EngHindScreen(setup: j)),
                   if (j.canView) _card('eng-ppc', 'PPC – plan done', 'PPC – नियोजन पूर्ण', tr('Plan lines done as planned, and why not'), Icons.insights_rounded, C.blue, C.blueSoft, () => EngPpcScreen(setup: j)),
+                  if (j.canView) _card('eng-mb', 'Measurement Book', 'मोजमाप पुस्तक (MB)', tr('The quantity of a finished layer – measured, check-measured'), Icons.straighten_rounded, C.purple, C.purpleSoft, () => EngMbScreen(setup: j)),
                   const SizedBox(height: 6),
                   const Text('My work, the dashboard and the strip chart are on the web (Engineering).', style: TextStyle(fontSize: 12.5, color: C.muted)),
                 ],
@@ -826,3 +830,627 @@ class _EngPpcScreenState extends State<EngPpcScreen> {
     );
   }
 }
+
+/* ---------------- MEASUREMENT BOOK (3.95.0) ---------------- */
+const _kMbSt = [('', 'All'), ('Measured', 'Measured – to check'), ('Sent back', 'Sent back'), ('Check-measured', 'Check-measured')];
+String _f3(Object? v) => fmtNum(_n(v), maxDecimals: 3);
+String _mbQtyOf(Object? t) => [for (final x in (t as List? ?? const []).whereType<Map>()) '${_f3(x['qty'])} ${x['unit']}'].join(' + ').ifEmpty('–');
+(Color, Color) _mbTag(String st) => switch (st) { 'Check-measured' => (C.greenDark, C.greenSoft), 'Sent back' => (C.red, C.redSoft), _ => (C.amber, C.amberSoft) };
+
+/// the server's rule (rcl-engineering lib/rules.js mbQty) – here only to show the figure while it is typed; the server works it out again
+({num qty, String unit, String how}) engMbQty(String unit, Object? len, num? w, num? mm, Object? rep) {
+  num r3(num v) => (v * 1000).round() / 1000;
+  if (unit != 'm' || len == null) return (qty: r3(_n(rep)), unit: unit, how: 'reported');
+  final l = _n(len);
+  if ((w ?? 0) > 0 && (mm ?? 0) > 0) return (qty: r3(l * w! * mm! / 1000), unit: 'cum', how: 'LxWxT');
+  if ((w ?? 0) > 0) return (qty: r3(l * w!), unit: 'sq m', how: 'LxW');
+  return (qty: r3(l), unit: 'm', how: 'L');
+}
+
+/// how a line's quantity was worked out – every figure shown (the web's mbHow)
+String engMbHow(String how, Object? len, Object? w, Object? mm) => switch (how) {
+      'reported' => tr('the reported quantity'),
+      'LxWxT' => '${_f3(len)} m × ${_f3(w)} m × ${_f3(_n(mm) / 1000)} m (${fmtNum(_n(mm), maxDecimals: 1)} mm)',
+      'LxW' => '${_f3(len)} m × ${_f3(w)} m (${tr('the layer has no thickness')})',
+      _ => '${_f3(len)} m (${tr('no width set')})',
+    };
+
+extension on String {
+  String ifEmpty(String v) => isEmpty ? v : this;
+}
+
+class EngMbScreen extends StatefulWidget {
+  const EngMbScreen({super.key, required this.setup});
+  final EngSetup setup;
+  @override
+  State<EngMbScreen> createState() => _EngMbScreenState();
+}
+
+class _EngMbScreenState extends State<EngMbScreen> {
+  String tab = 'list', st = '', err = '', missing = '', aFrom = '', aTo = '';
+  Map<String, dynamic>? list, abs;
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    aTo = widget.setup.today;
+    aFrom = aTo.length >= 8 ? '${aTo.substring(0, 8)}01' : aTo;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      err = '';
+    });
+    try {
+      final r = tab == 'abs'
+          ? await engCall(context, {'action': 'mbAbstract', 'from': aFrom, 'to': aTo})
+          : await engCall(context, {'action': 'mbList', if (st.isNotEmpty) 'status': st});
+      if (!mounted) return;
+      setState(() {
+        if (tab == 'abs') {
+          abs = r;
+        } else {
+          list = r;
+        }
+        missing = '${r['missing'] ?? ''}';
+        loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _open(Object? no) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EngMbView(setup: widget.setup, no: '$no')));
+    if (mounted) _load();
+  }
+
+  Future<void> _new() async {
+    final no = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => EngMbForm(setup: widget.setup)));
+    if (no != null && mounted) await _open(no);
+  }
+
+  Widget _row(Map<String, dynamic> x) {
+    final (c, bg) = _mbTag('${x['status']}');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Press(
+        key: Key('emb-row-${x['no']}'),
+        onTap: () => _open(x['no']),
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text('${x['no']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5))),
+            Pill(x['status'] == 'Measured' ? tr('Measured – to check') : tr('${x['status']}'), color: c, bg: bg),
+          ]),
+          Text('${tr('Measured on')} ${_day(x['mb_day'])}', style: const TextStyle(color: C.muted, fontSize: 13)),
+          const SizedBox(height: 4),
+          Text('${x['name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          Text(_mbQtyOf(x['totals']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+          Text('${tr('Reports of')} ${_day(x['from_day'])} – ${_day(x['to_day'])} · ${x['lines'] ?? 0} ${tr('lines')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          Text('${tr('Measured by')} ${x['measured_name'] ?? ''}${'${x['checked_name'] ?? ''}'.isNotEmpty ? ' · ${tr('check-measured by')} ${x['checked_name']} ${_day(x['chk_day'])}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (x['status'] == 'Sent back' && '${x['back_why'] ?? ''}'.isNotEmpty) Text('${tr('Sent back by')} ${x['back_name'] ?? ''}: ${x['back_why']}', style: const TextStyle(fontSize: 12.5, color: C.red)),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = [for (final x in (list?['rows'] as List? ?? const []).whereType<Map>()) x.cast<String, dynamic>()];
+    final ab = [for (final x in (abs?['rows'] as List? ?? const []).whereType<Map>()) x.cast<String, dynamic>()];
+    final waiting = [for (final x in (abs?['waiting'] as List? ?? const []).whereType<Map>()) x];
+    return Scaffold(
+      backgroundColor: C.bg,
+      appBar: AppBar(title: const TwoLang('Measurement Book', 'मोजमाप पुस्तक (MB)', size: 18, weight: FontWeight.w700), actions: withAsk()),
+      floatingActionButton: tab == 'list' && missing.isEmpty ? FloatingActionButton.extended(key: const Key('emb-new'), onPressed: _new, icon: const Icon(Icons.add_rounded), label: const Text('New MB page')) : null,
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(key: const Key('emb-list'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 100), children: [
+          const Text('The quantity of a finished layer, worked out from the reports (chainage × width × thickness): measured, check-measured by another, then the abstract for the RA bill.', style: TextStyle(fontSize: 13, color: C.muted)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, children: [
+            ChoiceChip(key: const Key('emb-t-list'), label: const Text('MB pages'), selected: tab == 'list', onSelected: (_) {
+              setState(() => tab = 'list');
+              _load();
+            }),
+            ChoiceChip(key: const Key('emb-t-abs'), label: const Text('Abstract for the RA bill'), selected: tab == 'abs', onSelected: (_) {
+              setState(() => tab = 'abs');
+              _load();
+            }),
+          ]),
+          const SizedBox(height: 8),
+          if (tab == 'list')
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final t in _kMbSt)
+                ChoiceChip(key: Key('emb-st-${t.$1}'), label: Text(t.$2), selected: st == t.$1, onSelected: (_) {
+                  setState(() => st = t.$1);
+                  _load();
+                }),
+            ]),
+          if (tab == 'abs') ...[
+            Row(children: [
+              Expanded(child: DateField(key: const Key('emb-a-from'), label: 'This period – from', value: aFrom, clear: false, onChanged: (v) => setState(() => aFrom = v))),
+              const SizedBox(width: 8),
+              Expanded(child: DateField(key: const Key('emb-a-to'), label: 'To', value: aTo, clear: false, onChanged: (v) => setState(() => aTo = v))),
+            ]),
+            const SizedBox(height: 8),
+            FilledButton.tonal(key: const Key('emb-a-show'), onPressed: _load, child: const Text('Show')),
+          ],
+          const SizedBox(height: 10),
+          if (missing.isNotEmpty) InfoLine(missing, bad: true),
+          if (err.isNotEmpty) InfoLine(err, bad: true),
+          if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+          if (!loading && tab == 'list') ...[
+            if (list != null && rows.isEmpty && missing.isEmpty) const EmptyState('No MB page here', 'Make one with "New MB page".', pic: 'clipboard'),
+            for (final x in rows) _row(x),
+          ],
+          if (!loading && tab == 'abs' && abs != null) ...[
+            Text(tr('Check-measured quantities – by the date of the MB page; only check-measured pages count.'), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+            const SizedBox(height: 8),
+            if (ab.isEmpty && missing.isEmpty) const EmptyState('Nothing check-measured', 'A check-measured MB page shows here.', pic: 'clipboard'),
+            for (final x in ab)
+              Container(
+                key: Key('emb-ab-${x['work']}-${x['layer']}'),
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow()),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${x['name'] ?? x['work']}${'${x['layerName'] ?? ''}'.isNotEmpty ? ' · ${x['layerName']}' : ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    for (final (k, v) in [(tr('Up to the previous period'), x['prev']), (tr('This period'), x['now']), (tr('Cumulative'), x['cum'])])
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(k, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+                          Text('${_f3(v)} ${x['unit'] ?? ''}', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+                        ]),
+                      ),
+                  ]),
+                  if ((x['pages'] as List? ?? const []).isNotEmpty) Text('${tr('MB pages of this period')}: ${(x['pages'] as List).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                ]),
+              ),
+            if (waiting.isNotEmpty)
+              Text('${tr('Not check-measured yet – not counted')}: ${waiting.map((w) => '${w['no']} (${w['status']})').join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.amber)),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// One MB page: its lines (each quantity and how it was worked out), measured by / check-measured by, every change; Change,
+/// Check-measured (another Admin / the Super Admin – never one's own), Send back (why)
+class EngMbView extends StatefulWidget {
+  const EngMbView({super.key, required this.setup, required this.no});
+  final EngSetup setup;
+  final String no;
+  @override
+  State<EngMbView> createState() => _EngMbViewState();
+}
+
+class _EngMbViewState extends State<EngMbView> {
+  Map<String, dynamic>? data;
+  String err = '';
+  bool loading = true, busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      err = '';
+    });
+    try {
+      final r = await engCall(context, {'action': 'mbGet', 'no': widget.no});
+      if (!mounted) return;
+      setState(() {
+        data = r;
+        loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _do(Map<String, dynamic> body, String done) async {
+    setState(() => busy = true);
+    try {
+      await engCall(context, body);
+      if (!mounted) return;
+      toast(context, done);
+      setState(() => busy = false);
+      _load();
+    } catch (e) {
+      if (mounted) {
+        setState(() => busy = false);
+        toast(context, errText(e), bad: true);
+        if (e is ApiError && e.code == 'changed') _load();
+      }
+    }
+  }
+
+  Future<void> _check(Map<String, dynamic> p) async {
+    final j = widget.setup, rem = TextEditingController();
+    var day = j.today;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dc) => StatefulBuilder(
+        builder: (dc, set) => AlertDialog(
+          title: Text('${tr('Check-measured')} – ${p['no']}'),
+          scrollable: true,
+          content: Column(key: const Key('emb-check'), mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(tr('Once check-measured the page is locked – its quantity goes into the abstract for the RA bill.'), style: const TextStyle(fontSize: 13.5, color: C.muted)),
+            const SizedBox(height: 10),
+            DateField(key: const Key('emb-chk-day'), label: 'Check-measured on', value: day, clear: false, first: DateTime.tryParse('${p['mb_day']}'), last: DateTime.tryParse(j.today), onChanged: (v) => set(() => day = v)),
+            TextBox(key: const Key('emb-chk-rem'), label: 'Remark', controller: rem),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('Cancel')),
+            FilledButton(key: const Key('emb-chk-ok'), style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(dc, true), child: const Text('Check-measured')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _do({'action': 'mbCheck', 'no': p['no'], 'ver': p['ver'], 'chk_day': day, 'remark': rem.text.trim()}, '${p['no']}: ${tr('check-measured – locked.')}');
+  }
+
+  Future<void> _back(Map<String, dynamic> p) async {
+    final why = await askNote(context, '${tr('Send back')} – ${p['no']}', label: 'Why is it sent back?', ok: 'Send back', danger: true, neededMsg: 'Write the reason (a few words).');
+    if (why == null || !mounted) return;
+    await _do({'action': 'mbBack', 'no': p['no'], 'ver': p['ver'], 'why': why}, '${p['no']}: ${tr('sent back.')}');
+  }
+
+  Future<void> _change(Map<String, dynamic> p) async {
+    final no = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => EngMbForm(setup: widget.setup, no: '${p['no']}')));
+    if (no != null && mounted) _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final j = widget.setup, r = data, p = ((r?['mb'] as Map?) ?? const {}).cast<String, dynamic>();
+    final locked = p['status'] == 'Check-measured', mine = p['measured_by'] == j.email;
+    final mayChange = !locked && (mine || j.role == 'super'), mayCheck = p['status'] == 'Measured' && !mine;
+    final lines = [for (final l in (p['lines'] as List? ?? const []).whereType<Map>()) l.cast<String, dynamic>()];
+    final (c, bg) = _mbTag('${p['status']}');
+    return Scaffold(
+      backgroundColor: C.bg,
+      appBar: AppBar(title: Text(widget.no, style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(key: const Key('emb-view'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
+          if (err.isNotEmpty) InfoLine(err, bad: true),
+          if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+          if (!loading && r != null) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow()),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(child: Text('${r['name'] ?? ''}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+                  Pill('${p['status'] == 'Measured' ? tr('Measured – to check') : tr('${p['status']}')}${locked ? ' · ${tr('locked')}' : ''}', color: c, bg: bg),
+                ]),
+                const SizedBox(height: 4),
+                Text(_mbQtyOf(r['totals']), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                Text('${tr('Measured on')} ${_day(p['mb_day'])} · ${tr('from the reports of')} ${_day(p['from_day'])} – ${_day(p['to_day'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                Text('${tr('Measured by')} ${p['measured_name'] ?? ''}${'${p['chk_day'] ?? ''}'.isNotEmpty ? ' · ${tr('check-measured by')} ${p['checked_name'] ?? ''} ${_day(p['chk_day'])}${'${p['chk_remark'] ?? ''}'.isNotEmpty ? ' – ${p['chk_remark']}' : ''}' : ''}',
+                    style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                if (p['status'] == 'Sent back') Padding(padding: const EdgeInsets.only(top: 6), child: InfoLine('${tr('Sent back by')} ${p['back_name'] ?? ''}: ${p['back_why'] ?? ''}', bad: true, help: false)),
+                if (p['status'] == 'Measured' && mine) Text(tr('You measured it – another Admin or the Super Admin check-measures it (never one\'s own).'), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                if ('${p['note'] ?? ''}'.isNotEmpty) Text('${tr('Note')}: ${p['note']}', style: const TextStyle(fontSize: 13.5)),
+                const SizedBox(height: 8),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  if (mayChange)
+                    OutlinedButton(key: const Key('emb-chg'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: busy ? null : () => _change(p), child: Text(p['status'] == 'Sent back' ? 'Correct and measure again' : 'Change')),
+                  if (mayCheck) ...[
+                    FilledButton(key: const Key('emb-ok'), style: FilledButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: busy ? null : () => _check(p), child: const Text('Check-measured')),
+                    TextButton(key: const Key('emb-back'), onPressed: busy ? null : () => _back(p), child: const Text('Send back', style: TextStyle(color: C.red))),
+                  ],
+                ]),
+              ]),
+            ),
+            const SizedBox(height: 10),
+            for (final l in lines) _MbLineCard(l: l),
+            if ((p['history'] as List? ?? const []).isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(tr('Every change (✎)'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              for (final e in (p['history'] as List).whereType<Map>())
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('✎ ${tr('${e['what']}')} · ${e['name'] ?? e['by'] ?? ''} · ${whenText('${e['at'] ?? ''}')}${'${e['why'] ?? ''}'.isNotEmpty ? ' – ${e['why']}' : ''}${'${e['remark'] ?? ''}'.isNotEmpty ? ' – ${e['remark']}' : ''}',
+                      style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                ),
+            ],
+            const SizedBox(height: 10),
+            Text(tr('The printed MB page: on the web (Engineering → Measurement Book → Print).'), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// one line of an MB page as kept: the day and the person's report, side, chainage, the quantity and how it was worked out, the IE's RFI
+class _MbLineCard extends StatelessWidget {
+  const _MbLineCard({required this.l});
+  final Map<String, dynamic> l;
+  @override
+  Widget build(BuildContext context) {
+    final no = l['appr'] == 'no', rfi = [for (final x in (l['rfi'] as List? ?? const [])) '$x'];
+    return Container(
+      key: Key('emb-ln-${l['ln'] ?? l['key']}'),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: softShadow()),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text('${'${l['side'] ?? ''}'.isEmpty ? '' : '${l['side']} · '}${l['from'] != null ? '${engCh(l['from'])} – ${engCh(l['to'])}' : ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5))),
+          Text('${_f3(l['qty'])} ${l['unit'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+        ]),
+        Text(engMbHow('${l['how']}', l['len'], l['w'] ?? l['w_m'], l['mm'] ?? l['mm_m']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        Text('${_day(l['day'])} · ${l['name'] ?? ''}${l['outside'] == true ? ' · ${tr('outside the plan')}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        if (rfi.isNotEmpty) Text('RFI: ${rfi.join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.greenDark, fontWeight: FontWeight.w600)),
+        if (no && rfi.isEmpty) Text(tr('Not approved by the IE'), style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600)),
+        if ('${l['remark'] ?? ''}'.isNotEmpty) Text('${l['remark']}', style: const TextStyle(fontSize: 12.5)),
+        if ('${l['skip'] ?? ''}'.isNotEmpty) Text('${tr('Measured without the IE\'s approval (Super Admin)')}: ${l['skip']}', style: const TextStyle(fontSize: 12.5, color: C.amber)),
+      ]),
+    );
+  }
+}
+
+/// A new MB page (work, layer, side, the days of the reports → the lines open to measure) or a page changed / corrected: each line's
+/// measured width and thickness (a remark when it differs from the masters), the MB date and a note
+class EngMbForm extends StatefulWidget {
+  const EngMbForm({super.key, required this.setup, this.no});
+  final EngSetup setup;
+  final String? no;
+  @override
+  State<EngMbForm> createState() => _EngMbFormState();
+}
+
+class _EngMbFormState extends State<EngMbForm> {
+  final note = TextEditingController();
+  final on = <String, bool>{};
+  final w = <String, TextEditingController>{}, mm = <String, TextEditingController>{}, rem = <String, TextEditingController>{}, skip = <String, TextEditingController>{};
+  String work = '', layer = '', side = '', from = '', to = '', mbDay = '', err = '';
+  Map<String, dynamic>? offer;
+  int ver = 0;
+  bool busy = false, finding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final j = widget.setup;
+    to = j.today;
+    from = dateKey(parseKey(j.today).subtract(const Duration(days: 6)));
+    mbDay = j.today;
+    final ws = j.works(to, all: true);
+    if (ws.isNotEmpty) work = '${ws.first['item']}';
+    _fitLayer();
+    if (widget.no != null) WidgetsBinding.instance.addPostFrameCallback((_) => _find());
+  }
+
+  void _fitLayer() {
+    final j = widget.setup, wk = j.workOn(work, to) ?? j.workOn(work, j.today);
+    final ls = [for (final l in (j.data(wk)['layers'] as List? ?? const []).whereType<Map>()) '${l['key']}'];
+    if (!ls.contains(layer)) layer = ls.isEmpty ? '' : ls.first;
+  }
+
+  TextEditingController _c(Map<String, TextEditingController> m, String k, Object? v) => m.putIfAbsent(k, () => TextEditingController(text: v == null ? '' : '$v'));
+
+  Future<void> _find() async {
+    if (widget.no == null && from.compareTo(to) > 0) {
+      toast(context, tr('Pick the days of the reports – "from" on or before "to".'), bad: true);
+      return;
+    }
+    setState(() {
+      finding = true;
+      err = '';
+    });
+    try {
+      final r = await engCall(context, widget.no != null ? {'action': 'mbOffer', 'no': widget.no} : {'action': 'mbOffer', 'work': work, 'layer': layer, 'side': side, 'from': from, 'to': to});
+      if (!mounted) return;
+      final sup = widget.setup.role == 'super';
+      setState(() {
+        offer = r;
+        ver = _n(r['ver']).toInt();
+        if (widget.no != null) {
+          mbDay = '${r['mb_day'] ?? mbDay}';
+          note.text = '${r['note'] ?? ''}';
+        }
+        on.clear();
+        for (final l in (r['lines'] as List? ?? const []).whereType<Map>()) {
+          final k = '${l['key']}', no = l['appr'] == 'no';
+          on[k] = (!no || sup) && (widget.no != null ? l['inPage'] == true : !no);
+          _c(w, k, l['inPage'] == true ? l['w'] : l['w_m']);
+          _c(mm, k, l['inPage'] == true ? l['mm'] : l['mm_m']);
+          _c(rem, k, l['remark']);
+          _c(skip, k, l['skip']);
+        }
+        finding = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          finding = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _save() async {
+    final r = offer!;
+    final lines = [
+      for (final l in (r['lines'] as List? ?? const []).whereType<Map>())
+        if (on['${l['key']}'] == true) {'key': l['key'], 'w': w['${l['key']}']?.text.trim() ?? '', 'mm': mm['${l['key']}']?.text.trim() ?? '', 'remark': rem['${l['key']}']?.text.trim() ?? '', 'skip': skip['${l['key']}']?.text.trim() ?? ''},
+    ];
+    setState(() {
+      busy = true;
+      err = '';
+    });
+    try {
+      final x = await engCall(context, {
+        'action': 'mbSave',
+        if (widget.no != null) ...{'no': widget.no, 'ver': ver} else ...{'work': r['work'], 'layer': r['layer'], 'from': r['from'], 'to': r['to']},
+        'mb_day': mbDay, 'note': note.text.trim(), 'lines': lines,
+      });
+      if (!mounted) return;
+      final no = '${(x['mb'] as Map?)?['no'] ?? ''}';
+      toast(context, '${tr('Measured')}: $no – ${tr('another Admin or the Super Admin check-measures it.')}');
+      Navigator.pop(context, no);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          busy = false;
+          err = errText(e);
+        });
+        if (e is ApiError && e.code == 'changed') _find();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final j = widget.setup, sup = j.role == 'super', r = offer, ws = j.works(to, all: true);
+    final wk = j.workOn(work, to) ?? j.workOn(work, j.today), layers = [for (final l in (j.data(wk)['layers'] as List? ?? const []).whereType<Map>()) l];
+    final lines = [for (final l in (r?['lines'] as List? ?? const []).whereType<Map>()) l.cast<String, dynamic>()];
+    final rule = (r?['rule'] as Map?)?.cast<String, dynamic>();
+    final tot = <String, num>{};
+    var n = 0;
+    for (final l in lines) {
+      final k = '${l['key']}';
+      if (on[k] != true) continue;
+      final q = l['how'] == 'reported' ? (qty: _n(l['qty']), unit: '${l['unit']}', how: 'reported') : engMbQty('m', l['len'], asNum(w[k]?.text) ?? _n(l['w_m']), asNum(mm[k]?.text) ?? _n(l['mm_m']), l['qty']);
+      tot[q.unit] = (tot[q.unit] ?? 0) + q.qty;
+      n++;
+    }
+    final skipped = [for (final x in (r?['skipped'] as List? ?? const []).whereType<Map>()) x];
+    final gone = (r?['gone'] as List? ?? const []);
+    return Scaffold(
+      backgroundColor: C.bg,
+      appBar: AppBar(title: Text(widget.no == null ? 'New MB page' : '${tr('Change')} ${widget.no}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      body: ListView(key: const Key('emb-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
+        if (widget.no == null) ...[
+          PickField(key: const Key('emb-work'), label: 'Work', value: work, items: [for (final x in ws) '${x['item']}'], labels: {for (final x in ws) '${x['item']}': '${j.data(x)['name']}'}, onChanged: (v) => setState(() {
+                work = v;
+                _fitLayer();
+                offer = null;
+              })),
+          if (layers.isNotEmpty)
+            PickField(key: const Key('emb-layer'), label: 'Layer', value: layer, items: [for (final l in layers) '${l['key']}'], labels: {for (final l in layers) '${l['key']}': '${l['name']}${l['mm'] != null ? ' (${l['mm']} mm)' : ''}'}, onChanged: (v) => setState(() {
+                  layer = v;
+                  offer = null;
+                })),
+          PickField(key: const Key('emb-side'), label: 'Side', value: side, items: j.roadSides, blank: 'Every side', onChanged: (v) => setState(() {
+                side = v;
+                offer = null;
+              })),
+          Row(children: [
+            Expanded(child: DateField(key: const Key('emb-from'), label: 'Reports from', value: from, clear: false, last: DateTime.tryParse(j.today), onChanged: (v) => setState(() {
+                  from = v;
+                  offer = null;
+                }))),
+            const SizedBox(width: 8),
+            Expanded(child: DateField(key: const Key('emb-to'), label: 'Reports to', value: to, clear: false, last: DateTime.tryParse(j.today), onChanged: (v) => setState(() {
+                  to = v;
+                  _fitLayer();
+                  offer = null;
+                }))),
+          ]),
+          const SizedBox(height: 8),
+          FilledButton.tonal(key: const Key('emb-find'), onPressed: finding ? null : _find, child: Text(finding ? 'Finding…' : 'Find the work not measured')),
+        ],
+        if (err.isNotEmpty) InfoLine(err, bad: true),
+        if (finding && widget.no != null) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+        if (r != null) ...[
+          const SizedBox(height: 10),
+          Text('${r['name'] ?? ''} · ${tr('reports of')} ${_day(r['from'])} – ${_day(r['to'])} · ${lines.length} ${tr('lines open to measure')}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          if (skipped.any((x) => x['why'] == 'in the MB')) Text('${skipped.where((x) => x['why'] == 'in the MB').length} ${tr('already in the MB (never measured twice)')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (skipped.any((x) => x['why'] == 'reported twice')) Text('${skipped.where((x) => x['why'] == 'reported twice').length} ${tr('reported twice (the earlier report is offered)')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (rule != null && rule['on'] == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: InfoLine(
+                  '${tr('RFI rule on from {0}: a stretch not approved by the IE is not finished – it is not measured').replaceAll('{0}', _day(rule['from']))}${sup ? ' (${tr('the Super Admin may, with a reason')})' : ''}.',
+                  icon: Icons.verified_user_outlined,
+                  help: false),
+            ),
+          if (gone.isNotEmpty) InfoLine(tr('{0} line(s) of this page are not in the reports any more – they are taken out when it is saved.').replaceAll('{0}', '${gone.length}'), bad: true, help: false),
+          if (lines.isEmpty) const EmptyState('Nothing to measure', 'Nothing of this work and layer reported done in these days is left to measure.', pic: 'clipboard'),
+          const SizedBox(height: 8),
+          for (final l in lines) _line(l, sup),
+          const SizedBox(height: 6),
+          DateField(key: const Key('emb-day'), label: 'Date of the MB page (measured on)', value: mbDay, clear: false, last: DateTime.tryParse(j.today), onChanged: (v) => setState(() => mbDay = v)),
+          TextBox(key: const Key('emb-note'), label: 'Note', controller: note),
+          const SizedBox(height: 8),
+          Text(n > 0 ? '$n ${tr('lines ticked')} · ${tot.entries.map((e) => '${_f3(e.value)} ${e.key}').join(' + ')}' : tr('Nothing ticked'), key: const Key('emb-tot'), style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          FilledButton(key: const Key('emb-save'), onPressed: busy || n == 0 ? null : _save, child: Text(busy ? 'Saving…' : 'Save as Measured')),
+        ],
+      ]),
+    );
+  }
+
+  Widget _line(Map<String, dynamic> l, bool sup) {
+    final k = '${l['key']}', no = l['appr'] == 'no', may = !no || sup, calc = l['how'] != 'reported', rfi = [for (final x in (l['rfi'] as List? ?? const [])) '$x'];
+    final q = calc ? engMbQty('m', l['len'], asNum(w[k]?.text) ?? _n(l['w_m']), asNum(mm[k]?.text) ?? _n(l['mm_m']), l['qty']) : (qty: _n(l['qty']), unit: '${l['unit']}', how: 'reported');
+    return Opacity(
+      opacity: on[k] == true ? 1 : .6,
+      child: Container(
+        key: Key('emb-l-$k'),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: softShadow(), border: on[k] == true ? Border.all(color: C.green, width: 2) : null),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          InkWell(
+            onTap: may ? () => setState(() => on[k] = !(on[k] ?? false)) : null,
+            child: Row(children: [
+              Icon(on[k] == true ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded, color: may ? (on[k] == true ? C.green : C.faint) : C.line),
+              const SizedBox(width: 8),
+              Expanded(child: Text('${'${l['side'] ?? ''}'.isEmpty ? '' : '${l['side']} · '}${l['from'] != null ? '${engCh(l['from'])} – ${engCh(l['to'])}' : ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5))),
+              Text('${_f3(q.qty)} ${q.unit}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+            ]),
+          ),
+          Text(engMbHow(q.how, l['len'], asNum(w[k]?.text) ?? l['w_m'], asNum(mm[k]?.text) ?? l['mm_m']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          Text('${_day(l['day'])} · ${l['name'] ?? ''}${l['outside'] == true ? ' · ${tr('outside the plan')}' : ''}${l['inPage'] == true ? ' · ${tr('in this page')}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (rfi.isNotEmpty) Text('RFI: ${rfi.join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.greenDark, fontWeight: FontWeight.w600)),
+          if (no) Text(sup ? tr('Not approved by the IE – the Super Admin may measure it with a reason') : tr('Not approved by the IE – not finished, not measured'), style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600)),
+          if (on[k] == true) ...[
+            if (calc) ...[
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: TextBox(key: Key('emb-w-$k'), label: 'Width m', controller: w[k]!, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                const SizedBox(width: 8),
+                Expanded(child: TextBox(key: Key('emb-mm-$k'), label: 'Thickness mm', controller: mm[k]!, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+              ]),
+              Text('${tr('masters')}: ${l['w_m'] ?? '–'} m · ${l['mm_m'] ?? '–'} mm', style: const TextStyle(fontSize: 12, color: C.muted)),
+            ],
+            const SizedBox(height: 8),
+            TextBox(key: Key('emb-rem-$k'), label: 'Remark (when it differs from the masters)', controller: rem[k]!),
+            if (no && sup) TextBox(key: Key('emb-skip-$k'), label: 'Why measured without the IE\'s approval? *', controller: skip[k]!),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+

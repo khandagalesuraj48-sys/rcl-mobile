@@ -8124,4 +8124,153 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/72_ai_memory.png'));
   }, tags: ['golden']);
+
+  // (3.95.0, with rcl-purchase "Purchase Phase 2" and rcl-store step 10) Purchase Orders – the master in Purchase, its copy at the site (D-2)
+  testWidgets('(3.95.0) Purchase Orders: an approved CS → Make PO (the GST % the supplier did not give typed) → at the site; the PO list; cancelled with why', (t) async {
+    phone(t);
+    final srv = FakeServer()..purSite = true;
+    srv.purCs[1]!['status'] = 'Approved';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    Future<void> card(String key, {bool tap = true}) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      if (!tap) return;
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    Future<void> type(String key, String v) => t.enterText(find.descendant(of: find.byKey(Key(key)), matching: find.byType(TextField)), v);
+    await t.ensureVisible(find.text('Purchase'));
+    await settle(t, 400);
+    await t.tap(find.text('Purchase'));
+    await net(t);
+    expect(find.byKey(const Key('pur-po')), findsOneWidget, reason: 'the Purchase Orders card');
+    await card('pur-cs');
+    await card('prq-row-1');
+    expect(find.byKey(const Key('pcs-view')), findsOneWidget);
+    await card('pcs-po-make-2-S1');
+    expect(find.byKey(const Key('ppf-form')), findsOneWidget);
+    expect([for (final x in srv.purSent) x['action']].where((a) => a == 'poNew').length, 1);
+    await card('ppf-gst-2', tap: false);
+    await type('ppf-gst-2', '18');
+    await settle(t, 300);
+    await card('ppf-sum', tap: false);
+    expect(find.text('₹1,30,800.00'), findsOneWidget, reason: '2 × 55,000 + GST 18 % + freight 1,000');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9zd_pur_po_form.png'));
+    await card('ppf-save');
+    await t.tap(find.text('Make the PO').last);
+    await net(t);
+    final mk = srv.purSent.lastWhere((x) => x['action'] == 'poMake');
+    expect([mk['cs'], mk['vendor'], mk['site'], mk['date'], mk['need_by'], mk['pay_terms'], mk['gst']], [1, 2, 'S1', '2026-10-14', '2026-10-20', 'Advance', {'2': '18'}]);
+    expect(find.byKey(const Key('ppv-view')), findsOneWidget, reason: 'the PO opened');
+    expect(find.textContaining('At the site in its Store as PO 21'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9ze_pur_po.png'));
+    await t.pageBack();
+    await net(t);
+    expect(srv.purPos.length, 1);
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- the PO list → the PO → cancelled with why (no GRN yet)
+    await card('pur-po');
+    expect(find.byKey(const Key('ppo-row-1')), findsOneWidget);
+    await card('ppo-row-1');
+    await card('ppv-cancel');
+    await t.enterText(find.byKey(const Key('note-box')), 'Wrong rate');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    final cn = srv.purSent.lastWhere((x) => x['action'] == 'poCancel');
+    expect([cn['no'], cn['ver'], cn['why']], [1, 1, 'Wrong rate']);
+    expect(find.textContaining('Cancelled by Sujit Mule'), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.95.0) Store: a PO of the Purchase Department is read-only at the site – "From Purchase", no Change / Cancel / Delete / Close', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..storeWf = true
+      ..storePurPo = true
+      ..storePages = {...FakeServer().storePages, 'purchase': 'Edit'};
+    await openStoreWork(t, server: srv);
+    await reach(t, 'sw-po', 'st-work');
+    await tapK(t, 'sw-po');
+    await net(t);
+    expect(find.byKey(const Key('po-pur-S1-21'), skipOffstage: false), findsOneWidget);
+    expect(find.text('From Purchase – PO-0001', skipOffstage: false), findsOneWidget);
+    for (final k in ['po-edit-S1-21', 'po-cancel-S1-21', 'po-del-S1-21', 'po-close-S1-21', 'po-ok-S1-21']) {
+      expect(find.byKey(Key(k), skipOffstage: false), findsNothing, reason: k);
+    }
+    expect(find.byKey(const Key('po-edit-S1-1'), skipOffstage: false), findsOneWidget, reason: 'the site\'s own PO as before');
+  });
+
+  // (3.95.0, with rcl-engineering "Engineering 2B") the Measurement Book
+  testWidgets('(3.95.0) Engineering: the Measurement Book – another\'s page check-measured; a new page from the reports (a width corrected, a stretch not approved by the IE left out); the abstract', (t) async {
+    phone(t);
+    final srv = FakeServer()..engSite = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    Future<void> card(String key, {bool tap = true}) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      if (!tap) return;
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    Future<void> type(String key, String v) => t.enterText(find.descendant(of: find.byKey(Key(key)), matching: find.byType(TextField)), v);
+    await t.ensureVisible(find.text('Engineering'));
+    await settle(t, 400);
+    await t.tap(find.text('Engineering'));
+    await net(t);
+    await card('eng-mb');
+    expect(find.byKey(const Key('emb-row-MB-0001')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9zf_eng_mb.png'));
+    // ---- Engineer One's page: check-measured (never one's own)
+    await card('emb-row-MB-0001');
+    expect(find.byKey(const Key('emb-view')), findsOneWidget);
+    await card('emb-ok');
+    await t.tap(find.byKey(const Key('emb-chk-ok')));
+    await net(t);
+    final ck = srv.engSent.lastWhere((x) => x['action'] == 'mbCheck');
+    expect([ck['no'], ck['ver'], ck['chk_day']], ['MB-0001', 1, '2026-10-14']);
+    expect(srv.engMb.first['status'], 'Check-measured');
+    expect(find.byKey(const Key('emb-ok')), findsNothing, reason: 'locked once check-measured');
+    await t.pageBack();
+    await net(t);
+    // ---- a new MB page: the work of the last 7 days not measured
+    await t.tap(find.byKey(const Key('emb-new')));
+    await net(t);
+    await card('emb-find');
+    final of = srv.engSent.lastWhere((x) => x['action'] == 'mbOffer');
+    expect([of['work'], of['layer'], of['side'], of['from'], of['to']], ['W-001', 'L1', '', '2026-10-08', '2026-10-14']);
+    await card('emb-w-k1', tap: false);
+    await type('emb-w-k1', '7.9');
+    await type('emb-rem-k1', 'measured 7.9 m');
+    await settle(t, 300);
+    await card('emb-l-k3', tap: false);
+    expect(find.descendant(of: find.byKey(const Key('emb-l-k3')), matching: find.textContaining('Not approved by the IE – not finished')), findsOneWidget, reason: 'the stretch the IE did not approve: left out');
+    await card('emb-tot', tap: false);
+    expect(find.text('2 lines ticked · 1,161 cum'), findsOneWidget, reason: '300 × 7.9 × 0.3 + 200 × 7.5 × 0.3');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9zg_eng_mb_new.png'));
+    await card('emb-save');
+    final sv = srv.engSent.lastWhere((x) => x['action'] == 'mbSave');
+    expect([sv['work'], sv['layer'], sv['mb_day'], (sv['lines'] as List).length, (sv['lines'] as List).first],
+        ['W-001', 'L1', '2026-10-14', 2, {'key': 'k1', 'w': '7.9', 'mm': '300', 'remark': 'measured 7.9 m', 'skip': ''}]);
+    expect(find.byKey(const Key('emb-view')), findsOneWidget, reason: 'the new page opened');
+    await t.pageBack();
+    await net(t);
+    // ---- the abstract for the RA bill
+    await t.tap(find.byKey(const Key('emb-t-abs')));
+    await net(t);
+    expect(find.text('2,487.5 cum', skipOffstage: false), findsOneWidget);
+  }, tags: ['golden']);
 }
