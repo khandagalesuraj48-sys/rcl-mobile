@@ -928,11 +928,10 @@ class _EngMbScreenState extends State<EngMbScreen> {
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Text('${x['no']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
-            const SizedBox(width: 8),
-            Expanded(child: Text(_day(x['mb_day']), style: const TextStyle(color: C.muted, fontSize: 13))),
+            Expanded(child: Text('${x['no']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5))),
             Pill(x['status'] == 'Measured' ? tr('Measured – to check') : tr('${x['status']}'), color: c, bg: bg),
           ]),
+          Text('${tr('Measured on')} ${_day(x['mb_day'])}', style: const TextStyle(color: C.muted, fontSize: 13)),
           const SizedBox(height: 4),
           Text('${x['name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           Text(_mbQtyOf(x['totals']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
@@ -956,7 +955,7 @@ class _EngMbScreenState extends State<EngMbScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('emb-list'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 100), children: [
-          const Text('The quantity of a finished layer, worked out from the reports (chainage × width × thickness) → measured → check-measured → the abstract for the RA bill.', style: TextStyle(fontSize: 13, color: C.muted)),
+          const Text('The quantity of a finished layer, worked out from the reports (chainage × width × thickness): measured, check-measured by another, then the abstract for the RA bill.', style: TextStyle(fontSize: 13, color: C.muted)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, children: [
             ChoiceChip(key: const Key('emb-t-list'), label: const Text('MB pages'), selected: tab == 'list', onSelected: (_) {
@@ -1436,12 +1435,16 @@ class _EngMbFormState extends State<EngMbForm> {
           if (rfi.isNotEmpty) Text('RFI: ${rfi.join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.greenDark, fontWeight: FontWeight.w600)),
           if (no) Text(sup ? tr('Not approved by the IE – the Super Admin may measure it with a reason') : tr('Not approved by the IE – not finished, not measured'), style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600)),
           if (on[k] == true) ...[
-            if (calc)
+            if (calc) ...[
+              const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: TextBox(key: Key('emb-w-$k'), label: '${tr('Width m')} (${tr('masters')} ${l['w_m'] ?? '–'})', controller: w[k]!, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                Expanded(child: TextBox(key: Key('emb-w-$k'), label: 'Width m', controller: w[k]!, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
                 const SizedBox(width: 8),
-                Expanded(child: TextBox(key: Key('emb-mm-$k'), label: '${tr('Thickness mm')} (${tr('masters')} ${l['mm_m'] ?? '–'})', controller: mm[k]!, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
+                Expanded(child: TextBox(key: Key('emb-mm-$k'), label: 'Thickness mm', controller: mm[k]!, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
               ]),
+              Text('${tr('masters')}: ${l['w_m'] ?? '–'} m · ${l['mm_m'] ?? '–'} mm', style: const TextStyle(fontSize: 12, color: C.muted)),
+            ],
+            const SizedBox(height: 8),
             TextBox(key: Key('emb-rem-$k'), label: 'Remark (when it differs from the masters)', controller: rem[k]!),
             if (no && sup) TextBox(key: Key('emb-skip-$k'), label: 'Why measured without the IE\'s approval? *', controller: skip[k]!),
           ],

@@ -1947,5 +1947,6 @@
 "the layer has no thickness": "परत की मोटाई नहीं",
 "the reported quantity": "report की गई मात्रा",
 "with the CS": "CS के साथ",
-"{0} line(s) of this page are not in the reports any more – they are taken out when it is saved.": "इस page की {0} लाइनें अब reports में नहीं – सहेजते समय हटा दी जाएँगी।"
+"{0} line(s) of this page are not in the reports any more – they are taken out when it is saved.": "इस page की {0} लाइनें अब reports में नहीं – सहेजते समय हटा दी जाएँगी।",
+"The quantity of a finished layer, worked out from the reports (chainage × width × thickness): measured, check-measured by another, then the abstract for the RA bill.": "पूरी परत की मात्रा reports से (chainage × चौड़ाई × मोटाई): मापी, दूसरे ने जाँची, फिर RA bill का सारांश।"
 }

@@ -1947,5 +1947,6 @@
 "the layer has no thickness": "थराला जाडी नाही",
 "the reported quantity": "report केलेले प्रमाण",
 "with the CS": "CS सोबत",
-"{0} line(s) of this page are not in the reports any more – they are taken out when it is saved.": "या page च्या {0} ओळी आता reports मध्ये नाहीत – जतन करताना काढल्या जातील."
+"{0} line(s) of this page are not in the reports any more – they are taken out when it is saved.": "या page च्या {0} ओळी आता reports मध्ये नाहीत – जतन करताना काढल्या जातील.",
+"The quantity of a finished layer, worked out from the reports (chainage × width × thickness): measured, check-measured by another, then the abstract for the RA bill.": "पूर्ण थराचे प्रमाण reports वरून (chainage × रुंदी × जाडी): मोजले, दुसऱ्याने तपासले, मग RA bill चा सारांश."
 }
