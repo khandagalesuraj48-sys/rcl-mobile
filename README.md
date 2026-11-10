@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.95.0 (10-11-2026 – Purchase Phase 2 and Engineering 2B; with rcl-purchase step 3, rcl-store step 10, rcl-engineering
+step 4):** **Purchase Orders** (`screens/purchase_work.dart`: an approved CS lists its POs – one a supplier × site – "Make PO": date,
+delivery by, payment terms, the site's shipping address and contact, terms, remark, a GST % the supplier did not give typed here; the PO
+– approved with the CS (G-6) – goes at once to the site's Store (D-2); the PO: what came at the site, the balance, each GRN and its check
+with the PO, Share on WhatsApp, Send again, Cancel (before any GRN, with why); the list by state). **The Store** (`store_work.dart`): a
+PO of the Purchase Department shows "From Purchase – PO-0001" and is read-only at the site (no Change / Cancel / Delete / Close /
+Approve). **Measurement Book** (`screens/engineering.dart`, the Engineering Admin / Super Admin): MB pages (by status), a new page –
+work, layer, side, the days of the reports → the stretches reported done and not measured, each quantity worked out (length × width ×
+thickness), a width / thickness corrected with a remark, a stretch not approved by the IE left out (the Super Admin may, with a reason)
+→ "Save as Measured"; a page: Check-measured (another Admin / the Super Admin – never one's own) or Send back (why), Change / Correct;
+the abstract for the RA bill (up to the previous period, this period, cumulative). The printed PO / MB page stay on the web.
+
 **Version 3.94.0 (09-11-2026 – Purchase Phase 1; with rcl-purchase's step 2 and the Store's `api/purinbox.js`):** **Purchase** –
 its work in the app (`screens/purchase_work.dart`, Home → Purchase, the cards under the Dashboard): **Inbox – to order** (the approved
 requirement lines of his sites still to order, from each site's Store; a line already in an enquiry shown with it; tick → "Make

@@ -1808,6 +1808,9 @@ class PoCard extends StatelessWidget {
     final p = po, no = nOf(p['no']).toInt(), site = '${p['site'] ?? ''}', lines = listOf(p['lines']), open = p['status'] == 'Open';
     // (3.62.0, the Store's step 5) its approval: waiting (for whom), rejected (why), approved (by whom) – as the web's apprTag
     final appr = '${p['appr'] ?? ''}', may = p['mayApprove'] == true, wait = [for (final w in (p['waitFor'] as List? ?? const [])) '$w'];
+    // (3.95.0, Purchase Phase 2) a PO of the Purchase Department: its copy here (D-2) – read-only at the site: changed, cancelled or closed
+    // only in Purchase (the Store's server refuses it too); the site's GRNs and bills are made against it as any PO
+    final pur = p['pur_no'] != null, purRef = pur ? '${mapOf(p['pur'])['ref'] ?? 'PO-${'${p['pur_no']}'.padLeft(4, '0')}'}' : '';
     Future<void> run(Future<void> Function() f) async {
       try {
         await f();
@@ -1822,6 +1825,7 @@ class PoCard extends StatelessWidget {
         statePill('${p['state'] ?? p['status']}'),
       ]),
       Text('${p['vendor'] ?? ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      if (pur) Text('From Purchase – $purRef', key: Key('po-pur-$site-$no'), style: const TextStyle(fontSize: 12.5, color: C.purple, fontWeight: FontWeight.w700)),
       // (3.71.0, the web's 29-10-2026: "PO … GRN … quantity kami hoil … HO … full … site … PO balance") ordered · came · BALANCE
       for (final l in lines)
         Wrap(key: Key('po-l-$site-$no-${l['line']}'), spacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -1840,7 +1844,7 @@ class PoCard extends StatelessWidget {
       else if (open && appr == 'Approved' && '${p['appr_name'] ?? ''}'.isNotEmpty)
         Text('Approved by ${p['appr_name']}', key: Key('po-appr-$site-$no'), style: _faint),
       Wrap(spacing: 2, children: [
-        if (may) ...[
+        if (may && !pur) ...[
           _act('po-ok-$site-$no', p['step'] == 'verify' ? 'Verify' : 'Approve', () => run(() async {
                 await k.call('poDecide', {'no': no, 'ok': true});
                 if (context.mounted) toast(context, 'PO $no ${p['step'] == 'verify' ? 'verified' : 'approved'}.');
@@ -1864,12 +1868,12 @@ class PoCard extends StatelessWidget {
               final h = mapOf(r['heading']), x = mapOf(r['po']);
               await printStorePaper(context, h, 'PO ${'${x['ref'] ?? ''}'.isEmpty ? no : x['ref']}', (logo) => poPaperHtml(x, h, mapOf(r['supplier']), logo: logo));
             }), color: C.blue),
-        if (buy && open)
+        if (buy && open && !pur)
           _act('po-edit-$site-$no', 'Change', () async {
             final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => PoFormScreen(k: k, site: site, po: p)));
             if (saved == true) await reload();
           }, color: C.blue),
-        if (buy && open && !lines.any((l) => nOf(l['received']) > 0))
+        if (buy && open && !pur && !lines.any((l) => nOf(l['received']) > 0))
           _act('po-cancel-$site-$no', 'Cancel', () async {
             if (!await ask(context, 'Cancel PO $no?', 'Nothing of it has come – it is cancelled.', yes: 'Cancel the PO', no: 'No', danger: true)) return;
             await run(() async {
@@ -1879,7 +1883,7 @@ class PoCard extends StatelessWidget {
             });
           }, color: C.red),
         // (3.70.0, the web's 29-10-2026) nothing came: deleted – its requirements can then be changed or deleted
-        if (buy && p['status'] != 'Closed' && !lines.any((l) => nOf(l['received']) > 0))
+        if (buy && !pur && p['status'] != 'Closed' && !lines.any((l) => nOf(l['received']) > 0))
           _act('po-del-$site-$no', 'Delete', () async {
             if (!await ask(context, 'Delete PO $no?', bi('Nothing of it has come. It goes from the list; its requirements can then be changed or deleted. (Written in the activity record.)', 'ही PO delete होईल.'), yes: 'Delete the PO', no: 'No', danger: true)) return;
             await run(() async {
@@ -1888,7 +1892,7 @@ class PoCard extends StatelessWidget {
               await reload();
             });
           }, color: C.red),
-        if ((buy || k.admin) && open && p['state'] != 'Received')
+        if ((buy || k.admin) && open && !pur && p['state'] != 'Received')
           _act('po-close-$site-$no', 'Close', () async {
             if (!await ask(context, 'Close PO $no?', 'The rest of it will not come.', yes: 'Close', no: 'No')) return;
             await run(() async {

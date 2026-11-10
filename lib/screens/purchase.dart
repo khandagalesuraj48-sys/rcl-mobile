@@ -83,6 +83,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       card('pur-quotes', 'Quotations', 'दरपत्रके', 'Each supplier\'s rates, as he gave them', Icons.request_quote_rounded, C.amber, C.amberSoft, () => PurRfqListScreen(me: m, mode: 'quotes')),
       card('pur-cs', 'Comparative Statement', 'तुलनात्मक तक्ता', 'Without GST, L1 marked, given line by line', Icons.compare_arrows_rounded, C.green, C.greenSoft, () => PurRfqListScreen(me: m, mode: 'cs')),
       if (m.admin) card('pur-approve', 'Waiting for my approval', 'माझ्या मंजुरीसाठी', 'Comparative statements to decide', Icons.how_to_reg_rounded, C.orange, C.orangeSoft, () => PurApproveScreen(me: m)),
+      card('pur-po', 'Purchase Orders', 'खरेदी आदेश (PO)', 'Made from an approved CS – its copy at the site\'s Store', Icons.receipt_long_rounded, C.blue, C.blueSoft, () => PurPoListScreen(me: m)),
       card('pur-vendors', 'Suppliers', 'पुरवठादार', 'One list for every site', Icons.storefront_rounded, C.slate, C.slateSoft, () => PurVendorsScreen(me: m)),
       if (m.superAdmin) card('pur-settings', 'CS approval limit', 'CS मंजुरी मर्यादा', 'Up to it a Purchase Admin, above it the Super Admin', Icons.tune_rounded, C.slate, C.slateSoft, () => const PurSettingsScreen()),
     ];

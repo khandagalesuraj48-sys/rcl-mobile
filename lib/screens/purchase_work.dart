@@ -15,6 +15,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'store_work.dart' show checkWords;
 
 /// One call to Purchase of the site open now.
 Future<Map<String, dynamic>> purCall(BuildContext context, Map<String, dynamic> body) {
@@ -1018,6 +1019,50 @@ class _PurCsScreenState extends State<PurCsScreen> {
     );
   }
 
+  // (3.95.0, Purchase Phase 2) an approved CS: its POs – one a supplier × site (D-2: made here, the copy goes to the site's Store)
+  List<Widget> _pos(Map<String, dynamic> po) {
+    final groups = _list(po['groups']);
+    return [
+      const SectionTitle('Purchase Orders', mr: 'खरेदी आदेश (PO)'),
+      if (po['step3'] != true) InfoLine(tr('Purchase\'s database step 3 is not run yet – no PO is made until then.'), help: false),
+      for (final g in groups)
+        _card(
+          key: Key('pcs-po-${g['vendor']}-${g['site']}'),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text('${_s(g['vendor_name'])} · ${_s(g['site'])}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
+              if (g['po'] != null) purPill(_s(_map(g['po'])['state'])),
+            ]),
+            _small('${_n(g['lines'])} ${tr('lines')} · ${_s(g['items'])}'),
+            Text(purMoney(g['po'] != null ? _map(g['po'])['total'] : g['total']), style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            if (g['po'] != null)
+              FilledButton.tonal(
+                  key: Key('pcs-po-open-${g['vendor']}-${g['site']}'),
+                  style: _fs,
+                  onPressed: () async {
+                    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PurPoView(me: widget.me, no: _n(_map(g['po'])['no']).toInt())));
+                    if (mounted) _load();
+                  },
+                  child: Text('${tr('Open')} ${_map(g['po'])['ref']}'))
+            else if (g['may'] == true)
+              FilledButton(
+                  key: Key('pcs-po-make-${g['vendor']}-${g['site']}'),
+                  style: _fs,
+                  onPressed: () async {
+                    final no = await Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => PurPoForm(cs: _n(_map(data?['cs'])['no']).toInt(), vendor: _n(g['vendor']).toInt(), site: _s(g['site']))));
+                    if (!mounted) return;
+                    if (no != null) await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PurPoView(me: widget.me, no: no)));
+                    if (mounted) _load();
+                  },
+                  child: const Text('Make PO'))
+            else
+              _small(tr('Another site – made by who has Purchase there.')),
+          ]),
+        ),
+    ];
+  }
+
   List<Widget> _sheet(Map<String, dynamic> c) {
     final sh = _map(c['sheet']), vs = _list(sh['vendors']), lines = _list(sh['lines']), may = _map(c['may']), ed = may['edit'] == true;
     final open = c['status'] == 'Draft' || c['status'] == 'Sent back';
@@ -1106,6 +1151,7 @@ class _PurCsScreenState extends State<PurCsScreen> {
             if (_s(t['why']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(t['why']))),
           ])),
       ],
+      if (data?['po'] != null) ..._pos(_map(data!['po'])),
       _small(tr('The printed CS: on the web (Purchase → Comparative Statement → Print).')),
     ];
   }
@@ -1492,3 +1538,454 @@ class _PurSettingsScreenState extends State<PurSettingsScreen> {
     );
   }
 }
+
+/* ======================================== PURCHASE ORDERS (3.95.0, Purchase Phase 2) ========================================
+ * D-2: the PO's master is here in Purchase; its copy goes at once to the site's Store (approved – G-6), where the GRNs and bills are made
+ * against it and its balance falls. Here: the list, one PO (what came at the site, each GRN, the balance), Send again, Cancel (before
+ * any GRN), Share on WhatsApp; made from an approved CS (one a supplier × site). The printed PO stays on the web. */
+const _kPoTabs = [('', 'All'), ('At the site', 'At the site'), ('Not yet at the site', 'Not yet at the site'), ('Partly received', 'Partly received'), ('Received', 'Received'), ('Cancelled', 'Cancelled')];
+
+class PurPoListScreen extends StatefulWidget {
+  const PurPoListScreen({super.key, required this.me});
+  final PurMe me;
+  @override
+  State<PurPoListScreen> createState() => _PurPoListScreenState();
+}
+
+class _PurPoListScreenState extends State<PurPoListScreen> {
+  List<Map<String, dynamic>> rows = [];
+  String st = '', err = '', storeErr = '';
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      err = '';
+    });
+    try {
+      final r = await purCall(context, {'action': 'poList', if (st.isNotEmpty) 'state': st});
+      if (!mounted) return;
+      final store = _map(r['store']);
+      setState(() {
+        rows = _list(r['pos']);
+        storeErr = store.isNotEmpty && store['ok'] != true ? _s(store['error']) : '';
+        loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: C.bg,
+        appBar: AppBar(title: const TwoLang('Purchase Orders', 'खरेदी आदेश (PO)', size: 18, weight: FontWeight.w700), actions: withAsk()),
+        body: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(key: const Key('ppo-list'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
+            _small(bi('Each PO of an approved comparative statement – one a supplier × site. Its copy is in the site\'s Store: the GRNs and bills are made against it.', 'प्रत्येक PO ची copy site च्या Store मध्ये – GRN तिथे होतो, शिल्लक कमी होते.')),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final t in _kPoTabs)
+                ChoiceChip(key: Key('ppo-st-${t.$1}'), label: Text(t.$2), selected: st == t.$1, onSelected: (_) {
+                  setState(() => st = t.$1);
+                  _load();
+                }),
+            ]),
+            const SizedBox(height: 10),
+            if (err.isNotEmpty) InfoLine(err, bad: true),
+            if (storeErr.isNotEmpty) InfoLine(storeErr, bad: true, help: false),
+            if (loading) _wait(),
+            if (!loading && rows.isEmpty && err.isEmpty) const EmptyState('No PO here', 'A PO is made from an approved comparative statement.', pic: 'clipboard'),
+            if (!loading)
+              for (final p in rows)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Press(
+                    key: Key('ppo-row-${p['no']}'),
+                    onTap: () async {
+                      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PurPoView(me: widget.me, no: _n(p['no']).toInt())));
+                      if (mounted) _load();
+                    },
+                    padding: const EdgeInsets.all(14),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Text(_s(p['ref']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _small('${_day(p['date'])} · ${_s(p['site'])}${p['store_no'] != null ? ' · ${tr('its PO')} ${p['store_no']}' : ''}')),
+                        purPill(_s(p['state'])),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(_s(p['vendor']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(_s(p['items']), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5)),
+                      Row(children: [
+                        Expanded(child: _small('${_s(p['cs_ref'])}${_n(p['grns']) > 0 ? ' · ${_n(p['grns'])} GRN' : ''}')),
+                        Text(purMoney(p['total']), style: const TextStyle(fontWeight: FontWeight.w800)),
+                      ]),
+                      if (_s(p['send_error']).isNotEmpty) _small(_s(p['send_error']), color: C.red),
+                    ]),
+                  ),
+                ),
+          ]),
+        ),
+      );
+}
+
+/// One PO: the supplier, terms, each line ordered · came at the site · balance, each GRN (the bills), Send again, Cancel, WhatsApp
+class PurPoView extends StatefulWidget {
+  const PurPoView({super.key, required this.me, required this.no});
+  final PurMe me;
+  final int no;
+  @override
+  State<PurPoView> createState() => _PurPoViewState();
+}
+
+class _PurPoViewState extends State<PurPoView> {
+  Map<String, dynamic>? data;
+  String err = '';
+  bool loading = true, busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      err = '';
+    });
+    try {
+      final r = await purCall(context, {'action': 'poGet', 'no': widget.no});
+      if (!mounted) return;
+      setState(() {
+        data = r;
+        loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _do(Map<String, dynamic> body, String Function(Map<String, dynamic>) done) async {
+    setState(() => busy = true);
+    try {
+      final r = await purCall(context, body);
+      if (!mounted) return;
+      toast(context, done(r), bad: body['action'] == 'poSend' && r['sent'] != true);
+      setState(() {
+        data = r;
+        busy = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => busy = false);
+        toast(context, errText(e), bad: true);
+      }
+    }
+  }
+
+  Future<void> _cancel(Map<String, dynamic> q) async {
+    final why = await askNote(context, tr('Cancel {0}?').replaceAll('{0}', _s(q['ref'])), label: 'Why is it cancelled?', ok: 'Cancel PO', danger: true, neededMsg: 'Write the reason (a few words).');
+    if (why == null || !mounted) return;
+    await _do({'action': 'poCancel', 'no': q['no'], 'ver': q['ver'], 'why': why}, (_) => '${q['ref']} – ${tr('cancelled')}.');
+  }
+
+  // the PO as one WhatsApp message to the supplier (the web's waPoText)
+  String _waText(Map<String, dynamic> r) {
+    final q = _map(r['po']), co = _s(_map(r['heading'])['company']).isEmpty ? 'Rachana Construction Limited' : _s(_map(r['heading'])['company']);
+    return [
+      '*$co – Purchase Order ${q['ref']}*',
+      'Date: ${_day(q['date'])}${_s(q['need_by']).isNotEmpty ? ' · Delivery by: ${_day(q['need_by'])}' : ''}',
+      'To: ${_map(q['vendor'])['name']}',
+      'Site: ${r['site_name']}',
+      '',
+      'Please supply:',
+      for (final (i, l) in _list(q['lines']).indexed)
+        '${i + 1}. ${l['name']}${_s(l['brand']).isNotEmpty ? ' – ${l['brand']}' : ''}${_s(l['spec']).isNotEmpty ? ' (${l['spec']})' : ''}: ${purQty(l['qty'])} ${_s(l['unit'])} @ ₹${_n(l['rate']).toStringAsFixed(2)}${_n(l['disc_pct']) > 0 ? ' less ${l['disc_pct']}%' : ''} · GST ${_n(l['gst_pct']).toStringAsFixed(2)}%',
+      '',
+      'Amount ${purMoney(q['taxable'])} + GST ${purMoney(q['gst'])}${_n(q['freight']) > 0 ? ' + freight ${purMoney(q['freight'])}' : ''}${_n(q['loading']) > 0 ? ' + loading ${purMoney(q['loading'])}' : ''} = *${purMoney(q['total'])}*',
+      if (_s(q['pay_terms']).isNotEmpty) 'Payment terms: ${q['pay_terms']}',
+      'Deliver to: ${_s(q['ship_to']).replaceAll('\n', ', ')}',
+      if (_s(q['site_contact']).isNotEmpty) 'Site contact: ${q['site_contact']}',
+      if (_s(q['terms']).isNotEmpty) ...['', 'Terms:', _s(q['terms'])],
+      '',
+      'Please quote ${q['ref']} on your bill.',
+    ].join('\n');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = data, q = _map(r?['po']), si = r?['site'] == null ? null : _map(r?['site']), may = _map(r?['may']), v = _map(q['vendor']);
+    final came = {for (final l in _list(si?['lines'])) _s(l['line']): l}, sent = _map(q['sent']);
+    return Scaffold(
+      backgroundColor: C.bg,
+      appBar: AppBar(title: Text(r == null ? 'PO' : _s(q['ref']), style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(key: const Key('ppv-view'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
+          if (err.isNotEmpty) InfoLine(err, bad: true),
+          if (loading) _wait(),
+          if (!loading && r != null) ...[
+            _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [Expanded(child: Text(_s(q['ref']), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))), purPill(_s(q['state']))]),
+              _small('${tr('Date')} ${_day(q['date'])}${_s(q['need_by']).isNotEmpty ? ' · ${tr('delivery by')} ${_day(q['need_by'])}' : ''} · ${_s(r['site_name'])} (${_s(q['site'])}) · ${tr('from')} ${_s(q['cs_ref'])} (${_s(q['rfq_ref'])})'),
+              if (_s(_map(q['approved'])['name']).isNotEmpty) _small('${tr('Approved by')} ${_map(q['approved'])['name']} ${_at(_map(q['approved'])['at'])} – ${tr('with the CS')}'),
+              const SizedBox(height: 6),
+              if (q['status'] == 'Cancelled')
+                InfoLine('${tr('Cancelled by')} ${_s(q['cancelled_name'])} ${_at(q['cancelled_at'])}: ${_s(q['status_note'])}', bad: true, help: false)
+              else if (q['state'] == 'Not yet at the site')
+                InfoLine('${tr('Not yet at the site')} – ${_s(sent['error']).isNotEmpty ? sent['error'] : tr('it was not sent yet')}', bad: true, help: false)
+              else if (si != null)
+                _small('${tr('At the site in its Store as PO')} ${si['no']} (${_s(si['ref'])}) ${tr('since')} ${_at(sent['at'])} – ${tr('the GRNs and bills of the site are made against it.')}', color: C.greenDark),
+              if (_s(r['site_error']).isNotEmpty) _small(_s(r['site_error']), color: C.red),
+              const SizedBox(height: 10),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                if (q['status'] == 'Open' && _s(q['wa']).isNotEmpty)
+                  OutlinedButton.icon(
+                      key: const Key('ppv-wa'),
+                      style: _os,
+                      onPressed: () => launchUrl(Uri.parse('https://wa.me/${q['wa']}?text=${Uri.encodeComponent(_waText(r))}'), mode: LaunchMode.externalApplication),
+                      icon: const Icon(Icons.chat_rounded, size: 18),
+                      label: const Text('Share on WhatsApp')),
+                if (may['send'] == true)
+                  FilledButton(
+                      key: const Key('ppv-send'),
+                      style: _fs,
+                      onPressed: busy ? null : () => _do({'action': 'poSend', 'no': q['no']}, (x) => x['sent'] == true ? '${q['ref']} – ${tr('it is at the site.')}' : '${q['ref']} – ${tr('not yet at the site')}: ${_s(x['send_error'])}'),
+                      child: const Text('Send again')),
+                if (may['cancel'] == true) TextButton(key: const Key('ppv-cancel'), onPressed: busy ? null : () => _cancel(q), child: const Text('Cancel PO', style: TextStyle(color: C.red))),
+              ]),
+            ])),
+            _card(
+              key: const Key('ppv-terms'),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _small(tr('Supplier')),
+                Text(_s(v['name']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                if ([_s(v['gstin']), _s(v['phone'])].any((x) => x.isNotEmpty)) _small([_s(v['gstin']), _s(v['phone'])].where((x) => x.isNotEmpty).join(' · ')),
+                if (_s(v['address']).isNotEmpty) _small(_s(v['address'])),
+                const SizedBox(height: 8),
+                if (_s(q['pay_terms']).isNotEmpty) Text('${tr('Payment terms')}: ${q['pay_terms']}', style: const TextStyle(fontSize: 13.5)),
+                Text('${tr('Shipping address')}: ${_s(q['ship_to']).replaceAll('\n', ', ')}', style: const TextStyle(fontSize: 13.5)),
+                if (_s(q['site_contact']).isNotEmpty) Text('${tr('Site contact')}: ${q['site_contact']}', style: const TextStyle(fontSize: 13.5)),
+                if (_s(q['terms']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: _small(_s(q['terms']))),
+                if (_s(q['remark']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${tr('Remark')}: ${q['remark']}', style: const TextStyle(fontSize: 13.5))),
+              ]),
+            ),
+            const SectionTitle('Lines – ordered · came · balance', mr: 'ओळी – मागवले · आले · शिल्लक'),
+            for (final l in _list(q['lines']))
+              _card(
+                key: Key('ppv-line-${l['line']}'),
+                Builder(builder: (_) {
+                  final c = came[_s(l['line'])];
+                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${l['line']}. ${_s(l['name'])}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    _small('${_s(l['ref'])} · ${_s(l['site'])}${[_s(l['brand']), _s(l['spec'])].any((x) => x.isNotEmpty) ? ' · ${[_s(l['brand']), _s(l['spec'])].where((x) => x.isNotEmpty).join(' · ')}' : ''}'),
+                    Text('${purQty(l['qty'])} ${_s(l['unit'])} @ ${purMoney(l['rate'])}${_n(l['disc_pct']) > 0 ? ' − ${l['disc_pct']}%' : ''} · GST ${_n(l['gst_pct'])}%', style: const TextStyle(fontSize: 13.5)),
+                    _small('${tr('Amount')} ${purMoney(l['taxable'])} + GST ${purMoney(l['gst'])} = ${purMoney(l['total'])}'),
+                    if (c != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(children: [
+                          Expanded(child: Text('${tr('came')} ${purQty(c['came'])}', style: const TextStyle(fontSize: 13.5))),
+                          Text('${tr('balance')} ${purQty(c['left'])}', style: TextStyle(fontWeight: FontWeight.w800, color: _n(c['left']) > 0 ? C.amber : C.greenDark)),
+                        ]),
+                      ),
+                  ]);
+                }),
+              ),
+            _card(
+              key: const Key('ppv-total'),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _small('${tr('Amount')} ${purMoney(q['taxable'])} + GST ${purMoney(q['gst'])} + ${tr('freight')} ${purMoney(q['freight'])} + ${tr('loading')} ${purMoney(q['loading'])}'),
+                Text(purMoney(q['total']), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                if (_s(q['words']).isNotEmpty) _small(_s(q['words'])),
+              ]),
+            ),
+            SectionTitle('GRNs at the site (the bills)', mr: 'site वरील GRN (बिले)', trailing: Text('${_list(si?['grns']).length}', style: const TextStyle(fontWeight: FontWeight.w800))),
+            if (_list(si?['grns']).isEmpty) _small(si != null ? tr('No GRN on it yet.') : '–'),
+            for (final g in _list(si?['grns']))
+              _card(
+                key: Key('ppv-grn-${g['no']}'),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [Expanded(child: Text('${_s(g['ref'])} · ${_day(g['date'])}', style: const TextStyle(fontWeight: FontWeight.w700))), Text(purMoney(g['gross']), style: const TextStyle(fontWeight: FontWeight.w800))]),
+                  if (_s(g['invoice_no']).isNotEmpty) _small('${tr('Bill')} ${g['invoice_no']}${_s(g['invoice_date']).isNotEmpty ? ' · ${_day(g['invoice_date'])}' : ''}'),
+                  _small(_list(g['lines']).map((l) => '${l['name']} ${purQty(l['qty'])} ${_s(l['unit'])}').join(' · ')),
+                  if (_map(g['check']).isNotEmpty) _small(checkWords(g['check']), color: _map(g['check'])['ok'] == true ? C.greenDark : C.red),
+                ]),
+              ),
+            _small(tr('The printed PO: on the web (Purchase → Purchase Orders → Print).')),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// Make the PO of a supplier × site from an approved CS: date, delivery by, payment terms, the site's shipping address and contact,
+/// terms, remark; a GST % the supplier did not quote is typed here. It is approved with the CS (G-6) and goes at once to the site.
+class PurPoForm extends StatefulWidget {
+  const PurPoForm({super.key, required this.cs, required this.vendor, required this.site});
+  final int cs, vendor;
+  final String site;
+  @override
+  State<PurPoForm> createState() => _PurPoFormState();
+}
+
+class _PurPoFormState extends State<PurPoForm> {
+  Map<String, dynamic>? data;
+  final pay = TextEditingController(), ship = TextEditingController(), contact = TextEditingController(), terms = TextEditingController(), remark = TextEditingController();
+  final gst = <String, TextEditingController>{};
+  String date = '', need = '', err = '';
+  bool loading = true, busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await purCall(context, {'action': 'poNew', 'cs': widget.cs, 'vendor': widget.vendor, 'site': widget.site});
+      if (!mounted) return;
+      final st = _map(r['start']);
+      date = _s(st['date']);
+      need = _s(st['need_by']);
+      pay.text = _s(st['pay_terms']);
+      ship.text = _s(st['ship_to']);
+      contact.text = _s(st['site_contact']);
+      terms.text = _s(st['terms']);
+      setState(() {
+        data = r;
+        loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  // a line's money as the web's poMoneyLine: the GST % quoted, or typed here
+  ({num tx, num gst, bool ok}) _line(Map<String, dynamic> l) {
+    final pct = l['gst_pct'] != null ? _n(l['gst_pct']) : asNum(gst[_s(l['cs_line'])]?.text ?? '');
+    final tx = _r2(_r2(_n(l['qty']) * _n(l['rate'])) * (100 - _n(l['disc_pct'])) / 100);
+    return (tx: tx, gst: pct == null ? 0 : _r2(tx * pct / 100), ok: pct != null);
+  }
+
+  Future<void> _save() async {
+    final d = data!, v = _map(d['vendor']);
+    if (!await ask(context, tr('Make the PO for {0} ({1})?').replaceAll('{0}', _s(v['name'])).replaceAll('{1}', widget.site), tr('It is approved with the CS and goes at once to the site\'s Store.'), yes: 'Make the PO', no: 'Not yet')) return;
+    if (!mounted) return;
+    setState(() {
+      busy = true;
+      err = '';
+    });
+    try {
+      final r = await purCall(context, {
+        'action': 'poMake', 'cs': widget.cs, 'vendor': widget.vendor, 'site': widget.site, 'date': date, 'need_by': need,
+        'pay_terms': pay.text.trim(), 'ship_to': ship.text.trim(), 'site_contact': contact.text.trim(), 'terms': terms.text.trim(), 'remark': remark.text.trim(),
+        'gst': {for (final e in gst.entries) e.key: e.value.text.trim()},
+      });
+      if (!mounted) return;
+      final q = _map(r['po']);
+      toast(context, r['sent'] == true ? '${q['ref']} ${tr('made – it is at the site')} (${tr('its PO')} ${_map(q['sent'])['store_no']}).' : '${q['ref']} ${tr('made – NOT yet at the site')}: ${_s(r['send_error'])}', bad: r['sent'] != true);
+      Navigator.pop(context, _n(q['no']).toInt());
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          busy = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = data, m = _map(d?['money']), cs = _map(d?['cs']), v = _map(d?['vendor']), lines = _list(m['lines']);
+    num tx = 0, g = 0;
+    var miss = 0;
+    for (final l in lines) {
+      final x = _line(l);
+      tx += x.tx;
+      g += x.gst;
+      if (!x.ok) miss++;
+    }
+    final total = _r2(_r2(tx) + _r2(g) + _n(m['freight']) + _n(m['loading']));
+    return Scaffold(
+      backgroundColor: C.bg,
+      appBar: AppBar(title: Text(d == null ? 'New PO' : '${tr('New PO')} – ${_s(v['name'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      body: ListView(key: const Key('ppf-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
+        if (err.isNotEmpty) InfoLine(err, bad: true),
+        if (loading) _wait(),
+        if (!loading && d != null) ...[
+          _small('${_s(d['site_name'])} (${_s(d['site'])}) · ${tr('from')} ${_s(cs['ref'])} (${_s(_map(d['rfq'])['ref'])}), ${tr('approved by')} ${_s(cs['approved_name'])} ${_at(cs['approved_at'])} – ${tr('the PO is approved with it.')}'),
+          if (_s(d['papers_error']).isNotEmpty) _small(tr('The site\'s shipping address and terms could not be read from its Store – type them.'), color: C.red),
+          const SizedBox(height: 8),
+          DateField(key: const Key('ppf-date'), label: 'PO date', value: date, clear: false, last: DateTime.now(), onChanged: (x) => setState(() => date = x)),
+          const SizedBox(height: 8),
+          DateField(key: const Key('ppf-need'), label: 'Delivery by', value: need, onChanged: (x) => setState(() => need = x)),
+          const SizedBox(height: 8),
+          TextBox(key: const Key('ppf-pay'), label: 'Payment terms', controller: pay),
+          TextBox(key: const Key('ppf-ship'), label: 'Shipping address (the site)', controller: ship, maxLines: 3),
+          TextBox(key: const Key('ppf-contact'), label: 'Site contact', controller: contact),
+          TextBox(key: const Key('ppf-terms'), label: 'Terms and conditions (one a line)', controller: terms, maxLines: 4),
+          TextBox(key: const Key('ppf-rem'), label: 'Remark (printed on it)', controller: remark),
+          const SectionTitle('Lines', mr: 'ओळी'),
+          for (final l in lines)
+            _card(
+              key: Key('ppf-line-${l['cs_line']}'),
+              Builder(builder: (_) {
+                final x = _line(l);
+                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${l['line']}. ${_s(l['name'])}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  _small('${_s(l['ref'])} · ${_s(l['site'])}'),
+                  Text('${purQty(l['qty'])} ${_s(l['unit'])} @ ${purMoney(l['rate'])}${_n(l['disc_pct']) > 0 ? ' − ${l['disc_pct']}%' : ''}${l['gst_pct'] != null ? ' · GST ${_n(l['gst_pct'])}%' : ''}', style: const TextStyle(fontSize: 13.5)),
+                  if (l['gst_pct'] == null)
+                    TextBox(
+                        key: Key('ppf-gst-${l['cs_line']}'),
+                        label: 'GST % (the supplier did not give it)',
+                        controller: gst.putIfAbsent(_s(l['cs_line']), TextEditingController.new),
+                        kb: const TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (_) => setState(() {})),
+                  _small('${tr('Amount')} ${purMoney(x.tx)} + GST ${x.ok ? purMoney(x.gst) : '–'} = ${purMoney(_r2(x.tx + x.gst))} · ${tr('landed (CS)')} ${purMoney(l['landed'])}'),
+                ]);
+              }),
+            ),
+          _card(
+            key: const Key('ppf-sum'),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _small('${tr('Amount')} ${purMoney(_r2(tx))} + GST ${purMoney(_r2(g))} + ${tr('freight')} ${purMoney(m['freight'])} + ${tr('loading')} ${purMoney(m['loading'])}'),
+              Text(purMoney(total), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              if (miss > 0) _small(tr('Enter the GST % of {0} lines.').replaceAll('{0}', '$miss'), color: C.red),
+            ]),
+          ),
+          FilledButton(key: const Key('ppf-save'), onPressed: busy || miss > 0 ? null : _save, child: Text(busy ? 'Saving…' : 'Save PO and send it to the site')),
+        ],
+      ]),
+    );
+  }
+}
+
