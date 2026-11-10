@@ -1,4 +1,5 @@
 // (3.96.0) the app's motion: the Scale Pop box (ask …) and the page transitions – visual only, the answers exactly as before.
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/ui/motion.dart';

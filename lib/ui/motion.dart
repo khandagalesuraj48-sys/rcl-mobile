@@ -5,6 +5,7 @@
 //    out with a short fade and scale-down;
 //  - every new screen: ZOOM in / out on Android (the opening screen zooms in, the one behind zooms out – back: the other way); the iPhone
 //    keeps its own slide with the swipe back from the edge.
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 /// The times (his table: a box 220–350 ms, buttons 100–180 ms).
