@@ -24,6 +24,7 @@ import '../ui/widgets.dart';
 import 'approvals.dart' show openApprovals;
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../ui/motion.dart';
 
 Future<void> openAdmin(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminHub()));
 
@@ -279,7 +280,7 @@ class _UsersScreenState extends State<UsersScreen> {
   Future<void> _makeSuper() async {
     final s = SessionScope.read(context);
     final name = TextEditingController(), email = TextEditingController(), pw = TextEditingController(), pw2 = TextEditingController();
-    final ok = await showDialog<bool>(
+    final ok = await popDialog<bool>(
       context: context,
       builder: (dc) => AlertDialog(
         title: Text('Create the Super Admin'),
@@ -974,7 +975,7 @@ Future<void> showDbCheck(BuildContext context, Session s) async {
     return;
   }
   final checks = [for (final x in (h['checks'] as List? ?? const []).whereType<Map>()) x], bad = checks.where((x) => x['ok'] != true).length, at = '${h['at'] ?? ''}';
-  final again = await showDialog<bool>(
+  final again = await popDialog<bool>(
     context: context,
     builder: (dc) => AlertDialog(
       title: Text(bad > 0 ? 'Database: $bad thing(s) to do' : 'Database: every SQL step is in place'),
@@ -1327,7 +1328,7 @@ Future<void> runBackup(BuildContext context, Session s) async {
     ],
   ];
   if (!context.mounted) return;
-  await showDialog<void>(
+  await popDialog<void>(
     context: context,
     builder: (c) => AlertDialog(
       title: Text('Backup to Google Sheet'),

@@ -291,7 +291,7 @@ class _GrnRegScreenState extends State<GrnRegScreen> {
     final line = nOf(l['line']).toInt(), e = ch.edit[line] ?? const <String, String>{};
     var date = e['date'] ?? '${l['date'] ?? ''}';
     final sup = TextEditingController(text: e['party'] ?? '${l['party'] ?? ''}'), item = TextEditingController(text: e['item'] ?? '${l['item'] ?? ''}'), qty = TextEditingController(text: e['qty'] ?? '${l['qty'] ?? ''}');
-    final ok = await showDialog<bool>(
+    final ok = await popDialog<bool>(
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, set) => AlertDialog(

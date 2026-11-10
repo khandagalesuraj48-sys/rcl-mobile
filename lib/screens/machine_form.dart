@@ -18,6 +18,7 @@ import '../ui/widgets.dart';
 import 'machinery.dart' show uniqOf, vendorNames;
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../ui/motion.dart';
 
 class MachineFormScreen extends StatefulWidget {
   const MachineFormScreen({super.key, this.edit, this.vendors = const []});
@@ -123,7 +124,7 @@ class _MachineFormScreenState extends State<MachineFormScreen> {
     if (was == null || !(was['status'] == 'Inactive' && '${was['inactiveFrom'] ?? ''}'.isNotEmpty) || v != 'Active') return;
     final left = '${was['inactiveFrom']}'.substring(0, 10), af0 = '${was['activeFrom'] ?? ''}'.length >= 10 ? '${was['activeFrom']}'.substring(0, 10) : '';
     var back = s.today.compareTo(left) > 0 ? s.today : left;
-    final res = await showDialog<bool>(
+    final res = await popDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (c) => StatefulBuilder(

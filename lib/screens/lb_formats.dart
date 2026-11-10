@@ -19,6 +19,7 @@ import 'log_print.dart';
 import 'machinery.dart' show uniqOf;
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../ui/motion.dart';
 
 Future<void> openLbFormats(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LbFormatScreen()));
 
@@ -75,7 +76,7 @@ class _LbFormatScreenState extends State<LbFormatScreen> {
   Future<void> _rename(LbFormat f) async {
     final s = SessionScope.read(context);
     final c = TextEditingController(text: lbName(f, names));
-    final ok = await showDialog<bool>(
+    final ok = await popDialog<bool>(
       context: context,
       builder: (dc) => AlertDialog(
         title: Text('Name of Format ${f.id}'),

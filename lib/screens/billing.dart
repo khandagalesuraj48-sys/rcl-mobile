@@ -22,6 +22,7 @@ import 'bill_print.dart';
 import 'log_print.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../ui/motion.dart';
 
 /// The billing pages and their access (as the web's tabs).
 const kBillPages = [
@@ -458,7 +459,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
 
   Future<bool?> _askDup(List<Map> dups) {
     var keep = true;
-    return showDialog<bool>(
+    return popDialog<bool>(
       context: context,
       builder: (dc) => StatefulBuilder(
         builder: (dc, set) => AlertDialog(
@@ -494,7 +495,7 @@ class _BillMakeScreenState extends State<BillMakeScreen> {
 
   /// The server's checks of every bill (✔ ⚠ ✖).
   Future<bool> _checks(String title, List<Map<String, dynamic>> res, {String top = '', List<String> foot = const [], String yes = 'OK', bool alert = false}) async =>
-      await showDialog<bool>(
+      await popDialog<bool>(
         context: context,
         builder: (dc) => AlertDialog(
           title: Text(title),

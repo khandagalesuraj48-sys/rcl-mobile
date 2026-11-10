@@ -31,6 +31,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/print_view.dart';
 import 'attach_box.dart' show AttachStrip, AttViewer;
+import '../ui/motion.dart';
 
 part 'store_reg.dart';
 
@@ -339,7 +340,7 @@ Widget _dates(String key, String from, String to, ValueChanged<String> onFrom, V
 Widget _loading() => const Center(child: CircularProgressIndicator());
 
 /// A choice of several (null = Cancel).
-Future<String?> _choose(BuildContext context, String title, List<String> lines, List<(String, String)> options) => showDialog<String>(
+Future<String?> _choose(BuildContext context, String title, List<String> lines, List<(String, String)> options) => popDialog<String>(
       context: context,
       builder: (dc) => AlertDialog(
         title: Text(title),

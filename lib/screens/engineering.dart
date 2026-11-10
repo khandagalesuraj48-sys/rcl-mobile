@@ -15,6 +15,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/motion.dart';
 
 Future<void> openEngineering(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const EngineeringScreen()));
 
@@ -237,7 +238,7 @@ class _EngRfiScreenState extends State<EngRfiScreen> {
   }
 
   Future<void> _decide(Map<String, dynamic> x) async {
-    final done = await showDialog<bool>(context: context, builder: (_) => _RfiDecide(setup: widget.setup, rfi: x));
+    final done = await popDialog<bool>(context: context, builder: (_) => _RfiDecide(setup: widget.setup, rfi: x));
     if (done == true && mounted) _load();
   }
 
@@ -1090,7 +1091,7 @@ class _EngMbViewState extends State<EngMbView> {
   Future<void> _check(Map<String, dynamic> p) async {
     final j = widget.setup, rem = TextEditingController();
     var day = j.today;
-    final ok = await showDialog<bool>(
+    final ok = await popDialog<bool>(
       context: context,
       builder: (dc) => StatefulBuilder(
         builder: (dc, set) => AlertDialog(

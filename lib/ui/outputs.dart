@@ -16,6 +16,7 @@ import '../web/files.dart' show handOver;
 import '../web/print_view.dart';
 import 't.dart';
 import 'theme.dart';
+import 'motion.dart';
 
 /// The lines on top of every sheet: the company, the site, the title, the dates.
 List<String> sheetTop(Session s, RDoc d, [String? head]) => [head ?? s.printNames.first, if (s.siteLabel.isNotEmpty) s.siteLabel, d.title, if (d.period.isNotEmpty) d.period];
@@ -57,7 +58,7 @@ Future<void> printDoc(BuildContext context, Session s, RDoc d, {String? printed,
 /// Which name heads the print (the site's bill names; the company first) – asked only when there is more than one.
 Future<String?> pickPrintName(BuildContext context, List<String> names, String title) async {
   if (names.length < 2) return names.isEmpty ? 'Rachana Construction Limited' : names.first;
-  return showDialog<String>(
+  return popDialog<String>(
     context: context,
     builder: (c) => SimpleDialog(
       title: Text(title),

@@ -32,6 +32,7 @@ import 'logbook.dart' show LogForm;
 import 'pend_print.dart' show openPendPrint;
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
+import '../ui/motion.dart';
 
 Future<void> openDashboard(BuildContext context, {int tab = 0}) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DashboardScreen(tab: tab)));
 
@@ -646,7 +647,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final s = SessionScope.read(context);
     final caps = ((t['caps'] as Map?) ?? const {}).map((k, v) => MapEntry('$k', TextEditingController(text: '${v ?? ''}')));
     final low = TextEditingController(text: '${t['low'] ?? 1000}');
-    final ok = await showDialog<bool>(
+    final ok = await popDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         title: Text('Tank size'),

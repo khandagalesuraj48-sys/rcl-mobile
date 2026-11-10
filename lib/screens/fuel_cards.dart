@@ -20,6 +20,7 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/motion.dart';
 
 const kCardTypes = ['Fuel card', 'Credit card', 'Debit card'];
 
@@ -211,7 +212,7 @@ class _FuelCardsScreenState extends State<FuelCardsScreen> {
       try {
         final r = (await s.api.call('getCardPayPhotos', ['${p['id']}']) as Map).cast<String, dynamic>();
         if (!mounted) return;
-        await showDialog<void>(context: context, builder: (c) => AlertDialog(
+        await popDialog<void>(context: context, builder: (c) => AlertDialog(
               content: SizedBox(width: 340, child: ListView(shrinkWrap: true, children: [for (final x in (r['photos'] as List? ?? const []).whereType<Map>()) if ('${x['url'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: Image.network('${x['url']}'))])),
               actions: [TextButton(onPressed: () => Navigator.pop(c), child: Text('Close'))],
             ));
