@@ -7,6 +7,8 @@
  * greens and the gold stronger, the cream page lighter, the soft tiles fuller, the grey words darker (easier to read). */
 import 'package:flutter/material.dart';
 
+import 'motion.dart';
+
 class C {
   static const bg = Color(0xFFFAF8F2);
   static const card = Colors.white;
@@ -66,6 +68,7 @@ ThemeData appTheme() {
   return base.copyWith(
     scaffoldBackgroundColor: C.bg,
     splashFactory: InkSparkle.splashFactory,
+    pageTransitionsTheme: appPageTransitions,      // (3.96.0) every new screen: zoom in / out on Android, the iPhone's own slide
     textTheme: base.textTheme.copyWith(
       headlineMedium: t(26, FontWeight.w700),
       headlineSmall: t(22, FontWeight.w700),
