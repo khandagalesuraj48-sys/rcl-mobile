@@ -8251,11 +8251,12 @@ void main() {
     await card('emb-find');
     final of = srv.engSent.lastWhere((x) => x['action'] == 'mbOffer');
     expect([of['work'], of['layer'], of['side'], of['from'], of['to']], ['W-001', 'L1', '', '2026-10-08', '2026-10-14']);
-    expect(find.textContaining('Not approved by the IE – not finished', skipOffstage: false), findsOneWidget);
     await card('emb-w-k1', tap: false);
     await type('emb-w-k1', '7.9');
     await type('emb-rem-k1', 'measured 7.9 m');
     await settle(t, 300);
+    await card('emb-l-k3', tap: false);
+    expect(find.descendant(of: find.byKey(const Key('emb-l-k3')), matching: find.textContaining('Not approved by the IE – not finished')), findsOneWidget, reason: 'the stretch the IE did not approve: left out');
     await card('emb-tot', tap: false);
     expect(find.text('2 lines ticked · 1,161 cum'), findsOneWidget, reason: '300 × 7.9 × 0.3 + 200 × 7.5 × 0.3');
     await pics(t);
