@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.102.0 (12-11-2026 – a post made higher in the app; asked: "tya patticha size wadhwata yeil … fkt android and ios app
+sathi"):** a post the Super Admin made higher for the app in the Portal ("Fit to strip" → "Height in the app": `fit.app.r`, down to
+9 : 16) is shown in that shape on Home; the others stay the strip; from one to the next the height changes smoothly. The Android
+Gradle Plugin is 9.1.1 (the stable Flutter of 12-11-2026 no longer builds with 9.1.0 – the 3.101.0 release stopped there and was
+never published).
+
 **Version 3.101.0 (12-11-2026 – one strip, fitted; asked: "fkt strip madhe thewaychi … app sathi mobile screen nusar wegli size … fit
 to strip … web and app nusar set hoil"):** the Advertise Corner on Home is one strip of a fixed shape (1080 × 316 – as wide as the
 phone); a post sits in it as the Super Admin fitted it in the Portal (its step 9: `fit.app` – the part kept in view and the zoom);
