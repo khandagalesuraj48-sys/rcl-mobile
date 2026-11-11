@@ -166,6 +166,7 @@ class _AdCornerState extends State<AdCorner> with WidgetsBindingObserver {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(color: C.greenDeep, borderRadius: BorderRadius.circular(22), boxShadow: softShadow()),
         child: GestureDetector(
+          behavior: HitTestBehavior.opaque,      // (also while the picture is still coming)
           onHorizontalDragEnd: posts.length < 2
               ? null
               : (d) {
