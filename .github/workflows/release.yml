@@ -19,6 +19,14 @@ on:
         description: 'What is new – English, मराठी, हिंदी (shown in the app''s update question)'
         required: false
         default: ''
+      # (12-11-2026, asked: "First generate and verify the signed production Android build. Share build verification results before
+      # release. Wait for my separate release approval.") Unticked: the app is only built and signed – its files stay in this run
+      # (Artifacts → apk) to be checked; nothing is published and no phone is told. Ticked (as before): the release.
+      publish:
+        description: 'Publish the release (untick: only build and sign – the files stay in this run for checking)'
+        type: boolean
+        required: false
+        default: true
 permissions:
   contents: write
 concurrency:
@@ -180,7 +188,7 @@ jobs:
 
   publish:
     needs: [android, windows]
-    if: always() && needs.android.result == 'success'
+    if: always() && needs.android.result == 'success' && inputs.publish
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
