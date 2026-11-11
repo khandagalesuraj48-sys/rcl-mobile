@@ -304,6 +304,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (v != null && v != text) await _save('text', () => s.savePrefs({'text': v}));
           },
         ),
+        // (3.97.0, his design 12) Site mode – this phone only: bigger letters, bigger buttons, thicker lines (for the sun at a site)
+        _row(
+          id: 'sitemode',
+          icon: Icons.wb_sunny_outlined,
+          color: C.red,
+          en: 'Site mode (big letters & buttons)',
+          mr: 'साइट मोड (मोठी अक्षरे व बटणे)',
+          value: s.siteMode.value ? 'On – this phone' : 'Off',
+          onTap: () async {
+            final cur = s.siteMode.value ? 'on' : 'off';
+            final v = await _pick(bi('Site mode – bigger letters, bigger buttons, thicker lines (this phone only)', 'साइट मोड – मोठी अक्षरे, मोठी बटणे, जाड रेषा (फक्त हा फोन)'), const [('on', 'On'), ('off', 'Off')], cur);
+            if (v != null && v != cur) await s.setSiteMode(v == 'on');
+          },
+        ),
         // (15-10-2026) the language of the whole app – the same at all his sites and on the web
         _row(
           id: 'lang',

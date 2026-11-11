@@ -407,7 +407,7 @@ class _GrnRegScreenState extends State<GrnRegScreen> {
         Navigator.of(context).pop(any);
       },
       child: Scaffold(
-        appBar: AppBar(actions: withAsk(), title: Text('Import the inward register')),
+        appBar: toneBar(Tone.store, actions: withAsk(), title: Text('Import the inward register')),
         body: pl == null || inf == null
             ? (err.isEmpty ? _loading() : ListView(padding: const EdgeInsets.all(16), children: [InfoLine(err, bad: true)]))
             : _body(pl, inf),

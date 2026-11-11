@@ -8,6 +8,7 @@ import 'package:flutter/material.dart' hide Text;
 import '../ui/ask_bot.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'purchase_work.dart';
@@ -96,12 +97,18 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     final sites = [for (final x in (me?['sites'] as List? ?? const []).whereType<Map>()) x];
     if (me != null && sites.isEmpty) sites.add({'code': open, 'name': me?['siteName'] ?? open});
     return Scaffold(
-      appBar: AppBar(
-        title: const TwoLang('Purchase', 'खरेदी', size: 20, weight: FontWeight.w700),
+      // (3.97.0, his designs 1 and 2) the Purchase band (blue) with its picture, the site and his role
+      appBar: moduleBar(
+        context,
+        Tone.purchase,
+        en: 'Purchase',
+        mr: 'खरेदी',
+        pic: 'inbox_tray',
+        line: me == null ? '' : '${me?['siteName'] ?? s.siteName} · $role',
         actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _start, icon: const Icon(Icons.refresh_rounded))]),
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonList(tiles: 2, rows: 4)
           : RefreshIndicator(
               onRefresh: _start,
               child: ListView(key: const Key('pur-dash'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [

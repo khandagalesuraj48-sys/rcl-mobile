@@ -17,6 +17,7 @@ import '../core/format.dart';
 import '../core/kinds.dart';
 import '../core/session.dart';
 import '../ui/scope.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker, DraftLine;
@@ -258,43 +259,53 @@ class _LogBookScreenState extends State<LogBookScreen> {
       floatingActionButton: s.canEdit('Log Book')
           ? FloatingActionButton.extended(
               onPressed: () => _new(),
-              backgroundColor: C.blue,
+              backgroundColor: Tone.logbook.b,      // (3.97.0, his design 2) the Log Book's own colour
               foregroundColor: Colors.white,
               shape: const StadiumBorder(),
               icon: const Icon(Icons.add_rounded, size: 26),
               label: const Text('New Entry', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             )
           : null,
+      // (3.97.0, his design 2) the Log Book's own band (purple) at the top, under the phone's status bar too
       body: SafeArea(
+        top: false,
         bottom: false,
         child: RefreshIndicator(
-          color: C.blue,
+          color: Tone.logbook.b,
           onRefresh: () => _load(pend: true),
           child: CustomScrollView(slivers: [
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(6, 6, 12, 4),
+              child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+              child: Container(
+                key: const Key('lb-band'),
+                decoration: bandBox(Tone.logbook),
+                padding: EdgeInsets.fromLTRB(6, MediaQuery.paddingOf(context).top + 6, 12, 12),
+                child: Theme(
+                data: bandTheme(Theme.of(context)),
+                child: IconTheme(
+                data: const IconThemeData(color: Colors.white),
                 child: Row(children: [
                   IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_rounded)),
-                  const Pic('notebook', size: 34),
+                  Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .95), borderRadius: BorderRadius.circular(14)), alignment: Alignment.center, child: const Pic('notebook', size: 30)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('Log Book', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-                      Text(s.siteName, style: const TextStyle(fontSize: 14, color: C.muted, fontWeight: FontWeight.w600)),
+                      const Text('Log Book', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+                      Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w600)),
                     ]),
                   ),
                   if (tankers && s.canSee('Log Book'))
                     IconButton.filledTonal(
                       tooltip: tr('Water tanker – trip by trip'),
-                      style: IconButton.styleFrom(backgroundColor: C.blueSoft, foregroundColor: C.blue, fixedSize: const Size(48, 48)),
+                      style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: .18), foregroundColor: Colors.white, fixedSize: const Size(48, 48)),
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: day))).then((_) => _load()),
                       icon: const Icon(Icons.water_drop_rounded),
                     ),
                   const SizedBox(width: 6),
                   IconButton.filledTonal(
                     tooltip: tr('Pick a date'),
-                    style: IconButton.styleFrom(backgroundColor: C.blueSoft, foregroundColor: C.blue, fixedSize: const Size(48, 48)),
+                    style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: .18), foregroundColor: Colors.white, fixedSize: const Size(48, 48)),
                     onPressed: () async {
                       final d = await showDatePicker(context: context, initialDate: parseKey(day), firstDate: DateTime(2024), lastDate: today);
                       if (d != null) {
@@ -337,7 +348,10 @@ class _LogBookScreenState extends State<LogBookScreen> {
                     ],
                   ),
                 ]),
-              ),
+              ),      // IconTheme
+              ),      // Theme
+              ),      // Container (the band)
+              ),      // AnnotatedRegion
             ),
             SliverToBoxAdapter(
               child: SizedBox(
@@ -1513,13 +1527,14 @@ class _LogFormState extends State<LogForm> {
         if (!didPop) Navigator.pop(context, savedOne);
       },
       child: Scaffold(
-        appBar: AppBar(actions: withAsk(), 
+        // (3.97.0, his design 2) the Log Book's own colour on its entry form
+        appBar: toneBar(Tone.logbook, actions: withAsk(),
           leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context, savedOne)),
           titleSpacing: 0,
           title: Row(children: [
-            const Pic('notebook', size: 30),
+            const PicDisc('notebook'),
             const SizedBox(width: 10),
-            Expanded(child: TwoLang(editing ? 'Change Log Book' : 'New Log Book entry', 'लॉगबुक नोंद', size: 19, weight: FontWeight.w700)),
+            Expanded(child: TwoLang(editing ? 'Change Log Book' : 'New Log Book entry', 'लॉगबुक नोंद', size: 19, weight: FontWeight.w700, color: Colors.white)),
           ]),
         ),
         body: SingleChildScrollView(
@@ -1951,7 +1966,7 @@ class _TankerScreenState extends State<TankerScreen> {
     final saved = (got?['trips'] as List? ?? []).whereType<Map>().toList();
     final canEdit = s.canEdit('Log Book');
     return Scaffold(
-      appBar: AppBar(titleSpacing: 0, title: const Row(children: [Pic('delivery_truck', size: 30), SizedBox(width: 10), Expanded(child: TwoLang('Water tanker – trips', 'टँकर – फेऱ्या', size: 19, weight: FontWeight.w700))]), actions: withAsk([const GuideButton('log')])),
+      appBar: toneBar(Tone.logbook, titleSpacing: 0, title: const Row(children: [PicDisc('delivery_truck'), SizedBox(width: 10), Expanded(child: TwoLang('Water tanker – trips', 'टँकर – फेऱ्या', size: 19, weight: FontWeight.w700, color: Colors.white))]), actions: withAsk([const GuideButton('log')])),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 120), children: [
         const SizedBox(height: 8),
         const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(bottom: 8)),      // (3.1.11, update-118)

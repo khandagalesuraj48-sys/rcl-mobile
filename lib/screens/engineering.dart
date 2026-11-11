@@ -13,6 +13,7 @@ import '../ui/ask_bot.dart';
 import '../ui/fields.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/motion.dart';
@@ -160,9 +161,10 @@ class _EngineeringScreenState extends State<EngineeringScreen> {
     final j = setup, rule = j?.rule;
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const TwoLang('Engineering', 'अभियांत्रिकी', size: 20, weight: FontWeight.w700), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
+      // (3.97.0, his designs 1 and 2) the Engineering band (teal) with its picture and the site
+      appBar: moduleBar(context, Tone.engineering, en: 'Engineering', mr: 'अभियांत्रिकी', pic: 'building_construction', line: SessionScope.of(context).siteName, actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonList(rows: 4)
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(key: const Key('eng-home'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 40), children: [
@@ -303,7 +305,7 @@ class _EngRfiScreenState extends State<EngRfiScreen> {
     final rule = widget.setup.rule;
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const Text('RFI – layer approval', style: TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
+      appBar: toneBar(Tone.engineering, title: const Text('RFI – layer approval', style: TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
       floatingActionButton: missing.isEmpty ? FloatingActionButton.extended(key: const Key('erf-new'), onPressed: () => _form(), icon: const Icon(Icons.add_rounded), label: const Text('Ask RFI')) : null,
       body: RefreshIndicator(
         onRefresh: _load,
@@ -408,7 +410,7 @@ class _EngRfiFormState extends State<EngRfiForm> {
     final layers = [for (final l in (j.data(w)['layers'] as List? ?? const []).whereType<Map>()) l];
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(widget.old == null ? 'Ask RFI' : '${tr('Change')} ${widget.old!['no']}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      appBar: toneBar(Tone.engineering, title: Text(widget.old == null ? 'Ask RFI' : '${tr('Change')} ${widget.old!['no']}', style: const TextStyle(fontWeight: FontWeight.w700))),
       body: ListView(key: const Key('erf-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
         if (ws.isEmpty) const InfoLine('No work is given to you – the Super Admin gives the works.', bad: true, help: false),
         DateField(key: const Key('erf-day'), label: 'Day the work was finished', value: day, clear: false, last: DateTime.tryParse(j.today), onChanged: (v) => setState(() {
@@ -565,7 +567,7 @@ class _EngHindScreenState extends State<EngHindScreen> {
     final missing = '${r?['missing'] ?? ''}';
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const Text('Hindrances', style: TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
+      appBar: toneBar(Tone.engineering, title: const Text('Hindrances', style: TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
       floatingActionButton: r != null && missing.isEmpty ? FloatingActionButton.extended(key: const Key('ehd-new'), onPressed: () => _form(), icon: const Icon(Icons.add_rounded), label: const Text('Add hindrance')) : null,
       body: RefreshIndicator(
         onRefresh: _load,
@@ -688,7 +690,7 @@ class _EngHindFormState extends State<EngHindForm> {
     final j = widget.setup, all = j.works(j.today, all: true), sides = [...j.roadSides, 'Both'];
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(widget.old == null ? 'Add hindrance' : '${tr('Change')} ${widget.old!['no']}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      appBar: toneBar(Tone.engineering, title: Text(widget.old == null ? 'Add hindrance' : '${tr('Change')} ${widget.old!['no']}', style: const TextStyle(fontWeight: FontWeight.w700))),
       body: ListView(key: const Key('ehd-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
         Row(children: [
           Expanded(child: DateField(key: const Key('ehd-from'), label: 'From', value: from, clear: false, last: DateTime.tryParse(j.today), onChanged: (v) => setState(() => from = v))),
@@ -780,7 +782,7 @@ class _EngPpcScreenState extends State<EngPpcScreen> {
     final r = data, ppc = (r?['ppc'] as Map?) ?? const {}, pct = ppc['pct'];
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const Text('PPC – plan done', style: TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
+      appBar: toneBar(Tone.engineering, title: const Text('PPC – plan done', style: TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('eppc'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
@@ -951,7 +953,7 @@ class _EngMbScreenState extends State<EngMbScreen> {
     final waiting = [for (final x in (abs?['waiting'] as List? ?? const []).whereType<Map>()) x];
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const TwoLang('Measurement Book', 'मोजमाप पुस्तक (MB)', size: 18, weight: FontWeight.w700), actions: withAsk()),
+      appBar: toneBar(Tone.engineering, title: const TwoLang('Measurement Book', 'मोजमाप पुस्तक (MB)', size: 18, weight: FontWeight.w700, color: Colors.white), actions: withAsk()),
       floatingActionButton: tab == 'list' && missing.isEmpty ? FloatingActionButton.extended(key: const Key('emb-new'), onPressed: _new, icon: const Icon(Icons.add_rounded), label: const Text('New MB page')) : null,
       body: RefreshIndicator(
         onRefresh: _load,
@@ -1134,7 +1136,7 @@ class _EngMbViewState extends State<EngMbView> {
     final (c, bg) = _mbTag('${p['status']}');
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(widget.no, style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
+      appBar: toneBar(Tone.engineering, title: Text(widget.no, style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('emb-view'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
@@ -1348,7 +1350,7 @@ class _EngMbFormState extends State<EngMbForm> {
     final gone = (r?['gone'] as List? ?? const []);
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(widget.no == null ? 'New MB page' : '${tr('Change')} ${widget.no}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      appBar: toneBar(Tone.engineering, title: Text(widget.no == null ? 'New MB page' : '${tr('Change')} ${widget.no}', style: const TextStyle(fontWeight: FontWeight.w700))),
       body: ListView(key: const Key('emb-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
         if (widget.no == null) ...[
           PickField(key: const Key('emb-work'), label: 'Work', value: work, items: [for (final x in ws) '${x['item']}'], labels: {for (final x in ws) '${x['item']}': '${j.data(x)['name']}'}, onChanged: (v) => setState(() {

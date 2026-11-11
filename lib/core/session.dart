@@ -253,6 +253,16 @@ class Session extends ChangeNotifier {
   /// The app's text a little larger (Settings → Size of the text).
   double get textScale => switch (pref('text')) { 'large' => 1.1, 'xlarge' => 1.2, _ => 1.0 };
 
+  /// (3.97.0, his design 12 of 11-11-2026) SITE MODE – for the sun at a site: bigger letters, bigger buttons, thicker lines
+  /// (main.dart, ui/theme.dart). This phone only (My settings) – kept on the phone, not with his account.
+  static const kSiteMode = 'site_mode';
+  final siteMode = ValueNotifier<bool>(false);
+  Future<void> setSiteMode(bool on) async {
+    siteMode.value = on;
+    notifyListeners();
+    await api.keep.write(kSiteMode, on ? '1' : null);
+  }
+
   // the site's lists (getInit)
   String today = '', company = '', closedUpto = '';
   /// (3.2.0) the site's "Company & site" (web Settings): the customer, the site's name, the names bills are made in
@@ -569,6 +579,7 @@ class Session extends ChangeNotifier {
       early = _quiet(api.callOnce('getInit'));
     }
     await Lang.i.set(await api.keep.read(kLang) ?? '', read: langRead);
+    siteMode.value = await api.keep.read(kSiteMode) == '1';      // (3.97.0)
     if (!api.hasPortal) return _go(Stage.signedOut);
     _boot(.15);
     try {

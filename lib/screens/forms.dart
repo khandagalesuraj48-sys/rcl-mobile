@@ -24,6 +24,7 @@ import '../core/plate.dart';
 import '../core/plate_read.dart';
 import '../core/session.dart';
 import '../ui/scope.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
@@ -1444,13 +1445,15 @@ class _EntryFormState extends State<EntryForm> {
         if (!didPop) Navigator.pop(context, savedOne);
       },
       child: Scaffold(
-        appBar: AppBar(
+        // (3.97.0, his design 2) the Diesel module's own colour (red) on its entry forms
+        appBar: toneBar(
+          Tone.diesel,
           leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context, savedOne)),
           titleSpacing: 0,
           title: Row(children: [
-            Pic(k.pic, size: 30),
+            PicDisc(k.pic),
             const SizedBox(width: 10),
-            Expanded(child: TwoLang(widget.fix != null ? tr('Correct {0}').replaceFirst('{0}', widget.fix!.id) : ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700)),
+            Expanded(child: TwoLang(widget.fix != null ? tr('Correct {0}').replaceFirst('{0}', widget.fix!.id) : ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700, color: Colors.white)),
           ]), actions: withAsk([GuideButton(k.key == 'issue' ? 'diesel' : k.key)]),
         ),
         // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away

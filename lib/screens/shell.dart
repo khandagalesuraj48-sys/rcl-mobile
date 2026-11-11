@@ -339,6 +339,15 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
                   icon,
                   const SizedBox(height: 2),
                   Text(i.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: Colors.white.withValues(alpha: on ? 1 : .8))),
+                  // (3.97.0, his design 13) a gold line under the chosen tab
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    margin: const EdgeInsets.only(top: 2),
+                    width: on ? 18 : 0,
+                    height: 3,
+                    decoration: BoxDecoration(color: C.goldLight, borderRadius: BorderRadius.circular(2)),
+                  ),
                 ]),
               ),
             ]),
@@ -353,31 +362,36 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
     final bottom = MediaQuery.of(context).padding.bottom;
     final left = [for (final k in tabs) if (k == 'home' || k == 'entries') k];
     final right = [for (final k in tabs) if (k == 'reports' || k == 'me') k];
+    // (3.97.0, his design 13 of 11-11-2026 – "centre fab madhe apla tab bar") CENTRE FAB: the green bar has a round notch in its
+    // middle and the gold + sits in it; the tabs, their ripple fill and the + work as before.
     return Padding(
       padding: EdgeInsets.fromLTRB(10, 0, 10, 8 + bottom),
       child: SizedBox(
         height: 70,
         child: Stack(clipBehavior: Clip.none, children: [
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(26),
-                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.bar, C.barDeep]),
-                boxShadow: [BoxShadow(color: C.greenDeep.withValues(alpha: .28), blurRadius: 20, offset: const Offset(0, 8))],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(children: [
-                  for (final k in left) _item(k),
-                  const SizedBox(width: 74),
-                  for (final k in right) _item(k),
-                ]),
+            child: PhysicalShape(
+              key: const Key('tab-bar-notch'),
+              clipper: const _Notch(),
+              color: C.barDeep,
+              elevation: 10,
+              shadowColor: C.greenDeep.withValues(alpha: .5),
+              child: DecoratedBox(
+                decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.bar, C.barDeep])),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                  child: Row(children: [
+                    for (final k in left) _item(k),
+                    const SizedBox(width: 104),
+                    for (final k in right) _item(k),
+                  ]),
+                ),
               ),
             ),
           ),
-          // the gold + (a new entry)
+          // the gold + (a new entry) – in the notch
           Positioned(
-            top: -24,
+            top: -28,
             left: 0,
             right: 0,
             child: Center(
@@ -386,8 +400,8 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
                 label: tr('New entry'),
                 child: Material(
                   key: const Key('tab-plus'),
-                  shape: const CircleBorder(side: BorderSide(color: C.bg, width: 4)),
-                  elevation: 6,
+                  shape: const CircleBorder(),
+                  elevation: 8,
                   shadowColor: C.gold.withValues(alpha: .6),
                   color: C.gold,
                   child: InkWell(
@@ -408,6 +422,33 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
       ),
     );
   }
+}
+
+/// (3.97.0, his design 13) the bar's outline: rounded corners and a round notch in the middle of its top edge, where the + sits.
+class _Notch extends CustomClipper<Path> {
+  const _Notch();
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height, cx = w / 2;
+    const r = 26.0, half = 60.0, deep = 42.0;
+    return Path()
+      ..moveTo(r, 0)
+      ..lineTo(cx - half, 0)
+      ..cubicTo(cx - half + 21, 0, cx - 41, deep, cx, deep)
+      ..cubicTo(cx + 41, deep, cx + half - 21, 0, cx + half, 0)
+      ..lineTo(w - r, 0)
+      ..quadraticBezierTo(w, 0, w, r)
+      ..lineTo(w, h - r)
+      ..quadraticBezierTo(w, h, w - r, h)
+      ..lineTo(r, h)
+      ..quadraticBezierTo(0, h, 0, h - r)
+      ..lineTo(0, r)
+      ..quadraticBezierTo(0, 0, r, 0)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(_Notch old) => false;
 }
 
 /// (3.83.0) a circle from the centre of the pill – [p] 0 → nothing, 1 → the whole pill (its corners too)

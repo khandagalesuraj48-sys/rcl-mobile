@@ -27,6 +27,7 @@ import '../ui/pick_file.dart';
 import '../ui/report_view.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/print_view.dart';
@@ -324,8 +325,9 @@ Widget _saveBar(String key, String label, bool busy, VoidCallback onTap) => Safe
       child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: Key(key), onPressed: busy ? null : onTap, child: Text(busy ? 'Saving…' : label))),
     );
 
-AppBar _bar(String en, String mr, {VoidCallback? refresh}) => AppBar(
-      title: TwoLang(en, mr, size: 18, weight: FontWeight.w700),
+PreferredSizeWidget _bar(String en, String mr, {VoidCallback? refresh}) => toneBar(
+      Tone.store,      // (3.97.0, his design 2) the Store's own colour on all its screens
+      title: TwoLang(en, mr, size: 18, weight: FontWeight.w700, color: Colors.white),
       actions: withAsk([if (refresh != null) IconButton(tooltip: tr('Refresh'), onPressed: refresh, icon: const Icon(Icons.refresh_rounded))]),
     );
 
@@ -337,7 +339,7 @@ Widget _dates(String key, String from, String to, ValueChanged<String> onFrom, V
       FilledButton(key: Key('$key-show'), style: FilledButton.styleFrom(minimumSize: const Size(0, 48), padding: const EdgeInsets.symmetric(horizontal: 16)), onPressed: onShow, child: Text('Show')),
     ]);
 
-Widget _loading() => const Center(child: CircularProgressIndicator());
+Widget _loading() => const SkeletonList();      // (3.97.0, design 10) grey shapes while the Store answers
 
 /// A choice of several (null = Cancel).
 Future<String?> _choose(BuildContext context, String title, List<String> lines, List<(String, String)> options) => popDialog<String>(
@@ -763,41 +765,78 @@ class StoreDashWork extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final st = mapOf(dash['stock']), rq = mapOf(dash['req']), po = mapOf(dash['po']), g = mapOf(dash['grn']), iss = mapOf(dash['issue']), wf = mapOf(dash['wf']);
-    Widget tile(String key, String label, String n, String sub, Color c, Color bg) => Container(
-          key: Key(key),
-          width: 160,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
-            Text(n, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: c)),
-            Text(sub, style: const TextStyle(fontSize: 12, color: C.muted)),
-          ]),
-        );
-    Widget recent(String title, List<Map<String, dynamic>> l, String Function(Map) line) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const SizedBox(height: 14),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          if (l.isEmpty) Text('None this month.', style: _muted),
-          for (final x in l) Padding(padding: const EdgeInsets.symmetric(vertical: 3), child: Text(line(x), style: const TextStyle(fontSize: 13.5))),
-        ]);
-    return Column(key: const Key('st-dwork'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        if (st.isNotEmpty) tile('sd-value', 'Stock value', rs(st['value']).replaceFirst(RegExp(r'\.\d\d$'), ''), 'at the average basic rate', C.greenDark, C.greenSoft),
-        if (st.isNotEmpty) tile('sd-below', 'Below min stock', '${st['below'] ?? 0}', 'items to order', nOf(st['below']) > 0 ? C.amber : C.muted, nOf(st['below']) > 0 ? C.amberSoft : C.slateSoft),
-        if (rq.isNotEmpty) tile('sd-mine', 'Waiting for my approval', '${rq['mine'] ?? 0}', '${rq['pending'] ?? 0} requirement(s) pending', C.amber, C.amberSoft),
-        if (rq.isNotEmpty) tile('sd-appr', 'Approved – to order', '${rq['approved'] ?? 0}', 'requirements', C.blue, C.blueSoft),
-        if (po.isNotEmpty) tile('sd-po', 'POs open', '${po['open'] ?? 0}', 'material to come', C.slate, C.slateSoft),
-        // (3.71.0, the web's 29-10-2026) what waits for this person: a PO, a GRN, an issue or a return to verify or approve
-        if (nOf(wf['po']) > 0) tile('sd-wpo', 'PO – waiting for me', '${wf['po']}', 'to verify or approve', C.amber, C.amberSoft),
-        if (nOf(wf['grn']) > 0) tile('sd-wgrn', 'GRN – waiting for me', '${wf['grn']}', 'to verify or approve', C.amber, C.amberSoft),
-        if (nOf(wf['issue']) + nOf(wf['ret']) > 0) tile('sd-wiss', 'Issues & returns – waiting for me', '${nOf(wf['issue']) + nOf(wf['ret'])}', 'to verify or approve', C.amber, C.amberSoft),
-        if (g.isNotEmpty) tile('sd-grn', 'GRN today', '${g['today'] ?? 0}', '${rs(g['todayValue'])} · month ${g['month'] ?? 0}', C.greenDark, C.greenSoft),
-        if (iss.isNotEmpty) tile('sd-iss', 'Issues today', '${iss['today'] ?? 0}', '${rs(iss['todayValue'])} · month ${iss['month'] ?? 0}', C.blue, C.blueSoft),
-      ]),
-      if (g.isNotEmpty) recent('Recent GRN', listOf(g['recent']), (x) => 'GRN ${grnRef(x)} · ${dmy(x['date'])} · ${x['supplier'] ?? ''} · ${rs(x['gross'])}'),
-      if (iss.isNotEmpty) recent('Recent issues', listOf(iss['recent']), (x) => 'Outward ${x['no']} · ${dmy(x['date'])} · ${storeToWho(x)} · ${rs(x['amount'])}'),
-    ]);
+    // (3.97.0, his design 1) each figure on a white card with its 3D picture, the number big in its colour; the stock value on top
+    return LayoutBuilder(builder: (context, b) {
+      final half = (b.maxWidth - 10) / 2;
+      Widget tile(String key, String pic, String label, String n, String sub, Color c) => Container(
+            key: Key(key),
+            width: half,
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(.06)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Pic(pic, size: 28),
+                const SizedBox(width: 8),
+                Expanded(child: Text(label, maxLines: 2, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600, height: 1.2))),
+              ]),
+              const SizedBox(height: 6),
+              Text(n, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: c)),
+              Text(sub, maxLines: 2, style: const TextStyle(fontSize: 12, color: C.faint)),
+            ]),
+          );
+      Widget recent(String title, String mr, String pic, List<Map<String, dynamic>> l, String Function(Map) line) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const SizedBox(height: 16),
+            TwoLang(title, mr, size: 17, weight: FontWeight.w800),
+            const SizedBox(height: 8),
+            if (l.isEmpty) Text('None this month.', style: _muted),
+            for (final x in l)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: softShadow(.05)),
+                child: Row(children: [
+                  Container(width: 40, height: 40, decoration: BoxDecoration(color: C.bg, borderRadius: BorderRadius.circular(12)), alignment: Alignment.center, child: Pic(pic, size: 26)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(line(x), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, height: 1.3))),
+                ]),
+              ),
+          ]);
+      final value = rs(st['value']).replaceFirst(RegExp(r'\.\d\d$'), '');
+      return Column(key: const Key('st-dwork'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (st.isNotEmpty)
+          Container(
+            key: const Key('sd-value'),
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFF4DF), Color(0xFFFDE9C4)])),
+            child: Row(children: [
+              Container(width: 58, height: 58, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17)), alignment: Alignment.center, child: const Pic('package', size: 40)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Stock value', mr: 'स्टॉकची किंमत', style: const TextStyle(fontSize: 13.5, color: Color(0xFF8A5A12), fontWeight: FontWeight.w600)),
+                  FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Color(0xFF7A4700)))),
+                  Text('at the average basic rate', style: const TextStyle(fontSize: 12, color: Color(0xFF9B7A45))),
+                ]),
+              ),
+            ]),
+          ),
+        Wrap(spacing: 10, runSpacing: 10, children: [
+          if (st.isNotEmpty) tile('sd-below', 'bell', 'Below min stock', '${st['below'] ?? 0}', 'items to order', nOf(st['below']) > 0 ? C.red : C.muted),
+          if (rq.isNotEmpty) tile('sd-mine', 'clipboard', 'Waiting for my approval', '${rq['mine'] ?? 0}', '${rq['pending'] ?? 0} requirement(s) pending', C.amber),
+          if (rq.isNotEmpty) tile('sd-appr', 'receipt', 'Approved – to order', '${rq['approved'] ?? 0}', 'requirements', C.blue),
+          if (po.isNotEmpty) tile('sd-po', 'delivery_truck', 'POs open', '${po['open'] ?? 0}', 'material to come', C.blue),
+          // (3.71.0, the web's 29-10-2026) what waits for this person: a PO, a GRN, an issue or a return to verify or approve
+          if (nOf(wf['po']) > 0) tile('sd-wpo', 'clipboard', 'PO – waiting for me', '${wf['po']}', 'to verify or approve', C.amber),
+          if (nOf(wf['grn']) > 0) tile('sd-wgrn', 'inbox_tray', 'GRN – waiting for me', '${wf['grn']}', 'to verify or approve', C.amber),
+          if (nOf(wf['issue']) + nOf(wf['ret']) > 0) tile('sd-wiss', 'outbox_tray', 'Issues & returns – waiting for me', '${nOf(wf['issue']) + nOf(wf['ret'])}', 'to verify or approve', C.amber),
+          if (g.isNotEmpty) tile('sd-grn', 'inbox_tray', 'GRN today', '${g['today'] ?? 0}', '${rs(g['todayValue'])} · month ${g['month'] ?? 0}', C.greenDark),
+          if (iss.isNotEmpty) tile('sd-iss', 'outbox_tray', 'Issues today', '${iss['today'] ?? 0}', '${rs(iss['todayValue'])} · month ${iss['month'] ?? 0}', C.purple),
+        ]),
+        if (g.isNotEmpty) recent('Recent GRN', 'अलीकडील GRN', 'inbox_tray', listOf(g['recent']), (x) => 'GRN ${grnRef(x)} · ${dmy(x['date'])} · ${x['supplier'] ?? ''} · ${rs(x['gross'])}'),
+        if (iss.isNotEmpty) recent('Recent issues', 'अलीकडील issue', 'outbox_tray', listOf(iss['recent']), (x) => 'Outward ${x['no']} · ${dmy(x['date'])} · ${storeToWho(x)} · ${rs(x['amount'])}'),
+      ]);
+    });
   }
 }
 
@@ -1257,7 +1296,7 @@ class _ReqFormScreenState extends State<ReqFormScreen> {
   Widget build(BuildContext context) {
     final k = widget.k, ml = k.machLabels;
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text(widget.req != null ? 'Change requirement ${reqRef(widget.req!)}' : 'New requirement')),
+      appBar: toneBar(Tone.store, actions: withAsk(), title: Text(widget.req != null ? 'Change requirement ${reqRef(widget.req!)}' : 'New requirement')),
       bottomNavigationBar: _saveBar('rq-save', 'Save requirement', busy, _save),
       body: ListView(key: const Key('rqf'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         // (3.70.0) approved (or rejected) before: once changed it waits for its approval again
@@ -1476,7 +1515,7 @@ class _ReqPhotosScreenState extends State<ReqPhotosScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(actions: withAsk(), title: Text('Photos – requirement ${reqRef(widget.req)}')),
+        appBar: toneBar(Tone.store, actions: withAsk(), title: Text('Photos – requirement ${reqRef(widget.req)}')),
         body: loading
             ? _loading()
             : ListView(key: const Key('rqp'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
@@ -1556,7 +1595,7 @@ class _ReqLogbookScreenState extends State<ReqLogbookScreen> {
   Widget build(BuildContext context) {
     final may = widget.req['attach'] == true, bills = nOf(now?['bills']);
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text('Log book – ${widget.req['for_text'] ?? ''}')),
+      appBar: toneBar(Tone.store, actions: withAsk(), title: Text('Log book – ${widget.req['for_text'] ?? ''}')),
       body: loading
           ? _loading()
           : ListView(key: const Key('rqlb'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
@@ -2116,7 +2155,7 @@ class _PoFormScreenState extends State<PoFormScreen> {
   Widget build(BuildContext context) {
     final m = linesMoney(lines), fr = step5 ? r2(_d(freight.text)) : 0.0, lu = step5 ? r2(_d(loadUnload.text)) : 0.0;
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text(widget.po != null ? 'Change PO ${widget.po!['no']} – ${widget.site}' : 'New purchase order – ${widget.site}')),
+      appBar: toneBar(Tone.store, actions: withAsk(), title: Text(widget.po != null ? 'Change PO ${widget.po!['no']} – ${widget.site}' : 'New purchase order – ${widget.site}')),
       bottomNavigationBar: loading ? null : _saveBar('po-save', 'Save PO', busy, _save),
       body: loading
           ? _loading()
@@ -2734,7 +2773,7 @@ class _GrnFormScreenState extends State<GrnFormScreen> {
         '${p['no']}': 'PO ${p['no']} – ${p['vendor'] ?? ''}${listOf(p['lines']).isEmpty ? '' : ' (${listOf(p['lines']).where((l) => nOf(l['left']) > 0).map((l) => '${l['name']} ${q3(l['left'])}').join(', ')})'}',
     };
     return Scaffold(
-      appBar: AppBar(actions: withAsk([IconButton(key: const Key('grf-clear'), tooltip: tr('Clear'), onPressed: loading || busy ? null : _clear, icon: const Icon(Icons.restart_alt_rounded))]), title: Text(widget.grn != null ? 'Change GRN ${grnRef(widget.grn!)}' : 'New GRN')),
+      appBar: toneBar(Tone.store, actions: withAsk([IconButton(key: const Key('grf-clear'), tooltip: tr('Clear'), onPressed: loading || busy ? null : _clear, icon: const Icon(Icons.restart_alt_rounded))]), title: Text(widget.grn != null ? 'Change GRN ${grnRef(widget.grn!)}' : 'New GRN')),
       bottomNavigationBar: loading ? null : _saveBar('gr-save', 'Save GRN', busy, _save),
       body: loading
           ? _loading()
@@ -3084,7 +3123,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   Widget build(BuildContext context) {
     final k = widget.k, ml = k.machLabels, deb = debit && _mayDebit;
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text(widget.issue != null ? 'Change outward ${widget.issue!['no']}' : 'New issue')),
+      appBar: toneBar(Tone.store, actions: withAsk(), title: Text(widget.issue != null ? 'Change outward ${widget.issue!['no']}' : 'New issue')),
       bottomNavigationBar: _saveBar('is-save', 'Save issue', busy, _save),
       body: ListView(key: const Key('isf'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         Row(children: [
@@ -3188,7 +3227,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
   Widget build(BuildContext context) {
     final i = widget.issue;
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text('Return – outward ${i['no']}')),
+      appBar: toneBar(Tone.store, actions: withAsk(), title: Text('Return – outward ${i['no']}')),
       bottomNavigationBar: _saveBar('rt-save', 'Save return', busy, _save),
       body: ListView(key: const Key('rtf'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
         Text('Back to the store from ${storeToWho(i)} – outward ${i['no']} of ${dmy(i['date'])}', style: _muted),
@@ -3346,7 +3385,7 @@ class _StoreDocImportScreenState extends State<StoreDocImportScreen> {
   Widget build(BuildContext context) {
     final rr = r, list = listOf(rr?['rows']), errors = nOf(rr?['errors']).toInt(), docs = nOf(rr?['docs']).toInt();
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text('Import from Excel – check')),
+      appBar: toneBar(Tone.store, actions: withAsk(), title: Text('Import from Excel – check')),
       body: rr == null
           ? (err.isEmpty ? _loading() : ListView(padding: const EdgeInsets.all(16), children: [InfoLine(err, bad: true)]))
           : ListView(key: const Key('sdi-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 24), children: [

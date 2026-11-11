@@ -219,6 +219,8 @@ Future<bool> askShortBox(String message) async {
   return r == true;
 }
 
+final _theme = appTheme(), _siteTheme = appTheme(site: true);
+
 class RclApp extends StatelessWidget {
   const RclApp({super.key, required this.session, this.lock});
   final Session session;
@@ -227,18 +229,20 @@ class RclApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SessionScope(
         session: session,
-        child: LangScope(child: MaterialApp(
+        // (3.97.0, his design 12) Site mode: its own look (thicker lines, bigger buttons) – the app made again only when it is switched
+        child: LangScope(child: ValueListenableBuilder<bool>(valueListenable: session.siteMode, builder: (_, site, __) => MaterialApp(
           navigatorKey: appNav,
           navigatorObservers: [appRoutes], // (update-155) a tab under a closed screen loads if it is old (ui/live.dart)
           title: 'RCL ERP',
           debugShowCheckedModeBanner: false,
-          theme: appTheme(),
+          theme: site ? _siteTheme : _theme,
           // (3.19.0) on a computer a list is also dragged with the mouse (and pulled down to refresh), as with a finger
           scrollBehavior: onComputer ? const _AnyPointerDrags() : null,
           // his "Size of the text" (Settings) – on every screen of the app
           // (3.26.0) a call: its ring, its screen and its green bar – over every screen of the app (screens/call.dart)
           builder: (context, child) {
-            final m = MediaQuery.of(context), k = SessionScope.of(context).textScale;
+            // (3.97.0) Site mode: the letters a size bigger again, on top of his "Size of the text"
+            final m = MediaQuery.of(context), k = SessionScope.of(context).textScale * (site ? 1.15 : 1.0);
             // (3.27.0) the lock over everything – the call's bar too
             // (update-155) a touch anywhere keeps the live sync's quick rhythm (Session.touch)
             final app = Listener(
@@ -250,7 +254,7 @@ class RclApp extends StatelessWidget {
             return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
           },
           home: const Gate(),
-        )),
+        ))),
       );
 }
 

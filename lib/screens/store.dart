@@ -21,6 +21,7 @@ import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/ask_bot.dart';
+import '../ui/design.dart';
 import 'store_work.dart';
 import '../ui/motion.dart';
 
@@ -262,23 +263,25 @@ class _StoreScreenState extends State<StoreScreen> with StoreLive<StoreScreen> {
     return DefaultTabController(
       length: tabs.isEmpty ? 1 : tabs.length,
       initialIndex: (widget.find.isNotEmpty || widget.items) && tabs.contains('items') ? tabs.indexOf('items') : 0,
+      // (3.97.0, his designs 1 and 2) the Store's own band (amber), its 3D picture; the tabs as round chips under it
       child: Scaffold(
-        appBar: AppBar(
-          title: const TwoLang('Store', 'स्टोअर', size: 20, weight: FontWeight.w700),
+        appBar: moduleBar(
+          context,
+          Tone.store,
+          en: 'Store',
+          mr: 'स्टोअर',
+          pic: 'package',
+          line: me == null ? '' : '${me?['siteName'] ?? s.siteName} · ${_admin ? 'Store Admin' : 'Store User'}',
           actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: me == null ? _start : _load, icon: const Icon(Icons.refresh_rounded))]),
-          bottom: me == null || tabs.length < 2
-              ? null
-              : TabBar(labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5), tabs: [
-                  for (final t in tabs) Tab(key: Key('st-tab-$t'), child: Text(t == 'dashboard' ? 'Dashboard' : t == 'work' ? 'Work' : 'Item Master')),
-                ]),
         ),
-        // (3.55.0) "Add item" – not on the Work tab (its pages have their own)
+        // (3.55.0) "Add item" – not on the Work tab (its pages have their own); (3.97.0) only on the Item Master – on the Dashboard it
+        // covered the last card
         floatingActionButton: me != null && pg['items'] == 'Edit'
             ? Builder(builder: (c) {
                 final tc = DefaultTabController.of(c);
                 return AnimatedBuilder(
                   animation: tc,
-                  builder: (_, __) => tc.index < tabs.length && tabs[tc.index] == 'work'
+                  builder: (_, __) => tc.index >= tabs.length || tabs[tc.index] != 'items'
                       ? const SizedBox.shrink()
                       : FloatingActionButton.extended(
                           key: const Key('st-new'),
@@ -294,13 +297,14 @@ class _StoreScreenState extends State<StoreScreen> with StoreLive<StoreScreen> {
               })
             : null,
         body: loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const SkeletonList(tiles: 4, rows: 3)      // (3.97.0, design 10) while the Store answers
             : me == null || tabs.isEmpty
                 ? ListView(padding: const EdgeInsets.all(16), children: [
                     if (err.isNotEmpty) InfoLine(err, bad: true),
                     if (me != null && tabs.isEmpty) InfoLine('You have no page of the Store on this site – ask the Super Admin.', bad: true),
                   ])
                 : Column(children: [
+                    if (tabs.length > 1) ChipTabs(tone: Tone.store, labels: [for (final t in tabs) t == 'dashboard' ? 'Dashboard' : t == 'work' ? 'Work' : 'Item Master'], keys: [for (final t in tabs) Key('st-tab-$t')]),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       child: Row(children: [
@@ -316,14 +320,21 @@ class _StoreScreenState extends State<StoreScreen> with StoreLive<StoreScreen> {
 
   Widget _dash() {
     final d = storeDash(items, DateTime.now());
-    Widget tile(String label, int n, String sub, Color c, Color bg) => Container(
-          width: 160,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
+    // (3.97.0, his design 1) the Item Master's figures as the work's: a white card, its 3D picture, the number in its colour
+    final half = (MediaQuery.sizeOf(context).width - 32 - 10) / 2;
+    Widget tile(String label, int n, String sub, Color c, String pic) => Container(
+          width: half,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow(.06)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
-            Text('$n', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: c)),
-            Text(sub, style: const TextStyle(fontSize: 12, color: C.muted)),
+            Row(children: [
+              Pic(pic, size: 28),
+              const SizedBox(width: 8),
+              Expanded(child: Text(label, maxLines: 2, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600, height: 1.2))),
+            ]),
+            const SizedBox(height: 6),
+            Text('$n', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: c)),
+            Text(sub, style: const TextStyle(fontSize: 12, color: C.faint)),
           ]),
         );
     return RefreshIndicator(
@@ -331,23 +342,32 @@ class _StoreScreenState extends State<StoreScreen> with StoreLive<StoreScreen> {
       child: ListView(key: const Key('st-dash'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 90), children: [
         if (dashErr.isNotEmpty) InfoLine(dashErr, bad: true),
         if (dash != null) ...[StoreDashWork(dash: dash!), const SizedBox(height: 16), Text('Item Master', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)), const SizedBox(height: 6)],
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          tile('Items', d.all, 'in the Item Master', C.ink, Colors.white),
-          tile('Active', d.active, 'can be used', C.greenDark, C.greenSoft),
-          tile('Inactive', d.all - d.active, 'switched off', C.muted, C.slateSoft),
-          tile('Categories', d.cats, 'kinds of items', C.blue, C.blueSoft),
-          tile('Added this month', d.newMonth, 'new items', C.amber, C.amberSoft),
+        Wrap(spacing: 10, runSpacing: 10, children: [
+          tile('Items', d.all, 'in the Item Master', C.ink, 'package'),
+          tile('Active', d.active, 'can be used', C.greenDark, 'clipboard'),
+          tile('Inactive', d.all - d.active, 'switched off', C.muted, 'locked_with_key'),
+          tile('Categories', d.cats, 'kinds of items', C.blue, 'ledger'),
+          tile('Added this month', d.newMonth, 'new items', C.amber, 'calendar'),
         ]),
         const SizedBox(height: 16),
         Text('Recently added items', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
         if (d.recent.isEmpty) Text('No item yet.', style: const TextStyle(color: C.muted)),
         for (final i in d.recent)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: Text('${i['code']} · ${i['name']}', style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text('${i['unit']} · ${i['category']} · added ${showDate('${i['created_at'] ?? ''}'.length >= 10 ? '${i['created_at']}'.substring(0, 10) : '')}'),
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: softShadow(.05)),
+            child: Row(children: [
+              Container(width: 40, height: 40, decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(12)), alignment: Alignment.center, child: const Pic('package', size: 26)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${i['code']} · ${i['name']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text('${i['unit']} · ${i['category']} · added ${showDate('${i['created_at'] ?? ''}'.length >= 10 ? '${i['created_at']}'.substring(0, 10) : '')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                ]),
+              ),
+            ]),
           ),
         const SizedBox(height: 12),
         Text('Items by category', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
@@ -592,7 +612,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(actions: withAsk(), title: Text(widget.item != null ? 'Change ${widget.item!['code']}' : 'Add item')),
+        appBar: toneBar(Tone.store, actions: withAsk(), title: Text(widget.item != null ? 'Change ${widget.item!['code']}' : 'Add item')),
         bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('it-save'), onPressed: busy ? null : _save, child: Text('Save item')))),
         body: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
           TextBox(key: const Key('it-name'), label: 'Item Name *', controller: name, hint: 'e.g. Hydraulic Hose 1/2 inch', onChanged: (_) => _typedName()),
@@ -701,7 +721,7 @@ class _StoreImportScreenState extends State<StoreImportScreen> {
     final list = [for (final x in (rr?['rows'] as List? ?? const []).whereType<Map>()) x.cast<String, dynamic>()];
     final errors = _n('errors');
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: Text('Import from Excel – check')),
+      appBar: toneBar(Tone.store, actions: withAsk(), title: Text('Import from Excel – check')),
       body: rr == null
           ? (err.isEmpty ? const Center(child: CircularProgressIndicator()) : ListView(padding: const EdgeInsets.all(16), children: [InfoLine(err, bad: true)]))
           : ListView(key: const Key('si-list'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 24), children: [

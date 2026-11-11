@@ -13,6 +13,7 @@ import '../ui/ask_bot.dart';
 import '../ui/fields.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'store_work.dart' show checkWords;
@@ -176,7 +177,7 @@ class _PurInboxScreenState extends State<PurInboxScreen> {
     final r = data, sites = _list(r?['sites']);
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const TwoLang('Inbox – to order', 'Inbox – मागवायचे', size: 18, weight: FontWeight.w700), actions: withAsk()),
+      appBar: toneBar(Tone.purchase, title: const TwoLang('Inbox – to order', 'Inbox – मागवायचे', size: 18, weight: FontWeight.w700, color: Colors.white), actions: withAsk()),
       bottomNavigationBar: pick.isEmpty
           ? null
           : SafeArea(
@@ -299,7 +300,7 @@ class _PurRfqListScreenState extends State<PurRfqListScreen> {
     final m = widget.mode;
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(m == 'cs' ? 'Comparative Statement' : m == 'quotes' ? 'Quotations' : 'Enquiries (RFQ)', style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
+      appBar: toneBar(Tone.purchase, title: Text(m == 'cs' ? 'Comparative Statement' : m == 'quotes' ? 'Quotations' : 'Enquiries (RFQ)', style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
       floatingActionButton: m == 'rfq'
           ? FloatingActionButton.extended(
               key: const Key('prq-new'),
@@ -438,7 +439,7 @@ class _PurRfqViewState extends State<PurRfqView> {
     final r = data, q = _map(r?['rfq']), may = _map(r?['may']), cs = r?['cs'] == null ? null : _map(r?['cs']), vs = _list(r?['vendors']);
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(r == null ? rfqRef(widget.no) : _s(q['ref']), style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
+      appBar: toneBar(Tone.purchase, title: Text(r == null ? rfqRef(widget.no) : _s(q['ref']), style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('prv-view'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
@@ -598,7 +599,7 @@ class _PurRfqFormState extends State<PurRfqForm> {
     ];
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(widget.old == null ? 'New enquiry (RFQ)' : '${tr('Change')} ${widget.old!['ref']}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      appBar: toneBar(Tone.purchase, title: Text(widget.old == null ? 'New enquiry (RFQ)' : '${tr('Change')} ${widget.old!['ref']}', style: const TextStyle(fontWeight: FontWeight.w700))),
       body: ListView(key: const Key('prf-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
         DateField(key: const Key('prf-date'), label: 'Date', value: date, clear: false, last: DateTime.tryParse(widget.today) ?? DateTime.now(), onChanged: (v) => setState(() => date = v)),
         const SizedBox(height: 8),
@@ -749,7 +750,7 @@ class _PurQuoteFormState extends State<PurQuoteForm> {
     final hist = _list(q['history']);
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(r == null ? 'Quotation' : '${_s(_map(r['vendor'])['name'])} · ${_s(rfq['ref'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      appBar: toneBar(Tone.purchase, title: Text(r == null ? 'Quotation' : '${_s(_map(r['vendor'])['name'])} · ${_s(rfq['ref'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
       body: ListView(key: const Key('pqf-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
         if (err.isNotEmpty) InfoLine(err, bad: true),
         if (loading) _wait(),
@@ -995,7 +996,7 @@ class _PurCsScreenState extends State<PurCsScreen> {
     final r = data, c = r?['cs'] == null ? null : _map(r?['cs']), rq = _map(r?['rfq']);
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(c == null ? 'Comparative Statement' : '${_s(c['ref'])} · ${_s(c['rfq_ref'])}', style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
+      appBar: toneBar(Tone.purchase, title: Text(c == null ? 'Comparative Statement' : '${_s(c['ref'])} · ${_s(c['rfq_ref'])}', style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('pcs-view'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
@@ -1203,7 +1204,7 @@ class _PurApproveScreenState extends State<PurApproveScreen> {
     final l = _list(data?['list']), far = _list(data?['elsewhere']);
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const Text('Waiting for my approval', style: TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
+      appBar: toneBar(Tone.purchase, title: const Text('Waiting for my approval', style: TextStyle(fontWeight: FontWeight.w700)), actions: withAsk()),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('pap-list'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
@@ -1315,7 +1316,7 @@ class _PurVendorsScreenState extends State<PurVendorsScreen> {
     ];
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const TwoLang('Suppliers', 'पुरवठादार', size: 18, weight: FontWeight.w700), actions: withAsk()),
+      appBar: toneBar(Tone.purchase, title: const TwoLang('Suppliers', 'पुरवठादार', size: 18, weight: FontWeight.w700, color: Colors.white), actions: withAsk()),
       floatingActionButton: FloatingActionButton.extended(key: const Key('pvn-new'), onPressed: () => _form(), icon: const Icon(Icons.add_rounded), label: const Text('Add supplier')),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -1420,7 +1421,7 @@ class _PurVendorFormState extends State<PurVendorForm> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: C.bg,
-        appBar: AppBar(title: Text(widget.old == null ? 'Add a supplier' : 'Change supplier', style: const TextStyle(fontWeight: FontWeight.w700))),
+        appBar: toneBar(Tone.purchase, title: Text(widget.old == null ? 'Add a supplier' : 'Change supplier', style: const TextStyle(fontWeight: FontWeight.w700))),
         body: ListView(key: const Key('pvf-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
           TextBox(key: const Key('pvf-name'), label: 'Name', controller: name),
           TextBox(key: const Key('pvf-gst'), label: 'GST no.', controller: gstin, upper: true),
@@ -1510,7 +1511,7 @@ class _PurSettingsScreenState extends State<PurSettingsScreen> {
     final r = data;
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: const Text('CS approval limit', style: TextStyle(fontWeight: FontWeight.w700))),
+      appBar: toneBar(Tone.purchase, title: const Text('CS approval limit', style: TextStyle(fontWeight: FontWeight.w700))),
       body: ListView(key: const Key('pse-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
         _small(bi('Up to this amount (the CS total without GST) a Purchase Admin of its site approves a comparative statement; above it the Super Admin. Not set: every CS goes to the Super Admin.',
             'या रकमेपर्यंत Purchase Admin, त्यावर Super Admin मंजूर करतात.')),
@@ -1590,7 +1591,7 @@ class _PurPoListScreenState extends State<PurPoListScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: C.bg,
-        appBar: AppBar(title: const TwoLang('Purchase Orders', 'खरेदी आदेश (PO)', size: 18, weight: FontWeight.w700), actions: withAsk()),
+        appBar: toneBar(Tone.purchase, title: const TwoLang('Purchase Orders', 'खरेदी आदेश (PO)', size: 18, weight: FontWeight.w700, color: Colors.white), actions: withAsk()),
         body: RefreshIndicator(
           onRefresh: _load,
           child: ListView(key: const Key('ppo-list'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
@@ -1737,7 +1738,7 @@ class _PurPoViewState extends State<PurPoView> {
     final came = {for (final l in _list(si?['lines'])) _s(l['line']): l}, sent = _map(q['sent']);
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(r == null ? 'PO' : _s(q['ref']), style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
+      appBar: toneBar(Tone.purchase, title: Text(r == null ? 'PO' : _s(q['ref']), style: const TextStyle(fontWeight: FontWeight.w700)), actions: withAsk([IconButton(tooltip: tr('Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded))])),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(key: const Key('ppv-view'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
@@ -1936,7 +1937,7 @@ class _PurPoFormState extends State<PurPoForm> {
     final total = _r2(_r2(tx) + _r2(g) + _n(m['freight']) + _n(m['loading']));
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(title: Text(d == null ? 'New PO' : '${tr('New PO')} – ${_s(v['name'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
+      appBar: toneBar(Tone.purchase, title: Text(d == null ? 'New PO' : '${tr('New PO')} – ${_s(v['name'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
       body: ListView(key: const Key('ppf-form'), padding: const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 30), children: [
         if (err.isNotEmpty) InfoLine(err, bad: true),
         if (loading) _wait(),
