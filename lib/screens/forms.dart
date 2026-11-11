@@ -1528,7 +1528,16 @@ class _EntryFormState extends State<EntryForm> {
           ]), actions: withAsk([GuideButton(k.key == 'issue' ? 'diesel' : k.key)]),
         ),
         // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away
-        body: SingleChildScrollView(
+        // (3.99.0) the steps stay at the top while the form scrolls: he always sees which step he is on
+        body: PinTop(
+          top: ListenableBuilder(
+            listenable: Listenable.merge([qty, km, hr, pump, billNo]),
+            builder: (_, __) {
+              final st = _steps(machine, asNum(qty.text));
+              return StepBar(steps: st.steps, done: st.done, color: Tone.diesel.b);
+            },
+          ),
+          child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 130),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -1537,17 +1546,6 @@ class _EntryFormState extends State<EntryForm> {
             if (draftAt.isNotEmpty && (machine != null || qty.text.isNotEmpty)) DraftLine(at: draftAt, color: k.color, onNew: _startNew),
             if (widget.fix != null) Padding(padding: const EdgeInsets.only(top: 12), child: FixBar(widget.fix!))      // (3.22.0) correcting a returned entry
             else if (ed == null) VerifyStrip(module: k.module, margin: const EdgeInsets.only(top: 12)),
-            // (3.97.0, his design 7) where he is in this entry: done ✓, now (red), next
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: ListenableBuilder(
-                listenable: Listenable.merge([qty, km, hr, pump, billNo]),
-                builder: (_, __) {
-                  final st = _steps(machine, asNum(qty.text));
-                  return StepBar(steps: st.steps, done: st.done, color: Tone.diesel.b);
-                },
-              ),
-            ),
             _label('Date', 'तारीख'),
             _dateBox(),
             if (k.key != 'inward') ...[
@@ -1736,7 +1734,7 @@ class _EntryFormState extends State<EntryForm> {
             if (issue && tcDue != null && ed == null) _tcBox(),      // (3.76.0, update-203)
             if (err.isNotEmpty) InfoLine(err, bad: true),
           ]),
-        ),
+        )),
         bottomNavigationBar: SafeArea(
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),

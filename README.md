@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.99.0 (11-11-2026 – the top stays, asked: "app made je top la asel te frzz kar scrool krtana tyache aat jail"):** the
+steps of the Diesel and Log Book entry forms, the name and buttons of Entries (and of one page's list) and Reports stay at the top
+while the page scrolls under them; Home's small green bar stays the whole time the site's picture is scrolled away; Me shows his
+name in a small bar once its green part is gone. The look only – no action, check or access changed.
+
 **Version 3.98.0 (11-11-2026 – the Pill tab bar, his pick from the pictures: "1 number kru pill type ch"):** the bottom bar is a
 white floating pill – the chosen tab opens into a soft green pill with its name, the others are their pictures only – and the
 gold + is its own round button on the right (`screens/shell.dart` `_Bar`; the notch bar of 3.97.0 and the ripple fill of 3.83.0 are

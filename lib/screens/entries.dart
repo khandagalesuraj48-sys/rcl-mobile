@@ -240,8 +240,10 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
 
     return Scaffold(
       body: SafeArea(
-        child: ListView(padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 30), children: [
-          Row(children: [
+        // (3.99.0) "Your Entries" and its buttons stay at the top while the list scrolls
+        child: PinTop(
+          padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 8),
+          top: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Your Entries', mr: 'तुमच्या एन्ट्री', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
@@ -258,7 +260,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
             const SizedBox(width: 6),
             const AskBot(size: 40),
           ]),
-          const SizedBox(height: 14),
+          child: ListView(padding: const EdgeInsets.fromLTRB(Sp.edge, 6, Sp.edge, 30), children: [
           if (items.isEmpty) const EmptyState('No pages of entries', 'Ask the Admin for access to Diesel Issue, Inward, Transfer or Log Book.', pic: 'locked_with_key'),
           if (groups.length > 1)
             SingleChildScrollView(
@@ -296,7 +298,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
                 ]),
               ),
             ),
-        ]),
+        ])),
       ),
     );
   }
@@ -375,8 +377,9 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
           color: C.green,
           onRefresh: _load,
           child: CustomScrollView(slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
+            // (3.99.0) the page's name, the date and the menu stay at the top while the entries scroll
+            PinnedHeaderSliver(
+              child: ColoredBox(color: C.bg, child: Padding(
                 padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
                 child: Row(children: [
                   IconButton(tooltip: tr('All entries'), icon: const Icon(Icons.arrow_back_rounded), onPressed: () => setState(() {
@@ -413,7 +416,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
                     ],
                   ),
                 ]),
-              ),
+              )),
             ),
             // the days
             SliverToBoxAdapter(

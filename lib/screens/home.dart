@@ -8,7 +8,6 @@
  * the stock of each place in one bar; the four tiles; Modules (View All); no Rachana logo at the bottom any more. */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 
 import '../core/app_share.dart';
 import '../core/device.dart';
@@ -873,8 +872,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
 }
 
 /// (3.97.0, his design 5) Home scrolled past the site's picture: a small green bar at the top – the Rachana mark, RCL ERP and the
-/// site (tap: change it), search, the bell with its count, Ask. It comes as he scrolls back up, goes while he scrolls down to read
-/// (the page's full height for the tiles and cards) and is not there while the site's picture is seen.
+/// site (tap: change it), search, the bell with its count, Ask. (3.99.0) It stays the whole time the site's picture is scrolled away.
 class _MiniBar extends StatefulWidget {
   const _MiniBar({required this.sc, required this.after, required this.onSite, required this.onSearch, required this.onBell, required this.bell});
   final ScrollController sc;
@@ -909,8 +907,8 @@ class _MiniBarState extends State<_MiniBar> {
   void _moved() {
     if (!sc.hasClients) return;
     final p = sc.position;
-    // by the finger only: a scroll made by the app (to a place) leaves it as it is
-    final now = p.pixels <= after ? false : switch (p.userScrollDirection) { ScrollDirection.forward => true, ScrollDirection.reverse => false, _ => show };
+    // (3.99.0, asked 11-11-2026: "je top la asel te frzz kar") there the whole time the site's picture is gone – scrolling up or down
+    final now = p.pixels > after;
     if (now != show) setState(() => show = now);
   }
 

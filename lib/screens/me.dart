@@ -100,7 +100,29 @@ class _MeTabState extends State<MeTab> {
         );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: ListView(padding: EdgeInsets.zero, children: [
+      // (3.99.0, asked 11-11-2026: "je top la asel te frzz kar") his name stays at the top once the green part is scrolled away
+      child: TopOnScroll(
+        after: 120,
+        bar: (_) => Container(
+          key: const Key('me-mini'),
+          padding: EdgeInsets.fromLTRB(Sp.edge, top + 10, 8, 10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, C.greenEnd]),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+            boxShadow: [BoxShadow(color: C.greenDeep.withValues(alpha: .25), blurRadius: 14, offset: const Offset(0, 5))],
+          ),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text(s.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+                Text('$role · ${s.siteName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Color(0xE6FFFFFF))),
+              ]),
+            ),
+            IconButton(tooltip: tr('My settings'), onPressed: settings, icon: const Icon(Icons.edit_outlined, color: Colors.white, size: 20)),
+            const AskBot(size: 36, onLight: false),
+          ]),
+        ),
+        child: ListView(padding: EdgeInsets.zero, children: [
         Container(
           padding: EdgeInsets.fromLTRB(Sp.edge, top + 14, Sp.edge, 44),
           decoration: const BoxDecoration(
@@ -223,7 +245,7 @@ class _MeTabState extends State<MeTab> {
             ]),
           ),
         ),
-      ]),
+      ])),
     );
   }
 }

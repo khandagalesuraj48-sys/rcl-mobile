@@ -1537,19 +1537,10 @@ class _LogFormState extends State<LogForm> {
             Expanded(child: TwoLang(editing ? 'Change Log Book' : 'New Log Book entry', 'लॉगबुक नोंद', size: 19, weight: FontWeight.w700, color: Colors.white)),
           ]),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 130),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (editing && loadingP && p == null) ...[const SizedBox(height: 20), const Shimmer(height: 300)],
-            if (!editing) const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(top: 12)),      // (3.1.11, update-118)
-            // (3.31.0) the half-filled entry brought back
-            if (!editing && draftAt.isNotEmpty && m != null) DraftLine(at: draftAt, onNew: _startNew),
-            // (3.97.0, his design 7) where he is in this entry: Machinery → Reading → Work → Save
-            if (!editing)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Builder(builder: (_) {
+        // (3.99.0) the steps stay at the top while the form scrolls
+        body: PinTop(
+          top: editing
+                    ? null : Builder(builder: (_) {
                   final read = m != null && way.isNotEmpty && (status || off || ((!hasKm(way) || t('ckm').text.trim().isNotEmpty) && (!hasHr(way) || t('chr').text.trim().isNotEmpty)));
                   final ok = [m != null, read, status || t('work').text.trim().isNotEmpty];
                   var done = 0;
@@ -1558,7 +1549,14 @@ class _LogFormState extends State<LogForm> {
                   }
                   return StepBar(steps: const [('Machinery', 'यंत्र'), ('Reading', 'रीडिंग'), ('Work', 'काम'), ('Save', 'सेव्ह')], done: done, color: Tone.logbook.b);
                 }),
-              ),
+          child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 130),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (editing && loadingP && p == null) ...[const SizedBox(height: 20), const Shimmer(height: 300)],
+            if (!editing) const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(top: 12)),      // (3.1.11, update-118)
+            // (3.31.0) the half-filled entry brought back
+            if (!editing && draftAt.isNotEmpty && m != null) DraftLine(at: draftAt, onNew: _startNew),
             if (!editing || p != null) ...[
               _label('Date', 'तारीख'),
               Press(
@@ -1741,7 +1739,7 @@ class _LogFormState extends State<LogForm> {
               if (err.isNotEmpty) InfoLine(err, bad: true),
             ],
           ]),
-        ),
+        )),
         bottomNavigationBar: SafeArea(
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),

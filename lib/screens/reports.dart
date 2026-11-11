@@ -167,13 +167,10 @@ class _ReportsTabState extends State<ReportsTab> {
     }
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          color: C.green,
-          onRefresh: () async {
-            if (cur == 'Overview') await _load();
-          },
-          child: ListView(padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 30), children: [
-            Row(children: [
+        // (3.99.0) the tab's name and its buttons stay at the top while the page scrolls
+        child: PinTop(
+          padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 8),
+          top: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Reports', mr: 'रिपोर्ट्स', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
@@ -206,7 +203,12 @@ class _ReportsTabState extends State<ReportsTab> {
               const SizedBox(width: 6),
               const AskBot(size: 40),
             ]),
-            const SizedBox(height: 14),
+          child: RefreshIndicator(
+          color: C.green,
+          onRefresh: () async {
+            if (cur == 'Overview') await _load();
+          },
+          child: ListView(padding: const EdgeInsets.fromLTRB(Sp.edge, 6, Sp.edge, 30), children: [
             if (tabs.isEmpty) const EmptyState('No reports for you yet', 'Ask the Admin for access to Reports or Dashboard.', pic: 'bar_chart'),
             if (tabs.length > 1)
               Row(children: [
@@ -255,7 +257,7 @@ class _ReportsTabState extends State<ReportsTab> {
               if (list.isNotEmpty) const Padding(padding: EdgeInsets.fromLTRB(4, 6, 4, 0), child: Text('Excel and Print in a report open on the phone – share, keep or print (PDF).', style: TextStyle(fontSize: 13, color: C.muted))),
             ],
           ]),
-        ),
+        )),
       ),
     );
   }
