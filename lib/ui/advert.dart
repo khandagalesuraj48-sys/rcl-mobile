@@ -26,11 +26,16 @@ class AdPost {
         poster = '${m['poster'] ?? ''}',
         fx = _fit(m, 'x', 50, 0, 100),
         fy = _fit(m, 'y', 50, 0, 100),
-        fz = _fit(m, 'z', 1, 1, 4);
+        fz = _fit(m, 'z', 1, 1, 4),
+        fr = _fit(m, 'r', 1080 / 316, .56, 3.43);
 
   /// (3.101.0, the Portal's step 9 – "Fit to strip") how the post sits in the app's strip: [fx], [fy] = the part kept in view
   /// (0 – 100 %, 50 = the middle), [fz] = how much bigger (1 – 4). Not fitted, or a wrong value = the middle, no zoom.
   final double fx, fy, fz;
+
+  /// (3.102.0, asked 12-11-2026: "tya patticha size wadhwata yeil … fkt android and ios app sathi") the post's shape IN THE APP
+  /// (width ÷ height): the strip (3.42) unless the Super Admin made it higher there (down to .56 = an upright 9 : 16 video).
+  final double fr;
   static double _fit(Map m, String k, double d, double a, double b) {
     final f = m['fit'], o = f is Map ? f['app'] : null, v = o is Map ? o[k] : null;
     return v is num && v >= a && v <= b ? v.toDouble() : d;
@@ -117,7 +122,7 @@ class _AdCornerState extends State<AdCorner> with WidgetsBindingObserver {
       final r = await s.api.ads({'action': 'live', 'platform': 'app', 'site': site});
       final all = [for (final m in (r['posts'] as List? ?? const []).whereType<Map>()) AdPost(m)].where((p) => p.url.startsWith('https://') || p.url.startsWith('http://127.0.0.1')).toList();
       if (!mounted) return;
-      final now = all.map((p) => '${p.id}${p.seconds}${p.fx}${p.fy}${p.fz}').join('|');
+      final now = all.map((p) => '${p.id}${p.seconds}${p.fx}${p.fy}${p.fz}${p.fr}').join('|');
       setState(() {
         posts = all;      // (3.101.0) every post is a strip
         full = const [];
@@ -173,8 +178,12 @@ class _AdCornerState extends State<AdCorner> with WidgetsBindingObserver {
     final still = MediaQuery.of(context).disableAnimations;
     return Padding(
       padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
-      child: AspectRatio(
-        aspectRatio: kAdStrip,
+      // (3.102.0) each post in its own shape (the strip, or higher when it was made so for the app); from one to the next: smoothly
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: p.fr),
+        duration: Duration(milliseconds: still ? 0 : 300),
+        curve: Curves.easeOut,
+        builder: (_, r, child) => AspectRatio(aspectRatio: r, child: child),
         child: Container(
         key: const Key('ad-corner'),
         clipBehavior: Clip.antiAlias,

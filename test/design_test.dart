@@ -293,7 +293,7 @@ void main() {
     // two posts: a strip (an image) and a banner (a video)
     srv.ads = [
       {'id': 'a1', 'title': 'Diwali', 'media': 'image', 'size': 'strip', 'seconds': 6, 'url': 'https://files.test/a1.jpg', 'poster': ''},
-      {'id': 'a2', 'title': 'PQC', 'media': 'video', 'size': 'banner', 'seconds': 12, 'url': 'https://files.test/a2.mp4', 'poster': ''},
+      {'id': 'a2', 'title': 'PQC', 'media': 'video', 'size': 'strip', 'seconds': 12, 'url': 'https://files.test/a2.mp4', 'poster': '', 'fit': {'app': {'x': 50, 'y': 50, 'z': 1, 'r': 0.8}}},
       {'id': 'bad', 'title': 'x', 'media': 'image', 'size': 'strip', 'seconds': 6, 'url': 'javascript:alert(1)', 'poster': ''},
     ];
     await t.pumpWidget(const SizedBox());
@@ -307,7 +307,7 @@ void main() {
     expect(find.byKey(const Key('ad-mute')), findsNothing, reason: 'an image has no sound button');
     await t.fling(box, const Offset(-200, 0), 800);
     await settle(t, 600);
-    expect(t.getSize(box).height, closeTo(wide / kAdStrip, .5), reason: 'the next one: the same strip (no other size)');
+    expect(t.getSize(box).height, closeTo(wide / 0.8, .5), reason: 'the next one was made higher for the app (1080 × 1350)');
     expect(find.byKey(const Key('ad-mute')), findsOneWidget, reason: 'a video: the sound button');
     await t.fling(box, const Offset(-200, 0), 800);
     await settle(t, 600);
@@ -325,5 +325,9 @@ void main() {
     expect([q.fx, q.fy, q.fz], [50, 50, 1]);
     expect(AdPost({'id': 'c', 'media': 'image', 'url': 'x'}).at, Alignment.center, reason: 'before the Portal\'s step 9: from its middle');
     expect(kAdStrip, closeTo(3.42, .01));
+    // (3.102.0) made higher for the app: its shape there; not said, or outside strip … 9 : 16 = the strip
+    expect(p.fr, closeTo(3.42, .01));
+    expect(AdPost({'id': 'd', 'media': 'video', 'url': 'x', 'fit': {'app': {'r': 0.8}}}).fr, 0.8);
+    expect(AdPost({'id': 'e', 'media': 'video', 'url': 'x', 'fit': {'app': {'r': 0.2}}}).fr, closeTo(3.42, .01));
   });
 }
