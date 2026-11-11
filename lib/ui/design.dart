@@ -266,6 +266,48 @@ Widget _plain(BuildContext context, String s, TextStyle style) => RichText(
       text: TextSpan(text: s, style: DefaultTextStyle.of(context).style.merge(style)),
     );
 
+/// (3.99.0, asked 11-11-2026: "app made je top la asel te frzz kar") A PART THAT STAYS at the top of a page while the rest
+/// scrolls under it (the steps of an entry form, a tab's name and its buttons).
+class PinTop extends StatelessWidget {
+  const PinTop({super.key, required this.top, required this.child, this.padding = const EdgeInsets.fromLTRB(Sp.edge, 10, Sp.edge, 6)});
+  final Widget? top;
+  final Widget child;
+  final EdgeInsets padding;
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (top != null) Padding(key: const Key('pin-top'), padding: padding, child: top),
+        Expanded(child: child),
+      ]);
+}
+
+/// (3.99.0) A page whose big top part scrolls away (Me): once it is gone ([after] pixels), [bar] stays at the top.
+class TopOnScroll extends StatefulWidget {
+  const TopOnScroll({super.key, required this.after, required this.bar, required this.child});
+  final double after;
+  final WidgetBuilder bar;
+  final Widget child;
+  @override
+  State<TopOnScroll> createState() => _TopOnScrollState();
+}
+
+class _TopOnScrollState extends State<TopOnScroll> {
+  bool show = false;
+  @override
+  Widget build(BuildContext context) => Stack(children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: (n) {
+            if (n.depth == 0 && n.metrics.axis == Axis.vertical) {
+              final now = n.metrics.pixels > widget.after;
+              if (now != show) setState(() => show = now);
+            }
+            return false;
+          },
+          child: widget.child,
+        ),
+        Positioned(left: 0, right: 0, top: 0, child: AnimatedSwitcher(duration: const Duration(milliseconds: 200), child: show ? widget.bar(context) : const SizedBox.shrink())),
+      ]);
+}
+
 /// (design 7) The steps of an entry form: [done] of them are done (✓ green), the next one is "now" (in [color]), the rest grey.
 class StepBar extends StatelessWidget {
   const StepBar({super.key = const Key('step-bar'), required this.steps, required this.done, this.color = C.red});

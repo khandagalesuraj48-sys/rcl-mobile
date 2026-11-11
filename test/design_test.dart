@@ -59,6 +59,19 @@ void phone(WidgetTester t) {
   addTearDown(t.view.reset);
 }
 
+/// (3.99.0) Brings [f] onto the screen where a finger can reach it: Home's small bar now stays at the top while the page is
+/// scrolled, so a thing brought to the very top would be under it – the page is then pulled down a little.
+Future<void> seen(WidgetTester t, Finder f) async {
+  await t.ensureVisible(f);
+  await t.pump();
+  for (var i = 0; i < 6; i++) {
+    await t.pump(const Duration(milliseconds: 300));
+    final bar = find.byWidgetPredicate((w) => w.key == const Key('home-mini') || w.key == const Key('me-mini')).hitTestable();
+    if (bar.evaluate().isEmpty || t.getRect(f.first).top >= t.getRect(bar.first).bottom + 4) break;
+    await t.drag(find.ancestor(of: f.first, matching: find.byType(Scrollable)).last, const Offset(0, 110));
+  }
+}
+
 void main() {
   setUpAll(loadFonts);
 
@@ -163,19 +176,19 @@ void main() {
     expect(find.byKey(const Key('mod-badge-store')), findsOneWidget);
     expect(find.byKey(const Key('tab-bar-pill')), findsOneWidget);
     expect(find.byKey(const Key('tab-plus')), findsOneWidget);
-    // the small bar: not while the site's picture is seen, nor while he scrolls down to read; past the picture and scrolling back up:
-    // there; at the top again: gone
+    // the small bar (3.99.0): not while the site's picture is seen; there the whole time it is scrolled away – down or up; at the top
+    // again: gone
     expect(find.byKey(const Key('home-mini')), findsNothing);
     await t.drag(find.byType(ListView).first, const Offset(0, -700));
     await settle(t, 600);
-    expect(find.byKey(const Key('home-mini')), findsNothing, reason: 'scrolling down: the page\'s whole height');
+    expect(find.byKey(const Key('home-mini')), findsOneWidget, reason: 'scrolling down: the bar stays at the top');
     await t.drag(find.byType(ListView).first, const Offset(0, 120));
     await settle(t, 600);
     expect(find.byKey(const Key('home-mini')), findsOneWidget, reason: 'scrolling back up past the picture');
     await t.drag(find.byType(ListView).first, const Offset(0, 1200));
     await settle(t, 600);
     expect(find.byKey(const Key('home-mini')), findsNothing, reason: 'the site\'s picture is seen');
-    await t.ensureVisible(find.byKey(const Key('today-store')));
+    await seen(t, find.byKey(const Key('today-store')));
     await settle(t, 400);
     // a row opens its work: the Store
     await t.tap(find.byKey(const Key('today-store')));
@@ -230,5 +243,40 @@ void main() {
     expect(find.text('Sany 210 (No.1)'), findsOneWidget, reason: 'in the machinery box, as picked from the list');
     expect(find.text('Hour meter'), findsOneWidget, reason: 'its way from the Asset Master, as before');
     expect(t.widget<StepBar>(find.byType(StepBar)).done, 1, reason: 'Machinery ✓ – the meter is next');
+    // (3.99.0) the steps stay at the top while the form scrolls
+    final y = t.getTopLeft(find.byType(StepBar)).dy;
+    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, -500));
+    await settle(t, 600);
+    expect(find.byType(StepBar).hitTestable(), findsOneWidget, reason: 'still seen after scrolling down');
+    expect(t.getTopLeft(find.byType(StepBar)).dy, y, reason: 'it has not moved');
+  });
+
+  testWidgets('3.99.0: the top of a tab stays while the page scrolls – Entries, Reports, Me', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    Future<void> stays(String tab, Finder head) async {
+      await t.tap(find.byKey(Key('tab-$tab')));
+      await net(t);
+      expect(head.hitTestable(), findsOneWidget, reason: '$tab: its top');
+      final y = t.getTopLeft(head).dy;
+      await t.dragFrom(const Offset(180, 450), const Offset(0, -600));
+      await settle(t, 600);
+      expect(head.hitTestable(), findsOneWidget, reason: '$tab: still seen after scrolling');
+      expect(t.getTopLeft(head).dy, y, reason: '$tab: it has not moved');
+    }
+
+    await stays('entries', find.byKey(const Key('entries-search')));
+    await stays('reports', find.byKey(const Key('pin-top')));
+    // Me: the big green part scrolls away – his name stays in a small bar (when the page is long enough to scroll that far)
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    expect(find.byKey(const Key('me-mini')), findsNothing);
+    await t.dragFrom(const Offset(180, 450), const Offset(0, -600));
+    await settle(t, 600);
+    if (t.state<ScrollableState>(find.descendant(of: find.byType(TopOnScroll), matching: find.byType(Scrollable)).first).position.pixels > 120) expect(find.byKey(const Key('me-mini')), findsOneWidget);
+    expect(t.takeException(), isNull);
   });
 }

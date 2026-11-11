@@ -187,17 +187,23 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     padding: EdgeInsets.fromLTRB(Sp.edge, mq.padding.top + 12, Sp.edge, 46),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Arrive(
-                          anim: _open,
-                          at: 0,
-                          scale: true,
-                          child: Container(
-                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .9), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 18, offset: const Offset(0, 6))]),
-                            child: const RachanaLogo(height: 44),
-                          ),
+                        // (3.99.0, asked 11-11-2026: "rachana name perfect nahiye … kuthe konawar overlap nako") the name on a full white
+                        // plate (the photo no longer shows through it); on a narrow phone or with big letters it grows smaller – it
+                        // never runs under the language button
+                        Expanded(
+                          child: Align(alignment: Alignment.topLeft, child: Arrive(
+                            anim: _open,
+                            at: 0,
+                            scale: true,
+                            child: Container(
+                              key: const Key('login-logo'),
+                              padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
+                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 18, offset: const Offset(0, 6))]),
+                              child: const FittedBox(fit: BoxFit.scaleDown, child: RachanaLogo(height: 44)),
+                            ),
+                          )),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 12),
                         _lang(),
                       ]),
                       const Spacer(),
