@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.100.0 (11-11-2026 – the Advertise Corner, asked: "Rachana Media & Celebration Hub … he aple advertise corner asel"):**
+Home shows the posts the Super Admin set in the Portal for this site (`lib/ui/advert.dart`; the Portal's `/api/ads` `live`): a Strip
+or a Banner under the top of Home, one after the other, a swipe for the next; a video plays by itself, muted (the sound button), only
+while Home is the tab seen and the app is in front; a "Full screen" post opens once (✕). No post = Home as before. A "Card" post
+shows as a Banner in this version; the app's own Super Admin screen for the posts is not built yet (they are set on the Portal's web
+page). The release keeps the build's symbol files (90 days) so a reported fault's lines can be read.
+
 **Version 3.99.0 (11-11-2026 – the top stays, asked: "app made je top la asel te frzz kar scrool krtana tyache aat jail"):** the
 steps of the Diesel and Log Book entry forms, the name and buttons of Entries (and of one page's list) and Reports stay at the top
 while the page scrolls under them; Home's small green bar stays the whole time the site's picture is scrolled away; Me shows his

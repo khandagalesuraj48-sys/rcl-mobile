@@ -915,6 +915,9 @@ class FakeServer {
     return _j({'error': 'Unknown action.', 'code': 'action'}, 404);
   }
 
+  /// (3.100.0) the Advertise Corner: what the Portal gives ('live'), and what was asked
+  List<Map<String, dynamic>> ads = [];
+  final List<Map<String, dynamic>> adsAsked = [];
   http.Response _j(Object o, [int code = 200, Map<String, String> h = const {}]) => http.Response(jsonEncode(o), code, headers: {'content-type': 'application/json', ...h});
 
   /* ---- (3.17.0) the Portal's Super Admin console (api/admin): its data and its checks, as the Portal's (the same words) ---- */
@@ -1249,6 +1252,13 @@ class FakeServer {
         portalSignedIn = false;
         return _j({'ok': true}, 200, {'set-cookie': 'rcl_portal=; Path=/; Max-Age=0'});
       }
+    }
+    // (3.100.0) the Advertise Corner: the posts that show now on a site
+    if (path.endsWith('/portal/api/ads')) {
+      final x = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      adsAsked.add(x);
+      if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused'}, 403);
+      return _j({'posts': ads});
     }
     // (3.17.0) the Portal's Super Admin console: only the Super Admin, signed in (his own password set)
     if (path.endsWith('/portal/api/admin')) {

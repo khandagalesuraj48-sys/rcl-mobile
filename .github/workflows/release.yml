@@ -136,6 +136,14 @@ jobs:
         with:
           name: apk
           path: rcl-erp-*.apk
+      # (3.100.0) the symbol files of this build are kept 90 days: with them the lines of a fault the app reports ("Faults of the
+      # app" – only addresses in a release build) can be read
+      - uses: actions/upload-artifact@v4
+        with:
+          name: symbols
+          path: build/symbols
+          if-no-files-found: ignore
+          retention-days: 90
 
   # (3.19.0) the Windows app and its setup – the same version and build number as the Android app
   windows:
