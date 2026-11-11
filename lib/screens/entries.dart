@@ -8,6 +8,7 @@ import '../core/format.dart';
 import '../core/kinds.dart';
 import '../core/session.dart';
 import '../ui/scope.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'diesel_photos.dart';

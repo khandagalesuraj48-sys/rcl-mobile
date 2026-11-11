@@ -15,6 +15,7 @@ import '../core/format.dart';
 import '../core/session.dart';
 import '../ui/ask_bot.dart';
 import '../ui/scope.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'billing.dart';

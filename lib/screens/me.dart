@@ -11,6 +11,7 @@ import '../core/update.dart';
 import '../ui/ask_bot.dart';
 import 'home.dart' show openHelp;
 import '../ui/scope.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'approvals.dart';
