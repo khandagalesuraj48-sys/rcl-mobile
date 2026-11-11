@@ -254,7 +254,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -280,7 +280,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Inward')));
     await net(t);

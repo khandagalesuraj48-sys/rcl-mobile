@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
@@ -160,7 +161,7 @@ void main() {
     expect(find.byKey(const Key('today-store')), findsOneWidget, reason: '1 requirement waits for his approval');
     expect(find.byKey(const Key('today-below')), findsOneWidget, reason: '1 item below its minimum');
     expect(find.byKey(const Key('mod-badge-store')), findsOneWidget);
-    expect(find.byKey(const Key('tab-bar-notch')), findsOneWidget);
+    expect(find.byKey(const Key('tab-bar-pill')), findsOneWidget);
     expect(find.byKey(const Key('tab-plus')), findsOneWidget);
     // the small bar: not while the site's picture is seen, nor while he scrolls down to read; past the picture and scrolling back up:
     // there; at the top again: gone
@@ -180,6 +181,34 @@ void main() {
     await t.tap(find.byKey(const Key('today-store')));
     await net(t);
     expect(find.text('Item Master'), findsWidgets);
+  });
+
+  testWidgets('3.98.0: the Pill tab bar – the chosen tab shows its name, the others their picture only; a tap changes the tab; the + as before', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    final bar = find.byKey(const Key('tab-bar-pill'));
+    expect(bar, findsOneWidget);
+    Finder name(String n) => find.descendant(of: bar, matching: find.text(n));
+    expect(name('Home'), findsOneWidget);
+    expect(name('Entries'), findsNothing);
+    expect(name('Reports'), findsNothing);
+    expect(name('Me'), findsNothing);
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    expect(name('Entries'), findsOneWidget);
+    expect(name('Home'), findsNothing);
+    // the name is whole on this phone (360 wide) – not cut to "Entri…"
+    final para = t.renderObject<RenderParagraph>(find.descendant(of: name('Entries'), matching: find.byType(RichText)));
+    expect(para.didExceedMaxLines, isFalse, reason: 'the whole word fits');
+    expect(t.takeException(), isNull);
+    // the + is beside the pill, not over it
+    expect(t.getRect(find.byKey(const Key('tab-plus'))).left, greaterThan(t.getRect(bar).right));
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    expect(find.byKey(const Key('plus-Diesel Issue')), findsOneWidget);
   });
 
   testWidgets('designs 6 and 7: the machinery saved last is a chip – a tap picks it as the list does; the steps follow the entry', (t) async {

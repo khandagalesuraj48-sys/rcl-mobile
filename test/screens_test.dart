@@ -483,7 +483,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await t.ensureVisible(find.text('Approvals').first);
     await settle(t, 300);
@@ -547,7 +547,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await t.ensureVisible(find.text('Approvals').first);
     await settle(t, 300);
@@ -603,7 +603,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await t.ensureVisible(find.text('Approvals').first);
     await settle(t, 300);
@@ -637,7 +637,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
     await net(t);
@@ -667,7 +667,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-machinery')));
     await net(t);
@@ -689,7 +689,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-machinery')));
     await net(t);
@@ -803,7 +803,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
     await net(t);
@@ -824,7 +824,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await pics(t);
     // (3.1.8) a list one under the other: only the pages he may open (Transfer: no access)
@@ -853,7 +853,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -908,7 +908,7 @@ void main() {
     expect(find.textContaining('No network – working from this phone'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9a_offline_home.png'));
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -949,7 +949,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -985,7 +985,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -1020,7 +1020,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Inward')));
     await net(t);
@@ -1056,7 +1056,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -1078,7 +1078,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Inward')));
     await net(t);
@@ -1105,7 +1105,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await pics(t);
     expect(find.text('Sujit Mule'), findsOneWidget);
@@ -1113,7 +1113,7 @@ void main() {
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Super Admin'), findsNothing, reason: '(3.17.0) the console is the Super Admin\'s only');
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9_me.png'));
-    await t.tap(find.text('Reports'));
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel')));
     await net(t);
@@ -1298,7 +1298,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await t.tap(find.text('My settings'));
     await net(t);
@@ -1325,7 +1325,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await t.tap(find.text('My settings'));
     await net(t);
@@ -1351,7 +1351,7 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13_settings_marathi.png'));
     await t.pageBack();
     await net(t);
-    await t.tap(find.text(tr('Home')));
+    await t.tap(find.byKey(const Key('tab-home')));
     await net(t);
     await pics(t);
     expect(find.text('Machinery'), findsNothing);
@@ -1714,7 +1714,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -1777,7 +1777,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -1907,7 +1907,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
     await net(t);
@@ -1961,7 +1961,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
     await net(t);
@@ -2578,7 +2578,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel')));
     await net(t);
@@ -3577,7 +3577,7 @@ void main() {
 
   // (3.31.7, Mechanical update-149) the Log Book Debit Statement: the statement, Change rates (one / all shown), Import party + rate
   Future<void> openLdebit(WidgetTester t) async {
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-financial')));
     await net(t);
@@ -3674,7 +3674,7 @@ void main() {
     final files = catchFiles();
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -3749,7 +3749,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Transfer')));
     await net(t);
@@ -3863,7 +3863,7 @@ void main() {
     final files = catchFiles();
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Log Book')));
     await net(t);
@@ -4123,7 +4123,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -4161,7 +4161,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Transfer')));
     await net(t);
@@ -4207,7 +4207,7 @@ void main() {
       await t.tap(find.byTooltip('All entries'));
       await net(t);
     }
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     // Diesel Issue: only VTR Store – shown although one (he sees where the diesel comes from), chosen
     await newEntry('Diesel Issue');
@@ -4294,7 +4294,7 @@ void main() {
       await t.tap(find.text(no).last);
       await net(t);
     }
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await newEntry('Diesel Issue');
     expect(find.text('Fuel from'), findsOneWidget, reason: 'a site with more than one fuel: the source is always shown');
@@ -4336,7 +4336,7 @@ void main() {
     await toGrid();
     // the Dashboard: a Fuel chip each; the dashboard of one fuel – its words and unit; the site's stock is not changed by it
     srv.dashAsked.clear();
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel')));
     await net(t);
@@ -4378,7 +4378,7 @@ void main() {
     expect(find.text('SBI CREDIT ••9876  ₹ −500'), findsOneWidget);
     expect(find.byKey(const Key('home-card-OLD CARD')), findsNothing, reason: 'an Inactive card');
     // Entries: Diesel Issue and Fuel Cards – no Inward, no Transfer (even with Edit on them)
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     expect(find.byKey(const Key('entries-Diesel Issue')), findsOneWidget);
     expect(find.byKey(const Key('entries-Diesel Inward')), findsNothing);
@@ -4451,7 +4451,7 @@ void main() {
     await t.pageBack();
     await net(t);
     // Reports: the cost of a site on fuel cards = the ₹ of its fills (card + cash); the Dashboard: the cards and the cars
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     expect(find.text('Fuel Cost (card + cash)'), findsOneWidget);
     expect(find.text('₹4,300'), findsOneWidget);
@@ -4491,7 +4491,7 @@ void main() {
       expect(s.admin, true);
       await t.pumpWidget(RclApp(session: s));
       await net(t);
-      await t.tap(find.text('Reports').last);
+      await t.tap(find.byKey(const Key('tab-reports')));
       await net(t);
       await t.tap(find.byKey(const Key('rt-diesel')));
       await net(t);
@@ -4614,7 +4614,7 @@ void main() {
     expect(s.admin, false);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel')));
     await net(t);
@@ -4642,7 +4642,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel')));
     await net(t);
@@ -4856,7 +4856,7 @@ void main() {
     await t.pageBack();
     await net(t);
     // the Dashboard: the line at its top – a tap opens the alerts
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel')));
     await net(t);
@@ -4893,7 +4893,7 @@ void main() {
     await t.pageBack();
     await net(t);
     // Fuel Cards: the mark, and its amount sent with the card
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Fuel Cards');
     await net(t);
@@ -5026,7 +5026,7 @@ void main() {
     expect(s.card('HDFC FUEL')!.expDays, isNull, reason: 'no expiry given: no mark');
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Fuel Cards');
     await net(t);
@@ -5077,7 +5077,7 @@ void main() {
     expect([for (final p in startPagesFor(s)) p.$1], containsAll(['cards', 'mnt']));
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
@@ -5206,7 +5206,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
@@ -5391,7 +5391,7 @@ void main() {
     expect([sv.admin, sv.canEdit('Maintenance')], [false, false]);
     await t.pumpWidget(RclApp(session: sv));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
@@ -5410,7 +5410,7 @@ void main() {
     expect([s.admin, s.canEdit('Maintenance')], [false, true]);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
@@ -5444,7 +5444,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
@@ -5507,7 +5507,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
@@ -5641,7 +5641,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
@@ -5734,7 +5734,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await t.tap(find.text('My settings'));
     await net(t);
@@ -5959,7 +5959,7 @@ void main() {
     // My settings: the daily summary – No
     t.state<NavigatorState>(find.byType(Navigator).first).pop();
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await t.tap(find.text('My settings'));
     await net(t);
@@ -6013,7 +6013,7 @@ void main() {
     await tapK(t, 'ai-go-diesel');
     await net(t);
     expect(find.byType(AssistantScreen), findsNothing);
-    await t.tap(find.text('Home'));
+    await t.tap(find.byKey(const Key('tab-home')));
     await net(t);
     await tapK(t, 'home-ask');
     await net(t);
@@ -6093,7 +6093,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t);
     await t.tap(find.byKey(const Key('rt-diesel'))); // (3.31.0) the reports are under Diesel (Overview first)
     await net(t);
@@ -6144,7 +6144,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Me'));
+    await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
     await tapK(t, 'me-super'); // (3.31.0) his role is also on Me now
     await net(t);
@@ -7164,7 +7164,7 @@ void main() {
     await t.binding.handlePopRoute();
     await net(t);
     // Back one step: Entries → Diesel Issue → (Back) the Entries list → (Back) Home → (Back) "Press Back again"
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await t.tap(find.byKey(const Key('entries-Diesel Issue')));
     await net(t);
@@ -7181,7 +7181,7 @@ void main() {
     await settle(t, 4500);
     // Reports – Overview: the figures of the month from the server's answers
     srv.dashAsked.clear();
-    await t.tap(find.text('Reports').last);
+    await t.tap(find.byKey(const Key('tab-reports')));
     await net(t, 2500);
     expect(srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first), contains(equals({'from': '2026-10-01', 'to': '2026-10-14'})), reason: 'this month');
     expect(srv.dashAsked.where((x) => x['fn'] == 'getDashboard').map((x) => (x['args'] as List).first), contains(equals({'from': '2026-09-17', 'to': '2026-09-30'})), reason: 'the same 14 days just before');
@@ -7434,7 +7434,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
@@ -7553,7 +7553,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.tap(find.text('Entries'));
+    await t.tap(find.byKey(const Key('tab-entries')));
     await net(t);
     await tapK(t, 'entries-Maintenance');
     await net(t);
