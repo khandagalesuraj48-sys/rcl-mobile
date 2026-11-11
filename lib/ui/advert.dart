@@ -5,7 +5,7 @@
  *  – asked after Home is drawn, never with Home's own figures; no post (or no answer) = nothing on Home, as before;
  *  – one image or video at a time; a video plays by itself, MUTED, only while Home is the tab seen and the app is in front;
  *  – asked again when he comes back to Home after 10 minutes (a post's hours begin and end; a file's link works one hour);
- *  – a "Full screen" post opens once over Home (✕ closes it); a "Card" post shows as a Banner in this version. */
+ *  – (3.101.0) one size: the strip, its shape fixed; a post sits in it as the Super Admin fitted it ("Fit to strip"). */
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -23,14 +23,29 @@ class AdPost {
         size = '${m['size'] ?? 'strip'}',
         seconds = m['seconds'] is num ? (m['seconds'] as num).toInt().clamp(3, 60) : 6,
         url = '${m['url'] ?? ''}',
-        poster = '${m['poster'] ?? ''}';
+        poster = '${m['poster'] ?? ''}',
+        fx = _fit(m, 'x', 50, 0, 100),
+        fy = _fit(m, 'y', 50, 0, 100),
+        fz = _fit(m, 'z', 1, 1, 4);
+
+  /// (3.101.0, the Portal's step 9 – "Fit to strip") how the post sits in the app's strip: [fx], [fy] = the part kept in view
+  /// (0 – 100 %, 50 = the middle), [fz] = how much bigger (1 – 4). Not fitted, or a wrong value = the middle, no zoom.
+  final double fx, fy, fz;
+  static double _fit(Map m, String k, double d, double a, double b) {
+    final f = m['fit'], o = f is Map ? f['app'] : null, v = o is Map ? o[k] : null;
+    return v is num && v >= a && v <= b ? v.toDouble() : d;
+  }
+
+  /// Where the part kept in view is, for a picture that fills its box.
+  Alignment get at => Alignment(fx / 50 - 1, fy / 50 - 1);
   final String id, title, size, url, poster;
   final bool video;
   final int seconds;
 }
 
-/// The height of a post's place on Home.
-double adHeight(String size) => size == 'strip' ? 96 : 164;
+/// (3.101.0, asked 12-11-2026: "fkt strip madhe thewaychi … app sathi mobile screen nusar wegli size") ONE SIZE: THE STRIP – as wide
+/// as the phone, its shape fixed (1080 × 316), so a post sits on every phone as the Super Admin fitted it.
+const double kAdStrip = 1080 / 316;
 
 class AdCorner extends StatefulWidget {
   const AdCorner({super.key, required this.active});
@@ -102,10 +117,10 @@ class _AdCornerState extends State<AdCorner> with WidgetsBindingObserver {
       final r = await s.api.ads({'action': 'live', 'platform': 'app', 'site': site});
       final all = [for (final m in (r['posts'] as List? ?? const []).whereType<Map>()) AdPost(m)].where((p) => p.url.startsWith('https://') || p.url.startsWith('http://127.0.0.1')).toList();
       if (!mounted) return;
-      final now = all.map((p) => '${p.id}${p.size}${p.seconds}').join('|');
+      final now = all.map((p) => '${p.id}${p.seconds}${p.fx}${p.fy}${p.fz}').join('|');
       setState(() {
-        posts = all.where((p) => p.size != 'full').toList();
-        full = all.where((p) => p.size == 'full').toList();
+        posts = all;      // (3.101.0) every post is a strip
+        full = const [];
         if (now != sig) i = 0;
         sig = now;
       });
@@ -158,11 +173,10 @@ class _AdCornerState extends State<AdCorner> with WidgetsBindingObserver {
     final still = MediaQuery.of(context).disableAnimations;
     return Padding(
       padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
-      child: AnimatedContainer(
+      child: AspectRatio(
+        aspectRatio: kAdStrip,
+        child: Container(
         key: const Key('ad-corner'),
-        duration: Duration(milliseconds: still ? 0 : 300),
-        curve: Curves.easeOut,
-        height: adHeight(p.size),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(color: C.greenDeep, borderRadius: BorderRadius.circular(22), boxShadow: softShadow()),
         child: GestureDetector(
@@ -207,7 +221,7 @@ class _AdCornerState extends State<AdCorner> with WidgetsBindingObserver {
               ),
           ]),
         ),
-      ),
+      )),
     );
   }
 }
@@ -286,17 +300,18 @@ class _AdMediaState extends State<_AdMedia> {
 
   Widget _picture(String url) => url.isEmpty
       ? const SizedBox.expand()
-      : Image.network(url, fit: widget.fit, gaplessPlayback: true, filterQuality: FilterQuality.medium, semanticLabel: widget.post.title, errorBuilder: (_, __, ___) => const SizedBox.expand());
+      : Image.network(url, fit: widget.fit, alignment: widget.post.at, gaplessPlayback: true, filterQuality: FilterQuality.medium, semanticLabel: widget.post.title, errorBuilder: (_, __, ___) => const SizedBox.expand());
 
   @override
   Widget build(BuildContext context) {
     final p = widget.post;
-    if (!p.video) return SizedBox.expand(child: _picture(p.url));
+    Widget zoom(Widget w) => p.fz == 1 ? w : Transform.scale(scale: p.fz, alignment: p.at, child: w);
+    if (!p.video) return SizedBox.expand(child: zoom(_picture(p.url)));
     final c = v;
-    return Stack(fit: StackFit.expand, children: [
+    return zoom(Stack(fit: StackFit.expand, children: [
       _picture(p.poster),
       if (c != null && ready)
-        FittedBox(fit: widget.fit, clipBehavior: Clip.hardEdge, child: SizedBox(width: c.value.size.width, height: c.value.size.height, child: VideoPlayer(c))),
+        FittedBox(fit: widget.fit, alignment: widget.post.at, clipBehavior: Clip.hardEdge, child: SizedBox(width: c.value.size.width, height: c.value.size.height, child: VideoPlayer(c))),
       if (widget.soundButton && c != null && ready)
         Positioned(
           right: 12,
@@ -311,6 +326,6 @@ class _AdMediaState extends State<_AdMedia> {
             icon: Icon(muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, color: Colors.white),
           ),
         ),
-    ]);
+    ]));
   }
 }
