@@ -1351,7 +1351,7 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13_settings_marathi.png'));
     await t.pageBack();
     await net(t);
-    await t.tap(find.text(tr('Home')));
+    await t.tap(find.byKey(const Key('tab-home')));
     await net(t);
     await pics(t);
     expect(find.text('Machinery'), findsNothing);
