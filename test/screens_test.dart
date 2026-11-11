@@ -1306,6 +1306,10 @@ void main() {
     await t.scrollUntilVisible(find.text('Change password'), 200, scrollable: find.byType(Scrollable).last);
     expect(find.text('Change password'), findsOneWidget);
     await t.scrollUntilVisible(find.text('My usual shift'), -200, scrollable: find.byType(Scrollable).last);
+    // (3.97.0) the list is a row longer (Site mode): the row brought clear of the bar at the top before the tap
+    final list = find.ancestor(of: find.text('My usual shift'), matching: find.byType(Scrollable)).first;
+    await t.drag(list, const Offset(0, 250));
+    await settle(t, 400);
     await t.tap(find.text('My usual shift'));
     await settle(t, 600);
     await t.tap(find.text('Night').last);
@@ -1912,7 +1916,7 @@ void main() {
     expect(srv.dashAsked.first['fn'], 'getDashboard');
     // (3.97.0) Home asks its figures "lite" (only the opening stock and the pending count); the Dashboard asks in full
     expect(((srv.dashAsked.first['args'] as List).first as Map)['lite'], 1, reason: 'Home\'s own call: light');
-    expect((srv.dashAsked.firstWhere((x) => x['fn'] == 'getDashboard' && !((x['args'] as List).first as Map).containsKey('lite'))['args'] as List).first, {'from': '2026-10-14', 'to': '2026-10-14'}, reason: 'it opens on Today, as the web');
+    expect([for (final x in srv.dashAsked) if (x['fn'] == 'getDashboard' && !((x['args'] as List).first as Map).containsKey('lite')) (x['args'] as List).first], contains(equals({'from': '2026-10-14', 'to': '2026-10-14'})), reason: 'it opens on Today, as the web');
     expect(find.byKey(const Key('k-open')), findsOneWidget);
     expect(find.text('19,895 Ltr'), findsOneWidget);
     expect(find.text('20,014 Ltr'), findsWidgets);
