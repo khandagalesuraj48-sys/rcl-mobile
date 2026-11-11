@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.101.0 (12-11-2026 – one strip, fitted; asked: "fkt strip madhe thewaychi … app sathi mobile screen nusar wegli size … fit
+to strip … web and app nusar set hoil"):** the Advertise Corner on Home is one strip of a fixed shape (1080 × 316 – as wide as the
+phone); a post sits in it as the Super Admin fitted it in the Portal (its step 9: `fit.app` – the part kept in view and the zoom);
+not fitted = from its middle. Banner and "Full screen" are gone.
+
 **Version 3.100.0 (11-11-2026 – the Advertise Corner, asked: "Rachana Media & Celebration Hub … he aple advertise corner asel"):**
 Home shows the posts the Super Admin set in the Portal for this site (`lib/ui/advert.dart`; the Portal's `/api/ads` `live`): a Strip
 or a Banner under the top of Home, one after the other, a swipe for the next; a video plays by itself, muted (the sound button), only

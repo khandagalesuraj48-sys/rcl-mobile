@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/main.dart';
+import 'package:rcl_mobile/ui/advert.dart';
 import 'package:rcl_mobile/ui/design.dart';
 import 'package:rcl_mobile/ui/theme.dart';
 import 'package:rcl_mobile/ui/widgets.dart' show Shimmer;
@@ -300,17 +301,29 @@ void main() {
     await net(t);
     final box = find.byKey(const Key('ad-corner'));
     expect(box, findsOneWidget);
-    expect(t.getSize(box).height, 96, reason: 'a strip');
+    // (3.101.0) one size: the strip – as wide as the phone less its edges, its shape fixed (1080 × 316)
+    final wide = t.getSize(box).width;
+    expect(t.getSize(box).height, closeTo(wide / kAdStrip, .5), reason: 'the strip\'s shape');
     expect(find.byKey(const Key('ad-mute')), findsNothing, reason: 'an image has no sound button');
     await t.fling(box, const Offset(-200, 0), 800);
     await settle(t, 600);
-    expect(t.getSize(box).height, 164, reason: 'the next one: a banner');
+    expect(t.getSize(box).height, closeTo(wide / kAdStrip, .5), reason: 'the next one: the same strip (no other size)');
     expect(find.byKey(const Key('ad-mute')), findsOneWidget, reason: 'a video: the sound button');
     await t.fling(box, const Offset(-200, 0), 800);
     await settle(t, 600);
-    expect(t.getSize(box).height, 96, reason: 'only two are shown – the one with a wrong link is left out');
+    expect(find.byKey(const Key('ad-mute')), findsNothing, reason: 'only two are shown – the one with a wrong link is left out: the image again');
     await t.pumpWidget(const SizedBox());      // (its timer goes with it)
     await t.pump(const Duration(seconds: 1));
     t.takeException();
+  });
+
+  test('3.101.0: a post sits in the strip as the Super Admin fitted it for the app – a wrong or missing value = the middle, no zoom', () {
+    final p = AdPost({'id': 'a', 'media': 'image', 'url': 'https://files.test/a.jpg', 'fit': {'web': {'x': 10, 'y': 10, 'z': 3}, 'app': {'x': 25, 'y': 100, 'z': 1.6}}});
+    expect([p.fx, p.fy, p.fz], [25, 100, 1.6]);
+    expect(p.at, const Alignment(-.5, 1));
+    final q = AdPost({'id': 'b', 'media': 'image', 'url': 'https://files.test/b.jpg', 'fit': {'app': {'x': 140, 'y': 'top', 'z': 9}}});
+    expect([q.fx, q.fy, q.fz], [50, 50, 1]);
+    expect(AdPost({'id': 'c', 'media': 'image', 'url': 'x'}).at, Alignment.center, reason: 'before the Portal\'s step 9: from its middle');
+    expect(kAdStrip, closeTo(3.42, .01));
   });
 }
