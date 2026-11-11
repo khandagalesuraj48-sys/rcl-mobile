@@ -15,6 +15,22 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.97.0 (11-11-2026 – the new look, his designs 1–10, 12, 13 approved with the pictures: "all designs approved aahet te
+banwayla chalu kar"):** each module has **its own colour** – the band at the top of its screens and its tile on Home (Machinery
+green, Log Book purple, Diesel red, Store amber, Engineering teal, Purchase blue; `ui/theme.dart` `Tone`, `ui/design.dart`
+`moduleBar` / `toneBar`); **Store, Engineering, Purchase** premium – the band with the module's picture and the site · role, the
+tabs as round chips (`ChipTabs`), the figures on white cards with their 3D picture, the recent GRN / issues as cards, "Add item"
+only on the Item Master; **Home**: "Today's work · आज काय बाकी" (approvals, the Log Book entries pending – the Dashboard's
+count, his Store work and the items below minimum, Purchase's lines to order, the RFIs waiting for the IE, entries on the phone,
+vehicle alerts – the modules' own calls, after Home's own, at most every 2 minutes), a **red badge** on a module's tile, and past
+the site's picture a **small green bar** at the top; the entry forms: **the steps** (Machinery → Meter → Litres → Save; Log Book:
+Machinery → Reading → Work → Save) and the **machinery saved last** on this phone as chips; the Dashboard's dates in **one row**
+(Today | Yesterday | This month | 📅 – the rest under 📅); a **coloured strip** on list cards by their state (Approvals, the Store's
+requirements / POs / GRNs / issues, RFIs, hindrances, MB, RFQs, POs); **grey shapes** while a module answers (never a made-up
+wait); **Site mode** (My settings – this phone): bigger letters, buttons and lines; the bottom bar as a **centre FAB** bar (a round
+notch for the gold +, a gold line under the chosen tab). Look only – every call, check and answer as before. Tests:
+`test/design_test.dart`. Dark mode (his design 11) comes in its own update.
+
 **Version 3.96.0 (10-11-2026 – motion, his brief "Enterprise UI Animation & Micro-Interaction Upgrade"):** every question / Delete box
 (`ask`, `askNote`, `askLines`, `askChanges` and the other 30 boxes) opens with a **Scale Pop** – from 72 % with a small overshoot – and
 closes with a fade and scale-down (`ui/motion.dart` `popDialog`, the same builder, the same answer, a tap outside as before); every new

@@ -242,6 +242,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  /// (3.97.0, his design 8 – "tarkheche chips eka olit") the dates in ONE row: Today | Yesterday | This month | 📅 – the 📅 opens the
+  /// rest (Last month, All dates, From – To). The same ranges and the same reading as the chips and boxes before.
+  Widget _dateRow(String which, {bool clear = true}) {
+    final custom = !const ['today', 'yesterday', 'month'].contains(which);
+    Widget seg(String key, String label, bool on, VoidCallback tap, {Widget? icon, int flex = 3}) => Expanded(
+          flex: flex,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(color: on ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(12), boxShadow: on ? softShadow(.08) : null),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                key: Key(key),
+                borderRadius: BorderRadius.circular(12),
+                onTap: tap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Center(child: icon ?? FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: on ? FontWeight.w700 : FontWeight.w600, color: on ? C.greenDark : C.muted)))),
+                ),
+              ),
+            ),
+          ),
+        );
+    return Container(
+      key: const Key('d-dates'),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFFEFEBE1), borderRadius: BorderRadius.circular(16)),
+      child: Row(children: [
+        seg('dq-today', 'Today', which == 'today', () => _range('today')),
+        seg('dq-yesterday', 'Yesterday', which == 'yesterday', () => _range('yesterday'), flex: 4),
+        seg('dq-month', 'This month', which == 'month', () => _range('month'), flex: 4),
+        seg('dq-pick', '', custom, () => _pickDates(clear: clear), flex: 2, icon: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.calendar_month_rounded, size: 19, color: custom ? C.greenDark : C.muted),
+          Icon(Icons.arrow_drop_down_rounded, size: 19, color: custom ? C.greenDark : C.muted),
+        ])),
+      ]),
+    );
+  }
+
+  /// (3.97.0) the 📅 of the date row: Last month, All dates, or From – To (each read at once, as before)
+  Future<void> _pickDates({bool clear = true}) => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (c) => StatefulBuilder(builder: (c, setS) {
+          final which = dashWhich(from, to, SessionScope.read(context).today);
+          return Padding(
+            padding: EdgeInsets.fromLTRB(Sp.edge, 0, Sp.edge, Sp.edge + MediaQuery.viewInsetsOf(c).bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const TwoLang('Dates', 'तारखा', size: 19, weight: FontWeight.w700),
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final q in const [('lastmonth', 'Last month'), ('all', 'All dates')])
+                  ChoiceChip(
+                    key: Key('dq-${q.$1}'),
+                    selected: which == q.$1,
+                    label: Text(q.$2),
+                    onSelected: (_) {
+                      _range(q.$1);
+                      Navigator.pop(c);
+                    },
+                  ),
+              ]),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: DateField(key: const Key('d-from'), label: 'From', value: from, clear: clear, onChanged: (v) {
+                  setState(() => from = v);
+                  setS(() {});
+                  _load();
+                })),
+                const SizedBox(width: 8),
+                Expanded(child: DateField(key: const Key('d-to'), label: 'To', value: to, clear: clear, onChanged: (v) {
+                  setState(() => to = v);
+                  setS(() {});
+                  _load();
+                })),
+              ]),
+              const SizedBox(height: 14),
+              FilledButton(key: const Key('d-dates-done'), onPressed: () => Navigator.pop(c), child: const Text('Done')),
+            ]),
+          );
+        }),
+      );
+
   void _range(String k) {
     final s = SessionScope.read(context);
     final r = dashRange(k, s.today);
@@ -306,23 +390,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(child: Text('Fuel cards and cars', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
           Pill(rangeText(from, to), color: C.blue, bg: C.blueSoft),
         ]),
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final q in const [('today', 'Today'), ('month', 'This month'), ('lastmonth', 'Last month')])
-            ChoiceChip(key: Key('dq-${q.$1}'), selected: which == q.$1, onSelected: (_) => _range(q.$1), label: Text(q.$2)),
-        ]),
-        const SizedBox(height: 8),
-        Row(children: [
-          Expanded(child: DateField(key: const Key('d-from'), label: 'From', value: from, clear: false, onChanged: (v) {
-            setState(() => from = v);
-            _load();
-          })),
-          const SizedBox(width: 8),
-          Expanded(child: DateField(key: const Key('d-to'), label: 'To', value: to, clear: false, onChanged: (v) {
-            setState(() => to = v);
-            _load();
-          })),
-        ]),
+        const SizedBox(height: 10),
+        _dateRow(which, clear: false),      // (3.97.0, his design 8)
         if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: InfoLine(err, bad: true)),
         FormHead('Card balance now'),
         if (s.cards.isEmpty) Text('No fuel card yet – add them in Fuel Cards.', style: const TextStyle(color: C.muted)),
@@ -430,23 +499,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(child: Text('Diesel summary – all locations', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
           Pill(rangeText(from, to), color: C.blue, bg: C.blueSoft),
         ]),
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final q in const [('today', 'Today'), ('yesterday', 'Yesterday'), ('month', 'This month'), ('lastmonth', 'Last month'), ('all', 'All dates')])
-            ChoiceChip(key: Key('dq-${q.$1}'), selected: which == q.$1, onSelected: (_) => _range(q.$1), label: Text(q.$2)),
-        ]),
-        const SizedBox(height: 8),
-        Row(children: [
-          Expanded(child: DateField(key: const Key('d-from'), label: 'From', value: from, onChanged: (v) {
-            setState(() => from = v);
-            _load();
-          })),
-          const SizedBox(width: 8),
-          Expanded(child: DateField(key: const Key('d-to'), label: 'To', value: to, onChanged: (v) {
-            setState(() => to = v);
-            _load();
-          })),
-        ]),
+        const SizedBox(height: 10),
+        _dateRow(which),      // (3.97.0, his design 8)
         // (3.44.0, update-163) a site with more than one fuel: the fuel shown (the chips keep their own names)
         if (s.multiFuel) ...[
           const SizedBox(height: 8),

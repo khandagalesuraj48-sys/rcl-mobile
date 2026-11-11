@@ -1545,6 +1545,20 @@ class _LogFormState extends State<LogForm> {
             if (!editing) const VerifyStrip(module: 'Log Book', margin: EdgeInsets.only(top: 12)),      // (3.1.11, update-118)
             // (3.31.0) the half-filled entry brought back
             if (!editing && draftAt.isNotEmpty && m != null) DraftLine(at: draftAt, onNew: _startNew),
+            // (3.97.0, his design 7) where he is in this entry: Machinery → Reading → Work → Save
+            if (!editing)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Builder(builder: (_) {
+                  final read = m != null && way.isNotEmpty && (status || off || ((!hasKm(way) || t('ckm').text.trim().isNotEmpty) && (!hasHr(way) || t('chr').text.trim().isNotEmpty)));
+                  final ok = [m != null, read, status || t('work').text.trim().isNotEmpty];
+                  var done = 0;
+                  while (done < ok.length && ok[done]) {
+                    done++;
+                  }
+                  return StepBar(steps: const [('Machinery', 'यंत्र'), ('Reading', 'रीडिंग'), ('Work', 'काम'), ('Save', 'सेव्ह')], done: done, color: Tone.logbook.b);
+                }),
+              ),
             if (!editing || p != null) ...[
               _label('Date', 'तारीख'),
               Press(

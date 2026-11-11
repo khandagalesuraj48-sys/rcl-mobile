@@ -257,6 +257,10 @@ class Session extends ChangeNotifier {
   /// (main.dart, ui/theme.dart). This phone only (My settings) – kept on the phone, not with his account.
   static const kSiteMode = 'site_mode';
   final siteMode = ValueNotifier<bool>(false);
+
+  /// (3.97.0, his designs 3 and 4) Home reads what waits in the other modules (Store, Engineering, Purchase) – on in the app
+  /// (main.dart); the tests of the other screens keep their calls as they were.
+  static bool moduleCounts = false;
   Future<void> setSiteMode(bool on) async {
     siteMode.value = on;
     notifyListeners();

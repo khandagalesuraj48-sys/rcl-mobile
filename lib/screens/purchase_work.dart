@@ -73,7 +73,7 @@ Widget _card(Widget child, {Key? key, Color? border}) => Container(
 Widget _small(String t, {Color color = C.muted}) => Text(t, style: TextStyle(fontSize: 12.5, color: color, height: 1.3));
 // a button beside others (a Row or a Wrap): its own width – the theme's buttons fill the width
 final _fs = FilledButton.styleFrom(minimumSize: const Size(0, 44)), _os = OutlinedButton.styleFrom(minimumSize: const Size(0, 44));
-Widget _wait() => const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator()));
+Widget _wait() => const SkeletonList(rows: 3);      // (3.97.0, design 10) grey shapes while Purchase answers
 
 /* ======================================== INBOX – to order ======================================== */
 class PurInboxScreen extends StatefulWidget {
@@ -274,7 +274,7 @@ class _PurRfqListScreenState extends State<PurRfqListScreen> {
     final cs = q['cs'] == null ? null : _map(q['cs']), vs = _list(q['vendors']);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Press(
+      child: Striped(status: _s(q['status']), radius: 22, child: Press(
         key: Key('prq-row-${q['no']}'),
         onTap: () => _open(q),
         padding: const EdgeInsets.all(14),
@@ -291,7 +291,7 @@ class _PurRfqListScreenState extends State<PurRfqListScreen> {
           _small('${tr('Quotations')}: ${_n(q['quotes'])} ${tr('of')} ${vs.length} · ${vs.map((v) => _s(v['name'])).join(', ')}'),
           if (cs != null) Padding(padding: const EdgeInsets.only(top: 6), child: Row(children: [Text('${_s(cs['ref'])}  ', style: const TextStyle(fontWeight: FontWeight.w700)), purPill(_s(cs['status'])), const SizedBox(width: 8), Text(purMoney(cs['total']), style: const TextStyle(fontWeight: FontWeight.w700))])),
         ]),
-      ),
+      )),
     );
   }
 
@@ -1217,7 +1217,7 @@ class _PurApproveScreenState extends State<PurApproveScreen> {
             for (final c in l)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: Press(
+                child: Striped(status: 'Pending', radius: 22, child: Press(
                   key: Key('pap-row-${c['no']}'),
                   onTap: () async {
                     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PurCsScreen(me: widget.me, rfq: _n(c['rfq_no']).toInt())));
@@ -1229,7 +1229,7 @@ class _PurApproveScreenState extends State<PurApproveScreen> {
                     Text(_s(c['items']), maxLines: 2, overflow: TextOverflow.ellipsis),
                     _small('${tr('GST')} ${purMoney(c['gst'])} · ${tr('sent by')} ${_s(c['sent_name'])} ${_at(c['sent_at'])}'),
                   ]),
-                ),
+                )),
               ),
           if (far.isNotEmpty) _small(tr('Waiting for a Purchase Admin of another of your sites: {0} – open Purchase on that site (Change site) to decide it.').replaceAll('{0}', far.map((c) => '${c['ref']} (${c['site']})').join(', '))),
         ]),
@@ -1613,7 +1613,7 @@ class _PurPoListScreenState extends State<PurPoListScreen> {
               for (final p in rows)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Press(
+                  child: Striped(status: _s(p['status']), radius: 22, child: Press(
                     key: Key('ppo-row-${p['no']}'),
                     onTap: () async {
                       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PurPoView(me: widget.me, no: _n(p['no']).toInt())));
@@ -1636,7 +1636,7 @@ class _PurPoListScreenState extends State<PurPoListScreen> {
                       ]),
                       if (_s(p['send_error']).isNotEmpty) _small(_s(p['send_error']), color: C.red),
                     ]),
-                  ),
+                  )),
                 ),
           ]),
         ),

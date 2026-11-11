@@ -263,7 +263,7 @@ class _EngRfiScreenState extends State<EngRfiScreen> {
     final (Color c, Color bg) = switch ('${x['status']}') { 'Approved' => (C.greenDark, C.greenSoft), 'Rejected' => (C.red, C.redSoft), 'Pending' => (C.amber, C.amberSoft), _ => (C.muted, C.line) };
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
+      child: Striped(status: '${x['status']}', radius: 18, child: Container(
         key: Key('erf-row-${x['no']}'),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: softShadow()),
@@ -296,7 +296,7 @@ class _EngRfiScreenState extends State<EngRfiScreen> {
               ]),
             ),
         ]),
-      ),
+      )),
     );
   }
 
@@ -322,7 +322,7 @@ class _EngRfiScreenState extends State<EngRfiScreen> {
           if (missing.isNotEmpty) InfoLine(missing, bad: true),
           if (err.isNotEmpty) InfoLine(err, bad: true),
           const SizedBox(height: 10),
-          if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+          if (loading) const SkeletonList(rows: 3),      // (3.97.0, design 10)
           if (!loading && rows.isEmpty && missing.isEmpty) const EmptyState('No RFI here', 'Ask the IE to inspect a layer with "Ask RFI".', pic: 'clipboard'),
           if (!loading) for (final x in rows) _row(x),
         ]),
@@ -575,7 +575,7 @@ class _EngHindScreenState extends State<EngHindScreen> {
           const Text('What stopped the work, where and for how many days – the evidence for an extension of time (EOT). The last 90 days.', style: TextStyle(fontSize: 13, color: C.muted)),
           if (err.isNotEmpty) InfoLine(err, bad: true),
           if (missing.isNotEmpty) InfoLine(missing, bad: true),
-          if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+          if (loading) const SkeletonList(rows: 3),      // (3.97.0, design 10)
           if (!loading && r != null) ...[
             const SizedBox(height: 10),
             Row(children: [_tile(tr('Hindrances'), '${rows.length}'), const SizedBox(width: 8), _tile(tr('Still on'), '${r['open'] ?? 0}'), const SizedBox(width: 8), _tile(tr('Days'), '${rows.fold<num>(0, (a, h) => a + _n(h['days']))}')]),
@@ -584,7 +584,7 @@ class _EngHindScreenState extends State<EngHindScreen> {
             for (final h in rows)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: Press(
+                child: Striped(status: '${h['to_day'] ?? ''}'.isEmpty ? 'Still on' : 'Closed', radius: 22, child: Press(
                   key: Key('ehd-row-${h['no']}'),
                   onTap: h['created_by'] == j.email || j.canView ? () => _form(h) : null,
                   padding: const EdgeInsets.all(14),
@@ -605,7 +605,7 @@ class _EngHindScreenState extends State<EngHindScreen> {
                     if ('${h['detail'] ?? ''}'.isNotEmpty) Text('${h['detail']}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                     if ('${h['letter'] ?? ''}'.isNotEmpty) Text('${tr('Letter')}: ${h['letter']}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                   ]),
-                ),
+                )),
               ),
             if ((r['works'] as List? ?? const []).isNotEmpty) ...[
               const SizedBox(height: 6),
@@ -797,7 +797,7 @@ class _EngPpcScreenState extends State<EngPpcScreen> {
             }),
           ]),
           if (err.isNotEmpty) InfoLine(err, bad: true),
-          if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+          if (loading) const SkeletonList(rows: 3),      // (3.97.0, design 10)
           if (!loading && r != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -925,7 +925,7 @@ class _EngMbScreenState extends State<EngMbScreen> {
     final (c, bg) = _mbTag('${x['status']}');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Press(
+      child: Striped(status: '${x['status']}', radius: 22, color: _mbTag('${x['status']}').$1, child: Press(
         key: Key('emb-row-${x['no']}'),
         onTap: () => _open(x['no']),
         padding: const EdgeInsets.all(14),
@@ -942,7 +942,7 @@ class _EngMbScreenState extends State<EngMbScreen> {
           Text('${tr('Measured by')} ${x['measured_name'] ?? ''}${'${x['checked_name'] ?? ''}'.isNotEmpty ? ' · ${tr('check-measured by')} ${x['checked_name']} ${_day(x['chk_day'])}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           if (x['status'] == 'Sent back' && '${x['back_why'] ?? ''}'.isNotEmpty) Text('${tr('Sent back by')} ${x['back_name'] ?? ''}: ${x['back_why']}', style: const TextStyle(fontSize: 12.5, color: C.red)),
         ]),
-      ),
+      )),
     );
   }
 
@@ -991,7 +991,7 @@ class _EngMbScreenState extends State<EngMbScreen> {
           const SizedBox(height: 10),
           if (missing.isNotEmpty) InfoLine(missing, bad: true),
           if (err.isNotEmpty) InfoLine(err, bad: true),
-          if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+          if (loading) const SkeletonList(rows: 3),      // (3.97.0, design 10)
           if (!loading && tab == 'list') ...[
             if (list != null && rows.isEmpty && missing.isEmpty) const EmptyState('No MB page here', 'Make one with "New MB page".', pic: 'clipboard'),
             for (final x in rows) _row(x),
@@ -1141,7 +1141,7 @@ class _EngMbViewState extends State<EngMbView> {
         onRefresh: _load,
         child: ListView(key: const Key('emb-view'), padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 40), children: [
           if (err.isNotEmpty) InfoLine(err, bad: true),
-          if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+          if (loading) const SkeletonList(rows: 3),      // (3.97.0, design 10)
           if (!loading && r != null) ...[
             Container(
               padding: const EdgeInsets.all(14),

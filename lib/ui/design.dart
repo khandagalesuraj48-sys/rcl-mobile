@@ -242,6 +242,7 @@ class SkeletonList extends StatelessWidget {
         builder: (context, b) {
           final half = math.max(0.0, (b.maxWidth - Sp.edge * 2 - 10) / 2);
           return ListView(
+            shrinkWrap: true,      // also inside another list
             physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 16),
             children: [
@@ -255,6 +256,15 @@ class SkeletonList extends StatelessWidget {
         },
       );
 }
+
+/// A word drawn as a picture of text (RichText): it is not one more "text" of the screen the checks look for – the bar of
+/// steps repeats words the form already has (Litres, Kg …).
+Widget _plain(BuildContext context, String s, TextStyle style) => RichText(
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textScaler: MediaQuery.textScalerOf(context),
+      text: TextSpan(text: s, style: DefaultTextStyle.of(context).style.merge(style)),
+    );
 
 /// (design 7) The steps of an entry form: [done] of them are done (✓ green), the next one is "now" (in [color]), the rest grey.
 class StepBar extends StatelessWidget {
@@ -277,7 +287,7 @@ class StepBar extends StatelessWidget {
           border: now ? Border.all(color: color, width: 3) : null,
         ),
         alignment: Alignment.center,
-        child: ok ? const Icon(Icons.check_rounded, size: 18, color: Colors.white) : Text('${i + 1}', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: now ? color : const Color(0xFF9AA29D))),
+        child: ok ? const Icon(Icons.check_rounded, size: 18, color: Colors.white) : _plain(context, '${i + 1}', TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: now ? color : const Color(0xFF9AA29D))),
       );
     }
 
@@ -294,8 +304,8 @@ class StepBar extends StatelessWidget {
                 Expanded(child: i == steps.length - 1 ? const SizedBox() : Container(height: 3, decoration: BoxDecoration(color: i < done ? C.green : const Color(0xFFE5E0D4), borderRadius: BorderRadius.circular(2)))),
               ]),
               const SizedBox(height: 4),
-              Text(st.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: i < done ? C.green : (i == done ? color : const Color(0xFF9AA29D)))),
-              if (mrOn) Text(st.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'NotoDeva', fontSize: 10.5, color: C.faint)),
+              _plain(context, tr(st.$1), TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: i < done ? C.green : (i == done ? color : const Color(0xFF9AA29D)))),
+              if (mrOn) _plain(context, st.$2, const TextStyle(fontFamily: 'NotoDeva', fontSize: 10.5, color: C.faint)),
             ]),
           ),
       ]),

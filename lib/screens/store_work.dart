@@ -287,13 +287,17 @@ const _faint = TextStyle(fontSize: 12, color: C.faint);
 const _bold = TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800);
 const _dec = TextInputType.numberWithOptions(decimal: true);
 
-Widget _card({Key? key, required List<Widget> children, Color color = Colors.white, Color border = C.line}) => Container(
-      key: key,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16), border: Border.all(color: border)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-    );
+Widget _card({Key? key, required List<Widget> children, Color color = Colors.white, Color border = C.line, String? status}) {
+  final box = Container(
+    key: key,
+    margin: status == null ? const EdgeInsets.only(bottom: 10) : null,
+    padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16), border: Border.all(color: border)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+  );
+  // (3.97.0, his design 9) a card of a list with its state: a strip in the state's colour on its left
+  return status == null ? box : Padding(padding: const EdgeInsets.only(bottom: 10), child: Striped(status: status, radius: 16, child: box));
+}
 
 Widget _act(String key, String label, VoidCallback? onTap, {Color color = C.green}) => TextButton(
       key: Key(key),
@@ -1074,7 +1078,7 @@ class _ReqListScreenState extends State<ReqListScreen> with StoreLive<ReqListScr
     final lb = x['logbook'] is Map ? x['logbook'] as Map : null;
     // (3.70.0) Change / Delete as the server says (an older server: as before)
     final mayEdit = x.containsKey('edit') ? x['edit'] == true : (mine || k.admin) && st == 'Pending' && listOf(x['approvals']).isEmpty && k.edit('req');
-    return _card(key: Key('rq-$no'), color: may ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
+    return _card(key: Key('rq-$no'), status: x['step'] == 'verify' ? 'Pending' : st, color: may ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [
         if (may) Checkbox(key: Key('rq-tick-$no'), value: ticked.contains(no), onChanged: (v) => setState(() => v == true ? ticked.add(no) : ticked.remove(no))),
         Expanded(child: Text('${reqRef(x)} · ${dmy(x['date'])}', style: _bold)),
@@ -1859,7 +1863,7 @@ class PoCard extends StatelessWidget {
       }
     }
 
-    return _card(key: Key('po-$site-$no'), color: may ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
+    return _card(key: Key('po-$site-$no'), status: '${p['state'] ?? p['status']}', color: may ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [
         Expanded(child: Text('${sites ? '$site · ' : ''}PO $no · ${dmy(p['date'])}', style: _bold)),
         statePill('${p['state'] ?? p['status']}'),
@@ -2491,7 +2495,7 @@ class _GrnListScreenState extends State<GrnListScreen> with StoreLive<GrnListScr
   /// GST Amount, Gross Amount, Remark; TCS, PO No
   Widget _tile(Map<String, dynamic> g, {String keyPre = 'gr'}) {
     final no = nOf(g['no']).toInt(), m = keyPre == 'gr' ? '' : 'm'; // (3.71.0) shown under "Waiting for you": its buttons' keys apart
-    return _card(key: Key('$keyPre-$no'), color: g['mayDecide'] == true ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
+    return _card(key: Key('$keyPre-$no'), status: g['mayDecide'] == true ? 'Pending' : 'Received', color: g['mayDecide'] == true ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [Expanded(child: Text('GRN ${grnRef(g)} · ${dmy(g['date'])}', style: _bold)), Text(rs(g['gross']), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800))]),
       Text('${g['supplier'] ?? ''}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       Text(
@@ -2966,7 +2970,7 @@ class _IssueListScreenState extends State<IssueListScreen> with StoreLive<IssueL
     final no = nOf(i['no']).toInt(), lines = listOf(i['lines']), rets = listOf(i['returns']), m = keyPre == 'is' ? '' : 'm';
     final out = lines.where((l) => l['returnable'] == true && nOf(l['qty']) - nOf(l['back']) > 0.0005).length;
     final waits = i['mayDecide'] == true || rets.any((r) => r['mayDecide'] == true);
-    return _card(key: Key('$keyPre-$no'), color: waits ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
+    return _card(key: Key('$keyPre-$no'), status: waits ? 'Pending' : 'Issued', color: waits ? C.amberSoft.withValues(alpha: .35) : Colors.white, children: [
       Row(children: [
         Expanded(child: Text('Outward $no · ${dmy(i['date'])}', style: _bold)),
         if (i['debit'] == true) const Padding(padding: EdgeInsets.only(right: 6), child: Pill('Debit', color: C.amber, bg: C.amberSoft)),

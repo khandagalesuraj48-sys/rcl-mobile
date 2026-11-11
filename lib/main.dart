@@ -96,6 +96,7 @@ void main() {
   }();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
   if (Platform.isAndroid) Session.callKit = () => WebrtcKit(); // (3.26.0) calls with the web – the Android phone first
+  Session.moduleCounts = true; // (3.97.0) Home: what waits in his other modules
   final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep())
         ..askApproval = askApprovalBox
         ..askReason = askReasonBox
