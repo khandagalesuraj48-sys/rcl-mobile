@@ -59,6 +59,19 @@ void phone(WidgetTester t) {
   addTearDown(t.view.reset);
 }
 
+/// (3.99.0) Brings [f] onto the screen where a finger can reach it: Home's small bar now stays at the top while the page is
+/// scrolled, so a thing brought to the very top would be under it – the page is then pulled down a little.
+Future<void> seen(WidgetTester t, Finder f) async {
+  await t.ensureVisible(f);
+  await t.pump();
+  for (var i = 0; i < 6; i++) {
+    await t.pump(const Duration(milliseconds: 300));
+    final bar = find.byWidgetPredicate((w) => w.key == const Key('home-mini') || w.key == const Key('me-mini')).hitTestable();
+    if (bar.evaluate().isEmpty || t.getRect(f.first).top >= t.getRect(bar.first).bottom + 4) break;
+    await t.drag(find.ancestor(of: f.first, matching: find.byType(Scrollable)).last, const Offset(0, 110));
+  }
+}
+
 void main() {
   setUpAll(loadFonts);
 
@@ -175,7 +188,7 @@ void main() {
     await t.drag(find.byType(ListView).first, const Offset(0, 1200));
     await settle(t, 600);
     expect(find.byKey(const Key('home-mini')), findsNothing, reason: 'the site\'s picture is seen');
-    await t.ensureVisible(find.byKey(const Key('today-store')));
+    await seen(t, find.byKey(const Key('today-store')));
     await settle(t, 400);
     // a row opens its work: the Store
     await t.tap(find.byKey(const Key('today-store')));

@@ -148,11 +148,24 @@ Future<void> tapK(WidgetTester t, String key) async {
   final f = find.byKey(Key(key));
   FocusManager.instance.primaryFocus?.unfocus();
   await t.pump(const Duration(milliseconds: 150));
-  await t.ensureVisible(f);
+  await seen(t, f);
   for (var i = 0; i < 6; i++) {
     await t.pump(const Duration(milliseconds: 100));
   }
   await t.tap(f);
+}
+
+/// (3.99.0) Brings [f] onto the screen where a finger can reach it: Home's small bar now stays at the top while the page is
+/// scrolled, so a thing brought to the very top would be under it – the page is then pulled down a little.
+Future<void> seen(WidgetTester t, Finder f) async {
+  await t.ensureVisible(f);
+  await t.pump();
+  for (var i = 0; i < 6; i++) {
+    await t.pump(const Duration(milliseconds: 300));
+    final bar = find.byWidgetPredicate((w) => w.key == const Key('home-mini') || w.key == const Key('me-mini')).hitTestable();
+    if (bar.evaluate().isEmpty || t.getRect(f.first).top >= t.getRect(bar.first).bottom + 4) break;
+    await t.drag(find.ancestor(of: f.first, matching: find.byType(Scrollable)).last, const Offset(0, 110));
+  }
 }
 
 void main() {
@@ -452,7 +465,7 @@ void main() {
     expect(litres, findsOneWidget);
     await t.enterText(litres, '12');
     await settle(t, 300);
-    await t.ensureVisible(find.text('Send again (VF-00007)'));
+    await seen(t, find.text('Send again (VF-00007)'));
     await t.tap(find.text('Send again (VF-00007)'));
     await settle(t, 600);
     await t.enterText(find.byKey(const Key('note-box')), 'Litres 12');
@@ -485,7 +498,7 @@ void main() {
     await net(t);
     await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
-    await t.ensureVisible(find.text('Approvals').first);
+    await seen(t, find.text('Approvals').first);
     await settle(t, 300);
     await t.tap(find.text('Approvals').first);
     await net(t);
@@ -549,7 +562,7 @@ void main() {
     await net(t);
     await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
-    await t.ensureVisible(find.text('Approvals').first);
+    await seen(t, find.text('Approvals').first);
     await settle(t, 300);
     await t.tap(find.text('Approvals').first);
     await net(t);
@@ -605,7 +618,7 @@ void main() {
     await net(t);
     await t.tap(find.byKey(const Key('tab-me')));
     await net(t);
-    await t.ensureVisible(find.text('Approvals').first);
+    await seen(t, find.text('Approvals').first);
     await settle(t, 300);
     await t.tap(find.text('Approvals').first);
     await net(t);
@@ -962,7 +975,7 @@ void main() {
     expect(srv.tankDueAsked.last, {'no': 'Sany 210 (No.1)', 'date': '2026-10-14'});
     await t.enterText(find.byType(TextField).at(1), '60');
     await settle(t, 300);
-    await t.ensureVisible(find.byKey(const Key('f-tc')));
+    await seen(t, find.byKey(const Key('f-tc')));
     await settle(t, 300);
     expect(find.text('the last one on 05-10-2026, a check every 7 days. Measure the tank before filling.'), findsOneWidget);
     await t.tap(find.text('Save Diesel Issue'));
@@ -1064,7 +1077,7 @@ void main() {
     await settle(t, 800);
     await t.tap(find.text('Change'));
     await net(t);
-    await t.ensureVisible(find.text('Save the change'));
+    await seen(t, find.text('Save the change'));
     await settle(t, 600);
     await t.tap(find.text('Save the change'));
     await net(t);
@@ -1165,7 +1178,7 @@ void main() {
     await t.enterText(find.byType(TextField).at(0), 'Nashik#Road848!');
     await t.enterText(find.byType(TextField).at(1), 'Mule#2026x');
     await t.enterText(find.byType(TextField).at(2), 'Mule#2026y');
-    await t.ensureVisible(find.text('Save and open'));
+    await seen(t, find.text('Save and open'));
     await settle(t, 400);
     await t.tap(find.text('Save and open'));
     await settle(t, 600);
@@ -1173,7 +1186,7 @@ void main() {
     expect(srv.calls, isNot(contains('portal:changePassword')));
     await t.enterText(find.byType(TextField).at(2), 'Mule#2026x');
     await settle(t, 600);
-    await t.ensureVisible(find.text('Save and open'));      // (on a small phone the button may be below the screen's end)
+    await seen(t, find.text('Save and open'));      // (on a small phone the button may be below the screen's end)
     await settle(t, 400);
     await t.tap(find.text('Save and open'));
     await net(t);
@@ -1734,7 +1747,7 @@ void main() {
     await tapK(t, 'sd-f-VF-00009');
     await settle(t, 300);
     expect(find.text('Delete ticked (2)'), findsOneWidget);
-    await t.ensureVisible(find.byKey(const Key('sd-show')));
+    await seen(t, find.byKey(const Key('sd-show')));
     await settle(t, 300);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/54_super_delete.png'));
@@ -1807,7 +1820,7 @@ void main() {
     final c = srv.masterCalls.firstWhere((x) => x['fn'] == 'renewDoc');
     expect((c['x'] as Map)['to'], 'NA');
     expect(((c['x'] as Map)['no'], (c['x'] as Map)['doc'], (c['x'] as Map)['on']), ('MH-25-AJ-2169', 'Permit', '2026-10-14'));
-    await t.ensureVisible(find.byKey(const Key('cp-chips')));
+    await seen(t, find.byKey(const Key('cp-chips')));
     await settle(t, 300);
     await t.scrollUntilVisible(find.byKey(const Key('cpc-all')), 150, scrollable: find.descendant(of: find.byKey(const Key('cp-chips')), matching: find.byType(Scrollable)).first);
     await settle(t, 300);
@@ -1887,7 +1900,7 @@ void main() {
     await net(t);
     expect(srv.masterCalls.last['ch'], {'MH-25-AJ-2169': 'C'});
     expect(s.machine('MH-25-AJ-2169')!.lbFormat, 'C');
-    await t.ensureVisible(find.byKey(const Key('lbf-strip')));
+    await seen(t, find.byKey(const Key('lbf-strip')));
     await settle(t, 300);
     await t.scrollUntilVisible(find.byKey(const Key('lbf-ren-C')), 200, scrollable: find.descendant(of: find.byKey(const Key('lbf-strip')), matching: find.byType(Scrollable)).first);
     await settle(t, 300);
@@ -2340,7 +2353,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.ensureVisible(find.text('Administration'));
+    await seen(t, find.text('Administration'));
     await settle(t, 400);
     await t.tap(find.text('Administration'));
     await net(t);
@@ -2463,7 +2476,7 @@ void main() {
     await t.pageBack();
     await net(t);
     // Home → Purchase
-    await t.ensureVisible(find.text('Purchase'));
+    await seen(t, find.text('Purchase'));
     await settle(t, 400);
     await t.tap(find.text('Purchase'));
     await net(t);
@@ -2500,7 +2513,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.ensureVisible(find.text('Store'));
+    await seen(t, find.text('Store'));
     await settle(t, 400);
     await t.tap(find.text('Store'));
     await net(t);
@@ -2642,7 +2655,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.ensureVisible(find.text('Store'));
+    await seen(t, find.text('Store'));
     await settle(t, 400);
     await t.tap(find.text('Store'));
     await net(t);
@@ -2690,9 +2703,9 @@ void main() {
     await settle(t, 300);
     expect(find.textContaining('stock now 10.5 Kg'), findsOneWidget);
     // (3.58.0) each item its Brand and Material specification
-    await t.ensureVisible(box('rql-b-0'));
+    await seen(t, box('rql-b-0'));
     await t.enterText(box('rql-b-0'), 'Madhur');
-    await t.ensureVisible(box('rql-sp-0'));
+    await seen(t, box('rql-sp-0'));
     await t.enterText(box('rql-sp-0'), 'Refined, 50 kg bags');
     await settle(t, 300);
     await tapK(t, 'rq-save');
@@ -3254,7 +3267,7 @@ void main() {
         await t.pump(const Duration(milliseconds: 50));
       }
       expect(f, findsOneWidget, reason: 'scrolled down to $what');
-      await t.ensureVisible(f);
+      await seen(t, f);
       await settle(t, 300);
     }
 
@@ -3425,9 +3438,9 @@ void main() {
     await t.enterText(box('grl-q-1'), '4');
     await t.enterText(box('grl-r-1'), '250');
     await t.enterText(box('grl-gd-1'), '100');
-    await t.ensureVisible(find.byKey(const Key('grl-go-1-gst')));
+    await seen(t, find.byKey(const Key('grl-go-1-gst')));
     await tapK(t, 'grl-go-1-gst');
-    await t.ensureVisible(find.byKey(const Key('grf-bd')));
+    await seen(t, find.byKey(const Key('grf-bd')));
     await t.enterText(box('grf-bd'), '2%');
     await settle(t, 400);
     // the server's checkGrn: 1000 − 10 % = 900, 1000; the bill's 2 % of 1900 = 38 shared 18 / 20 → 882 / 980; GST 44.10 / 176.40; less ₹100 after GST
@@ -4081,7 +4094,7 @@ void main() {
     final files = catchFiles();
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.ensureVisible(find.text('Store'));
+    await seen(t, find.text('Store'));
     await settle(t, 400);
     await t.tap(find.text('Store'));
     await net(t);
@@ -4414,7 +4427,7 @@ void main() {
     await t.enterText(find.byKey(const Key('d-amount')), '1500');
     await settle(t, 400);
     expect(find.textContaining('balance now ₹ −500 → after this fill ₹ −2,000 – not enough on the card (the fill is still saved)'), findsOneWidget);
-    await t.ensureVisible(find.text('Save Diesel Issue'));
+    await seen(t, find.text('Save Diesel Issue'));
     await settle(t, 300);
     await t.tap(find.text('Save Diesel Issue'));
     await net(t);
@@ -5221,7 +5234,7 @@ void main() {
       await t.pump(const Duration(milliseconds: 300));
       if (f.evaluate().isEmpty) await t.scrollUntilVisible(f, 250, scrollable: list);
     }
-    await t.ensureVisible(f);
+    await seen(t, f);
     await t.pump(const Duration(milliseconds: 300));
   }
 
@@ -5537,7 +5550,7 @@ void main() {
         'the date not: a user\'s bill is dated today (3.62.1, update-188 – the bill says 13-10-2026)');
     expect(find.textContaining('Read by the AI (blue) – check every value before saving.'), findsOneWidget);
     expect(find.textContaining('check the car'), findsNothing);
-    await t.ensureVisible(find.byKey(const Key('mf-a-1')));
+    await seen(t, find.byKey(const Key('mf-a-1')));
     await settle(t, 300);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/65_mnt_bill_lines.png'));
     // typed: Disc % of line 2 → 0 – its ₹ from 1 × 600; the totals with it
@@ -5558,10 +5571,10 @@ void main() {
     await pick(4, 'FOC');
     expect([kind(4).value, box('mf-a-4'), txt('mf-worth-4'), txt('mf-total')], ['FOC', '0', 'worth ₹250', '₹ 2,821']);
     // (3.50.0, update-170) a line's Uom typed
-    await t.ensureVisible(find.byKey(const Key('mf-u-2')));
+    await seen(t, find.byKey(const Key('mf-u-2')));
     await t.enterText(find.byKey(const Key('mf-u-2')), 'Ltr');
     await settle(t, 300);
-    await t.ensureVisible(find.byKey(const Key('mf-wepaid')));
+    await seen(t, find.byKey(const Key('mf-wepaid')));
     await settle(t, 300);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/66_mnt_bill_insurance.png'));
     await tapK(t, 'mf-save');
@@ -5650,7 +5663,7 @@ void main() {
     String box(String k) => (t.widget(find.byKey(Key(k))) as TextBox).controller.text;
     String txt(String k) => '${(t.widget(find.byKey(Key(k))) as dynamic).data}';
     Future<void> type(String k, String v) async {
-      await t.ensureVisible(find.byKey(Key(k)));
+      await seen(t, find.byKey(Key(k)));
       await settle(t, 200);
       await t.enterText(find.byKey(Key(k)), v);
       await settle(t, 200);
@@ -5668,7 +5681,7 @@ void main() {
     expect([box('mf-a-0'), txt('mf-gv-0'), txt('mf-total')], ['1000', 'GST ₹180 · With GST ₹1,180', '₹ 1,180']);
     expect((t.widget(find.byKey(const Key('mf-ins'))) as SwitchListTile).value, false);
     // a line paid by the insurance: the claim is on by itself, "Paid by the insurance" its ₹ with GST – not typed
-    await t.ensureVisible(find.byKey(const Key('mf-addl')));
+    await seen(t, find.byKey(const Key('mf-addl')));
     await tapK(t, 'mf-addl');
     await settle(t, 300);
     await type('mf-w-1', 'Bumper');
@@ -5676,7 +5689,7 @@ void main() {
     await type('mf-r-1', '10000');
     await type('mf-g-1', '18');
     await settle(t, 300);
-    await t.ensureVisible(find.byKey(const Key('mf-t-1')));
+    await seen(t, find.byKey(const Key('mf-t-1')));
     await tapK(t, 'mf-t-1');
     await settle(t, 600);
     await t.tap(find.text('Insurance').last);
@@ -5687,7 +5700,7 @@ void main() {
     expect([sw.value, sw.onChanged == null], [true, true], reason: 'the claim stays on while a line is paid by the insurance');
     expect([box('mf-inspaid'), (t.widget(find.byKey(const Key('mf-inspaid'))) as TextBox).enabled, txt('mf-wepaid')], ['11800', false, '₹ 1,180']);
     await type('mf-insco', 'Test Insurance');
-    await t.ensureVisible(find.byKey(const Key('mf-save')));
+    await seen(t, find.byKey(const Key('mf-save')));
     await tapK(t, 'mf-save');
     await net(t);
     final x = Map<String, dynamic>.from(srv.maintCalls.lastWhere((c) => c['fn'] == 'saveMaint')['x'] as Map);
@@ -5837,7 +5850,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.ensureVisible(find.text('Administration'));
+    await seen(t, find.text('Administration'));
     await settle(t, 400);
     await t.tap(find.text('Administration'));
     await net(t);
@@ -5964,7 +5977,7 @@ void main() {
     await t.tap(find.text('My settings'));
     await net(t);
     await t.scrollUntilVisible(find.text('Daily summary when I open the app'), 200, scrollable: find.byType(Scrollable).last);
-    await t.ensureVisible(find.text('Daily summary when I open the app'));
+    await seen(t, find.text('Daily summary when I open the app'));
     await settle(t, 600);
     await t.tap(find.text('Daily summary when I open the app'));
     await settle(t, 600);
@@ -6155,7 +6168,7 @@ void main() {
   Future<void> tapIn(WidgetTester t, String key, String text) async {
     final f = find.descendant(of: find.byKey(Key(key)), matching: find.text(text));
     FocusManager.instance.primaryFocus?.unfocus();
-    await t.ensureVisible(f);
+    await seen(t, f);
     await settle(t, 400);
     await t.tap(f);
     await t.pump();
@@ -6256,7 +6269,7 @@ void main() {
     await tapK(t, 'sa-st-S1');
     await net(t);
     for (final (k, v) in [('sa-st-addr', 'Site office, Valshind, NH 848'), ('sa-st-cname', 'Ramesh Patil'), ('sa-st-cphone', '98765 43210')]) {
-      await t.ensureVisible(find.byKey(Key(k)));
+      await seen(t, find.byKey(Key(k)));
       await t.enterText(find.byKey(Key(k)), v);
     }
     await settle(t, 300);
@@ -6408,7 +6421,7 @@ void main() {
     await net(t);
     expect(find.text('Site PN4 is ready.'), findsOneWidget);
     expect(find.textContaining('The site is Active.'), findsOneWidget);
-    await t.ensureVisible(find.byKey(const Key('ns-step-ready')));
+    await seen(t, find.byKey(const Key('ns-step-ready')));
     await settle(t, 400);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/48_new_site.png'));
@@ -6710,7 +6723,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await t.ensureVisible(find.text('Engineering'));
+    await seen(t, find.text('Engineering'));
     await settle(t, 400);
     await t.tap(find.text('Engineering'));
     await net(t);
@@ -6770,10 +6783,10 @@ void main() {
     await t.enterText(find.descendant(of: find.byKey(const Key('ehd-kind')), matching: find.byType(TextField)), 'Utility shifting');
     await t.enterText(find.descendant(of: find.byKey(const Key('ehd-cf')), matching: find.byType(TextField)), '44+000');
     await t.enterText(find.descendant(of: find.byKey(const Key('ehd-ct')), matching: find.byType(TextField)), '44+200');
-    await t.ensureVisible(find.byKey(const Key('ehd-w-W-002')));
+    await seen(t, find.byKey(const Key('ehd-w-W-002')));
     await t.tap(find.byKey(const Key('ehd-w-W-002')));
     await settle(t, 300);
-    await t.ensureVisible(find.byKey(const Key('ehd-save')));
+    await seen(t, find.byKey(const Key('ehd-save')));
     await t.tap(find.byKey(const Key('ehd-save')));
     await net(t);
     final h = srv.engSent.lastWhere((x) => x['action'] == 'hindSave');
@@ -6812,7 +6825,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     Future<void> openPurchase() async {
-      await t.ensureVisible(find.text('Purchase'));
+      await seen(t, find.text('Purchase'));
       await settle(t, 400);
       await t.tap(find.text('Purchase'));
       await net(t);
@@ -6821,7 +6834,7 @@ void main() {
     Future<void> card(String key) async {
       // (a long screen builds what is near the view only: scrolled to it first)
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
-      await t.ensureVisible(find.byKey(Key(key)));
+      await seen(t, find.byKey(Key(key)));
       await settle(t, 300);
       await t.tap(find.byKey(Key(key)));
       await net(t);
@@ -6843,7 +6856,7 @@ void main() {
     expect(find.byKey(const Key('pin-make')), findsNothing, reason: 'the taken line is not ticked');
     await t.tap(find.byKey(const Key('pin-S1:7:2')));
     await settle(t, 300);
-    await t.ensureVisible(find.byKey(const Key('pin-T2:3:1')));
+    await seen(t, find.byKey(const Key('pin-T2:3:1')));
     await t.tap(find.byKey(const Key('pin-T2:3:1')));
     await settle(t, 300);
     expect(find.text('2 lines ticked'), findsOneWidget);
@@ -6873,10 +6886,10 @@ void main() {
     await type('pqf-gst-1', '18');
     await type('pqf-rate-2', '850');
     await type('pqf-disc-2', '5');
-    await t.ensureVisible(find.byKey(const Key('pqf-fr')));
+    await seen(t, find.byKey(const Key('pqf-fr')));
     await type('pqf-fr', '300');
     await settle(t, 300);
-    await t.ensureVisible(find.byKey(const Key('pqf-sum')));
+    await seen(t, find.byKey(const Key('pqf-sum')));
     expect(find.text('₹8,330.00 without GST'), findsOneWidget, reason: '40 × 120 + 4 × 850 less 5 % + freight 300');
     expect(find.text('GST beside: ₹864.00'), findsOneWidget);
     await card('pqf-save');
@@ -7229,7 +7242,7 @@ void main() {
     await net(t);
     await t.enterText(find.widgetWithText(TextField, 'Close'), '15350');
     await settle(t, 300);
-    await t.ensureVisible(find.byKey(const Key('att-gal')));
+    await seen(t, find.byKey(const Key('att-gal')));
     await settle(t, 300);
     expect(find.text('None yet – optional.'), findsOneWidget);
     await t.tap(find.byKey(const Key('att-gal')));
@@ -7267,7 +7280,7 @@ void main() {
     final nav = t.state<NavigatorState>(find.byType(Navigator).first);
     unawaited(nav.push(MaterialPageRoute<bool>(builder: (_) => const LogForm(editKey: 'MH-25-AJ-2169|2026-10-14|Full Day'))));
     await net(t);
-    await t.ensureVisible(find.byKey(const Key('att-tile-1')));
+    await seen(t, find.byKey(const Key('att-tile-1')));
     await settle(t, 300);
     expect(find.byKey(const Key('att-tile-0')), findsOneWidget);
     await t.tap(find.byKey(const Key('att-rm-1')));
@@ -7577,7 +7590,7 @@ void main() {
     await net(t);
     expect([find.byKey(const Key('mf-ga-0')).evaluate().length, find.byKey(const Key('mf-ga-1')).evaluate().length], [1, 1]);
     expect([txt('mf-gv-0'), txt('mf-gv-1'), txt('mf-total')], ['GST ₹212.4 · With GST ₹1,392.4', 'GST ₹9 · With GST ₹169', '₹ 1,561.4']);
-    await t.ensureVisible(find.byKey(const Key('mf-save')));
+    await seen(t, find.byKey(const Key('mf-save')));
     await tapK(t, 'mf-save');
     await net(t);
     var x = srv.maintCalls.lastWhere((c) => c['fn'] == 'updateMaint')['x'] as Map;
@@ -7591,12 +7604,12 @@ void main() {
     await settle(t, 800);
     await tapK(t, 'mt-edit');
     await net(t);
-    await t.ensureVisible(find.byKey(const Key('mf-g-1')));
+    await seen(t, find.byKey(const Key('mf-g-1')));
     await t.enterText(find.byKey(const Key('mf-g-1')), '18');
     await settle(t, 400);
     expect(find.byKey(const Key('mf-ga-1')), findsNothing);
     expect([txt('mf-gv-1'), txt('mf-total')], ['GST ₹28.8 · With GST ₹188.8', '₹ 1,581.2']);
-    await t.ensureVisible(find.byKey(const Key('mf-save')));
+    await seen(t, find.byKey(const Key('mf-save')));
     await tapK(t, 'mf-save');
     await net(t);
     x = srv.maintCalls.lastWhere((c) => c['fn'] == 'updateMaint')['x'] as Map;
@@ -7754,7 +7767,7 @@ void main() {
     await net(t);
     expect(find.text('Company Name *'), findsOneWidget);
     expect(find.byKey(const Key('vf-owner')), findsNothing);
-    await t.ensureVisible(find.byKey(const Key('vf-docs-note')));
+    await seen(t, find.byKey(const Key('vf-docs-note')));
     expect(find.textContaining('sql/supabase_step1zj_vendor_papers.sql'), findsOneWidget);
     expect([find.byKey(const Key('vfd-PAN')).evaluate().length, find.byKey(const Key('vfd-a-PAN')).evaluate().length], [1, 0]);
     await t.enterText(box('vf-name'), 'Before 1zj Traders');
@@ -8143,7 +8156,7 @@ void main() {
     await net(t);
     Future<void> card(String key, {bool tap = true}) async {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
-      await t.ensureVisible(find.byKey(Key(key)));
+      await seen(t, find.byKey(Key(key)));
       await settle(t, 300);
       if (!tap) return;
       await t.tap(find.byKey(Key(key)));
@@ -8151,7 +8164,7 @@ void main() {
     }
 
     Future<void> type(String key, String v) => t.enterText(find.descendant(of: find.byKey(Key(key)), matching: find.byType(TextField)), v);
-    await t.ensureVisible(find.text('Purchase'));
+    await seen(t, find.text('Purchase'));
     await settle(t, 400);
     await t.tap(find.text('Purchase'));
     await net(t);
@@ -8225,7 +8238,7 @@ void main() {
     await net(t);
     Future<void> card(String key, {bool tap = true}) async {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
-      await t.ensureVisible(find.byKey(Key(key)));
+      await seen(t, find.byKey(Key(key)));
       await settle(t, 300);
       if (!tap) return;
       await t.tap(find.byKey(Key(key)));
@@ -8233,7 +8246,7 @@ void main() {
     }
 
     Future<void> type(String key, String v) => t.enterText(find.descendant(of: find.byKey(Key(key)), matching: find.byType(TextField)), v);
-    await t.ensureVisible(find.text('Engineering'));
+    await seen(t, find.text('Engineering'));
     await settle(t, 400);
     await t.tap(find.text('Engineering'));
     await net(t);
