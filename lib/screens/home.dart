@@ -8,6 +8,7 @@
  * the stock of each place in one bar; the four tiles; Modules (View All); no Rachana logo at the bottom any more. */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 
 import '../core/app_share.dart';
 import '../core/device.dart';
@@ -592,8 +593,6 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                 await openApprovals(context);
                 s.loadApprovals();
               }),
-              // ---------- (3.97.0, his design 3) "Today's work · आज काय बाकी" – what waits for him, in one card ----------
-              if (!ho) _todayCard(s),
               // ---------- the stock card (green) ----------
               // (3.45.0, Mechanical update-164) a site on fuel cards (HO) keeps no stock: the cards' balances in its place
               if (s.cardSite)
@@ -766,6 +765,9 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                     childAspectRatio: .95,
                     children: [for (final m in mods) _ModuleCard(m: m, badge: _badge(m), onTap: () => _module(m))],
                   ),
+                  // ---------- (3.97.0, his design 3) "Today's work · आज काय बाकी" – what waits for him, in one card. Under the tiles: the
+                  // tiles never move under the finger when the other modules' figures come a moment later ----------
+                  _todayCard(s),
                   const SizedBox(height: 22),
                   // ---------- today's work ----------
                   if (kKinds.any((k) => s.canSee(k.module)))
@@ -811,14 +813,14 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       if ((stBelow ?? 0) > 0) ('below', 'Store – below minimum', 'किमान साठ्याखालील item', 'bell', stBelow!, Tone.store.b, Tone.store.soft, () => openStore(context)),
       if ((purFree ?? 0) > 0) ('pur', 'Purchase – lines to order', 'खरेदी – मागवायचे', 'inbox_tray', purFree!, Tone.purchase.b, Tone.purchase.soft, () => openPurchase(context)),
       if ((rfiWait ?? 0) > 0) ('rfi', 'RFI waiting for the IE', 'RFI मंजुरी बाकी', 'building_construction', rfiWait!, Tone.engineering.b, Tone.engineering.soft, () => openEngineering(context)),
-      if (s.kept.isNotEmpty) ('kept', 'Waiting on this phone', 'या फोनवर थांबलेल्या नोंदी', 'mobile_phone', s.kept.length, C.amber, C.amberSoft, () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet())),
-      if (VehAlerts.i.n > 0) ('veh', 'Vehicle alerts', 'वाहन सूचना', 'shield', VehAlerts.i.n, C.red, C.redSoft, () => openVehAlerts(context)),
+      if (s.kept.isNotEmpty) ('kept', 'Entries waiting on this phone', 'या फोनवर थांबलेल्या नोंदी', 'mobile_phone', s.kept.length, C.amber, C.amberSoft, () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet())),
+      if (VehAlerts.i.n > 0) ('veh', 'Vehicle alerts to look at', 'पाहायच्या वाहन सूचना', 'shield', VehAlerts.i.n, C.red, C.redSoft, () => openVehAlerts(context)),
     ];
     if (rows.isEmpty && loading) return const SizedBox.shrink();
     final total = rows.fold<int>(0, (a, r) => a + r.$5);
     return Container(
       key: const Key('home-today'),
-      margin: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
+      margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.fromLTRB(14, 12, 10, 4),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), boxShadow: softShadow(.06)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -871,22 +873,54 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
 }
 
 /// (3.97.0, his design 5) Home scrolled past the site's picture: a small green bar at the top – the Rachana mark, RCL ERP and the
-/// site (tap: change it), search, the bell with its count, Ask. Gone again when the picture comes back.
-class _MiniBar extends StatelessWidget {
+/// site (tap: change it), search, the bell with its count, Ask. It comes as he scrolls back up, goes while he scrolls down to read
+/// (the page's full height for the tiles and cards) and is not there while the site's picture is seen.
+class _MiniBar extends StatefulWidget {
   const _MiniBar({required this.sc, required this.after, required this.onSite, required this.onSearch, required this.onBell, required this.bell});
   final ScrollController sc;
   final double after;
   final VoidCallback onSite, onSearch, onBell;
   final int Function() bell;
   @override
+  State<_MiniBar> createState() => _MiniBarState();
+}
+
+class _MiniBarState extends State<_MiniBar> {
+  bool show = false;
+  ScrollController get sc => widget.sc;
+  double get after => widget.after;
+  VoidCallback get onSite => widget.onSite;
+  VoidCallback get onSearch => widget.onSearch;
+  VoidCallback get onBell => widget.onBell;
+  int Function() get bell => widget.bell;
+
+  @override
+  void initState() {
+    super.initState();
+    sc.addListener(_moved);
+  }
+
+  @override
+  void dispose() {
+    sc.removeListener(_moved);
+    super.dispose();
+  }
+
+  void _moved() {
+    if (!sc.hasClients) return;
+    final p = sc.position;
+    // by the finger only: a scroll made by the app (to a place) leaves it as it is
+    final now = p.pixels <= after ? false : switch (p.userScrollDirection) { ScrollDirection.forward => true, ScrollDirection.reverse => false, _ => show };
+    if (now != show) setState(() => show = now);
+  }
+
+  @override
   Widget build(BuildContext context) => Positioned(
         left: 0,
         right: 0,
         top: 0,
-        child: ListenableBuilder(
-          listenable: sc,
-          builder: (context, _) {
-            final show = sc.hasClients && sc.offset > after;
+        child: Builder(
+          builder: (context) {
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, -.25), end: Offset.zero).animate(a), child: c)),

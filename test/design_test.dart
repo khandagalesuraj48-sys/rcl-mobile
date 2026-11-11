@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/session.dart';
@@ -13,6 +14,18 @@ import 'package:rcl_mobile/ui/theme.dart';
 import 'package:rcl_mobile/ui/widgets.dart' show Shimmer;
 
 import 'fake_server.dart';
+
+/// the app's own fonts (as the other screen tests) – the letters as wide as on the phone
+Future<void> loadFonts() async {
+  final manifest = jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
+  for (final f in manifest) {
+    final loader = FontLoader(f['family'] as String);
+    for (final a in f['fonts'] as List) {
+      loader.addFont(rootBundle.load(a['asset'] as String));
+    }
+    await loader.load();
+  }
+}
 
 Future<void> settle(WidgetTester t, [int ms = 1800]) async {
   for (var i = 0; i < ms ~/ 100; i++) {
@@ -46,6 +59,8 @@ void phone(WidgetTester t) {
 }
 
 void main() {
+  setUpAll(loadFonts);
+
   test('design 9: a state and its colour – waiting yellow, done green, refused red, anything else grey', () {
     const wait = Color(0xFFE9A23B), ok = Color(0xFF2E8B5E), bad = Color(0xFFD9443A), grey = Color(0xFFB9C0BB);
     for (final s in ['Pending', 'Waiting', 'Open', 'Still on', 'Draft']) {
@@ -135,21 +150,27 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await net(t);
-    expect(srv.storeSent.any((x) => x['action'] == 'dash'), isTrue, reason: 'the Store\'s own dashboard call');
+    expect(srv.storeWork.any((x) => x['action'] == 'dash'), isTrue, reason: 'the Store\'s own dashboard call');
     expect(find.byKey(const Key('home-today')), findsOneWidget);
     expect(find.byKey(const Key('today-store')), findsOneWidget, reason: '1 requirement waits for his approval');
     expect(find.byKey(const Key('today-below')), findsOneWidget, reason: '1 item below its minimum');
     expect(find.byKey(const Key('mod-badge-store')), findsOneWidget);
     expect(find.byKey(const Key('tab-bar-notch')), findsOneWidget);
     expect(find.byKey(const Key('tab-plus')), findsOneWidget);
-    // the small bar: not while the site's picture is seen; past it, it is there
+    // the small bar: not while the site's picture is seen, nor while he scrolls down to read; past the picture and scrolling back up:
+    // there; at the top again: gone
     expect(find.byKey(const Key('home-mini')), findsNothing);
-    await t.drag(find.byType(ListView).first, const Offset(0, -600));
+    await t.drag(find.byType(ListView).first, const Offset(0, -700));
     await settle(t, 600);
-    expect(find.byKey(const Key('home-mini')), findsOneWidget);
-    await t.drag(find.byType(ListView).first, const Offset(0, 900));
+    expect(find.byKey(const Key('home-mini')), findsNothing, reason: 'scrolling down: the page\'s whole height');
+    await t.drag(find.byType(ListView).first, const Offset(0, 120));
     await settle(t, 600);
-    expect(find.byKey(const Key('home-mini')), findsNothing);
+    expect(find.byKey(const Key('home-mini')), findsOneWidget, reason: 'scrolling back up past the picture');
+    await t.drag(find.byType(ListView).first, const Offset(0, 1200));
+    await settle(t, 600);
+    expect(find.byKey(const Key('home-mini')), findsNothing, reason: 'the site\'s picture is seen');
+    await t.ensureVisible(find.byKey(const Key('today-store')));
+    await settle(t, 400);
     // a row opens its work: the Store
     await t.tap(find.byKey(const Key('today-store')));
     await net(t);
