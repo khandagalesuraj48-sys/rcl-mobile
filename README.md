@@ -22,8 +22,9 @@ green, Log Book purple, Diesel red, Store amber, Engineering teal, Purchase blue
 tabs as round chips (`ChipTabs`), the figures on white cards with their 3D picture, the recent GRN / issues as cards, "Add item"
 only on the Item Master; **Home**: "Today's work · आज काय बाकी" (approvals, the Log Book entries pending – the Dashboard's
 count, his Store work and the items below minimum, Purchase's lines to order, the RFIs waiting for the IE, entries on the phone,
-vehicle alerts – the modules' own calls, after Home's own, at most every 2 minutes), a **red badge** on a module's tile, and past
-the site's picture a **small green bar** at the top; the entry forms: **the steps** (Machinery → Meter → Litres → Save; Log Book:
+vehicle alerts – the modules' own calls, after Home's own, at most every 2 minutes; under the tiles, so a tile never moves under
+the finger when the figures come), a **red badge** on a module's tile, and past the site's picture a **small green bar** at the
+top as he scrolls back up (gone while he scrolls down to read); the entry forms: **the steps** (Machinery → Meter → Litres → Save; Log Book:
 Machinery → Reading → Work → Save) and the **machinery saved last** on this phone as chips; the Dashboard's dates in **one row**
 (Today | Yesterday | This month | 📅 – the rest under 📅); a **coloured strip** on list cards by their state (Approvals, the Store's
 requirements / POs / GRNs / issues, RFIs, hindrances, MB, RFQs, POs); **grey shapes** while a module answers (never a made-up
