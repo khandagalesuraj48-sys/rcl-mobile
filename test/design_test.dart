@@ -96,6 +96,11 @@ void main() {
     ));
     await t.pumpAndSettle();
     expect(t.widget<Text>(find.text('Store')).style?.color, Colors.white, reason: 'white on the Store\'s amber');
+    // the Store's colour fills the whole band (not a box of nothing)
+    final band = find.byWidgetPredicate((w) => w is DecoratedBox && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).gradient != null);
+    expect(band, findsOneWidget);
+    expect(t.getSize(band).height, greaterThan(90), reason: 'the bar with the site · role line');
+    expect(t.getSize(band).width, 800);
     expect(find.text('VTR Site · Store Admin'), findsOneWidget);
     expect(find.text('page one'), findsOneWidget);
     await t.tap(find.byKey(const Key('t2')));

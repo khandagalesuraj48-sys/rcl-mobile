@@ -54,7 +54,7 @@ PreferredSizeWidget toneBar(Tone tone, {Key? key, Widget? title, List<Widget>? a
     titleSpacing: titleSpacing,
     centerTitle: centerTitle,
     toolbarHeight: toolbarHeight,
-    flexibleSpace: DecoratedBox(decoration: bandBox(tone)),
+    flexibleSpace: SizedBox.expand(child: DecoratedBox(decoration: bandBox(tone))),      // (fills the bar – a box with nothing in it would be 0 × 0)
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(bottom: Radius.circular(24))),
   );
   return PreferredSize(preferredSize: bar.preferredSize, child: Builder(builder: (c) => Theme(data: bandTheme(Theme.of(c)), child: bar)));
