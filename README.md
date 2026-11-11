@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.98.0 (11-11-2026 – the Pill tab bar, his pick from the pictures: "1 number kru pill type ch"):** the bottom bar is a
+white floating pill – the chosen tab opens into a soft green pill with its name, the others are their pictures only – and the
+gold + is its own round button on the right (`screens/shell.dart` `_Bar`; the notch bar of 3.97.0 and the ripple fill of 3.83.0 are
+gone). The same tabs, taps and +. Tests: `test/design_test.dart`; the other tests reach a tab by its key (`tab-entries` …).
+
 **Version 3.97.0 (11-11-2026 – the new look, his designs 1–10, 12, 13 approved with the pictures: "all designs approved aahet te
 banwayla chalu kar"):** each module has **its own colour** – the band at the top of its screens and its tile on Home (Machinery
 green, Log Book purple, Diesel red, Store amber, Engineering teal, Purchase blue; `ui/theme.dart` `Tone`, `ui/design.dart`

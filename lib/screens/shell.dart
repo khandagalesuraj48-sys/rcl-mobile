@@ -5,7 +5,6 @@
  * (3.31.0, asked 20-10-2026: "jewa mi entry madhun diesel issue sathi jatoy tewa back dabale ki entry madhe yeyla haw … ek back
  * mhanje ekach back ek step madhe") Back goes one step back, to where he came from: the Entries list from a diesel page, the tab
  * he came from; on Home a second Back within 3 s leaves the app (as before). */
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
@@ -251,64 +250,16 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   }
 }
 
-/// (3.31.0) the bar at the bottom of his picture: green, rounded, the chosen tab in a pill, the gold + in the middle.
-/// (3.83.0, asked 03-11-2026 with the preview he OK'd: "tab bar cha ui … ripple fill ok fill the tapped tab from its centre the old
-/// faded") RIPPLE FILL: the tapped tab's pill fills from its centre outwards; the pill of the tab before fades away.
-class _Bar extends StatefulWidget {
+/// (3.98.0, his pick of 11-11-2026 from the pictures: "1 number kru pill type ch") THE PILL TAB BAR: a white floating pill with the
+/// tabs – the chosen one opens into a soft green pill with its name, the others are their pictures only – and the gold + as its own
+/// round button on the right. The same tabs, taps and + as before (look only).
+class _Bar extends StatelessWidget {
   const _Bar({required this.tab, required this.tabs, required this.meCount, required this.onTab, required this.onPlus});
   final String tab;
   final List<String> tabs;
   final int meCount;
   final ValueChanged<String> onTab;
   final VoidCallback onPlus;
-
-  @override
-  State<_Bar> createState() => _BarState();
-}
-
-class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 500), value: 1);
-  String? _was;
-
-  @override
-  void didUpdateWidget(_Bar old) {
-    super.didUpdateWidget(old);
-    if (old.tab != widget.tab) {
-      _was = old.tab;
-      _c.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  String get tab => widget.tab;
-  List<String> get tabs => widget.tabs;
-  int get meCount => widget.meCount;
-  ValueChanged<String> get onTab => widget.onTab;
-  VoidCallback get onPlus => widget.onPlus;
-
-  /// the pill of tab [k]: the chosen one growing from its centre, the one before fading
-  Widget _fill(String k, bool on, bool gold) {
-    if (!on && k != _was) return const SizedBox.shrink();
-    final pill = DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: gold ? null : Colors.white.withValues(alpha: .16),
-        gradient: gold ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.goldLight, C.gold]) : null,
-      ),
-    );
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, child) => on
-          ? ClipPath(clipper: _FromCentre(Curves.easeOutCubic.transform(_c.value)), child: child)
-          : Opacity(opacity: (1 - Curves.easeOut.transform((_c.value / .7).clamp(0.0, 1.0))).clamp(0.0, 1.0), child: child),
-      child: pill,
-    );
-  }
 
   static const _info = {
     'home': ('Home', Icons.home_outlined, Icons.home_rounded),
@@ -319,101 +270,85 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
 
   Widget _item(String k) {
     final on = k == tab, i = _info[k]!;
-    final gold = k == 'reports';
-    Widget icon = AnimatedScale(scale: on ? 1.1 : 1, duration: const Duration(milliseconds: 260), curve: Curves.easeOutBack, child: Icon(on ? i.$3 : i.$2, size: 24, color: Colors.white.withValues(alpha: on ? 1 : .78)));
+    Widget icon = Icon(on ? i.$3 : i.$2, size: 25, color: on ? C.greenDark : C.faint);
     if (k == 'me' && meCount > 0) icon = Badge(label: Text('$meCount'), child: icon);
-    return Expanded(
-      child: Semantics(
-        selected: on,
-        button: true,
-        child: InkWell(
-          key: Key('tab-$k'),
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => onTab(k),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
-            child: Stack(children: [
-              Positioned.fill(child: _fill(k, on, gold)),
-              Positioned.fill(
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+    final cell = Semantics(
+      selected: on,
+      button: true,
+      label: on ? null : tr(i.$1),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        height: 48,
+        decoration: BoxDecoration(color: on ? C.greenSoft : C.greenSoft.withValues(alpha: 0), borderRadius: BorderRadius.circular(24)),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            key: Key('tab-$k'),
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => onTab(k),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: on ? 14 : 11),
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.centerLeft,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
                   icon,
-                  const SizedBox(height: 2),
-                  Text(i.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: Colors.white.withValues(alpha: on ? 1 : .8))),
-                  // (3.97.0, his design 13) a gold line under the chosen tab
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                    margin: const EdgeInsets.only(top: 2),
-                    width: on ? 18 : 0,
-                    height: 3,
-                    decoration: BoxDecoration(color: C.goldLight, borderRadius: BorderRadius.circular(2)),
-                  ),
+                  if (on) ...[
+                    const SizedBox(width: 7),
+                    Flexible(child: Text(i.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: C.greenDark))),
+                  ],
                 ]),
               ),
-            ]),
+            ),
           ),
         ),
       ),
     );
+    return on ? Flexible(child: cell) : cell;
   }
 
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).padding.bottom;
-    final left = [for (final k in tabs) if (k == 'home' || k == 'entries') k];
-    final right = [for (final k in tabs) if (k == 'reports' || k == 'me') k];
-    // (3.97.0, his design 13 of 11-11-2026 – "centre fab madhe apla tab bar") CENTRE FAB: the green bar has a round notch in its
-    // middle and the gold + sits in it; the tabs, their ripple fill and the + work as before.
     return Padding(
-      padding: EdgeInsets.fromLTRB(10, 0, 10, 8 + bottom),
+      padding: EdgeInsets.fromLTRB(12, 0, 12, 10 + bottom),
       child: SizedBox(
-        height: 70,
-        child: Stack(clipBehavior: Clip.none, children: [
-          Positioned.fill(
-            child: PhysicalShape(
-              key: const Key('tab-bar-notch'),
-              clipper: const _Notch(),
-              color: C.barDeep,
-              elevation: 10,
-              shadowColor: C.greenDeep.withValues(alpha: .5),
-              child: DecoratedBox(
-                decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.bar, C.barDeep])),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-                  child: Row(children: [
-                    for (final k in left) _item(k),
-                    const SizedBox(width: 104),
-                    for (final k in right) _item(k),
-                  ]),
-                ),
+        height: 62,
+        child: Row(children: [
+          Expanded(
+            child: Container(
+              key: const Key('tab-bar-pill'),
+              padding: const EdgeInsets.symmetric(horizontal: 7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(31),
+                border: Border.all(color: C.line),
+                boxShadow: [BoxShadow(color: C.greenDeep.withValues(alpha: .16), blurRadius: 22, offset: const Offset(0, 8))],
               ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [for (final k in tabs) _item(k)]),
             ),
           ),
-          // the gold + (a new entry) – in the notch
-          Positioned(
-            top: -28,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Semantics(
-                button: true,
-                label: tr('New entry'),
-                child: Material(
-                  key: const Key('tab-plus'),
-                  shape: const CircleBorder(),
-                  elevation: 8,
-                  shadowColor: C.gold.withValues(alpha: .6),
-                  color: C.gold,
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: onPlus,
-                    child: Ink(
-                      width: 64,
-                      height: 64,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.goldLight, C.gold])),
-                      child: const Icon(Icons.add_rounded, color: Colors.white, size: 34),
-                    ),
-                  ),
+          const SizedBox(width: 10),
+          // the gold + (a new entry) – its own round button
+          Semantics(
+            button: true,
+            label: tr('New entry'),
+            child: Material(
+              key: const Key('tab-plus'),
+              shape: const CircleBorder(),
+              elevation: 6,
+              shadowColor: C.gold.withValues(alpha: .6),
+              color: C.gold,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onPlus,
+                child: Ink(
+                  width: 58,
+                  height: 58,
+                  decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.goldLight, C.gold])),
+                  child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
                 ),
               ),
             ),
@@ -422,41 +357,4 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
       ),
     );
   }
-}
-
-/// (3.97.0, his design 13) the bar's outline: rounded corners and a round notch in the middle of its top edge, where the + sits.
-class _Notch extends CustomClipper<Path> {
-  const _Notch();
-  @override
-  Path getClip(Size size) {
-    final w = size.width, h = size.height, cx = w / 2;
-    const r = 26.0, half = 60.0, deep = 42.0;
-    return Path()
-      ..moveTo(r, 0)
-      ..lineTo(cx - half, 0)
-      ..cubicTo(cx - half + 21, 0, cx - 41, deep, cx, deep)
-      ..cubicTo(cx + 41, deep, cx + half - 21, 0, cx + half, 0)
-      ..lineTo(w - r, 0)
-      ..quadraticBezierTo(w, 0, w, r)
-      ..lineTo(w, h - r)
-      ..quadraticBezierTo(w, h, w - r, h)
-      ..lineTo(r, h)
-      ..quadraticBezierTo(0, h, 0, h - r)
-      ..lineTo(0, r)
-      ..quadraticBezierTo(0, 0, r, 0)
-      ..close();
-  }
-
-  @override
-  bool shouldReclip(_Notch old) => false;
-}
-
-/// (3.83.0) a circle from the centre of the pill – [p] 0 → nothing, 1 → the whole pill (its corners too)
-class _FromCentre extends CustomClipper<Path> {
-  const _FromCentre(this.p);
-  final double p;
-  @override
-  Path getClip(Size size) => Path()..addOval(Rect.fromCircle(center: size.center(Offset.zero), radius: p * math.sqrt(size.width * size.width + size.height * size.height) / 2));
-  @override
-  bool shouldReclip(_FromCentre old) => old.p != p;
 }
