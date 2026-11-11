@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
@@ -199,6 +200,9 @@ void main() {
     await net(t);
     expect(name('Entries'), findsOneWidget);
     expect(name('Home'), findsNothing);
+    // the name is whole on this phone (360 wide) – not cut to "Entri…"
+    final para = t.renderObject<RenderParagraph>(find.descendant(of: name('Entries'), matching: find.byType(RichText)));
+    expect(para.didExceedMaxLines, isFalse, reason: 'the whole word fits');
     expect(t.takeException(), isNull);
     // the + is beside the pill, not over it
     expect(t.getRect(find.byKey(const Key('tab-plus'))).left, greaterThan(t.getRect(bar).right));

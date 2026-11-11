@@ -288,7 +288,7 @@ class _Bar extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             onTap: () => onTab(k),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: on ? 14 : 11),
+              padding: EdgeInsets.symmetric(horizontal: on ? 12 : 8),      // (room for the longest name – "Entries", "Reports" – on a narrow phone)
               child: AnimatedSize(
                 duration: const Duration(milliseconds: 240),
                 curve: Curves.easeOutCubic,
@@ -296,8 +296,8 @@ class _Bar extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   icon,
                   if (on) ...[
-                    const SizedBox(width: 7),
-                    Flexible(child: Text(i.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: C.greenDark))),
+                    const SizedBox(width: 6),
+                    Flexible(child: Text(i.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.greenDark))),
                   ],
                 ]),
               ),
@@ -320,7 +320,7 @@ class _Bar extends StatelessWidget {
           Expanded(
             child: Container(
               key: const Key('tab-bar-pill'),
-              padding: const EdgeInsets.symmetric(horizontal: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 5),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(31),
