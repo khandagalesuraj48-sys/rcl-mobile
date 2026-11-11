@@ -1910,7 +1910,9 @@ void main() {
     await t.tap(find.text('Dashboard'));
     await net(t);
     expect(srv.dashAsked.first['fn'], 'getDashboard');
-    expect((srv.dashAsked.first['args'] as List).first, {'from': '2026-10-14', 'to': '2026-10-14'}, reason: 'it opens on Today, as the web');
+    // (3.97.0) Home asks its figures "lite" (only the opening stock and the pending count); the Dashboard asks in full
+    expect(((srv.dashAsked.first['args'] as List).first as Map)['lite'], 1, reason: 'Home\'s own call: light');
+    expect((srv.dashAsked.firstWhere((x) => x['fn'] == 'getDashboard' && !((x['args'] as List).first as Map).containsKey('lite'))['args'] as List).first, {'from': '2026-10-14', 'to': '2026-10-14'}, reason: 'it opens on Today, as the web');
     expect(find.byKey(const Key('k-open')), findsOneWidget);
     expect(find.text('19,895 Ltr'), findsOneWidget);
     expect(find.text('20,014 Ltr'), findsWidgets);
@@ -2501,9 +2503,11 @@ void main() {
     expect(srv.calls, contains('portal:go:store:S1'));
     expect(srv.storeSent.first, {'fn': 'sso', 'ticket': 'tk2'});
     expect(srv.storeSent[1]['cookie'], startsWith('rcl_store=S1.store1-'), reason: 'the Store\'s own sign-in, kept for its calls');
-    expect(find.text('Added this month'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/33_store.png'));
+    // (3.97.0) the work's figures are bigger cards now: the Item Master's figures further down
+    await t.scrollUntilVisible(find.text('Added this month'), 300, scrollable: find.descendant(of: find.byKey(const Key('st-dash')), matching: find.byType(Scrollable)).first);
+    expect(find.text('Added this month'), findsOneWidget);
     await t.tap(find.byKey(const Key('st-tab-items')));
     await settle(t, 800);
     expect(find.text('3 of 3 items'), findsOneWidget);
