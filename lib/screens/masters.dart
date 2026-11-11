@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'boq.dart';
@@ -42,9 +43,8 @@ class MastersScreen extends StatelessWidget {
     final s = SessionScope.of(context);
     final list = mastersOf(s);
     return Scaffold(
-      appBar: AppBar(actions: withAsk(), title: const TwoLang('Machinery', 'यंत्रे', size: 20, weight: FontWeight.w700)),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 30), children: [
-        Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 14), child: Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600))),
+      appBar: moduleBar(context, Tone.machinery, en: 'Machinery', mr: 'यंत्रे', pic: 'tractor', line: s.siteName, actions: withAsk()),      // (3.97.0, his design 2)
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [      // (the site is on the band)
         if (list.isEmpty) const EmptyState('Nothing here for you yet', 'Ask the Admin for access to Master.', pic: 'tractor'),
         for (final p in list)
           Padding(

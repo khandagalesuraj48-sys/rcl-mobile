@@ -16,6 +16,7 @@ import '../core/format.dart';
 import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/help.dart' show GuideButton;
@@ -450,7 +451,12 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     // (3.22.0) corrected by the sender: what changed, in sight of the people who approve it
     final lastSent = st == 'Pending' ? hist.lastWhere((h) => const ['Sent', 'Sent again', 'Corrected and sent again'].contains(h['step']), orElse: () => const {}) : const {};
     final fixed = lastSent['step'] == 'Corrected and sent again' ? lastSent : null;
-    return Container(
+    // (3.97.0, his design 9) a strip on the left in the state's colour: waiting yellow, done green, refused red
+    return Striped(
+      status: head,
+      radius: 20,
+      color: fg == C.amber ? const Color(0xFFE9A23B) : fg == C.greenDark ? const Color(0xFF2E8B5E) : fg == C.red ? const Color(0xFFD9443A) : const Color(0xFFB9C0BB),
+      child: Container(
       key: Key('cr-$id'),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: ticked.contains(id) ? C.green : C.line.withValues(alpha: .7), width: ticked.contains(id) ? 2 : 1), boxShadow: softShadow(.04)),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -547,6 +553,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           ]),
         ],
       ]),
+    ),
     );
   }
 

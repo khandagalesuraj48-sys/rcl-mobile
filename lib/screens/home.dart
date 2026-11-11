@@ -8,6 +8,7 @@
  * the stock of each place in one bar; the four tiles; Modules (View All); no Rachana logo at the bottom any more. */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 
 import '../core/app_share.dart';
 import '../core/device.dart';
@@ -62,16 +63,17 @@ class ModuleTile {
   }
 }
 
+// (3.97.0, his design 2) each module's tile in the module's own colour – the same as the band at the top of its screens
 const kModules = [
-  ModuleTile('Machinery', 'यंत्रे', 'tractor', C.green, C.greenSoft, native: 'masters'), // (3.4.0) the app's own Master screens
-  ModuleTile('Logbook', 'लॉगबुक', 'notebook', C.blue, C.blueSoft, native: 'logbook', perm: 'Log Book'),
-  ModuleTile('Diesel', 'डिझेल', 'fuel_pump', C.green, C.greenSoft, native: 'diesel'),
-  ModuleTile('Maintenance', 'देखभाल', 'wrench', C.orange, C.orangeSoft, native: 'breakdown', perm: 'Breakdown'), // (3.7.0) the app's own Breakdown
-  ModuleTile('Billing', 'बिलिंग', 'receipt', C.purple, C.purpleSoft, native: 'billing'), // (3.8.0) the app's own Billing screens
-  ModuleTile('Store', 'स्टोअर', 'package', C.amber, C.amberSoft, native: 'store', module: 'store'), // (3.10.0) the app's own Store screens
-  ModuleTile('Purchase', 'खरेदी', 'inbox_tray', C.blue, C.blueSoft, native: 'purchase', module: 'purchase'), // (3.72.0) the Purchase Department (rcl-purchase)
-  ModuleTile('Engineering', 'अभियांत्रिकी', 'building_construction', C.orange, C.orangeSoft, native: 'engineering', module: 'engineering'), // (3.93.0) RFI, Hindrances, PPC (rcl-engineering)
-  ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', C.blue, C.blueSoft, native: 'reports'),
+  ModuleTile('Machinery', 'यंत्रे', 'tractor', Color(0xFF1E5A40), C.greenSoft, native: 'masters'), // (3.4.0) the app's own Master screens
+  ModuleTile('Logbook', 'लॉगबुक', 'notebook', Color(0xFF5E2BAA), C.purpleSoft, native: 'logbook', perm: 'Log Book'),
+  ModuleTile('Diesel', 'डिझेल', 'fuel_pump', Color(0xFFA61E1E), C.redSoft, native: 'diesel'),
+  ModuleTile('Maintenance', 'देखभाल', 'wrench', Color(0xFFC0461A), C.orangeSoft, native: 'breakdown', perm: 'Breakdown'), // (3.7.0) the app's own Breakdown
+  ModuleTile('Billing', 'बिलिंग', 'receipt', Color(0xFF4535B0), Color(0xFFE8E5FB), native: 'billing'), // (3.8.0) the app's own Billing screens
+  ModuleTile('Store', 'स्टोअर', 'package', Color(0xFFA65E00), C.amberSoft, native: 'store', module: 'store'), // (3.10.0) the app's own Store screens
+  ModuleTile('Purchase', 'खरेदी', 'inbox_tray', Color(0xFF1A4FB0), C.blueSoft, native: 'purchase', module: 'purchase'), // (3.72.0) the Purchase Department (rcl-purchase)
+  ModuleTile('Engineering', 'अभियांत्रिकी', 'building_construction', Color(0xFF0B6870), Color(0xFFDDF2F3), native: 'engineering', module: 'engineering'), // (3.93.0) RFI, Hindrances, PPC (rcl-engineering)
+  ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', Color(0xFF344054), C.slateSoft, native: 'reports'),
   ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, native: 'admin', admin: true), // (3.9.0) the app's own Admin screens
 ];
 
@@ -123,6 +125,12 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   DateTime? at;
   int? logEntries, running;
   num? opening; // (3.31.0) the stock at the start of today (the Dashboard's opening) – for the change on the stock card
+  /// (3.97.0, his designs 3 and 4) what waits: the Log Book entries pending (the Dashboard's "pending"), his Store work and the
+  /// items below their minimum, Purchase's lines to order, the RFIs waiting for the IE – null = not known (no access / not read)
+  int? lbPend, stMine, stBelow, purFree, rfiWait;
+  DateTime? _countsAt;
+  /// (3.97.0, his design 5) the page's scroll – past the site's picture the small green bar shows at the top
+  final _sc = ScrollController();
   List<_Act> acts = [];
   AppUpdate? update;
   /// (3.87.0) HO's My Fleet reads its cars again with each load of Home
@@ -151,6 +159,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   void dispose() {
     _ls?.dataTick.removeListener(_live);
     pushUpdateTick.removeListener(_newVersion);
+    _sc.dispose();
     super.dispose();
   }
 
@@ -204,10 +213,15 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         }).catchError((_) {}));
       }
       num? open;
+      int? lp;
       if (!ho && s.canSee('Dashboard')) {
-        jobs.add(s.api.call('getDashboard', [{'from': day, 'to': day}]).then((r) {
+        // (3.97.0) "lite" (Mechanical update-220): the pending Log Book entries as their count only – Home reads only the opening
+        // stock and that count, the list itself is not sent
+        jobs.add(s.api.call('getDashboard', [{'from': day, 'to': day, 'lite': 1}]).then((r) {
           final locs = ((r as Map)['locations'] as List? ?? []).whereType<Map>().toList();
           if (locs.isNotEmpty) open = locs.fold<num>(0, (a, x) => a + (asNum(x['opening']) ?? 0));
+          final p = r['pending'];
+          if (p is Map && s.canSee('Log Book')) lp = asNum(p['total'])?.toInt();
         }).catchError((_) {}));
       }
       await Future.wait(jobs);
@@ -218,16 +232,70 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         logEntries = le;
         running = run;
         opening = open;
+        lbPend = lp;
         if (at != null) fleetTick++;      // (a load again – not the first: My Fleet reads its own at its start)
         at = DateTime.now();
         loading = false;
       });
+      if (!quiet) _counts(force: init);
     } catch (e) {
       if (!mounted) return;
       setState(() => loading = false);
       if (!quiet) toast(context, errText(e), bad: true);
     }
   }
+
+  /// (3.97.0, his designs 3 and 4) what waits in his other modules of this site – each module's own figures (the same calls as its
+  /// own screen), read after Home's own and never in its way; at most every 2 minutes (a pull down reads them again).
+  Future<void> _counts({bool force = false}) async {
+    if (!Session.moduleCounts || !mounted) return;
+    final s = SessionScope.read(context), site = s.site;
+    if (site == null || s.cardSite || s.today.isEmpty) return;
+    final now = DateTime.now();
+    if (!force && _countsAt != null && now.difference(_countsAt!) < const Duration(minutes: 2)) return;
+    _countsAt = now;
+    int n(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
+    Map mp(Object? v) => v is Map ? v : const {};
+    List ls(Object? v) => v is List ? v : const [];
+    final st = site.module('store'), en = site.module('engineering'), pu = site.module('purchase');
+    await Future.wait([
+      if (st != null)
+        s.api.store(site.code, st.url, {'action': 'dash'}, path: 'work').then((d) {
+          final wf = mp(d['wf']);
+          if (mounted) {
+            setState(() {
+              stMine = n(mp(d['req'])['mine']) + n(wf['po']) + n(wf['grn']) + n(wf['issue']) + n(wf['ret']);
+              stBelow = n(mp(d['stock'])['below']);
+            });
+          }
+        }).catchError((_) {}),
+      if (en != null)
+        s.api.eng(site.code, en.url, {'action': 'rfiList', 'from': dateKey(parseKey(s.today).subtract(const Duration(days: 89))), 'to': s.today, 'status': 'Pending'}).then((r) {
+          if (mounted) setState(() => rfiWait = ls(r['rows']).length);
+        }).catchError((_) {}),
+      if (pu != null)
+        s.api.pur(site.code, pu.url, {'action': 'inbox'}).then((r) {
+          final free = <String>{};
+          for (final x in ls(r['sites'])) {
+            for (final q in ls(mp(x)['reqs'])) {
+              for (final l in ls(mp(q)['lines'])) {
+                if (mp(l)['taken'] == null) free.add('${mp(x)['site']}:${mp(q)['no']}:${mp(l)['line']}');
+              }
+            }
+          }
+          if (mounted) setState(() => purFree = free.length);
+        }).catchError((_) {}),
+    ]);
+  }
+
+  /// (3.97.0, his design 4) the red badge on a module's tile: what waits there
+  int _badge(ModuleTile m) => switch (m.native) {
+        'logbook' => lbPend ?? 0,
+        'store' => stMine ?? 0,
+        'purchase' => purFree ?? 0,
+        'engineering' => rfiWait ?? 0,
+        _ => 0,
+      };
 
   Future<void> _module(ModuleTile m) async {
     HapticFeedback.selectionClick();
@@ -378,11 +446,12 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         child: Builder(
         builder: (context) => AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
-          child: RefreshIndicator(
+          child: Stack(children: [
+          RefreshIndicator(
             color: C.green,
             edgeOffset: top,
             onRefresh: () => _load(init: true),
-            child: ListView(padding: EdgeInsets.zero, children: [
+            child: ListView(controller: _sc, padding: EdgeInsets.zero, children: [
               // ---------- his site's photo, the bar, "Good Morning, Sujit", the site ----------
               Stack(children: [
                 if (ho)
@@ -694,8 +763,11 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     childAspectRatio: .95,
-                    children: [for (final m in mods) _ModuleCard(m: m, onTap: () => _module(m))],
+                    children: [for (final m in mods) _ModuleCard(m: m, badge: _badge(m), onTap: () => _module(m))],
                   ),
+                  // ---------- (3.97.0, his design 3) "Today's work · आज काय बाकी" – what waits for him, in one card. Under the tiles: the
+                  // tiles never move under the finger when the other modules' figures come a moment later ----------
+                  _todayCard(s),
                   const SizedBox(height: 22),
                   // ---------- today's work ----------
                   if (kKinds.any((k) => s.canSee(k.module)))
@@ -719,10 +791,174 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
               ),
             ]),
           ),
+          // (3.97.0, his design 5) past the site's picture: the small green bar at the top (the site, search, the bell, Ask)
+          _MiniBar(sc: _sc, after: picH - 70, onSite: _site, onSearch: () => openSearch(context, entries: widget.onOpenEntries, reports: widget.onOpenReports), onBell: _bell, bell: () => s.crForMe + (s.rtc?.missN ?? 0) + s.keptBad + (update == null ? 0 : 1) + (VehAlerts.i.n > 0 ? 1 : 0)),
+          ]),
         ),
       )),
     );
   }
+
+  /// (3.97.0, his design 3) "Today's work · आज काय बाकी": what waits for him now – approvals, the Log Book entries pending, his
+  /// Store work and the items below their minimum, Purchase's lines to order, the RFIs waiting for the IE, entries kept on this
+  /// phone, vehicle alerts. A row: tap → that work. Nothing waiting: said so.
+  Widget _todayCard(Session s) {
+    final rows = <(String, String, String, String, int, Color, Color, Future<void> Function())>[
+      if (s.crForMe > 0) ('appr', 'Approvals waiting for you', 'तुमच्या मंजुरीला थांबलेले', 'clipboard', s.crForMe, C.red, C.redSoft, () async {
+        await openApprovals(context);
+        s.loadApprovals();
+      }),
+      if ((lbPend ?? 0) > 0) ('log', 'Log Book entries pending', 'बाकी Log Book नोंदी', 'notebook', lbPend!, Tone.logbook.b, Tone.logbook.soft, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()))),
+      if ((stMine ?? 0) > 0) ('store', 'Store – waiting for you', 'स्टोअर – तुमच्यासाठी थांबलेले', 'package', stMine!, Tone.store.b, Tone.store.soft, () => openStore(context)),
+      if ((stBelow ?? 0) > 0) ('below', 'Store – below minimum', 'किमान साठ्याखालील item', 'bell', stBelow!, Tone.store.b, Tone.store.soft, () => openStore(context)),
+      if ((purFree ?? 0) > 0) ('pur', 'Purchase – lines to order', 'खरेदी – मागवायचे', 'inbox_tray', purFree!, Tone.purchase.b, Tone.purchase.soft, () => openPurchase(context)),
+      if ((rfiWait ?? 0) > 0) ('rfi', 'RFI waiting for the IE', 'RFI मंजुरी बाकी', 'building_construction', rfiWait!, Tone.engineering.b, Tone.engineering.soft, () => openEngineering(context)),
+      if (s.kept.isNotEmpty) ('kept', 'Entries waiting on this phone', 'या फोनवर थांबलेल्या नोंदी', 'mobile_phone', s.kept.length, C.amber, C.amberSoft, () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet())),
+      if (VehAlerts.i.n > 0) ('veh', 'Vehicle alerts to look at', 'पाहायच्या वाहन सूचना', 'shield', VehAlerts.i.n, C.red, C.redSoft, () => openVehAlerts(context)),
+    ];
+    if (rows.isEmpty && loading) return const SizedBox.shrink();
+    final total = rows.fold<int>(0, (a, r) => a + r.$5);
+    return Container(
+      key: const Key('home-today'),
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 4),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), boxShadow: softShadow(.06)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(child: Text("Today's work", mr: 'आज काय बाकी', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+          if (total > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+              decoration: BoxDecoration(color: const Color(0xFFE5322D), borderRadius: BorderRadius.circular(30)),
+              child: Text('$total', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+          const SizedBox(width: 4),
+        ]),
+        if (rows.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
+            child: Row(children: [
+              const Icon(Icons.check_circle_rounded, color: C.green, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Nothing waiting – all clear.', mr: 'काहीच बाकी नाही.', style: const TextStyle(fontSize: 14, color: C.greenDark, fontWeight: FontWeight.w600))),
+            ]),
+          ),
+        for (final (i, r) in rows.indexed)
+          InkWell(
+            key: Key('today-${r.$1}'),
+            borderRadius: BorderRadius.circular(14),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              r.$8();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              decoration: BoxDecoration(border: i == rows.length - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF1ECE1)))),
+              child: Row(children: [
+                Container(width: 40, height: 40, decoration: BoxDecoration(color: r.$7, borderRadius: BorderRadius.circular(12)), alignment: Alignment.center, child: Pic(r.$4, size: 26)),
+                const SizedBox(width: 12),
+                Expanded(child: TwoLang(r.$2, r.$3, size: 14.5, weight: FontWeight.w600)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(color: r.$6, borderRadius: BorderRadius.circular(30)),
+                  child: Text('${r.$5}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: C.faint),
+              ]),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+/// (3.97.0, his design 5) Home scrolled past the site's picture: a small green bar at the top – the Rachana mark, RCL ERP and the
+/// site (tap: change it), search, the bell with its count, Ask. It comes as he scrolls back up, goes while he scrolls down to read
+/// (the page's full height for the tiles and cards) and is not there while the site's picture is seen.
+class _MiniBar extends StatefulWidget {
+  const _MiniBar({required this.sc, required this.after, required this.onSite, required this.onSearch, required this.onBell, required this.bell});
+  final ScrollController sc;
+  final double after;
+  final VoidCallback onSite, onSearch, onBell;
+  final int Function() bell;
+  @override
+  State<_MiniBar> createState() => _MiniBarState();
+}
+
+class _MiniBarState extends State<_MiniBar> {
+  bool show = false;
+  ScrollController get sc => widget.sc;
+  double get after => widget.after;
+  VoidCallback get onSite => widget.onSite;
+  VoidCallback get onSearch => widget.onSearch;
+  VoidCallback get onBell => widget.onBell;
+  int Function() get bell => widget.bell;
+
+  @override
+  void initState() {
+    super.initState();
+    sc.addListener(_moved);
+  }
+
+  @override
+  void dispose() {
+    sc.removeListener(_moved);
+    super.dispose();
+  }
+
+  void _moved() {
+    if (!sc.hasClients) return;
+    final p = sc.position;
+    // by the finger only: a scroll made by the app (to a place) leaves it as it is
+    final now = p.pixels <= after ? false : switch (p.userScrollDirection) { ScrollDirection.forward => true, ScrollDirection.reverse => false, _ => show };
+    if (now != show) setState(() => show = now);
+  }
+
+  @override
+  Widget build(BuildContext context) => Positioned(
+        left: 0,
+        right: 0,
+        top: 0,
+        child: Builder(
+          builder: (context) {
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, -.25), end: Offset.zero).animate(a), child: c)),
+              child: !show
+                  ? const SizedBox.shrink()
+                  : AnnotatedRegion<SystemUiOverlayStyle>(
+                      key: const Key('home-mini'),
+                      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+                      child: Container(
+                        padding: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + 6, 8, 10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, C.greenEnd]),
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+                          boxShadow: [BoxShadow(color: C.greenDeep.withValues(alpha: .25), blurRadius: 14, offset: const Offset(0, 5))],
+                        ),
+                        child: Row(children: [
+                          Container(width: 38, height: 38, padding: const EdgeInsets.all(5), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(11)), child: Image.asset('assets/brand/rachana_mark.png', fit: BoxFit.contain)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: InkWell(
+                              onTap: onSite,
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                                const Text('RCL ERP', maxLines: 1, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
+                                Text('${SessionScope.of(context).siteName} ▾', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Color(0xE6FFFFFF))),
+                              ]),
+                            ),
+                          ),
+                          IconButton(tooltip: tr('Search'), onPressed: onSearch, icon: const Icon(Icons.search_rounded, color: Colors.white)),
+                          Badge(isLabelVisible: bell() > 0, label: Text('${bell()}'), child: IconButton(tooltip: tr('For you'), onPressed: onBell, icon: const Icon(Icons.notifications_none_rounded, color: Colors.white))),
+                          const SizedBox(width: 2),
+                          const AskBot(size: 36),
+                        ]),
+                      ),
+                    ),
+            );
+          },
+        ),
+      );
 }
 
 /// (3.83.0) Home's left edge: a swipe from it brings the page back over the menu behind it, as the drawer opened by a swipe.
@@ -969,26 +1205,48 @@ class _MiniTile extends StatelessWidget {
 }
 
 class _ModuleCard extends StatelessWidget {
-  const _ModuleCard({required this.m, required this.onTap});
+  const _ModuleCard({required this.m, required this.onTap, this.badge = 0});
   final ModuleTile m;
   final VoidCallback onTap;
+  /// (3.97.0, his design 4) what waits in that module – a red badge on its tile
+  final int badge;
   @override
-  Widget build(BuildContext context) => Press(
-        onTap: onTap,
-        radius: 18,
-        color: m.soft,
-        border: m.soft,
-        shadow: false,
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Pic(m.pic, size: 34),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 16,
-            child: FittedBox(fit: BoxFit.scaleDown, child: Text(m.en, mr: m.mr, maxLines: 1, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+  Widget build(BuildContext context) => Stack(children: [
+        Positioned.fill(
+          child: Press(
+            onTap: onTap,
+            radius: 18,
+            color: m.soft,
+            border: m.soft,
+            shadow: false,
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Pic(m.pic, size: 34),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 16,
+                child: FittedBox(fit: BoxFit.scaleDown, child: Text(m.en, mr: m.mr, maxLines: 1, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color.lerp(m.color, C.ink, .45)))),
+              ),
+            ]),
           ),
-        ]),
-      );
+        ),
+        if (badge > 0)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: IgnorePointer(
+              child: Container(
+                key: Key('mod-badge-${m.native}'),
+                constraints: const BoxConstraints(minWidth: 22),
+                height: 22,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(color: const Color(0xFFE5322D), borderRadius: BorderRadius.circular(11), border: Border.all(color: Colors.white, width: 2)),
+                alignment: Alignment.center,
+                child: Text(badge > 99 ? '99+' : '$badge', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white, height: 1)),
+              ),
+            ),
+          ),
+      ]);
 }
 
 class _ActRow extends StatelessWidget {

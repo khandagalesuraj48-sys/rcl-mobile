@@ -48,6 +48,23 @@ class C {
   static const goldInk = Color(0xFFB07A1E);
 }
 
+/// (3.97.0, his design 2 of 11-11-2026 – "all designs approved") EACH MODULE'S OWN COLOUR: the band at the top of its screens
+/// ([a] → [b]) and its tile on Home ([soft]) – a screen tells at a glance which module it is.
+class Tone {
+  const Tone(this.a, this.b, this.soft);
+  final Color a, b, soft;
+  static const machinery = Tone(Color(0xFF2E8B5E), Color(0xFF1E5A40), C.greenSoft);
+  static const logbook = Tone(Color(0xFF8A4FDC), Color(0xFF5E2BAA), C.purpleSoft);
+  static const diesel = Tone(Color(0xFFD9443A), Color(0xFFA61E1E), C.redSoft);
+  static const store = Tone(Color(0xFFC98114), Color(0xFFA65E00), C.amberSoft);
+  static const engineering = Tone(Color(0xFF139AA5), Color(0xFF0B6870), Color(0xFFDDF2F3));
+  static const purchase = Tone(Color(0xFF3B7BE6), Color(0xFF1A4FB0), C.blueSoft);
+  static const maintenance = Tone(Color(0xFFEA6A3C), Color(0xFFC0461A), C.orangeSoft);
+  static const billing = Tone(Color(0xFF6A5AE0), Color(0xFF4535B0), Color(0xFFE8E5FB));
+  static const reports = Tone(Color(0xFF5A6B85), Color(0xFF344054), C.slateSoft);
+  static const admin = Tone(Color(0xFF5A6B85), Color(0xFF344054), C.slateSoft);
+}
+
 /// (3.31.0, asked 20-10-2026: "kuthe kuthe tabs button che pudhe maghe space aahe") one spacing for every screen: the page's edge,
 /// a name and its box, one part and the next, buttons side by side and their rows.
 class Sp {
@@ -62,7 +79,9 @@ const kFonts = ['NotoDeva']; // Marathi / Hindi letters come from Noto Sans Deva
 /// A soft shadow under the white cards.
 List<BoxShadow> softShadow([double a = .07]) => [BoxShadow(color: const Color(0xFF3A3020).withValues(alpha: a), blurRadius: 22, offset: const Offset(0, 8))];
 
-ThemeData appTheme() {
+/// The app's look. [site]: (3.97.0, his design 12) SITE MODE – for the sun at a site: thicker lines round the boxes, bigger
+/// buttons and chips (the letters are made bigger in main.dart, on top of his "Size of the text").
+ThemeData appTheme({bool site = false}) {
   final base = ThemeData(useMaterial3: true, fontFamily: 'Rubik', colorScheme: ColorScheme.fromSeed(seedColor: C.green, surface: C.bg, primary: C.green));
   TextStyle t(double s, FontWeight w, [Color c = C.ink]) => TextStyle(fontFamily: 'Rubik', fontFamilyFallback: kFonts, fontSize: s, fontWeight: w, color: c, height: 1.25);
   return base.copyWith(
@@ -84,27 +103,27 @@ ThemeData appTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: site ? 21 : 17),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: C.line)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: C.green, width: 2)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: site ? BorderSide(color: C.ink.withValues(alpha: .6), width: 2) : const BorderSide(color: C.line)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: C.green, width: site ? 3 : 2)),
       errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: C.red)),
       labelStyle: t(15, FontWeight.w400, C.muted),
       hintStyle: t(15, FontWeight.w400, C.faint),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(backgroundColor: C.green, foregroundColor: Colors.white, minimumSize: const Size.fromHeight(58), shape: const StadiumBorder(), textStyle: t(17, FontWeight.w600, Colors.white)),
+      style: FilledButton.styleFrom(backgroundColor: C.green, foregroundColor: Colors.white, minimumSize: Size.fromHeight(site ? 68 : 58), shape: const StadiumBorder(), textStyle: t(site ? 19 : 17, site ? FontWeight.w700 : FontWeight.w600, Colors.white)),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(foregroundColor: C.ink, minimumSize: const Size.fromHeight(52), shape: const StadiumBorder(), side: const BorderSide(color: C.line), textStyle: t(16, FontWeight.w600)),
+      style: OutlinedButton.styleFrom(foregroundColor: C.ink, minimumSize: Size.fromHeight(site ? 60 : 52), shape: const StadiumBorder(), side: site ? BorderSide(color: C.ink.withValues(alpha: .55), width: 2) : const BorderSide(color: C.line), textStyle: t(site ? 17 : 16, site ? FontWeight.w700 : FontWeight.w600)),
     ),
     // (3.31.0) every chip the same pill, the same height – side by side and in rows the same gap (Sp.chips)
     chipTheme: ChipThemeData(
-      shape: const StadiumBorder(side: BorderSide(color: C.line)),
-      side: const BorderSide(color: C.line),
+      shape: StadiumBorder(side: site ? BorderSide(color: C.ink.withValues(alpha: .5), width: 2) : const BorderSide(color: C.line)),
+      side: site ? BorderSide(color: C.ink.withValues(alpha: .5), width: 2) : const BorderSide(color: C.line),
       backgroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      labelStyle: t(14, FontWeight.w600),
+      padding: EdgeInsets.symmetric(horizontal: site ? 14 : 10, vertical: site ? 12 : 9),
+      labelStyle: t(site ? 15.5 : 14, site ? FontWeight.w700 : FontWeight.w600),
     ),
     snackBarTheme: SnackBarThemeData(behavior: SnackBarBehavior.floating, backgroundColor: C.ink, contentTextStyle: t(14.5, FontWeight.w500, Colors.white), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
     bottomSheetTheme: const BottomSheetThemeData(backgroundColor: Colors.white, surfaceTintColor: Colors.transparent, showDragHandle: true, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28)))),

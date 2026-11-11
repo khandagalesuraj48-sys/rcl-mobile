@@ -24,6 +24,7 @@ import '../core/plate.dart';
 import '../core/plate_read.dart';
 import '../core/session.dart';
 import '../ui/scope.dart';
+import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
@@ -120,6 +121,39 @@ class _EntryFormState extends State<EntryForm> {
   /// (3.1.8, update-116) this save goes to verification (the Super Admin's rule for him): the button says so
   bool get _sends => SessionScope.read(context).flowWill(k.module, dates: [date], qty: asNum(qty.text) ?? 0);
   bool get issue => k.key == 'issue';
+
+  /// (3.97.0, his design 6) the machinery saved last on this phone at this site (newest first) – one tap to pick it again
+  List<String> recent = [];
+  String _recentKey(Session s) => 'recent_mach|${s.site?.code ?? ''}';
+  Future<void> _loadRecent(Session s) async {
+    try {
+      final v = await s.api.keep.read(_recentKey(s));
+      final l = v == null || v.isEmpty ? <String>[] : [for (final e in jsonDecode(v) as List) '$e'];
+      if (mounted) setState(() => recent = l);
+    } catch (_) {/* none kept */}
+  }
+
+  void _remember(Session s, Machine m) {
+    recent = [m.id, ...recent.where((x) => x != m.id)].take(6).toList();
+    s.api.keep.write(_recentKey(s), jsonEncode(recent)).catchError((_) {});
+  }
+
+  /// (3.97.0, his design 7) the steps of this entry: how many are done (one after the other) – the next one is "now"
+  ({List<(String, String)> steps, int done}) _steps(Machine? m, num? q) {
+    bool meter() =>
+        m != null && (m.debit || m.dieselWay.isEmpty || way == kNoReading || ((!hasKm(way) || km.text.trim().isNotEmpty) && (!hasHr(way) || hr.text.trim().isNotEmpty)));
+    final litres = _unit == 'kg' ? ('Kg', 'किलो') : ('Litres', 'लिटर');
+    final List<((String, String), bool)> l = switch (k.key) {
+      'issue' => [(('Machinery', 'यंत्र'), m != null), (('Meter', 'मीटर'), meter()), (litres, (q ?? 0) > 0)],
+      'inward' => [(('Pump', 'पंप'), pump.text.trim().isNotEmpty), (litres, (q ?? 0) > 0), (('Bill', 'बिल'), billNo.text.trim().isNotEmpty)],
+      _ => [(('From → To', 'कुठून → कुठे'), from.isNotEmpty && to.isNotEmpty && from != to), (litres, (q ?? 0) > 0)],
+    };
+    var done = 0;
+    while (done < l.length && l[done].$2) {
+      done++;
+    }
+    return (steps: [for (final x in l) x.$1, ('Save', 'सेव्ह')], done: done);
+  }
   Map<String, dynamic>? get ed => widget.edit;
   String get editId => '${ed?['id'] ?? ''}';
 
@@ -128,6 +162,7 @@ class _EntryFormState extends State<EntryForm> {
     super.didChangeDependencies();
     final s = SessionScope.read(context);
     if (source.isEmpty) {
+      if (issue && widget.edit == null) _loadRecent(s);      // (3.97.0, design 6)
       date = s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
       // his usual diesel place and shift (Settings)
       final loc = s.pref('loc');
@@ -1079,6 +1114,7 @@ class _EntryFormState extends State<EntryForm> {
       }
       if (r['stock'] != null) s.setStock(r['stock']);
       if (issue && driver.text.trim().isNotEmpty && !s.drivers.contains(driver.text.trim())) s.drivers.add(driver.text.trim());
+      if (issue && machine != null) _remember(s, machine!);      // (3.97.0, design 6) for the next one
       savedOne = true;
       _draft?.clear();
       draftAt = '';
@@ -1359,6 +1395,42 @@ class _EntryFormState extends State<EntryForm> {
         ]),
       );
 
+  /// (3.97.0, his design 6) the machinery saved last on this phone – a chip each (on the site that day); a tap picks it as the list does
+  Widget _recentRow(Session s) {
+    final l = [
+      for (final id in recent)
+        if (s.machines.where((x) => x.id == id && x.onSite(date)).firstOrNull case final x?) x,
+    ].take(5).toList();
+    if (l.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SingleChildScrollView(
+        key: const Key('d-recent'),
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (final x in l)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                key: Key('d-recent-${x.id}'),
+                avatar: Pic(picOfType(x.type), size: 20),
+                // (a RichText: the machinery's name stays once as a "text" of the form – the box below shows the one picked)
+                label: RichText(textScaler: MediaQuery.textScalerOf(context), text: TextSpan(text: x.id, style: DefaultTextStyle.of(context).style.copyWith(fontSize: 14, fontWeight: FontWeight.w600, color: C.ink))),
+                selected: machine?.id == x.id,
+                showCheckmark: false,
+                selectedColor: C.greenSoft,
+                side: BorderSide(color: machine?.id == x.id ? C.green : C.line, width: machine?.id == x.id ? 2 : 1),
+                onSelected: (_) {
+                  HapticFeedback.selectionClick();
+                  _useMachine(x);
+                },
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
   Widget _machineBox() {
     final m = machine;
     return _box(
@@ -1444,13 +1516,15 @@ class _EntryFormState extends State<EntryForm> {
         if (!didPop) Navigator.pop(context, savedOne);
       },
       child: Scaffold(
-        appBar: AppBar(
+        // (3.97.0, his design 2) the Diesel module's own colour (red) on its entry forms
+        appBar: toneBar(
+          Tone.diesel,
           leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context, savedOne)),
           titleSpacing: 0,
           title: Row(children: [
-            Pic(k.pic, size: 30),
+            PicDisc(k.pic),
             const SizedBox(width: 10),
-            Expanded(child: TwoLang(widget.fix != null ? tr('Correct {0}').replaceFirst('{0}', widget.fix!.id) : ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700)),
+            Expanded(child: TwoLang(widget.fix != null ? tr('Correct {0}').replaceFirst('{0}', widget.fix!.id) : ed == null ? 'New ${k.en}' : 'Change $editId', k.mr, size: 19, weight: FontWeight.w700, color: Colors.white)),
           ]), actions: withAsk([GuideButton(k.key == 'issue' ? 'diesel' : k.key)]),
         ),
         // one scrolling column (not a lazy list): every field stays built, so nothing typed is lost when it scrolls away
@@ -1463,6 +1537,17 @@ class _EntryFormState extends State<EntryForm> {
             if (draftAt.isNotEmpty && (machine != null || qty.text.isNotEmpty)) DraftLine(at: draftAt, color: k.color, onNew: _startNew),
             if (widget.fix != null) Padding(padding: const EdgeInsets.only(top: 12), child: FixBar(widget.fix!))      // (3.22.0) correcting a returned entry
             else if (ed == null) VerifyStrip(module: k.module, margin: const EdgeInsets.only(top: 12)),
+            // (3.97.0, his design 7) where he is in this entry: done ✓, now (red), next
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: ListenableBuilder(
+                listenable: Listenable.merge([qty, km, hr, pump, billNo]),
+                builder: (_, __) {
+                  final st = _steps(machine, asNum(qty.text));
+                  return StepBar(steps: st.steps, done: st.done, color: Tone.diesel.b);
+                },
+              ),
+            ),
             _label('Date', 'तारीख'),
             _dateBox(),
             if (k.key != 'inward') ...[
@@ -1489,6 +1574,7 @@ class _EntryFormState extends State<EntryForm> {
                 }),
               ],
               _label('Machinery', 'यंत्र'),
+              if (ed == null) _recentRow(s),
               KeyedSubtree(key: const Key('d-machine'), child: _machineBox()),
               if (ed == null && !onComputer) // (3.19.0) the phone's camera reads the plate – not on a computer
                 Padding(
