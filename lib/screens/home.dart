@@ -16,6 +16,7 @@ import '../core/kinds.dart';
 import '../core/push.dart' show pushUpdateTick;
 import '../core/session.dart';
 import '../core/update.dart';
+import '../ui/advert.dart';
 import '../ui/ask_bot.dart';
 import '../ui/push_back.dart';
 import '../ui/help.dart' show showGuide;
@@ -592,6 +593,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                 await openApprovals(context);
                 s.loadApprovals();
               }),
+              // ---------- (3.100.0) the Advertise Corner: the Portal's posts for this site (nothing when there is none) ----------
+              AdCorner(active: widget.active),
               // ---------- the stock card (green) ----------
               // (3.45.0, Mechanical update-164) a site on fuel cards (HO) keeps no stock: the cards' balances in its place
               if (s.cardSite)

@@ -182,6 +182,16 @@ class Api {
     return j;
   }
 
+  /// (3.100.0) POST <portal>/api/ads { action, … } – the Advertise Corner: 'live' = the posts that show now on a site.
+  Future<Map<String, dynamic>> ads(Map<String, dynamic> body) async {
+    final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/ads'), headers: _portalHeaders, body: jsonEncode(body)));
+    final j = _json(r, 'The Portal');
+    if (r.statusCode >= 400 || j['error'] != null) {
+      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
+    }
+    return j;
+  }
+
   /// (3.17.0) POST <portal>/api/admin { action, … } – the Super Admin's console (users, access, sites, companies, modules, activity).
   Future<Map<String, dynamic>> admin(Map<String, dynamic> body) async {
     final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/admin'), headers: _portalHeaders, body: jsonEncode(body)));

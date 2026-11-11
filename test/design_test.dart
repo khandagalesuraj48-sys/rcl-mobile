@@ -279,4 +279,38 @@ void main() {
     if (t.state<ScrollableState>(find.descendant(of: find.byType(TopOnScroll), matching: find.byType(Scrollable)).first).position.pixels > 120) expect(find.byKey(const Key('me-mini')), findsOneWidget);
     expect(t.takeException(), isNull);
   });
+
+  testWidgets('3.100.0: the Advertise Corner on Home – the Portal\'s posts of this site; no post = nothing; its size is the post\'s; the next by a swipe; a video has the sound button', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(srv.adsAsked, isNotEmpty, reason: 'asked from the Portal');
+    expect(srv.adsAsked.first, {'action': 'live', 'platform': 'app', 'site': s.api.site});
+    expect(find.byKey(const Key('ad-corner')), findsNothing, reason: 'no post: Home is as before');
+    // two posts: a strip (an image) and a banner (a video)
+    srv.ads = [
+      {'id': 'a1', 'title': 'Diwali', 'media': 'image', 'size': 'strip', 'seconds': 6, 'url': 'https://files.test/a1.jpg', 'poster': ''},
+      {'id': 'a2', 'title': 'PQC', 'media': 'video', 'size': 'banner', 'seconds': 12, 'url': 'https://files.test/a2.mp4', 'poster': ''},
+      {'id': 'bad', 'title': 'x', 'media': 'image', 'size': 'strip', 'seconds': 6, 'url': 'javascript:alert(1)', 'poster': ''},
+    ];
+    await t.pumpWidget(const SizedBox());
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    final box = find.byKey(const Key('ad-corner'));
+    expect(box, findsOneWidget);
+    expect(t.getSize(box).height, 96, reason: 'a strip');
+    expect(find.byKey(const Key('ad-mute')), findsNothing, reason: 'an image has no sound button');
+    await t.fling(box, const Offset(-200, 0), 800);
+    await settle(t, 600);
+    expect(t.getSize(box).height, 164, reason: 'the next one: a banner');
+    expect(find.byKey(const Key('ad-mute')), findsOneWidget, reason: 'a video: the sound button');
+    await t.fling(box, const Offset(-200, 0), 800);
+    await settle(t, 600);
+    expect(t.getSize(box).height, 96, reason: 'only two are shown – the one with a wrong link is left out');
+    await t.pumpWidget(const SizedBox());      // (its timer goes with it)
+    await t.pump(const Duration(seconds: 1));
+    t.takeException();
+  });
 }
