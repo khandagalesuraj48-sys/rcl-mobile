@@ -18,6 +18,7 @@ import 'package:image/image.dart' as img;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/attend_remind.dart';
 import '../core/update.dart';
 import '../ui/hr_look.dart';
 import '../ui/motion.dart';
@@ -123,6 +124,7 @@ class HrMeTab extends StatelessWidget {
             hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
               _li(key: const Key('me-lang'), sign: 'A', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
               _li(key: const Key('me-account'), sign: '@', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
+              const _RemindRow(),
               const _UpdateRow(),
               if (s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
               _li(
@@ -719,5 +721,46 @@ class _UpdateRowState extends State<_UpdateRow> {
                 ? _t('New version ${found!.version} – tap to update', 'नवीन version ${found!.version} – update साठी दाबा')
                 : (version.isEmpty ? 'RCL ERP' : 'RCL ERP · v$version'),
         onTap: _check,
+      );
+}
+
+/// (3.113.0) the IN / OUT reminders: on (as they come) or off – his own choice, kept on this phone.
+class _RemindRow extends StatefulWidget {
+  const _RemindRow();
+  @override
+  State<_RemindRow> createState() => _RemindRowState();
+}
+
+class _RemindRowState extends State<_RemindRow> {
+  bool off = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AttendRemind.isOff().then((v) {
+      if (mounted) setState(() => off = v);
+    });
+  }
+
+  Future<void> _flip() async {
+    final v = !off;
+    await AttendRemind.setOff(v);
+    if (!mounted) return;
+    setState(() => off = v);
+    toast(context, v ? _t('Attendance reminders are off.', 'हजेरीची आठवण बंद केली.') : _t('Attendance reminders are on – they are set the next time your day is read.', 'हजेरीची आठवण चालू केली – पुढच्या वेळी दिवस वाचल्यावर लागते.'));
+  }
+
+  @override
+  Widget build(BuildContext context) => _li(
+        key: const Key('me-remind'),
+        sign: '',
+        icon: off ? Icons.notifications_off_rounded : Icons.notifications_active_rounded,
+        c: off ? C.slate : const Color(0xFF0F7A45),
+        soft: off ? C.slateSoft : const Color(0xFFE3F7EC),
+        en: 'Attendance reminders',
+        mr: 'हजेरीची आठवण',
+        sub: off ? _t('Off – tap to switch on', 'बंद – चालू करायला दाबा') : _t('On – half an hour before IN and OUT', 'चालू – IN आणि OUT च्या अर्धा तास आधी'),
+        arrow: false,
+        onTap: _flip,
       );
 }

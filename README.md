@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.113.0 (12-11-2026 – asked: "sign in and out ch notification ardha tas adhi user la den he ek mast idea aahe"):** the
+**reminders of attendance**, made on the phone from what the HR server said last (`lib/core/attend_remind.dart`, `remindPlan`): **IN**
+half an hour before his shift starts – today while it is not marked and the coming six days, not on a weekly off or a holiday
+(`myAttend.week_off`, `days_off`); **OUT** while his IN is open – half an hour before the day is closed by itself (the shift's
+time; without one: before the shift ends). Set again every time his day is read or a punch is taken; nothing is sent anywhere; no
+shift = no reminder. **Me → Attendance reminders** switches them off / on (kept on the phone). Android gives them at about that
+time (inexact – no special permission). **Not verified:** a real phone (does the notification come with the app closed, after
+a restart, on phones that stop apps in the background), iPhone.
+
 **Version 3.112.0 (12-11-2026 – asked: "attendance app madhe app update check update as kahi nahiye te banaw"):** a person with HR
 only has **Me → Check for update**: the app's version, the same check and the same update as Me of the full app; a newer version
 is said on the row when the page opens (`_UpdateRow`, `lib/screens/hr_me.dart`). **Me → Salary slips** (rcl-hr step 12): his own

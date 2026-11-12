@@ -15,6 +15,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 
 import '../core/attend.dart';
+import '../core/attend_remind.dart';
 import '../core/session.dart';
 import '../ui/attend_look.dart';
 import '../ui/hr_look.dart';
@@ -106,6 +107,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       final info = await AttendKit.kit.info();
       final d = await _hr({'action': 'myAttend', 'device_id': info['id']});
       await AttendStore('${s.email}|${s.site?.code ?? ''}').keep(d, await AttendKit.kit.elapsed());
+      unawaited(AttendRemind.set(d)); // (3.113.0) the IN / OUT reminders, from his shift and where his day stands
       if (!mounted) return;
       setState(() {
         day = d;
