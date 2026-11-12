@@ -15,6 +15,30 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.106.0 (12-11-2026 – "All" first among the dates; the photos small, beside their boxes; asked: "first asel ek all …
+te select asel", "mothe mothe te section nahi thewnar … dashboard photo tyach samorch auto reading … litres cha photo tyach
+samorch qty", "date ani shift he pn nit dakhaw … fkt apan ui change krtoy baki kahi nahi"):** only the look and the order –
+what is saved, read and checked is as before. **The lists** (Diesel Issue, Inward, Transfer – `lib/screens/entries.dart`; the Log
+Book – `lib/screens/logbook.dart`): the first choice of the days is **All** and it is the one chosen when the page opens – the
+newest entries of every date (as many as the server gives at once, 500; said at the end when there are more), each date above
+its entries; a tap on a day shows that day. **The entry form** (`lib/screens/forms.dart`): the date and the shift on one line; a
+new **Diesel Issue**: no big photo part at the end – the dashboard's photo small beside the reading, the Hour meter's beside the
+hours, the dispenser's beside the litres, the others side by side under them ("Photo first – the number is read by itself");
+**Diesel Inward**: the bill's photos first. The Log Book's entry form is not changed.
+
+**Version 3.105.0 (12-11-2026 – attendance made easy; asked: "je user ERP use kartat tyana attendance pn yach app madhun lawaychi
+aahe … simple easy to use … ek feel premium asaw"; approved the same day: the strip on Home, the page it opens, the "marked"
+screen):** **Home** (a person who has HR on the site): a strip under the site's name (`lib/ui/attend_strip.dart`) – the sun slid
+across, or a tap, opens the attendance page. The sky says where his day stands, understood without reading
+(`lib/ui/attend_look.dart`): dawn "Slide to mark IN", day "On duty" with the hours since IN, dusk "Attendance done today". The
+strip shows what this phone last read and kept (attendance is tied to one phone) – Home asks nothing of the HR server. **The
+attendance page** (`lib/screens/attendance.dart`): the sky as its head with his name, code and where today stands; his place
+drawn as a ring with him as a dot (inside, or outside with the metres); "This is your registered phone"; ONE button at the
+bottom – "Selfie and mark IN / OUT". **The selfie:** a ring for the face, the day and the work place under the picture (on the
+screen only – nothing is written into the photo). **Marked** (from the strip): the sun with a tick and the time, then Home again
+by itself. Every rule – where, which phone, Developer Options, no network – is as it was (3.103.0); only the look and the way in
+changed. Not built yet: a person with attendance only (no Mechanical on the site) still cannot open the app.
+
 **Version 3.104.0 (12-11-2026 – two ways to sign in, "Verify my e-mail"; asked: "app relase kr … tikdun app wale user pn kru
 shaktil he sagle kahi"; the Portal's steps 10 / 11):** the app's own screens of what the web has. **Sign-in:** under "Sign in" the
 button "Login with Email OTP" – only when the Portal has it switched on; the e-mail, "Send code", the 6-digit code, "Sign in";

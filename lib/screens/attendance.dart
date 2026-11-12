@@ -8,6 +8,7 @@
  * made-up location: no punch (only here – the rest of the app works). Its own sign-in: a ticket of the Portal for 'hr' (the HR
  * office's people) or 'hrme' ("My HR", an employee for himself) – api.hrOpen. The rules are in core/attend.dart; the server
  * (rcl-hr) checks every one of them again. */
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -16,6 +17,7 @@ import 'package:flutter/material.dart' hide Text;
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
 import '../core/session.dart';
+import '../ui/attend_look.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
@@ -39,7 +41,10 @@ String _or(Object? v) {
 String _dmy(String ymd) => ymd.length >= 10 ? '${ymd.substring(8, 10)}-${ymd.substring(5, 7)}-${ymd.substring(0, 4)}' : ymd;
 
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key});
+  const AttendanceScreen({super.key, this.quick = false});
+
+  /// (3.105.0) opened by Home's strip: a punch the server took is said big, once – then back to Home by itself.
+  final bool quick;
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
 }
@@ -230,7 +235,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     try {
       final h = await _where(), f = fix!;
       if (!mounted) return;
-      final raw = attendSelfieForTest != null ? await attendSelfieForTest!(context) : await Navigator.of(context).push<Uint8List>(MaterialPageRoute(builder: (_) => const SelfieScreen()));
+      final raw = attendSelfieForTest != null ? await attendSelfieForTest!(context) : await Navigator.of(context).push<Uint8List>(MaterialPageRoute(builder: (_) => SelfieScreen(stamp: '${_dmy('${me?['day'] ?? ''}')} · ${h.place.name}')));
       if (raw == null) return; // he went back: nothing taken
       final jpg = smallJpg(raw);
       if (jpg == null) throw AttendProblem('The photo could not be read – take it again.', 'Photo वाचता आला नाही – पुन्हा काढा.', 'selfie');
@@ -251,12 +256,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         os: info['os'] ?? '',
       );
       await store!.add(p, jpg); // on the phone first – whatever the network does
+      var okTime = '';
       try {
         final r = await _send(p, live: true);
         await store!.remove(p.cid);
         await store!.patch({'punches': r['punches'], 'next': r['next'], 'phone': 'this'});
         if (!mounted) return;
         final t = '${(r['punch'] as Map?)?['time'] ?? ''}';
+        okTime = t.isEmpty ? indiaTime(p.atDevice) : t;
         setState(() {
           me = {...?me, 'punches': r['punches'], 'next': r['next'], 'phone': 'this'};
           offline = false;
@@ -276,6 +283,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
               'Network नाही: ${indiaTime(p.atDevice)} चे ${kind == 'in' ? 'IN' : 'OUT'} phone मध्ये ठेवले आहे – network आल्यावर आपोआप जाईल.', '\n');
         });
       }
+      // (3.105.0) from Home's strip: the punch the server took is said big, once – then Home again (its strip has turned)
+      if (okTime.isNotEmpty && widget.quick && mounted) {
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendDone(kind: kind, time: okTime, place: h.place.name)));
+        if (mounted) Navigator.of(context).pop();
+      }
     } on AttendProblem catch (e) {
       if (mounted) setState(() => err = bi(e.en, e.mr, '\n'));
     } on ApiError catch (e) {
@@ -292,40 +304,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final s = SessionScope.of(context), emp = (me?['employee'] as Map?) ?? const {};
     final punches = [for (final x in (me?['punches'] as List? ?? const []).whereType<Map>()) x];
     final next = _next, phone = '${me?['phone'] ?? ''}', may = me?['may'] != false;
-    final lastP = punches.isEmpty ? null : punches.last;
     final blocked = me == null || !may || dev || phone == 'other' || _places.isEmpty;
+    // (3.105.0) the sky says where his day stands: dawn – not marked; day – on duty; dusk – done; grey – it cannot be marked here / now
+    final sky = skyOf(any: punches.isNotEmpty || kept.isNotEmpty, next: next, stopped: blocked || (hit != null && !hit!.inside));
     return Scaffold(
-      appBar: moduleBar(context, Tone.hr, en: 'My attendance', mr: 'माझी हजेरी', pic: 'calendar', line: me == null ? '' : '${emp['name'] ?? s.name} · ${emp['code'] ?? ''}',
-          actions: [IconButton(tooltip: tr('Refresh'), onPressed: busy ? null : () => _load(), icon: const Icon(Icons.refresh_rounded))]),
+      appBar: _head(context, sky, me == null ? '' : '${emp['name'] ?? s.name} · ${emp['code'] ?? ''}', next, punches),
+      bottomNavigationBar: me == null || loading ? null : _punchBar(next, blocked),
       body: loading
           ? const SkeletonList(tiles: 1, rows: 4)
           : RefreshIndicator(
               onRefresh: () => _load(quiet: true),
               child: ListView(key: const Key('att-page'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
                 if (me != null) ...[
-                  // ---- today
-                  Container(
-                    key: const Key('att-today'),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: C.line)),
-                    child: Row(children: [
-                      Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(bi('Today', 'आज') + ' · ${_dmy('${me?['day'] ?? ''}')}', style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        if (lastP == null && kept.isEmpty)
-                          const TwoLang('Not marked yet', 'अजून लावलेली नाही', key: Key('att-state'), size: 22, weight: FontWeight.w800)
-                        else
-                          Text(
-                            kept.isNotEmpty
-                                ? '${kept.last.kind == 'in' ? 'IN' : 'OUT'} ${indiaTime(kept.last.atDevice)}'
-                                : '${lastP!['kind'] == 'in' ? 'IN' : 'OUT'} ${lastP['time'] ?? ''}',
-                            key: const Key('att-state'),
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-                      ])),
-                      Pill(next == 'in' ? bi('Next: IN', 'पुढे: IN') : bi('Next: OUT', 'पुढे: OUT'), color: next == 'in' ? C.greenDark : C.orange, bg: next == 'in' ? C.greenSoft : C.orangeSoft),
-                    ]),
-                  ),
                   if (offline) InfoLine(bi('No network – shown as read last. A punch taken now is kept on the phone and sent later.', 'Network नाही – शेवटचे वाचलेले दाखवले आहे. आता लावलेली हजेरी phone मध्ये राहील आणि नंतर जाईल.', '\n'), icon: Icons.cloud_off_rounded, bad: true, help: false, key: const Key('att-offline')),
                   // ---- what stops a punch on this phone
                   if (!may) InfoLine(bi('Your employee record is not complete (date of birth, e-mail, mobile) – ask the HR office.', 'तुमची employee माहिती अपूर्ण आहे (जन्मतारीख, e-mail, mobile) – HR office ला सांगा.', '\n'), bad: true, help: false, key: const Key('att-incomplete')),
@@ -333,8 +323,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   if (phone == 'other')
                     InfoLine(bi('Your attendance is tied to another phone (${me?['phone_model'] ?? ''}). Only the HR Admin can release it – then this phone will work.', 'तुमची हजेरी दुसऱ्या phone ला बांधलेली आहे (${me?['phone_model'] ?? ''}). फक्त HR Admin तो सोडू शकतो – मग हा phone चालेल.', '\n'), bad: true, help: false, key: const Key('att-other')),
                   if (_places.isEmpty) InfoLine(bi('No work place is set for you yet – ask the HR office.', 'तुमच्यासाठी अजून work place ठरवलेले नाही – HR office ला सांगा.', '\n'), bad: true, help: false, key: const Key('att-noplace')),
-                  const SizedBox(height: 14),
-                  // ---- where I am
+                  const SizedBox(height: 4),
+                  // ---- where I am (3.105.0: drawn too, once the phone has looked – his place as a ring, he as a dot)
+                  if (hit != null) ...[PlaceRadar(inside: hit!.inside, distance: hit!.distance, name: hit!.place.name), const SizedBox(height: 10)],
                   Container(
                     key: const Key('att-where'),
                     padding: const EdgeInsets.all(14),
@@ -353,27 +344,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                       TextButton(key: const Key('att-look'), onPressed: blocked || busy || looking ? null : _look, child: Text(looking ? '…' : bi('Check', 'तपासा'))),
                     ]),
                   ),
-                  const SizedBox(height: 18),
-                  // ---- the punch
-                  Center(
-                    child: SizedBox(
-                      width: 190,
-                      height: 190,
-                      child: FilledButton(
-                        key: const Key('att-punch'),
-                        style: FilledButton.styleFrom(shape: const CircleBorder(), backgroundColor: next == 'in' ? C.green : C.orange, disabledBackgroundColor: C.slateSoft, padding: EdgeInsets.zero),
-                        onPressed: blocked || busy ? null : _punch,
-                        child: busy
-                            ? const SizedBox(width: 34, height: 34, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                            : Column(mainAxisSize: MainAxisSize.min, children: [
-                                Icon(next == 'in' ? Icons.login_rounded : Icons.logout_rounded, size: 44, color: blocked ? C.faint : Colors.white),
-                                const SizedBox(height: 6),
-                                Text(next == 'in' ? 'Mark IN' : 'Mark OUT', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: blocked ? C.faint : Colors.white)),
-                                Text(next == 'in' ? 'हजेरी लावा' : 'बाहेर पडा', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 14, color: blocked ? C.faint : Colors.white.withValues(alpha: .9))),
-                              ]),
-                      ),
+                  // (3.105.0) this phone is the one his attendance is tied to
+                  if (phone == 'this')
+                    Container(
+                      key: const Key('att-phone'),
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: C.greenSoft, borderRadius: BorderRadius.circular(18)),
+                      child: Row(children: [
+                        const Icon(Icons.phonelink_lock_rounded, color: C.greenDark, size: 26),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(bi('This is your registered phone', 'हा तुमचा नोंदलेला phone आहे', '\n'), style: const TextStyle(fontSize: 14.5, height: 1.35, fontWeight: FontWeight.w600, color: C.greenDark))),
+                      ]),
                     ),
-                  ),
                   const SizedBox(height: 6),
                   Center(child: Text(bi('Location + a selfie as proof · today only', 'Location + पुराव्यासाठी selfie · फक्त आज', '\n'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35))),
                 ],
@@ -431,6 +414,99 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     );
   }
 
+  /// (3.105.0) The page's head: the sky of his day, his name and code, where today stands – and the sun (IN / OUT), the moon
+  /// when today is done. Taller than the letters it holds; with very big letters the lowest line is cut, nothing overflows.
+  PreferredSizeWidget _head(BuildContext context, Sky sky, String who, String next, List<Map> punches) {
+    final lastP = punches.isEmpty ? null : punches.last;
+    var tin = '';
+    for (final p in punches.reversed) {
+      if (p['kind'] == 'in') {
+        tin = '${p['time'] ?? ''}';
+        break;
+      }
+    }
+    final since = sky == Sky.day && kept.isEmpty ? sinceText(tin, DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now())) : '';
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(176),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(gradient: skyDown(sky), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28))),
+        child: SafeArea(
+          bottom: false,
+          child: Stack(children: [
+            Positioned(right: 20, bottom: 18, child: SunDisc(size: 88, label: next == 'in' ? 'IN' : 'OUT', moon: sky == Sky.dusk, dim: sky == Sky.grey)),
+            Positioned.fill(
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  maxHeight: double.infinity,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 2, 52, 0),
+                    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        IconButton(tooltip: MaterialLocalizations.of(context).backButtonTooltip, onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
+                        const Expanded(child: TwoLang('My attendance', 'माझी हजेरी', color: Colors.white, size: 19, weight: FontWeight.w700)),
+                      ]),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, right: 76, top: 2),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          if (who.isNotEmpty) Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: .9))),
+                          const SizedBox(height: 8),
+                          if (lastP == null && kept.isEmpty)
+                            const TwoLang('Not marked yet', 'अजून लावलेली नाही', key: Key('att-state'), color: Colors.white, size: 23, weight: FontWeight.w800)
+                          else
+                            Text(
+                                kept.isNotEmpty
+                                    ? '${kept.last.kind == 'in' ? 'IN' : 'OUT'} ${indiaTime(kept.last.atDevice)}'
+                                    : '${lastP!['kind'] == 'in' ? 'IN' : 'OUT'} ${lastP['time'] ?? ''}',
+                                key: const Key('att-state'),
+                                maxLines: 1,
+                                style: const TextStyle(fontFamily: 'Montserrat', fontSize: 27, fontWeight: FontWeight.w800, color: Colors.white)),
+                          if (since.isNotEmpty) Text('On duty · $since', mr: 'कामावर · $since', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: .95))),
+                          if (sky == Sky.dusk) Text('Today\'s attendance is done', mr: 'आजची हजेरी पूर्ण', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: .95))),
+                        ]),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(top: 2, right: 4, child: IconButton(tooltip: tr('Refresh'), onPressed: busy ? null : () => _load(), icon: const Icon(Icons.refresh_rounded, color: Colors.white))),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// (3.105.0) The one button, always at the thumb: the selfie and the punch. Off (pale) when attendance cannot be marked.
+  Widget _punchBar(String next, bool blocked) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+          child: SizedBox(
+            height: 60,
+            child: FilledButton(
+              key: const Key('att-punch'),
+              style: FilledButton.styleFrom(shape: const StadiumBorder(), backgroundColor: skyInk(next == 'in' ? Sky.dawn : Sky.day), disabledBackgroundColor: C.slateSoft, padding: const EdgeInsets.symmetric(horizontal: 10)),
+              onPressed: blocked || busy ? null : _punch,
+              child: busy
+                  ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                  : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      SunDisc(size: 40, label: next == 'in' ? 'IN' : 'OUT', dim: blocked),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(next == 'in' ? bi('Selfie and mark IN', 'Selfie घ्या आणि IN लावा') : bi('Selfie and mark OUT', 'Selfie घ्या आणि OUT लावा'),
+                              maxLines: 1, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: blocked ? C.faint : Colors.white)),
+                        ),
+                      ),
+                    ]),
+            ),
+          ),
+        ),
+      );
+
   String _placeName(String id) {
     for (final p in _places) {
       if (p.id == id) return p.name;
@@ -465,7 +541,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
 /// The selfie of a punch: the front camera, one button. Proof only – nothing reads the face. Gives the camera's picture, or
 /// nothing when he goes back.
 class SelfieScreen extends StatefulWidget {
-  const SelfieScreen({super.key});
+  const SelfieScreen({super.key, this.stamp = ''});
+
+  /// (3.105.0) shown under the picture: the day and the work place of this punch (on the screen only – the punch itself carries
+  /// its time and place; nothing is written into the photo).
+  final String stamp;
   @override
   State<SelfieScreen> createState() => _SelfieScreenState();
 }
@@ -531,7 +611,12 @@ class _SelfieScreenState extends State<SelfieScreen> {
               child: Center(
                   child: cam == null
                       ? (err.isEmpty ? const CircularProgressIndicator(color: Colors.white) : Padding(padding: const EdgeInsets.all(24), child: Text(err, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4))))
-                      : ClipRRect(borderRadius: BorderRadius.circular(24), child: CameraPreview(cam!)))),
+                      : Stack(alignment: Alignment.center, children: [
+                          ClipRRect(borderRadius: BorderRadius.circular(24), child: CameraPreview(cam!)),
+                          // (3.105.0) where the face goes
+                          IgnorePointer(child: Container(width: 220, height: 290, decoration: BoxDecoration(border: Border.all(color: Colors.white70, width: 3), borderRadius: const BorderRadius.all(Radius.elliptical(110, 145))))),
+                        ]))),
+          if (cam != null && widget.stamp.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(24, 10, 24, 0), child: Text(widget.stamp, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600))),
           if (cam != null && err.isNotEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: Text(err, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 14))),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
@@ -540,7 +625,7 @@ class _SelfieScreenState extends State<SelfieScreen> {
               height: 84,
               child: FilledButton(
                 key: const Key('selfie-take'),
-                style: FilledButton.styleFrom(shape: const CircleBorder(), backgroundColor: Colors.white, padding: EdgeInsets.zero),
+                style: FilledButton.styleFrom(shape: const CircleBorder(), backgroundColor: const Color(0xFFFFC93C), padding: EdgeInsets.zero),
                 onPressed: cam == null || taking ? null : _take,
                 child: taking ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 3)) : const Icon(Icons.camera_alt_rounded, color: Colors.black, size: 34),
               ),
@@ -675,6 +760,70 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
           ],
         ],
       ]),
+    );
+  }
+}
+
+/// (3.105.0) MARKED JUST NOW – said big, once (after a punch from Home's strip): the sun with a tick and the time for IN, the
+/// moon for OUT. It closes by itself after a moment, or with OK.
+class AttendDone extends StatefulWidget {
+  const AttendDone({super.key, required this.kind, required this.time, required this.place});
+  final String kind, time, place;
+  @override
+  State<AttendDone> createState() => _AttendDoneState();
+}
+
+class _AttendDoneState extends State<AttendDone> {
+  Timer? _back;
+  bool _gone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _back = Timer(const Duration(milliseconds: 2600), _close);
+  }
+
+  void _close() {
+    if (_gone || !mounted) return;
+    _gone = true;
+    Navigator.of(context).pop();
+  }
+
+  @override
+  void dispose() {
+    _back?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final inn = widget.kind == 'in', sky = inn ? Sky.day : Sky.dusk;
+    return Scaffold(
+      body: Container(
+        key: const Key('att-ok-page'),
+        width: double.infinity,
+        decoration: BoxDecoration(gradient: skyDown(sky)),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              SunDisc(size: 168, tick: true, moon: !inn),
+              const SizedBox(height: 30),
+              Text(inn ? bi('IN marked', 'हजेरी लागली') : bi('OUT marked', 'OUT लागले'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white)),
+              const SizedBox(height: 4),
+              Text(widget.time, key: const Key('att-ok-time'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 54, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
+              if (widget.place.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(widget.place, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14.5, color: Colors.white.withValues(alpha: .92)))),
+              const SizedBox(height: 34),
+              FilledButton(
+                key: const Key('att-ok'),
+                style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: skyInk(sky), minimumSize: const Size(160, 52), shape: const StadiumBorder()),
+                onPressed: _close,
+                child: Text('OK', mr: 'ठीक आहे', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: skyInk(sky))),
+              ),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -17,6 +17,7 @@ import '../core/push.dart' show pushUpdateTick;
 import '../core/session.dart';
 import '../core/update.dart';
 import '../ui/advert.dart';
+import '../ui/attend_strip.dart';
 import '../ui/mail_strip.dart';
 import '../ui/ask_bot.dart';
 import '../ui/push_back.dart';
@@ -601,6 +602,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                 await openApprovals(context);
                 s.loadApprovals();
               }),
+              // (3.105.0) attendance for a person who has HR on this site: the strip that opens the attendance page (nothing otherwise)
+              const AttendStrip(),
               // (3.104.0) the Portal's reminder "verify your e-mail" – a small strip; nothing when he is verified or it is switched off
               const MailStrip(),
               // ---------- (3.100.0) the Advertise Corner: the Portal's posts for this site (nothing when there is none) ----------

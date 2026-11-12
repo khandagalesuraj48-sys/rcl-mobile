@@ -109,6 +109,12 @@ void _logForget() { // (update-155) emptied at sign-out and at another site (Ses
 class _LogBookScreenState extends State<LogBookScreen> {
   String day = '', q = '';
   bool loading = false;
+
+  /// (3.106.0, asked 12-11-2026 – as the diesel pages) ALL DATES is the first choice of the days and the one chosen when the page
+  /// opens: the newest entries of every date (as many as the server gives at once), under their dates. A tap on a day: that day.
+  bool all = true;
+  int count = 0;
+  String get _ck => all ? 'all' : day;
   String err = '';
   List<Map<String, dynamic>> rows = [];
   int seq = 0;
@@ -119,7 +125,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
     if (day.isEmpty) {
       final s = SessionScope.read(context);
       day = s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
-      rows = _logCache['${s.site?.code}|$day'] ?? [];
+      rows = _logCache['${s.site?.code}|$_ck'] ?? [];
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
   }
@@ -137,7 +143,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
   }
 
   Future<void> _load({bool pend = false}) async {
-    final s = SessionScope.read(context), my = ++seq, key = '${s.site?.code}|$day';
+    final s = SessionScope.read(context), my = ++seq, key = '${s.site?.code}|$_ck', wasAll = all;
     _ls ??= s..dataTick.addListener(_live);
     Session.memoryClears.add(_logForget);
     setState(() {
@@ -146,11 +152,18 @@ class _LogBookScreenState extends State<LogBookScreen> {
     });
     try {
       final jobs = <Future<void>>[
-        s.api.call('getLogBookList', [{'from': day, 'to': day, 'all': true}]).then((r) {
+        s.api.call('getLogBookList', [wasAll ? {'from': '', 'to': ''} : {'from': day, 'to': day, 'all': true}]).then((r) {
           final list = ((r as Map)['rows'] as List? ?? []).whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
-          list.sort((a, b) => '${a['no']}'.compareTo('${b['no']}'));
+          // a day: by machinery; all dates: the newest date first, by machinery within it
+          list.sort((a, b) {
+            final d = wasAll ? '${b['date'] ?? ''}'.compareTo('${a['date'] ?? ''}') : 0;
+            return d != 0 ? d : '${a['no']}'.compareTo('${b['no']}');
+          });
           _logCache[key] = list;
-          if (my == seq) rows = list;
+          if (my == seq) {
+            rows = list;
+            count = (asNum(r['count']) ?? list.length).toInt();
+          }
         }),
       ];
       if (pend || _pendCache == null || _pendAt == null || _pendSite != s.site?.code || DateTime.now().difference(_pendAt!) > const Duration(minutes: 1)) {
@@ -171,6 +184,12 @@ class _LogBookScreenState extends State<LogBookScreen> {
         loading = false;
       });
     }
+  }
+
+  /// (3.106.0) the oldest and the newest date of the entries shown (all dates)
+  (String, String) get _span {
+    final ds = [for (final r in rows) if ('${r['date'] ?? ''}'.length >= 10) '${r['date']}']..sort();
+    return ds.isEmpty ? (day, day) : (ds.first, ds.last);
   }
 
   List<String> get _pendingToday => [for (final x in (_pendCache?['items'] as List? ?? [])) if (x is List && x.length > 1 && '${x[1]}' == day) '${x[0]}']..sort();
@@ -310,6 +329,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
                       final d = await showDatePicker(context: context, initialDate: parseKey(day), firstDate: DateTime(2024), lastDate: today);
                       if (d != null) {
                         setState(() {
+                          all = false;
                           day = dateKey(d);
                           rows = _logCache['${s.site?.code}|$day'] ?? [];
                         });
@@ -325,7 +345,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
                     padding: EdgeInsets.zero,
                     onSelected: (k) async {
                       if (k == 'edit') openLogEdit(context);
-                      if (k == 'print') printLogBook(context, SessionScope.read(context), rows: rows, from: day, to: day);      // (3.6.0) the entries shown
+                      if (k == 'print') printLogBook(context, SessionScope.read(context), rows: rows, from: all && rows.isNotEmpty ? _span.$1 : day, to: all && rows.isNotEmpty ? _span.$2 : day);      // (3.6.0) the entries shown
                       if (k == 'tank') openTankCheck(context);
                       if (k == 'guide') showGuide(context, 'log'); // (3.16.0) the web's "?" of the page
                       // (3.12.0) the rest of the web's Log Book page: its list of all dates with the exports, Import from Excel, the templates
@@ -359,13 +379,38 @@ class _LogBookScreenState extends State<LogBookScreen> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-                  itemCount: days.length,
+                  itemCount: days.length + 1,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (_, i) {
-                    final d = days[i], key = dateKey(d), on = key == day;
+                    if (i == 0) {
+                      // (3.106.0) all dates – the first choice
+                      return GestureDetector(
+                        key: const Key('day-all'),
+                        onTap: () {
+                          if (all) return;
+                          setState(() {
+                            all = true;
+                            rows = _logCache['${s.site?.code}|all'] ?? [];
+                          });
+                          _load();
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 62,
+                          decoration: BoxDecoration(color: all ? C.blue : Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: all ? C.blue : C.line)),
+                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            MrLine('सर्व', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 12, color: all ? Colors.white : C.muted)),
+                            Text('All', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: all ? Colors.white : C.ink)),
+                          ]),
+                        ),
+                      );
+                    }
+                    final d = days[i - 1], key = dateKey(d), on = !all && key == day;
                     return GestureDetector(
+                      key: Key('day-$key'),
                       onTap: () {
                         setState(() {
+                          all = false;
                           day = key;
                           rows = _logCache['${s.site?.code}|$day'] ?? [];
                         });
@@ -389,7 +434,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                 child: Row(children: [
-                  Expanded(child: Text('${showDate(day)}, ${weekDays[parseKey(day).weekday - 1]}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+                  Expanded(child: all ? const TwoLang('All dates', 'सर्व तारखा', key: Key('lb-all-head'), size: 17, weight: FontWeight.w700) : Text('${showDate(day)}, ${weekDays[parseKey(day).weekday - 1]}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
                   Text('${rows.length} ${rows.length == 1 ? 'entry' : 'entries'} · $worked worked', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: C.blue)),
                 ]),
               ),
@@ -425,16 +470,27 @@ class _LogBookScreenState extends State<LogBookScreen> {
               SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(16), child: InfoLine(err, bad: true)))
             else if (list.isEmpty)
               SliverToBoxAdapter(
-                child: EmptyState(rows.isEmpty ? 'No Log Book entry on this day' : 'Nothing matches', rows.isEmpty ? 'Pick another day, or add a new entry.' : 'Change the search.', pic: 'notebook',
+                child: EmptyState(rows.isEmpty ? (all ? 'No Log Book entry yet' : 'No Log Book entry on this day') : 'Nothing matches', rows.isEmpty ? (all ? 'Add a new entry.' : 'Pick another day, or add a new entry.') : 'Change the search.', pic: 'notebook',
                     action: rows.isEmpty && s.canEdit('Log Book') ? 'New Entry' : null, onAction: () => _new()),
               )
             else
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 2, 16, 110),
                 sliver: SliverList.separated(
-                  itemCount: list.length,
+                  itemCount: list.length + (all && count > rows.length ? 1 : 0),
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => LogCard(r: list[i], onChanged: () => _load(pend: true)),
+                  itemBuilder: (_, i) {
+                    // (3.106.0) the list is long: said at its end
+                    if (i >= list.length) return InfoLine(bi('The newest ${rows.length} of $count are shown. For the older ones pick a day.', 'सर्वात नवीन ${rows.length} (एकूण $count) दाखवल्या आहेत. जुन्या नोंदींसाठी तारीख निवडा.', '\n'), key: const Key('lb-all-more'), help: false);
+                    final card = LogCard(r: list[i], onChanged: () => _load(pend: true));
+                    // (3.106.0) all dates: each date once, above its entries
+                    final d = '${list[i]['date'] ?? ''}';
+                    if (!all || d.length < 10 || (i > 0 && '${list[i - 1]['date'] ?? ''}' == d)) return card;
+                    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Padding(padding: EdgeInsets.fromLTRB(4, i == 0 ? 0 : 6, 4, 8), child: Text('${showDate(d)}, ${weekDays[parseKey(d).weekday - 1]}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: C.blue))),
+                      card,
+                    ]);
+                  },
                 ),
               ),
           ]),

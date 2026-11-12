@@ -1305,7 +1305,8 @@ class _EntryFormState extends State<EntryForm> {
         ]),
       );
 
-  Widget _chips<T>(List<(T, String)> items, T? value, ValueChanged<T> onPick, {Color? color}) => Wrap(spacing: Sp.chips, runSpacing: 4, children: [
+  Widget _chips<T>(List<(T, String)> items, T? value, ValueChanged<T> onPick, {Color? color, bool dense = false}) {
+    final chips = [
         for (final it in items)
           ChoiceChip(
             label: Text(it.$2),
@@ -1317,19 +1318,48 @@ class _EntryFormState extends State<EntryForm> {
             backgroundColor: Colors.white,
             side: BorderSide(color: it.$1 == value ? (color ?? k.color) : C.line),
             shape: const StadiumBorder(),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: dense ? 4 : 10, vertical: dense ? 6 : 8),
           ),
+      ];
+    // (3.106.0) dense: beside the date, in one line whatever happens
+    if (dense) return Row(mainAxisSize: MainAxisSize.min, children: [for (final (i, c) in chips.indexed) ...[if (i > 0) const SizedBox(width: 6), c]]);
+    return Wrap(spacing: Sp.chips, runSpacing: 4, children: chips);
+  }
+
+  /// (3.106.0, asked 12-11-2026: "date ani shift he pn nit dakhaw") the date and the shift side by side – one line less to scroll.
+  /// With big letters or on a very narrow screen: one under the other, as before.
+  Widget _dateShift() {
+    Widget shiftChips({bool dense = false}) => _chips<String>(const [('Day', 'Day'), ('Night', 'Night')], shift, (v) {
+          setState(() => shift = v);
+          _balance();
+        }, dense: dense);
+    if (k.key == 'inward') return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_label('Date', 'तारीख'), _dateBox()]);
+    return LayoutBuilder(builder: (context, box) {
+      if (box.maxWidth < 320 || MediaQuery.textScalerOf(context).scale(1) > 1.1) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_label('Date', 'तारीख'), _dateBox(), _label('Shift', 'पाळी'), shiftChips()]);
+      }
+      return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_label('Date', 'तारीख'), _dateBox(tight: true)])),
+        const SizedBox(width: 10),
+        // (its own width: the label's line needs a width to lay itself out in)
+        IntrinsicWidth(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_label('Shift', 'पाळी'), SizedBox(height: 52, child: Align(alignment: Alignment.centerLeft, child: shiftChips(dense: true)))])),
       ]);
+    });
+  }
 
   Widget _box({required Widget child, VoidCallback? onTap}) => Press(onTap: onTap, radius: 18, shadow: false, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), child: child);
 
-  Widget _dateBox() => _box(
+  /// [tight] (3.106.0): beside the shift – less air, the date made a little smaller when it would not fit
+  Widget _dateBox({bool tight = false}) => Press(
         onTap: _pickDate,
+        radius: 18,
+        shadow: false,
+        padding: EdgeInsets.symmetric(horizontal: tight ? 12 : 16, vertical: 14),
         child: Row(children: [
-          const Icon(Icons.calendar_month_rounded, color: C.green),
-          const SizedBox(width: 12),
-          Expanded(child: Text(showDate(date), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-          if (date == SessionScope.read(context).today) const Pill('Today'),
+          Icon(Icons.calendar_month_rounded, color: C.green, size: tight ? 20 : 24),
+          SizedBox(width: tight ? 8 : 12),
+          Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(showDate(date), maxLines: 1, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)))),
+          if (date == SessionScope.read(context).today) ...[const SizedBox(width: 6), const Pill('Today')],
         ]),
       );
 
@@ -1457,51 +1487,77 @@ class _EntryFormState extends State<EntryForm> {
     );
   }
 
-  Widget _photos() => GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.35,
-        children: [
-          for (final pk in kPhotoKinds)
-            if ((pk.key != 'hrs' || (machine != null && _both(machine!))) && !(pk.key == 'reg' && SessionScope.read(context).cardSite) && !(pk.key == 'bill' && !SessionScope.read(context).cardSite))      // (3.45.0) no register at a site on fuel cards; (3.90.0) the Pump bill only there
-            Builder(builder: (_) {
-              final sh = shots[pk.key];
-              final done = sh != null && sh.path.isNotEmpty && sh.jpg != null, here = sh != null && sh.onPhone && !sh.busy;      // (3.85.0) kept on the phone
-              return Press(
-                key: Key('photo-${pk.key}'),
-                onTap: () => _shoot(pk),
-                radius: 18,
-                shadow: false,
-                border: done ? C.green : C.line,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(17),
-                  child: Stack(fit: StackFit.expand, children: [
-                    if (sh?.jpg != null) Image.memory(sh!.jpg!, fit: BoxFit.cover, gaplessPlayback: true),
-                    if (sh?.jpg != null) const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Color(0xAA000000)]))),
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        if (sh?.jpg == null) Pic(pk.pic, size: 34),
-                        const Spacer(),
-                        Text(pk.en, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: sh?.jpg != null ? Colors.white : C.ink)),
-                        Row(children: [
-                          Icon(sh?.busy == true ? Icons.cloud_upload_outlined : done ? Icons.check_circle_rounded : onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 14, color: sh?.jpg != null ? Colors.white70 : C.green),
-                          const SizedBox(width: 4),
-                          Text(sh?.busy == true ? 'Sending…' : done ? 'Sent' : here ? 'On this phone' : onComputer ? 'Choose photo' : 'Take photo', style: TextStyle(fontSize: 12, color: sh?.jpg != null ? Colors.white70 : C.muted)),
+  /// (3.106.0) the photos of a Diesel Issue are taken here: a new entry by a person who may enter (as before)
+  bool get _shots => issue && ed == null && SessionScope.read(context).canEdit('Diesel Issue');
+
+  /// Is this photo asked for this entry (as before: the Hour meter only for KM + Hrs, the register not at a site on fuel cards,
+  /// the pump's bill only there)
+  bool _asked(PhotoKind pk) {
+    final card = SessionScope.read(context).cardSite;
+    return (pk.key != 'hrs' || (machine != null && _both(machine!))) && !(pk.key == 'reg' && card) && !(pk.key == 'bill' && !card);
+  }
+
+  /// The photos that stand beside no box: every asked one but the dispenser's – and the dashboard's / the Hour meter's when
+  /// their reading box is there ("Meter not working": no box, so they stand here).
+  List<PhotoKind> _loose(Machine? m) {
+    final dashBox = m != null && (hasKm(way) || hasHr(way)), hrsBox = m != null && hasHr(way) && _both(m);
+    return [for (final pk in kPhotoKinds) if (_asked(pk) && pk.key != 'pump' && !(pk.key == 'dash' && dashBox) && !(pk.key == 'hrs' && hrsBox)) pk];
+  }
+
+  /// A box with its photo on its left ([pk] null: the box alone).
+  Widget _beside(PhotoKind? pk, Widget box) => pk == null ? box : Row(children: [_shotTile(pk), const SizedBox(width: 10), Expanded(child: box)]);
+
+  /// One photo, small: a tap takes it (again). Its picture when taken; a tick when it is sent, a turning ring while it goes.
+  Widget _shotTile(PhotoKind pk, {bool wide = false}) {
+    final sh = shots[pk.key];
+    final done = sh != null && sh.path.isNotEmpty && sh.jpg != null, here = sh != null && sh.onPhone && !sh.busy;      // (3.85.0) kept on the phone
+    final has = sh?.jpg != null;
+    // what a tap does / where the photo stands – the words as before
+    final state = sh?.busy == true ? 'Sending…' : done ? 'Sent' : here ? 'On this phone' : onComputer ? 'Choose photo' : 'Take photo';
+    final ink = has ? Colors.white : C.ink, soft = has ? Colors.white70 : C.muted;
+    return SizedBox(
+      width: wide ? null : 72,
+      height: wide ? 64 : 58,
+      child: Press(
+        key: Key('photo-${pk.key}'),
+        onTap: () => _shoot(pk),
+        radius: 16,
+        shadow: false,
+        padding: EdgeInsets.zero,
+        color: has ? Colors.white : k.soft,
+        border: done ? C.green : has ? C.line : k.color.withValues(alpha: .55),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(fit: StackFit.expand, children: [
+            if (has) Image.memory(sh!.jpg!, fit: BoxFit.cover, gaplessPlayback: true),
+            if (has) const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black54]))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(5, 4, 5, 4),
+              child: wide
+                  ? Row(children: [
+                      if (!has) Icon(onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 20, color: k.color),
+                      if (!has) const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(mainAxisAlignment: has ? MainAxisAlignment.end : MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(pk.en, mr: pk.mr, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: ink))),
+                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(state, maxLines: 1, style: TextStyle(fontSize: 10.5, color: soft))),
                         ]),
-                      ]),
-                    ),
-                    if (sh?.busy == true) const Positioned(right: 10, top: 10, child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))),
-                    if (done) const Positioned(right: 8, top: 8, child: CircleAvatar(radius: 12, backgroundColor: C.green, child: Icon(Icons.check_rounded, size: 16, color: Colors.white))),
-                  ]),
-                ),
-              );
-            }),
-        ],
-      );
+                      ),
+                    ])
+                  : Column(mainAxisAlignment: has ? MainAxisAlignment.end : MainAxisAlignment.center, children: [
+                      if (!has) Icon(onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 16, color: k.color),
+                      FittedBox(fit: BoxFit.scaleDown, child: Text(pk.en, mr: pk.mr, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 10.5, color: ink))),
+                      FittedBox(fit: BoxFit.scaleDown, child: Text(state, maxLines: 1, style: TextStyle(fontSize: 9, color: soft))),
+                    ]),
+            ),
+            if (sh?.busy == true) const Positioned(right: 5, top: 5, child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))),
+            if (done) const Positioned(right: 4, top: 4, child: CircleAvatar(radius: 9, backgroundColor: C.green, child: Icon(Icons.check_rounded, size: 13, color: Colors.white))),
+            if (here && !done) const Positioned(right: 4, top: 4, child: CircleAvatar(radius: 9, backgroundColor: C.amber, child: Icon(Icons.smartphone_rounded, size: 12, color: Colors.white))),
+          ]),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1546,15 +1602,7 @@ class _EntryFormState extends State<EntryForm> {
             if (draftAt.isNotEmpty && (machine != null || qty.text.isNotEmpty)) DraftLine(at: draftAt, color: k.color, onNew: _startNew),
             if (widget.fix != null) Padding(padding: const EdgeInsets.only(top: 12), child: FixBar(widget.fix!))      // (3.22.0) correcting a returned entry
             else if (ed == null) VerifyStrip(module: k.module, margin: const EdgeInsets.only(top: 12)),
-            _label('Date', 'तारीख'),
-            _dateBox(),
-            if (k.key != 'inward') ...[
-              _label('Shift', 'पाळी'),
-              _chips<String>(const [('Day', 'Day'), ('Night', 'Night')], shift, (v) {
-                setState(() => shift = v);
-                _balance();
-              }),
-            ],
+            _dateShift(),
             // ---------- Diesel Issue ----------
             if (issue) ...[
               // (3.43.0, update-162) only his own diesel sources; given some = shown even when one (he sees where it comes from)
@@ -1600,18 +1648,46 @@ class _EntryFormState extends State<EntryForm> {
                   ),
                 ]),
               ],
+              // (3.106.0, asked 12-11-2026: "mothe mothe te section nahi thewnar … dashboard photo tyach samorch auto reading … litres
+              // cha photo tyach samorch qty") the photos are no longer a big part at the end: each one small, beside the box it
+              // fills – the photo first, the number comes by itself. Only where they are placed changed: what a photo is, what is
+              // read on it and what is saved are as before.
+              if (_shots) Padding(padding: const EdgeInsets.only(top: 12, left: 2), child: Text(bi('Photo first – the number is read by itself. Type over it if it is wrong.', 'आधी फोटो – आकडा आपोआप भरतो. चुकला तर टाइप करा.', '\n'), key: const Key('photo-first'), style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35))),
               if (m != null && hasKm(way)) ...[
                 _label('KM reading', 'KM रीडिंग'),
-                TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: dhHint(hist, 'lastKm').isNotEmpty ? dhHint(hist, 'lastKm') : tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read from the dashboard photo – check it') : null)),
+                _beside(_shots ? kPhotoKinds.firstWhere((p) => p.key == 'dash') : null, TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: dhHint(hist, 'lastKm').isNotEmpty ? dhHint(hist, 'lastKm') : tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read from the dashboard photo – check it') : null))),
               ],
               if (m != null && hasHr(way)) ...[
                 _label('Hour meter', 'तास मीटर'),
-                TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read from the dashboard photo – check it') : null)),
+                _beside(!_shots ? null : _both(m) ? kPhotoKinds.firstWhere((p) => p.key == 'hrs') : hasKm(way) ? null : kPhotoKinds.firstWhere((p) => p.key == 'dash'), TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read from the dashboard photo – check it') : null))),
               ],
               _unit == 'kg' ? _label('Kg', 'किलो') : _label('Litres', 'लिटर'),
-              _qtyField(),
+              _beside(_shots ? kPhotoKinds.firstWhere((p) => p.key == 'pump') : null, _qtyField()),
               const SizedBox(height: 10),
               _chips<num>(const [(20, '20'), (50, '50'), (100, '100'), (150, '150'), (200, '200')], q, (v) => setState(() => qty.text = '$v')),
+              // the photos that fill no box (the vehicle with its driver, the register / the pump's bill – and the dashboard when no
+              // reading is asked): side by side
+              if (_shots) ...[
+                const SizedBox(height: 12),
+                Row(children: [
+                  for (final (i, pk) in _loose(m).indexed) ...[if (i > 0) const SizedBox(width: 10), Expanded(child: _shotTile(pk, wide: true))],
+                ]),
+                if (_aiNote.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(14)),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Icon(Icons.auto_awesome_rounded, color: C.blue, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_aiNote, style: const TextStyle(fontSize: 13.5, color: C.blue, height: 1.35, fontWeight: FontWeight.w500))),
+                    ]),
+                  ),
+                Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 2),
+                    child: Text(onComputer ? 'Chosen from a file of this computer – date, time and place are printed on each photo.' : 'Taken with the camera now – date, time and place are printed on each photo.',
+                        style: const TextStyle(fontSize: 12.5, color: C.muted))),
+              ],
               if (s.cardSite) ..._cardPart(s, q),      // (3.45.0) the ₹ and the card's balance
               if (bal != null || (s.offline && !s.cardSite))
                 InfoLine(_stockLine(s, q, avail), key: const Key('issue-stock'), bad: bal != null && q != null && q > ((avail ?? double.infinity) - s.keptAt(source))),      // (3.85.0) what waits; no network
@@ -1635,28 +1711,30 @@ class _EntryFormState extends State<EntryForm> {
                     textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(hintText: tr('Name (optional)'), prefixIcon: Icon(Icons.person_outline_rounded))),
               ),
-              if (s.canEdit('Diesel Issue') && ed == null) ...[
-                _label('Photos', 'फोटो'),
-                _photos(),
-                if (_aiNote.isNotEmpty)
+            ],
+            // ---------- Diesel Inward ----------
+            if (k.key == 'inward') ...[
+              // (3.106.0) the bill's photos first – the bill number, the litres and the rate are read from them
+              if (_billsHere) ...[
+                _label('Bill copy', 'बिल कॉपी'),
+                _bills(),
+                if (_billNote.isNotEmpty)
                   Container(
+                    key: const Key('bill-read'),
                     margin: const EdgeInsets.only(top: 10),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(14)),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Icon(Icons.auto_awesome_rounded, color: C.blue, size: 20),
+                      const Icon(Icons.document_scanner_rounded, color: C.blue, size: 20),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(_aiNote, style: const TextStyle(fontSize: 13.5, color: C.blue, height: 1.35, fontWeight: FontWeight.w500))),
+                      Expanded(child: Text(_billNote, style: const TextStyle(fontSize: 13.5, color: C.blue, height: 1.35, fontWeight: FontWeight.w500))),
                     ]),
                   ),
                 Padding(
                     padding: const EdgeInsets.only(top: 6, left: 2),
-                    child: Text(onComputer ? 'Chosen from a file of this computer – date, time and place are printed on each photo.' : 'Taken with the camera now – date, time and place are printed on each photo.',
+                    child: Text(onComputer ? 'Photos of the bill – pick several at once from the files of this computer (up to 10).' : 'Photos of the bill – take them one after another with the camera, or pick several at once from the gallery (up to 10).',
                         style: const TextStyle(fontSize: 12.5, color: C.muted))),
               ],
-            ],
-            // ---------- Diesel Inward ----------
-            if (k.key == 'inward') ...[
               if (s.locations.length > 1) ...[_label('Received at', 'कुठे आले'), _chips<String>([for (final l in s.locations) (l, l)], source, (v) => setState(() => source = v))],
               _label('Pump name', 'पंप'),
               Autocomplete<String>(
@@ -1687,26 +1765,6 @@ class _EntryFormState extends State<EntryForm> {
                   Text(billDate.isEmpty ? 'Optional' : showDate(billDate), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: billDate.isEmpty ? C.faint : C.ink)),
                 ]),
               ),
-              if (_billsHere) ...[
-                _label('Bill copy', 'बिल कॉपी'),
-                _bills(),
-                if (_billNote.isNotEmpty)
-                  Container(
-                    key: const Key('bill-read'),
-                    margin: const EdgeInsets.only(top: 10),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(14)),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Icon(Icons.document_scanner_rounded, color: C.blue, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(_billNote, style: const TextStyle(fontSize: 13.5, color: C.blue, height: 1.35, fontWeight: FontWeight.w500))),
-                    ]),
-                  ),
-                Padding(
-                    padding: const EdgeInsets.only(top: 6, left: 2),
-                    child: Text(onComputer ? 'Photos of the bill – pick several at once from the files of this computer (up to 10).' : 'Photos of the bill – take them one after another with the camera, or pick several at once from the gallery (up to 10).',
-                        style: const TextStyle(fontSize: 12.5, color: C.muted))),
-              ],
             ],
             // ---------- Diesel Transfer ----------
             if (k.key == 'transfer') ...[

@@ -1047,8 +1047,7 @@ void main() {
     expect(find.text('2 photos'), findsOneWidget);
     await t.tap(find.text('Change'));
     await net(t);
-    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, -900));
-    await settle(t, 600);
+    // (3.106.0) the bill's photos are the first thing of the form now – nothing to scroll to
     expect(find.byKey(const Key('bills')), findsOneWidget);
     expect(find.byKey(const Key('bill-0')), findsOneWidget, reason: 'its 2 copies, read from the server');
     expect(find.byKey(const Key('bill-1')), findsOneWidget);
@@ -8710,4 +8709,128 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('me-verify')), findsOneWidget);
   });
+
+  /* (3.105.0 – approved 12-11-2026: the strip on Home, the attendance page it opens, the "marked" screen) */
+  testWidgets('(3.105.0) attendance from Home: the strip (dawn – "Slide to mark IN") opens the page – sky, place, phone, one button; IN → said big, back on Home by itself, the strip says "On duty"; then OUT → "done"', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    final selfie = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    attendSelfieForTest = (_) async => selfie;
+    addTearDown(() {
+      attendSelfieForTest = null;
+      AttendKit.kit = AttendKit();
+    });
+    final srv = FakeServer()..hrSite = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('att-strip')), findsOneWidget, reason: 'he has HR on this site');
+    expect(find.textContaining('Slide to mark IN'), findsOneWidget);
+    expect(srv.hrSent, isEmpty, reason: 'Home asks nothing of the HR server – the strip shows what this phone kept');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_in.png'));
+    // a tap (or the sun slid across) opens the attendance page
+    await t.tap(find.byKey(const Key('att-strip')));
+    await net(t);
+    expect(find.textContaining('Not marked yet'), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, isNotNull);
+    expect(find.textContaining('Selfie and mark IN'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_in.png'));
+    // IN: the place is read, the selfie taken, the server takes it – said big, once
+    await t.tap(find.byKey(const Key('att-punch')));
+    await net(t);
+    expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
+    expect(find.text('10:30'), findsOneWidget);
+    expect(srv.hrPunches.length, 1);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_marked.png'));
+    // … and back on Home by itself: the strip has turned
+    await settle(t, 3200);
+    await net(t);
+    expect(find.byKey(const Key('att-ok-page')), findsNothing);
+    expect(find.byKey(const Key('att-punch')), findsNothing, reason: 'Home again');
+    expect(find.textContaining('On duty'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_out.png'));
+    // the sun slid back opens the page again: OUT
+    await t.drag(find.byKey(const Key('att-strip-knob')), const Offset(-260, 0));
+    await net(t);
+    expect(find.textContaining('Selfie and mark OUT'), findsOneWidget);
+    expect(find.byKey(const Key('att-phone')), findsOneWidget, reason: 'this phone is now the one his attendance is tied to');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_out.png'));
+    await t.tap(find.byKey(const Key('att-punch')));
+    await net(t);
+    expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
+    await t.tap(find.byKey(const Key('att-ok')));
+    await net(t);
+    expect(srv.hrPunches.length, 2);
+    expect(find.textContaining('Attendance done today'), findsOneWidget);
+    expect(find.byKey(const Key('att-punch')), findsNothing);
+  }, tags: ['golden']);
+
+  testWidgets('(3.105.0) no HR on the site: no strip on Home', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('att-strip')), findsNothing);
+  });
+
+  /* (3.106.0 – asked 12-11-2026: "All" first among the dates; the photos small, each beside the box it fills) */
+  testWidgets('(3.106.0) the entries list opens on "All dates" – the newest of every date; a tap on a day: that day only; "All" again', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('day-all')), findsOneWidget);
+    expect(find.byKey(const Key('en-all-head')), findsOneWidget, reason: 'all dates is the one chosen');
+    expect(srv.listAsked.last, {'fn': 'getDieselIssues', 'from': '', 'to': ''}, reason: 'no dates asked – the newest of all');
+    expect(find.text('Sany 210 (No.1)'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/5c_entries_all.png'));
+    await t.tap(find.byKey(const Key('day-2026-10-13')));
+    await net(t);
+    expect(find.byKey(const Key('en-all-head')), findsNothing);
+    expect(find.text('13-10-2026, Tue'), findsOneWidget);
+    expect([srv.listAsked.last['from'], srv.listAsked.last['to'], srv.listAsked.last['all']], ['2026-10-13', '2026-10-13', true]);
+    await t.tap(find.byKey(const Key('day-all')));
+    await net(t);
+    expect(find.byKey(const Key('en-all-head')), findsOneWidget);
+    expect(srv.listAsked.last['from'], '');
+  }, tags: ['golden']);
+
+  testWidgets('(3.106.0) a new Diesel Issue: the date and the shift on one line; each photo small, beside the box it fills – the dispenser\'s beside the litres', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('photo-first')), findsOneWidget);
+    for (final k in ['dash', 'pump', 'veh', 'reg']) {
+      expect(find.byKey(Key('photo-$k')), findsOneWidget, reason: 'the $k photo can be taken');
+    }
+    final shot = t.getRect(find.byKey(const Key('photo-pump'))), box = t.getRect(find.byKey(const Key('d-qty')));
+    expect(shot.right, lessThan(box.left), reason: 'the photo on the left of its box');
+    expect((shot.center.dy - box.center.dy).abs(), lessThan(30), reason: 'on the same line');
+    expect(shot.width, lessThan(90), reason: 'small');
+    final day = t.getRect(find.text('14-10-2026')), shift = t.getRect(find.text('Night'));
+    expect((day.center.dy - shift.center.dy).abs(), lessThan(30), reason: 'the date and the shift on one line');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/6c_issue_photos_beside.png'));
+  }, tags: ['golden']);
 }

@@ -1969,5 +1969,19 @@
 "Type your OWN e-mail – one you can open. A 6-digit code is sent to it; type the code here once.": "तुमचा स्वतःचा, चालू असलेला email टाका. त्यावर 6 अंकी code येईल – तो इथे एकदा टाका.",
 "Your user ID in the ERP stays {0} – nothing of your work changes.": "ERP मधला तुमचा User ID {0} हाच राहतो – तुमच्या कामात काहीही बदलत नाही.",
 "From now on sign in with this e-mail – with your password, or with a code by e-mail:": "यापुढे login साठी हाच email वापरा – password ने किंवा Email OTP ने:",
-"This e-mail is already another user's. Type your own.": "हा email दुसऱ्या user चा आहे – तुमचा स्वतःचा email टाका."
+"This e-mail is already another user's. Type your own.": "हा email दुसऱ्या user चा आहे – तुमचा स्वतःचा email टाका.",
+"Slide to mark IN": "सरकवा – हजेरी लावा",
+"On duty": "कामावर आहात",
+"On duty · {0}": "कामावर · {0}",
+"Attendance done today": "आजची हजेरी पूर्ण",
+"Today's attendance is done": "आजची हजेरी पूर्ण",
+"Selfie and mark IN": "Selfie घ्या आणि IN लावा",
+"Selfie and mark OUT": "Selfie घ्या आणि OUT लावा",
+"This is your registered phone": "हा तुमचा नोंदलेला phone आहे",
+"IN marked": "हजेरी लागली",
+"OUT marked": "OUT लागले",
+"All dates": "सर्व तारखा",
+"Photo first – the number is read by itself. Type over it if it is wrong.": "आधी फोटो – आकडा आपोआप भरतो. चुकला तर टाइप करा.",
+"No Log Book entry yet": "अजून Log Book नोंद नाही",
+"Add a new entry.": "नवीन नोंद करा."
 }
