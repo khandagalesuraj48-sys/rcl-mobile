@@ -8601,7 +8601,9 @@ void main() {
       ..hrSite = true
       ..hrKey = 'hrme'
       ..hrOnlyUser = true;
-    final s = await ready(t, srv);
+    // (the words of a language come from the app's own files – here from the test, as in lang_test: a file is not read inside a screen test)
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
     expect([s.hrOnly, s.sites.length, s.stage], [true, 1, Stage.ready]);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
@@ -8707,10 +8709,6 @@ void main() {
     await t.tap(find.byKey(const Key('lang-mr')));
     await settle(t, 300);
     await t.tap(find.byKey(const Key('lang-save')));
-    // (the words of the language are read from the app's own files – a real reading, it takes a moment)
-    for (var i = 0; i < 20 && Lang.i.code != 'mr'; i++) {
-      await net(t);
-    }
     await net(t);
     expect(Lang.i.code, 'mr');
     expect(find.byKey(const Key('lang-page')), findsNothing);
