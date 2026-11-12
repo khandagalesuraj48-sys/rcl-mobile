@@ -15,6 +15,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.104.0 (12-11-2026 – two ways to sign in, "Verify my e-mail"; asked: "app relase kr … tikdun app wale user pn kru
+shaktil he sagle kahi"; the Portal's steps 10 / 11):** the app's own screens of what the web has. **Sign-in:** under "Sign in" the
+button "Login with Email OTP" – only when the Portal has it switched on; the e-mail, "Send code", the 6-digit code, "Sign in";
+"Send again" after 60 seconds; "Continue with Password" (`lib/screens/login.dart`). **Verify my e-mail**
+(`lib/screens/email_verify.dart`, from Me and from the strip): he types his OWN e-mail, the code goes there; from then on he signs
+in with that e-mail – his user ID (the e-mail he was made with) stays the name every module knows him by. **The reminder**
+(`lib/ui/mail_strip.dart`): a small strip on Home while his e-mail is not verified and the Portal's reminder is on – asked every
+hour; nothing is ever closed. **Me:** "Verify my e-mail" / "E-mail verified ✓" with the e-mail he signs in with. The Portal keeps
+and checks everything (`Session.otpSend / otpSignIn / verifySend / verifyCheck / mailAlert`); nothing new is kept on the phone.
+Not verified on a real phone or with a real e-mail from the app.
+
 **Version 3.103.0 (12-11-2026 – HR: my attendance; asked: "PURN HR MODUAL BANWAYLA GHE … WEB AND APP CHE NANTR APP RELASE KR"):**
 Home → **HR** (for a person who has the module `hr`, or "My HR" `hrme`, on the site): his own attendance of today – the phone's
 place against his work places (a point with its metres, an area, along the road: the same arithmetic as rcl-hr's), a selfie as

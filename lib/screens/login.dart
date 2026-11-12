@@ -6,13 +6,18 @@
  * password – the given one, the new one twice – and the app opens. No browser needed.
  * (3.31.0, asked 20-10-2026 with his picture and his photo: "LOGIN PAGE LA VEDIO NKO MAST EKHADA IMAGE ANI PREMIUM LOGIN DESIGN") his
  * site's photo on top with the Rachana logo, RCL ERP and the language (English / मराठी / हिंदी); the sheet: Welcome Back, the email
- * and the password, Remember me (the email kept on this phone), Forgot password?, Sign in; "Build • Manage • Move Forward". */
+ * and the password, Remember me (the email kept on this phone), Forgot password?, Sign in; "Build • Manage • Move Forward".
+ * (3.104.0, his rules of 12-11-2026) TWO WAYS IN: under "Sign in" the button "Login with Email OTP" – only when the Portal has
+ * it switched on. It turns the card: the e-mail, "Send code", then the 6-digit code that came to his e-mail and "Sign in";
+ * "Send again" after the 60 seconds the Portal keeps between two codes; "Continue with Password" turns it back. */
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 import 'package:flutter/services.dart';
 
+import '../core/api.dart' show ApiError;
 import '../core/update.dart';
 import '../ui/brand.dart';
 import '../ui/scope.dart';
@@ -37,6 +42,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   bool _busy = false, _show = false, _remember = true;
   static const kRemember = 'remember_mail';
   String _version = '', _lastErr = '';
+  // (3.104.0) the second way in: a code by e-mail
+  final _code = TextEditingController();
+  bool _otpOn = false, _otp = false, _sent = false;
+  int _wait = 0;
+  Timer? _tick;
   late final AnimationController _open = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
   late final AnimationController _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
 
@@ -53,6 +63,90 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (!mounted || m == null || m.isEmpty || _mail.text.isNotEmpty) return;
       setState(() => _mail.text = m);
     });
+    // (3.104.0) is "Login with Email OTP" switched on at the Portal? (no answer: the password sign-in as before)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || widget.setPassword) return;
+      final on = await SessionScope.read(context).otpOffered();
+      if (mounted && on) setState(() => _otpOn = true);
+    });
+  }
+
+  /// "Send code" / "Send again": the Portal's answer is the same for everybody – the card goes on to the code.
+  Future<void> _otpAsk() async {
+    if (_busy) return;
+    if (_mail.text.trim().isEmpty) {
+      _shake.forward(from: 0);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _busy = true;
+      _localErr = '';
+    });
+    final s = SessionScope.read(context);
+    try {
+      await s.api.keep.write(kRemember, _remember ? _mail.text.trim() : null);
+      final w = await s.otpSend(_mail.text);
+      if (!mounted) return;
+      setState(() {
+        _sent = true;
+        _code.clear();
+      });
+      _count(w);
+    } on ApiError catch (e) {
+      if (mounted) setState(() => _localErr = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _count(int secs) {
+    _tick?.cancel();
+    setState(() => _wait = secs < 0 ? 0 : secs);
+    if (_wait == 0) return;
+    _tick = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() => _wait--);
+      if (_wait <= 0) t.cancel();
+    });
+  }
+
+  Future<void> _otpGo() async {
+    if (_busy) return;
+    final code = _code.text.replaceAll(RegExp(r'\D'), '');
+    if (code.length != 6) {
+      setState(() => _localErr = bi('Type the 6-digit code from the e-mail.', 'Email मधला 6 अंकी code टाका.', '\n'));
+      _shake.forward(from: 0);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _busy = true;
+      _localErr = '';
+    });
+    await SessionScope.read(context).otpSignIn(_mail.text, code);
+    if (mounted) {
+      setState(() {
+        _busy = false;
+        _code.clear();
+      });
+    }
+  }
+
+  /// Between the two ways in (the e-mail typed stays).
+  void _way(bool otp) {
+    _tick?.cancel();
+    SessionScope.read(context).error = '';
+    setState(() {
+      _otp = otp;
+      _sent = false;
+      _wait = 0;
+      _localErr = '';
+      _code.clear();
+    });
   }
 
   @override
@@ -67,6 +161,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   @override
   void dispose() {
+    _tick?.cancel();
+    _code.dispose();
     _open.dispose();
     _shake.dispose();
     _mail.dispose();
@@ -228,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 24, offset: const Offset(0, -6))],
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      widget.setPassword ? _pwCard(err) : _card(err),
+                      widget.setPassword ? _pwCard(err) : (_otp ? _otpCard(err) : _card(err)),
                       const SizedBox(height: 18),
                       if (widget.setPassword)
                         Text('One password for the Portal and every module – the same on the web.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
@@ -364,8 +460,75 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             _errBox(err),
             const SizedBox(height: 14),
             _SignInButton(busy: _busy, onTap: _go),
+            // (3.104.0) the second way in – only when the Portal has it switched on
+            if (_otpOn) ...[
+              const SizedBox(height: 10),
+              OutlinedButton(
+                key: const Key('login-otp'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), foregroundColor: C.greenDark, side: const BorderSide(color: C.green), shape: const StadiumBorder()),
+                onPressed: _busy ? null : () => _way(true),
+                child: const Text('Login with Email OTP', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ],
           ]),
         ),
+      );
+
+  /// (3.104.0) the code by e-mail: the e-mail and "Send code"; then the code and "Sign in"
+  Widget _otpCard(String err) => AnimatedBuilder(
+        animation: _shake,
+        builder: (_, ch) => Transform.translate(offset: Offset(math.sin(_shake.value * math.pi * 6) * 12 * (1 - _shake.value), 0), child: ch),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('Login with Email OTP', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: C.ink)),
+          const SizedBox(height: 4),
+          const Text('A 6-digit code comes to your registered e-mail. It is valid for 10 minutes and works once.', style: TextStyle(fontSize: 14, color: C.muted, height: 1.35)),
+          const MrLine('तुमच्या नोंदलेल्या email वर 6 अंकी code येईल – 10 मिनिटांसाठी, एकदाच.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
+          const SizedBox(height: 16),
+          TextField(
+            key: const Key('login-otp-mail'),
+            controller: _mail,
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email, AutofillHints.username],
+            textInputAction: TextInputAction.done,
+            autocorrect: false,
+            onChanged: (_) {
+              if (_sent) _way(true); // another e-mail: from the first step again
+            },
+            onSubmitted: (_) {
+              if (!_sent) _otpAsk();
+            },
+            decoration: InputDecoration(labelText: tr('Email address'), prefixIcon: const Icon(Icons.mail_outline_rounded)),
+          ),
+          if (_sent) ...[
+            const SizedBox(height: 10),
+            const Text('If this e-mail is registered and verified, a code is on its way to it.', style: TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
+            const SizedBox(height: 10),
+            TextField(
+              key: const Key('login-otp-code'),
+              controller: _code,
+              keyboardType: TextInputType.number,
+              autofillHints: const [AutofillHints.oneTimeCode],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+              textInputAction: TextInputAction.go,
+              onChanged: (_) {
+                if (_localErr.isNotEmpty) setState(() => _localErr = '');
+              },
+              onSubmitted: (_) => _otpGo(),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 4),
+              decoration: InputDecoration(labelText: tr('6-digit code'), prefixIcon: const Icon(Icons.pin_outlined)),
+            ),
+          ],
+          _errBox(err),
+          const SizedBox(height: 14),
+          _SignInButton(busy: _busy, onTap: _sent ? _otpGo : _otpAsk, label: _sent ? 'Sign in' : 'Send code'),
+          if (_sent)
+            TextButton(
+              key: const Key('login-otp-again'),
+              onPressed: _busy || _wait > 0 ? null : _otpAsk,
+              child: Text(_wait > 0 ? 'Send again ($_wait s)' : 'Send again'),
+            ),
+          TextButton(key: const Key('login-otp-back'), onPressed: _busy ? null : () => _way(false), child: const Text('Continue with Password')),
+        ]),
       );
 }
 

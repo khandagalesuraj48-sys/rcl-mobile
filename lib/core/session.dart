@@ -634,7 +634,86 @@ class Session extends ChangeNotifier {
     email = (u['email'] ?? '').toString();
     tester = u['tester'] == true; // (02-11-2026) the Portal's "me" – the beta channel
     startItem = (me['start'] ?? '').toString();
+    mail = (me['email'] as Map?)?.cast<String, dynamic>(); // (3.104.0) his e-mail at the Portal: verified or not
   }
+
+  /* (3.104.0, the Portal's steps 10 / 11 – his rules of 12-11-2026) TWO WAYS TO SIGN IN: the password, as before – or a code sent
+   * to his e-mail. And "verify my e-mail": he types his OWN address, the code goes there; typed right, that e-mail is the one he
+   * signs in with (his user ID – the e-mail he was made with – stays the name every module knows him by). The Portal keeps and
+   * checks everything (the code, the limits, who may get one); the app only asks. An unverified e-mail gets a reminder – nothing
+   * is ever closed for it. */
+
+  /// What the Portal says of his e-mail (its "me"): null = not asked of him (the Super Admin) or not set up there.
+  Map<String, dynamic>? mail;
+  bool get mailKnown => mail != null;
+  bool get mailVerified => mail?['verified'] == true;
+  bool get mailCanVerify => mail != null && !mailVerified && mail?['canVerify'] == true;
+  bool get mailRemind => mail != null && !mailVerified && mail?['remind'] == true;
+
+  /// The e-mail he signs in with, once verified.
+  String get mailLogin => mailVerified ? '${mail?['login'] ?? email}' : '';
+
+  /// Is "Login with Email OTP" switched on at the Portal? (asked by the sign-in screen; no answer = no)
+  Future<bool> otpOffered() async {
+    try {
+      return (await api.auth({'action': 'options'}))['otp'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// "Send code" of the sign-in. → the seconds until another may be asked. The answer is the same whoever asks.
+  Future<int> otpSend(String address) async => _secs((await api.auth({'action': 'otpSend', 'email': address.trim()}))['wait']);
+
+  /// The code typed: the same sign-in as with the password.
+  Future<void> otpSignIn(String address, String code) async {
+    error = '';
+    try {
+      final r = await api.auth({'action': 'otpLogin', 'email': address.trim(), 'code': code.trim()});
+      if (r['mustChange'] == true) return _go(Stage.setPassword);
+      freshSignIn?.call(); // the code typed just now: the app lock does not ask again
+      await _afterSignIn();
+    } on ApiError catch (e) {
+      _go(Stage.signedOut, e.toString());
+    }
+  }
+
+  /// "Verify my e-mail", step 1: a code to [address] (his own). → the seconds until another may be asked; -1 = already verified.
+  Future<int> verifySend(String address) async {
+    final r = await api.auth({'action': 'verifySend', 'email': address.trim()});
+    if (r['verified'] == true) {
+      _verified('${r['login'] ?? address.trim()}');
+      return -1;
+    }
+    return _secs(r['wait']);
+  }
+
+  /// Step 2: the code. → the e-mail he signs in with from now on.
+  Future<String> verifyCheck(String code, String address) async {
+    final r = await api.auth({'action': 'verifyCheck', 'code': code.trim()});
+    final login = '${r['login'] ?? address.trim()}';
+    _verified(login);
+    return login;
+  }
+
+  void _verified(String login) {
+    mail = {...?mail, 'verified': true, 'login': login};
+    notifyListeners();
+  }
+
+  /// The reminder "verify your e-mail": asked of the Portal (it counts it at most once an hour). → show it now?
+  Future<bool> mailAlert() async {
+    if (!mailRemind) return false;
+    try {
+      final r = await api.auth({'action': 'emailAlert'});
+      if (r['verified'] == true) _verified('${mail?['login'] ?? email}');
+      return r['show'] == true;
+    } catch (_) {
+      return false; // not reached: asked again later
+    }
+  }
+
+  static int _secs(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 60;
 
   /// Email + password of the Portal (one password for every module).
   Future<void> signIn(String mail, String password) async {
@@ -1395,6 +1474,7 @@ class Session extends ChangeNotifier {
     stopLive();
     rtcOff();
     clearMemory(); // (update-155) nothing the screens kept stays after sign-out
+    mail = null;
     offline = false;
     try {
       await api.keep.write(kSnap, null); // (3.85.0) what was kept for opening with no network
