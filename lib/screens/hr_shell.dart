@@ -276,6 +276,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
               },
               child: Container(
                 height: 52,
+                width: double.infinity,
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(color: const Color(0x59092854), borderRadius: BorderRadius.circular(26), border: Border.all(color: Colors.white.withValues(alpha: .35))),
                 child: Stack(alignment: Alignment.centerLeft, children: [

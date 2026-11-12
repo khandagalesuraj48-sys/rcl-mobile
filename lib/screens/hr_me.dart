@@ -35,7 +35,7 @@ const kMeSky = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRig
 const _cat = {'staff': 'Staff', 'operator': 'Operator', 'driver': 'Driver', 'labour': 'Labour'};
 
 /// One line of a list card: a letter in its tile, the title, a small line, › (or nothing).
-Widget _li({required Key key, required String sign, required Color c, required Color soft, required String en, required String mr, String sub = '', Color ink = C.ink, bool arrow = true, bool last = false, VoidCallback? onTap}) => GestureDetector(
+Widget _li({required Key key, required String sign, IconData? icon, required Color c, required Color soft, required String en, required String mr, String sub = '', Color ink = C.ink, bool arrow = true, bool last = false, VoidCallback? onTap}) => GestureDetector(
       key: key,
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -43,7 +43,7 @@ Widget _li({required Key key, required String sign, required Color c, required C
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
         child: Row(children: [
-          Container(width: 36, height: 36, alignment: Alignment.center, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(12)), child: m.Text(sign, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, fontWeight: FontWeight.w800, color: c))),
+          Container(width: 36, height: 36, alignment: Alignment.center, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(12)), child: icon != null ? Icon(icon, size: 19, color: c) : m.Text(sign, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, fontWeight: FontWeight.w800, color: c))),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -115,7 +115,8 @@ class HrMeTab extends StatelessWidget {
               if (s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
               _li(
                   key: const Key('me-out'),
-                  sign: '⏻',
+                  sign: '',
+                  icon: Icons.power_settings_new_rounded,
                   c: const Color(0xFFC22A1B),
                   soft: const Color(0xFFFFE6E3),
                   en: 'Sign out',
