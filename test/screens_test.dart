@@ -8710,4 +8710,76 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('me-verify')), findsOneWidget);
   });
+
+  /* (3.105.0 – approved 12-11-2026: the strip on Home, the attendance page it opens, the "marked" screen) */
+  testWidgets('(3.105.0) attendance from Home: the strip (dawn – "Slide to mark IN") opens the page – sky, place, phone, one button; IN → said big, back on Home by itself, the strip says "On duty"; then OUT → "done"', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    final selfie = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    attendSelfieForTest = (_) async => selfie;
+    addTearDown(() {
+      attendSelfieForTest = null;
+      AttendKit.kit = AttendKit();
+    });
+    final srv = FakeServer()..hrSite = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('att-strip')), findsOneWidget, reason: 'he has HR on this site');
+    expect(find.textContaining('Slide to mark IN'), findsOneWidget);
+    expect(srv.hrSent, isEmpty, reason: 'Home asks nothing of the HR server – the strip shows what this phone kept');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_in.png'));
+    // a tap (or the sun slid across) opens the attendance page
+    await t.tap(find.byKey(const Key('att-strip')));
+    await net(t);
+    expect(find.textContaining('Not marked yet'), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, isNotNull);
+    expect(find.textContaining('Selfie and mark IN'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_in.png'));
+    // IN: the place is read, the selfie taken, the server takes it – said big, once
+    await t.tap(find.byKey(const Key('att-punch')));
+    await net(t);
+    expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
+    expect(find.text('10:30'), findsOneWidget);
+    expect(srv.hrPunches.length, 1);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_marked.png'));
+    // … and back on Home by itself: the strip has turned
+    await settle(t, 3200);
+    await net(t);
+    expect(find.byKey(const Key('att-ok-page')), findsNothing);
+    expect(find.byKey(const Key('att-punch')), findsNothing, reason: 'Home again');
+    expect(find.textContaining('On duty'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_out.png'));
+    // the sun slid back opens the page again: OUT
+    await t.drag(find.byKey(const Key('att-strip-knob')), const Offset(-260, 0));
+    await net(t);
+    expect(find.textContaining('Selfie and mark OUT'), findsOneWidget);
+    expect(find.byKey(const Key('att-phone')), findsOneWidget, reason: 'this phone is now the one his attendance is tied to');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_out.png'));
+    await t.tap(find.byKey(const Key('att-punch')));
+    await net(t);
+    expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
+    await t.tap(find.byKey(const Key('att-ok')));
+    await net(t);
+    expect(srv.hrPunches.length, 2);
+    expect(find.textContaining('Attendance done today'), findsOneWidget);
+    expect(find.byKey(const Key('att-punch')), findsNothing);
+  }, tags: ['golden']);
+
+  testWidgets('(3.105.0) no HR on the site: no strip on Home', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('att-strip')), findsNothing);
+  });
 }

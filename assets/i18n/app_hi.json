@@ -2006,5 +2006,15 @@
 "Type your OWN e-mail – one you can open. A 6-digit code is sent to it; type the code here once.": "अपना खुद का, चालू email डालें। उस पर 6 अंकों का code आएगा – उसे यहाँ एक बार डालें।",
 "Your user ID in the ERP stays {0} – nothing of your work changes.": "ERP में आपका User ID {0} ही रहता है – आपके काम में कुछ नहीं बदलता।",
 "From now on sign in with this e-mail – with your password, or with a code by e-mail:": "अब से login के लिए यही email इस्तेमाल करें – password से या Email OTP से:",
-"This e-mail is already another user's. Type your own.": "यह email किसी दूसरे user का है – अपना खुद का email डालें।"
+"This e-mail is already another user's. Type your own.": "यह email किसी दूसरे user का है – अपना खुद का email डालें।",
+"Slide to mark IN": "सरकाएँ → हाज़िरी लगाएँ",
+"On duty": "ड्यूटी पर हैं",
+"On duty · {0}": "ड्यूटी पर · {0}",
+"Attendance done today": "आज की हाज़िरी पूरी",
+"Today's attendance is done": "आज की हाज़िरी पूरी",
+"Selfie and mark IN": "Selfie लें और IN लगाएँ",
+"Selfie and mark OUT": "Selfie लें और OUT लगाएँ",
+"This is your registered phone": "यह आपका दर्ज phone है",
+"IN marked": "हाज़िरी लग गई",
+"OUT marked": "OUT लग गया"
 }
