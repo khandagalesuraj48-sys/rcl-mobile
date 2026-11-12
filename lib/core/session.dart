@@ -185,6 +185,13 @@ class Session extends ChangeNotifier {
   final Future<String> Function(String path)? langRead;
   static const kLang = 'app_lang';
 
+  /// (3.108.0) at a site where he has HR only (no Mechanical): the app's own pages for attendance – Home, Attendance, Leave, Me.
+  bool get hrOnly => site != null && site!.module('mechanical') == null;
+
+  /// (3.108.0) Me → Language: with his account at Mechanical it is kept there (the same on the web and at all his sites); a
+  /// person with HR only has no settings there – his choice is kept on this phone.
+  Future<void> chooseLanguage(String c) => hrOnly ? pickLanguageHere(c) : setLanguage(c);
+
   /// The language of the app: his choice (kept with his account, the same at all his sites and on the web); on this phone
   /// the last one is kept, so the sign-in screen is in it too.
   Future<void> _lang(String c) async {
@@ -410,7 +417,7 @@ class Session extends ChangeNotifier {
     notifyListeners();
     // (3.42.0) at a site: this phone is given for the notifications (core/push.dart – once a day; the app is not kept waiting)
     final f = onReady;
-    if (s == Stage.ready && was != Stage.ready && f != null) unawaited(f(this).catchError((Object _) {}));
+    if (s == Stage.ready && was != Stage.ready && f != null && !hrOnly) unawaited(f(this).catchError((Object _) {}));
   }
 
   /// (3.42.0) the app's notifications through Firebase (main.dart sets these on the phone; none in the tests unless a test sets them):
@@ -629,7 +636,10 @@ class Session extends ChangeNotifier {
     }
     // the app works through Mechanical: a site without it cannot be opened here
     sites = by.values.where((s) => s.module('mechanical') != null).toList();
-    if (sites.isEmpty) throw ApiError('You have no site with Mechanical yet – ask the Super Admin.', code: 'nosite');
+    // (3.108.0, asked 12-11-2026: "home screen new design kr non erp user sathi") nobody gave him Mechanical: a person who uses the
+    // app for his own attendance – his sites with HR ("My HR"). The app opens its own four pages for him (screens/hr_shell.dart).
+    if (sites.isEmpty) sites = by.values.where((s) => s.module('hr') != null || s.module('hrme') != null).toList();
+    if (sites.isEmpty) throw ApiError('You have no site with Mechanical or HR yet – ask the Super Admin.', code: 'nosite');
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();
     tester = u['tester'] == true; // (02-11-2026) the Portal's "me" – the beta channel
@@ -787,6 +797,14 @@ class Session extends ChangeNotifier {
     if (site?.code != code) clearMemory(); // (update-155) another site: nothing the screens kept of the one before
     site = s;
     siteName = s.name;
+    // (3.108.0) a site with HR only: nothing of Mechanical is asked – its lists, his settings, the notifications are Mechanical's
+    if (s.module('mechanical') == null) {
+      api.mechUrl = '';
+      offline = false;
+      await api.keepSite(code);
+      boot = 1;
+      return _go(Stage.ready);
+    }
     api.mechUrl = s.module('mechanical')!.url;
     await api.keepSite(code);
     boot = .5; // (3.37.0) signed in, his sites known: the site is opened now
