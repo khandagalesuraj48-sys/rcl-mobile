@@ -8774,6 +8774,27 @@ void main() {
     expect(find.textContaining('No salary slip yet'), findsOneWidget);
     await t.pageBack();
     await net(t);
+    // (3.112.0, rcl-hr step 12) a locked month: what was earned, what was deducted, the net pay – as the server gave it
+    srv.hrSlips = [
+      {'month': '2026-10', 'net': 127400, 'pay_type': 'monthly', 'rate': 131000, 'month_days': 31, 'pay_days': 29, 'extra_days': 2, 'gross': 131500, 'total_deductions': 4100,
+        'earnings': [{'label': 'Earned pay', 'amount': 122548.39}, {'label': 'Extra days', 'amount': 8451.61}, {'label': 'arrear', 'amount': 500}],
+        'deductions': [{'label': 'PF', 'amount': 1800}, {'label': 'Profession Tax', 'amount': 200}, {'label': 'Advance', 'amount': 2000}, {'label': 'Other deduction', 'amount': 100}]},
+      {'month': '2026-09', 'net': 496, 'pay_type': 'daily', 'rate': 500, 'month_days': 30, 'pay_days': 1, 'extra_days': 0, 'gross': 500, 'total_deductions': 4, 'earnings': [{'label': 'Earned pay', 'amount': 500}], 'deductions': [{'label': 'ESIC', 'amount': 4}]},
+    ];
+    await tapKey('me-slips');
+    expect(find.textContaining('No salary slip yet'), findsNothing);
+    expect(find.text('Oct 2026'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('slip-net-0'))).data, '₹ 1,27,400');
+    expect(find.text('₹ 1,22,548.39'), findsOneWidget);
+    expect(find.text('₹ 1,31,000 a month · 29 days paid · 2 extra'), findsOneWidget);
+    expect(find.text('Profession Tax'), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const Key('slip-net-1')), 250, scrollable: find.byType(Scrollable).first);
+    expect(t.widget<Text>(find.byKey(const Key('slip-net-1'))).data, '₹ 496');
+    expect(find.text('₹ 500 a day · 1 days paid'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_hr_slips.png'));
+    await t.pageBack();
+    await net(t);
     await tapKey('me-phone');
     expect(t.widget<Text>(find.byKey(const Key('phone-model'))).data, 'Test Phone');
     await t.pageBack();

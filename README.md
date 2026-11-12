@@ -17,7 +17,9 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 
 **Version 3.112.0 (12-11-2026 – asked: "attendance app madhe app update check update as kahi nahiye te banaw"):** a person with HR
 only has **Me → Check for update**: the app's version, the same check and the same update as Me of the full app; a newer version
-is said on the row when the page opens (`_UpdateRow`, `lib/screens/hr_me.dart`).
+is said on the row when the page opens (`_UpdateRow`, `lib/screens/hr_me.dart`). **Me → Salary slips** (rcl-hr step 12): his own
+payslips of locked months, the newest first – earned, extra days, deductions (PF, ESIC, Profession Tax, advance), net pay; read
+only (`mySlips`), made by the HO HR on the web.
 
 **Version 3.111.0 (12-11-2026 – rcl-hr step 9, asked: "realtime face recogniz ani geofence he 2 ni haway yatle ek jari nahi zal
 attendence mark nahi honar … face first time register krawa lagel … nantr … employee saral face dakhwel ani match zala tr sign in"):**
