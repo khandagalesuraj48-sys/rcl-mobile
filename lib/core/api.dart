@@ -574,10 +574,11 @@ class Api {
   }
 
   /// POST <hr>/api/hr { action, … } with his HR sign-in of this site – a new sign-in when it has ended (once).
-  Future<Map<String, dynamic>> hr(String siteCode, String hrUrl, String module, Map<String, dynamic> body) async {
+  /// [path] (3.111.0): 'hr' – HR's actions; 'face' – the face for attendance (its own endpoint of the same server, the same sign-in).
+  Future<Map<String, dynamic>> hr(String siteCode, String hrUrl, String module, Map<String, dynamic> body, {String path = 'hr'}) async {
     for (var tryNo = 1;; tryNo++) {
       if (_hrCookie.isEmpty || _hrKey != '$siteCode|$hrUrl|$module') await hrOpen(siteCode, hrUrl, module);
-      final r = await _send(() => _c.post(Uri.parse('$hrUrl/api/hr'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _hrCookie}, body: jsonEncode(body)));
+      final r = await _send(() => _c.post(Uri.parse('$hrUrl/api/$path'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _hrCookie}, body: jsonEncode(body)));
       final j = _json(r, 'HR');
       if (r.statusCode == 401 && j['code'] == 'session' && tryNo == 1) {
         _hrCookie = '';

@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/screens/attendance.dart' show attendSelfieForTest;
+import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
 import 'package:rcl_mobile/core/applock.dart';
@@ -8561,6 +8562,82 @@ void main() {
     await net(t);
   }, tags: ['golden']);
 
+  // (3.111.0, rcl-hr step 9 – asked 12-11-2026: "realtime face recogniz ani geofence he 2 ni haway yatle ek jari nahi zal
+  // attendence mark nahi honar") the site asks for the face
+  testWidgets('(3.111.0) HR – the face for attendance: registered once (five pictures), then every punch is checked first; a face that is not his: nothing is marked, nothing stays on the phone; he goes back: nothing is asked', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    final face = _FakeFace();
+    FaceKit.kit = face;
+    var oldSelfie = 0;
+    attendSelfieForTest = (_) async {
+      oldSelfie++;
+      return face.jpg;
+    };
+    addTearDown(() {
+      attendSelfieForTest = null;
+      AttendKit.kit = AttendKit();
+      FaceKit.kit = FaceKit();
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrFace = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await seen(t, find.text('HR'));
+    await settle(t, 400);
+    await t.tap(find.text('HR'));
+    await net(t);
+    Future<void> punch() async {
+      await t.ensureVisible(find.byKey(const Key('att-punch')));
+      await settle(t, 300);
+      await t.tap(find.byKey(const Key('att-punch')));
+      await net(t);
+    }
+
+    List<String> faceActs() => [for (final x in srv.hrFaceSent) '${x['action']}'];
+    int punches() => srv.hrSent.where((x) => x['action'] == 'punch').length;
+    // ---- he goes back from the registration: nothing is asked of the server but the state, no punch
+    face.agree = false;
+    await punch();
+    expect(faceActs(), ['faceState']);
+    expect([face.enrols, face.checks, punches(), srv.hrFacePics.length], [1, 0, 0, 0]);
+    // ---- the registration (once): five pictures to their places, then the blink, the check of THIS punch's photo, the punch
+    face.agree = true;
+    await punch();
+    expect(faceActs(), ['faceState', 'faceState', 'faceEnrolUrls', 'faceEnrol', 'faceCheck']);
+    expect(srv.hrFacePics, ['tok1-front.jpg', 'tok1-left.jpg', 'tok1-right.jpg', 'tok1-up.jpg', 'tok1-down.jpg']);
+    final en = srv.hrFaceSent.firstWhere((x) => x['action'] == 'faceEnrol');
+    expect([en['token'], (en['device'] as Map)['id']], ['tok1', 'and-test-phone-1']);
+    final pin = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
+    expect(srv.hrFaceSent.last['client_id'], pin['client_id'], reason: 'the face of this very punch was checked');
+    expect([face.enrols, face.checks, punches(), oldSelfie], [2, 1, 1, 0], reason: 'the face screen takes the proof photo – not the old selfie screen');
+    expect(find.textContaining('IN marked at 10:30'), findsOneWidget);
+    // ---- another face at OUT: the server's words, no punch, nothing kept on the phone; not registered a second time
+    srv.hrFaceOk = false;
+    kit.counter = 5000000 + 600000;
+    kit.clock += 600000;
+    await punch();
+    expect(find.textContaining('does not match the registered face'), findsOneWidget);
+    expect([face.enrols, face.checks, punches()], [2, 2, 1]);
+    expect(faceActs().sublist(5), ['faceCheck'], reason: 'registered already: not asked again');
+    expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty, reason: 'refused: nothing stays on the phone');
+    // ---- his own face again: OUT
+    srv.hrFaceOk = true;
+    await punch();
+    expect([face.checks, punches()], [3, 2]);
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'punch')['kind'], 'out');
+    // ---- he goes back from the blink: nothing is sent
+    final n = srv.hrFaceSent.length;
+    face.blink = false;
+    if (find.byKey(const Key('att-punch')).evaluate().isNotEmpty && t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed != null) {
+      await punch();
+      expect([srv.hrFaceSent.length, punches()], [n, 2]);
+    }
+  });
+
   testWidgets('(3.103.0) HR: "My HR" (hrme) opens the same screen with its own ticket', (t) async {
     phone(t);
     AttendKit.kit = FakeAttendKit();
@@ -9104,4 +9181,22 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/6c_issue_photos_beside.png'));
   }, tags: ['golden']);
+}
+
+/// The face screens without a camera: what he would have shown.
+class _FakeFace extends FaceKit {
+  final jpg = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+  bool agree = true, blink = true;
+  int enrols = 0, checks = 0;
+  @override
+  Future<Map<String, Uint8List>?> enrol(BuildContext context) async {
+    enrols++;
+    return agree ? {for (final p in ['front', 'left', 'right', 'up', 'down']) p: jpg} : null;
+  }
+
+  @override
+  Future<Uint8List?> check(BuildContext context, {String stamp = ''}) async {
+    checks++;
+    return blink ? jpg : null;
+  }
 }

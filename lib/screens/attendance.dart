@@ -26,6 +26,7 @@ import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'attend_reqs.dart';
+import 'face_screens.dart';
 import 'leave.dart';
 
 Future<void> openAttendance(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AttendanceScreen()));
@@ -100,6 +101,43 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     return s.api.hr(s.site!.code, m.url, m.key, body);
   }
 
+  /// (3.111.0, rcl-hr step 9) the face for attendance – its own endpoint of the HR server, the same sign-in.
+  Future<Map<String, dynamic>> _face(Map<String, dynamic> body) {
+    final s = SessionScope.read(context), m = hrModule(s);
+    if (s.site == null || m == null) throw StateError('none');
+    return s.api.hr(s.site!.code, m.url, m.key, body, path: 'face');
+  }
+
+  /// the site's rule: no attendance without the registered face (as the server said last – also while a reading is going on)
+  Map<String, dynamic>? _seen;
+  bool _faceIn = false;
+  bool get _faceOn => (_seen ?? me)?['face'] == true;
+
+  /// His face is registered – now, when it is not yet (once: he agrees, five pictures, the server takes them when they are all
+  /// of one person). false = he went back, or it was refused (said in [err]).
+  Future<bool> _faceReady() async {
+    if (_faceIn) return true; // (the server said so already, this time the page is open)
+    final st = await _face({'action': 'faceState'});
+    if (st['enrolled'] == true) {
+      _faceIn = true;
+      return true;
+    }
+    if (!mounted) return false;
+    final shots = await FaceKit.kit.enrol(context);
+    if (shots == null || !mounted) return false;
+    final s = SessionScope.read(context), u = await _face({'action': 'faceEnrolUrls'});
+    for (final p in (u['pictures'] as List? ?? const []).whereType<Map>()) {
+      final jpg = shots['${p['pose']}'];
+      if (jpg == null) throw ApiError('A picture of the registration is missing – register again.', code: 'picture');
+      await s.api.hrPhoto('${p['url']}', jpg);
+    }
+    final info = await AttendKit.kit.info();
+    await _face({'action': 'faceEnrol', 'token': u['token'], 'device': {'id': info['id'], 'model': info['model']}});
+    _faceIn = true;
+    if (mounted) toast(context, _t('Your face is registered.', 'तुमचा चेहरा नोंदवला.'));
+    return true;
+  }
+
   Future<void> _load({bool quiet = false}) async {
     final s = SessionScope.read(context);
     store ??= AttendStore('${s.email}|${s.site?.code ?? ''}');
@@ -114,12 +152,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     try {
       final info = await AttendKit.kit.info();
       var j = await _hr({'action': 'myAttend', 'device_id': info['id']});
+      _seen = j;
       await store!.keep(j, await AttendKit.kit.elapsed());
       if (k.isNotEmpty) {
         // the network is there: what was kept goes now, in the order it was taken
         await _sendKept(k);
         k = await store!.kept();
         j = await _hr({'action': 'myAttend', 'device_id': info['id']});
+        _seen = j;
         await store!.keep(j, await AttendKit.kit.elapsed());
       }
       if (!mounted) return;
@@ -170,6 +210,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       if (jpg == null) throw ApiError('The photo of this punch is not on the phone any more.', code: 'selfie');
       await s.api.hrPhoto('${u['url']}', jpg);
     }
+    // (3.111.0) the site asks for the face: this punch's own photo is compared with his registered face – not his: refused
+    // here, nothing of the punch is saved
+    if (_faceOn) await _face({'action': 'faceCheck', 'client_id': p.cid});
     return _hr(p.body(live: live).cast<String, dynamic>());
   }
 
@@ -247,7 +290,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     try {
       final h = await _where(), f = fix!;
       if (!mounted) return;
-      final raw = attendSelfieForTest != null ? await attendSelfieForTest!(context) : await Navigator.of(context).push<Uint8List>(MaterialPageRoute(builder: (_) => SelfieScreen(stamp: '${_dmy('${me?['day'] ?? ''}')} · ${h.place.name}')));
+      // (3.111.0) the face is needed: registered first (once); then the living face – straight, a blink – gives the proof photo
+      final Uint8List? raw;
+      if (_faceOn) {
+        if (!await _faceReady() || !mounted) return;
+        raw = await FaceKit.kit.check(context, stamp: '${_dmy('${me?['day'] ?? ''}')} · ${h.place.name}');
+      } else {
+        raw = attendSelfieForTest != null ? await attendSelfieForTest!(context) : await Navigator.of(context).push<Uint8List>(MaterialPageRoute(builder: (_) => SelfieScreen(stamp: '${_dmy('${me?['day'] ?? ''}')} · ${h.place.name}')));
+      }
       if (raw == null) return; // he went back: nothing taken
       final jpg = smallJpg(raw);
       if (jpg == null) throw AttendProblem('The photo could not be read – take it again.', 'Photo वाचता आला नाही – पुन्हा काढा.', 'selfie');

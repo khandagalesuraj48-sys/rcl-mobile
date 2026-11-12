@@ -201,6 +201,12 @@ class FakeServer {
   bool hrSite = false, hrNet = true, hrMay = true;
   /// (rcl-hr step 8) the site's rule "once a day"; the time today was closed by itself ('' = it was not)
   bool hrOnce = false;
+  /// (rcl-hr step 9) the face is needed; is his face registered; does the photo of a punch match; what was asked of api/face;
+  /// the punch numbers whose photo was found his
+  bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
+  final hrFaceSent = <Map<String, dynamic>>[];
+  final hrFaceSeen = <String>{};
+  final hrFacePics = <String>[];
   String hrClosed = '';
   String hrKey = 'hr', hrBound = '';
   final hrSent = <Map<String, dynamic>>[];
@@ -237,6 +243,7 @@ class FakeServer {
         'punches': hrPunches,
         'next': hrClosed.isNotEmpty ? (hrOnce ? 'done' : 'in') : hrPunches.isNotEmpty && hrPunches.last['kind'] == 'in' ? 'out' : hrOnce && hrPunches.any((p) => p['kind'] == 'in') ? 'done' : 'in',
         'once': hrOnce,
+        'face': hrFace,
         'closed': hrClosed,
       };
   http.Response _hrAct(Map<String, dynamic> b) {
@@ -249,6 +256,7 @@ class FakeServer {
         final cid = '${b['client_id']}', dev = '${(b['device'] as Map?)?['id'] ?? ''}';
         final had = hrPunches.where((p) => p['client_id'] == cid).toList();
         if (had.isNotEmpty) return _j({'ok': true, 'again': true, 'punch': had.first, 'punches': hrPunches, 'next': _hrDay(dev)['next']});
+        if (hrFace && !hrFaceSeen.contains(cid)) return _j({'error': 'Not marked: your face was not checked for this punch. Update the app (the face check is needed on your site) and mark again.', 'code': 'face'}, 403);
         if (b['dev_options'] == true) return _j({'error': 'Developer Options are ON in this phone: switch them off (Settings → Developer options) to mark attendance.', 'code': 'devoptions'}, 403);
         if (hrBound.isNotEmpty && hrBound != dev) return _j({'error': 'Your attendance is tied to another phone. Only the HR Admin can release it – then this phone will work.', 'code': 'device'}, 403);
         if (!hrPhotos.containsKey(cid)) return _j({'error': 'The photo of this punch did not arrive – take it again.', 'code': 'selfie'}, 400);
@@ -1575,8 +1583,38 @@ class FakeServer {
       return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': 'Admin'}, 'site': 'S1', 'siteName': 'VTR Site – NH 848'}, 200, {'set-cookie': 'rcl_eng=S1.eng$engSessions; Path=/; HttpOnly; SameSite=Lax'});
     }
     // (3.103.0) HR: its sign-in (a ticket of the Portal for 'hr' or 'hrme'), its actions, the place of a punch's photo
+    // (rcl-hr step 9) the face for attendance: its own endpoint, the same sign-in
+    if (path.endsWith('/hr/api/face')) {
+      if (!hrNet) throw http.ClientException('no network');
+      if (r.headers['X-RCL'] != '1' || !'${r.headers['Cookie']}'.startsWith('rcl_hr=S1.hr')) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      hrFaceSent.add(b);
+      switch ('${b['action']}') {
+        case 'faceState':
+          return _j({'ok': true, 'required': hrFace, 'min': 90, 'enrolled': hrFaceIn, 'poses': ['front', 'left', 'right', 'up', 'down']});
+        case 'faceEnrolUrls':
+          if (hrFaceIn) return _j({'error': 'Your face is registered already. Only the HR Admin can reset it – then you register again.', 'code': 'enrolled'}, 409);
+          return _j({'ok': true, 'token': 'tok1', 'type': 'image/jpeg', 'pictures': [for (final p in ['front', 'left', 'right', 'up', 'down']) {'pose': p, 'url': 'https://photos.test/hr-docs/faces/emp12/tok1-$p.jpg'}]});
+        case 'faceEnrol':
+          if (hrFacePics.length < 5) return _j({'error': 'Front: the picture did not arrive – take it again.', 'code': 'picture'}, 400);
+          hrFaceIn = true;
+          return _j({'ok': true, 'enrolled': true});
+        case 'faceCheck':
+          if (!hrFaceIn) return _j({'error': 'Your face is not registered yet – register it first (once).', 'code': 'notenrolled'}, 409);
+          if (!hrPhotos.containsKey('${b['client_id']}')) return _j({'error': 'The photo of this punch did not arrive – take it again.', 'code': 'selfie'}, 400);
+          if (!hrFaceOk) return _j({'error': 'Not marked: the face does not match the registered face of Sujit Mule (41 % – at least 90 % is needed). Nothing is saved.', 'code': 'face', 'pct': 41, 'min': 90}, 403);
+          hrFaceSeen.add('${b['client_id']}');
+          return _j({'ok': true, 'match': true, 'pct': 97, 'min': 90});
+      }
+      return _j({'error': 'Unknown action.'}, 400);
+    }
     if (path.endsWith('/hr/api/sso') || path.endsWith('/hr/api/hr') || r.url.host == 'photos.test') {
       if (!hrNet) throw http.ClientException('no network');
+      if (r.url.host == 'photos.test' && r.url.path.startsWith('/hr-docs/faces/')) {
+        if (r.method != 'PUT' || r.headers['Content-Type'] != 'image/jpeg') return http.Response('Bad Request', 400);
+        hrFacePics.add(r.url.pathSegments.last);
+        return http.Response('{}', 200);
+      }
       if (r.url.host == 'photos.test' && r.url.path.startsWith('/hr-docs/')) {
         if (r.method != 'PUT' || !const ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].contains(r.headers['Content-Type'])) return http.Response('Bad Request', 400);
         hrDocFiles[r.url.path.substring(9)] = '${r.headers['Content-Type']}';

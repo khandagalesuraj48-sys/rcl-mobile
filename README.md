@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.111.0 (12-11-2026 – rcl-hr step 9, asked: "realtime face recogniz ani geofence he 2 ni haway yatle ek jari nahi zal
+attendence mark nahi honar … face first time register krawa lagel … nantr … employee saral face dakhwel ani match zala tr sign in"):**
+when the site's rule "The face at every attendance" is ON (the web), a punch needs his **registered face** besides the work place.
+**Once:** he agrees, then five pictures – front, one side, the other, up / down, the other (`FaceEnrolSteps`); the server takes them
+only when all five are one person. **Every attendance:** the face straight, the eyes closed for a moment, open again
+(`FaceBlinkSteps`) – that picture is the punch's proof photo; the HR server compares it with the registered face (`api/face` →
+`faceCheck`, the site's percentage) BEFORE the punch: not his face = the server's words, no punch, nothing stays on the phone.
+The phone (Google ML Kit face detection, on the phone, nothing sent anywhere) only says: one face, how the head is turned, are
+the eyes open – it knows nobody (`lib/core/face.dart`, `lib/screens/face_screens.dart`). A site without the rule: the selfie as
+before. **Not verified:** a real phone (the camera, the light, how fast a blink is seen), iPhone, how often 90 % refuses the right
+person.
+
 **Version 3.110.0 (12-11-2026 – rcl-hr step 8, asked: "user 1 day madhe fkt ekadach sign in and sign out … visrun gela tr systeam auto
 sign out krel ani … absent … 4th late mark pasun direct half day"):** the rules are the site's (the web) – the app says what the server
 says: with "once a day" the bar reads "Today's attendance is done" after the day's IN and OUT; a day closed by itself (OUT forgotten)
