@@ -8579,6 +8579,168 @@ void main() {
     expect(find.byKey(const Key('att-punch')), findsOneWidget);
   });
 
+  /* (3.108.0) A PERSON WITH HR ONLY (no Mechanical at his site): the app's own pages – Home, Attendance, Leave, Me. */
+  testWidgets('(3.108.0) HR only: Home (his day, this week, four tiles, "For you"), the slide marks IN; Me – my details, my documents (he attaches one), salary slips, my phone, the language', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    final selfie = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    attendSelfieForTest = (_) async => selfie;
+    final pickWas = pickAttFiles;
+    final asked = <String>[];
+    pickAttFiles = (how, room) async {
+      asked.add('$how:$room');
+      return [(name: 'pan.jpg', bytes: selfie)];
+    };
+    addTearDown(() {
+      attendSelfieForTest = null;
+      AttendKit.kit = AttendKit();
+      pickAttFiles = pickWas;
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true;
+    final s = await ready(t, srv);
+    expect([s.hrOnly, s.sites.length, s.stage], [true, 1, Stage.ready]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    // ---- Home: nothing of Mechanical is asked; his name, his day, the tiles, what waits
+    expect(find.byKey(const Key('hr-home')), findsOneWidget);
+    expect(srv.calls.where((c) => c.startsWith('mech:')), isEmpty, reason: 'nothing of Mechanical');
+    expect(srv.calls.where((c) => c.startsWith('portal:go:hrme:')).length, 1, reason: 'one "My HR" sign-in for the whole Home');
+    expect(t.widget<Text>(find.byKey(const Key('hh-name'))).data, 'Sujit Mule');
+    expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'Not marked yet');
+    expect(find.textContaining('Slide to mark IN'), findsOneWidget);
+    expect([for (final k in ['hh-leave-sub', 'hh-docs-sub']) t.widget<Text>(find.byKey(Key(k))).data], ['3 left', '4 missing']);
+    expect(find.byKey(const Key('hh-w-2026-10-13')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('hh-w-2026-10-13')), matching: find.text('P')), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const Key('hh-n-day-2026-10-12')), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.textContaining('12 Oct has no punch'), findsOneWidget);
+    expect(find.byKey(const Key('hh-dot')), findsOneWidget, reason: 'something waits');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home.png'));
+    // ---- the slide: My attendance opens to mark – IN; said big, then Home again by itself: on duty
+    await tapKey('hh-slide');
+    expect(find.byKey(const Key('att-punch')), findsOneWidget);
+    await t.tap(find.byKey(const Key('att-punch')));
+    await net(t);
+    expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
+    await settle(t, 3200);
+    await net(t);
+    expect(find.byKey(const Key('att-punch')), findsNothing, reason: 'Home again');
+    expect(srv.hrPunches.length, 1);
+    expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, '10:30');
+    expect(find.textContaining('On duty since'), findsOneWidget);
+    expect(find.textContaining('Slide to mark OUT'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_duty.png'));
+    // ---- the bar: Attendance and Leave open as pages; Me is the second tab
+    await tapKey('nav-att');
+    expect(find.byKey(const Key('att-page')), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await tapKey('nav-leave');
+    expect(find.byKey(const Key('leave-page')), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await tapKey('nav-me');
+    expect(find.byKey(const Key('me-page')), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('me-role'))).data, 'E00012 · Site Engineer');
+    expect(t.widget<Text>(find.byKey(const Key('me-pct'))).data, '64%');
+    expect(find.textContaining('4 still missing'), findsOneWidget);
+    expect(find.textContaining('Registered for attendance'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_me.png'));
+    // ---- my details: to read – the account number comes masked
+    await tapKey('me-details');
+    expect(find.byKey(const Key('det-page')), findsOneWidget);
+    expect(find.text('XXXX9012'), findsOneWidget);
+    expect(find.textContaining('Still needed: Blood group'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_details.png'));
+    await t.pageBack();
+    await net(t);
+    // ---- my documents: he attaches his PAN card himself – a photo from the gallery; sent to its place, then listed
+    await tapKey('me-docs');
+    expect(find.byKey(const Key('docs-page')), findsOneWidget);
+    expect(find.text('Missing'), findsNWidgets(4));
+    await tapKey('doc-add-pan');
+    await t.tap(find.byKey(const Key('doc-gallery')));
+    await net(t);
+    expect(asked, ['gallery:1']);
+    expect(srv.hrDocFiles.values.toList(), ['image/jpeg']);
+    final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
+    expect([da['kind'], da['path'], da.containsKey('id')], ['pan', 'emp12/f1.jpg', false], reason: 'no employee id is sent – the server knows who he is');
+    expect(find.text('Attached'), findsOneWidget);
+    expect(find.text('Missing'), findsNWidgets(3));
+    expect(find.byKey(const Key('doc-open-doc1')), findsOneWidget);
+    await settle(t, 4000);      // (the message goes)
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_docs.png'));
+    await t.pageBack();
+    await net(t);
+    expect(find.textContaining('3 still missing'), findsOneWidget, reason: 'Me is read again');
+    // ---- salary slips: nothing made up before payroll; my phone
+    await tapKey('me-slips');
+    expect(find.textContaining('No salary slip yet'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await tapKey('me-phone');
+    expect(t.widget<Text>(find.byKey(const Key('phone-model'))).data, 'Test Phone');
+    await t.pageBack();
+    await net(t);
+    // ---- the language: the whole app in one – kept on this phone (he has no settings at Mechanical)
+    await tapKey('me-lang');
+    expect(find.byKey(const Key('lang-page')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_lang.png'));
+    await t.tap(find.byKey(const Key('lang-mr')));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('lang-save')));
+    await net(t);
+    expect(Lang.i.code, 'mr');
+    expect(find.byKey(const Key('lang-page')), findsNothing);
+    expect(find.text('भाषा'), findsOneWidget);
+    expect(find.text('माझी कागदपत्रे'), findsOneWidget);
+    expect(srv.calls.where((c) => c.startsWith('mech:')), isEmpty, reason: 'still nothing of Mechanical');
+    await tapKey('me-lang');
+    await t.tap(find.byKey(const Key('lang-en')));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('lang-save')));
+    await net(t);
+    expect(Lang.i.code, 'en');
+    expect(find.text('Language'), findsOneWidget);
+    // ---- e-mail and password: his user ID, change password
+    await tapKey('me-account');
+    expect(find.byKey(const Key('acc-pw')), findsOneWidget);
+    expect(find.text('sujit@rcl.test'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await tapKey('nav-home');
+    expect(find.byKey(const Key('hr-home')), findsOneWidget);
+  }, tags: ['golden']);
+
+  testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {
+    phone(t);
+    final srv = FakeServer()..hrSite = true;
+    final s = await ready(t, srv);
+    expect(s.hrOnly, false);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('hr-home')), findsNothing);
+    expect(find.byKey(const Key('hr-nav')), findsNothing);
+  });
+
   /* (3.104.0) TWO WAYS TO SIGN IN and "VERIFY MY E-MAIL" (the Portal's steps 10 / 11; his rules of 12-11-2026). */
   testWidgets('(3.104.0) "Login with Email OTP" is not there while the Portal has it switched off – the sign-in exactly as before', (t) async {
     phone(t);

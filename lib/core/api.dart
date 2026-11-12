@@ -596,6 +596,13 @@ class Api {
     if (r.statusCode >= 400) throw ApiError('The photo could not be sent (${r.statusCode}) – try again.', status: r.statusCode, code: 'photo');
   }
 
+  /// (3.108.0) A paper he attaches himself (Me → My documents), sent straight to its place ([url] – a link of HR's server for
+  /// this ONE file; [type] – image/jpeg, image/png, image/webp or application/pdf).
+  Future<void> hrFile(String url, List<int> bytes, String type) async {
+    final r = await _send(() => _c.put(Uri.parse(url), headers: {'Content-Type': type, 'x-upsert': 'false'}, body: bytes));
+    if (r.statusCode >= 400) throw ApiError('The file could not be sent (${r.statusCode}) – try again.', status: r.statusCode, code: 'file');
+  }
+
   /// Signs out of Mechanical and of the Portal (one sign-out for every module, as on the web).
   Future<void> signOut() async {
     try {

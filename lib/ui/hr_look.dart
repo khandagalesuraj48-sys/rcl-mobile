@@ -149,3 +149,9 @@ Widget hrNote(String text, {bool warm = true, Key? key}) => Container(
       decoration: BoxDecoration(color: warm ? const Color(0xFFFFF3D1) : C.blueSoft, borderRadius: BorderRadius.circular(14)),
       child: Text(text, style: TextStyle(fontSize: 12.5, height: 1.35, color: warm ? const Color(0xFF5B4A14) : const Color(0xFF0B3A6B))),
     );
+
+/// A pale glass box on a sky (a button there).
+Widget hrGlass(Widget child) => Container(
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .2), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: .4))),
+      child: child,
+    );

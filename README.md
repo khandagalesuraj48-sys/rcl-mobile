@@ -21,6 +21,11 @@ touched); This month – the sky with the days for pay and the working days so f
 Leave, the colours' names; **Leave** (rcl-hr step 7) – balance, this month, used, "+ Apply for leave" (From, To, whole day / a half,
 reason), my requests (a waiting one is taken back), how the site counts leave – said from its policy; **Requests** – "+ Ask to set a day
 right", my requests, "To approve · my team" (their days and their leave); **Set a day right** – a page of its own. Look: `lib/ui/hr_look.dart`.
+**A person with HR only** (nobody gave him Mechanical – `Session.hrOnly`): the app's own pages (`screens/hr_shell.dart`, `screens/hr_me.dart`) –
+Home (his day in the sky with the slide, this week, Leave · Requests · Documents · Salary slip, "For you"), the bar Home · Attendance · Leave ·
+Me, and Me: my details (to read), **my documents (he attaches a paper himself)**, salary slips (none before payroll), my phone, **Language**
+(English / मराठी / हिन्दी – kept on the phone for him), e-mail and password, sign out. Needs rcl-hr's `lib/act_self.js` (no SQL). A person with
+Mechanical: the app as it was.
 
 **Version 3.107.0 (12-11-2026 – the clean attendance screens; asked: "je required nahi te text kadhayche clen version hawa … employee
 monthly bghu shakel day wise nahi month wise", design approved "hech design final kr"):** My attendance – the place and the phone as two

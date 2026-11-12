@@ -26,6 +26,7 @@ import 'screens/call.dart';
 import 'screens/lock.dart';
 import 'screens/login.dart';
 import 'screens/scan_link_layer.dart';
+import 'screens/hr_shell.dart';
 import 'screens/shell.dart';
 import 'screens/site_pick.dart';
 import 'screens/splash.dart';
@@ -280,7 +281,8 @@ class Gate extends StatelessWidget {
         Stage.signedOut => const LoginScreen(key: ValueKey('login')),
         Stage.setPassword => const LoginScreen(key: ValueKey('setpw'), setPassword: true),
         Stage.pickSite => const SitePickScreen(key: ValueKey('site')),
-        Stage.ready => Shell(key: ValueKey('app-${s.site?.code}')),
+        // (3.108.0) HR only at this site: the app's own pages for attendance
+        Stage.ready => s.hrOnly ? HrShell(key: ValueKey('hr-${s.site?.code}')) : Shell(key: ValueKey('app-${s.site?.code}')),
         Stage.waiting => const Waiting(key: ValueKey('wait')),
       },
     );

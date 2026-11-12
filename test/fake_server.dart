@@ -208,6 +208,10 @@ class FakeServer {
   int hrTeam = 0;
   /// (rcl-hr step 7) leave: his balance, his requests ('mine') and his team's
   num hrLeaveBal = 3;
+  /// (3.108.0) a person with HR only: the Portal lists no Mechanical for him – only "My HR" at S1; the papers he attached
+  bool hrOnlyUser = false;
+  final hrDocs = <Map<String, dynamic>>[];
+  final hrDocFiles = <String, String>{};
   final hrLeaves = <Map<String, dynamic>>[];
   Map<String, dynamic> _hrLeave() {
     final mine = hrLeaves.where((q) => q['mine'] == true).toList();
@@ -283,7 +287,35 @@ class FakeServer {
         }
         return _j({'ok': true, 'team': hrTeam, 'rows': hrRegs.where((x) => x['mine'] != true && x['status'] == 'pending' && x['level'] == 1).toList()});
     }
+    const kinds = [
+      {'key': 'photo', 'name': 'Photo', 'pay': false, 'expires': false},
+      {'key': 'aadhaar', 'name': 'Aadhaar card', 'pay': false, 'expires': false},
+      {'key': 'pan', 'name': 'PAN card', 'pay': false, 'expires': false},
+      {'key': 'bank_passbook', 'name': 'Bank passbook / cancelled cheque', 'pay': true, 'expires': false},
+    ];
+    List<String> docsMissing() => [for (final k in kinds) if (!hrDocs.any((d) => d['kind'] == k['key'])) '${k['name']}'];
     switch ('${b['action']}') {
+      case 'myHr':
+        return _j({'ok': true, 'employee': {'code': 'E00012', 'name': 'Sujit Mule', 'category': 'staff', 'department': 'Projects', 'designation': 'Site Engineer'}, 'complete': {'pct': 64, 'missing': ['Blood group']},
+          'details': [
+            {'name': 'Employee', 'rows': [{'label': 'Code', 'value': 'E00012'}, {'label': 'Designation', 'value': 'Site Engineer'}, {'label': 'Date of birth', 'value': '01-01-1991'}]},
+            {'name': 'Statutory & bank', 'rows': [{'label': 'Bank IFSC code', 'value': 'SBIN0001234'}, {'label': 'Bank account number', 'value': 'XXXX9012'}]},
+          ],
+          'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'}});
+      case 'myDocs':
+        return _j({'ok': true, 'kinds': kinds, 'docs': hrDocs, 'docsMissing': docsMissing(), 'maxMb': 10});
+      case 'myDocUploadUrl':
+        if (!kinds.any((k) => k['key'] == b['kind'])) return _j({'error': 'Choose what kind of paper this is.', 'code': 'kind'}, 400);
+        final ext = const {'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf'}['${b['type']}'];
+        if (ext == null) return _j({'error': 'Only a photo (JPG, PNG, WebP) or a PDF can be attached.', 'code': 'type'}, 400);
+        final path = 'emp12/f${hrDocFiles.length + 1}.$ext';
+        return _j({'ok': true, 'path': path, 'url': 'https://photos.test/hr-docs/$path', 'type': b['type']});
+      case 'myDocAdd':
+        if (!hrDocFiles.containsKey('${b['path']}')) return _j({'error': 'The file did not arrive – attach it again.', 'code': 'path'}, 400);
+        hrDocs.insert(0, {'id': 'doc${hrDocs.length + 1}', 'kind': b['kind'], 'title': '', 'number': '', 'expires_on': null, 'mime': hrDocFiles['${b['path']}'], 'created_at': '2026-10-14T05:00:00.000Z'});
+        return _j({'ok': true, 'id': hrDocs.first['id']});
+      case 'myDocLink':
+        return _j({'ok': true, 'url': 'https://photos.test/hr-docs/open'});
       case 'myLeave':
         return _j(_hrLeave());
       case 'leaveAsk':
@@ -1346,6 +1378,11 @@ class FakeServer {
         if (!portalSignedIn || r.headers['Cookie'] != 'rcl_portal=abc123') return _j({'signedIn': false});
         // (as the Portal: still on a given password – no module until his own is set)
         if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
+        if (hrOnlyUser) {
+          return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, 'items': [
+            {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'hrme', 'moduleName': 'My HR', 'url': 'https://erp.test/hr'},
+          ]});
+        }
         return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, 'items': [
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
@@ -1533,6 +1570,11 @@ class FakeServer {
     // (3.103.0) HR: its sign-in (a ticket of the Portal for 'hr' or 'hrme'), its actions, the place of a punch's photo
     if (path.endsWith('/hr/api/sso') || path.endsWith('/hr/api/hr') || r.url.host == 'photos.test') {
       if (!hrNet) throw http.ClientException('no network');
+      if (r.url.host == 'photos.test' && r.url.path.startsWith('/hr-docs/')) {
+        if (r.method != 'PUT' || !const ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].contains(r.headers['Content-Type'])) return http.Response('Bad Request', 400);
+        hrDocFiles[r.url.path.substring(9)] = '${r.headers['Content-Type']}';
+        return http.Response('{}', 200);
+      }
       if (r.url.host == 'photos.test') {
         if (r.method != 'PUT' || r.headers['Content-Type'] != 'image/jpeg') return http.Response('Bad Request', 400);
         final cid = r.url.pathSegments.last.replaceAll('.jpg', '');
