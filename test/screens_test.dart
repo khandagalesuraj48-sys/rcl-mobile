@@ -8328,6 +8328,12 @@ void main() {
       await net(t);
     }
 
+    // (a long page builds only what is near the view: scrolled down to it first)
+    Future<void> shown(Finder f) async {
+      if (f.evaluate().isEmpty) await t.scrollUntilVisible(f, 250, scrollable: find.byType(Scrollable).first);
+      await settle(t, 300);
+    }
+
     // (what was asked of HR – without the quiet look for his team's requests after every reading)
     List<String> acts() => [for (final x in srv.hrSent) if (x['action'] != 'teamRegs') '${x['fn'] ?? x['action']}'];
     await openHr();
@@ -8383,6 +8389,7 @@ void main() {
     kit.clock += 600000;
     await tapKey('att-punch');
     expect(find.textContaining('your OUT of 10:40 is kept on the phone'), findsOneWidget);
+    await shown(find.byKey(const Key('att-kept-out')));
     expect(find.byKey(const Key('att-kept-out')), findsOneWidget);
     expect(kit.files.keys.where((k) => k.contains('_q_')).length, 2, reason: 'the punch and its photo');
     expect(srv.hrPunches.length, 1);
@@ -8393,6 +8400,7 @@ void main() {
     await net(t);
     await openHr();
     expect(find.byKey(const Key('att-offline')), findsOneWidget);
+    await shown(find.byKey(const Key('att-kept-out')));
     expect(find.byKey(const Key('att-kept-out')), findsOneWidget);
     // ---- the network is back: the SAME punch goes – its own number, its own place and moment, the phone's counters
     kit.lat = 19.9;      // (he has gone home meanwhile: the punch is not made again from where he is now)
@@ -8404,6 +8412,7 @@ void main() {
     expect(srv.hrPunches.length, 2);
     expect(find.byKey(const Key('att-kept-out')), findsNothing);
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
+    await shown(find.textContaining('Sent later'));
     expect(find.textContaining('Sent later'), findsOneWidget);
     kit.lat = 18.52;
     expect(find.byKey(const Key('att-team')), findsNothing, reason: 'nobody reports to him: no team card');
