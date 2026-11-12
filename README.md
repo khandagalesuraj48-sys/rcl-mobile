@@ -15,6 +15,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.112.0 (12-11-2026 – asked: "attendance app madhe app update check update as kahi nahiye te banaw"):** a person with HR
+only has **Me → Check for update**: the app's version, the same check and the same update as Me of the full app; a newer version
+is said on the row when the page opens (`_UpdateRow`, `lib/screens/hr_me.dart`).
+
 **Version 3.111.0 (12-11-2026 – rcl-hr step 9, asked: "realtime face recogniz ani geofence he 2 ni haway yatle ek jari nahi zal
 attendence mark nahi honar … face first time register krawa lagel … nantr … employee saral face dakhwel ani match zala tr sign in"):**
 when the site's rule "The face at every attendance" is ON (the web), a punch needs his **registered face** besides the work place.

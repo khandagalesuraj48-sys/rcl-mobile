@@ -18,6 +18,7 @@ import 'package:image/image.dart' as img;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/update.dart';
 import '../ui/hr_look.dart';
 import '../ui/motion.dart';
 import '../ui/scope.dart';
@@ -122,6 +123,7 @@ class HrMeTab extends StatelessWidget {
             hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
               _li(key: const Key('me-lang'), sign: 'A', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
               _li(key: const Key('me-account'), sign: '@', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
+              const _UpdateRow(),
               if (s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
               _li(
                   key: const Key('me-out'),
@@ -550,4 +552,66 @@ Widget hrFace(String name, String url, {required double size, required double ra
     decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(radius), border: border == null ? null : Border.all(color: border, width: 2)),
     child: url.isEmpty ? abc : Image.network(url, key: const Key('face-pic'), width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => abc, loadingBuilder: (_, child, p) => p == null ? child : abc),
   );
+}
+
+/// (3.112.0, asked 12-11-2026: "attendance app madhe app update check update as kahi nahiye te banaw") the app's version and its
+/// update, for a person with HR only – the same check and the same update as Me of the full app. A newer version is said on the
+/// row as soon as the page opens; a press checks again.
+class _UpdateRow extends StatefulWidget {
+  const _UpdateRow();
+  @override
+  State<_UpdateRow> createState() => _UpdateRowState();
+}
+
+class _UpdateRowState extends State<_UpdateRow> {
+  String version = '';
+  AppUpdate? found;
+  bool checking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    appVersion().then((v) {
+      if (mounted) setState(() => version = v);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final s = SessionScope.read(context), u = await checkUpdate(s.api, beta: s.tester);
+      if (mounted && u != null) setState(() => found = u);
+    });
+  }
+
+  Future<void> _check() async {
+    if (checking) return;
+    final s = SessionScope.read(context);
+    setState(() => checking = true);
+    final u = await checkUpdate(s.api, beta: s.tester);
+    if (!mounted) return;
+    setState(() {
+      checking = false;
+      found = u;
+    });
+    if (u == null) {
+      toast(context, _t('You have the newest version.', 'नवीनतम version आहे.'));
+    } else {
+      await runUpdate(context, u);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _li(
+        key: const Key('me-update'),
+        sign: '',
+        icon: Icons.system_update_rounded,
+        c: found != null ? const Color(0xFF0F7A45) : kNavy,
+        soft: found != null ? const Color(0xFFE3F7EC) : const Color(0xFFEEF1F7),
+        en: found != null ? 'Update the app' : 'Check for update',
+        mr: found != null ? 'App update करा' : 'Update तपासा',
+        sub: checking
+            ? _t('Checking…', 'तपासत आहे…')
+            : found != null
+                ? _t('New version ${found!.version} – tap to update', 'नवीन version ${found!.version} – update साठी दाबा')
+                : (version.isEmpty ? 'RCL ERP' : 'RCL ERP · v$version'),
+        onTap: _check,
+      );
 }

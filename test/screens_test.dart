@@ -8811,6 +8811,11 @@ void main() {
     await net(t);
     expect(Lang.i.code, 'en');
     expect(find.text('Language'), findsOneWidget);
+    // ---- (3.112.0) the app's update is here too: checked on a press – nothing newer: said
+    await tapKey('me-update');
+    expect(find.text('Check for update'), findsOneWidget);
+    expect(find.textContaining('You have the newest version'), findsWidgets);
+    await settle(t, 4000);
     // ---- e-mail and password: his user ID, change password
     await tapKey('me-account');
     expect(find.byKey(const Key('acc-pw')), findsOneWidget);
