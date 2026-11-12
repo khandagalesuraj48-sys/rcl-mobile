@@ -206,6 +206,15 @@ class FakeServer {
   /// (rcl-hr step 5) the requests to set a day right (his own: 'mine'); how many people report to him
   final hrRegs = <Map<String, dynamic>>[];
   int hrTeam = 0;
+  /// (rcl-hr step 7) leave: his balance, his requests ('mine') and his team's
+  num hrLeaveBal = 3;
+  final hrLeaves = <Map<String, dynamic>>[];
+  Map<String, dynamic> _hrLeave() {
+    final mine = hrLeaves.where((q) => q['mine'] == true).toList();
+    final num wait = mine.where((q) => q['status'] == 'pending').fold<num>(0, (a, q) => a + (q['days'] as num));
+    return {'ok': true, 'today': '2026-10-14', 'employee': {'code': 'E00012', 'name': 'Sujit Mule'}, 'policy': {'valid_from': '2026-10-01', 'per_month': 4, 'carry': true, 'auto_absent': true, 'levels': 2},
+      'balance': hrLeaveBal, 'booked': 0, 'pending': wait, 'available': hrLeaveBal - wait, 'month': {'credit': 4, 'added': 0, 'used': 1}, 'requests': mine};
+  }
   List<Map<String, dynamic>> hrPlaces = [
     {'id': 'pl1', 'name': 'Site office', 'kind': 'site_office', 'shape': 'circle', 'lat': 18.52, 'lng': 73.8567, 'radius_m': 150, 'points': []}
   ];
@@ -273,6 +282,32 @@ class FakeServer {
           q['status'] = 'refused';
         }
         return _j({'ok': true, 'team': hrTeam, 'rows': hrRegs.where((x) => x['mine'] != true && x['status'] == 'pending' && x['level'] == 1).toList()});
+    }
+    switch ('${b['action']}') {
+      case 'myLeave':
+        return _j(_hrLeave());
+      case 'leaveAsk':
+        if ('${b['reason']}'.length < 3) return _j({'error': 'Reason: write why (at least 3 letters).', 'code': 'reason'}, 400);
+        final from = DateTime.parse('${b['from']}'), to = DateTime.parse('${b['to']}');
+        final num days = b['part'] == 'full' ? to.difference(from).inDays + 1 : 0.5;
+        hrLeaves.insert(0, {'id': hrLeaves.length + 1, 'mine': true, 'code': 'E00012', 'name': 'Sujit Mule', 'from': b['from'], 'to': b['to'], 'part': b['part'], 'days': days, 'reason': b['reason'], 'status': 'pending', 'level': 2, 'steps': [], 'note': ''});
+        return _j(_hrLeave());
+      case 'leaveCancel':
+        final q = hrLeaves.firstWhere((x) => x['id'] == b['id'] && x['mine'] == true && x['status'] == 'pending', orElse: () => <String, dynamic>{});
+        if (q.isEmpty) return _j({'error': 'Only a request that still waits can be taken back.', 'code': 'decided'}, 409);
+        q['status'] = 'cancelled';
+        return _j(_hrLeave());
+      case 'teamLeaves':
+        return _j({'ok': true, 'team': hrTeam, 'rows': hrLeaves.where((q) => q['mine'] != true && q['status'] == 'pending' && q['level'] == 1).toList()});
+      case 'teamLeaveDecide':
+        final q = hrLeaves.firstWhere((x) => x['id'] == b['id'] && x['mine'] != true, orElse: () => <String, dynamic>{});
+        if (q.isEmpty || q['status'] != 'pending' || q['level'] != 1) return _j({'error': 'This request does not wait for you any more.', 'code': 'decided'}, 409);
+        if (b['decision'] == 'approved') {
+          q['level'] = 2;
+        } else {
+          q['status'] = 'refused';
+        }
+        return _j({'ok': true, 'team': hrTeam, 'rows': hrLeaves.where((x) => x['mine'] != true && x['status'] == 'pending' && x['level'] == 1).toList()});
     }
     return _j({'error': 'This is for the HR office only.', 'code': 'role'}, 403);
   }

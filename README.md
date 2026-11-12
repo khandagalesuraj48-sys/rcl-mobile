@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.108.0 (12-11-2026 – the eight screens exactly as he sent them back: "mala same as it is screen hawe aahet ya sagle leave
+chi pn screen"):** My attendance – three tiles (This month, **Leave**, Requests) and the dark bar "Slide to mark IN / OUT" (pulled or
+touched); This month – the sky with the days for pay and the working days so far, the month in its pill, Present · Half day · Absent ·
+Leave, the colours' names; **Leave** (rcl-hr step 7) – balance, this month, used, "+ Apply for leave" (From, To, whole day / a half,
+reason), my requests (a waiting one is taken back), how the site counts leave – said from its policy; **Requests** – "+ Ask to set a day
+right", my requests, "To approve · my team" (their days and their leave); **Set a day right** – a page of its own. Look: `lib/ui/hr_look.dart`.
+
 **Version 3.107.0 (12-11-2026 – the clean attendance screens; asked: "je required nahi te text kadhayche clen version hawa … employee
 monthly bghu shakel day wise nahi month wise", design approved "hech design final kr"):** My attendance – the place and the phone as two
 small chips (a touch on the place checks where he stands), today's punches in one card, three tiles (This month, Requests, My team); one

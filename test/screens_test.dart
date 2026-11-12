@@ -8334,7 +8334,7 @@ void main() {
     }
 
     // (what was asked of HR – without the quiet look for his team's requests after every reading)
-    List<String> acts() => [for (final x in srv.hrSent) if (x['action'] != 'teamRegs') '${x['fn'] ?? x['action']}'];
+    List<String> acts() => [for (final x in srv.hrSent) if (x['action'] != 'teamRegs' && x['action'] != 'teamLeaves') '${x['fn'] ?? x['action']}'];
     await openHr();
     expect(acts(), ['sso', 'myAttend']);
     expect(srv.calls.where((c) => c.startsWith('portal:go:hr:')).length, 1, reason: 'a ticket of the Portal for the module hr');
@@ -8414,11 +8414,12 @@ void main() {
     await shown(find.textContaining('Sent later'));
     expect(find.textContaining('Sent later'), findsOneWidget);
     kit.lat = 18.52;
-    expect(find.byKey(const Key('att-team')), findsNothing, reason: 'nobody reports to him: no team card');
     // ---- my month: each day with what it counts as, the month's count; a day gone is asked to be set right
     await tapKey('att-month');
     expect(find.text('Oct 2026'), findsOneWidget);
-    for (final e in {'P': '1', 'HD': '0', 'A': '1', 'late': '1'}.entries) {
+    expect(find.byKey(const Key('att-m-paid')), findsOneWidget);
+    expect(find.textContaining('working days so far'), findsOneWidget);
+    for (final e in {'P': '1', 'HD': '0', 'A': '1', 'L': '0'}.entries) {
       expect(find.descendant(of: find.byKey(Key('att-t-${e.key}')), matching: find.text(e.value)), findsOneWidget, reason: 'the month\'s count: ${e.key}');
     }
     expect(find.byKey(const Key('att-d-2026-10-12')), findsOneWidget);
@@ -8436,33 +8437,78 @@ void main() {
     await tapKey('att-d-2026-10-12');
     expect(find.byKey(const Key('reg-send')), findsNothing, reason: 'the day is opened first');
     await tapKey('att-ask');
+    // (3.108.0) the form is a page of its own: "Set a day right" – the day, what it counts as now, IN, OUT, the reason
     expect(find.byKey(const Key('reg-send')), findsOneWidget);
+    expect(find.textContaining('12-10-2026 · Monday'), findsOneWidget);
+    expect(find.textContaining('no punch – absent'), findsOneWidget);
     await t.enterText(find.byKey(const Key('reg-in')), '09:05');
     await t.enterText(find.byKey(const Key('reg-out')), '18:10');
     await t.enterText(find.byKey(const Key('reg-why')), 'x');
+    await t.ensureVisible(find.byKey(const Key('reg-send')));
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('reg-send')));
     await net(t);
     expect(find.textContaining('at least 5 letters'), findsOneWidget, reason: 'the server\'s refusal is shown in the form');
     await t.enterText(find.byKey(const Key('reg-why')), 'Phone was dead');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_request.png'));
+    await t.ensureVisible(find.byKey(const Key('reg-send')));
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('reg-send')));
     await net(t);
     final rq = srv.hrSent.lastWhere((x) => x['action'] == 'regAsk');
     expect([rq['day'], rq['in_time'], rq['out_time'], rq['out_next_day'], rq['reason']], ['2026-10-12', '09:05', '18:10', false, 'Phone was dead']);
     expect(find.byKey(const Key('reg-send')), findsNothing);
     await settle(t, 4000);      // (the message goes)
-    await tapKey('att-regs');
-    expect(find.byKey(const Key('reg-1')), findsOneWidget);
-    expect(find.textContaining('With the HR office'), findsOneWidget);
-    expect(find.textContaining('IN 09:05 · OUT 18:10'), findsOneWidget);
-    await t.pageBack();
-    await net(t);
     await tapKey('att-m-next');
     expect(find.text('Oct 2026'), findsOneWidget, reason: 'not a month to come');
     await tapKey('att-m-prev');
     expect(find.text('Sep 2026'), findsOneWidget);
     expect(find.textContaining('No punch in this month'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    // ---- (3.108.0) "Requests": his own, the newest first – where each stands
+    await tapKey('att-reqs');
+    expect(find.byKey(const Key('regs-new')), findsOneWidget);
+    expect(find.byKey(const Key('reg-1')), findsOneWidget);
+    expect(find.textContaining('12 Oct · IN 09:05 · OUT 18:10'), findsOneWidget);
+    expect(find.textContaining('waits for HR office'), findsOneWidget);
+    expect(find.text('Waiting'), findsOneWidget);
+    expect(find.byKey(const Key('regs-team')), findsNothing, reason: 'nobody reports to him: nothing to approve');
+    await t.pageBack();
+    await net(t);
+    // ---- (3.108.0) Leave: the balance, this month, used; "+ Apply for leave" – the form; the request waits; taken back by a touch
+    await tapKey('att-leave');
+    expect(find.descendant(of: find.byKey(const Key('leave-page')), matching: find.text('My requests')), findsOneWidget);
+    expect([for (final k in ['bal', 'add', 'used']) t.widget<Text>(find.byKey(Key('leave-$k'))).data], ['3', '4', '1']);
+    expect(find.textContaining('4 leaves are added every month'), findsOneWidget, reason: 'said from the site\'s policy');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_leave.png'));
+    await tapKey('leave-new');
+    expect(find.textContaining('14-10-2026'), findsNWidgets(2), reason: 'from and to: today');
+    expect(find.textContaining('balance 3 → 2 after approval'), findsOneWidget);
+    await t.tap(find.byKey(const Key('leave-part-first')));
+    await settle(t, 300);
+    expect(find.textContaining('balance 3 → 2.5 after approval'), findsOneWidget);
+    await t.tap(find.byKey(const Key('leave-send')));
+    await net(t);
+    expect(find.textContaining('at least 3 letters'), findsOneWidget, reason: 'the server\'s refusal is shown in the form');
+    await t.enterText(find.byKey(const Key('leave-why')), 'Family function');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_leave_ask.png'));
+    await t.tap(find.byKey(const Key('leave-send')));
+    await net(t);
+    final lq = srv.hrSent.lastWhere((x) => x['action'] == 'leaveAsk');
+    expect([lq['from'], lq['to'], lq['part'], lq['reason']], ['2026-10-14', '2026-10-14', 'first', 'Family function']);
+    expect(find.byKey(const Key('leave-send')), findsNothing);
+    expect(find.byKey(const Key('lv-1')), findsOneWidget);
+    expect(find.textContaining('14 Oct · half day'), findsOneWidget);
+    await settle(t, 4000);      // (the message goes)
+    await tapKey('lv-back-1');
+    await t.tap(find.text('Take back'));
+    await net(t);
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'leaveCancel')['id'], 1);
+    expect(find.text('Taken back'), findsOneWidget);
     await t.pageBack();
     await net(t);
     await t.pageBack();
@@ -8473,11 +8519,14 @@ void main() {
       {'id': 11, 'code': 'E00020', 'name': 'Ravi Patil', 'day': '2026-10-10', 'in_time': '08:55', 'out_time': '', 'out_next_day': false, 'reason': 'Forgot IN', 'status': 'pending', 'level': 1, 'steps': []},
       {'id': 12, 'code': 'E00021', 'name': 'Asha More', 'day': '2026-10-11', 'in_time': '', 'out_time': '18:30', 'out_next_day': false, 'reason': 'No network', 'status': 'pending', 'level': 1, 'steps': []},
     ]);
+    srv.hrLeaves.add({'id': 21, 'code': 'E00020', 'name': 'Ravi Patil', 'from': '2026-10-20', 'to': '2026-10-21', 'part': 'full', 'days': 2, 'reason': 'Village fair', 'status': 'pending', 'level': 1, 'steps': [], 'note': ''});
     await openHr();
-    await tapKey('att-team');
+    await tapKey('att-reqs');
+    expect(find.byKey(const Key('regs-team')), findsOneWidget);
     expect(find.byKey(const Key('reg-11')), findsOneWidget);
     expect(find.byKey(const Key('reg-12')), findsOneWidget);
-    expect(find.byKey(const Key('reg-1')), findsNothing, reason: 'his own request is not his to decide');
+    expect(find.byKey(const Key('team-yes-1')), findsNothing, reason: 'his own request is not his to decide');
+    expect(find.textContaining('Ravi Patil · Leave 20 – 21 Oct · 2 days'), findsOneWidget, reason: 'his team\'s leave waits for him too');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_team.png'));
     await tapKey('team-yes-11');
@@ -8495,6 +8544,10 @@ void main() {
     expect([no12['id'], no12['decision'], no12['note']], [12, 'refused', 'He was not at site']);
     expect(find.byKey(const Key('reg-12')), findsNothing);
     await settle(t, 6500);
+    await tapKey('tl-yes-21');
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'teamLeaveDecide')['decision'], 'approved');
+    expect(find.byKey(const Key('lv-21')), findsNothing);
+    await settle(t, 4000);
     await t.pageBack();
     await net(t);
     await t.pageBack();
@@ -8741,7 +8794,7 @@ void main() {
     await net(t);
     expect(find.textContaining('Not marked yet'), findsOneWidget);
     expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, isNotNull);
-    expect(find.textContaining('Selfie and mark IN'), findsOneWidget);
+    expect(find.textContaining('Slide to mark IN'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_in.png'));
     // IN: the place is read, the selfie taken, the server takes it – said big, once
@@ -8763,7 +8816,7 @@ void main() {
     // the sun slid back opens the page again: OUT
     await t.drag(find.byKey(const Key('att-strip-knob')), const Offset(-260, 0));
     await net(t);
-    expect(find.textContaining('Selfie and mark OUT'), findsOneWidget);
+    expect(find.textContaining('Slide to mark OUT'), findsOneWidget);
     expect(find.byKey(const Key('att-phone')), findsOneWidget, reason: 'this phone is now the one his attendance is tied to');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_out.png'));
