@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:rcl_mobile/core/attend.dart';
 
-class FakeKit extends AttendKit {
+class FakeAttendKit extends AttendKit {
   bool dev = false, mocked = false;
   double lat = 18.52, lng = 73.8567, acc = 12;
   int? counter = 5000000;

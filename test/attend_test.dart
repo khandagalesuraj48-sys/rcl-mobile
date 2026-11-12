@@ -55,7 +55,7 @@ void main() {
   });
 
   test('kept on the phone: written with its photo, read in the order taken, gone when sent; one person\'s are not another\'s', () async {
-    final kit = FakeKit();
+    final kit = FakeAttendKit();
     AttendKit.kit = kit;
     final st = AttendStore('a@rcl.test|S1'), other = AttendStore('b@rcl.test|S1');
     final jpg = Uint8List.fromList([1, 2, 3]);

@@ -8301,7 +8301,7 @@ void main() {
   // (3.103.0, rcl-hr – asked 12-11-2026: "PURN HR MODUAL … WEB AND APP") the app's own attendance screen
   testWidgets('(3.103.0) HR – my attendance: inside → selfie → IN; outside, a poor reading, Developer Options, a made-up location: nothing sent; no network: kept on the phone and sent later as the same punch; another phone; my month; "My HR"', (t) async {
     phone(t);
-    final kit = FakeKit();
+    final kit = FakeAttendKit();
     AttendKit.kit = kit;
     final selfie = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
     attendSelfieForTest = (_) async => selfie;
@@ -8432,7 +8432,7 @@ void main() {
 
   testWidgets('(3.103.0) HR: "My HR" (hrme) opens the same screen with its own ticket', (t) async {
     phone(t);
-    AttendKit.kit = FakeKit();
+    AttendKit.kit = FakeAttendKit();
     addTearDown(() => AttendKit.kit = AttendKit());
     final srv = FakeServer()
       ..hrSite = true
