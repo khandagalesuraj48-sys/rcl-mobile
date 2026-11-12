@@ -153,7 +153,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   void _requests() => _push(AttendRegsScreen(ask: _hr));
   void _month() => _push(AttendMonthScreen(ask: _hr, who: _who));
   void _docs() => _push(MyDocsScreen(ask: _hr));
-  void _slips() => _push(const SalarySlipsScreen());
+  void _slips() => _push(SalarySlipsScreen(ask: _hr));
   Future<void> _photo() async {
     if (await setMyPhoto(context, _hr) && mounted) _load();
   }

@@ -18,6 +18,7 @@ import 'package:image/image.dart' as img;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/update.dart';
 import '../ui/hr_look.dart';
 import '../ui/motion.dart';
 import '../ui/scope.dart';
@@ -115,13 +116,14 @@ class HrMeTab extends StatelessWidget {
               _li(key: const Key('me-photo'), sign: '', icon: Icons.account_circle_rounded, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My photo', mr: 'माझा photo', sub: '${mine?['photo'] ?? ''}'.isEmpty ? _t('Take or choose – shown on your profile', 'काढा किंवा निवडा – profile वर दिसेल') : _t('Set – touch to change', 'ठेवला आहे – बदलण्यासाठी touch करा'), onTap: onPhoto),
               _li(key: const Key('me-details'), sign: 'i', c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My details', mr: 'माझी माहिती', sub: _t('Personal, job, bank – ask HR to change', 'वैयक्तिक, नोकरी, bank – बदलासाठी HR ला सांगा'), onTap: () => open(MyDetailsScreen(mine: mine))),
               _li(key: const Key('me-docs'), sign: 'D', c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My documents', mr: 'माझी कागदपत्रे', sub: mine == null ? _t('Upload', 'Upload') : miss > 0 ? _t('Upload – $miss still missing', 'Upload – अजून $miss बाकी') : _t('All expected papers are there', 'अपेक्षित सर्व कागदपत्रे आहेत'), onTap: onDocs),
-              _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('None yet', 'अजून नाही'), onTap: onSlips),
+              _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('Month by month', 'महिन्यानुसार'), onTap: onSlips),
               _li(key: const Key('me-phone'), sign: 'P', c: kPurple, soft: const Color(0xFFF1E8F6), en: 'My phone', mr: 'माझा phone', sub: phone['bound'] == true ? _t('Registered for attendance', 'हजेरीसाठी नोंदलेला') : _t('No phone registered yet', 'अजून phone नोंदलेला नाही'), last: true, onTap: () => open(MyPhoneScreen(phone: phone, day: day))),
             ]),
             const SizedBox(height: 12),
             hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
               _li(key: const Key('me-lang'), sign: 'A', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
               _li(key: const Key('me-account'), sign: '@', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
+              const _UpdateRow(),
               if (s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
               _li(
                   key: const Key('me-out'),
@@ -327,17 +329,123 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
 }
 
 /// SALARY SLIPS – they come from payroll, which the HR office has not started yet: nothing is shown before.
-class SalarySlipsScreen extends StatelessWidget {
-  const SalarySlipsScreen({super.key});
+class SalarySlipsScreen extends StatefulWidget {
+  const SalarySlipsScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<SalarySlipsScreen> createState() => _SalarySlipsScreenState();
+}
+
+/// (3.112.0, rcl-hr step 12) his own salary slips: one card a locked month, the newest first – what was earned, what was
+/// deducted, the net pay. Read only; made by the HO HR on the web.
+class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
+  List<Map> slips = const [];
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final j = await widget.ask({'action': 'mySlips'});
+      if (!mounted) return;
+      setState(() {
+        slips = (j['slips'] as List? ?? const []).whereType<Map>().toList();
+        loading = false;
+        err = '';
+      });
+    } on ApiError catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = e.message;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = 'Something went wrong – please try again.';
+        });
+      }
+    }
+  }
+
+  static String _rs(Object? v) {
+    final n = v is num ? v : num.tryParse('$v') ?? 0, neg = n < 0, t = n.abs().toStringAsFixed(n == n.roundToDouble() ? 0 : 2), p = t.split('.');
+    var a = p[0];
+    // (the Indian way: 1,23,456)
+    if (a.length > 3) {
+      final last = a.substring(a.length - 3);
+      var rest = a.substring(0, a.length - 3);
+      final parts = <String>[];
+      while (rest.length > 2) {
+        parts.insert(0, rest.substring(rest.length - 2));
+        rest = rest.substring(0, rest.length - 2);
+      }
+      if (rest.isNotEmpty) parts.insert(0, rest);
+      a = '${parts.join(',')},$last';
+    }
+    return '${neg ? '−' : ''}₹ $a${p.length > 1 ? '.${p[1]}' : ''}';
+  }
+
+  Widget _line(String label, Object? amount, {bool bold = false, Color color = C.ink}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(children: [
+          Expanded(child: m.Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w700 : FontWeight.w500, color: bold ? C.ink : C.muted))),
+          m.Text(_rs(amount), style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: color)),
+        ]),
+      );
+
+  Widget _slip(Map s, int i) {
+    final earn = (s['earnings'] as List? ?? const []).whereType<Map>().toList(), ded = (s['deductions'] as List? ?? const []).whereType<Map>().toList();
+    final daily = '${s['pay_type']}' == 'daily', extra = s['extra_days'] is num ? s['extra_days'] as num : 0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: hrCard(key: Key('slip-$i'), [
+        Row(children: [
+          Expanded(child: m.Text(monthName('${s['month']}'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: C.ink))),
+          m.Text(_rs(s['net']), key: Key('slip-net-$i'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: Color(0xFF0F7A45))),
+        ]),
+        Padding(
+          padding: const EdgeInsets.only(top: 2, bottom: 8),
+          child: m.Text(
+              [
+                daily ? _t('${_rs(s['rate'])} a day', 'दिवसाला ${_rs(s['rate'])}') : _t('${_rs(s['rate'])} a month', 'महिन्याला ${_rs(s['rate'])}'),
+                _t('${s['pay_days']} days paid', '${s['pay_days']} दिवसांचा पगार'),
+                if (extra > 0) _t('$extra extra', '$extra extra'),
+              ].join(' · '),
+              style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        ),
+        for (final l in earn) _line('${l['label']}', l['amount']),
+        _line(_t('Gross', 'एकूण'), s['gross'], bold: true),
+        if (ded.isNotEmpty) const Divider(height: 14, color: Color(0xFFF0F2F7)),
+        for (final l in ded) _line('${l['label']}', l['amount'], color: C.red),
+        if (ded.isNotEmpty) _line(_t('Total deductions', 'एकूण कपात'), s['total_deductions'], bold: true, color: C.red),
+        const Divider(height: 14, color: Color(0xFFF0F2F7)),
+        _line(_t('Net pay', 'हातात येणारा पगार'), s['net'], bold: true, color: const Color(0xFF0F7A45)),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: hrHead(context, sky: kMeSky, title: 'Salary slips', mr: 'पगार पावत्या', height: 64),
-        body: ListView(key: const Key('slips-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
-          hrCard([
-            hrTitle('No salary slip yet', 'अजून पगार पावती नाही'),
-            const Text('Your salary slip of each month comes here when the HR office starts payroll in this app.', mr: 'HR office या app मध्ये payroll सुरू केल्यावर प्रत्येक महिन्याची पगार पावती इथे येईल.', style: TextStyle(fontSize: 13, color: C.muted, height: 1.5)),
-          ]),
-        ]),
+        body: loading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(key: const Key('slips-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 12), child: hrNote(err, key: const Key('slips-err'))),
+                if (slips.isEmpty && err.isEmpty)
+                  hrCard([
+                    hrTitle('No salary slip yet', 'अजून पगार पावती नाही'),
+                    const Text('Your salary slip of a month comes here when the head office has made and locked that month\'s pay.', mr: 'Head office ने त्या महिन्याचा पगार काढून lock केल्यावर तुमची पगार पावती इथे येते.', style: TextStyle(fontSize: 13.5, height: 1.4, color: C.muted)),
+                  ]),
+                for (var i = 0; i < slips.length; i++) _slip(slips[i], i),
+              ]),
       );
 }
 
@@ -550,4 +658,66 @@ Widget hrFace(String name, String url, {required double size, required double ra
     decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(radius), border: border == null ? null : Border.all(color: border, width: 2)),
     child: url.isEmpty ? abc : Image.network(url, key: const Key('face-pic'), width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => abc, loadingBuilder: (_, child, p) => p == null ? child : abc),
   );
+}
+
+/// (3.112.0, asked 12-11-2026: "attendance app madhe app update check update as kahi nahiye te banaw") the app's version and its
+/// update, for a person with HR only – the same check and the same update as Me of the full app. A newer version is said on the
+/// row as soon as the page opens; a press checks again.
+class _UpdateRow extends StatefulWidget {
+  const _UpdateRow();
+  @override
+  State<_UpdateRow> createState() => _UpdateRowState();
+}
+
+class _UpdateRowState extends State<_UpdateRow> {
+  String version = '';
+  AppUpdate? found;
+  bool checking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    appVersion().then((v) {
+      if (mounted) setState(() => version = v);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final s = SessionScope.read(context), u = await checkUpdate(s.api, beta: s.tester);
+      if (mounted && u != null) setState(() => found = u);
+    });
+  }
+
+  Future<void> _check() async {
+    if (checking) return;
+    final s = SessionScope.read(context);
+    setState(() => checking = true);
+    final u = await checkUpdate(s.api, beta: s.tester);
+    if (!mounted) return;
+    setState(() {
+      checking = false;
+      found = u;
+    });
+    if (u == null) {
+      toast(context, _t('You have the newest version.', 'नवीनतम version आहे.'));
+    } else {
+      await runUpdate(context, u);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _li(
+        key: const Key('me-update'),
+        sign: '',
+        icon: Icons.system_update_rounded,
+        c: found != null ? const Color(0xFF0F7A45) : kNavy,
+        soft: found != null ? const Color(0xFFE3F7EC) : const Color(0xFFEEF1F7),
+        en: found != null ? 'Update the app' : 'Check for update',
+        mr: found != null ? 'App update करा' : 'Update तपासा',
+        sub: checking
+            ? _t('Checking…', 'तपासत आहे…')
+            : found != null
+                ? _t('New version ${found!.version} – tap to update', 'नवीन version ${found!.version} – update साठी दाबा')
+                : (version.isEmpty ? 'RCL ERP' : 'RCL ERP · v$version'),
+        onTap: _check,
+      );
 }

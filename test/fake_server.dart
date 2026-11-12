@@ -201,6 +201,8 @@ class FakeServer {
   bool hrSite = false, hrNet = true, hrMay = true;
   /// (rcl-hr step 8) the site's rule "once a day"; the time today was closed by itself ('' = it was not)
   bool hrOnce = false;
+  /// (rcl-hr step 12) his payslips of locked months, as the HR server gives them
+  List<Map<String, dynamic>> hrSlips = [];
   /// (rcl-hr step 9) the face is needed; is his face registered; does the photo of a punch match; what was asked of api/face;
   /// the punch numbers whose photo was found his
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
@@ -317,6 +319,8 @@ class FakeServer {
           ],
           'photo': hrDocs.any((d) => d['kind'] == 'photo') ? 'https://photos.test/hr-docs/open' : '',
           'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'}});
+      case 'mySlips':
+        return _j({'ok': true, 'employee': {'code': 'RCL012', 'name': 'Sujit Mule'}, 'slips': hrSlips});
       case 'myDocs':
         return _j({'ok': true, 'kinds': kinds, 'docs': hrDocs, 'docsMissing': docsMissing(), 'maxMb': 10});
       case 'myDocUploadUrl':
