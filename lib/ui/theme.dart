@@ -59,6 +59,7 @@ class Tone {
   static const store = Tone(Color(0xFFC98114), Color(0xFFA65E00), C.amberSoft);
   static const engineering = Tone(Color(0xFF139AA5), Color(0xFF0B6870), Color(0xFFDDF2F3));
   static const purchase = Tone(Color(0xFF3B7BE6), Color(0xFF1A4FB0), C.blueSoft);
+  static const hr = Tone(Color(0xFFD9508A), Color(0xFF9C1F55), Color(0xFFFCE4EE)); // (3.103.0) HR – attendance
   static const maintenance = Tone(Color(0xFFEA6A3C), Color(0xFFC0461A), C.orangeSoft);
   static const billing = Tone(Color(0xFF6A5AE0), Color(0xFF4535B0), Color(0xFFE8E5FB));
   static const reports = Tone(Color(0xFF5A6B85), Color(0xFF344054), C.slateSoft);

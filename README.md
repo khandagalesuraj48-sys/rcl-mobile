@@ -15,6 +15,20 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.103.0 (12-11-2026 – HR: my attendance; asked: "PURN HR MODUAL BANWAYLA GHE … WEB AND APP CHE NANTR APP RELASE KR"):**
+Home → **HR** (for a person who has the module `hr`, or "My HR" `hrme`, on the site): his own attendance of today – the phone's
+place against his work places (a point with its metres, an area, along the road: the same arithmetic as rcl-hr's), a selfie as
+proof, **IN / OUT**. Outside a work place, with a reading worse than 100 m, with Developer Options ON or a made-up location
+nothing is taken – only attendance is stopped. The punch is written on the phone first and sent at once; **with no network it
+stays on the phone exactly as taken** (place, the phone's clock and its counter since switch-on, the photo) and is sent by
+itself when the network is back – the same punch with its own number, never a new one. One phone a person: the phone's own
+number (ANDROID_ID) goes with every punch; another phone is refused by the server until the HR Admin releases the old one.
+"This month": every day with what it counts as (Present, Half day, Absent …), the month's count; a day gone is tapped to
+ask for it to be set right (IN / OUT, what happened – it counts when approved); "My requests"; for a person others report to:
+"My team's requests" (approve → the HR office, or refuse with the reason) – `lib/screens/attend_reqs.dart`. `lib/core/attend.dart` (the rules), `lib/screens/attendance.dart`, the native
+channel `rcl/attend` (MainActivity.kt). **Not verified:** a real phone (GPS, camera, Developer Options), an iPhone – there the
+phone's number is the app's own (kept in its files) and a punch taken without a network always waits for the HR Admin.
+
 **Version 3.102.0 (12-11-2026 – a post made higher in the app; asked: "tya patticha size wadhwata yeil … fkt android and ios app
 sathi"):** a post the Super Admin made higher for the app in the Portal ("Fit to strip" → "Height in the app": `fit.app.r`, down to
 9 : 16) is shown in that shape on Home; the others stay the strip; from one to the next the height changes smoothly. The Android

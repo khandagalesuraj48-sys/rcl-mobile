@@ -557,6 +557,45 @@ class Api {
     }
   }
 
+  // ---------------- HR (3.103.0) ----------------
+  String _hrCookie = '', _hrKey = '';
+
+  /// (3.103.0, rcl-hr) HR's sign-in on [siteCode] – as Purchase's: a ticket of the Portal for [module] ('hr' – the HR office's
+  /// people; 'hrme' – "My HR", an employee for himself), POST <hr>/api/sso { ticket } → its cookie rcl_hr.
+  Future<Map<String, dynamic>> hrOpen(String siteCode, String hrUrl, String module) async {
+    final t = await ticket(siteCode, module);
+    final r = await _send(() => _c.post(Uri.parse('$hrUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
+    final j = _json(r, 'HR');
+    if (r.statusCode >= 400 || j['error'] != null) throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString());
+    final m = RegExp(r'rcl_hr=([^;]*)').firstMatch(r.headers['set-cookie'] ?? '');
+    _hrCookie = m == null ? '' : 'rcl_hr=${m.group(1)}';
+    _hrKey = '$siteCode|$hrUrl|$module';
+    return j;
+  }
+
+  /// POST <hr>/api/hr { action, … } with his HR sign-in of this site – a new sign-in when it has ended (once).
+  Future<Map<String, dynamic>> hr(String siteCode, String hrUrl, String module, Map<String, dynamic> body) async {
+    for (var tryNo = 1;; tryNo++) {
+      if (_hrCookie.isEmpty || _hrKey != '$siteCode|$hrUrl|$module') await hrOpen(siteCode, hrUrl, module);
+      final r = await _send(() => _c.post(Uri.parse('$hrUrl/api/hr'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _hrCookie}, body: jsonEncode(body)));
+      final j = _json(r, 'HR');
+      if (r.statusCode == 401 && j['code'] == 'session' && tryNo == 1) {
+        _hrCookie = '';
+        continue;
+      }
+      if (r.statusCode >= 400 || j['error'] != null) {
+        throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString(), data: {...j}..remove('error'));
+      }
+      return j;
+    }
+  }
+
+  /// (3.103.0) The proof photo of a punch, sent straight to its place ([url] – a link of HR's server for this ONE file).
+  Future<void> hrPhoto(String url, List<int> jpg) async {
+    final r = await _send(() => _c.put(Uri.parse(url), headers: {'Content-Type': 'image/jpeg', 'x-upsert': 'false'}, body: jpg));
+    if (r.statusCode >= 400) throw ApiError('The photo could not be sent (${r.statusCode}) – try again.', status: r.statusCode, code: 'photo');
+  }
+
   /// Signs out of Mechanical and of the Portal (one sign-out for every module, as on the web).
   Future<void> signOut() async {
     try {

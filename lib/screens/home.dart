@@ -41,6 +41,7 @@ import 'verify.dart';
 import 'logbook.dart';
 import 'store.dart';
 import 'engineering.dart';
+import 'attendance.dart';
 import 'purchase.dart';
 import 'masters.dart';
 import '../ui/t.dart';
@@ -59,6 +60,7 @@ class ModuleTile {
     if (native == 'reports') return reportsOf(s).isNotEmpty;
     if (native == 'masters') return mastersOf(s).isNotEmpty;
     if (native == 'billing') return seesBilling(s);
+    if (native == 'hr') return hrModule(s) != null;
     return perm.isEmpty || s.canSee(perm);
   }
 }
@@ -73,6 +75,7 @@ const kModules = [
   ModuleTile('Store', 'स्टोअर', 'package', Color(0xFFA65E00), C.amberSoft, native: 'store', module: 'store'), // (3.10.0) the app's own Store screens
   ModuleTile('Purchase', 'खरेदी', 'inbox_tray', Color(0xFF1A4FB0), C.blueSoft, native: 'purchase', module: 'purchase'), // (3.72.0) the Purchase Department (rcl-purchase)
   ModuleTile('Engineering', 'अभियांत्रिकी', 'building_construction', Color(0xFF0B6870), Color(0xFFDDF2F3), native: 'engineering', module: 'engineering'), // (3.93.0) RFI, Hindrances, PPC (rcl-engineering)
+  ModuleTile('HR', 'हजेरी', 'calendar', Color(0xFF9C1F55), Color(0xFFFCE4EE), native: 'hr'), // (3.103.0) HR – my attendance (rcl-hr): 'hr' or "My HR" ('hrme')
   ModuleTile('Reports', 'रिपोर्ट्स', 'bar_chart', Color(0xFF344054), C.slateSoft, native: 'reports'),
   ModuleTile('Administration', 'प्रशासन', 'gear', C.slate, C.slateSoft, native: 'admin', admin: true), // (3.9.0) the app's own Admin screens
 ];
@@ -333,6 +336,10 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     }
     if (m.native == 'purchase') {
       await openPurchase(context);
+      return;
+    }
+    if (m.native == 'hr') {
+      await openAttendance(context);
       return;
     }
     if (m.native == 'engineering') {
