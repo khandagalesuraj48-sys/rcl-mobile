@@ -17,6 +17,7 @@ import 'package:flutter/material.dart' as m show Text;
 
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
+import '../core/attend_remind.dart';
 import '../core/session.dart';
 import '../ui/attend_look.dart';
 import '../ui/hr_look.dart';
@@ -153,6 +154,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       final info = await AttendKit.kit.info();
       var j = await _hr({'action': 'myAttend', 'device_id': info['id']});
       _seen = j;
+      unawaited(AttendRemind.set(j));
       await store!.keep(j, await AttendKit.kit.elapsed());
       if (k.isNotEmpty) {
         // the network is there: what was kept goes now, in the order it was taken
@@ -160,6 +162,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         k = await store!.kept();
         j = await _hr({'action': 'myAttend', 'device_id': info['id']});
         _seen = j;
+        unawaited(AttendRemind.set(j));
         await store!.keep(j, await AttendKit.kit.elapsed());
       }
       if (!mounted) return;
@@ -323,6 +326,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         final r = await _send(p, live: true);
         await store!.remove(p.cid);
         await store!.patch({'punches': r['punches'], 'next': r['next'], 'phone': 'this'});
+        unawaited(AttendRemind.set({...?me, 'punches': r['punches'], 'next': r['next']})); // (the reminder of what was just marked goes; OUT's is set after IN)
         if (!mounted) return;
         final t = '${(r['punch'] as Map?)?['time'] ?? ''}';
         okTime = t.isEmpty ? indiaTime(p.atDevice) : t;

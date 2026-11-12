@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
+import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
 import 'package:rcl_mobile/screens/attendance.dart' show attendSelfieForTest;
 import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit;
 import 'package:rcl_mobile/core/app_share.dart';
@@ -8832,6 +8833,15 @@ void main() {
     await net(t);
     expect(Lang.i.code, 'en');
     expect(find.text('Language'), findsOneWidget);
+    // ---- (3.113.0) the attendance reminders: on as they come; a press switches them off (kept on the phone) and on again
+    await tapKey('me-remind');
+    expect(find.textContaining('Off – tap to switch on'), findsOneWidget);
+    expect(await AttendRemind.isOff(), true);
+    await settle(t, 4000);
+    await tapKey('me-remind');
+    expect(find.textContaining('On – half an hour before IN and OUT'), findsOneWidget);
+    expect(await AttendRemind.isOff(), false);
+    await settle(t, 4000);
     // ---- (3.112.0) the app's update is here too: checked on a press – nothing newer: said
     await tapKey('me-update');
     expect(find.text('Check for update'), findsOneWidget);
