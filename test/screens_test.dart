@@ -8412,8 +8412,8 @@ void main() {
     expect(srv.hrPunches.length, 2);
     expect(find.byKey(const Key('att-kept-out')), findsNothing);
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
-    await shown(find.textContaining('Sent later'));
-    expect(find.textContaining('Sent later'), findsOneWidget);
+    await shown(find.textContaining('Later · नंतर'));
+    expect(find.textContaining('Later · नंतर'), findsOneWidget);
     kit.lat = 18.52;
     expect(find.byKey(const Key('att-team')), findsNothing, reason: 'nobody reports to him: no team card');
     // ---- my month: each day with what it counts as, the month's count; a day gone is asked to be set right

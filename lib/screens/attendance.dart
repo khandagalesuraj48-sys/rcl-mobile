@@ -385,7 +385,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   if (kept.isNotEmpty) ...[
                     const SizedBox(height: 18),
                     Text(bi('Waiting for the network (${kept.length})', 'Network ची वाट पाहत आहे (${kept.length})'), style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w700)),
-                    for (final k in kept) _row(k.kind, indiaTime(k.atDevice), k.place, bi('On the phone', 'Phone मध्ये'), C.amber, C.amberSoft, Key('att-kept-${k.kind}')),
+                    for (final k in kept) _row(k.kind, indiaTime(k.atDevice), k.place, bi('Kept', 'ठेवले'), C.amber, C.amberSoft, Key('att-kept-${k.kind}')),
                     Align(alignment: Alignment.centerLeft, child: TextButton.icon(key: const Key('att-send'), onPressed: busy ? null : () => _load(), icon: const Icon(Icons.cloud_upload_rounded), label: Text(bi('Send now', 'आता पाठवा')))),
                   ],
                   // ---- today's punches
@@ -393,7 +393,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   Text(bi('Today\'s punches', 'आजच्या नोंदी'), style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w700)),
                   if (punches.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(bi('None yet.', 'अजून नाही.'), style: const TextStyle(fontSize: 14, color: C.faint))),
                   for (final p in punches)
-                    _row('${p['kind']}', '${p['time'] ?? ''}', _placeName('${p['place_id'] ?? ''}'), p['status'] == 'review' ? bi('To be looked at', 'तपासणीसाठी') : p['offline'] == true ? bi('Sent later', 'नंतर पाठवले') : '', p['status'] == 'review' ? C.amber : C.slate,
+                    _row('${p['kind']}', '${p['time'] ?? ''}', _placeName('${p['place_id'] ?? ''}'), p['status'] == 'review' ? bi('Check', 'तपासणी') : p['offline'] == true ? bi('Later', 'नंतर') : '', p['status'] == 'review' ? C.amber : C.slate,
                         p['status'] == 'review' ? C.amberSoft : C.slateSoft, Key('att-p-${p['id']}')),
                   if (team > 0) ...[
                     const SizedBox(height: 14),

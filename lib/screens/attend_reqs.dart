@@ -41,12 +41,14 @@ Future<bool> askRegularize(BuildContext context, HrAsk ask, String day, {String 
             decoration: InputDecoration(labelText: label, hintText: '09:05', suffixIcon: IconButton(icon: const Icon(Icons.schedule_rounded), onPressed: () => pick(c))),
           );
       return AlertDialog(
-        title: Text(bi('Set ${_dmy(day)} right', '${_dmy(day)} दुरुस्त करा')),
+        title: Text(bi('Set ${_dmy(day)} right', '${_dmy(day)} दुरुस्त करा', '\n'), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, height: 1.3)),
         scrollable: true,
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(bi('Write the IN and / or OUT time of that day and what happened. It counts when it is approved.', 'त्या दिवसाची IN आणि / किंवा OUT वेळ आणि काय झाले ते लिहा. मंजूर झाल्यावर धरले जाईल.', '\n'), style: const TextStyle(fontSize: 13.5, color: C.muted, height: 1.35)),
           const SizedBox(height: 12),
-          Row(children: [Expanded(child: time('reg-in', 'IN', tin)), const SizedBox(width: 10), Expanded(child: time('reg-out', 'OUT', tout))]),
+          time('reg-in', 'IN', tin),
+          const SizedBox(height: 10),
+          time('reg-out', 'OUT', tout),
           CheckboxListTile(key: const Key('reg-next'), contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading, value: next, onChanged: (v) => set(() => next = v == true), title: Text(bi('OUT was on the next day (night)', 'OUT दुसऱ्या दिवशी (रात्रपाळी)'), style: const TextStyle(fontSize: 14))),
           TextField(key: const Key('reg-why'), controller: why, maxLines: 3, minLines: 2, maxLength: 200, decoration: InputDecoration(labelText: bi('What happened *', 'काय झाले *'))),
           if (err.isNotEmpty) Text(err, key: const Key('reg-err'), style: const TextStyle(color: C.red, fontSize: 13.5, height: 1.35)),
@@ -239,7 +241,7 @@ class _TeamRegsScreenState extends State<TeamRegsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: toneBar(Tone.hr, title: Text(bi('My team\'s requests', 'माझ्या टीमच्या विनंत्या'))),
+        appBar: toneBar(Tone.hr, title: Text(bi('Team requests', 'टीमच्या विनंत्या'))),
         body: loading
             ? const SkeletonList(tiles: 0, rows: 4)
             : ListView(key: const Key('team-page'), padding: const EdgeInsets.fromLTRB(16, 6, 16, 40), children: [

@@ -23,7 +23,9 @@ nothing is taken – only attendance is stopped. The punch is written on the pho
 stays on the phone exactly as taken** (place, the phone's clock and its counter since switch-on, the photo) and is sent by
 itself when the network is back – the same punch with its own number, never a new one. One phone a person: the phone's own
 number (ANDROID_ID) goes with every punch; another phone is refused by the server until the HR Admin releases the old one.
-"This month": each day's first IN and last OUT. `lib/core/attend.dart` (the rules), `lib/screens/attendance.dart`, the native
+"This month": every day with what it counts as (Present, Half day, Absent …), the month's count; a day gone is tapped to
+ask for it to be set right (IN / OUT, what happened – it counts when approved); "My requests"; for a person others report to:
+"My team's requests" (approve → the HR office, or refuse with the reason) – `lib/screens/attend_reqs.dart`. `lib/core/attend.dart` (the rules), `lib/screens/attendance.dart`, the native
 channel `rcl/attend` (MainActivity.kt). **Not verified:** a real phone (GPS, camera, Developer Options), an iPhone – there the
 phone's number is the app's own (kept in its files) and a punch taken without a network always waits for the HR Admin.
 
