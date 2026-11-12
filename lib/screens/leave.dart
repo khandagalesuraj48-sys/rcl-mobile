@@ -9,6 +9,7 @@ import 'package:flutter/material.dart' as m show Text;
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
 import '../ui/hr_look.dart';
+import '../ui/hr_skin.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
 import '../ui/theme.dart';
@@ -25,8 +26,11 @@ String _n(Object? v) {
 }
 
 class LeaveScreen extends StatefulWidget {
-  const LeaveScreen({super.key, required this.ask});
+  const LeaveScreen({super.key, required this.ask, this.embedded = false});
   final HrAsk ask;
+
+  /// (3.114.0) a tab of the attendance app: no way back in its head
+  final bool embedded;
   @override
   State<LeaveScreen> createState() => _LeaveScreenState();
 }
@@ -103,15 +107,15 @@ class _LeaveScreenState extends State<LeaveScreen> {
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 5),
             padding: const EdgeInsets.fromLTRB(12, 9, 8, 10),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .2), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: .4))),
+            decoration: BoxDecoration(color: sk.headGlass, borderRadius: BorderRadius.circular(16), border: Border.all(color: sk.headGlassLine), boxShadow: sk.classic ? null : sk.shadow),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              m.Text(me == null ? '–' : _n(v), key: Key('leave-$key'), maxLines: 1, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
-              Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.white)),
+              m.Text(me == null ? '–' : _n(v), key: Key('leave-$key'), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 24, fontWeight: FontWeight.w800, color: sk.onHead, height: 1.15)),
+              Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: sk.onHeadSoft)),
             ]),
           ),
         );
     return Scaffold(
-      appBar: hrHead(context, sky: kLeaveSky, title: 'Leave', mr: 'रजा', pill: headPill(monthName(today)), height: 150, below: [
+      appBar: hrHead(context, sky: kLeaveSky, title: 'Leave', mr: 'रजा', pill: headPill(monthName(today)), height: 150, back: !widget.embedded, below: [
         Padding(padding: const EdgeInsets.only(top: 8), child: Row(children: [box('bal', me?['balance'], 'Balance', 'शिल्लक'), box('add', month['credit'], 'This month', 'हा महिना'), box('used', month['used'], 'Used', 'वापरली')])),
       ]),
       body: loading
@@ -125,7 +129,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   const SizedBox(height: 12),
                   hrCard(key: const Key('leave-mine'), [
                     hrTitle('My requests', 'माझ्या विनंत्या'),
-                    if (reqs.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 6), child: Text('No request yet.', mr: 'अजून विनंती नाही.', style: TextStyle(fontSize: 13.5, color: C.faint))),
+                    if (reqs.isEmpty) Padding(padding: EdgeInsets.only(bottom: 6), child: Text('No request yet.', mr: 'अजून विनंती नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint))),
                     for (final (i, q) in reqs.indexed)
                       () {
                         final s = reqState(q, '${q['reason'] ?? ''}'), waits = '${q['status']}' == 'pending';
@@ -136,12 +140,12 @@ class _LeaveScreenState extends State<LeaveScreen> {
                             chips: [stateChip(s.$1, s.$2, key: waits ? Key('lv-back-${q['id']}') : null, onTap: waits ? () => _back(q) : null)],
                             last: i == reqs.length - 1);
                       }(),
-                    if (reqs.any((q) => '${q['status']}' == 'pending')) const Padding(padding: EdgeInsets.only(top: 6), child: Text('Touch "Waiting" to take a request back.', mr: 'विनंती मागे घ्यायला "प्रलंबित" वर touch करा.', style: TextStyle(fontSize: 12, color: C.faint))),
+                    if (reqs.any((q) => '${q['status']}' == 'pending')) Padding(padding: EdgeInsets.only(top: 6), child: Text('Touch "Waiting" to take a request back.', mr: 'विनंती मागे घ्यायला "प्रलंबित" वर touch करा.', style: TextStyle(fontSize: 12, color: sk.faint))),
                   ]),
                   const SizedBox(height: 12),
                   hrCard(key: const Key('leave-how'), [
                     hrTitle('How it is counted', 'कशी मोजली जाते'),
-                    m.Text(_how(me?['policy'] as Map?), style: const TextStyle(fontSize: 13, color: C.muted, height: 1.5)),
+                    m.Text(_how(me?['policy'] as Map?), style: TextStyle(fontSize: 13, color: sk.muted, height: 1.5)),
                   ]),
                 ],
               ]),
@@ -217,8 +221,8 @@ class _LeaveAskScreenState extends State<LeaveAskScreen> {
           onTap: busy ? null : () => _pick(isFrom),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: C.line)),
-            child: Row(children: [Expanded(child: m.Text(_dmy(ymd), style: const TextStyle(fontSize: 15, color: C.ink))), const Icon(Icons.calendar_month_rounded, size: 19, color: C.faint)]),
+            decoration: BoxDecoration(color: sk.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: sk.line)),
+            child: Row(children: [Expanded(child: m.Text(_dmy(ymd), style: TextStyle(fontSize: 15, color: sk.ink))), Icon(Icons.calendar_month_rounded, size: 19, color: sk.faint)]),
           ),
         );
     Widget seg(String v, String en, String mr) => Expanded(
@@ -235,8 +239,8 @@ class _LeaveAskScreenState extends State<LeaveAskScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(vertical: 12),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: part == v ? kNavy : Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: part == v ? kNavy : C.line)),
-              child: FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: part == v ? Colors.white : C.ink))),
+              decoration: BoxDecoration(color: part == v ? sk.accent : sk.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: part == v ? sk.accent : sk.line)),
+              child: FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: part == v ? sk.onAccent : sk.ink))),
             ),
           ),
         );

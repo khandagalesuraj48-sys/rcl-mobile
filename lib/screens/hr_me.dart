@@ -21,6 +21,7 @@ import '../core/api.dart' show ApiError;
 import '../core/attend_remind.dart';
 import '../core/update.dart';
 import '../ui/hr_look.dart';
+import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
@@ -36,27 +37,30 @@ String _t(String en, String mr) => Lang.i.pair(en, mr);
 const kMeSky = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF184833), Color(0xFF277E55), Color(0xFF59B585)], stops: <double>[0, .7, 1]);
 const _cat = {'staff': 'Staff', 'operator': 'Operator', 'driver': 'Driver', 'labour': 'Labour'};
 
-/// One line of a list card: a letter in its tile, the title, a small line, › (or nothing).
-Widget _li({required Key key, required String sign, IconData? icon, required Color c, required Color soft, required String en, required String mr, String sub = '', Color ink = C.ink, bool arrow = true, bool last = false, VoidCallback? onTap}) => GestureDetector(
-      key: key,
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
-        child: Row(children: [
-          Container(width: 36, height: 36, alignment: Alignment.center, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(12)), child: icon != null ? Icon(icon, size: 19, color: c) : m.Text(sign, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, fontWeight: FontWeight.w800, color: c))),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ink)),
-              if (sub.isNotEmpty) m.Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted, height: 1.25)),
-            ]),
-          ),
-          if (arrow) const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFFB3B9C9)),
-        ]),
-      ),
-    );
+/// One line of a list card: a sign in its tile, the title, a small line, › (or nothing).
+Widget _li({required Key key, required String sign, IconData? icon, required Color c, required Color soft, required String en, required String mr, String sub = '', Color? ink, bool arrow = true, bool last = false, VoidCallback? onTap}) {
+  final (Color fg, Color bg) = sk.tint(c, soft);
+  return GestureDetector(
+    key: key,
+    behavior: HitTestBehavior.opaque,
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: sk.hair))),
+      child: Row(children: [
+        Container(width: 36, height: 36, alignment: Alignment.center, decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)), child: icon != null ? Icon(icon, size: 19, color: fg) : m.Text(sign, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, fontWeight: FontWeight.w800, color: fg))),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ink ?? sk.ink)),
+            if (sub.isNotEmpty) m.Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: sk.muted, height: 1.25)),
+          ]),
+        ),
+        if (arrow) Icon(Icons.chevron_right_rounded, size: 20, color: sk.blankInk),
+      ]),
+    ),
+  );
+}
 
 class HrMeTab extends StatelessWidget {
   const HrMeTab({super.key, required this.mine, required this.day, required this.ask, required this.onDocs, required this.onSlips, required this.onPhoto, required this.reload});
@@ -73,39 +77,44 @@ class HrMeTab extends StatelessWidget {
     final lang = switch (LangScope.of(context).code) { 'mr' => 'मराठी', 'hi' => 'हिन्दी', _ => 'English' };
     void open(Widget page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
     return Column(children: [
+      // (3.114.0) who he is – a card of the look on the page's soft glow (the green sky is gone)
       Container(
         width: double.infinity,
-        decoration: const BoxDecoration(gradient: kMeSky, borderRadius: BorderRadius.vertical(bottom: Radius.circular(28))),
+        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [sk.bgTop, sk.bg])),
         child: SafeArea(
           bottom: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
-            child: Row(children: [
-              // (3.109.0) his own photo – a touch sets it
-              GestureDetector(
-                key: const Key('me-face'),
-                behavior: HitTestBehavior.opaque,
-                onTap: onPhoto,
-                child: Stack(clipBehavior: Clip.none, children: [
-                  hrFace(name, '${mine?['photo'] ?? ''}', size: 62, radius: 20, bg: Colors.white.withValues(alpha: .2), border: Colors.white.withValues(alpha: .4), letters: 21),
-                  Positioned(right: -5, bottom: -5, child: Container(width: 24, height: 24, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0xFFFFC93C), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF277E55), width: 2)), child: const Icon(Icons.photo_camera_rounded, size: 12, color: Color(0xFF3A2A00)))),
-                ]),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  m.Text(name, key: const Key('me-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 21, fontWeight: FontWeight.w800, color: Colors.white)),
-                  m.Text([if ('${e['code'] ?? ''}'.isNotEmpty) '${e['code']}', if (role.isNotEmpty) role].join(' · '), key: const Key('me-role'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: .92))),
-                  m.Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: .92))),
-                ]),
-              ),
-              if (pct is num)
-                Column(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 50, height: 50, alignment: Alignment.center, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFFFC93C), width: 5)), child: m.Text('${pct.round()}%', key: const Key('me-pct'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white))),
-                  const SizedBox(height: 3),
-                  const Text('Profile', mr: 'Profile', style: TextStyle(fontSize: 11, color: Colors.white)),
-                ]),
-            ]),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 14, 16),
+              decoration: sk.box(radius: 26),
+              child: Row(children: [
+                // (3.109.0) his own photo – a touch sets it
+                GestureDetector(
+                  key: const Key('me-face'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onPhoto,
+                  child: Stack(clipBehavior: Clip.none, children: [
+                    hrFace(name, '${mine?['photo'] ?? ''}', size: 62, radius: 31, bg: sk.dark ? sk.blank : const Color(0xFF0F1F3D), border: const Color(0xFFDDAD40), ink: sk.dark ? sk.accent : Colors.white, letters: 21),
+                    Positioned(right: -4, bottom: -4, child: Container(width: 24, height: 24, alignment: Alignment.center, decoration: BoxDecoration(gradient: Sk.goldFill, shape: BoxShape.circle, border: Border.all(color: sk.card, width: 2)), child: const Icon(Icons.photo_camera_rounded, size: 12, color: Sk.goldInk))),
+                  ]),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    m.Text(name, key: const Key('me-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.w800, color: sk.ink)),
+                    m.Text([if ('${e['code'] ?? ''}'.isNotEmpty) '${e['code']}', if (role.isNotEmpty) role].join(' · '), key: const Key('me-role'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)),
+                    m.Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)),
+                  ]),
+                ),
+                if (pct is num)
+                  Column(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 50, height: 50, alignment: Alignment.center, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFDDAD40), width: 5)), child: m.Text('${pct.round()}%', key: const Key('me-pct'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 12.5, fontWeight: FontWeight.w800, color: sk.ink))),
+                    const SizedBox(height: 3),
+                    Text('Profile', mr: 'Profile', style: TextStyle(fontSize: 11, color: sk.muted)),
+                  ]),
+              ]),
+            ),
           ),
         ),
       ),
@@ -122,11 +131,12 @@ class HrMeTab extends StatelessWidget {
             ]),
             const SizedBox(height: 12),
             hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
-              _li(key: const Key('me-lang'), sign: 'A', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
-              _li(key: const Key('me-account'), sign: '@', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
+              _li(key: const Key('me-lang'), sign: 'A', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
+              _li(key: const Key('me-account'), sign: '@', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
+              _li(key: const Key('me-look'), sign: '', icon: Icons.palette_outlined, c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Look', mr: 'रूप', sub: sk.dark ? 'Midnight Gold' : 'Pearl', onTap: () => open(const LookScreen())),
               const _RemindRow(),
               const _UpdateRow(),
-              if (s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
+              if (s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
               _li(
                   key: const Key('me-out'),
                   sign: '',
@@ -161,22 +171,22 @@ class MyDetailsScreen extends StatelessWidget {
     final missing = [for (final x in ((mine?['complete'] as Map?)?['missing'] as List? ?? const [])) '$x'];
     return Scaffold(
       appBar: hrHead(context, sky: kMeSky, title: 'My details', mr: 'माझी माहिती', height: 100, below: [
-        Text('What the HR office has of you. To change a detail, ask the HR office.', mr: 'HR office कडे तुमची असलेली माहिती. बदलासाठी HR office ला सांगा.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: Colors.white.withValues(alpha: .95))),
+        Text('What the HR office has of you. To change a detail, ask the HR office.', mr: 'HR office कडे तुमची असलेली माहिती. बदलासाठी HR office ला सांगा.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
       ]),
       body: ListView(key: const Key('det-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
         if (mine == null) hrNote(_t('Your details could not be read – pull down on Me to try again.', 'माहिती वाचता आली नाही – Me वर खाली ओढून पुन्हा करा.')),
         if (missing.isNotEmpty) ...[hrNote('${_t('Still needed', 'अजून हवे')}: ${missing.join(', ')}', key: const Key('det-missing')), const SizedBox(height: 12)],
         for (final g in groups) ...[
           hrCard(key: Key('det-${g['name']}'), [
-            m.Text(tr('${g['name']}'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: C.ink)),
+            m.Text(tr('${g['name']}'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink)),
             const SizedBox(height: 6),
             for (final r in (g['rows'] as List? ?? const []).whereType<Map>())
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 5),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(flex: 5, child: m.Text(tr('${r['label']}'), style: const TextStyle(fontSize: 13, color: C.muted, height: 1.3))),
+                  Expanded(flex: 5, child: m.Text(tr('${r['label']}'), style: TextStyle(fontSize: 13, color: sk.muted, height: 1.3))),
                   const SizedBox(width: 10),
-                  Expanded(flex: 6, child: m.Text('${r['value']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.ink, height: 1.3))),
+                  Expanded(flex: 6, child: m.Text('${r['value']}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: sk.ink, height: 1.3))),
                 ]),
               ),
           ]),
@@ -233,7 +243,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
       context: context,
       builder: (c) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 6), child: Align(alignment: Alignment.centerLeft, child: m.Text(tr('${kind['name']}'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: C.ink)))),
+          Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 6), child: Align(alignment: Alignment.centerLeft, child: m.Text(tr('${kind['name']}'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: sk.ink)))),
           ListTile(key: const Key('doc-camera'), leading: const Icon(Icons.photo_camera_rounded), title: const Text('Take a photo', mr: 'Photo काढा'), onTap: () => Navigator.pop(c, 'camera')),
           ListTile(key: const Key('doc-gallery'), leading: const Icon(Icons.photo_library_rounded), title: const Text('Choose a photo', mr: 'Photo निवडा'), onTap: () => Navigator.pop(c, 'gallery')),
           ListTile(key: const Key('doc-pdf'), leading: const Icon(Icons.picture_as_pdf_rounded), title: const Text('Choose a PDF', mr: 'PDF निवडा'), onTap: () => Navigator.pop(c, 'pdf')),
@@ -279,7 +289,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
     final missing = {for (final x in (data?['docsMissing'] as List? ?? const [])) '$x'};
     return Scaffold(
       appBar: hrHead(context, sky: kMeSky, title: 'My documents', mr: 'माझी कागदपत्रे', height: 100, below: [
-        Text('Attach a clear photo or a PDF of each paper. Only the HR office removes one.', mr: 'प्रत्येक कागदाचा स्पष्ट photo किंवा PDF जोडा. काढणे फक्त HR office करते.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: Colors.white.withValues(alpha: .95))),
+        Text('Attach a clear photo or a PDF of each paper. Only the HR office removes one.', mr: 'प्रत्येक कागदाचा स्पष्ट photo किंवा PDF जोडा. काढणे फक्त HR office करते.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
       ]),
       body: loading
           ? const SkeletonList(tiles: 0, rows: 5)
@@ -298,7 +308,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                           decoration: BoxDecoration(border: i == kinds.length - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                             Row(children: [
-                              Expanded(child: m.Text(tr('${k['name']}'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.ink, height: 1.25))),
+                              Expanded(child: m.Text(tr('${k['name']}'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: sk.ink, height: 1.25))),
                               if (have.isNotEmpty) stateChip('Attached', 'a') else if (need) stateChip('Missing', 'x'),
                               const SizedBox(width: 6),
                               busy == '${k['key']}'
@@ -313,10 +323,10 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: 6),
                                   child: Row(children: [
-                                    Icon('${d['mime']}' == 'application/pdf' ? Icons.picture_as_pdf_rounded : Icons.image_rounded, size: 17, color: C.faint),
+                                    Icon('${d['mime']}' == 'application/pdf' ? Icons.picture_as_pdf_rounded : Icons.image_rounded, size: 17, color: sk.faint),
                                     const SizedBox(width: 6),
-                                    Expanded(child: m.Text([if ('${d['number'] ?? ''}'.isNotEmpty) '${d['number']}', dayName('${d['created_at'] ?? ''}'.length >= 10 ? '${d['created_at']}'.substring(0, 10) : '')].where((x) => x.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted))),
-                                    const Text('Open', mr: 'उघडा', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.blue)),
+                                    Expanded(child: m.Text([if ('${d['number'] ?? ''}'.isNotEmpty) '${d['number']}', dayName('${d['created_at'] ?? ''}'.length >= 10 ? '${d['created_at']}'.substring(0, 10) : '')].where((x) => x.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted))),
+                                    Text('Open', mr: 'उघडा', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: sk.link)),
                                   ]),
                                 ),
                               ),
@@ -395,23 +405,24 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
     return '${neg ? '−' : ''}₹ $a${p.length > 1 ? '.${p[1]}' : ''}';
   }
 
-  Widget _line(String label, Object? amount, {bool bold = false, Color color = C.ink}) => Padding(
+  Widget _line(String label, Object? amount, {bool bold = false, Color? color}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(children: [
-          Expanded(child: m.Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w700 : FontWeight.w500, color: bold ? C.ink : C.muted))),
-          m.Text(_rs(amount), style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: color)),
+          Expanded(child: m.Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w700 : FontWeight.w500, color: bold ? sk.ink : sk.muted))),
+          m.Text(_rs(amount), style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: color ?? sk.ink)),
         ]),
       );
 
   Widget _slip(Map s, int i) {
+    final good = sk.tint(const Color(0xFF0F7A45), const Color(0xFFE3F7EC)).$1, bad = sk.tint(C.red, C.redSoft).$1;
     final earn = (s['earnings'] as List? ?? const []).whereType<Map>().toList(), ded = (s['deductions'] as List? ?? const []).whereType<Map>().toList();
     final daily = '${s['pay_type']}' == 'daily', extra = s['extra_days'] is num ? s['extra_days'] as num : 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: hrCard(key: Key('slip-$i'), [
         Row(children: [
-          Expanded(child: m.Text(monthName('${s['month']}'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: C.ink))),
-          m.Text(_rs(s['net']), key: Key('slip-net-$i'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: Color(0xFF0F7A45))),
+          Expanded(child: m.Text(monthName('${s['month']}'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: sk.ink))),
+          m.Text(_rs(s['net']), key: Key('slip-net-$i'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: good)),
         ]),
         Padding(
           padding: const EdgeInsets.only(top: 2, bottom: 8),
@@ -421,15 +432,15 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
                 _t('${s['pay_days']} days paid', '${s['pay_days']} दिवसांचा पगार'),
                 if (extra > 0) _t('$extra extra', '$extra extra'),
               ].join(' · '),
-              style: const TextStyle(fontSize: 12.5, color: C.muted)),
+              style: TextStyle(fontSize: 12.5, color: sk.muted)),
         ),
         for (final l in earn) _line('${l['label']}', l['amount']),
         _line(_t('Gross', 'एकूण'), s['gross'], bold: true),
-        if (ded.isNotEmpty) const Divider(height: 14, color: Color(0xFFF0F2F7)),
-        for (final l in ded) _line('${l['label']}', l['amount'], color: C.red),
-        if (ded.isNotEmpty) _line(_t('Total deductions', 'एकूण कपात'), s['total_deductions'], bold: true, color: C.red),
-        const Divider(height: 14, color: Color(0xFFF0F2F7)),
-        _line(_t('Net pay', 'हातात येणारा पगार'), s['net'], bold: true, color: const Color(0xFF0F7A45)),
+        if (ded.isNotEmpty) Divider(height: 14, color: sk.hair),
+        for (final l in ded) _line('${l['label']}', l['amount'], color: bad),
+        if (ded.isNotEmpty) _line(_t('Total deductions', 'एकूण कपात'), s['total_deductions'], bold: true, color: bad),
+        Divider(height: 14, color: sk.hair),
+        _line(_t('Net pay', 'हातात येणारा पगार'), s['net'], bold: true, color: good),
       ]),
     );
   }
@@ -444,7 +455,7 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
                 if (slips.isEmpty && err.isEmpty)
                   hrCard([
                     hrTitle('No salary slip yet', 'अजून पगार पावती नाही'),
-                    const Text('Your salary slip of a month comes here when the head office has made and locked that month\'s pay.', mr: 'Head office ने त्या महिन्याचा पगार काढून lock केल्यावर तुमची पगार पावती इथे येते.', style: TextStyle(fontSize: 13.5, height: 1.4, color: C.muted)),
+                    Text('Your salary slip of a month comes here when the head office has made and locked that month\'s pay.', mr: 'Head office ने त्या महिन्याचा पगार काढून lock केल्यावर तुमची पगार पावती इथे येते.', style: TextStyle(fontSize: 13.5, height: 1.4, color: sk.muted)),
                   ]),
                 for (var i = 0; i < slips.length; i++) _slip(slips[i], i),
               ]),
@@ -464,14 +475,14 @@ class MyPhoneScreen extends StatelessWidget {
       body: ListView(key: const Key('phone-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
         hrCard([
           hrTitle(bound ? 'Registered for attendance' : 'No phone registered yet', bound ? 'हजेरीसाठी नोंदलेला' : 'अजून phone नोंदलेला नाही'),
-          if (bound && '${phone['model'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: m.Text('${phone['model']}', key: const Key('phone-model'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.ink))),
+          if (bound && '${phone['model'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: m.Text('${phone['model']}', key: const Key('phone-model'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: sk.ink))),
           if (here == 'this') Padding(padding: const EdgeInsets.only(bottom: 8), child: stateChip('This phone', 'a')) else if (here == 'other') Padding(padding: const EdgeInsets.only(bottom: 8), child: stateChip('Another phone', 'x')),
           Text(
               bound
                   ? 'Your attendance is marked only from this one phone. Another phone works only after the HR Admin releases this one.'
                   : 'The phone you mark your first attendance with becomes your phone. Afterwards another phone works only after the HR Admin releases it.',
               mr: bound ? 'तुमची हजेरी फक्त या एका phone वरून लागते. HR Admin ने हा सोडल्यावरच दुसरा phone चालतो.' : 'ज्या phone वरून पहिली हजेरी लावाल तो तुमचा phone होतो. नंतर HR Admin ने सोडल्यावरच दुसरा phone चालतो.',
-              style: const TextStyle(fontSize: 13, color: C.muted, height: 1.5)),
+              style: TextStyle(fontSize: 13, color: sk.muted, height: 1.5)),
         ]),
       ]),
     );
@@ -519,22 +530,22 @@ class _LanguageScreenState extends State<LanguageScreen> {
             onTap: busy ? null : () => setState(() => pick = code),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: pick == code ? kNavy : Colors.transparent, width: 2), boxShadow: kSoftShadow),
+              decoration: BoxDecoration(color: sk.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: pick == code ? sk.accent : (sk.cardLine ?? Colors.transparent), width: 2), boxShadow: sk.shadow),
               child: Row(children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    m.Text(own, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.ink)),
-                    m.Text(en, style: const TextStyle(fontSize: 12, color: C.muted)),
+                    m.Text(own, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: sk.ink)),
+                    m.Text(en, style: TextStyle(fontSize: 12, color: sk.muted)),
                   ]),
                 ),
-                Container(width: 22, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: pick == code ? kNavy : const Color(0xFFC9CFDC), width: pick == code ? 7 : 2))),
+                Container(width: 22, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: pick == code ? sk.accent : sk.line, width: pick == code ? 7 : 2))),
               ]),
             ),
           ),
         );
     return Scaffold(
       appBar: hrHead(context, sky: kMeSky, title: 'Language', mr: 'भाषा', height: 96, below: [
-        Text('The whole app is shown in one language.', mr: 'संपूर्ण app एका भाषेत दिसते.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: Colors.white.withValues(alpha: .95))),
+        Text('The whole app is shown in one language.', mr: 'संपूर्ण app एका भाषेत दिसते.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: sk.onHeadSoft)),
       ]),
       body: ListView(key: const Key('lang-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
         radio('en', 'English', 'English'),
@@ -593,14 +604,14 @@ class _AccountScreenState extends State<AccountScreen> {
       appBar: hrHead(context, sky: kMeSky, title: 'E-mail and password', mr: 'E-mail आणि password', height: 64),
       body: ListView(key: const Key('acc-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
         hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
-          _li(key: const Key('acc-id'), sign: '@', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'User ID', mr: 'User ID', sub: s.email, arrow: false),
+          _li(key: const Key('acc-id'), sign: '@', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'User ID', mr: 'User ID', sub: s.email, arrow: false),
           if (s.mailVerified) _li(key: const Key('acc-verified'), sign: '✓', c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'E-mail verified', mr: 'E-mail verify झाला', sub: s.mailLogin, arrow: false),
           if (s.mailCanVerify)
             _li(key: const Key('acc-verify'), sign: '!', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Verify my e-mail', mr: 'माझा e-mail verify करा', sub: _t('Then you can also sign in with a code by e-mail', 'मग e-mail वरील code ने सुद्धा sign in करता येईल'), onTap: () async {
               await openVerifyEmail(context);
               if (mounted) setState(() {});
             }),
-          _li(key: const Key('acc-pw'), sign: 'P', c: kNavy, soft: const Color(0xFFEEF1F7), en: 'Change password', mr: 'Password बदला', sub: _t('One password for everything', 'सगळ्यासाठी एकच password'), last: true, onTap: _password),
+          _li(key: const Key('acc-pw'), sign: 'P', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Change password', mr: 'Password बदला', sub: _t('One password for everything', 'सगळ्यासाठी एकच password'), last: true, onTap: _password),
         ]),
       ]),
     );
@@ -624,7 +635,7 @@ Future<bool> setMyPhoto(BuildContext context, HrAsk ask) async {
     context: context,
     builder: (c) => SafeArea(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Padding(padding: EdgeInsets.fromLTRB(20, 16, 20, 6), child: Align(alignment: Alignment.centerLeft, child: Text('My photo', mr: 'माझा photo', style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: C.ink)))),
+        Padding(padding: EdgeInsets.fromLTRB(20, 16, 20, 6), child: Align(alignment: Alignment.centerLeft, child: Text('My photo', mr: 'माझा photo', style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: sk.ink)))),
         ListTile(key: const Key('photo-camera'), leading: const Icon(Icons.photo_camera_rounded), title: const Text('Take a photo', mr: 'Photo काढा'), onTap: () => Navigator.pop(c, 'camera')),
         ListTile(key: const Key('photo-gallery'), leading: const Icon(Icons.photo_library_rounded), title: const Text('Choose a photo', mr: 'Photo निवडा'), onTap: () => Navigator.pop(c, 'gallery')),
         const SizedBox(height: 8),
@@ -650,8 +661,8 @@ Future<bool> setMyPhoto(BuildContext context, HrAsk ask) async {
 }
 
 /// His face: his photo when he has set one (a link of the HR server), else the first letters of his name.
-Widget hrFace(String name, String url, {required double size, required double radius, Color bg = kNavy, Color? border, double letters = 15}) {
-  final abc = m.Text(initials(name), style: TextStyle(fontFamily: 'Montserrat', fontSize: letters, fontWeight: FontWeight.w800, color: Colors.white));
+Widget hrFace(String name, String url, {required double size, required double radius, Color bg = const Color(0xFF0F1F3D), Color? border, Color ink = Colors.white, double letters = 15}) {
+  final abc = m.Text(initials(name), style: TextStyle(fontFamily: 'Montserrat', fontSize: letters, fontWeight: FontWeight.w800, color: ink));
   return Container(
     width: size,
     height: size,
@@ -711,7 +722,7 @@ class _UpdateRowState extends State<_UpdateRow> {
         key: const Key('me-update'),
         sign: '',
         icon: Icons.system_update_rounded,
-        c: found != null ? const Color(0xFF0F7A45) : kNavy,
+        c: found != null ? const Color(0xFF0F7A45) : sk.accent,
         soft: found != null ? const Color(0xFFE3F7EC) : const Color(0xFFEEF1F7),
         en: found != null ? 'Update the app' : 'Check for update',
         mr: found != null ? 'App update करा' : 'Update तपासा',
@@ -763,4 +774,93 @@ class _RemindRowState extends State<_RemindRow> {
         arrow: false,
         onTap: _flip,
       );
+}
+
+/// (3.114.0, his word of 12-11-2026: "ok he final 2 ni thew user je haw te switch kru shakel") LOOK – the two looks of the
+/// attendance app; a touch changes the whole app at once. Kept on this phone.
+class LookScreen extends StatefulWidget {
+  const LookScreen({super.key});
+  @override
+  State<LookScreen> createState() => _LookScreenState();
+}
+
+class _LookScreenState extends State<LookScreen> {
+  @override
+  void initState() {
+    super.initState();
+    HrSkin.i.addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    HrSkin.i.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  /// A small picture of a look: its page, a card, the gold disc and the bar.
+  Widget _pic(Sk l) => Container(
+        width: 74,
+        height: 104,
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(gradient: l.pageFill, borderRadius: BorderRadius.circular(14), border: Border.all(color: l.cardLine ?? l.line)),
+        child: Column(children: [
+          Container(height: 8, margin: const EdgeInsets.only(right: 26), decoration: BoxDecoration(color: l.ink, borderRadius: BorderRadius.circular(4))),
+          const SizedBox(height: 7),
+          Expanded(
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: l.card, borderRadius: BorderRadius.circular(10), border: Border.all(color: l.cardLine ?? l.line)),
+              child: Container(width: 30, height: 30, decoration: const BoxDecoration(shape: BoxShape.circle, gradient: Sk.goldFill)),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Container(height: 12, decoration: BoxDecoration(color: l.card, borderRadius: BorderRadius.circular(6), border: Border.all(color: l.cardLine ?? l.line))),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    Widget choice(String code, Sk l, String name, String en, String mr) {
+      final on = HrSkin.i.look == code;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: GestureDetector(
+          key: Key('look-$code'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => HrSkin.i.choose(code),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: sk.card, borderRadius: BorderRadius.circular(20), border: Border.all(color: on ? sk.accent : (sk.cardLine ?? Colors.transparent), width: 2), boxShadow: sk.shadow),
+            child: Row(children: [
+              _pic(l),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  m.Text(name, style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: sk.ink)),
+                  const SizedBox(height: 3),
+                  Text(en, mr: mr, style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.3)),
+                ]),
+              ),
+              const SizedBox(width: 8),
+              Container(width: 22, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: on ? sk.accent : sk.line, width: on ? 7 : 2))),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'Look', mr: 'रूप', height: 96, below: [
+        Text('Choose how the app looks. It changes at once.', mr: 'App कसे दिसावे ते निवडा. लगेच बदलते.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: sk.onHeadSoft)),
+      ]),
+      body: ListView(key: const Key('look-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+        choice('pearl', Sk.pearl, 'Pearl', 'Light – white and gold', 'उजळ – पांढरा आणि सोनेरी'),
+        choice('gold', Sk.gold, 'Midnight Gold', 'Dark – glass and gold', 'गडद – काच आणि सोनेरी'),
+      ]),
+    );
+  }
 }

@@ -8,8 +8,18 @@
  *   Me          – who he is, how complete his profile is; my details, my documents, salary slips, my phone; the language,
  *                 e-mail and password, sign out (screens/hr_me.dart)
  * The bar at the bottom: Home · Attendance · Leave · Me (Attendance and Leave open as pages with their own way back).
- * Everything is asked of the HR server (rcl-hr) with his "My HR" sign-in; nothing of Mechanical is asked here. */
+ * Everything is asked of the HR server (rcl-hr) with his "My HR" sign-in; nothing of Mechanical is asked here.
+ * (3.114.0 – the two looks he approved on 12-11-2026: "ok he final 2 ni thew user je haw te switch kru shakel") "Pearl" and
+ * "Midnight Gold" (ui/hr_skin.dart; chosen in Me → Look):
+ *   Home – THE DIAL: his shift as a ring from its start to its end, a dot where "now" stands, red from his IN once he is at
+ *          work; the disc in its middle marks (gold IN, red OUT – a touch or a hold opens the same marking page as before:
+ *          his place, the selfie, the punch); IN · OUT · Hours; this week; the four tiles; "For you" – also his papers that
+ *          run out within 30 days, his birthday and his years at work (rcl-hr "coming")
+ *   the bar – floats, on all four pages: Home · Attendance · (the marking button, raised in its middle) · Leave · Me.
+ *          Attendance and Leave are pages of the bar now (no way back needed); the pages behind them open as before.
+ * Nothing of what may be done changes – only how it looks. */
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
@@ -19,9 +29,9 @@ import '../core/attend_remind.dart';
 import '../core/session.dart';
 import '../ui/attend_look.dart';
 import '../ui/hr_look.dart';
+import '../ui/hr_skin.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
-import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'attend_reqs.dart';
 import 'attendance.dart';
@@ -50,29 +60,62 @@ class HrShell extends StatefulWidget {
   State<HrShell> createState() => _HrShellState();
 }
 
+/// One line of "For you".
+class _Note {
+  const _Note(this.key, this.icon, this.c, this.soft, this.title, this.sub, this.go, this.onTap);
+  final String key, title, sub, go;
+  final IconData icon;
+  final Color c, soft;
+  final VoidCallback? onTap;
+}
+
+int? _hm(Object? v) {
+  final m = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch('${v ?? ''}');
+  if (m == null) return null;
+  final h = int.parse(m.group(1)!), n = int.parse(m.group(2)!);
+  return h < 24 && n < 60 ? h * 60 + n : null;
+}
+
+/// "8 h 05 m" from [a] to [b] (HH:mm; past midnight when b is before a); '' when it cannot be said.
+String _span(String a, String b) {
+  final x = _hm(a), y = _hm(b);
+  if (x == null || y == null) return '';
+  final d = y >= x ? y - x : y + 1440 - x;
+  return '${d ~/ 60} h ${(d % 60).toString().padLeft(2, '0')} m';
+}
+
 class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
-  int tab = 0; // 0 Home · 1 Me
+  int tab = 0; // 0 Home · 1 Attendance · 2 Leave · 3 Me
+  int gen = 0; // (the Attendance and Leave pages of the bar are read again after a punch)
   Map<String, dynamic>? day, month, leave, mine; // myAttend, myMonth, myLeave, myHr
   List<Map> regs = [];
   int teamWait = 0;
   String err = '';
   bool loading = true, started = false, opening = false;
-  double slide = 0;
   Timer? minute;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // on duty: the hours since IN move on by themselves
+    // (3.114.0) the attendance app has its own look – the one he chose on this phone
+    HrSkin.i.addListener(_skin);
+    unawaited(HrSkin.i.enter());
+    // on duty: the hours since IN and the dial's dot move on by themselves
     minute = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
   }
 
+  void _skin() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    HrSkin.i.removeListener(_skin);
+    HrSkin.i.leave();
     minute?.cancel();
     super.dispose();
   }
@@ -139,19 +182,25 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     if (mounted) _load();
   }
 
+  /// A page of the bar. Home and Me are read again (a leave asked for, a paper attached on another page).
+  void _go(int t) {
+    if (t == tab) return;
+    setState(() => tab = t);
+    if (t == 0 || t == 3) _load();
+  }
+
+  /// The marking page – from the dial and from the bar's middle button: his place, the selfie, the punch (as it always was).
   Future<void> _mark() async {
     if (opening) return;
     opening = true;
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AttendanceScreen(quick: true)));
     opening = false;
     if (!mounted) return;
-    setState(() => slide = 0);
+    setState(() => gen++);
     _load();
   }
 
   String get _who => '${(day?['employee'] as Map?)?['name'] ?? SessionScope.read(context).name} · ${(day?['employee'] as Map?)?['code'] ?? ''}';
-  void _attendance() => _push(const AttendanceScreen());
-  void _leave() => _push(LeaveScreen(ask: _hr));
   void _requests() => _push(AttendRegsScreen(ask: _hr));
   void _month() => _push(AttendMonthScreen(ask: _hr, who: _who));
   void _docs() => _push(MyDocsScreen(ask: _hr));
@@ -160,182 +209,195 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     if (await setMyPhoto(context, _hr) && mounted) _load();
   }
 
+  List<Map> get _punches => [for (final x in (day?['punches'] as List? ?? const []).whereType<Map>()) x];
+
+  /// 'in' or 'out' – what the next punch is (the colour of the marking button).
+  String get _next => _punches.isEmpty ? 'in' : ('${day?['next'] ?? 'in'}' == 'out' ? 'out' : 'in');
 
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     LangScope.of(context); // the words here follow the language chosen in Me
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F6F1),
+      backgroundColor: sk.bg,
       bottomNavigationBar: _nav(),
-      body: tab == 1
-          ? HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load)
-          : SafeArea(
+      body: switch (tab) {
+        1 => AttendanceScreen(key: ValueKey('tab-att-$gen'), embedded: true),
+        2 => LeaveScreen(key: ValueKey('tab-leave-$gen'), ask: _hr, embedded: true),
+        3 => HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load),
+        _ => Container(
+            decoration: BoxDecoration(gradient: sk.pageFill),
+            child: SafeArea(
               bottom: false,
               child: RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(key: const Key('hr-home'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 24), children: [
                   _top(s),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('hh-err')),
-                  if (loading) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
+                  if (loading) Padding(padding: const EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: sk.accent))),
                   if (day != null) ...[
                     _hero(s),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     _week(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     _tiles(),
                     ..._forYou(),
                   ],
                 ]),
               ),
             ),
+          ),
+      },
     );
   }
 
   // ---- "Good afternoon, Babu Demo" and the bell (red dot: something waits)
   Widget _top(Session s) {
     final h = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now() + 19800000, isUtc: true).hour;
-    final name = '${(day?['employee'] as Map?)?['name'] ?? s.name}', wait = _notes().isNotEmpty;
+    final name = '${(day?['employee'] as Map?)?['name'] ?? s.name}', wait = _notes().any((n) => n.onTap != null);
     return Row(children: [
-      hrFace(name, '${mine?['photo'] ?? ''}', size: 46, radius: 15),
+      hrFace(name, '${mine?['photo'] ?? ''}', size: 48, radius: 24, bg: sk.dark ? sk.card : const Color(0xFF0F1F3D), border: const Color(0xFFDDAD40), ink: sk.dark ? sk.accent : Colors.white),
       const SizedBox(width: 12),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening', mr: h < 12 ? 'शुभ सकाळ' : h < 17 ? 'शुभ दुपार' : 'शुभ संध्याकाळ', key: const Key('hh-hello'), style: const TextStyle(fontSize: 13, color: C.muted)),
-          m.Text(name, key: const Key('hh-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: C.ink)),
+          Text(h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening', mr: h < 12 ? 'शुभ सकाळ' : h < 17 ? 'शुभ दुपार' : 'शुभ संध्याकाळ', key: const Key('hh-hello'), style: TextStyle(fontSize: 13, color: sk.muted)),
+          m.Text(name, key: const Key('hh-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
         ]),
       ),
-      GestureDetector(
-        key: const Key('hh-bell'),
-        behavior: HitTestBehavior.opaque,
-        onTap: _requests,
-        child: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: kSoftShadow),
-          child: Stack(children: [
-            const Center(child: Icon(Icons.notifications_none_rounded, size: 22, color: kNavy)),
-            if (wait) Positioned(right: 9, top: 9, child: Container(key: const Key('hh-dot'), width: 9, height: 9, decoration: const BoxDecoration(color: Color(0xFFE5484D), shape: BoxShape.circle))),
-          ]),
-        ),
-      ),
+      hrIconBox(Icons.notifications_none_rounded, key: const Key('hh-bell'), dot: wait, onTap: _requests),
     ]);
   }
 
-  // ---- his day in the sky, and the bar that marks it
+  // ---- THE DIAL: his shift as a ring, the disc that marks, IN · OUT · Hours
   Widget _hero(Session s) {
-    final punches = [for (final x in (day?['punches'] as List? ?? const []).whereType<Map>()) x];
+    final punches = _punches, next = _next;
     // ('done' – the site's rule "once a day": nothing more today – reads as the day done)
-    final next = punches.isEmpty ? 'in' : ('${day?['next'] ?? 'in'}' == 'out' ? 'out' : 'in');
     final stopped = day?['may'] == false || '${day?['phone'] ?? ''}' == 'other' || (day?['places'] as List? ?? const []).isEmpty;
     final sky = skyOf(any: punches.isNotEmpty, next: next, stopped: stopped);
-    var tin = '', tout = '';
+    var tin = '', tout = '', lastIn = '';
     for (final p in punches) {
       if (p['kind'] == 'in' && tin.isEmpty) tin = '${p['time'] ?? ''}';
+      if (p['kind'] == 'in') lastIn = '${p['time'] ?? ''}';
       if (p['kind'] == 'out') tout = '${p['time'] ?? ''}';
     }
-    var lastIn = '';
-    for (final p in punches.reversed) {
-      if (p['kind'] == 'in') {
-        lastIn = '${p['time'] ?? ''}';
-        break;
-      }
+    final nowMs = AttendKit.kit.now(), india = DateTime.fromMillisecondsSinceEpoch(nowMs + 19800000, isUtc: true);
+    final hhmm = '${india.hour.toString().padLeft(2, '0')}:${india.minute.toString().padLeft(2, '0')}';
+    final shift = day?['shift'] is Map ? day!['shift'] as Map : const {};
+    final a = _hm(shift['start']), b0 = _hm(shift['end']);
+    // where a time of the day stands on the ring (a night shift ends on the next day)
+    double? at(int? t) {
+      if (a == null || b0 == null || t == null) return null;
+      final b = b0 > a ? b0 : b0 + 1440, x = t < a && b > 1440 ? t + 1440 : t;
+      return ((x - a) / (b - a)).clamp(0.0, 1.0).toDouble();
     }
-    final since = sky == Sky.day ? sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now())) : '';
-    final (String small, String smallMr, String big, String under) = switch (sky) {
-      Sky.day => ('On duty since', 'कामावर', lastIn, since.isEmpty ? '' : _t('$since today', 'आज $since')),
-      Sky.dusk => '${day?['closed'] ?? ''}'.isNotEmpty
-          ? ('Closed by itself – absent', 'आपोआप बंद – गैरहजर', tin, _t('OUT was not marked – ask to set the day right', 'OUT लावले नाही – दुरुस्तीसाठी विनंती करा'))
-          : ('Today is done', 'आजची हजेरी पूर्ण', tout.isEmpty ? tin : tout, tout.isEmpty ? 'IN $tin' : 'IN $tin · OUT $tout'),
-      Sky.grey => ('Attendance', 'हजेरी', _t('Cannot be marked', 'लावता येत नाही'), _t('Open Attendance to see why', 'कारण पाहण्यासाठी Attendance उघडा')),
-      _ => ('Today', 'आज', _t('Not marked yet', 'अजून लावलेली नाही'), ''),
+
+    final since = sky == Sky.day ? sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(nowMs)) : '';
+    final closed = '${day?['closed'] ?? ''}'.isNotEmpty;
+    final (String state, String top, String big, String under) = switch (sky) {
+      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), _t('HOLD TO MARK', 'धरून लावा'), 'OUT', since.isEmpty ? '' : _t('$since at work', '$since कामावर')),
+      Sky.dusk => closed
+          ? (_t('Closed by itself – absent', 'आपोआप बंद – गैरहजर'), '', _t('ABSENT', 'गैरहजर'), _t('Ask to set the day right', 'दुरुस्ती मागा'))
+          : (_t('Today is done', 'आजची हजेरी पूर्ण'), '', _t('DONE', 'पूर्ण'), tout.isEmpty ? 'IN $tin' : 'IN $tin · OUT $tout'),
+      Sky.grey => (_t('Cannot be marked', 'लावता येत नाही'), '', '–', _t('Open Attendance', 'Attendance उघडा')),
+      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), _t('HOLD TO MARK', 'धरून लावा'), 'IN', _t('$hhmm now', 'आता $hhmm')),
     };
+    final hours = sky == Sky.day ? since : _span(tin, tout);
+    // the day done or stopped: the Attendance page says it all; else the marking page
+    final VoidCallback go = sky == Sky.dusk || sky == Sky.grey ? () => _go(1) : _mark;
+    Widget stat(String key, String v, String en, String mr) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(16)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              FittedBox(fit: BoxFit.scaleDown, child: m.Text(v.isEmpty ? '– –' : v, key: Key(key), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: v.isEmpty ? sk.faint : sk.ink))),
+              const SizedBox(height: 2),
+              Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: .8, color: sk.faint)),
+            ]),
+          ),
+        );
     return Container(
       key: const Key('hh-hero'),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(gradient: skyDown(sky), borderRadius: BorderRadius.circular(26), boxShadow: const [BoxShadow(color: Color(0x4D0B5FA5), blurRadius: 26, offset: Offset(0, 12))]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Text(small, mr: smallMr, style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: .95)))),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: sk.box(radius: 28),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(state, key: const Key('hh-big'), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink)))),
+          const SizedBox(width: 8),
           Container(
-            constraints: const BoxConstraints(maxWidth: 170),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .22), borderRadius: BorderRadius.circular(12)),
-            child: m.Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white)),
+            constraints: const BoxConstraints(maxWidth: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(12)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.location_on_outlined, size: 13, color: sk.muted),
+              const SizedBox(width: 3),
+              Flexible(child: m.Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: sk.muted))),
+            ]),
           ),
         ]),
-        FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(big, key: const Key('hh-big'), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: sky == Sky.day || sky == Sky.dusk ? 36 : 26, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2))),
-        if (under.isNotEmpty) m.Text(under, key: const Key('hh-under'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: .95))),
-        const SizedBox(height: 14),
-        if (sky == Sky.dusk)
-          hrGlass(GestureDetector(key: const Key('hh-open'), behavior: HitTestBehavior.opaque, onTap: _attendance, child: const SizedBox(height: 40, child: Center(child: Text('See today', mr: 'आज पहा', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white))))))
-        else
-          LayoutBuilder(builder: (context, box) {
-            final room = (box.maxWidth - 52).clamp(0.0, 2000.0);
-            return GestureDetector(
-              key: const Key('hh-slide'),
-              behavior: HitTestBehavior.opaque,
-              onTap: _mark,
-              onHorizontalDragUpdate: (d) => setState(() => slide = (slide + d.delta.dx).clamp(0.0, room)),
-              onHorizontalDragEnd: (_) {
-                final go = slide > room * .5;
-                setState(() => slide = 0);
-                if (go) _mark();
-              },
-              child: Container(
-                height: 52,
-                width: double.infinity,
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(color: const Color(0x59092854), borderRadius: BorderRadius.circular(26), border: Border.all(color: Colors.white.withValues(alpha: .35))),
-                child: Stack(alignment: Alignment.centerLeft, children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 56, right: 8),
-                    child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(stopped ? _t('Open Attendance', 'Attendance उघडा') : next == 'in' ? _t('Slide to mark IN', 'IN लावण्यासाठी सरकवा') : _t('Slide to mark OUT', 'OUT लावण्यासाठी सरकवा'), key: const Key('hh-slide-text'), maxLines: 1, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white))),
-                  ),
-                  Transform.translate(offset: Offset(slide, 0), child: SunDisc(size: 42, label: next == 'in' ? 'IN' : 'OUT', dim: stopped)),
-                ]),
-              ),
-            );
-          }),
+        const SizedBox(height: 10),
+        GestureDetector(
+          key: const Key('hh-slide'),
+          behavior: HitTestBehavior.opaque,
+          onTap: go,
+          onLongPress: go,
+          child: ShiftDial(size: 208, now: at(india.hour * 60 + india.minute), from: at(_hm(lastIn)), out: sky == Sky.day, dim: sky == Sky.grey, done: sky == Sky.dusk, track: sk.blank, tick: sk.dark ? sk.line : const Color(0xFFCBD1DF), top: top, big: big, under: under),
+        ),
+        if (a != null && b0 != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
+            child: Row(children: [
+              m.Text('${shift['start']}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: sk.muted)),
+              Expanded(child: m.Text('${shift['name'] ?? ''}', key: const Key('hh-shift'), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sk.faint))),
+              m.Text('${shift['end']}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: sk.muted)),
+            ]),
+          ),
+        const SizedBox(height: 12),
+        Row(children: [stat('hh-in', tin, 'IN', 'IN'), const SizedBox(width: 8), stat('hh-out', tout, 'OUT', 'OUT'), const SizedBox(width: 8), stat('hh-hours', hours, 'HOURS', 'तास')]),
       ]),
     );
   }
 
-  // ---- this week, Monday first: what each day counts as (the month's own letters)
+  // ---- this week, Monday first: what each day counts as (the month's own letters); a day with nothing yet shows its date
   Widget _week() {
     final today = '${day?['day'] ?? indiaDay(AttendKit.kit.now())}', t = DateTime.parse('${today}T00:00:00Z'), mon = t.subtract(Duration(days: t.weekday - 1));
     final by = <String, String>{for (final d in (month?['all'] as List? ?? const []).whereType<Map>()) '${d['day']}': '${d['code'] ?? ''}'};
     (Color, Color) look(String c) => switch (c) {
-          'P' || 'WOP' || 'HP' || 'IN' => (const Color(0xFF146C2E), const Color(0xFFDDF3E4)),
-          'HD' => (const Color(0xFF8A5A00), const Color(0xFFFFF3D1)),
-          'A' || 'MIS' => (const Color(0xFFC22A1B), const Color(0xFFFFE6E3)),
-          'L' => (kPurple, const Color(0xFFF1E8F6)),
-          'WO' || 'H' => (const Color(0xFF7B839C), const Color(0xFFE4E7F0)),
-          _ => (const Color(0xFFB3B9C9), const Color(0xFFF3F5FA)),
+          'P' || 'WOP' || 'HP' || 'IN' => sk.tint(const Color(0xFF146C2E), const Color(0xFFDDF3E4)),
+          'HD' => sk.tint(const Color(0xFF8A5A00), const Color(0xFFFFF3D1)),
+          'A' || 'MIS' => sk.tint(const Color(0xFFC22A1B), const Color(0xFFFFE6E3)),
+          'L' => sk.tint(kPurple, const Color(0xFFF1E8F6)),
+          _ => (sk.muted, sk.blank),
         };
-    return hrCard(key: const Key('hh-week'), [
-      Row(children: [
-        const Expanded(child: Text('This week', mr: 'हा आठवडा', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: C.ink))),
-        GestureDetector(key: const Key('hh-month'), behavior: HitTestBehavior.opaque, onTap: _month, child: const Padding(padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4), child: Text('Month', mr: 'महिना', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.blue)))),
-      ]),
-      const SizedBox(height: 6),
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(children: [
+          Expanded(child: Text('This week', mr: 'हा आठवडा', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink))),
+          GestureDetector(key: const Key('hh-month'), behavior: HitTestBehavior.opaque, onTap: _month, child: Padding(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), child: Text('My month', mr: 'माझा महिना', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.link)))),
+        ]),
+      ),
+      const SizedBox(height: 4),
+      Row(key: const Key('hh-week'), children: [
         for (var i = 0; i < 7; i++)
           () {
-            final d = mon.add(Duration(days: i)).toIso8601String().substring(0, 10), c = by[d] ?? '', lk = look(c);
-            return Column(mainAxisSize: MainAxisSize.min, children: [
-              m.Text(const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.muted)),
-              const SizedBox(height: 5),
-              Container(
-                key: Key('hh-w-$d'),
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: lk.$2, borderRadius: BorderRadius.circular(12), border: d == today ? Border.all(color: kNavy, width: 2) : null),
-                child: m.Text(c == 'MIS' ? '!' : c, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: lk.$1)),
-              ),
-            ]);
+            final dt = mon.add(Duration(days: i)), d = dt.toIso8601String().substring(0, 10), c = by[d] ?? '', lk = look(c), now = d == today;
+            return Expanded(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                m.Text(const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sk.faint)),
+                const SizedBox(height: 6),
+                Container(
+                  key: Key('hh-w-$d'),
+                  height: 38,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  alignment: Alignment.center,
+                  decoration: now
+                      ? BoxDecoration(gradient: sk.dark ? Sk.goldFill : null, color: sk.dark ? null : sk.accent, borderRadius: BorderRadius.circular(13))
+                      : BoxDecoration(color: lk.$2, borderRadius: BorderRadius.circular(13)),
+                  child: m.Text(c.isEmpty ? '${dt.day}' : c == 'MIS' ? '!' : c, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: now ? (sk.dark ? Sk.goldInk : sk.onAccent) : lk.$1)),
+                ),
+              ]),
+            );
           }(),
       ]),
     ]);
@@ -347,36 +409,43 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final left = leave == null ? '' : _t('${n(leave?['available'])} left', '${n(leave?['available'])} शिल्लक');
     final waiting = regs.where((q) => q['status'] == 'pending').length + teamWait;
     final miss = ((mine?['docs'] as Map?)?['missing'] as List? ?? const []).length;
-    Widget tile(String key, String sign, Color c, Color soft, String en, String mr, String sub, VoidCallback onTap) => Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Press(
-              key: Key(key),
-              onTap: onTap,
-              radius: 16,
-              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 36, height: 36, alignment: Alignment.center, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(12)), child: m.Text(sign, style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: c))),
-                const SizedBox(height: 7),
-                FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.ink))),
-                FittedBox(fit: BoxFit.scaleDown, child: m.Text(sub.isEmpty ? ' ' : sub, key: Key('$key-sub'), maxLines: 1, style: const TextStyle(fontSize: 11, color: C.muted))),
-              ]),
-            ),
+    Widget tile(String key, IconData icon, Color c0, Color soft0, String en, String mr, String sub, VoidCallback onTap) {
+      final (Color c, Color soft) = sk.tint(c0, soft0);
+      return Expanded(
+        child: GestureDetector(
+          key: Key(key),
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 11),
+            decoration: sk.box(radius: 18),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 36, height: 36, alignment: Alignment.center, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 19, color: c)),
+              const SizedBox(height: 7),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sk.ink))),
+              FittedBox(fit: BoxFit.scaleDown, child: m.Text(sub.isEmpty ? ' ' : sub, key: Key('$key-sub'), maxLines: 1, style: TextStyle(fontSize: 11, color: sk.muted))),
+            ]),
           ),
-        );
+        ),
+      );
+    }
+
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      tile('hh-leave', 'L', kPurple, const Color(0xFFF1E8F6), 'Leave', 'रजा', left, _leave),
-      tile('hh-reqs', 'R', const Color(0xFF8A5A00), const Color(0xFFFFF3D1), 'Requests', 'विनंत्या', waiting > 0 ? _t('$waiting waiting', '$waiting प्रलंबित') : '', _requests),
-      tile('hh-docs', 'D', const Color(0xFF0F7A45), const Color(0xFFE3F7EC), 'Documents', 'कागदपत्रे', mine == null ? '' : miss > 0 ? _t('$miss missing', '$miss बाकी') : _t('All there', 'सर्व आहेत'), _docs),
-      tile('hh-slip', '₹', const Color(0xFF0B5FA5), const Color(0xFFE3EEFB), 'Salary slip', 'पगार पावती', '', _slips),
+      tile('hh-leave', Icons.event_available_rounded, kPurple, const Color(0xFFF1E8F6), 'Leave', 'रजा', left, () => _go(2)),
+      tile('hh-reqs', Icons.fact_check_outlined, const Color(0xFF8A5A00), const Color(0xFFFFF3D1), 'Requests', 'विनंत्या', waiting > 0 ? _t('$waiting waiting', '$waiting प्रलंबित') : '', _requests),
+      tile('hh-docs', Icons.description_outlined, const Color(0xFF0F7A45), const Color(0xFFE3F7EC), 'Documents', 'कागदपत्रे', mine == null ? '' : miss > 0 ? _t('$miss missing', '$miss बाकी') : _t('All there', 'सर्व आहेत'), _docs),
+      tile('hh-slip', Icons.payments_outlined, const Color(0xFF0B5FA5), const Color(0xFFE3EEFB), 'Salary slip', 'पगार पावती', '', _slips),
     ]);
   }
 
-  /// What waits: his leave not decided yet, a day gone that counts as absent and can still be asked for, his team's requests.
-  List<({String key, String sign, Color c, Color soft, String title, String sub, String go, VoidCallback onTap})> _notes() {
-    final out = <({String key, String sign, Color c, Color soft, String title, String sub, String go, VoidCallback onTap})>[];
+  /// What waits: his leave not decided yet, a day gone that counts as absent and can still be asked for, his team's requests –
+  /// and (3.114.0, rcl-hr "coming") a paper of his that runs out within 30 days, his birthday, his years at work today.
+  List<_Note> _notes() {
+    const blue = Color(0xFF0B5FA5), blueSoft = Color(0xFFE3EEFB), red = Color(0xFFC22A1B), redSoft = Color(0xFFFFE6E3), amber = Color(0xFF8A5A00), amberSoft = Color(0xFFFFF3D1);
+    final out = <_Note>[];
     for (final q in (leave?['requests'] as List? ?? const []).whereType<Map>()) {
-      if (q['status'] == 'pending') out.add((key: 'hh-n-leave-${q['id']}', sign: 'L', c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), title: _t('Leave on ${dayName('${q['from']}')}', '${dayName('${q['from']}')} ची रजा'), sub: _t('Waiting for approval', 'मंजुरीची वाट'), go: _t('See', 'पहा'), onTap: _leave));
+      if (q['status'] == 'pending') out.add(_Note('hh-n-leave-${q['id']}', Icons.event_available_rounded, blue, blueSoft, _t('Leave on ${dayName('${q['from']}')}', '${dayName('${q['from']}')} ची रजा'), _t('Waiting for approval', 'मंजुरीची वाट'), _t('See', 'पहा'), () => _go(2)));
     }
     final today = '${month?['today'] ?? ''}', back = month?['reg_days'] is num ? (month!['reg_days'] as num).toInt() : 0, t = DateTime.tryParse('${today}T00:00:00Z');
     final asked = {for (final q in regs) if (q['status'] == 'pending') '${q['day']}'};
@@ -384,7 +453,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       for (final d in (month?['all'] as List? ?? const []).whereType<Map>().toList().reversed) {
         final dd = DateTime.tryParse('${d['day']}T00:00:00Z');
         if (d['code'] != 'A' || dd == null || !dd.isBefore(t) || t.difference(dd).inDays > back || asked.contains('${d['day']}')) continue;
-        out.add((key: 'hh-n-day-${d['day']}', sign: '!', c: const Color(0xFFC22A1B), soft: const Color(0xFFFFE6E3), title: _t('${dayName('${d['day']}')} has no punch', '${dayName('${d['day']}')} ला हजेरी नाही'), sub: _t('Ask to set it right', 'दुरुस्ती मागा'), go: _t('Ask', 'मागा'), onTap: () async {
+        out.add(_Note('hh-n-day-${d['day']}', Icons.error_outline_rounded, red, redSoft, _t('${dayName('${d['day']}')} has no punch', '${dayName('${d['day']}')} ला हजेरी नाही'), _t('Ask to set it right', 'दुरुस्ती मागा'), _t('Ask', 'मागा'), () async {
           final ok = await askRegularize(context, _hr, '${d['day']}', code: 'A');
           if (!mounted) return;
           if (ok) toast(context, _t('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
@@ -393,7 +462,16 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         break; // the newest such day; the others are in "This month"
       }
     }
-    if (teamWait > 0) out.add((key: 'hh-n-team', sign: 'R', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), title: _t('$teamWait of your team wait for you', 'तुमच्या टीमच्या $teamWait विनंत्या'), sub: _t('Approve or refuse', 'मंजूर करा किंवा नाकारा'), go: _t('Open', 'उघडा'), onTap: _requests));
+    if (teamWait > 0) out.add(_Note('hh-n-team', Icons.groups_2_outlined, amber, amberSoft, _t('$teamWait of your team wait for you', 'तुमच्या टीमच्या $teamWait विनंत्या'), _t('Approve or refuse', 'मंजूर करा किंवा नाकारा'), _t('Open', 'उघडा'), _requests));
+    final coming = (mine?['coming'] as Map?) ?? const {};
+    for (final p in (coming['papers'] as List? ?? const []).whereType<Map>()) {
+      final l = p['left'] is num ? (p['left'] as num).toInt() : 0;
+      out.add(_Note('hh-n-paper-${out.length}', Icons.description_outlined, red, redSoft, tr('${p['paper'] ?? ''}'),
+          l < 0 ? _t('ran out on ${dayName('${p['expires_on']}')}', '${dayName('${p['expires_on']}')} ला मुदत संपली') : l == 0 ? _t('runs out today', 'आज मुदत संपते') : _t('runs out in $l days', '$l दिवसांत मुदत संपते'), _t('Renew', 'नवीन जोडा'), _docs));
+    }
+    if (coming['birthday'] == true) out.add(_Note('hh-n-bday', Icons.cake_outlined, kPurple, const Color(0xFFF1E8F6), _t('Happy birthday!', 'वाढदिवसाच्या शुभेच्छा!'), _t('From all of us at work', 'आम्हा सर्वांकडून'), '', null));
+    final yrs = coming['work_years'] is num ? (coming['work_years'] as num).toInt() : 0;
+    if (yrs > 0) out.add(_Note('hh-n-years', Icons.workspace_premium_outlined, amber, amberSoft, _t('$yrs ${yrs == 1 ? 'year' : 'years'} with us today', 'आज आमच्यासोबत $yrs वर्षे'), _t('Thank you for your work', 'तुमच्या कामाबद्दल धन्यवाद'), '', null));
     return out;
   }
 
@@ -401,58 +479,102 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final notes = _notes();
     if (notes.isEmpty) return const [];
     return [
-      const SizedBox(height: 12),
+      const SizedBox(height: 14),
       hrCard(key: const Key('hh-for'), [
         hrTitle('For you', 'तुमच्यासाठी'),
         for (final n in notes)
-          GestureDetector(
-            key: Key(n.key),
-            behavior: HitTestBehavior.opaque,
-            onTap: n.onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(children: [
-                Container(width: 36, height: 36, alignment: Alignment.center, decoration: BoxDecoration(color: n.soft, borderRadius: BorderRadius.circular(12)), child: m.Text(n.sign, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, fontWeight: FontWeight.w800, color: n.c))),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    m.Text(n.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.ink)),
-                    m.Text(n.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
-                  ]),
-                ),
-                m.Text(n.go, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.blue)),
-              ]),
-            ),
-          ),
+          () {
+            final (Color c, Color soft) = sk.tint(n.c, n.soft);
+            return GestureDetector(
+              key: Key(n.key),
+              behavior: HitTestBehavior.opaque,
+              onTap: n.onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(children: [
+                  Container(width: 38, height: 38, alignment: Alignment.center, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(12)), child: Icon(n.icon, size: 19, color: c)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      m.Text(n.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink)),
+                      m.Text(n.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: sk.muted)),
+                    ]),
+                  ),
+                  if (n.go.isNotEmpty) Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(10)), child: m.Text(n.go, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: c))),
+                ]),
+              ),
+            );
+          }(),
       ]),
     ];
   }
 
-  // ---- Home · Attendance · Leave · Me
+  // ---- the bar that floats: Home · Attendance · (mark) · Leave · Me
   Widget _nav() {
-    Widget item(String key, String en, String mr, bool on, VoidCallback onTap) => GestureDetector(
-          key: Key(key),
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: on ? 16 : 8, vertical: 9),
-            decoration: on ? BoxDecoration(color: const Color(0xFFE3F7EC), borderRadius: BorderRadius.circular(22)) : null,
-            child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: on ? const Color(0xFF0F7A45) : C.muted)),
+    final out = day != null && _next == 'out';
+    Widget item(String key, IconData icon, String en, String mr, bool on, VoidCallback onTap) => Expanded(
+          child: GestureDetector(
+            key: Key(key),
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 26, height: 3, decoration: BoxDecoration(gradient: on ? Sk.goldFill : null, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 9),
+              Icon(icon, size: 22, color: on ? sk.ink : sk.faint),
+              const SizedBox(height: 3),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 11, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? sk.ink : sk.faint))),
+              const SizedBox(height: 9),
+            ]),
           ),
         );
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
-        child: Container(
-          key: const Key('hr-nav'),
-          height: 58,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30), boxShadow: const [BoxShadow(color: Color(0x24141E3C), blurRadius: 20, offset: Offset(0, 6))]),
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-            item('nav-home', 'Home', 'Home', tab == 0, () => setState(() => tab = 0)),
-            item('nav-att', 'Attendance', 'हजेरी', false, _attendance),
-            item('nav-leave', 'Leave', 'रजा', false, _leave),
-            item('nav-me', 'Me', 'मी', tab == 1, () => setState(() => tab = 1)),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: SizedBox(
+          height: 90,
+          child: Stack(clipBehavior: Clip.none, alignment: Alignment.bottomCenter, children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                key: const Key('hr-nav'),
+                height: 66,
+                decoration: sk.box(radius: 24),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  item('nav-home', Icons.home_outlined, 'Home', 'Home', tab == 0, () => _go(0)),
+                  item('nav-att', Icons.calendar_today_outlined, 'Attendance', 'हजेरी', tab == 1, () => _go(1)),
+                  const SizedBox(width: 78),
+                  item('nav-leave', Icons.description_outlined, 'Leave', 'रजा', tab == 2, () => _go(2)),
+                  item('nav-me', Icons.person_outline_rounded, 'Me', 'मी', tab == 3, () => _go(3)),
+                ]),
+              ),
+            ),
+            // the marking button, raised in the middle: gold while IN is next, red while OUT is
+            Positioned(
+              top: 0,
+              child: GestureDetector(
+                key: const Key('nav-mark'),
+                behavior: HitTestBehavior.opaque,
+                onTap: _mark,
+                child: SizedBox(
+                  width: 76,
+                  height: 76,
+                  child: Center(
+                    child: Transform.rotate(
+                      angle: math.pi / 4,
+                      child: Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(gradient: out ? Sk.redFill : Sk.goldFill, borderRadius: BorderRadius.circular(17), boxShadow: [BoxShadow(color: (out ? const Color(0xFFE5484D) : const Color(0xFFDDAD40)).withValues(alpha: .45), blurRadius: 16, offset: const Offset(4, 4))]),
+                        child: Transform.rotate(angle: -math.pi / 4, child: Icon(Icons.sentiment_satisfied_alt_rounded, size: 26, color: out ? Colors.white : Sk.goldInk)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ]),
         ),
       ),

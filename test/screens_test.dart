@@ -43,6 +43,7 @@ import 'package:rcl_mobile/screens/car_detail.dart' show CarPhotoPick;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/theme.dart' show C;
+import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin;
 import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
@@ -8678,7 +8679,10 @@ void main() {
     final srv = FakeServer()
       ..hrSite = true
       ..hrKey = 'hrme'
-      ..hrOnlyUser = true;
+      ..hrOnlyUser = true
+      // (3.114.0) his shift – the dial's ring – and a paper of his that runs out soon ("For you")
+      ..hrShift = {'name': 'General', 'start': '08:30', 'end': '17:30'}
+      ..hrComing = {'papers': [{'paper': 'Driving licence', 'expires_on': '2026-10-24', 'left': 10}], 'birthday': false, 'work_years': 0};
     // (the words of a language come from the app's own files – here from the test, as in lang_test: a file is not read inside a screen test)
     final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
     await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
@@ -8700,13 +8704,19 @@ void main() {
     expect(srv.calls.where((c) => c.startsWith('portal:go:hrme:')).length, 1, reason: 'one "My HR" sign-in for the whole Home');
     expect(t.widget<Text>(find.byKey(const Key('hh-name'))).data, 'Sujit Mule');
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'Not marked yet');
-    expect(find.textContaining('Slide to mark IN'), findsOneWidget);
+    // (3.114.0) the look is Pearl until he chooses; the dial's disc marks – IN is next
+    expect([HrSkin.i.on, HrSkin.i.look], [true, 'pearl']);
+    expect(find.text('HOLD TO MARK'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('IN')), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('hh-shift'))).data, 'General');
     expect([for (final k in ['hh-leave-sub', 'hh-docs-sub']) t.widget<Text>(find.byKey(Key(k))).data], ['3 left', '4 missing']);
     expect(find.byKey(const Key('hh-w-2026-10-13')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('hh-w-2026-10-13')), matching: find.text('P')), findsOneWidget);
     await t.scrollUntilVisible(find.byKey(const Key('hh-n-day-2026-10-12')), 200, scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('12 Oct has no punch'), findsOneWidget);
     expect(find.byKey(const Key('hh-dot')), findsOneWidget, reason: 'something waits');
+    expect(find.text('Driving licence'), findsOneWidget);
+    expect(find.textContaining('runs out in 10 days'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home.png'));
     // ---- the slide: My attendance opens to mark – IN; said big, then Home again by itself: on duty
@@ -8719,20 +8729,31 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('att-punch')), findsNothing, reason: 'Home again');
     expect(srv.hrPunches.length, 1);
-    expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, '10:30');
-    expect(find.textContaining('On duty since'), findsOneWidget);
-    expect(find.textContaining('Slide to mark OUT'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
+    expect(t.widget<Text>(find.byKey(const Key('hh-in'))).data, '10:30');
+    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('OUT')), findsOneWidget, reason: 'the disc is red now: OUT is next');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_duty.png'));
-    // ---- the bar: Attendance and Leave open as pages; Me is the second tab
+    // ---- (3.114.0) the bar floats on all four pages: Attendance and Leave are pages of the bar (no way back, no second
+    // marking bar – the bar's middle button marks); Me is the fourth
     await tapKey('nav-att');
     expect(find.byKey(const Key('att-page')), findsOneWidget);
-    await t.pageBack();
-    await net(t);
+    expect(find.byKey(const Key('hr-nav')), findsOneWidget);
+    expect(find.byKey(const Key('att-punch')), findsNothing);
+    expect(find.byTooltip('Back'), findsNothing);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_attendance.png'));
     await tapKey('nav-leave');
     expect(find.byKey(const Key('leave-page')), findsOneWidget);
+    expect(find.byKey(const Key('hr-nav')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_leave.png'));
+    // the bar's middle button opens the same marking page as the dial; back from it: where he was
+    await tapKey('nav-mark');
+    expect(find.byKey(const Key('att-punch')), findsOneWidget);
     await t.pageBack();
     await net(t);
+    expect(find.byKey(const Key('leave-page')), findsOneWidget);
     await tapKey('nav-me');
     expect(find.byKey(const Key('me-page')), findsOneWidget);
     expect(t.widget<Text>(find.byKey(const Key('me-role'))).data, 'E00012 · Site Engineer');
@@ -8855,6 +8876,48 @@ void main() {
     await net(t);
     await tapKey('nav-home');
     expect(find.byKey(const Key('hr-home')), findsOneWidget);
+    // ---- (3.114.0) LOOK: Me → Look – "Midnight Gold" changes the whole app at once and is kept on this phone; Pearl again the same way
+    await tapKey('nav-me');
+    await tapKey('me-look');
+    expect(find.byKey(const Key('look-page')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_look.png'));
+    await t.tap(find.byKey(const Key('look-gold')));
+    await net(t);
+    expect(HrSkin.i.look, 'gold');
+    expect(kit.files['hr_look.txt'], 'gold');
+    expect(Theme.of(t.element(find.byKey(const Key('look-page')))).brightness, Brightness.dark);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_look.png'));
+    await t.pageBack();
+    await net(t);
+    expect(find.text('Midnight Gold'), findsOneWidget, reason: 'said on Me');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_me.png'));
+    await tapKey('nav-home');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_home.png'));
+    await tapKey('hh-month');
+    expect(find.byKey(const Key('att-month-page')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_month.png'));
+    await t.pageBack();
+    await net(t);
+    await tapKey('nav-att');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_attendance.png'));
+    await tapKey('nav-leave');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_leave.png'));
+    await tapKey('nav-me');
+    await tapKey('me-look');
+    await t.tap(find.byKey(const Key('look-pearl')));
+    await net(t);
+    expect([HrSkin.i.look, kit.files['hr_look.txt']], ['pearl', 'pearl']);
+    expect(Theme.of(t.element(find.byKey(const Key('look-page')))).brightness, Brightness.light);
+    await t.pageBack();
+    await net(t);
+    expect(find.text('Pearl'), findsOneWidget);
   }, tags: ['golden']);
 
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {

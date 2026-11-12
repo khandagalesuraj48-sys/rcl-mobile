@@ -11,6 +11,7 @@ import 'package:flutter/material.dart' hide Text;
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
 import '../ui/hr_look.dart';
+import '../ui/hr_skin.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
 import '../ui/theme.dart';
@@ -149,7 +150,7 @@ class _RegAskScreenState extends State<RegAskScreen> {
           controller: c,
           keyboardType: TextInputType.datetime,
           style: const TextStyle(fontSize: 15),
-          decoration: hrInput(hint: '09:00', suffix: IconButton(icon: const Icon(Icons.schedule_rounded, size: 20, color: C.faint), onPressed: () => _time(c))),
+          decoration: hrInput(hint: '09:00', suffix: IconButton(icon: Icon(Icons.schedule_rounded, size: 20, color: sk.faint), onPressed: () => _time(c))),
         );
     return Scaffold(
       appBar: hrHead(context, sky: kAskSky, title: 'Set a day right', mr: 'दिवस दुरुस्त करा', height: 64),
@@ -167,10 +168,10 @@ class _RegAskScreenState extends State<RegAskScreen> {
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: C.line)),
+                decoration: BoxDecoration(color: sk.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: sk.line)),
                 child: Row(children: [
-                  Expanded(child: d == null ? Text('Choose the day', mr: 'दिवस निवडा', style: const TextStyle(fontSize: 15, color: C.faint)) : Text('${_dmy(day)} · ${_week[d.weekday - 1]}', style: const TextStyle(fontSize: 15, color: C.ink))),
-                  if (widget.day.isEmpty) const Icon(Icons.calendar_month_rounded, size: 20, color: C.faint),
+                  Expanded(child: d == null ? Text('Choose the day', mr: 'दिवस निवडा', style: TextStyle(fontSize: 15, color: sk.faint)) : Text('${_dmy(day)} · ${_week[d.weekday - 1]}', style: TextStyle(fontSize: 15, color: sk.ink))),
+                  if (widget.day.isEmpty) Icon(Icons.calendar_month_rounded, size: 20, color: sk.faint),
                 ]),
               ),
             ),
@@ -189,9 +190,9 @@ class _RegAskScreenState extends State<RegAskScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(children: [
-                Icon(next ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded, size: 22, color: next ? kNavy : C.faint),
+                Icon(next ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded, size: 22, color: next ? sk.accent : sk.faint),
                 const SizedBox(width: 8),
-                Expanded(child: Text('OUT was on the next day (night)', mr: 'OUT दुसऱ्या दिवशी (रात्रपाळी)', style: const TextStyle(fontSize: 13.5, color: C.muted))),
+                Expanded(child: Text('OUT was on the next day (night)', mr: 'OUT दुसऱ्या दिवशी (रात्रपाळी)', style: TextStyle(fontSize: 13.5, color: sk.muted))),
               ]),
             ),
           ),
@@ -312,7 +313,7 @@ class _AttendRegsScreenState extends State<AttendRegsScreen> {
         ];
     return Scaffold(
       appBar: hrHead(context, sky: kAskSky, title: 'Requests', mr: 'विनंत्या', height: 124, below: [
-        Text('Forgot IN or OUT? Ask to set an old day right.\nIt counts only when approved.', mr: 'IN किंवा OUT राहिले? जुना दिवस दुरुस्त करायला सांगा.\nमंजूर झाल्यावरच धरले जाते.', maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, height: 1.3, color: Colors.white.withValues(alpha: .95))),
+        Text('Forgot IN or OUT? Ask to set an old day right.\nIt counts only when approved.', mr: 'IN किंवा OUT राहिले? जुना दिवस दुरुस्त करायला सांगा.\nमंजूर झाल्यावरच धरले जाते.', maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, height: 1.3, color: sk.onHeadSoft)),
       ]),
       body: loading
           ? const SkeletonList(tiles: 0, rows: 4)
@@ -324,7 +325,7 @@ class _AttendRegsScreenState extends State<AttendRegsScreen> {
                 const SizedBox(height: 12),
                 hrCard(key: const Key('regs-mine'), [
                   hrTitle('My requests', 'माझ्या विनंत्या'),
-                  if (rows.isEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('No request yet.', mr: 'अजून विनंती नाही.', style: const TextStyle(fontSize: 13.5, color: C.faint))),
+                  if (rows.isEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('No request yet.', mr: 'अजून विनंती नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint))),
                   for (final (i, q) in rows.indexed)
                     () {
                       final s = reqState(q, '${q['reason'] ?? ''}');
@@ -335,7 +336,7 @@ class _AttendRegsScreenState extends State<AttendRegsScreen> {
                   const SizedBox(height: 12),
                   hrCard(key: const Key('regs-team'), [
                     hrTitle('To approve · my team', 'मंजुरीसाठी · माझी टीम', side: wait > 0 ? '$wait' : ''),
-                    if (wait == 0) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Nothing is waiting.', mr: 'काही प्रलंबित नाही.', style: const TextStyle(fontSize: 13.5, color: C.faint))),
+                    if (wait == 0) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Nothing is waiting.', mr: 'काही प्रलंबित नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint))),
                     for (final (i, q) in team.indexed)
                       reqRow(key: Key('reg-${q['id']}'), main: '${q['name'] ?? ''} · ${dayName('${q['day']}')}', small: [_times(q), '${q['reason'] ?? ''}'].where((x) => x.isNotEmpty).join(' · '), chips: yesNo(q, 'team'), last: teamLeave.isEmpty && i == team.length - 1),
                     for (final (i, q) in teamLeave.indexed)

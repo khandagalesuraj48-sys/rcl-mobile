@@ -132,3 +132,127 @@ String sinceText(String hhmm, DateTime now) {
   if (d < 0) return '';
   return '${d ~/ 60} h ${(d % 60).toString().padLeft(2, '0')} m';
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// (3.114.0 – the two looks of the attendance app, his approval of 12-11-2026) GOLD FOR IN, RED FOR OUT.
+
+const _goldDisc = [Color(0xFFFBE9A6), Color(0xFFDDAD40), Color(0xFFA8761A)];
+const _redDisc = [Color(0xFFFF9C92), Color(0xFFE5484D), Color(0xFFA3211B)];
+const _greyDisc = [Color(0xFFE3E5EC), Color(0xFFC5C9D6), Color(0xFFAFB4C4)];
+const _moonDisc = [Color(0xFFFFFFFF), Color(0xFFDDE3F6), Color(0xFFC9D2F0)];
+
+/// The round sign of a punch in the attendance app: gold – IN; red – OUT; silver – today is done; pale – it cannot be marked.
+class MarkDisc extends StatelessWidget {
+  const MarkDisc({super.key, required this.size, this.label = '', this.out = false, this.dim = false, this.done = false, this.tick = false, this.child});
+  final double size;
+  final String label;
+  final bool out, dim, done, tick;
+
+  /// what stands on the disc instead of [label] (the dial's three lines)
+  final Widget? child;
+
+  /// the colour of what is written on such a disc
+  static Color inkOf({bool out = false, bool dim = false, bool done = false}) => dim ? const Color(0xFF4A5068) : done ? const Color(0xFF1A1C3A) : out ? Colors.white : const Color(0xFF2A1D00);
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = dim ? _greyDisc : done ? _moonDisc : out ? _redDisc : _goldDisc, ink = inkOf(out: out, dim: dim, done: done);
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(center: const Alignment(-.35, -.45), radius: .95, colors: colors, stops: const <double>[0, .58, 1]),
+        boxShadow: dim ? null : [BoxShadow(color: colors[1].withValues(alpha: .42), blurRadius: size * .26, spreadRadius: size * .02, offset: Offset(0, size * .08))],
+      ),
+      child: tick
+          ? Icon(Icons.check_rounded, size: size * .62, color: ink)
+          : child ?? (label.isEmpty ? null : Text(label, maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w800, fontSize: size * .26, color: ink, height: 1))),
+    );
+  }
+}
+
+/// THE DIAL of Home: the shift from its start to its end as a ring with small marks; a dot where "now" stands; once he is IN,
+/// the ring is red from his IN to now. The disc in its middle marks: gold IN, red OUT. Only a drawing – nothing is counted here.
+class ShiftDial extends StatelessWidget {
+  const ShiftDial({super.key, required this.size, required this.now, this.from, required this.out, this.dim = false, this.done = false, required this.track, required this.tick, required this.top, required this.big, required this.under});
+  final double size;
+
+  /// where "now" stands between the shift's start and its end, 0 to 1 (null: his shift is not known – no dot)
+  final double? now;
+
+  /// where his IN stands (the red ring starts there)
+  final double? from;
+  final bool out, dim, done;
+  final Color track, tick;
+  final String top, big, under;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = MarkDisc.inkOf(out: out, dim: dim, done: done), disc = size * .6;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(alignment: Alignment.center, children: [
+        Positioned.fill(child: CustomPaint(painter: _DialPaint(now: now, from: from, out: out, off: dim || done, track: track, tick: tick))),
+        MarkDisc(
+          size: disc,
+          out: out,
+          dim: dim,
+          done: done,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: disc * .1),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (top.isNotEmpty) FittedBox(fit: BoxFit.scaleDown, child: Text(top, maxLines: 1, style: TextStyle(fontSize: disc * .078, fontWeight: FontWeight.w700, letterSpacing: .8, color: ink.withValues(alpha: .82), height: 1.2))),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(big, maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: disc * .27, fontWeight: FontWeight.w800, color: ink, height: 1.1))),
+              if (under.isNotEmpty) FittedBox(fit: BoxFit.scaleDown, child: Text(under, maxLines: 1, style: TextStyle(fontSize: disc * .088, fontWeight: FontWeight.w600, color: ink.withValues(alpha: .9), height: 1.25))),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _DialPaint extends CustomPainter {
+  _DialPaint({required this.now, required this.from, required this.out, required this.off, required this.track, required this.tick});
+  final double? now, from;
+  final bool out, off;
+  final Color track, tick;
+
+  @override
+  void paint(Canvas c, Size s) {
+    final mid = s.center(Offset.zero), r = s.width / 2;
+    const a0 = math.pi * .75, sweep = math.pi * 1.5;
+    final marks = Paint()
+      ..color = tick
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i <= 30; i++) {
+      final a = a0 + sweep * i / 30, d = Offset(math.cos(a), math.sin(a));
+      c.drawLine(mid + d * (r - (i % 5 == 0 ? 10 : 6)), mid + d * (r - 1), marks);
+    }
+    final rr = r - 21, ring = Rect.fromCircle(center: mid, radius: rr);
+    Paint line(Color col) => Paint()
+      ..color = col
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round;
+    c.drawArc(ring, a0, sweep, false, line(track));
+    final n = now;
+    if (n == null || off) return;
+    final double f = n.clamp(0.0, 1.0).toDouble();
+    final hue = out ? const Color(0xFFE5484D) : const Color(0xFFDDAD40);
+    if (out) {
+      final double b = (from ?? 0.0).clamp(0.0, f).toDouble();
+      if (f > b) c.drawArc(ring, a0 + sweep * b, sweep * (f - b), false, line(hue));
+    }
+    final k = mid + Offset(math.cos(a0 + sweep * f), math.sin(a0 + sweep * f)) * rr;
+    c.drawCircle(k, 8.5, Paint()..color = hue);
+    c.drawCircle(k, 4.6, Paint()..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DialPaint o) => o.now != now || o.from != from || o.out != out || o.off != off || o.track != track || o.tick != tick;
+}

@@ -31,6 +31,7 @@ import 'screens/shell.dart';
 import 'screens/site_pick.dart';
 import 'screens/splash.dart';
 import 'ui/scope.dart';
+import 'ui/hr_skin.dart';
 import 'ui/theme.dart';
 import 'ui/t.dart';
 import 'ui/live.dart' show appRoutes;
@@ -232,12 +233,13 @@ class RclApp extends StatelessWidget {
   Widget build(BuildContext context) => SessionScope(
         session: session,
         // (3.97.0, his design 12) Site mode: its own look (thicker lines, bigger buttons) – the app made again only when it is switched
-        child: LangScope(child: ValueListenableBuilder<bool>(valueListenable: session.siteMode, builder: (_, site, __) => MaterialApp(
+        child: LangScope(child: ValueListenableBuilder<bool>(valueListenable: session.siteMode, builder: (_, site, __) => ListenableBuilder(listenable: HrSkin.i, builder: (_, __) => MaterialApp(
           navigatorKey: appNav,
           navigatorObservers: [appRoutes], // (update-155) a tab under a closed screen loads if it is old (ui/live.dart)
           title: 'RCL ERP',
           debugShowCheckedModeBanner: false,
-          theme: site ? _siteTheme : _theme,
+          // (3.114.0) the attendance app (a person with HR only): the look he chose – Pearl or Midnight Gold (ui/hr_skin.dart)
+          theme: HrSkin.i.on ? hrTheme(sk, _theme) : (site ? _siteTheme : _theme),
           // (3.19.0) on a computer a list is also dragged with the mouse (and pulled down to refresh), as with a finger
           scrollBehavior: onComputer ? const _AnyPointerDrags() : null,
           // his "Size of the text" (Settings) – on every screen of the app
@@ -256,7 +258,7 @@ class RclApp extends StatelessWidget {
             return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
           },
           home: const Gate(),
-        ))),
+        )))),
       );
 }
 
