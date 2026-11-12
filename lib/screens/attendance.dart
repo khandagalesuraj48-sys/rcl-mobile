@@ -585,7 +585,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
             : '${lastP!['kind'] == 'in' ? 'IN' : 'OUT'} ${lastP['time'] ?? ''}';
     final under = since.isNotEmpty ? _t('On duty · $since', 'कामावर · $since') : sky == Sky.dusk ? _t('Today\'s attendance is done', 'आजची हजेरी पूर्ण') : who;
     return PreferredSize(
-      preferredSize: const Size.fromHeight(176),
+      preferredSize: const Size.fromHeight(160),
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [sk.bgTop, sk.bg])),
@@ -1005,7 +1005,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
               for (var r = 0; r < cells.length; r += 7)
                 Padding(padding: const EdgeInsets.only(bottom: 5), child: Row(children: [for (var c = r; c < r + 7; c++) Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2.5), child: cells[c]))])),
               const SizedBox(height: 4),
-              Wrap(spacing: 10, runSpacing: 4, children: [leg(_look('P').$2, 'Present', 'हजर'), leg(_look('HD').$2, 'Half day', 'अर्धा दिवस'), leg(_look('A').$2, 'Absent', 'गैरहजर'), leg(_look('L').$2, 'Leave', 'रजा')]),
+              Wrap(spacing: 10, runSpacing: 4, children: [for (final (c, en, mr) in const [('P', 'Present', 'हजर'), ('HD', 'Half day', 'अर्धा दिवस'), ('A', 'Absent', 'गैरहजर'), ('L', 'Leave', 'रजा')]) leg(sk.dark ? _look(c).$1 : _look(c).$2, en, mr)]),
             ]),
           ),
           if (days.isEmpty) Padding(padding: const EdgeInsets.only(top: 16), child: Center(child: Text(_t('No punch in this month.', 'या महिन्यात हजेरी नाही.'), style: TextStyle(color: sk.faint)))),

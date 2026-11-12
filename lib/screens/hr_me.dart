@@ -134,8 +134,9 @@ class HrMeTab extends StatelessWidget {
               _li(key: const Key('me-lang'), sign: 'A', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
               _li(key: const Key('me-account'), sign: '@', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
               _li(key: const Key('me-look'), sign: '', icon: Icons.palette_outlined, c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Look', mr: 'रूप', sub: sk.dark ? 'Midnight Gold' : 'Pearl', onTap: () => open(const LookScreen())),
-              const _RemindRow(),
-              const _UpdateRow(),
+              // (the look's name goes with them: a row that keeps its own state is drawn again when the look changes)
+              _RemindRow(look: sk.name),
+              _UpdateRow(look: sk.name),
               if (s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
               _li(
                   key: const Key('me-out'),
@@ -677,7 +678,8 @@ Widget hrFace(String name, String url, {required double size, required double ra
 /// update, for a person with HR only – the same check and the same update as Me of the full app. A newer version is said on the
 /// row as soon as the page opens; a press checks again.
 class _UpdateRow extends StatefulWidget {
-  const _UpdateRow();
+  const _UpdateRow({required this.look});
+  final String look;
   @override
   State<_UpdateRow> createState() => _UpdateRowState();
 }
@@ -737,7 +739,8 @@ class _UpdateRowState extends State<_UpdateRow> {
 
 /// (3.113.0) the IN / OUT reminders: on (as they come) or off – his own choice, kept on this phone.
 class _RemindRow extends StatefulWidget {
-  const _RemindRow();
+  const _RemindRow({required this.look});
+  final String look;
   @override
   State<_RemindRow> createState() => _RemindRowState();
 }
