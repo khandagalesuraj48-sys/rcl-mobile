@@ -97,11 +97,15 @@ Widget _regCard(Map q, {bool who = false, List<Widget> actions = const []}) {
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.line)),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(child: Text(who ? '${q['name'] ?? ''} · ${_dmy('${q['day']}')}' : _dmy('${q['day']}'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
-        Pill(s.$1, color: s.$2, bg: s.$3),
-      ]),
+      Text(who ? '${q['name'] ?? ''} · ${_dmy('${q['day']}')}' : _dmy('${q['day']}'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
       const SizedBox(height: 6),
+      // (where it stands – on its own line: its words are long on a narrow phone)
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: s.$3, borderRadius: BorderRadius.circular(30)),
+        child: Text(s.$1, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: s.$2)),
+      ),
+      const SizedBox(height: 8),
       Text('IN ${_or(q['in_time'])} · OUT ${_or(q['out_time'])}${q['out_next_day'] == true ? ' (+1)' : ''}', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
       const SizedBox(height: 2),
       Text('${q['reason'] ?? ''}', style: const TextStyle(fontSize: 13.5, color: C.muted, height: 1.35)),
@@ -243,9 +247,9 @@ class _TeamRegsScreenState extends State<TeamRegsScreen> {
                 if (err.isEmpty && rows.isEmpty) EmptyState(bi('Nothing is waiting', 'काही प्रलंबित नाही'), bi('A request of a person who reports to you comes here first.', 'तुम्हाला report करणाऱ्याची विनंती आधी इथे येते.'), pic: 'calendar'),
                 for (final q in rows)
                   _regCard(q, who: true, actions: [
-                    FilledButton(key: Key('team-yes-${q['id']}'), style: FilledButton.styleFrom(minimumSize: const Size(110, 44)), onPressed: busy ? null : () => _decide(q, true), child: Text(bi('Approve', 'मंजूर'))),
+                    Expanded(child: FilledButton(key: Key('team-yes-${q['id']}'), style: FilledButton.styleFrom(minimumSize: const Size(0, 46), padding: const EdgeInsets.symmetric(horizontal: 8)), onPressed: busy ? null : () => _decide(q, true), child: FittedBox(fit: BoxFit.scaleDown, child: Text(bi('Approve', 'मंजूर'))))),
                     const SizedBox(width: 10),
-                    OutlinedButton(key: Key('team-no-${q['id']}'), style: OutlinedButton.styleFrom(minimumSize: const Size(100, 44), foregroundColor: C.red), onPressed: busy ? null : () => _decide(q, false), child: Text(bi('Refuse', 'नाकारा'))),
+                    Expanded(child: OutlinedButton(key: Key('team-no-${q['id']}'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46), padding: const EdgeInsets.symmetric(horizontal: 8), foregroundColor: C.red), onPressed: busy ? null : () => _decide(q, false), child: FittedBox(fit: BoxFit.scaleDown, child: Text(bi('Refuse', 'नाकारा'))))),
                   ]),
               ]),
       );
