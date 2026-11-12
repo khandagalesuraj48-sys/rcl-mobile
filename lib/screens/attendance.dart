@@ -449,15 +449,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
           Text(time, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
           const SizedBox(width: 12),
           Expanded(child: Text(place, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, color: C.muted))),
-          // (the note may be long in two languages: it takes what is left, never more than the row)
+          // (a short note – at most 130 wide; the place's name takes the rest and is cut first)
           if (note.isNotEmpty)
-            Flexible(
-              child: Container(
-                margin: const EdgeInsets.only(left: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(30)),
-                child: Text(note, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: c)),
-              ),
+            Container(
+              constraints: const BoxConstraints(maxWidth: 130),
+              margin: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(30)),
+              child: Text(note, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: c)),
             ),
         ]),
       );

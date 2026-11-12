@@ -241,7 +241,7 @@ class _TeamRegsScreenState extends State<TeamRegsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: toneBar(Tone.hr, title: Text(bi('Team requests', 'टीमच्या विनंत्या'))),
+        appBar: toneBar(Tone.hr, title: Text(bi('Team requests', 'टीम विनंत्या'), style: const TextStyle(fontSize: 18))),
         body: loading
             ? const SkeletonList(tiles: 0, rows: 4)
             : ListView(key: const Key('team-page'), padding: const EdgeInsets.fromLTRB(16, 6, 16, 40), children: [
