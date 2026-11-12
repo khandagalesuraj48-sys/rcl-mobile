@@ -8328,7 +8328,8 @@ void main() {
       await net(t);
     }
 
-    List<String> acts() => [for (final x in srv.hrSent) '${x['fn'] ?? x['action']}'];
+    // (what was asked of HR – without the quiet look for his team's requests after every reading)
+    List<String> acts() => [for (final x in srv.hrSent) if (x['action'] != 'teamRegs') '${x['fn'] ?? x['action']}'];
     await openHr();
     expect(acts(), ['sso', 'myAttend']);
     expect(srv.calls.where((c) => c.startsWith('portal:go:hr:')).length, 1, reason: 'a ticket of the Portal for the module hr');
