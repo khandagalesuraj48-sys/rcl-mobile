@@ -11,6 +11,12 @@ class FakeServer {
   final calls = <String>[];
   int tickets = 0;
   bool portalSignedIn = false, superAdmin = false, mustChange = false;
+  // (3.104.0) the Portal's code by e-mail: switched on?, the e-mail a code goes to, the code, where codes went, his e-mail's state in "me"
+  bool otpOn = false;
+  String otpMail = 'sujit.own@rcl.test', otpCode = '482913', verifyTo = '';
+  final codesTo = <String>[];
+  Map<String, dynamic>? mailInfo;
+  int alerts = 0;
   bool tester = false; // (02-11-2026) the Portal's "me": a tester (the beta channel)
   /// (3.31.2 – update-143) the date and shift asked for is already saved: the server's prefill says so (addTo) and the save adds to it
   Map<String, dynamic>? addTo;
@@ -1305,7 +1311,7 @@ class FakeServer {
         if (!portalSignedIn || r.headers['Cookie'] != 'rcl_portal=abc123') return _j({'signedIn': false});
         // (as the Portal: still on a given password – no module until his own is set)
         if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
-        return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, 'items': [
+        return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, 'items': [
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
           if (engSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'engineering', 'moduleName': 'Engineering', 'url': 'https://erp.test/engineering'},      // (3.59.0)
@@ -1330,6 +1336,38 @@ class FakeServer {
         mustChange = false;
         newPassword = pw;
         return _j({'ok': true}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});      // (a fresh sign-in)
+      }
+      // (3.104.0) the Portal's steps 10 / 11: a code by e-mail, "verify my e-mail", the reminder
+      if (b['action'] == 'options') return _j({'otp': otpOn});
+      if (b['action'] == 'otpSend') {
+        if (!otpOn) return _j({'error': 'Sign-in with a code is not switched on.', 'code': 'off'}, 403);
+        if (b['email'] == otpMail) codesTo.add('${b['email']}');      // (a code only to a verified user's e-mail – the answer is the same)
+        return _j({'ok': true, 'wait': 60, 'minutes': 10});
+      }
+      if (b['action'] == 'otpLogin') {
+        if (b['email'] != otpMail || b['code'] != otpCode) return _j({'error': 'The code is wrong or has expired.', 'code': 'code'}, 401);
+        portalSignedIn = true;
+        return _j({'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': false}, 'mustChange': false}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});
+      }
+      if (b['action'] == 'verifySend') {
+        if (!portalSignedIn) return _j({'error': 'Please sign in.', 'code': 'signin'}, 401);
+        final to = '${b['email'] ?? ''}'.trim().toLowerCase();
+        if (to == 'taken@rcl.test') return _j({'error': 'This e-mail is already another user\'s. Type your own.', 'code': 'taken'}, 409);
+        verifyTo = to;
+        codesTo.add(to);
+        return _j({'ok': true, 'email': to, 'wait': 60, 'minutes': 10});
+      }
+      if (b['action'] == 'verifyCheck') {
+        if (b['code'] != otpCode || verifyTo.isEmpty) return _j({'error': 'The code is wrong or has expired.', 'code': 'code'}, 400);
+        mailInfo = {'verified': true, 'canVerify': true, 'remind': true, 'login': verifyTo};
+        otpMail = verifyTo;
+        return _j({'ok': true, 'verified': true, 'login': verifyTo});
+      }
+      if (b['action'] == 'emailAlert') {
+        final m = mailInfo;
+        if (m == null || m['verified'] == true || m['remind'] != true) return _j({'show': false});
+        alerts++;
+        return _j({'show': true, 'verified': false, 'alerts': alerts, 'canVerify': m['canVerify'] == true});
       }
       if (b['action'] == 'logout') {
         portalSignedIn = false;

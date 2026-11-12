@@ -8521,4 +8521,193 @@ void main() {
     expect(srv.calls.where((c) => c.startsWith('portal:go:hrme:')).length, 1);
     expect(find.byKey(const Key('att-punch')), findsOneWidget);
   });
+
+  /* (3.104.0) TWO WAYS TO SIGN IN and "VERIFY MY E-MAIL" (the Portal's steps 10 / 11; his rules of 12-11-2026). */
+  testWidgets('(3.104.0) "Login with Email OTP" is not there while the Portal has it switched off – the sign-in exactly as before', (t) async {
+    phone(t);
+    final off = FakeServer(), s0 = make(off);
+    await t.runAsync(s0.start);
+    await t.pumpWidget(RclApp(session: s0));
+    await net(t);
+    expect(off.calls, contains('portal:options'), reason: 'the sign-in screen asks the Portal');
+    expect(find.byKey(const Key('login-otp')), findsNothing, reason: 'switched off: the sign-in exactly as before');
+    expect(find.byType(TextField), findsNWidgets(2));
+  });
+
+  testWidgets('(3.104.0) switched on: the second button under "Sign in"; it turns the card, "Continue with Password" turns it back; the password way as ever', (t) async {
+    phone(t);
+    final srv = FakeServer()..otpOn = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('login-otp')), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget, reason: 'the password way stays the first one');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1c_two_ways_in.png'));
+    await t.enterText(find.byType(TextField).at(0), 'sujit.own@rcl.test');
+    await tapK(t, 'login-otp');
+    await settle(t, 600);
+    expect(find.byKey(const Key('login-otp-mail')), findsOneWidget);
+    expect(t.widget<TextField>(find.byKey(const Key('login-otp-mail'))).controller!.text, 'sujit.own@rcl.test', reason: 'the e-mail typed is carried over');
+    expect(find.byKey(const Key('login-otp-code')), findsNothing, reason: 'first "Send code"');
+    await tapK(t, 'login-otp-back');
+    await settle(t, 600);
+    expect(find.byKey(const Key('login-otp-mail')), findsNothing);
+    expect(find.byType(TextField), findsNWidgets(2), reason: 'the e-mail and the password again');
+    // the password way works as ever
+    await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
+    await t.enterText(find.byType(TextField).at(1), 'Nashik#Road848!');
+    await t.tap(find.text('Sign in'));
+    await net(t);
+    expect(s.stage, Stage.pickSite);
+    expect(srv.calls, isNot(contains('portal:otpSend')));
+  }, tags: ['golden']);
+
+  testWidgets('(3.104.0) sign-in with a code: "Send code", a wrong code is said, "Send again" waits 60 seconds, the right code signs in', (t) async {
+    phone(t);
+    final srv = FakeServer()..otpOn = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.enterText(find.byType(TextField).at(0), 'sujit.own@rcl.test');
+    await tapK(t, 'login-otp');
+    await settle(t, 600);
+    await seen(t, find.text('Send code'));
+    await t.tap(find.text('Send code'));
+    await net(t);
+    expect(srv.codesTo, ['sujit.own@rcl.test']);
+    expect(find.byKey(const Key('login-otp-code')), findsOneWidget);
+    expect(find.textContaining('Send again ('), findsOneWidget);
+    expect(t.widget<TextButton>(find.byKey(const Key('login-otp-again'))).onPressed, isNull, reason: 'the 60 seconds between two codes');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1d_code_by_email.png'));
+    // too short, then wrong
+    await t.enterText(find.byKey(const Key('login-otp-code')), '12');
+    await seen(t, find.text('Sign in'));
+    await t.tap(find.text('Sign in'));
+    await settle(t, 600);
+    expect(find.textContaining('Type the 6-digit code'), findsOneWidget);
+    expect(srv.calls, isNot(contains('portal:otpLogin')), reason: 'not sent to the Portal');
+    await t.enterText(find.byKey(const Key('login-otp-code')), '111111');
+    await settle(t, 300);
+    await seen(t, find.text('Sign in'));
+    await t.tap(find.text('Sign in'));
+    await net(t);
+    expect(find.textContaining('The code is wrong or has expired.'), findsOneWidget);
+    expect(s.stage, Stage.signedOut);
+    expect(find.byKey(const Key('login-otp-code')), findsOneWidget, reason: 'still on the code');
+    // after the 60 seconds another code can be asked
+    await settle(t, 61000);
+    expect(t.widget<TextButton>(find.byKey(const Key('login-otp-again'))).onPressed, isNotNull);
+    expect(find.text('Send again'), findsOneWidget);
+    await tapK(t, 'login-otp-again');
+    await net(t);
+    expect(srv.codesTo.length, 2);
+    // the right code: the same sign-in as with the password
+    await t.enterText(find.byKey(const Key('login-otp-code')), '482913');
+    await settle(t, 300);
+    await seen(t, find.text('Sign in'));
+    await t.tap(find.text('Sign in'));
+    await net(t);
+    expect(s.stage, Stage.pickSite);
+    expect(s.email, 'sujit@rcl.test', reason: 'his account – the user ID every module knows');
+    expect(srv.calls, containsAllInOrder(['portal:options', 'portal:otpSend', 'portal:otpLogin', 'portal:otpSend', 'portal:otpLogin', 'portal:me']));
+    expect(srv.calls, isNot(contains('portal:login')));
+  }, tags: ['golden']);
+
+  testWidgets('(3.104.0) e-mail not verified: the strip on Home, "Verify my e-mail" on Me – his own e-mail, the code, verified; then no strip', (t) async {
+    phone(t);
+    final srv = FakeServer()..mailInfo = {'verified': false, 'canVerify': true, 'remind': true};
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(s.mailRemind, true);
+    expect(find.byKey(const Key('mail-strip')), findsOneWidget, reason: 'asked of the Portal when Home opens');
+    expect(find.byKey(const Key('mail-strip-go')), findsOneWidget);
+    expect(srv.alerts, 1);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/2m_verify_strip.png'));
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    expect(find.byKey(const Key('me-verified')), findsNothing);
+    await tapK(t, 'me-verify');
+    await net(t);
+    expect(find.byKey(const Key('ve-mail')), findsOneWidget);
+    expect(t.widget<TextField>(find.byKey(const Key('ve-mail'))).controller!.text, 'sujit@rcl.test', reason: 'his user ID is filled in – he types his own e-mail over it');
+    expect(find.byKey(const Key('ve-code')), findsNothing);
+    // another user's e-mail is refused by the Portal
+    await t.enterText(find.byKey(const Key('ve-mail')), 'taken@rcl.test');
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('ve-go')));
+    await net(t);
+    expect(find.textContaining('already another user'), findsOneWidget);
+    expect(find.byKey(const Key('ve-code')), findsNothing);
+    // his own e-mail: the code goes there
+    await t.enterText(find.byKey(const Key('ve-mail')), 'sujit.real@rcl.test');
+    await settle(t, 300);
+    expect(find.byKey(const Key('ve-err')), findsNothing);
+    await t.tap(find.byKey(const Key('ve-go')));
+    await net(t);
+    expect(srv.codesTo, ['sujit.real@rcl.test']);
+    expect(find.byKey(const Key('ve-code')), findsOneWidget);
+    expect(t.widget<TextButton>(find.byKey(const Key('ve-again'))).onPressed, isNull);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/2n_verify_email.png'));
+    await t.enterText(find.byKey(const Key('ve-code')), '000000');
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('ve-go')));
+    await net(t);
+    expect(find.textContaining('The code is wrong or has expired.'), findsOneWidget);
+    expect(s.mailVerified, false);
+    await t.enterText(find.byKey(const Key('ve-code')), '482913');
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('ve-go')));
+    await net(t);
+    expect(find.byKey(const Key('ve-ok')), findsOneWidget, reason: 'told once which e-mail signs in from now on');
+    expect(s.mailVerified, true);
+    expect(s.mailLogin, 'sujit.real@rcl.test');
+    expect(s.email, 'sujit@rcl.test', reason: 'the user ID is not touched');
+    await t.tap(find.byKey(const Key('ve-ok')));
+    await net(t);
+    expect(find.byKey(const Key('ve-mail')), findsNothing, reason: 'back on Me');
+    expect(find.byKey(const Key('me-verified')), findsOneWidget);
+    expect(find.byKey(const Key('me-verify')), findsNothing);
+    await t.tap(find.byKey(const Key('tab-home')));
+    await net(t);
+    expect(find.byKey(const Key('mail-strip')), findsNothing);
+    expect(srv.alerts, 1, reason: 'a verified person is not reminded');
+  }, tags: ['golden']);
+
+  testWidgets('(3.104.0) nothing of it for a person the Portal says nothing about (the Super Admin, the steps not run) or with the reminder off', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(s.mail, isNull);
+    expect(find.byKey(const Key('mail-strip')), findsNothing);
+    expect(srv.calls, isNot(contains('portal:emailAlert')));
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    expect(find.byKey(const Key('me-verify')), findsNothing);
+    expect(find.byKey(const Key('me-verified')), findsNothing);
+  });
+
+  testWidgets('(3.104.0) not verified and the reminder switched off: no strip, nothing asked – but he can verify from Me', (t) async {
+    phone(t);
+    final srv2 = FakeServer()..mailInfo = {'verified': false, 'canVerify': true, 'remind': false};
+    srv2.prefs['brief'] = false;
+    final s2 = await ready(t, srv2);
+    await t.pumpWidget(RclApp(session: s2));
+    await net(t);
+    expect(find.byKey(const Key('mail-strip')), findsNothing);
+    expect(srv2.calls, isNot(contains('portal:emailAlert')));
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    expect(find.byKey(const Key('me-verify')), findsOneWidget);
+  });
 }

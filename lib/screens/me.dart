@@ -15,6 +15,7 @@ import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'approvals.dart';
+import 'email_verify.dart';
 import 'settings.dart';
 import 'super_admin.dart';
 import '../ui/t.dart';
@@ -206,6 +207,11 @@ class _MeTabState extends State<MeTab> {
                   child: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : const Text('Check Update'),
                 ),
               ),
+              // (3.104.0) his e-mail at the Portal: "Verify my e-mail" – he types his own, a code goes to it; afterwards the e-mail he signs in with
+              if (s.mailCanVerify)
+                _row(key: const Key('me-verify'), pic: 'inbox_tray', en: 'Verify my e-mail', mr: 'माझा email verify करा', sub: 'Then you can also sign in with a code by e-mail', color: C.goldSoft, onTap: () => openVerifyEmail(context)),
+              if (s.mailVerified)
+                _row(key: const Key('me-verified'), pic: 'inbox_tray', en: 'E-mail verified ✓', mr: 'Email verify झाला ✓', sub: s.mailLogin, color: C.greenSoft, trailing: const SizedBox.shrink()),
               _row(pic: 'gear', en: 'My settings', mr: 'माझ्या सेटिंग्ज', sub: 'Language, default site, password', color: C.greenSoft, onTap: settings),
               // (update-114) Approvals – for everybody: what waits for him to approve (one or several at once), what he sent (waiting,
               // approved, rejected); the Super Admin also sets the verification rules there. (3.2.0) The app's own screens, live.
