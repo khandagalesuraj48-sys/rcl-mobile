@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.114.0 (12-11-2026 – his approval of the two designs: "ok he final 2 ni thew user je haw te switch kru shakel"; only the
+attendance app: "fkt attendance app che boloty mi baki konache design changes nahit"):** the attendance app (a person with HR only) has
+**two looks – "Pearl" (light, white and gold) and "Midnight Gold" (dark, glass and gold)**; he chooses his own in **Me → Look**, it
+changes the whole app at once and is kept on the phone (Pearl until he chooses). `lib/ui/hr_skin.dart` holds the two looks; every HR
+page asks it for its colours. **Home:** the dial – his shift as a ring from its start to its end, a dot where "now" stands, red from
+his IN once he is at work; the disc in its middle marks (gold IN, red OUT – it opens the same marking page as before: his place, the
+selfie, the punch); IN · OUT · Hours; this week; the four tiles; "For you" now also says a paper of his that runs out within 30 days,
+his birthday and his years at work (rcl-hr "coming"). **The bar floats on all four pages** – Home · Attendance · the marking button
+raised in its middle · Leave · Me (Attendance and Leave are pages of the bar now). Every page behind them (month, requests, the
+forms, documents, salary slips, my details, my phone, language, e-mail) is in the same look. **Nothing of what may be done changes** –
+no server change; a person with the full app keeps the HR pages exactly as they were.
+
 **Version 3.113.0 (12-11-2026 – asked: "sign in and out ch notification ardha tas adhi user la den he ek mast idea aahe"):** the
 **reminders of attendance**, made on the phone from what the HR server said last (`lib/core/attend_remind.dart`, `remindPlan`): **IN**
 half an hour before his shift starts – today while it is not marked and the coming six days, not on a weekly off or a holiday

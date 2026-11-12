@@ -9,6 +9,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/api.dart' show ApiError;
+import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
@@ -132,8 +133,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('From now on sign in with this e-mail – with your password, or with a code by e-mail:'),
           const SizedBox(height: 8),
-          SelectableText(login, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: C.ink)),
-          const MrLine('यापुढे login साठी हाच email वापरा – password ने किंवा Email OTP ने.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
+          SelectableText(login, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: sk.ink)),
+          MrLine('यापुढे login साठी हाच email वापरा – password ने किंवा Email OTP ने.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: sk.muted)),
         ]),
         actions: [FilledButton(key: const Key('ve-ok'), style: FilledButton.styleFrom(minimumSize: const Size(110, 46)), onPressed: () => Navigator.pop(c), child: const Text('OK'))],
       ),
@@ -145,12 +146,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     return Scaffold(
-      backgroundColor: C.bg,
+      backgroundColor: sk.bg,
       appBar: AppBar(title: const Text('Verify your e-mail')),
       body: SafeArea(
         child: ListView(padding: const EdgeInsets.fromLTRB(Sp.edge, 16, Sp.edge, 24), children: [
-          const Text('Type your OWN e-mail – one you can open. A 6-digit code is sent to it; type the code here once.', style: TextStyle(fontSize: 14.5, color: C.ink, height: 1.4)),
-          const MrLine('तुमचा स्वतःचा, चालू असलेला email टाका. त्यावर 6 अंकी code येईल – तो इथे एकदा टाका.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
+          Text('Type your OWN e-mail – one you can open. A 6-digit code is sent to it; type the code here once.', style: TextStyle(fontSize: 14.5, color: sk.ink, height: 1.4)),
+          MrLine('तुमचा स्वतःचा, चालू असलेला email टाका. त्यावर 6 अंकी code येईल – तो इथे एकदा टाका.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: sk.muted)),
           const SizedBox(height: 16),
           TextField(
             key: const Key('ve-mail'),
@@ -172,7 +173,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             decoration: InputDecoration(labelText: tr('My e-mail'), prefixIcon: const Icon(Icons.mail_outline_rounded)),
           ),
           const SizedBox(height: 8),
-          Text('Your user ID in the ERP stays ${s.email} – nothing of your work changes.', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
+          Text('Your user ID in the ERP stays ${s.email} – nothing of your work changes.', style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
           if (_sent) ...[
             const SizedBox(height: 14),
             TextField(

@@ -210,6 +210,8 @@ class FakeServer {
   final hrFaceSeen = <String>{};
   final hrFacePics = <String>[];
   String hrClosed = '';
+  /// (3.114.0) his shift of today (the dial of the attendance app's Home) and what comes up for him (rcl-hr "coming"); null = not said
+  Map<String, dynamic>? hrShift, hrComing;
   String hrKey = 'hr', hrBound = '';
   final hrSent = <Map<String, dynamic>>[];
   final hrPunches = <Map<String, dynamic>>[];
@@ -247,6 +249,7 @@ class FakeServer {
         'once': hrOnce,
         'face': hrFace,
         'closed': hrClosed,
+        if (hrShift != null) 'shift': hrShift,
       };
   http.Response _hrAct(Map<String, dynamic> b) {
     switch ('${b['action']}') {
@@ -312,7 +315,7 @@ class FakeServer {
     List<String> docsMissing() => [for (final k in kinds) if (!hrDocs.any((d) => d['kind'] == k['key'])) '${k['name']}'];
     switch ('${b['action']}') {
       case 'myHr':
-        return _j({'ok': true, 'employee': {'code': 'E00012', 'name': 'Sujit Mule', 'category': 'staff', 'department': 'Projects', 'designation': 'Site Engineer'}, 'complete': {'pct': 64, 'missing': ['Blood group']},
+        return _j({'ok': true, if (hrComing != null) 'coming': hrComing, 'employee': {'code': 'E00012', 'name': 'Sujit Mule', 'category': 'staff', 'department': 'Projects', 'designation': 'Site Engineer'}, 'complete': {'pct': 64, 'missing': ['Blood group']},
           'details': [
             {'name': 'Employee', 'rows': [{'label': 'Code', 'value': 'E00012'}, {'label': 'Designation', 'value': 'Site Engineer'}, {'label': 'Date of birth', 'value': '01-01-1991'}]},
             {'name': 'Statutory & bank', 'rows': [{'label': 'Bank IFSC code', 'value': 'SBIN0001234'}, {'label': 'Bank account number', 'value': 'XXXX9012'}]},

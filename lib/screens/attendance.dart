@@ -21,6 +21,7 @@ import '../core/attend_remind.dart';
 import '../core/session.dart';
 import '../ui/attend_look.dart';
 import '../ui/hr_look.dart';
+import '../ui/hr_skin.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
@@ -50,7 +51,10 @@ String _t(String en, String mr) => Lang.i.pair(en, mr);
 String _dmy(String ymd) => ymd.length >= 10 ? '${ymd.substring(8, 10)}-${ymd.substring(5, 7)}-${ymd.substring(0, 4)}' : ymd;
 
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key, this.quick = false});
+  const AttendanceScreen({super.key, this.quick = false, this.embedded = false});
+
+  /// (3.114.0) a tab of the attendance app: no way back in its head and no bar to mark – the tab bar's middle button marks.
+  final bool embedded;
 
   /// (3.105.0) opened by Home's strip: a punch the server took is said big, once – then back to Home by itself.
   final bool quick;
@@ -375,7 +379,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final sky = skyOf(any: punches.isNotEmpty || kept.isNotEmpty, next: next, stopped: blocked || (hit != null && !hit!.inside));
     return Scaffold(
       appBar: _head(context, sky, me == null ? '' : '${emp['name'] ?? s.name} · ${emp['code'] ?? ''}', next, punches),
-      bottomNavigationBar: me == null || loading ? null : _punchBar(next, blocked || _dayDone),
+      bottomNavigationBar: me == null || loading || widget.embedded ? null : _punchBar(next, blocked || _dayDone),
       body: loading
           ? const SkeletonList(tiles: 1, rows: 4)
           : RefreshIndicator(
@@ -423,7 +427,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   if (kept.isNotEmpty) ...[
                     const SizedBox(height: 14),
                     _card([
-                      Text(_t('Waiting for the network (${kept.length})', 'Network ची वाट पाहत आहे (${kept.length})'), style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w700)),
+                      Text(_t('Waiting for the network (${kept.length})', 'Network ची वाट पाहत आहे (${kept.length})'), style: TextStyle(fontSize: 13, color: sk.muted, fontWeight: FontWeight.w700)),
                       for (final k in kept) _row(k.kind, indiaTime(k.atDevice), k.place, _t('Kept', 'ठेवले'), C.amber, C.amberSoft, Key('att-kept-${k.kind}')),
                       Align(alignment: Alignment.centerLeft, child: TextButton.icon(key: const Key('att-send'), onPressed: busy ? null : () => _load(), icon: const Icon(Icons.cloud_upload_rounded), label: Text(_t('Send now', 'आता पाठवा')))),
                     ]),
@@ -431,8 +435,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   // ---- today's punches, in one card
                   const SizedBox(height: 14),
                   _card([
-                    const Text('Today', mr: 'आज', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800)),
-                    if (punches.isEmpty) Padding(padding: const EdgeInsets.only(top: 8, bottom: 6), child: Text(_t('No punch yet.', 'अजून नोंद नाही.'), style: const TextStyle(fontSize: 14, color: C.faint))),
+                    Text('Today', mr: 'आज', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.classic ? null : sk.ink)),
+                    if (punches.isEmpty) Padding(padding: const EdgeInsets.only(top: 8, bottom: 6), child: Text(_t('No punch yet.', 'अजून नोंद नाही.'), style: TextStyle(fontSize: 14, color: sk.faint))),
                     for (final p in punches)
                       _row('${p['kind']}', '${p['time'] ?? ''}', _placeName('${p['place_id'] ?? ''}'), p['status'] == 'review' ? _t('To be checked', 'तपासणी') : p['offline'] == true ? _t('Sent later', 'नंतर पाठवले') : '',
                           p['status'] == 'review' ? C.amber : C.slate, p['status'] == 'review' ? C.amberSoft : C.slateSoft, Key('att-p-${p['id']}')),
@@ -459,7 +463,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   Widget _card(List<Widget> children) => Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: kSoftShadow),
+        decoration: sk.box(),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: children),
       );
 
@@ -471,11 +475,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
           key: key,
           constraints: const BoxConstraints(maxWidth: 340),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: kSoftShadow),
+          decoration: sk.box(radius: 16),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 9, height: 9, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
             const SizedBox(width: 8),
-            Flexible(child: m.Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.ink, height: 1.25))),
+            Flexible(child: m.Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: sk.ink, height: 1.25))),
           ]),
         ),
       );
@@ -486,10 +490,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     return DateTime.utc(d.year, d.month + 1, 0).day;
   }
 
-  Widget _tile(Key key, String sign, Color c, Color soft, String en, String mr, VoidCallback onTap, {int badge = 0}) => Press(
+  Widget _tile(Key key, String sign, Color c0, Color soft0, String en, String mr, VoidCallback onTap, {int badge = 0}) {
+    final (Color c, Color soft) = sk.tint(c0, soft0);
+    return Press(
         key: key,
         onTap: onTap,
         radius: 18,
+        color: sk.card,
+        border: sk.cardLine,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Stack(clipBehavior: Clip.none, children: [
@@ -497,9 +505,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
             if (badge > 0) Positioned(right: -10, top: -6, child: Pill('$badge', color: Colors.white, bg: C.red)),
           ]),
           const SizedBox(height: 7),
-          Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sk.classic ? null : sk.ink)),
         ]),
       );
+  }
 
   /// (3.105.0) The page's head: the sky of his day, his name and code, where today stands – and the sun (IN / OUT), the moon
   /// when today is done. Taller than the letters it holds; with very big letters the lowest line is cut, nothing overflows.
@@ -513,6 +522,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       }
     }
     final since = sky == Sky.day && kept.isEmpty ? sinceText(tin, DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now())) : '';
+    if (!sk.classic) return _lookHead(context, sky, who, next, lastP, since);
     return PreferredSize(
       preferredSize: const Size.fromHeight(176),
       child: Container(
@@ -565,6 +575,58 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     );
   }
 
+  /// (3.114.0) The head in the attendance app: no sky – the title, who he is, and a card that says where today stands with its
+  /// round sign (gold IN, red OUT, silver when today is done, pale when it cannot be marked).
+  PreferredSizeWidget _lookHead(BuildContext context, Sky sky, String who, String next, Map? lastP, String since) {
+    final state = lastP == null && kept.isEmpty
+        ? _t('Not marked yet', 'अजून लावलेली नाही')
+        : kept.isNotEmpty
+            ? '${kept.last.kind == 'in' ? 'IN' : 'OUT'} ${indiaTime(kept.last.atDevice)}'
+            : '${lastP!['kind'] == 'in' ? 'IN' : 'OUT'} ${lastP['time'] ?? ''}';
+    final under = since.isNotEmpty ? _t('On duty · $since', 'कामावर · $since') : sky == Sky.dusk ? _t('Today\'s attendance is done', 'आजची हजेरी पूर्ण') : who;
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(160),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [sk.bgTop, sk.bg])),
+        child: SafeArea(
+          bottom: false,
+          child: ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.topLeft,
+              maxHeight: double.infinity,
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  if (widget.embedded) const SizedBox(width: 18, height: 48) else Padding(padding: const EdgeInsets.fromLTRB(16, 4, 12, 4), child: hrIconBox(Icons.arrow_back_ios_new_rounded, size: 40, icon: 17, tooltip: MaterialLocalizations.of(context).backButtonTooltip, onTap: () => Navigator.of(context).maybePop())),
+                  Expanded(child: Text('My attendance', mr: 'माझी हजेरी', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 21, fontWeight: FontWeight.w800, color: sk.ink))),
+                  Padding(padding: const EdgeInsets.only(right: 16), child: hrIconBox(Icons.refresh_rounded, size: 40, icon: 20, tooltip: tr('Refresh'), onTap: busy ? null : () => _load())),
+                ]),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+                    decoration: sk.box(radius: 22),
+                    child: Row(children: [
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                          if (who.isNotEmpty && under != who) m.Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)),
+                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(state, key: const Key('att-state'), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 25, fontWeight: FontWeight.w800, color: sk.ink, height: 1.2))),
+                          if (under.isNotEmpty) m.Text(under, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sk.muted)),
+                        ]),
+                      ),
+                      const SizedBox(width: 10),
+                      MarkDisc(size: 64, label: next == 'in' ? 'IN' : 'OUT', out: next != 'in', done: sky == Sky.dusk, dim: sky == Sky.grey),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// (3.105.0) The one button, always at the thumb: the selfie and the punch. Off (pale) when attendance cannot be marked.
   /// (3.108.0, his screens) a dark bar with the sun on its left – "Slide to mark IN / OUT": the sun is pulled to the right (past
   /// the middle), or the bar is touched; both do the same – his place is read, the selfie, the punch.
@@ -590,7 +652,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                 height: 58,
                 child: FilledButton(
                   key: const Key('att-punch'),
-                  style: FilledButton.styleFrom(shape: const StadiumBorder(), backgroundColor: kNavy, disabledBackgroundColor: C.slateSoft, padding: const EdgeInsets.all(6)),
+                  style: FilledButton.styleFrom(shape: const StadiumBorder(), backgroundColor: sk.classic ? sk.accent : (sk.dark ? const Color(0xFF1D2547) : const Color(0xFF0F1F3D)), disabledBackgroundColor: sk.classic ? C.slateSoft : sk.blank, padding: const EdgeInsets.all(6)),
                   onPressed: off ? null : _punch,
                   child: busy
                       ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
@@ -601,11 +663,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                               alignment: Alignment.centerLeft,
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
-                                child: Text(_dayDone ? _t('Today\'s attendance is done', 'आजची हजेरी पूर्ण') : next == 'in' ? _t('Slide to mark IN', 'IN लावण्यासाठी सरकवा') : _t('Slide to mark OUT', 'OUT लावण्यासाठी सरकवा'), maxLines: 1, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: blocked ? C.faint : Colors.white)),
+                                child: Text(_dayDone ? _t('Today\'s attendance is done', 'आजची हजेरी पूर्ण') : next == 'in' ? _t('Slide to mark IN', 'IN लावण्यासाठी सरकवा') : _t('Slide to mark OUT', 'OUT लावण्यासाठी सरकवा'), maxLines: 1, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: blocked ? sk.faint : Colors.white)),
                               ),
                             ),
                           ),
-                          Transform.translate(offset: Offset(slide, 0), child: SunDisc(size: 46, label: next == 'in' ? 'IN' : 'OUT', dim: blocked)),
+                          Transform.translate(offset: Offset(slide, 0), child: sk.classic ? SunDisc(size: 46, label: next == 'in' ? 'IN' : 'OUT', dim: blocked) : MarkDisc(size: 46, label: next == 'in' ? 'IN' : 'OUT', out: next != 'in', dim: blocked)),
                         ]),
                 ),
               ),
@@ -621,15 +683,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     return '';
   }
 
-  Widget _row(String kind, String time, String place, String note, Color c, Color soft, Key key) => Padding(
+  Widget _row(String kind, String time, String place, String note, Color c0, Color soft0, Key key) {
+    final (Color c, Color soft) = sk.tint(c0, soft0);
+    final io = kind == 'in' ? sk.tint(C.greenDark, C.greenSoft) : sk.tint(C.orange, C.orangeSoft);
+    return Padding(
         key: key,
         padding: const EdgeInsets.symmetric(vertical: 7),
         child: Row(children: [
-          Pill(kind == 'in' ? 'IN' : 'OUT', color: kind == 'in' ? C.greenDark : C.orange, bg: kind == 'in' ? C.greenSoft : C.orangeSoft),
+          Pill(kind == 'in' ? 'IN' : 'OUT', color: io.$1, bg: io.$2),
           const SizedBox(width: 12),
-          Text(time, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          Text(time, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: sk.classic ? null : sk.ink)),
           const SizedBox(width: 12),
-          Expanded(child: Text(place, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, color: C.muted))),
+          Expanded(child: Text(place, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: sk.muted))),
           // (a short note – at most 130 wide; the place's name takes the rest and is cut first)
           if (note.isNotEmpty)
             Container(
@@ -641,6 +706,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
             ),
         ]),
       );
+  }
 }
 
 /// The selfie of a punch: the front camera, one button. Proof only – nothing reads the face. Gives the camera's picture, or
@@ -816,13 +882,16 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
 
   static const _names = {'P': 'Present', 'HD': 'Half day', 'A': 'Absent', 'L': 'Leave', 'WO': 'Weekly off', 'H': 'Holiday', 'WOP': 'Worked on off', 'HP': 'Worked on holiday', 'IN': 'At work', 'MIS': 'No OUT'};
   static const _green = (Color(0xFF146C2E), Color(0xFFDDF3E4)), _yellow = (Color(0xFF8A5A00), Color(0xFFFFF3D1)), _red = (Color(0xFFC22A1B), Color(0xFFFFE6E3)), _leave = (kPurple, Color(0xFFF1E8F6)), _off = (Color(0xFF7B839C), Color(0xFFE4E7F0));
-  (Color, Color) _look(String c) => switch (c) {
-        'P' || 'WOP' || 'HP' || 'IN' => _green,
-        'HD' => _yellow,
-        'A' || 'MIS' => _red,
-        'L' => _leave,
-        _ => _off,
-      };
+  (Color, Color) _look(String c) {
+    final p = switch (c) {
+      'P' || 'WOP' || 'HP' || 'IN' => _green,
+      'HD' => _yellow,
+      'A' || 'MIS' => _red,
+      'L' => _leave,
+      _ => _off,
+    };
+    return sk.tint(p.$1, p.$2); // (3.114.0) on the dark look: the same colour, lighter, on a thin tile of itself
+  }
 
   /// (3.107.0, asked 12-11-2026: "employee monthly bghu shakel day wise nahi month wise") THE MONTH AS A CALENDAR: a box a day in
   /// the colour of what it counts as; the counts above; a day is opened below by a touch – with "Ask to set right" for a day
@@ -842,18 +911,18 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: kSoftShadow),
+            decoration: sk.box(radius: 16),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Text('${v ?? 0}', key: Key('att-t-$key'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 21, fontWeight: FontWeight.w800, color: c)),
-              Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+              Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: sk.muted)),
             ]),
           ),
         );
     Widget blank([String n = '']) => Container(
           height: 38,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: const Color(0xFFF3F5FA), borderRadius: BorderRadius.circular(10)),
-          child: n.isEmpty ? null : m.Text(n, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB3B9C9))),
+          decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(10)),
+          child: n.isEmpty ? null : m.Text(n, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sk.blankInk)),
         );
     Widget cell(int n) {
       final day = '$month-${n.toString().padLeft(2, '0')}', d = byDay[day];
@@ -866,7 +935,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
         child: Container(
           height: 38,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: lk.$2, borderRadius: BorderRadius.circular(10), border: sel == day ? Border.all(color: kNavy, width: 2) : null),
+          decoration: BoxDecoration(color: lk.$2, borderRadius: BorderRadius.circular(10), border: sel == day ? Border.all(color: sk.accent, width: 2) : null),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             m.Text('$n', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, height: 1.1, color: lk.$1)),
             if (code.isNotEmpty) m.Text(code == 'MIS' ? '!' : code, style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, height: 1.1, color: lk.$1)),
@@ -881,13 +950,13 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     }
     Widget leg(Color c, String en, String mr) => Row(mainAxisSize: MainAxisSize.min, children: [
           Container(width: 9, height: 9, margin: const EdgeInsets.only(right: 4), decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3))),
-          Text(en, mr: mr, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+          Text(en, mr: mr, style: TextStyle(fontSize: 11.5, color: sk.muted)),
         ]);
     Widget arrow(String key, IconData icon, int by) => GestureDetector(
           key: Key(key),
           behavior: HitTestBehavior.opaque,
           onTap: () => _move(by),
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5), child: Icon(icon, size: 18, color: Colors.white)),
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5), child: Icon(icon, size: 18, color: sk.onHead)),
         );
     final open = sel.isEmpty ? null : byDay[sel];
     final oc = open == null ? '' : '${open['code'] ?? ''}', oin = open == null ? '' : '${open['in'] ?? ''}', oout = open == null ? '' : '${open['out'] ?? ''}';
@@ -899,24 +968,24 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
           height: 158,
           pill: Container(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .22), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(color: sk.classic ? Colors.white.withValues(alpha: .22) : sk.headGlass, borderRadius: BorderRadius.circular(14), border: sk.classic ? null : Border.all(color: sk.headGlassLine)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               arrow('att-m-prev', Icons.chevron_left_rounded, -1),
-              m.Text(monthName(month), key: const Key('att-m-name'), maxLines: 1, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white)),
+              m.Text(monthName(month), key: const Key('att-m-name'), maxLines: 1, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: sk.onHead)),
               arrow('att-m-next', Icons.chevron_right_rounded, 1),
             ]),
           ),
           below: [
-            if (widget.who.isNotEmpty) m.Text(widget.who, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: .92))),
+            if (widget.who.isNotEmpty) m.Text(widget.who, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: sk.onHeadSoft)),
             if (!loading && err.isEmpty) ...[
               Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-                m.Text(paid == null ? '${days.length}' : (paid == paid.roundToDouble() ? '${paid.round()}' : '$paid'), key: const Key('att-m-paid'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 38, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+                m.Text(paid == null ? '${days.length}' : (paid == paid.roundToDouble() ? '${paid.round()}' : '$paid'), key: const Key('att-m-paid'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 38, fontWeight: FontWeight.w800, color: sk.onHead, height: 1.15)),
                 const SizedBox(width: 8),
-                const Text('days', mr: 'दिवस', style: TextStyle(fontFamily: 'Montserrat', fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+                Text('days', mr: 'दिवस', style: TextStyle(fontFamily: 'Montserrat', fontSize: 17, fontWeight: FontWeight.w800, color: sk.onHead)),
               ]),
               if (total.isNotEmpty)
                 Text(month == now.substring(0, 7) ? _t('of $work working days so far', 'आतापर्यंतच्या $work कामाच्या दिवसांपैकी') : _t('of $work working days', '$work कामाच्या दिवसांपैकी'),
-                    key: const Key('att-m-work'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: Colors.white.withValues(alpha: .95))),
+                    key: const Key('att-m-work'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: sk.onHeadSoft)),
             ],
           ]),
       body: ListView(key: const Key('att-month-page'), padding: const EdgeInsets.fromLTRB(12, 14, 12, 40), children: [
@@ -924,30 +993,30 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
         if (err.isNotEmpty) InfoLine(err, bad: true, help: false),
         if (!loading && err.isEmpty) ...[
           if (total.isEmpty)
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(_t('Days with a punch: ${days.length}', 'हजेरीचे दिवस: ${days.length}'), key: const Key('att-m-count'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.blue)))
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(_t('Days with a punch: ${days.length}', 'हजेरीचे दिवस: ${days.length}'), key: const Key('att-m-count'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: sk.link)))
           else
-            Row(key: const Key('att-m-total'), children: [stat('P', 'Present', 'हजर', total['P'], _green.$1), stat('HD', 'Half day', 'अर्धा दिवस', total['HD'], _yellow.$1), stat('A', 'Absent', 'गैरहजर', total['A'], _red.$1), stat('L', 'Leave', 'रजा', total['L'], kPurple)]),
+            Row(key: const Key('att-m-total'), children: [stat('P', 'Present', 'हजर', total['P'], _look('P').$1), stat('HD', 'Half day', 'अर्धा दिवस', total['HD'], _look('HD').$1), stat('A', 'Absent', 'गैरहजर', total['A'], _look('A').$1), stat('L', 'Leave', 'रजा', total['L'], _look('L').$1)]),
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: hrCard(padding: const EdgeInsets.fromLTRB(10, 12, 10, 12), [
-              Row(children: [for (final w in const ['M', 'T', 'W', 'T', 'F', 'S', 'S']) Expanded(child: Center(child: m.Text(w, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: C.muted))))]),
+              Row(children: [for (final w in const ['M', 'T', 'W', 'T', 'F', 'S', 'S']) Expanded(child: Center(child: m.Text(w, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: sk.muted))))]),
               const SizedBox(height: 6),
               for (var r = 0; r < cells.length; r += 7)
                 Padding(padding: const EdgeInsets.only(bottom: 5), child: Row(children: [for (var c = r; c < r + 7; c++) Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2.5), child: cells[c]))])),
               const SizedBox(height: 4),
-              Wrap(spacing: 10, runSpacing: 4, children: [leg(_green.$2, 'Present', 'हजर'), leg(_yellow.$2, 'Half day', 'अर्धा दिवस'), leg(_red.$2, 'Absent', 'गैरहजर'), leg(_leave.$2, 'Leave', 'रजा')]),
+              Wrap(spacing: 10, runSpacing: 4, children: [for (final (c, en, mr) in const [('P', 'Present', 'हजर'), ('HD', 'Half day', 'अर्धा दिवस'), ('A', 'Absent', 'गैरहजर'), ('L', 'Leave', 'रजा')]) leg(sk.dark ? _look(c).$1 : _look(c).$2, en, mr)]),
             ]),
           ),
-          if (days.isEmpty) Padding(padding: const EdgeInsets.only(top: 16), child: Center(child: Text(_t('No punch in this month.', 'या महिन्यात हजेरी नाही.'), style: const TextStyle(color: C.faint)))),
+          if (days.isEmpty) Padding(padding: const EdgeInsets.only(top: 16), child: Center(child: Text(_t('No punch in this month.', 'या महिन्यात हजेरी नाही.'), style: TextStyle(color: sk.faint)))),
           if (open != null) ...[
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: hrCard(key: const Key('att-day'), padding: const EdgeInsets.fromLTRB(16, 8, 8, 14), [
                 Row(children: [
-                  Expanded(child: m.Text(dayName(sel, week: true), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: C.ink))),
-                  if (_canAsk(sel)) TextButton(key: const Key('att-ask'), onPressed: () => _ask(open), child: const Text('Ask to set right', mr: 'दुरुस्ती मागा', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.blue))) else const SizedBox(height: 44),
+                  Expanded(child: m.Text(dayName(sel, week: true), style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink))),
+                  if (_canAsk(sel)) TextButton(key: const Key('att-ask'), onPressed: () => _ask(open), child: Text('Ask to set right', mr: 'दुरुस्ती मागा', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sk.link))) else const SizedBox(height: 44),
                 ]),
                 Row(children: [
                   if (oc.isNotEmpty) ...[
@@ -960,8 +1029,8 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
                   ],
                   Expanded(
                       child: oin.isEmpty && oout.isEmpty
-                          ? Text(oc == 'A' || oc.isEmpty ? _t('No punch on this day', 'या दिवशी हजेरी नाही') : tr(_names[oc] ?? oc), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: C.ink))
-                          : m.Text('${tr(_names[oc] ?? oc)} · IN ${_or(open['in'])} · OUT ${_or(open['out'])}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: C.ink))),
+                          ? Text(oc == 'A' || oc.isEmpty ? _t('No punch on this day', 'या दिवशी हजेरी नाही') : tr(_names[oc] ?? oc), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: sk.ink))
+                          : m.Text('${tr(_names[oc] ?? oc)} · IN ${_or(open['in'])} · OUT ${_or(open['out'])}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: sk.ink))),
                   if (open['late_min'] is num && (open['late_min'] as num) > 0) const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.schedule_rounded, size: 17, color: C.amber)),
                   if ((open['review'] is num) && (open['review'] as num) > 0) const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.hourglass_top_rounded, size: 17, color: C.amber)),
                 ]),
@@ -971,7 +1040,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
               ]),
             ),
           ] else if (days.isNotEmpty)
-            Padding(padding: const EdgeInsets.fromLTRB(8, 10, 8, 0), child: Text(_t('Touch a day to open it.', 'दिवसावर touch करा.'), style: const TextStyle(fontSize: 12.5, color: C.muted))),
+            Padding(padding: const EdgeInsets.fromLTRB(8, 10, 8, 0), child: Text(_t('Touch a day to open it.', 'दिवसावर touch करा.'), style: TextStyle(fontSize: 12.5, color: sk.muted))),
         ],
       ]),
     );
@@ -1012,27 +1081,29 @@ class _AttendDoneState extends State<AttendDone> {
   @override
   Widget build(BuildContext context) {
     final inn = widget.kind == 'in', sky = inn ? Sky.day : Sky.dusk;
+    // (3.114.0) in the attendance app: the page of the look, the gold disc for IN and the red one for OUT
+    final old = sk.classic, on = old ? Colors.white : sk.ink;
     return Scaffold(
       body: Container(
         key: const Key('att-ok-page'),
         width: double.infinity,
-        decoration: BoxDecoration(gradient: skyDown(sky)),
+        decoration: BoxDecoration(gradient: old ? skyDown(sky) : sk.pageFill),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              SunDisc(size: 168, tick: true, moon: !inn),
+              old ? SunDisc(size: 168, tick: true, moon: !inn) : MarkDisc(size: 168, tick: true, out: !inn),
               const SizedBox(height: 30),
-              Text(inn ? bi('IN marked', 'हजेरी लागली') : bi('OUT marked', 'OUT लागले'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white)),
+              Text(inn ? bi('IN marked', 'हजेरी लागली') : bi('OUT marked', 'OUT लागले'), textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: on)),
               const SizedBox(height: 4),
-              Text(widget.time, key: const Key('att-ok-time'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 54, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
-              if (widget.place.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(widget.place, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14.5, color: Colors.white.withValues(alpha: .92)))),
+              Text(widget.time, key: const Key('att-ok-time'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 54, fontWeight: FontWeight.w800, color: on, height: 1.1)),
+              if (widget.place.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(widget.place, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14.5, color: old ? Colors.white.withValues(alpha: .92) : sk.muted))),
               const SizedBox(height: 34),
               FilledButton(
                 key: const Key('att-ok'),
-                style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: skyInk(sky), minimumSize: const Size(160, 52), shape: const StadiumBorder()),
+                style: FilledButton.styleFrom(backgroundColor: old ? Colors.white : sk.accent, foregroundColor: old ? skyInk(sky) : sk.onAccent, minimumSize: const Size(160, 52), shape: const StadiumBorder()),
                 onPressed: _close,
-                child: Text('OK', mr: 'ठीक आहे', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: skyInk(sky))),
+                child: Text('OK', mr: 'ठीक आहे', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: old ? skyInk(sky) : sk.onAccent)),
               ),
             ]),
           ),
