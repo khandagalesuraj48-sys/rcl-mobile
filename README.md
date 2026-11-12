@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.107.0 (12-11-2026 – the clean attendance screens; asked: "je required nahi te text kadhayche clen version hawa … employee
+monthly bghu shakel day wise nahi month wise", design approved "hech design final kr"):** My attendance – the place and the phone as two
+small chips (a touch on the place checks where he stands), today's punches in one card, three tiles (This month, Requests, My team); one
+language on these screens (English while none is chosen). This month – a **calendar**: a box a day in the colour of what it counts as, the
+counts above, a day opened below by a touch with "Ask to set right". No server change. Next (his yes given): the home of a person with
+attendance only, Me (details, documents, salary slips), leave, one language in the whole app.
+
 **Version 3.106.0 (12-11-2026 – "All" first among the dates; the photos small, beside their boxes; asked: "first asel ek all …
 te select asel", "mothe mothe te section nahi thewnar … dashboard photo tyach samorch auto reading … litres cha photo tyach
 samorch qty", "date ani shift he pn nit dakhaw … fkt apan ui change krtoy baki kahi nahi"):** only the look and the order –
