@@ -15,6 +15,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.109.0 (12-11-2026 – asked: "user swatacha photo pn set karu shakel profile picture"):** a person with HR only sets **his own
+photo** (Me → My photo, or a touch on his face: camera / gallery); it is kept as his paper "Photo" (rcl-hr `myDocAdd`) and shown on Me
+and Home instead of his letters (`myHr.photo` – a link of the HR server), and to the HR office in its list and on his page.
+
 **Version 3.108.0 (12-11-2026 – the eight screens exactly as he sent them back: "mala same as it is screen hawe aahet ya sagle leave
 chi pn screen"):** My attendance – three tiles (This month, **Leave**, Requests) and the dark bar "Slide to mark IN / OUT" (pulled or
 touched); This month – the sky with the days for pay and the working days so far, the month in its pill, Present · Half day · Absent ·

@@ -8701,6 +8701,18 @@ void main() {
     expect(t.widget<Text>(find.byKey(const Key('phone-model'))).data, 'Test Phone');
     await t.pageBack();
     await net(t);
+    // ---- (3.109.0) my photo: he sets his own profile picture – kept as his paper "Photo"; Me is read again and shows it
+    expect(find.byKey(const Key('face-pic')), findsNothing, reason: 'no photo yet: his letters');
+    await tapKey('me-photo');
+    await t.tap(find.byKey(const Key('photo-gallery')));
+    await net(t);
+    expect(asked.last, 'gallery:1');
+    final ph = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
+    expect([ph['kind'], ph.containsKey('id')], ['photo', false]);
+    expect(srv.hrDocs.where((d) => d['kind'] == 'photo').length, 1);
+    expect(find.byKey(const Key('face-pic')), findsOneWidget, reason: 'his photo is asked for on Me');
+    expect(find.textContaining('Set – touch to change'), findsOneWidget);
+    await settle(t, 4000);      // (the message goes)
     // ---- the language: the whole app in one – kept on this phone (he has no settings at Mechanical)
     await tapKey('me-lang');
     expect(find.byKey(const Key('lang-page')), findsOneWidget);

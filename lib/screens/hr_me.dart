@@ -57,10 +57,10 @@ Widget _li({required Key key, required String sign, IconData? icon, required Col
     );
 
 class HrMeTab extends StatelessWidget {
-  const HrMeTab({super.key, required this.mine, required this.day, required this.ask, required this.onDocs, required this.onSlips, required this.reload});
+  const HrMeTab({super.key, required this.mine, required this.day, required this.ask, required this.onDocs, required this.onSlips, required this.onPhoto, required this.reload});
   final Map<String, dynamic>? mine, day;
   final HrAsk ask;
-  final VoidCallback onDocs, onSlips;
+  final VoidCallback onDocs, onSlips, onPhoto;
   final Future<void> Function() reload;
 
   @override
@@ -79,7 +79,16 @@ class HrMeTab extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
             child: Row(children: [
-              Container(width: 62, height: 62, alignment: Alignment.center, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .2), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: .4), width: 2)), child: m.Text(initials(name), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 21, fontWeight: FontWeight.w800, color: Colors.white))),
+              // (3.109.0) his own photo – a touch sets it
+              GestureDetector(
+                key: const Key('me-face'),
+                behavior: HitTestBehavior.opaque,
+                onTap: onPhoto,
+                child: Stack(clipBehavior: Clip.none, children: [
+                  hrFace(name, '${mine?['photo'] ?? ''}', size: 62, radius: 20, bg: Colors.white.withValues(alpha: .2), border: Colors.white.withValues(alpha: .4), letters: 21),
+                  Positioned(right: -5, bottom: -5, child: Container(width: 24, height: 24, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0xFFFFC93C), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF277E55), width: 2)), child: const Icon(Icons.photo_camera_rounded, size: 12, color: Color(0xFF3A2A00)))),
+                ]),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -103,6 +112,7 @@ class HrMeTab extends StatelessWidget {
           onRefresh: reload,
           child: ListView(key: const Key('me-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
             hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+              _li(key: const Key('me-photo'), sign: '', icon: Icons.account_circle_rounded, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My photo', mr: 'माझा photo', sub: '${mine?['photo'] ?? ''}'.isEmpty ? _t('Take or choose – shown on your profile', 'काढा किंवा निवडा – profile वर दिसेल') : _t('Set – touch to change', 'ठेवला आहे – बदलण्यासाठी touch करा'), onTap: onPhoto),
               _li(key: const Key('me-details'), sign: 'i', c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My details', mr: 'माझी माहिती', sub: _t('Personal, job, bank – ask HR to change', 'वैयक्तिक, नोकरी, bank – बदलासाठी HR ला सांगा'), onTap: () => open(MyDetailsScreen(mine: mine))),
               _li(key: const Key('me-docs'), sign: 'D', c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My documents', mr: 'माझी कागदपत्रे', sub: mine == null ? _t('Upload', 'Upload') : miss > 0 ? _t('Upload – $miss still missing', 'Upload – अजून $miss बाकी') : _t('All expected papers are there', 'अपेक्षित सर्व कागदपत्रे आहेत'), onTap: onDocs),
               _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('None yet', 'अजून नाही'), onTap: onSlips),
@@ -211,15 +221,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
     }
   }
 
-  /// The file as it is sent: a PDF as it is; a photo turned upright, at most 2000 points on its long side, a JPEG.
-  static (Uint8List, String)? _ready(String name, Uint8List raw) {
-    if (name.toLowerCase().endsWith('.pdf') || (raw.length > 4 && raw[0] == 0x25 && raw[1] == 0x50 && raw[2] == 0x44 && raw[3] == 0x46)) return (raw, 'application/pdf');
-    final im = img.decodeImage(raw);
-    if (im == null) return null;
-    final up = img.bakeOrientation(im), big = up.width > up.height ? up.width : up.height;
-    final fit = big > 2000 ? img.copyResize(up, width: up.width >= up.height ? 2000 : null, height: up.height > up.width ? 2000 : null) : up;
-    return (Uint8List.fromList(img.encodeJpg(fit, quality: 85)), 'image/jpeg');
-  }
+  static (Uint8List, String)? _ready(String name, Uint8List raw) => docReady(name, raw);
 
   Future<void> _add(Map kind) async {
     if (busy.isNotEmpty) return;
@@ -493,4 +495,59 @@ class _AccountScreenState extends State<AccountScreen> {
       ]),
     );
   }
+}
+
+/// The file as it is sent: a PDF as it is; a photo turned upright, at most 2000 points on its long side, a JPEG.
+(Uint8List, String)? docReady(String name, Uint8List raw) {
+  if (name.toLowerCase().endsWith('.pdf') || (raw.length > 4 && raw[0] == 0x25 && raw[1] == 0x50 && raw[2] == 0x44 && raw[3] == 0x46)) return (raw, 'application/pdf');
+  final im = img.decodeImage(raw);
+  if (im == null) return null;
+  final up = img.bakeOrientation(im), big = up.width > up.height ? up.width : up.height;
+  final fit = big > 2000 ? img.copyResize(up, width: up.width >= up.height ? 2000 : null, height: up.height > up.width ? 2000 : null) : up;
+  return (Uint8List.fromList(img.encodeJpg(fit, quality: 85)), 'image/jpeg');
+}
+
+/// (3.109.0, asked 12-11-2026: "user swatacha photo pn set karu shakel profile picture") MY PHOTO: he takes or chooses a picture
+/// of himself – it is kept as his paper "Photo" (the HR office sees it on his page and in its list). true = set.
+Future<bool> setMyPhoto(BuildContext context, HrAsk ask) async {
+  final how = await showModalBottomSheet<String>(
+    context: context,
+    builder: (c) => SafeArea(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Padding(padding: EdgeInsets.fromLTRB(20, 16, 20, 6), child: Align(alignment: Alignment.centerLeft, child: Text('My photo', mr: 'माझा photo', style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: C.ink)))),
+        ListTile(key: const Key('photo-camera'), leading: const Icon(Icons.photo_camera_rounded), title: const Text('Take a photo', mr: 'Photo काढा'), onTap: () => Navigator.pop(c, 'camera')),
+        ListTile(key: const Key('photo-gallery'), leading: const Icon(Icons.photo_library_rounded), title: const Text('Choose a photo', mr: 'Photo निवडा'), onTap: () => Navigator.pop(c, 'gallery')),
+        const SizedBox(height: 8),
+      ]),
+    ),
+  );
+  if (how == null || !context.mounted) return false;
+  try {
+    final got = await pickAttFiles(how, 1);
+    if (got.isEmpty) return false;
+    final f = docReady(got.first.name, got.first.bytes);
+    if (f == null || f.$2 != 'image/jpeg') throw ApiError('This is not a picture – take or choose a photo.');
+    final u = await ask({'action': 'myDocUploadUrl', 'kind': 'photo', 'type': f.$2, 'bytes': f.$1.length});
+    if (!context.mounted) return false;
+    await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
+    await ask({'action': 'myDocAdd', 'kind': 'photo', 'path': u['path'], 'bytes': f.$1.length});
+    if (context.mounted) toast(context, _t('Your photo is set.', 'तुमचा photo ठेवला.'));
+    return true;
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e), bad: true);
+    return false;
+  }
+}
+
+/// His face: his photo when he has set one (a link of the HR server), else the first letters of his name.
+Widget hrFace(String name, String url, {required double size, required double radius, Color bg = kNavy, Color? border, double letters = 15}) {
+  final abc = m.Text(initials(name), style: TextStyle(fontFamily: 'Montserrat', fontSize: letters, fontWeight: FontWeight.w800, color: Colors.white));
+  return Container(
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(radius), border: border == null ? null : Border.all(color: border, width: 2)),
+    child: url.isEmpty ? abc : Image.network(url, key: const Key('face-pic'), width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => abc, loadingBuilder: (_, child, p) => p == null ? child : abc),
+  );
 }
