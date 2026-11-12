@@ -154,6 +154,10 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   void _month() => _push(AttendMonthScreen(ask: _hr, who: _who));
   void _docs() => _push(MyDocsScreen(ask: _hr));
   void _slips() => _push(const SalarySlipsScreen());
+  Future<void> _photo() async {
+    if (await setMyPhoto(context, _hr) && mounted) _load();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +167,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       backgroundColor: const Color(0xFFF7F6F1),
       bottomNavigationBar: _nav(),
       body: tab == 1
-          ? HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, reload: _load)
+          ? HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load)
           : SafeArea(
               bottom: false,
               child: RefreshIndicator(
@@ -192,7 +196,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final h = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now() + 19800000, isUtc: true).hour;
     final name = '${(day?['employee'] as Map?)?['name'] ?? s.name}', wait = _notes().isNotEmpty;
     return Row(children: [
-      Container(width: 46, height: 46, alignment: Alignment.center, decoration: BoxDecoration(color: kNavy, borderRadius: BorderRadius.circular(15)), child: m.Text(initials(name), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))),
+      hrFace(name, '${mine?['photo'] ?? ''}', size: 46, radius: 15),
       const SizedBox(width: 12),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [

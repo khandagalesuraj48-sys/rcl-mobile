@@ -301,6 +301,7 @@ class FakeServer {
             {'name': 'Employee', 'rows': [{'label': 'Code', 'value': 'E00012'}, {'label': 'Designation', 'value': 'Site Engineer'}, {'label': 'Date of birth', 'value': '01-01-1991'}]},
             {'name': 'Statutory & bank', 'rows': [{'label': 'Bank IFSC code', 'value': 'SBIN0001234'}, {'label': 'Bank account number', 'value': 'XXXX9012'}]},
           ],
+          'photo': hrDocs.any((d) => d['kind'] == 'photo') ? 'https://photos.test/hr-docs/open' : '',
           'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'}});
       case 'myDocs':
         return _j({'ok': true, 'kinds': kinds, 'docs': hrDocs, 'docsMissing': docsMissing(), 'maxMb': 10});
