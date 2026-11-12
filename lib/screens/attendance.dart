@@ -13,6 +13,7 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/material.dart' as m show Text;
 
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
@@ -37,6 +38,10 @@ String _or(Object? v) {
   final t = '${v ?? ''}';
   return t.isEmpty ? '–' : t;
 }
+
+/// (3.107.0, the clean screens he approved: "je required nahi te text kadhayche … app purn english") ONE language on these
+/// screens: English while none is chosen, the app's own Marathi words when Marathi is (Me → Language).
+String _t(String en, String mr) => Lang.i.pair(en, mr);
 
 String _dmy(String ymd) => ymd.length >= 10 ? '${ymd.substring(8, 10)}-${ymd.substring(5, 7)}-${ymd.substring(0, 4)}' : ymd;
 
@@ -217,7 +222,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     try {
       await _where();
     } on AttendProblem catch (e) {
-      if (mounted) setState(() => err = bi(e.en, e.mr, '\n'));
+      if (mounted) setState(() => err = _t(e.en, e.mr));
     } catch (_) {
       if (mounted) setState(() => err = 'Your location could not be read – try again.');
     }
@@ -267,7 +272,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         setState(() {
           me = {...?me, 'punches': r['punches'], 'next': r['next'], 'phone': 'this'};
           offline = false;
-          done = kind == 'in' ? bi('IN marked at $t – ${h.place.name}', '$t ला IN लागले – ${h.place.name}', '\n') : bi('OUT marked at $t – ${h.place.name}', '$t ला OUT लागले – ${h.place.name}', '\n');
+          done = kind == 'in' ? _t('IN marked at $t – ${h.place.name}', '$t ला IN लागले – ${h.place.name}') : _t('OUT marked at $t – ${h.place.name}', '$t ला OUT लागले – ${h.place.name}');
         });
       } on ApiError catch (e) {
         if (e.code != 'net') {
@@ -279,8 +284,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         setState(() {
           kept = k;
           offline = true;
-          done = bi('No network: your ${kind == 'in' ? 'IN' : 'OUT'} of ${indiaTime(p.atDevice)} is kept on the phone and is sent by itself when the network is back.',
-              'Network नाही: ${indiaTime(p.atDevice)} चे ${kind == 'in' ? 'IN' : 'OUT'} phone मध्ये ठेवले आहे – network आल्यावर आपोआप जाईल.', '\n');
+          done = _t('No network: your ${kind == 'in' ? 'IN' : 'OUT'} of ${indiaTime(p.atDevice)} is kept on the phone and is sent by itself when the network is back.',
+              'Network नाही: ${indiaTime(p.atDevice)} चे ${kind == 'in' ? 'IN' : 'OUT'} phone मध्ये ठेवले आहे – network आल्यावर आपोआप जाईल.');
         });
       }
       // (3.105.0) from Home's strip: the punch the server took is said big, once – then Home again (its strip has turned)
@@ -289,7 +294,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         if (mounted) Navigator.of(context).pop();
       }
     } on AttendProblem catch (e) {
-      if (mounted) setState(() => err = bi(e.en, e.mr, '\n'));
+      if (mounted) setState(() => err = _t(e.en, e.mr));
     } on ApiError catch (e) {
       if (mounted) setState(() => err = e.message);
     } catch (_) {
@@ -316,103 +321,115 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
               onRefresh: () => _load(quiet: true),
               child: ListView(key: const Key('att-page'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
                 if (me != null) ...[
-                  if (offline) InfoLine(bi('No network – shown as read last. A punch taken now is kept on the phone and sent later.', 'Network नाही – शेवटचे वाचलेले दाखवले आहे. आता लावलेली हजेरी phone मध्ये राहील आणि नंतर जाईल.', '\n'), icon: Icons.cloud_off_rounded, bad: true, help: false, key: const Key('att-offline')),
+                  if (offline) InfoLine(_t('No network – shown as read last. A punch taken now is kept on the phone and sent later.', 'Network नाही – शेवटचे वाचलेले दाखवले आहे. आता लावलेली हजेरी phone मध्ये राहील आणि नंतर जाईल.'), icon: Icons.cloud_off_rounded, bad: true, help: false, key: const Key('att-offline')),
                   // ---- what stops a punch on this phone
-                  if (!may) InfoLine(bi('Your employee record is not complete (date of birth, e-mail, mobile) – ask the HR office.', 'तुमची employee माहिती अपूर्ण आहे (जन्मतारीख, e-mail, mobile) – HR office ला सांगा.', '\n'), bad: true, help: false, key: const Key('att-incomplete')),
-                  if (dev) InfoLine(bi('Developer Options are ON in this phone. Switch them off (Settings › Developer options), then come back – attendance cannot be marked until then.', 'या phone मध्ये Developer Options चालू आहेत. ते बंद करा (Settings › Developer options) आणि परत या – तोपर्यंत हजेरी लावता येणार नाही.', '\n'), bad: true, help: false, key: const Key('att-dev')),
+                  if (!may) InfoLine(_t('Your employee record is not complete (date of birth, e-mail, mobile) – ask the HR office.', 'तुमची employee माहिती अपूर्ण आहे (जन्मतारीख, e-mail, mobile) – HR office ला सांगा.'), bad: true, help: false, key: const Key('att-incomplete')),
+                  if (dev) InfoLine(_t('Developer Options are ON in this phone. Switch them off (Settings › Developer options), then come back – attendance cannot be marked until then.', 'या phone मध्ये Developer Options चालू आहेत. ते बंद करा (Settings › Developer options) आणि परत या – तोपर्यंत हजेरी लावता येणार नाही.'), bad: true, help: false, key: const Key('att-dev')),
                   if (phone == 'other')
-                    InfoLine(bi('Your attendance is tied to another phone (${me?['phone_model'] ?? ''}). Only the HR Admin can release it – then this phone will work.', 'तुमची हजेरी दुसऱ्या phone ला बांधलेली आहे (${me?['phone_model'] ?? ''}). फक्त HR Admin तो सोडू शकतो – मग हा phone चालेल.', '\n'), bad: true, help: false, key: const Key('att-other')),
-                  if (_places.isEmpty) InfoLine(bi('No work place is set for you yet – ask the HR office.', 'तुमच्यासाठी अजून work place ठरवलेले नाही – HR office ला सांगा.', '\n'), bad: true, help: false, key: const Key('att-noplace')),
+                    InfoLine(_t('Your attendance is tied to another phone (${me?['phone_model'] ?? ''}). Only the HR Admin can release it – then this phone will work.', 'तुमची हजेरी दुसऱ्या phone ला बांधलेली आहे (${me?['phone_model'] ?? ''}). फक्त HR Admin तो सोडू शकतो – मग हा phone चालेल.'), bad: true, help: false, key: const Key('att-other')),
+                  if (_places.isEmpty) InfoLine(_t('No work place is set for you yet – ask the HR office.', 'तुमच्यासाठी अजून work place ठरवलेले नाही – HR office ला सांगा.'), bad: true, help: false, key: const Key('att-noplace')),
                   const SizedBox(height: 4),
-                  // ---- where I am (3.105.0: drawn too, once the phone has looked – his place as a ring, he as a dot)
-                  if (hit != null) ...[PlaceRadar(inside: hit!.inside, distance: hit!.distance, name: hit!.place.name), const SizedBox(height: 10)],
-                  Container(
-                    key: const Key('att-where'),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: hit == null ? C.slateSoft : hit!.inside ? C.greenSoft : C.redSoft, borderRadius: BorderRadius.circular(18)),
-                    child: Row(children: [
-                      Icon(hit == null ? Icons.my_location_rounded : hit!.inside ? Icons.verified_rounded : Icons.wrong_location_rounded, color: hit == null ? C.slate : hit!.inside ? C.greenDark : C.red, size: 26),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: Text(
-                              hit == null
-                                  ? bi('Your work places: ${_places.map((p) => p.name).join(', ')}', 'तुमची work places: ${_places.map((p) => p.name).join(', ')}', '\n')
-                                  : hit!.inside
-                                      ? bi('Inside: ${hit!.place.name}', 'आत आहात: ${hit!.place.name}', '\n')
-                                      : bi('Outside – ${hit!.distance} m from ${hit!.place.name}', 'बाहेर – ${hit!.place.name} पासून ${hit!.distance} m', '\n'),
-                              style: TextStyle(fontSize: 14.5, height: 1.35, fontWeight: FontWeight.w600, color: hit == null ? C.ink : hit!.inside ? C.greenDark : C.red))),
-                      TextButton(key: const Key('att-look'), onPressed: blocked || busy || looking ? null : _look, child: Text(looking ? '…' : bi('Check', 'तपासा'))),
-                    ]),
-                  ),
-                  // (3.105.0) this phone is the one his attendance is tied to
-                  if (phone == 'this')
-                    Container(
-                      key: const Key('att-phone'),
-                      margin: const EdgeInsets.only(top: 10),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(color: C.greenSoft, borderRadius: BorderRadius.circular(18)),
-                      child: Row(children: [
-                        const Icon(Icons.phonelink_lock_rounded, color: C.greenDark, size: 26),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(bi('This is your registered phone', 'हा तुमचा नोंदलेला phone आहे', '\n'), style: const TextStyle(fontSize: 14.5, height: 1.35, fontWeight: FontWeight.w600, color: C.greenDark))),
-                      ]),
+                  // ---- where I am and whose phone this is (3.107.0): two small chips. The place's chip is the "check" too – a tap
+                  // looks where he stands; outside his place the drawing shows how far he is.
+                  if (hit != null && !hit!.inside) ...[PlaceRadar(inside: false, distance: hit!.distance, name: hit!.place.name), const SizedBox(height: 10)],
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    _chip(
+                      key: const Key('att-where'),
+                      tapKey: const Key('att-look'),
+                      dot: hit == null ? C.slate : hit!.inside ? C.green : C.red,
+                      text: looking
+                          ? '…'
+                          : hit == null
+                              ? _places.map((p) => p.name).join(', ')
+                              : hit!.inside
+                                  ? '${hit!.place.name} · ${_t('inside', 'आत')}'
+                                  : _t('Outside – ${hit!.distance} m from ${hit!.place.name}', 'बाहेर – ${hit!.place.name} पासून ${hit!.distance} m'),
+                      onTap: blocked || busy || looking ? null : _look,
                     ),
-                  const SizedBox(height: 6),
-                  Center(child: Text(bi('Location + a selfie as proof · today only', 'Location + पुराव्यासाठी selfie · फक्त आज', '\n'), textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35))),
+                    if (phone == 'this') _chip(key: const Key('att-phone'), dot: C.green, text: _t('This phone', 'हा phone')),
+                  ]),
                 ],
                 if (done.isNotEmpty) InfoLine(done, icon: Icons.check_circle_rounded, key: const Key('att-done')),
                 if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('att-err')),
-                for (final r in refused) InfoLine(bi('A punch kept on the phone was not taken: $r', 'Phone मध्ये ठेवलेली हजेरी घेतली गेली नाही: $r', '\n'), bad: true, help: false),
+                for (final r in refused) InfoLine(_t('A punch kept on the phone was not taken: $r', 'Phone मध्ये ठेवलेली हजेरी घेतली गेली नाही: $r'), bad: true, help: false),
                 if (me != null) ...[
                   // ---- kept on the phone
                   if (kept.isNotEmpty) ...[
-                    const SizedBox(height: 18),
-                    Text(bi('Waiting for the network (${kept.length})', 'Network ची वाट पाहत आहे (${kept.length})'), style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w700)),
-                    for (final k in kept) _row(k.kind, indiaTime(k.atDevice), k.place, bi('Kept', 'ठेवले'), C.amber, C.amberSoft, Key('att-kept-${k.kind}')),
-                    Align(alignment: Alignment.centerLeft, child: TextButton.icon(key: const Key('att-send'), onPressed: busy ? null : () => _load(), icon: const Icon(Icons.cloud_upload_rounded), label: Text(bi('Send now', 'आता पाठवा')))),
-                  ],
-                  // ---- today's punches
-                  const SizedBox(height: 18),
-                  Text(bi('Today\'s punches', 'आजच्या नोंदी'), style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w700)),
-                  if (punches.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(bi('None yet.', 'अजून नाही.'), style: const TextStyle(fontSize: 14, color: C.faint))),
-                  for (final p in punches)
-                    _row('${p['kind']}', '${p['time'] ?? ''}', _placeName('${p['place_id'] ?? ''}'), p['status'] == 'review' ? bi('Check', 'तपासणी') : p['offline'] == true ? bi('Later', 'नंतर') : '', p['status'] == 'review' ? C.amber : C.slate,
-                        p['status'] == 'review' ? C.amberSoft : C.slateSoft, Key('att-p-${p['id']}')),
-                  if (team > 0) ...[
                     const SizedBox(height: 14),
-                    Press(
-                      key: const Key('att-team'),
-                      onTap: () async {
+                    _card([
+                      Text(_t('Waiting for the network (${kept.length})', 'Network ची वाट पाहत आहे (${kept.length})'), style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w700)),
+                      for (final k in kept) _row(k.kind, indiaTime(k.atDevice), k.place, _t('Kept', 'ठेवले'), C.amber, C.amberSoft, Key('att-kept-${k.kind}')),
+                      Align(alignment: Alignment.centerLeft, child: TextButton.icon(key: const Key('att-send'), onPressed: busy ? null : () => _load(), icon: const Icon(Icons.cloud_upload_rounded), label: Text(_t('Send now', 'आता पाठवा')))),
+                    ]),
+                  ],
+                  // ---- today's punches, in one card
+                  const SizedBox(height: 14),
+                  _card([
+                    const Text('Today', mr: 'आज', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800)),
+                    if (punches.isEmpty) Padding(padding: const EdgeInsets.only(top: 8, bottom: 6), child: Text(_t('No punch yet.', 'अजून नोंद नाही.'), style: const TextStyle(fontSize: 14, color: C.faint))),
+                    for (final p in punches)
+                      _row('${p['kind']}', '${p['time'] ?? ''}', _placeName('${p['place_id'] ?? ''}'), p['status'] == 'review' ? _t('To be checked', 'तपासणी') : p['offline'] == true ? _t('Sent later', 'नंतर पाठवले') : '',
+                          p['status'] == 'review' ? C.amber : C.slate, p['status'] == 'review' ? C.amberSoft : C.slateSoft, Key('att-p-${p['id']}')),
+                  ]),
+                  // ---- his month, his requests, and (a person others report to) his team's requests
+                  const SizedBox(height: 14),
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(child: _tile(const Key('att-month'), Icons.calendar_month_rounded, Tone.hr.b, Tone.hr.soft, 'This month', 'हा महिना', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendMonthScreen(ask: _hr))))),
+                    const SizedBox(width: 10),
+                    Expanded(child: _tile(const Key('att-reqs'), Icons.fact_check_rounded, C.amber, C.amberSoft, 'Requests', 'विनंत्या', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendRegsScreen(ask: _hr))))),
+                    if (team > 0) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: _tile(const Key('att-team'), Icons.how_to_reg_rounded, C.red, C.redSoft, 'My team', 'माझी टीम', () async {
                         await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TeamRegsScreen(ask: _hr)));
                         _team();
-                      },
-                      padding: const EdgeInsets.all(14),
-                      child: Row(children: [
-                        Container(width: 44, height: 44, decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.how_to_reg_rounded, color: C.amber, size: 24)),
-                        const SizedBox(width: 12),
-                        const Expanded(child: TwoLang('My team\'s requests', 'माझ्या टीमच्या विनंत्या', size: 16, weight: FontWeight.w700)),
-                        if (teamWait > 0) Pill('$teamWait', color: Colors.white, bg: C.red),
-                        const Icon(Icons.chevron_right_rounded, color: C.faint),
-                      ]),
-                    ),
-                  ],
-                  const SizedBox(height: 14),
-                  Press(
-                    key: const Key('att-month'),
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendMonthScreen(ask: _hr))),
-                    padding: const EdgeInsets.all(14),
-                    child: Row(children: [
-                      Container(width: 44, height: 44, decoration: BoxDecoration(color: Tone.hr.soft, borderRadius: BorderRadius.circular(14)), child: Icon(Icons.calendar_month_rounded, color: Tone.hr.b, size: 24)),
-                      const SizedBox(width: 12),
-                      const Expanded(child: TwoLang('This month', 'हा महिना', size: 16, weight: FontWeight.w700)),
-                      const Icon(Icons.chevron_right_rounded, color: C.faint),
-                    ]),
-                  ),
+                      }, badge: teamWait)),
+                    ],
+                  ]),
                 ],
               ]),
             ),
     );
   }
+
+  Widget _card(List<Widget> children) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: C.line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: children),
+      );
+
+  Widget _chip({required Key key, Key? tapKey, required Color dot, required String text, VoidCallback? onTap}) => GestureDetector(
+        key: tapKey,
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          key: key,
+          constraints: const BoxConstraints(maxWidth: 340),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 9, height: 9, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Flexible(child: m.Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.ink, height: 1.25))),
+          ]),
+        ),
+      );
+
+  Widget _tile(Key key, IconData icon, Color c, Color soft, String en, String mr, VoidCallback onTap, {int badge = 0}) => Press(
+        key: key,
+        onTap: onTap,
+        radius: 18,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Stack(clipBehavior: Clip.none, children: [
+            Container(width: 40, height: 40, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(13)), child: Icon(icon, color: c, size: 22)),
+            if (badge > 0) Positioned(right: -10, top: -6, child: Pill('$badge', color: Colors.white, bg: C.red)),
+          ]),
+          const SizedBox(height: 7),
+          Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+        ]),
+      );
 
   /// (3.105.0) The page's head: the sky of his day, his name and code, where today stands – and the sun (IN / OUT), the moon
   /// when today is done. Taller than the letters it holds; with very big letters the lowest line is cut, nothing overflows.
@@ -445,7 +462,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                     child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         IconButton(tooltip: MaterialLocalizations.of(context).backButtonTooltip, onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
-                        const Expanded(child: TwoLang('My attendance', 'माझी हजेरी', color: Colors.white, size: 19, weight: FontWeight.w700)),
+                        const Expanded(child: Text('My attendance', mr: 'माझी हजेरी', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white))),
                       ]),
                       Padding(
                         padding: const EdgeInsets.only(left: 16, right: 76, top: 2),
@@ -453,7 +470,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                           if (who.isNotEmpty) Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: .9))),
                           const SizedBox(height: 8),
                           if (lastP == null && kept.isEmpty)
-                            const TwoLang('Not marked yet', 'अजून लावलेली नाही', key: Key('att-state'), color: Colors.white, size: 23, weight: FontWeight.w800)
+                            const Text('Not marked yet', mr: 'अजून लावलेली नाही', key: Key('att-state'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: Colors.white))
                           else
                             Text(
                                 kept.isNotEmpty
@@ -497,7 +514,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                       Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
-                          child: Text(next == 'in' ? bi('Selfie and mark IN', 'Selfie घ्या आणि IN लावा') : bi('Selfie and mark OUT', 'Selfie घ्या आणि OUT लावा'),
+                          child: Text(next == 'in' ? _t('Selfie and mark IN', 'Selfie घ्या आणि IN लावा') : _t('Selfie and mark OUT', 'Selfie घ्या आणि OUT लावा'),
                               maxLines: 1, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: blocked ? C.faint : Colors.white)),
                         ),
                       ),
@@ -514,11 +531,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     return '';
   }
 
-  Widget _row(String kind, String time, String place, String note, Color c, Color soft, Key key) => Container(
+  Widget _row(String kind, String time, String place, String note, Color c, Color soft, Key key) => Padding(
         key: key,
-        margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
+        padding: const EdgeInsets.symmetric(vertical: 7),
         child: Row(children: [
           Pill(kind == 'in' ? 'IN' : 'OUT', color: kind == 'in' ? C.greenDark : C.orange, bg: kind == 'in' ? C.greenSoft : C.orangeSoft),
           const SizedBox(width: 12),
@@ -644,7 +659,7 @@ class AttendMonthScreen extends StatefulWidget {
 }
 
 class _AttendMonthScreenState extends State<AttendMonthScreen> {
-  String month = '', err = '', today = '';
+  String month = '', err = '', today = '', sel = ''; // sel: the day opened under the calendar
   List<Map> days = [];
   Map total = const {};
   int regDays = 0;
@@ -688,6 +703,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     final y = int.parse(month.substring(0, 4)), m = int.parse(month.substring(5, 7)), d = DateTime.utc(y, m + by, 1);
     if (by > 0 && '${d.year}-${d.month.toString().padLeft(2, '0')}'.compareTo(indiaDay(AttendKit.kit.now()).substring(0, 7)) > 0) return; // not a month to come
     month = '${d.year}-${d.month.toString().padLeft(2, '0')}';
+    sel = '';
     _load();
   }
 
@@ -701,10 +717,11 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
   Future<void> _ask(Map d) async {
     final ok = await askRegularize(context, widget.ask, '${d['day']}', inNow: '${d['in'] ?? ''}', outNow: '${d['out'] ?? ''}');
     if (!ok || !mounted) return;
-    toast(context, bi('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
+    toast(context, _t('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
   }
 
   static const _names = {'P': 'Present', 'HD': 'Half day', 'A': 'Absent', 'WO': 'Weekly off', 'H': 'Holiday', 'WOP': 'Worked on off', 'HP': 'Worked on holiday', 'IN': 'At work', 'MIS': 'No OUT'};
+  static const _mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   (Color, Color) _look(String c) => switch (c) {
         'P' || 'WOP' || 'HP' => (C.greenDark, C.greenSoft),
         'HD' => (C.amber, C.amberSoft),
@@ -713,51 +730,96 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
         _ => (C.slate, C.slateSoft),
       };
 
+  /// (3.107.0, asked 12-11-2026: "employee monthly bghu shakel day wise nahi month wise") THE MONTH AS A CALENDAR: a box a day in
+  /// the colour of what it counts as; the counts above; a day is opened below by a touch – with "Ask to set right" for a day
+  /// gone. A day to come (and a day with nothing) is an empty box that cannot be touched.
   @override
   Widget build(BuildContext context) {
-    Widget count(String key, String label, Object? v, Color c) => Expanded(
-          child: Column(children: [Text('${v ?? 0}', key: Key('att-t-$key'), style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: c)), Text(label, style: const TextStyle(fontSize: 12, color: C.muted))]),
+    final y = int.parse(month.substring(0, 4)), mo = int.parse(month.substring(5, 7));
+    final first = DateTime.utc(y, mo, 1).weekday - 1, count = DateTime.utc(y, mo + 1, 0).day; // Monday first
+    final byDay = <String, Map>{for (final d in days) '${d['day']}': d};
+    Widget stat(String key, String en, String mr, Object? v, Color c) => Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('${v ?? 0}', key: Key('att-t-$key'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 21, fontWeight: FontWeight.w800, color: c)),
+              Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+            ]),
+          ),
         );
+    Widget cell(int n) {
+      final day = '$month-${n.toString().padLeft(2, '0')}', d = byDay[day], code = d == null ? '' : '${d['code'] ?? ''}', lk = _look(code);
+      final box = Container(
+        height: 46,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: d == null ? C.slateSoft.withValues(alpha: .45) : lk.$2, borderRadius: BorderRadius.circular(12), border: sel == day ? Border.all(color: C.ink, width: 2) : null),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          m.Text('$n', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, height: 1.1, color: d == null ? C.faint : lk.$1)),
+          if (code.isNotEmpty) m.Text(code == 'MIS' ? '!' : code, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, height: 1.1, color: lk.$1)),
+        ]),
+      );
+      return d == null ? box : GestureDetector(key: Key('att-d-$day'), behavior: HitTestBehavior.opaque, onTap: () => setState(() => sel = day), child: box);
+    }
+
+    final cells = <Widget>[for (var i = 0; i < first; i++) const SizedBox(height: 46), for (var n = 1; n <= count; n++) cell(n)];
+    while (cells.length % 7 != 0) {
+      cells.add(const SizedBox(height: 46));
+    }
+    final open = sel.isEmpty ? null : byDay[sel];
     return Scaffold(
-      appBar: toneBar(Tone.hr, title: Text(bi('My month', 'माझा महिना')), actions: [
-        IconButton(key: const Key('att-regs'), tooltip: bi('My requests', 'माझ्या विनंत्या'), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendRegsScreen(ask: widget.ask))), icon: const Icon(Icons.fact_check_rounded)),
+      appBar: toneBar(Tone.hr, title: const Text('This month', mr: 'हा महिना'), actions: [
+        IconButton(key: const Key('att-regs'), tooltip: _t('My requests', 'माझ्या विनंत्या'), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendRegsScreen(ask: widget.ask))), icon: const Icon(Icons.fact_check_rounded)),
       ]),
-      body: ListView(key: const Key('att-month-page'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+      body: ListView(key: const Key('att-month-page'), padding: const EdgeInsets.fromLTRB(12, 8, 12, 40), children: [
         Row(children: [
           IconButton(key: const Key('att-m-prev'), onPressed: loading ? null : () => _move(-1), icon: const Icon(Icons.chevron_left_rounded)),
-          Expanded(child: Center(child: Text('${month.substring(5, 7)}-${month.substring(0, 4)}', key: const Key('att-m-name'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)))),
+          Expanded(child: Center(child: m.Text('${_mon[mo - 1]} $y', key: const Key('att-m-name'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 18, fontWeight: FontWeight.w800, color: C.ink)))),
           IconButton(key: const Key('att-m-next'), onPressed: loading ? null : () => _move(1), icon: const Icon(Icons.chevron_right_rounded)),
         ]),
         if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
         if (err.isNotEmpty) InfoLine(err, bad: true, help: false),
         if (!loading && err.isEmpty) ...[
+          if (total.isEmpty)
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(_t('Days with a punch: ${days.length}', 'हजेरीचे दिवस: ${days.length}'), key: const Key('att-m-count'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Tone.hr.b)))
+          else
+            Row(key: const Key('att-m-total'), children: [stat('P', 'Present', 'हजर', total['P'], C.greenDark), stat('HD', 'Half day', 'अर्धा दिवस', total['HD'], C.amber), stat('A', 'Absent', 'गैरहजर', total['A'], C.red), stat('late', 'Late', 'उशीर', total['late'], C.slate)]),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Tone.hr.soft, borderRadius: BorderRadius.circular(18)),
-            child: total.isEmpty
-                ? Text(bi('Days with a punch: ${days.length}', 'हजेरीचे दिवस: ${days.length}'), key: const Key('att-m-count'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Tone.hr.b))
-                : Row(key: const Key('att-m-total'), children: [count('P', bi('Present', 'हजर', '\n'), total['P'], C.greenDark), count('HD', bi('Half day', 'अर्धा दिवस', '\n'), total['HD'], C.amber), count('A', bi('Absent', 'गैरहजर', '\n'), total['A'], C.red), count('late', bi('Late', 'उशीर', '\n'), total['late'], C.slate)]),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: C.line)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(children: [for (final w in const ['M', 'T', 'W', 'T', 'F', 'S', 'S']) Expanded(child: Center(child: m.Text(w, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: C.muted))))]),
+              const SizedBox(height: 6),
+              for (var r = 0; r < cells.length; r += 7)
+                Padding(padding: const EdgeInsets.only(bottom: 5), child: Row(children: [for (var c = r; c < r + 7; c++) Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2.5), child: cells[c]))])),
+            ]),
           ),
-          if (regDays > 0) Padding(padding: const EdgeInsets.only(top: 8), child: Text(bi('Forgot IN or OUT on a day gone? Tap that day.', 'गेलेल्या दिवशी IN किंवा OUT राहिले? त्या दिवसावर tap करा.', '\n'), style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35))),
-          if (days.isEmpty) Padding(padding: const EdgeInsets.only(top: 20), child: Center(child: Text(bi('No punch in this month.', 'या महिन्यात हजेरी नाही.'), style: const TextStyle(color: C.faint)))),
-          for (final d in days) ...[
-            const SizedBox(height: 8),
-            Press(
-              key: Key('att-d-${d['day']}'),
-              onTap: _canAsk('${d['day']}') ? () => _ask(d) : null,
-              radius: 16,
-              shadow: false,
-              border: C.line,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(children: [
-                Expanded(child: Text(_dmy('${d['day']}'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
-                if ('${d['code'] ?? ''}'.isNotEmpty) ...[Pill(_names['${d['code']}'] ?? '${d['code']}', color: _look('${d['code']}').$1, bg: _look('${d['code']}').$2), const SizedBox(width: 8)],
-                Text('${_or(d['in'])} – ${_or(d['out'])}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.muted)),
-                if (d['late_min'] is num && (d['late_min'] as num) > 0) ...[const SizedBox(width: 6), const Icon(Icons.schedule_rounded, size: 17, color: C.amber)],
-                if ((d['review'] is num) && (d['review'] as num) > 0) ...[const SizedBox(width: 6), const Icon(Icons.hourglass_top_rounded, size: 17, color: C.amber)],
+          if (days.isEmpty) Padding(padding: const EdgeInsets.only(top: 16), child: Center(child: Text(_t('No punch in this month.', 'या महिन्यात हजेरी नाही.'), style: const TextStyle(color: C.faint)))),
+          if (open != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              key: const Key('att-day'),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.fromLTRB(16, 10, 8, 12),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: C.line)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Row(children: [
+                  Expanded(child: m.Text(_dmy(sel), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: C.ink))),
+                  if (_canAsk(sel)) TextButton(key: const Key('att-ask'), onPressed: () => _ask(open), child: const Text('Ask to set right', mr: 'दुरुस्ती मागा')) else const SizedBox(height: 40),
+                ]),
+                Row(children: [
+                  if ('${open['code'] ?? ''}'.isNotEmpty) ...[Pill(_names['${open['code']}'] ?? '${open['code']}', color: _look('${open['code']}').$1, bg: _look('${open['code']}').$2), const SizedBox(width: 10)],
+                  Expanded(child: m.Text('IN ${_or(open['in'])} · OUT ${_or(open['out'])}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.muted))),
+                  if (open['late_min'] is num && (open['late_min'] as num) > 0) const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.schedule_rounded, size: 17, color: C.amber)),
+                  if ((open['review'] is num) && (open['review'] as num) > 0) const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.hourglass_top_rounded, size: 17, color: C.amber)),
+                ]),
               ]),
             ),
-          ],
+          ] else if (days.isNotEmpty)
+            Padding(padding: const EdgeInsets.fromLTRB(8, 10, 8, 0), child: Text(_t('Touch a day to open it.', 'दिवसावर touch करा.'), style: const TextStyle(fontSize: 12.5, color: C.muted))),
         ],
       ]),
     );

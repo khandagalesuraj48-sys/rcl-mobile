@@ -8411,13 +8411,13 @@ void main() {
     expect(srv.hrPunches.length, 2);
     expect(find.byKey(const Key('att-kept-out')), findsNothing);
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
-    await shown(find.textContaining('Later · नंतर'));
-    expect(find.textContaining('Later · नंतर'), findsOneWidget);
+    await shown(find.textContaining('Sent later'));
+    expect(find.textContaining('Sent later'), findsOneWidget);
     kit.lat = 18.52;
     expect(find.byKey(const Key('att-team')), findsNothing, reason: 'nobody reports to him: no team card');
     // ---- my month: each day with what it counts as, the month's count; a day gone is asked to be set right
     await tapKey('att-month');
-    expect(find.text('10-2026'), findsOneWidget);
+    expect(find.text('Oct 2026'), findsOneWidget);
     for (final e in {'P': '1', 'HD': '0', 'A': '1', 'late': '1'}.entries) {
       expect(find.descendant(of: find.byKey(Key('att-t-${e.key}')), matching: find.text(e.value)), findsOneWidget, reason: 'the month\'s count: ${e.key}');
     }
@@ -8428,9 +8428,14 @@ void main() {
     expect(find.textContaining('Absent'), findsWidgets);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_month.png'));
+    // (3.107.0) the month is a calendar: a day is opened under it by a touch; a day gone has "Ask to set right"
+    expect(find.byKey(const Key('att-day')), findsNothing);
     await tapKey('att-d-2026-10-14');
-    expect(find.byKey(const Key('reg-send')), findsNothing, reason: 'today is marked with the phone – not asked for');
+    expect(find.byKey(const Key('att-day')), findsOneWidget);
+    expect(find.byKey(const Key('att-ask')), findsNothing, reason: 'today is marked with the phone – not asked for');
     await tapKey('att-d-2026-10-12');
+    expect(find.byKey(const Key('reg-send')), findsNothing, reason: 'the day is opened first');
+    await tapKey('att-ask');
     expect(find.byKey(const Key('reg-send')), findsOneWidget);
     await t.enterText(find.byKey(const Key('reg-in')), '09:05');
     await t.enterText(find.byKey(const Key('reg-out')), '18:10');
@@ -8454,9 +8459,9 @@ void main() {
     await t.pageBack();
     await net(t);
     await tapKey('att-m-next');
-    expect(find.text('10-2026'), findsOneWidget, reason: 'not a month to come');
+    expect(find.text('Oct 2026'), findsOneWidget, reason: 'not a month to come');
     await tapKey('att-m-prev');
-    expect(find.text('09-2026'), findsOneWidget);
+    expect(find.text('Sep 2026'), findsOneWidget);
     expect(find.textContaining('No punch in this month'), findsOneWidget);
     await t.pageBack();
     await net(t);
