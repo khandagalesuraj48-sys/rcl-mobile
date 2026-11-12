@@ -8381,7 +8381,7 @@ void main() {
     kit.counter = 5000000 + 600000;
     kit.clock += 600000;
     await tapKey('att-punch');
-    expect(find.textContaining('is kept on the phone'), findsOneWidget);
+    expect(find.textContaining('your OUT of 10:40 is kept on the phone'), findsOneWidget);
     expect(find.byKey(const Key('att-kept-out')), findsOneWidget);
     expect(kit.files.keys.where((k) => k.contains('_q_')).length, 2, reason: 'the punch and its photo');
     expect(srv.hrPunches.length, 1);
@@ -8405,18 +8405,80 @@ void main() {
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
     expect(find.textContaining('Sent later'), findsOneWidget);
     kit.lat = 18.52;
-    // ---- my month
+    expect(find.byKey(const Key('att-team')), findsNothing, reason: 'nobody reports to him: no team card');
+    // ---- my month: each day with what it counts as, the month's count; a day gone is asked to be set right
     await tapKey('att-month');
-    expect(find.byKey(const Key('att-m-name')), findsOneWidget);
     expect(find.text('10-2026'), findsOneWidget);
+    expect([for (final k in ['P', 'HD', 'A', 'late']) t.widget<Text>(find.byKey(Key('att-t-$k'))).data], ['1', '0', '1', '1']);
+    expect(find.byKey(const Key('att-d-2026-10-12')), findsOneWidget);
     expect(find.byKey(const Key('att-d-2026-10-13')), findsOneWidget);
     expect(find.byKey(const Key('att-d-2026-10-14')), findsOneWidget);
-    expect(find.textContaining('Days with a punch: 2'), findsOneWidget);
+    expect(find.byKey(const Key('att-d-2026-10-15')), findsNothing, reason: 'a day to come is not listed');
+    expect(find.textContaining('Absent'), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_month.png'));
+    await tapKey('att-d-2026-10-14');
+    expect(find.byKey(const Key('reg-send')), findsNothing, reason: 'today is marked with the phone – not asked for');
+    await tapKey('att-d-2026-10-12');
+    expect(find.byKey(const Key('reg-send')), findsOneWidget);
+    await t.enterText(find.byKey(const Key('reg-in')), '09:05');
+    await t.enterText(find.byKey(const Key('reg-out')), '18:10');
+    await t.enterText(find.byKey(const Key('reg-why')), 'x');
+    await t.tap(find.byKey(const Key('reg-send')));
+    await net(t);
+    expect(find.textContaining('at least 5 letters'), findsOneWidget, reason: 'the server\'s refusal is shown in the form');
+    await t.enterText(find.byKey(const Key('reg-why')), 'Phone was dead');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_request.png'));
+    await t.tap(find.byKey(const Key('reg-send')));
+    await net(t);
+    final rq = srv.hrSent.lastWhere((x) => x['action'] == 'regAsk');
+    expect([rq['day'], rq['in_time'], rq['out_time'], rq['out_next_day'], rq['reason']], ['2026-10-12', '09:05', '18:10', false, 'Phone was dead']);
+    expect(find.byKey(const Key('reg-send')), findsNothing);
+    await settle(t, 4000);      // (the message goes)
+    await tapKey('att-regs');
+    expect(find.byKey(const Key('reg-1')), findsOneWidget);
+    expect(find.textContaining('With the HR office'), findsOneWidget);
+    expect(find.textContaining('IN 09:05 · OUT 18:10'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
     await tapKey('att-m-next');
     expect(find.text('10-2026'), findsOneWidget, reason: 'not a month to come');
     await tapKey('att-m-prev');
     expect(find.text('09-2026'), findsOneWidget);
     expect(find.textContaining('No punch in this month'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- a person others report to: their requests wait for him first – passed on to the HR office, or refused with the reason
+    srv.hrTeam = 2;
+    srv.hrRegs.addAll([
+      {'id': 11, 'code': 'E00020', 'name': 'Ravi Patil', 'day': '2026-10-10', 'in_time': '08:55', 'out_time': '', 'out_next_day': false, 'reason': 'Forgot IN', 'status': 'pending', 'level': 1, 'steps': []},
+      {'id': 12, 'code': 'E00021', 'name': 'Asha More', 'day': '2026-10-11', 'in_time': '', 'out_time': '18:30', 'out_next_day': false, 'reason': 'No network', 'status': 'pending', 'level': 1, 'steps': []},
+    ]);
+    await openHr();
+    await tapKey('att-team');
+    expect(find.byKey(const Key('reg-11')), findsOneWidget);
+    expect(find.byKey(const Key('reg-12')), findsOneWidget);
+    expect(find.byKey(const Key('reg-1')), findsNothing, reason: 'his own request is not his to decide');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_team.png'));
+    await tapKey('team-yes-11');
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'teamRegDecide')['decision'], 'approved');
+    expect(find.byKey(const Key('reg-11')), findsNothing);
+    await settle(t, 4000);
+    await tapKey('team-no-12');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await settle(t, 400);
+    expect(srv.hrSent.where((x) => x['action'] == 'teamRegDecide').length, 1, reason: 'no reason, not sent');
+    await t.enterText(find.byKey(const Key('note-box')), 'He was not at site');
+    await t.tap(find.byKey(const Key('note-ok')));
+    await net(t);
+    final no12 = srv.hrSent.lastWhere((x) => x['action'] == 'teamRegDecide');
+    expect([no12['id'], no12['decision'], no12['note']], [12, 'refused', 'He was not at site']);
+    expect(find.byKey(const Key('reg-12')), findsNothing);
+    await settle(t, 6500);
     await t.pageBack();
     await net(t);
     await t.pageBack();

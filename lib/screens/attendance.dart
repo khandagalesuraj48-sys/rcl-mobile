@@ -21,6 +21,7 @@ import '../ui/t.dart';
 import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'attend_reqs.dart';
 
 Future<void> openAttendance(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AttendanceScreen()));
 
@@ -51,6 +52,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   String err = '', done = '';
   List<String> refused = []; // what the server said to kept punches it did not take
   bool loading = true, started = false, busy = false, offline = false, dev = false, looking = false;
+  int team = 0, teamWait = 0; // the people who report to him, and their requests that wait for him (rcl-hr step 5)
   AttendStore? store;
 
   @override
@@ -116,6 +118,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         loading = false;
         err = '';
       });
+      _team();
     } catch (e) {
       final last = e is ApiError && e.code == 'net' ? await store!.last() : null;
       if (!mounted) return;
@@ -133,6 +136,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         }
       });
     }
+  }
+
+  // the requests of his team that wait for him – asked quietly: a server without them (before its step 5) simply shows nothing
+  Future<void> _team() async {
+    try {
+      final t = await _hr({'action': 'teamRegs'});
+      if (!mounted) return;
+      setState(() {
+        team = t['team'] is num ? (t['team'] as num).toInt() : 0;
+        teamWait = (t['rows'] as List? ?? const []).length;
+      });
+    } catch (_) {/* nothing to show */}
   }
 
   /// One kept punch to the server: its photo first (unless it is there already), then the punch. [live] = just taken, the network
@@ -298,12 +313,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(bi('Today', 'आज') + ' · ${_dmy('${me?['day'] ?? ''}')}', style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
-                        Text(
-                            lastP == null && kept.isEmpty
-                                ? bi('Not marked yet', 'अजून लावलेली नाही')
-                                : kept.isNotEmpty
-                                    ? '${kept.last.kind == 'in' ? 'IN' : 'OUT'} ${indiaTime(kept.last.atDevice)}'
-                                    : '${lastP!['kind'] == 'in' ? 'IN' : 'OUT'} ${lastP['time'] ?? ''}',
+                        if (lastP == null && kept.isEmpty)
+                          const TwoLang('Not marked yet', 'अजून लावलेली नाही', key: Key('att-state'), size: 22, weight: FontWeight.w800)
+                        else
+                          Text(
+                            kept.isNotEmpty
+                                ? '${kept.last.kind == 'in' ? 'IN' : 'OUT'} ${indiaTime(kept.last.atDevice)}'
+                                : '${lastP!['kind'] == 'in' ? 'IN' : 'OUT'} ${lastP['time'] ?? ''}',
                             key: const Key('att-state'),
                             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
                       ])),
@@ -379,6 +395,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   for (final p in punches)
                     _row('${p['kind']}', '${p['time'] ?? ''}', _placeName('${p['place_id'] ?? ''}'), p['status'] == 'review' ? bi('To be looked at', 'तपासणीसाठी') : p['offline'] == true ? bi('Sent later', 'नंतर पाठवले') : '', p['status'] == 'review' ? C.amber : C.slate,
                         p['status'] == 'review' ? C.amberSoft : C.slateSoft, Key('att-p-${p['id']}')),
+                  if (team > 0) ...[
+                    const SizedBox(height: 14),
+                    Press(
+                      key: const Key('att-team'),
+                      onTap: () async {
+                        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TeamRegsScreen(ask: _hr)));
+                        _team();
+                      },
+                      padding: const EdgeInsets.all(14),
+                      child: Row(children: [
+                        Container(width: 44, height: 44, decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.how_to_reg_rounded, color: C.amber, size: 24)),
+                        const SizedBox(width: 12),
+                        const Expanded(child: TwoLang('My team\'s requests', 'माझ्या टीमच्या विनंत्या', size: 16, weight: FontWeight.w700)),
+                        if (teamWait > 0) Pill('$teamWait', color: Colors.white, bg: C.red),
+                        const Icon(Icons.chevron_right_rounded, color: C.faint),
+                      ]),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   Press(
                     key: const Key('att-month'),
@@ -517,8 +551,10 @@ class AttendMonthScreen extends StatefulWidget {
 }
 
 class _AttendMonthScreenState extends State<AttendMonthScreen> {
-  String month = '', err = '';
+  String month = '', err = '', today = '';
   List<Map> days = [];
+  Map total = const {};
+  int regDays = 0;
   bool loading = true;
 
   @override
@@ -537,7 +573,12 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
       final j = await widget.ask({'action': 'myMonth', 'month': month});
       if (!mounted) return;
       setState(() {
-        days = [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
+        // (rcl-hr step 5) every day of the month with what it counts as; before it: only the days with a punch
+        final all = [for (final x in (j['all'] as List? ?? const []).whereType<Map>()) x];
+        today = '${j['today'] ?? indiaDay(AttendKit.kit.now())}';
+        days = all.isNotEmpty ? [for (final d in all) if ('${d['code'] ?? ''}'.isNotEmpty || (d['punches'] is num && (d['punches'] as num) > 0)) d] : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
+        total = (j['total'] as Map?) ?? const {};
+        regDays = j['reg_days'] is num ? (j['reg_days'] as num).toInt() : 0;
         loading = false;
       });
     } catch (e) {
@@ -557,39 +598,75 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     _load();
   }
 
+  // a day gone that can still be asked for (the server's days back)
+  bool _canAsk(String day) {
+    if (regDays <= 0 || today.isEmpty || day.compareTo(today) >= 0) return false;
+    final t = DateTime.tryParse('${today}T00:00:00Z'), d = DateTime.tryParse('${day}T00:00:00Z');
+    return t != null && d != null && t.difference(d).inDays <= regDays;
+  }
+
+  Future<void> _ask(Map d) async {
+    final ok = await askRegularize(context, widget.ask, '${d['day']}', inNow: '${d['in'] ?? ''}', outNow: '${d['out'] ?? ''}');
+    if (!ok || !mounted) return;
+    toast(context, bi('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
+  }
+
+  static const _names = {'P': 'Present', 'HD': 'Half day', 'A': 'Absent', 'WO': 'Weekly off', 'H': 'Holiday', 'WOP': 'Worked on off', 'HP': 'Worked on holiday', 'IN': 'At work', 'MIS': 'No OUT'};
+  (Color, Color) _look(String c) => switch (c) {
+        'P' || 'WOP' || 'HP' => (C.greenDark, C.greenSoft),
+        'HD' => (C.amber, C.amberSoft),
+        'A' || 'MIS' => (C.red, C.redSoft),
+        'IN' => (C.blue, C.blueSoft),
+        _ => (C.slate, C.slateSoft),
+      };
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: toneBar(Tone.hr, title: Text(bi('My month', 'माझा महिना'))),
-        body: ListView(key: const Key('att-month-page'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-          Row(children: [
-            IconButton(key: const Key('att-m-prev'), onPressed: loading ? null : () => _move(-1), icon: const Icon(Icons.chevron_left_rounded)),
-            Expanded(child: Center(child: Text('${month.substring(5, 7)}-${month.substring(0, 4)}', key: const Key('att-m-name'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)))),
-            IconButton(key: const Key('att-m-next'), onPressed: loading ? null : () => _move(1), icon: const Icon(Icons.chevron_right_rounded)),
-          ]),
-          if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
-          if (err.isNotEmpty) InfoLine(err, bad: true, help: false),
-          if (!loading && err.isEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Tone.hr.soft, borderRadius: BorderRadius.circular(18)),
-              child: Text(bi('Days with a punch: ${days.length}', 'हजेरीचे दिवस: ${days.length}'), key: const Key('att-m-count'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Tone.hr.b)),
-            ),
-            if (days.isEmpty) Padding(padding: const EdgeInsets.only(top: 20), child: Center(child: Text(bi('No punch in this month.', 'या महिन्यात हजेरी नाही.'), style: const TextStyle(color: C.faint)))),
-            for (final d in days)
-              Container(
-                key: Key('att-d-${d['day']}'),
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.line)),
-                child: Row(children: [
-                  Expanded(child: Text(_dmy('${d['day']}'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
-                  Pill('IN ' + _or(d['in']), color: C.greenDark, bg: C.greenSoft),
-                  const SizedBox(width: 8),
-                  Pill('OUT ' + _or(d['out']), color: C.orange, bg: C.orangeSoft),
-                  if ((d['review'] is num) && (d['review'] as num) > 0) ...[const SizedBox(width: 8), const Icon(Icons.hourglass_top_rounded, size: 18, color: C.amber)],
-                ]),
-              ),
-          ],
+  Widget build(BuildContext context) {
+    Widget count(String key, String label, Object? v, Color c) => Expanded(
+          child: Column(children: [Text('${v ?? 0}', key: Key('att-t-$key'), style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: c)), Text(label, style: const TextStyle(fontSize: 12, color: C.muted))]),
+        );
+    return Scaffold(
+      appBar: toneBar(Tone.hr, title: Text(bi('My month', 'माझा महिना')), actions: [
+        IconButton(key: const Key('att-regs'), tooltip: bi('My requests', 'माझ्या विनंत्या'), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendRegsScreen(ask: widget.ask))), icon: const Icon(Icons.fact_check_rounded)),
+      ]),
+      body: ListView(key: const Key('att-month-page'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
+        Row(children: [
+          IconButton(key: const Key('att-m-prev'), onPressed: loading ? null : () => _move(-1), icon: const Icon(Icons.chevron_left_rounded)),
+          Expanded(child: Center(child: Text('${month.substring(5, 7)}-${month.substring(0, 4)}', key: const Key('att-m-name'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)))),
+          IconButton(key: const Key('att-m-next'), onPressed: loading ? null : () => _move(1), icon: const Icon(Icons.chevron_right_rounded)),
         ]),
-      );
+        if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+        if (err.isNotEmpty) InfoLine(err, bad: true, help: false),
+        if (!loading && err.isEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: Tone.hr.soft, borderRadius: BorderRadius.circular(18)),
+            child: total.isEmpty
+                ? Text(bi('Days with a punch: ${days.length}', 'हजेरीचे दिवस: ${days.length}'), key: const Key('att-m-count'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Tone.hr.b))
+                : Row(key: const Key('att-m-total'), children: [count('P', bi('Present', 'हजर', '\n'), total['P'], C.greenDark), count('HD', bi('Half day', 'अर्धा दिवस', '\n'), total['HD'], C.amber), count('A', bi('Absent', 'गैरहजर', '\n'), total['A'], C.red), count('late', bi('Late', 'उशीर', '\n'), total['late'], C.slate)]),
+          ),
+          if (regDays > 0) Padding(padding: const EdgeInsets.only(top: 8), child: Text(bi('Forgot IN or OUT on a day gone? Tap that day.', 'गेलेल्या दिवशी IN किंवा OUT राहिले? त्या दिवसावर tap करा.', '\n'), style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35))),
+          if (days.isEmpty) Padding(padding: const EdgeInsets.only(top: 20), child: Center(child: Text(bi('No punch in this month.', 'या महिन्यात हजेरी नाही.'), style: const TextStyle(color: C.faint)))),
+          for (final d in days) ...[
+            const SizedBox(height: 8),
+            Press(
+              key: Key('att-d-${d['day']}'),
+              onTap: _canAsk('${d['day']}') ? () => _ask(d) : null,
+              radius: 16,
+              shadow: false,
+              border: C.line,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(children: [
+                Expanded(child: Text(_dmy('${d['day']}'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
+                if ('${d['code'] ?? ''}'.isNotEmpty) ...[Pill(_names['${d['code']}'] ?? '${d['code']}', color: _look('${d['code']}').$1, bg: _look('${d['code']}').$2), const SizedBox(width: 8)],
+                Text('${_or(d['in'])} – ${_or(d['out'])}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.muted)),
+                if (d['late_min'] is num && (d['late_min'] as num) > 0) ...[const SizedBox(width: 6), const Icon(Icons.schedule_rounded, size: 17, color: C.amber)],
+                if ((d['review'] is num) && (d['review'] as num) > 0) ...[const SizedBox(width: 6), const Icon(Icons.hourglass_top_rounded, size: 17, color: C.amber)],
+              ]),
+            ),
+          ],
+        ],
+      ]),
+    );
+  }
 }

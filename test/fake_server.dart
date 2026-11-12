@@ -197,6 +197,9 @@ class FakeServer {
   final hrSent = <Map<String, dynamic>>[];
   final hrPunches = <Map<String, dynamic>>[];
   final hrPhotos = <String, int>{};
+  /// (rcl-hr step 5) the requests to set a day right (his own: 'mine'); how many people report to him
+  final hrRegs = <Map<String, dynamic>>[];
+  int hrTeam = 0;
   List<Map<String, dynamic>> hrPlaces = [
     {'id': 'pl1', 'name': 'Site office', 'kind': 'site_office', 'shape': 'circle', 'lat': 18.52, 'lng': 73.8567, 'radius_m': 150, 'points': []}
   ];
@@ -234,10 +237,36 @@ class FakeServer {
         hrPunches.add(p);
         return _j({'ok': true, 'again': false, 'punch': p, 'place': 'Site office', 'punches': hrPunches, 'next': b['kind'] == 'in' ? 'out' : 'in'});
       case 'myMonth':
-        return _j({'ok': true, 'month': '${b['month']}', 'days': '${b['month']}' == '2026-10' ? [
-          {'day': '2026-10-13', 'in': '09:02', 'out': '18:11', 'punches': 2, 'review': 0},
-          if (hrPunches.isNotEmpty) {'day': '2026-10-14', 'in': hrPunches.first['time'], 'out': hrPunches.length > 1 ? hrPunches.last['time'] : '', 'punches': hrPunches.length, 'review': hrPunches.where((p) => p['status'] == 'review').length},
-        ] : []});
+        // (rcl-hr step 5) every day with what it counts as, the month's count, how far back a request reaches
+        final oct = '${b['month']}' == '2026-10';
+        final all = !oct ? <Map<String, dynamic>>[] : [
+          {'day': '2026-10-12', 'code': 'A', 'in': '', 'out': '', 'late_min': 0, 'punches': 0, 'review': 0},
+          {'day': '2026-10-13', 'code': 'P', 'in': '09:12', 'out': '18:11', 'late_min': 12, 'punches': 2, 'review': 0},
+          if (hrPunches.isNotEmpty) {'day': '2026-10-14', 'code': hrPunches.last['kind'] == 'in' ? 'IN' : 'A', 'in': hrPunches.first['time'], 'out': hrPunches.length > 1 ? hrPunches.last['time'] : '', 'late_min': 0, 'punches': hrPunches.length, 'review': 0},
+          {'day': '2026-10-15', 'code': '', 'in': '', 'out': '', 'late_min': 0, 'punches': 0, 'review': 0},
+        ];
+        return _j({'ok': true, 'month': '${b['month']}', 'today': '2026-10-14', 'all': all, 'days': all.where((d) => (d['punches'] as int) > 0).toList(), 'total': {'P': oct ? 1 : 0, 'HD': 0, 'A': oct ? 1 : 0, 'WO': 0, 'H': 0, 'MIS': 0, 'late': oct ? 1 : 0, 'paid': oct ? 1 : 0}, 'reg_days': 60});
+      case 'regAsk':
+        if ('${b['reason']}'.length < 5) return _j({'error': 'Reason: write what happened (at least 5 letters).', 'code': 'reason'}, 400);
+        if ('${b['in_time']}'.isEmpty && '${b['out_time']}'.isEmpty) return _j({'error': 'Give the IN time, the OUT time, or both.', 'code': 'time'}, 400);
+        if (hrRegs.any((q) => q['day'] == b['day'] && q['status'] == 'pending' && q['mine'] == true)) return _j({'error': 'A request for this day is already waiting.', 'code': 'duplicate'}, 409);
+        hrRegs.insert(0, {'id': hrRegs.length + 1, 'mine': true, 'code': 'E00012', 'name': 'Sujit Mule', 'day': b['day'], 'in_time': b['in_time'], 'out_time': b['out_time'], 'out_next_day': b['out_next_day'] == true, 'reason': b['reason'], 'status': 'pending', 'level': 2, 'steps': []});
+        return _j({'ok': true, 'rows': hrRegs.where((q) => q['mine'] == true).toList()});
+      case 'myRegs':
+        return _j({'ok': true, 'rows': hrRegs.where((q) => q['mine'] == true).toList()});
+      case 'teamRegs':
+        return _j({'ok': true, 'team': hrTeam, 'rows': hrRegs.where((q) => q['mine'] != true && q['status'] == 'pending' && q['level'] == 1).toList()});
+      case 'teamRegDecide':
+        final q = hrRegs.firstWhere((x) => x['id'] == b['id'] && x['mine'] != true, orElse: () => <String, dynamic>{});
+        if (q.isEmpty || q['status'] != 'pending' || q['level'] != 1) return _j({'error': 'This request does not wait for you any more.', 'code': 'decided'}, 409);
+        if (b['decision'] == 'refused' && '${b['note']}'.length < 3) return _j({'error': 'Reason: write why it is refused.', 'code': 'note'}, 400);
+        (q['steps'] as List).add({'level': 1, 'by': 'sujit@rcl.test', 'decision': b['decision'], 'note': b['note']});
+        if (b['decision'] == 'approved') {
+          q['level'] = 2;
+        } else {
+          q['status'] = 'refused';
+        }
+        return _j({'ok': true, 'team': hrTeam, 'rows': hrRegs.where((x) => x['mine'] != true && x['status'] == 'pending' && x['level'] == 1).toList()});
     }
     return _j({'error': 'This is for the HR office only.', 'code': 'role'}, 403);
   }
