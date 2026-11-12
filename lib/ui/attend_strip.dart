@@ -98,7 +98,7 @@ class _AttendStripState extends State<AttendStrip> {
             ? (since.isEmpty ? 'On duty' : 'On duty · $since')
             : 'Attendance done today';
     final mr = sky == Sky.dawn
-        ? 'सरकवा → हजेरी लावा'
+        ? 'सरकवा – हजेरी लावा'
         : sky == Sky.day
             ? 'कामावर आहात · IN $tin'
             : (tin.isEmpty || tout.isEmpty ? 'आजची हजेरी पूर्ण' : 'आजची हजेरी पूर्ण · $tin – $tout');
