@@ -8707,6 +8707,10 @@ void main() {
     await t.tap(find.byKey(const Key('lang-mr')));
     await settle(t, 300);
     await t.tap(find.byKey(const Key('lang-save')));
+    // (the words of the language are read from the app's own files – a real reading, it takes a moment)
+    for (var i = 0; i < 20 && Lang.i.code != 'mr'; i++) {
+      await net(t);
+    }
     await net(t);
     expect(Lang.i.code, 'mr');
     expect(find.byKey(const Key('lang-page')), findsNothing);
