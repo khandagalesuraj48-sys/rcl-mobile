@@ -1305,7 +1305,8 @@ class _EntryFormState extends State<EntryForm> {
         ]),
       );
 
-  Widget _chips<T>(List<(T, String)> items, T? value, ValueChanged<T> onPick, {Color? color, bool dense = false}) => Wrap(spacing: dense ? 6 : Sp.chips, runSpacing: 4, children: [
+  Widget _chips<T>(List<(T, String)> items, T? value, ValueChanged<T> onPick, {Color? color, bool dense = false}) {
+    final chips = [
         for (final it in items)
           ChoiceChip(
             label: Text(it.$2),
@@ -1319,7 +1320,11 @@ class _EntryFormState extends State<EntryForm> {
             shape: const StadiumBorder(),
             padding: EdgeInsets.symmetric(horizontal: dense ? 4 : 10, vertical: dense ? 6 : 8),
           ),
-      ]);
+      ];
+    // (3.106.0) dense: beside the date, in one line whatever happens
+    if (dense) return Row(mainAxisSize: MainAxisSize.min, children: [for (final (i, c) in chips.indexed) ...[if (i > 0) const SizedBox(width: 6), c]]);
+    return Wrap(spacing: Sp.chips, runSpacing: 4, children: chips);
+  }
 
   /// (3.106.0, asked 12-11-2026: "date ani shift he pn nit dakhaw") the date and the shift side by side – one line less to scroll.
   /// With big letters or on a very narrow screen: one under the other, as before.
@@ -1507,6 +1512,9 @@ class _EntryFormState extends State<EntryForm> {
     final sh = shots[pk.key];
     final done = sh != null && sh.path.isNotEmpty && sh.jpg != null, here = sh != null && sh.onPhone && !sh.busy;      // (3.85.0) kept on the phone
     final has = sh?.jpg != null;
+    // what a tap does / where the photo stands – the words as before
+    final state = sh?.busy == true ? 'Sending…' : done ? 'Sent' : here ? 'On this phone' : onComputer ? 'Choose photo' : 'Take photo';
+    final ink = has ? Colors.white : C.ink, soft = has ? Colors.white70 : C.muted;
     return SizedBox(
       width: wide ? null : 72,
       height: wide ? 64 : 58,
@@ -1529,11 +1537,17 @@ class _EntryFormState extends State<EntryForm> {
                   ? Row(children: [
                       if (!has) Icon(onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 20, color: k.color),
                       if (!has) const SizedBox(width: 6),
-                      Expanded(child: Align(alignment: has ? Alignment.bottomLeft : Alignment.centerLeft, child: Text(pk.en, mr: pk.mr, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, height: 1.15, color: has ? Colors.white : C.ink)))),
+                      Expanded(
+                        child: Column(mainAxisAlignment: has ? MainAxisAlignment.end : MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(pk.en, mr: pk.mr, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: ink))),
+                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(state, maxLines: 1, style: TextStyle(fontSize: 10.5, color: soft))),
+                        ]),
+                      ),
                     ])
                   : Column(mainAxisAlignment: has ? MainAxisAlignment.end : MainAxisAlignment.center, children: [
-                      if (!has) Icon(onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 18, color: k.color),
-                      FittedBox(fit: BoxFit.scaleDown, child: Text(pk.en, mr: pk.mr, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 10.5, color: has ? Colors.white : C.ink))),
+                      if (!has) Icon(onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 16, color: k.color),
+                      FittedBox(fit: BoxFit.scaleDown, child: Text(pk.en, mr: pk.mr, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 10.5, color: ink))),
+                      FittedBox(fit: BoxFit.scaleDown, child: Text(state, maxLines: 1, style: TextStyle(fontSize: 9, color: soft))),
                     ]),
             ),
             if (sh?.busy == true) const Positioned(right: 5, top: 5, child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))),

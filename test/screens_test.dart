@@ -1047,8 +1047,7 @@ void main() {
     expect(find.text('2 photos'), findsOneWidget);
     await t.tap(find.text('Change'));
     await net(t);
-    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, -900));
-    await settle(t, 600);
+    // (3.106.0) the bill's photos are the first thing of the form now – nothing to scroll to
     expect(find.byKey(const Key('bills')), findsOneWidget);
     expect(find.byKey(const Key('bill-0')), findsOneWidget, reason: 'its 2 copies, read from the server');
     expect(find.byKey(const Key('bill-1')), findsOneWidget);
