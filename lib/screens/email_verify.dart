@@ -73,7 +73,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     try {
       final w = await SessionScope.read(context).verifySend(_mail.text);
       if (!mounted) return;
-      if (w < 0) return _done(SessionScope.read(context).mailLogin);
+      if (w < 0) {
+        await _done(SessionScope.read(context).mailLogin);
+        return;
+      }
       setState(() {
         _sent = true;
         _code.clear();
