@@ -8333,7 +8333,7 @@ void main() {
     await openHr();
     expect(acts(), ['sso', 'myAttend']);
     expect(srv.calls.where((c) => c.startsWith('portal:go:hr:')).length, 1, reason: 'a ticket of the Portal for the module hr');
-    expect(srv.hrSent.last['device_id'], 'and-test-phone-1');
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'myAttend')['device_id'], 'and-test-phone-1');
     expect(find.textContaining('Not marked yet'), findsOneWidget);
     expect(find.textContaining('Site office'), findsWidgets);
     await pics(t);
@@ -8410,7 +8410,9 @@ void main() {
     // ---- my month: each day with what it counts as, the month's count; a day gone is asked to be set right
     await tapKey('att-month');
     expect(find.text('10-2026'), findsOneWidget);
-    expect([for (final k in ['P', 'HD', 'A', 'late']) t.widget<Text>(find.byKey(Key('att-t-$k'))).data], ['1', '0', '1', '1']);
+    for (final e in {'P': '1', 'HD': '0', 'A': '1', 'late': '1'}.entries) {
+      expect(find.descendant(of: find.byKey(Key('att-t-${e.key}')), matching: find.text(e.value)), findsOneWidget, reason: 'the month\'s count: ${e.key}');
+    }
     expect(find.byKey(const Key('att-d-2026-10-12')), findsOneWidget);
     expect(find.byKey(const Key('att-d-2026-10-13')), findsOneWidget);
     expect(find.byKey(const Key('att-d-2026-10-14')), findsOneWidget);
