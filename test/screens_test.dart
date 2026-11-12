@@ -8782,4 +8782,56 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('att-strip')), findsNothing);
   });
+
+  /* (3.106.0 – asked 12-11-2026: "All" first among the dates; the photos small, each beside the box it fills) */
+  testWidgets('(3.106.0) the entries list opens on "All dates" – the newest of every date; a tap on a day: that day only; "All" again', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('day-all')), findsOneWidget);
+    expect(find.byKey(const Key('en-all-head')), findsOneWidget, reason: 'all dates is the one chosen');
+    expect(srv.listAsked.last, {'fn': 'getDieselIssues', 'from': '', 'to': ''}, reason: 'no dates asked – the newest of all');
+    expect(find.text('Sany 210 (No.1)'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/5c_entries_all.png'));
+    await t.tap(find.byKey(const Key('day-2026-10-13')));
+    await net(t);
+    expect(find.byKey(const Key('en-all-head')), findsNothing);
+    expect(find.text('13-10-2026, Tue'), findsOneWidget);
+    expect([srv.listAsked.last['from'], srv.listAsked.last['to'], srv.listAsked.last['all']], ['2026-10-13', '2026-10-13', true]);
+    await t.tap(find.byKey(const Key('day-all')));
+    await net(t);
+    expect(find.byKey(const Key('en-all-head')), findsOneWidget);
+    expect(srv.listAsked.last['from'], '');
+  }, tags: ['golden']);
+
+  testWidgets('(3.106.0) a new Diesel Issue: the date and the shift on one line; each photo small, beside the box it fills – the dispenser\'s beside the litres', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-plus')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('plus-Diesel Issue')));
+    await net(t);
+    expect(find.byKey(const Key('photo-first')), findsOneWidget);
+    for (final k in ['dash', 'pump', 'veh', 'reg']) {
+      expect(find.byKey(Key('photo-$k')), findsOneWidget, reason: 'the $k photo can be taken');
+    }
+    final shot = t.getRect(find.byKey(const Key('photo-pump'))), box = t.getRect(find.byKey(const Key('d-qty')));
+    expect(shot.right, lessThan(box.left), reason: 'the photo on the left of its box');
+    expect((shot.center.dy - box.center.dy).abs(), lessThan(30), reason: 'on the same line');
+    expect(shot.width, lessThan(90), reason: 'small');
+    final day = t.getRect(find.text('14-10-2026')), shift = t.getRect(find.text('Night'));
+    expect((day.center.dy - shift.center.dy).abs(), lessThan(30), reason: 'the date and the shift on one line');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/6c_issue_photos_beside.png'));
+  }, tags: ['golden']);
 }

@@ -52,6 +52,12 @@ void _entriesForget() => _entriesCache.clear(); // (update-155) emptied at sign-
 class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
   String kind = '', day = '', q = '', place = '';
   bool loading = false;
+
+  /// (3.106.0, asked 12-11-2026: "first asel ek all … te select asel tya all madhe all entry yetil … date wise pahaych asel tr
+  /// user date war click krun bghu shakel") ALL DATES is the first choice of the days and the one chosen when the page opens: the
+  /// newest entries of every date (as many as the server gives at once), under their dates. A tap on a day: that day only.
+  bool all = true;
+  int count = 0; // how many there are in all (the server's count) – more than are shown when the list is long
   String err = '';
   List<Map<String, dynamic>> rows = [];
   int seq = 0;
@@ -122,7 +128,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
   }
 
   Future<void> _load() async {
-    final s = SessionScope.read(context), k = kindOf(kind), my = ++seq, ck = '${s.site?.code}|$kind|$day';
+    final s = SessionScope.read(context), k = kindOf(kind), my = ++seq, ck = '${s.site?.code}|$kind|${all ? 'all' : day}';
     _ls ??= s..dataTick.addListener(_live);
     Session.memoryClears.add(_entriesForget);
     setState(() {
@@ -131,11 +137,12 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
       err = '';
     });
     try {
-      final r = (await s.api.call(k.list, [{'from': day, 'to': day, 'all': true}]) as Map).cast<String, dynamic>();
+      final r = (await s.api.call(k.list, [all ? {'from': '', 'to': ''} : {'from': day, 'to': day, 'all': true}]) as Map).cast<String, dynamic>();
       if (my != seq || !mounted) return;
       if (r['stock'] != null) s.setStock(r['stock']);
       setState(() {
         rows = (r['rows'] as List? ?? []).whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
+        count = (asNum(r['count']) ?? rows.length).toInt();
         _entriesCache[ck] = rows;
         loading = false;
       });
@@ -153,6 +160,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
     final last = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     final d = await showDatePicker(context: context, initialDate: parseKey(day), firstDate: DateTime(2024), lastDate: last);
     if (d != null) {
+      all = false;
       day = dateKey(d);
       _load();
     }
@@ -426,13 +434,37 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                  itemCount: days.length,
+                  itemCount: days.length + 1,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (_, i) {
-                    final d = days[i], key = dateKey(d), on = key == day;
+                    if (i == 0) {
+                      // (3.106.0) all dates – the first choice
+                      return GestureDetector(
+                        key: const Key('day-all'),
+                        onTap: () {
+                          if (all) return;
+                          setState(() => all = true);
+                          _load();
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 64,
+                          decoration: BoxDecoration(color: all ? k.color : Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: all ? k.color : C.line)),
+                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            MrLine('सर्व', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 12, color: all ? Colors.white : C.muted)),
+                            Text('All', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: all ? Colors.white : C.ink)),
+                          ]),
+                        ),
+                      );
+                    }
+                    final d = days[i - 1], key = dateKey(d), on = !all && key == day;
                     return GestureDetector(
+                      key: Key('day-$key'),
                       onTap: () {
-                        setState(() => day = key);
+                        setState(() {
+                          all = false;
+                          day = key;
+                        });
                         _load();
                       },
                       child: AnimatedContainer(
@@ -453,7 +485,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(Sp.edge, 8, Sp.edge, 8),
                 child: Row(children: [
-                  Expanded(child: Text('${showDate(day)}, ${weekDays[parseKey(day).weekday - 1]}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+                  Expanded(child: all ? const TwoLang('All dates', 'सर्व तारखा', key: Key('en-all-head'), size: 17, weight: FontWeight.w700) : Text('${showDate(day)}, ${weekDays[parseKey(day).weekday - 1]}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
                   if (!loading) Flexible(child: Text('${list.length} ${list.length == 1 ? 'entry' : 'entries'}${totalText.isEmpty ? '' : ' · $totalText'}', textAlign: TextAlign.right, style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: k.color))),
                 ]),
               ),
@@ -490,16 +522,27 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
               SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(16), child: InfoLine(err, bad: true)))
             else if (list.isEmpty)
               SliverToBoxAdapter(
-                child: EmptyState(rows.isEmpty ? 'No ${k.en.toLowerCase()} on this day' : 'Nothing matches', rows.isEmpty ? 'Pick another day, or add a new entry.' : 'Change the search or the filter.', pic: k.pic,
+                child: EmptyState(rows.isEmpty ? (all ? 'No ${k.en.toLowerCase()} yet' : 'No ${k.en.toLowerCase()} on this day') : 'Nothing matches', rows.isEmpty ? (all ? 'Add a new entry.' : 'Pick another day, or add a new entry.') : 'Change the search or the filter.', pic: k.pic,
                     action: rows.isEmpty && s.canEdit(k.module) ? 'New Entry' : null, onAction: _add),
               )
             else
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 2, 16, 110),
                 sliver: SliverList.separated(
-                  itemCount: list.length,
+                  itemCount: list.length + (all && count > rows.length ? 1 : 0),
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => EntryCard(kind: k, r: list[i], onChanged: _load),
+                  itemBuilder: (_, i) {
+                    // (3.106.0) the list is long: said at its end – the rest is under "All dates & Export" (the ⋮ menu) or a day
+                    if (i >= list.length) return InfoLine(bi('The newest ${rows.length} of $count are shown. For the older ones pick a day, or use ⋮ → All dates & Export.', 'सर्वात नवीन ${rows.length} (एकूण $count) दाखवल्या आहेत. जुन्या नोंदींसाठी तारीख निवडा किंवा ⋮ → All dates & Export.', '\n'), key: const Key('en-all-more'), help: false);
+                    final card = EntryCard(kind: k, r: list[i], onChanged: _load);
+                    // (3.106.0) all dates: each date once, above its entries
+                    final d = '${list[i]['date'] ?? ''}';
+                    if (!all || d.length < 10 || (i > 0 && '${list[i - 1]['date'] ?? ''}' == d)) return card;
+                    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Padding(padding: EdgeInsets.fromLTRB(4, i == 0 ? 0 : 6, 4, 8), child: Text('${showDate(d)}, ${weekDays[parseKey(d).weekday - 1]}', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: k.color))),
+                      card,
+                    ]);
+                  },
                 ),
               ),
           ]),

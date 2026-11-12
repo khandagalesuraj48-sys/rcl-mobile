@@ -15,6 +15,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.106.0 (12-11-2026 – "All" first among the dates; the photos small, beside their boxes; asked: "first asel ek all …
+te select asel", "mothe mothe te section nahi thewnar … dashboard photo tyach samorch auto reading … litres cha photo tyach
+samorch qty", "date ani shift he pn nit dakhaw … fkt apan ui change krtoy baki kahi nahi"):** only the look and the order –
+what is saved, read and checked is as before. **The lists** (Diesel Issue, Inward, Transfer – `lib/screens/entries.dart`; the Log
+Book – `lib/screens/logbook.dart`): the first choice of the days is **All** and it is the one chosen when the page opens – the
+newest entries of every date (as many as the server gives at once, 500; said at the end when there are more), each date above
+its entries; a tap on a day shows that day. **The entry form** (`lib/screens/forms.dart`): the date and the shift on one line; a
+new **Diesel Issue**: no big photo part at the end – the dashboard's photo small beside the reading, the Hour meter's beside the
+hours, the dispenser's beside the litres, the others side by side under them ("Photo first – the number is read by itself");
+**Diesel Inward**: the bill's photos first. The Log Book's entry form is not changed.
+
 **Version 3.105.0 (12-11-2026 – attendance made easy; asked: "je user ERP use kartat tyana attendance pn yach app madhun lawaychi
 aahe … simple easy to use … ek feel premium asaw"; approved the same day: the strip on Home, the page it opens, the "marked"
 screen):** **Home** (a person who has HR on the site): a strip under the site's name (`lib/ui/attend_strip.dart`) – the sun slid
