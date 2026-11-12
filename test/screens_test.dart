@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/attend.dart' show AttendKit;
+import 'package:rcl_mobile/screens/attendance.dart' show attendSelfieForTest;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
 import 'package:rcl_mobile/core/applock.dart';
@@ -52,6 +54,7 @@ import 'package:rcl_mobile/screens/vehicle_booking.dart' show openBooking;
 import 'package:rcl_mobile/screens/vehicle_expenses.dart' show openVexp;
 import 'fake_rtc.dart';
 import 'lock_test.dart' show FakeGate;
+import 'fake_attend.dart';
 import 'fake_server.dart';
 
 Future<void> loadFonts() async {
@@ -8294,4 +8297,154 @@ void main() {
     await net(t);
     expect(find.text('2,487.5 cum', skipOffstage: false), findsOneWidget);
   }, tags: ['golden']);
+
+  // (3.103.0, rcl-hr – asked 12-11-2026: "PURN HR MODUAL … WEB AND APP") the app's own attendance screen
+  testWidgets('(3.103.0) HR – my attendance: inside → selfie → IN; outside, a poor reading, Developer Options, a made-up location: nothing sent; no network: kept on the phone and sent later as the same punch; another phone; my month; "My HR"', (t) async {
+    phone(t);
+    final kit = FakeKit();
+    AttendKit.kit = kit;
+    final selfie = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    attendSelfieForTest = (_) async => selfie;
+    addTearDown(() {
+      attendSelfieForTest = null;
+      AttendKit.kit = AttendKit();
+    });
+    final srv = FakeServer()..hrSite = true;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    Future<void> openHr() async {
+      await seen(t, find.text('HR'));
+      await settle(t, 400);
+      await t.tap(find.text('HR'));
+      await net(t);
+    }
+
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    List<String> acts() => [for (final x in srv.hrSent) '${x['fn'] ?? x['action']}'];
+    await openHr();
+    expect(acts(), ['sso', 'myAttend']);
+    expect(srv.calls.where((c) => c.startsWith('portal:go:hr:')).length, 1, reason: 'a ticket of the Portal for the module hr');
+    expect(srv.hrSent.last['device_id'], 'and-test-phone-1');
+    expect(find.textContaining('Not marked yet'), findsOneWidget);
+    expect(find.textContaining('Site office'), findsWidgets);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_home.png'));
+    // ---- outside: said with the metres, nothing sent, no selfie asked
+    kit.lat = 18.53;
+    await tapKey('att-punch');
+    expect(find.textContaining('outside your work place'), findsOneWidget);
+    expect(find.textContaining('Outside –'), findsOneWidget);
+    expect(acts(), ['sso', 'myAttend']);
+    expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_outside.png'));
+    kit.lat = 18.52;
+    // ---- a poor reading, a made-up location, Developer Options: nothing sent
+    kit.acc = 400;
+    await tapKey('att-punch');
+    expect(find.textContaining('not exact enough yet (400 m)'), findsOneWidget);
+    kit.acc = 12;
+    kit.mocked = true;
+    await tapKey('att-punch');
+    expect(find.textContaining('made-up location'), findsOneWidget);
+    kit.mocked = false;
+    kit.dev = true;
+    await tapKey('att-punch');
+    expect(find.byKey(const Key('att-dev')), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null, reason: 'Developer Options ON: the button is off');
+    expect(acts(), ['sso', 'myAttend']);
+    kit.dev = false;
+    await t.tap(find.byTooltip('Refresh'));      // (back from Settings: read again)
+    await net(t);
+    expect(find.byKey(const Key('att-dev')), findsNothing);
+    // ---- inside: the selfie, then IN – the photo to its place, the punch with this phone's number, the server's clock
+    await tapKey('att-punch');
+    final pin = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
+    expect([pin['kind'], pin['lat'], pin['accuracy_m'], pin['dev_options'], pin['mock'], (pin['device'] as Map)['id'], pin.containsKey('offline')], ['in', 18.52, 12, false, false, 'and-test-phone-1', false]);
+    expect(srv.hrPhotos.keys.toList(), [pin['client_id']]);
+    expect(srv.hrPhotos.values.first > 100, true);
+    expect(find.textContaining('IN marked at 10:30'), findsOneWidget);
+    expect(find.text('IN 10:30'), findsOneWidget);
+    expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty, reason: 'sent: nothing stays on the phone');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_in.png'));
+    // ---- no network: OUT is kept on the phone as taken (place, clocks, photo) – and shown
+    srv.hrNet = false;
+    kit.counter = 5000000 + 600000;
+    kit.clock += 600000;
+    await tapKey('att-punch');
+    expect(find.textContaining('is kept on the phone'), findsOneWidget);
+    expect(find.byKey(const Key('att-kept-out')), findsOneWidget);
+    expect(kit.files.keys.where((k) => k.contains('_q_')).length, 2, reason: 'the punch and its photo');
+    expect(srv.hrPunches.length, 1);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_kept.png'));
+    // (the app closed and opened again with no network: what was read last, and what is kept)
+    await t.pageBack();
+    await net(t);
+    await openHr();
+    expect(find.byKey(const Key('att-offline')), findsOneWidget);
+    expect(find.byKey(const Key('att-kept-out')), findsOneWidget);
+    // ---- the network is back: the SAME punch goes – its own number, its own place and moment, the phone's counters
+    kit.lat = 19.9;      // (he has gone home meanwhile: the punch is not made again from where he is now)
+    srv.hrNet = true;
+    await tapKey('att-send');
+    final pout = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
+    expect([pout['kind'], pout['offline'], pout['lat'], pout['elapsed'], pout['anchor_elapsed'], pout['anchor_server'], pout['at_device']],
+        ['out', true, 18.52, 5600000, 5000000, DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch, DateTime.utc(2026, 10, 14, 5, 10).toIso8601String()]);
+    expect(srv.hrPunches.length, 2);
+    expect(find.byKey(const Key('att-kept-out')), findsNothing);
+    expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
+    expect(find.textContaining('Sent later'), findsOneWidget);
+    kit.lat = 18.52;
+    // ---- my month
+    await tapKey('att-month');
+    expect(find.byKey(const Key('att-m-name')), findsOneWidget);
+    expect(find.text('10-2026'), findsOneWidget);
+    expect(find.byKey(const Key('att-d-2026-10-13')), findsOneWidget);
+    expect(find.byKey(const Key('att-d-2026-10-14')), findsOneWidget);
+    expect(find.textContaining('Days with a punch: 2'), findsOneWidget);
+    await tapKey('att-m-next');
+    expect(find.text('10-2026'), findsOneWidget, reason: 'not a month to come');
+    await tapKey('att-m-prev');
+    expect(find.text('09-2026'), findsOneWidget);
+    expect(find.textContaining('No punch in this month'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    await t.pageBack();
+    await net(t);
+    // ---- his attendance is tied to another phone: said, the button off
+    srv.hrBound = 'and-old-phone';
+    await openHr();
+    expect(find.byKey(const Key('att-other')), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null);
+    await t.pageBack();
+    await net(t);
+  }, tags: ['golden']);
+
+  testWidgets('(3.103.0) HR: "My HR" (hrme) opens the same screen with its own ticket', (t) async {
+    phone(t);
+    AttendKit.kit = FakeKit();
+    addTearDown(() => AttendKit.kit = AttendKit());
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await seen(t, find.text('HR'));
+    await settle(t, 400);
+    await t.tap(find.text('HR'));
+    await net(t);
+    expect(srv.calls.where((c) => c.startsWith('portal:go:hrme:')).length, 1);
+    expect(find.byKey(const Key('att-punch')), findsOneWidget);
+  });
 }

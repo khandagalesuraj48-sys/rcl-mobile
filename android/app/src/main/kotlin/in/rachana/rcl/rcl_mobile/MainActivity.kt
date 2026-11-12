@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -50,6 +52,26 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(true)
                 }
                 else -> result.notImplemented()
+            }
+        }
+        /* (3.103.0, HR attendance – lib/core/attend.dart, channel "rcl/attend"): what only the phone itself can say –
+         *   info – this phone's own number for this app (ANDROID_ID: the same until the phone is reset), its make and Android;
+         *   devOptions – are Developer Options switched on (then no punch – only attendance is stopped);
+         *   elapsed – the milliseconds since the phone was switched on (a counter the person cannot set): the moment of a punch
+         *     taken without a network is worked out from it. */
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "rcl/attend").setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "info" -> result.success(mapOf(
+                        "id" to (Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""),
+                        "model" to (Build.MANUFACTURER + " " + Build.MODEL).trim(),
+                        "os" to ("Android " + Build.VERSION.RELEASE)))
+                    "devOptions" -> result.success(Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0)
+                    "elapsed" -> result.success(SystemClock.elapsedRealtime())
+                    else -> result.notImplemented()
+                }
+            } catch (e: Exception) {
+                result.error("attend", e.message ?: e.toString(), null)
             }
         }
         // (3.31.4) the update in the background – Android's Download Manager (UpdateKit.kt)

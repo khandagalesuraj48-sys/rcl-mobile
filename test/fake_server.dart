@@ -189,6 +189,59 @@ class FakeServer {
   final aiLookups = <Map<String, dynamic>>[];
   /// (3.59.0) Engineering at S1 for him; what reached it; its sign-ins; its sign-in ended once
   bool engSite = false, engEnded = false;
+  /// (3.103.0) HR (rcl-hr) at S1 when [hrSite], as the module [hrKey] ('hr' – the HR office's; 'hrme' – "My HR"): what was sent;
+  /// the punches it keeps; the photos sent to their place; [hrNet] false = the phone has no network for HR; which phone his
+  /// attendance is tied to ('' = none yet); [hrMay] false = his employee record is incomplete
+  bool hrSite = false, hrNet = true, hrMay = true;
+  String hrKey = 'hr', hrBound = '';
+  final hrSent = <Map<String, dynamic>>[];
+  final hrPunches = <Map<String, dynamic>>[];
+  final hrPhotos = <String, int>{};
+  List<Map<String, dynamic>> hrPlaces = [
+    {'id': 'pl1', 'name': 'Site office', 'kind': 'site_office', 'shape': 'circle', 'lat': 18.52, 'lng': 73.8567, 'radius_m': 150, 'points': []}
+  ];
+  Map<String, dynamic> _hrDay(String device) => {
+        'employee': {'code': 'E00012', 'name': 'Sujit Mule', 'category': 'staff'},
+        'may': hrMay,
+        'now': DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch,
+        'day': '2026-10-14',
+        'places': hrPlaces,
+        'max_accuracy': 100,
+        'phone': hrBound.isEmpty ? 'none' : hrBound == device ? 'this' : 'other',
+        'phone_model': hrBound.isEmpty ? '' : 'Old Phone',
+        'punches': hrPunches,
+        'next': hrPunches.isNotEmpty && hrPunches.last['kind'] == 'in' ? 'out' : 'in',
+      };
+  http.Response _hrAct(Map<String, dynamic> b) {
+    switch ('${b['action']}') {
+      case 'myAttend':
+        return _j({'ok': true, ..._hrDay('${b['device_id']}')});
+      case 'selfieUrl':
+        return _j({'ok': true, 'there': hrPhotos.containsKey('${b['client_id']}'), 'url': hrPhotos.containsKey('${b['client_id']}') ? '' : 'https://photos.test/hr-selfies/${b['client_id']}.jpg', 'type': 'image/jpeg', 'max': 1048576});
+      case 'punch':
+        final cid = '${b['client_id']}', dev = '${(b['device'] as Map?)?['id'] ?? ''}';
+        final had = hrPunches.where((p) => p['client_id'] == cid).toList();
+        if (had.isNotEmpty) return _j({'ok': true, 'again': true, 'punch': had.first, 'punches': hrPunches, 'next': _hrDay(dev)['next']});
+        if (b['dev_options'] == true) return _j({'error': 'Developer Options are ON in this phone: switch them off (Settings → Developer options) to mark attendance.', 'code': 'devoptions'}, 403);
+        if (hrBound.isNotEmpty && hrBound != dev) return _j({'error': 'Your attendance is tied to another phone. Only the HR Admin can release it – then this phone will work.', 'code': 'device'}, 403);
+        if (!hrPhotos.containsKey(cid)) return _j({'error': 'The photo of this punch did not arrive – take it again.', 'code': 'selfie'}, 400);
+        final off = b['offline'] == true, last = hrPunches.isEmpty ? null : hrPunches.last;
+        if (!off && b['kind'] == 'in' && last != null && last['kind'] == 'in') return _j({'error': 'You are already IN since ${last['time']}.', 'code': 'already'}, 409);
+        if (!off && b['kind'] == 'out' && (last == null || last['kind'] == 'out')) return _j({'error': 'Mark IN first.', 'code': 'already'}, 409);
+        hrBound = dev;
+        final doubt = off && (b['elapsed'] == null || b['anchor_elapsed'] == null);
+        final p = {'id': 'pn${hrPunches.length + 1}', 'client_id': cid, 'kind': b['kind'], 'at': off ? '${b['at_device']}' : '2026-10-14T05:00:00.000Z', 'time': off ? '09:40' : '10:30', 'place_id': 'pl1', 'offline': off, 'status': doubt ? 'review' : 'ok'};
+        hrPunches.add(p);
+        return _j({'ok': true, 'again': false, 'punch': p, 'place': 'Site office', 'punches': hrPunches, 'next': b['kind'] == 'in' ? 'out' : 'in'});
+      case 'myMonth':
+        return _j({'ok': true, 'month': '${b['month']}', 'days': '${b['month']}' == '2026-10' ? [
+          {'day': '2026-10-13', 'in': '09:02', 'out': '18:11', 'punches': 2, 'review': 0},
+          if (hrPunches.isNotEmpty) {'day': '2026-10-14', 'in': hrPunches.first['time'], 'out': hrPunches.length > 1 ? hrPunches.last['time'] : '', 'punches': hrPunches.length, 'review': hrPunches.where((p) => p['status'] == 'review').length},
+        ] : []});
+    }
+    return _j({'error': 'This is for the HR office only.', 'code': 'role'}, 403);
+  }
+
   // (3.72.0) Purchase (rcl-purchase) at S1 when [purSite]: its sign-in (a Portal ticket); what was sent; his role there
   bool purSite = false;
   String purRole = 'admin';
@@ -1228,6 +1281,7 @@ class FakeServer {
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
           if (engSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'engineering', 'moduleName': 'Engineering', 'url': 'https://erp.test/engineering'},      // (3.59.0)
           if (purSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'purchase', 'moduleName': 'Purchase', 'url': 'https://erp.test/purchase'},      // (3.72.0)
+          if (hrSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': hrKey, 'moduleName': hrKey == 'hr' ? 'RCL HR' : 'My HR', 'url': 'https://erp.test/hr'},      // (3.103.0)
           {'site': 'T2', 'siteName': '18B Kolhapur', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'X9', 'siteName': 'Bad', 'company': '', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'javascript:alert(1)'},
           {'site': 'Z5', 'siteName': 'Store only', 'company': '', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
@@ -1373,6 +1427,26 @@ class FakeServer {
       if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the Engineering page.'}, 403);
       engSessions++;
       return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': 'Admin'}, 'site': 'S1', 'siteName': 'VTR Site – NH 848'}, 200, {'set-cookie': 'rcl_eng=S1.eng$engSessions; Path=/; HttpOnly; SameSite=Lax'});
+    }
+    // (3.103.0) HR: its sign-in (a ticket of the Portal for 'hr' or 'hrme'), its actions, the place of a punch's photo
+    if (path.endsWith('/hr/api/sso') || path.endsWith('/hr/api/hr') || r.url.host == 'photos.test') {
+      if (!hrNet) throw http.ClientException('no network');
+      if (r.url.host == 'photos.test') {
+        if (r.method != 'PUT' || r.headers['Content-Type'] != 'image/jpeg') return http.Response('Bad Request', 400);
+        final cid = r.url.pathSegments.last.replaceAll('.jpg', '');
+        if (hrPhotos.containsKey(cid)) return http.Response('Duplicate', 409);
+        hrPhotos[cid] = r.bodyBytes.length;
+        return http.Response('{}', 200);
+      }
+      if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused: this request did not come from the HR page.'}, 403);
+      final b = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      if (path.endsWith('/hr/api/sso')) {
+        hrSent.add({'fn': 'sso', 'ticket': b['ticket']});
+        return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'role': hrKey == 'hr' ? 'admin' : 'self'}, 'site': 'S1', 'siteName': 'VTR Site – NH 848'}, 200, {'set-cookie': 'rcl_hr=S1.hr1; Path=/; HttpOnly; SameSite=Lax'});
+      }
+      hrSent.add({'cookie': r.headers['Cookie'], ...b});
+      if (!'${r.headers['Cookie']}'.startsWith('rcl_hr=S1.hr')) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      return _hrAct(b);
     }
     // (3.72.0) Purchase of the site: its sign-in (a ticket of the Portal) – who, his role, every site where he has Purchase
     if (path.endsWith('/purchase/api/sso')) {
