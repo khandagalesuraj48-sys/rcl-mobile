@@ -199,6 +199,9 @@ class FakeServer {
   /// the punches it keeps; the photos sent to their place; [hrNet] false = the phone has no network for HR; which phone his
   /// attendance is tied to ('' = none yet); [hrMay] false = his employee record is incomplete
   bool hrSite = false, hrNet = true, hrMay = true;
+  /// (rcl-hr step 8) the site's rule "once a day"; the time today was closed by itself ('' = it was not)
+  bool hrOnce = false;
+  String hrClosed = '';
   String hrKey = 'hr', hrBound = '';
   final hrSent = <Map<String, dynamic>>[];
   final hrPunches = <Map<String, dynamic>>[];
@@ -232,7 +235,9 @@ class FakeServer {
         'phone': hrBound.isEmpty ? 'none' : hrBound == device ? 'this' : 'other',
         'phone_model': hrBound.isEmpty ? '' : 'Old Phone',
         'punches': hrPunches,
-        'next': hrPunches.isNotEmpty && hrPunches.last['kind'] == 'in' ? 'out' : 'in',
+        'next': hrClosed.isNotEmpty ? (hrOnce ? 'done' : 'in') : hrPunches.isNotEmpty && hrPunches.last['kind'] == 'in' ? 'out' : hrOnce && hrPunches.any((p) => p['kind'] == 'in') ? 'done' : 'in',
+        'once': hrOnce,
+        'closed': hrClosed,
       };
   http.Response _hrAct(Map<String, dynamic> b) {
     switch ('${b['action']}') {
@@ -248,6 +253,7 @@ class FakeServer {
         if (hrBound.isNotEmpty && hrBound != dev) return _j({'error': 'Your attendance is tied to another phone. Only the HR Admin can release it – then this phone will work.', 'code': 'device'}, 403);
         if (!hrPhotos.containsKey(cid)) return _j({'error': 'The photo of this punch did not arrive – take it again.', 'code': 'selfie'}, 400);
         final off = b['offline'] == true, last = hrPunches.isEmpty ? null : hrPunches.last;
+        if (!off && b['kind'] == 'in' && hrOnce && hrPunches.any((p) => p['kind'] == 'in')) return _j({'error': 'Today\'s attendance is done – one IN and one OUT a day. A mistake: ask to set the day right.', 'code': 'done'}, 409);
         if (!off && b['kind'] == 'in' && last != null && last['kind'] == 'in') return _j({'error': 'You are already IN since ${last['time']}.', 'code': 'already'}, 409);
         if (!off && b['kind'] == 'out' && (last == null || last['kind'] == 'out')) return _j({'error': 'Mark IN first.', 'code': 'already'}, 409);
         hrBound = dev;

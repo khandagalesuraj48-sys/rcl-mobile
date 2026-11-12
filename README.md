@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.110.0 (12-11-2026 – rcl-hr step 8, asked: "user 1 day madhe fkt ekadach sign in and sign out … visrun gela tr systeam auto
+sign out krel ani … absent … 4th late mark pasun direct half day"):** the rules are the site's (the web) – the app says what the server
+says: with "once a day" the bar reads "Today's attendance is done" after the day's IN and OUT; a day closed by itself (OUT forgotten)
+is said with its time and "ask to set the day right"; This month's day card says "closed by itself" and "half day by the late rule".
+
 **Version 3.109.0 (12-11-2026 – asked: "user swatacha photo pn set karu shakel profile picture"):** a person with HR only sets **his own
 photo** (Me → My photo, or a touch on his face: camera / gallery); it is kept as his paper "Photo" (rcl-hr `myDocAdd`) and shown on Me
 and Home instead of his letters (`myHr.photo` – a link of the HR server), and to the HR office in its list and on his page.
