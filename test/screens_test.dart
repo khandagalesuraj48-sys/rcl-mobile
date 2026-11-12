@@ -9006,6 +9006,43 @@ void main() {
     expect(find.byKey(const Key('att-punch')), findsNothing);
   }, tags: ['golden']);
 
+  testWidgets('(3.110.0) the site\'s rule "once a day": after the day\'s IN and OUT the bar is off and says so; a day closed by itself (OUT forgotten) is said with its time', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    addTearDown(() => AttendKit.kit = AttendKit());
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrOnce = true
+      ..hrBound = 'and-test-phone-1';
+    srv.prefs['brief'] = false;
+    srv.hrPunches.addAll([
+      {'id': 'pn1', 'client_id': 'c1', 'kind': 'in', 'at': '2026-10-14T03:00:00.000Z', 'time': '08:30', 'place_id': 'pl1', 'offline': false, 'status': 'ok'},
+      {'id': 'pn2', 'client_id': 'c2', 'kind': 'out', 'at': '2026-10-14T04:30:00.000Z', 'time': '10:00', 'place_id': 'pl1', 'offline': false, 'status': 'ok'},
+    ]);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await seen(t, find.text('HR'));
+    await settle(t, 400);
+    await t.tap(find.text('HR'));
+    await net(t);
+    expect(find.byKey(const Key('att-once')), findsOneWidget);
+    expect(find.byKey(const Key('att-closed')), findsNothing);
+    expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null, reason: 'nothing more today');
+    expect(find.descendant(of: find.byKey(const Key('att-punch')), matching: find.textContaining('attendance is done')), findsOneWidget);
+    expect(srv.hrSent.where((x) => x['action'] == 'punch'), isEmpty);
+    await t.pageBack();
+    await net(t);
+    // he forgot OUT: the shift's time has passed – closed by itself, absent; he is told what to do
+    srv.hrPunches.removeLast();
+    srv.hrClosed = '23:50';
+    await t.tap(find.text('HR'));
+    await net(t);
+    expect(find.byKey(const Key('att-closed')), findsOneWidget);
+    expect(find.textContaining('closed by itself at 23:50'), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null);
+  });
+
   testWidgets('(3.105.0) no HR on the site: no strip on Home', (t) async {
     phone(t);
     final srv = FakeServer();

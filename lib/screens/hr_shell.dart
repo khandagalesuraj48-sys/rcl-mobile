@@ -224,6 +224,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   // ---- his day in the sky, and the bar that marks it
   Widget _hero(Session s) {
     final punches = [for (final x in (day?['punches'] as List? ?? const []).whereType<Map>()) x];
+    // ('done' – the site's rule "once a day": nothing more today – reads as the day done)
     final next = punches.isEmpty ? 'in' : ('${day?['next'] ?? 'in'}' == 'out' ? 'out' : 'in');
     final stopped = day?['may'] == false || '${day?['phone'] ?? ''}' == 'other' || (day?['places'] as List? ?? const []).isEmpty;
     final sky = skyOf(any: punches.isNotEmpty, next: next, stopped: stopped);
@@ -242,7 +243,9 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final since = sky == Sky.day ? sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now())) : '';
     final (String small, String smallMr, String big, String under) = switch (sky) {
       Sky.day => ('On duty since', 'कामावर', lastIn, since.isEmpty ? '' : _t('$since today', 'आज $since')),
-      Sky.dusk => ('Today is done', 'आजची हजेरी पूर्ण', tout, 'IN $tin · OUT $tout'),
+      Sky.dusk => '${day?['closed'] ?? ''}'.isNotEmpty
+          ? ('Closed by itself – absent', 'आपोआप बंद – गैरहजर', tin, _t('OUT was not marked – ask to set the day right', 'OUT लावले नाही – दुरुस्तीसाठी विनंती करा'))
+          : ('Today is done', 'आजची हजेरी पूर्ण', tout.isEmpty ? tin : tout, tout.isEmpty ? 'IN $tin' : 'IN $tin · OUT $tout'),
       Sky.grey => ('Attendance', 'हजेरी', _t('Cannot be marked', 'लावता येत नाही'), _t('Open Attendance to see why', 'कारण पाहण्यासाठी Attendance उघडा')),
       _ => ('Today', 'आज', _t('Not marked yet', 'अजून लावलेली नाही'), ''),
     };

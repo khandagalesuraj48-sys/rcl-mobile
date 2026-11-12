@@ -190,6 +190,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   double get _maxAcc => (me?['max_accuracy'] is num) ? (me!['max_accuracy'] as num).toDouble() : 100;
   String get _next => nextKind('${me?['next'] ?? 'in'}', kept);
 
+  /// (3.110.0, rcl-hr step 8 – "user 1 day madhe fkt ekadach sign in and sign out") the site's rule "once a day": today has its
+  /// IN (and its OUT, or it was closed by itself) – the server takes no punch any more today.
+  bool get _dayDone => kept.isEmpty && '${me?['next'] ?? ''}' == 'done';
+
+  /// the time today was closed by itself because OUT was not marked ('' = it was not)
+  String get _closed => '${me?['closed'] ?? ''}';
+
   /// Where am I – a fresh reading against his places. Throws AttendProblem.
   Future<PlaceHit> _where() async {
     if (await AttendKit.kit.devOptions()) {
@@ -314,7 +321,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final sky = skyOf(any: punches.isNotEmpty || kept.isNotEmpty, next: next, stopped: blocked || (hit != null && !hit!.inside));
     return Scaffold(
       appBar: _head(context, sky, me == null ? '' : '${emp['name'] ?? s.name} · ${emp['code'] ?? ''}', next, punches),
-      bottomNavigationBar: me == null || loading ? null : _punchBar(next, blocked),
+      bottomNavigationBar: me == null || loading ? null : _punchBar(next, blocked || _dayDone),
       body: loading
           ? const SkeletonList(tiles: 1, rows: 4)
           : RefreshIndicator(
@@ -328,6 +335,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   if (phone == 'other')
                     InfoLine(_t('Your attendance is tied to another phone (${me?['phone_model'] ?? ''}). Only the HR Admin can release it – then this phone will work.', 'तुमची हजेरी दुसऱ्या phone ला बांधलेली आहे (${me?['phone_model'] ?? ''}). फक्त HR Admin तो सोडू शकतो – मग हा phone चालेल.'), bad: true, help: false, key: const Key('att-other')),
                   if (_places.isEmpty) InfoLine(_t('No work place is set for you yet – ask the HR office.', 'तुमच्यासाठी अजून work place ठरवलेले नाही – HR office ला सांगा.'), bad: true, help: false, key: const Key('att-noplace')),
+                  // (3.110.0) once a day / closed by itself – said plainly, with what he can do
+                  if (_closed.isNotEmpty)
+                    InfoLine(_t('OUT was not marked: today was closed by itself at $_closed and counts as absent. Ask to set the day right (Requests).', 'OUT लावले नाही: आजचा दिवस $_closed ला आपोआप बंद झाला आणि गैरहजर धरला आहे. दुरुस्तीसाठी विनंती करा (Requests).'), bad: true, help: false, key: const Key('att-closed'))
+                  else if (_dayDone)
+                    InfoLine(_t('Today\'s attendance is done – one IN and one OUT a day. A mistake: ask to set the day right (Requests).', 'आजची हजेरी पूर्ण – दिवसात एकदाच IN आणि एकदाच OUT. चूक झाली असेल तर दुरुस्तीसाठी विनंती करा (Requests).'), icon: Icons.check_circle_rounded, help: false, key: const Key('att-once')),
                   const SizedBox(height: 4),
                   // ---- where I am and whose phone this is (3.107.0): two small chips. The place's chip is the "check" too – a tap
                   // looks where he stands; outside his place the drawing shows how far he is.
@@ -535,7 +547,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                               alignment: Alignment.centerLeft,
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
-                                child: Text(next == 'in' ? _t('Slide to mark IN', 'IN लावण्यासाठी सरकवा') : _t('Slide to mark OUT', 'OUT लावण्यासाठी सरकवा'), maxLines: 1, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: blocked ? C.faint : Colors.white)),
+                                child: Text(_dayDone ? _t('Today\'s attendance is done', 'आजची हजेरी पूर्ण') : next == 'in' ? _t('Slide to mark IN', 'IN लावण्यासाठी सरकवा') : _t('Slide to mark OUT', 'OUT लावण्यासाठी सरकवा'), maxLines: 1, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: blocked ? C.faint : Colors.white)),
                               ),
                             ),
                           ),
@@ -899,6 +911,9 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
                   if (open['late_min'] is num && (open['late_min'] as num) > 0) const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.schedule_rounded, size: 17, color: C.amber)),
                   if ((open['review'] is num) && (open['review'] as num) > 0) const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.hourglass_top_rounded, size: 17, color: C.amber)),
                 ]),
+                // (3.110.0) why the day counts so: closed by itself (OUT forgotten), or a half day by the late rule
+                if (open['auto'] == true) Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: Text(_t('OUT was not marked – the day was closed by itself: absent.', 'OUT लावले नाही – दिवस आपोआप बंद झाला: गैरहजर.'), key: const Key('att-day-auto'), style: const TextStyle(fontSize: 12.5, color: C.red, height: 1.3))),
+                if (open['late_half'] == true) Padding(padding: const EdgeInsets.only(top: 6, right: 8), child: Text(_t('Late – counted as a half day (the late rule of your site).', 'उशीर – अर्धा दिवस धरला (तुमच्या site चा late नियम).'), key: const Key('att-day-late'), style: const TextStyle(fontSize: 12.5, color: C.amber, height: 1.3))),
               ]),
             ),
           ] else if (days.isNotEmpty)
