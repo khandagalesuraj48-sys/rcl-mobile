@@ -884,7 +884,7 @@
 "In a submitted bill – send it to the Super Admin?": "Submit हुए bill में – Super Admin को भेजें?",
 "It is saved only when the Super Admin approves it.": "Super Admin के approve करने पर ही वह save होता है।",
 "This entry was approved": "यह entry approve हो चुकी है",
-"Approved": "मंज़ूर",
+"Approved": "Approve हुई",
 "Deleted": "Deleted (हटाया गया)",
 "Bill marked Deleted (kept, with the reason).": "Bill \"Deleted\" के रूप में रखा गया (कारण के साथ)।",
 "Only the Super Admin deletes a submitted bill. It is not removed: it is kept, marked Deleted, with your reason – its Log Book stays locked, its debit notes are open again. Write the reason:": "Submit हुआ bill केवल Super Admin delete करता है। वह हटाया नहीं जाता: आपके कारण के साथ \"Deleted\" के रूप में रखा जाता है – उसकी Log Book locked रहती है, उसकी debit notes फिर open होती हैं। कारण लिखें:",
