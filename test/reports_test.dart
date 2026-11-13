@@ -18,8 +18,8 @@ void main() {
   final all = [...kDieselReports, kDailyReport, kMonthlyReport, kAvgReport];
 
   test('every report of the web is here, each from its own server report', () {
-    expect(kDieselReports.map((d) => d.key).toList(), ['debit', 'ldebit', 'mcost', 'driver', 'cost', 'purchase', 'ledger', 'watch', 'owner', 'type', 'stock', 'compare', 'tank', 'average']);
-    for (final p in ['rdaily', 'rmonthly', 'ravg', 'rp-average', 'rp-ledger', 'rp-stock', 'rp-purchase', 'rp-cost', 'rp-mcost', 'rp-driver', 'rp-owner', 'rp-type', 'rp-compare', 'rp-watch', 'rp-tank', 'rp-debit', 'rp-ldebit']) {
+    expect(kDieselReports.map((d) => d.key).toList(), ['debit', 'ldebit', 'mcost', 'driver', 'cost', 'purchase', 'ledger', 'watch', 'owner', 'type', 'stock', 'daybook', 'compare', 'tank', 'average']);
+    for (final p in ['rdaily', 'rmonthly', 'ravg', 'rp-average', 'rp-ledger', 'rp-stock', 'rp-daybook', 'rp-purchase', 'rp-cost', 'rp-mcost', 'rp-driver', 'rp-owner', 'rp-type', 'rp-compare', 'rp-watch', 'rp-tank', 'rp-debit', 'rp-ldebit']) {
       expect(reportOfPage(p), isNotNull, reason: p);
     }
     expect(reportOfPage('dash'), isNull, reason: 'the Dashboard is its own screen');
@@ -100,6 +100,25 @@ void main() {
     expect(rows[1].containsKey('to'), false, reason: 'no "Debit to" column: the entry keeps its party');
     expect(rows[1]['shift'], '');
     expect(rows[2].containsKey('to'), false, reason: 'a blank "Debit to" cell: the entry keeps its party (as the web)');
+  });
+
+  test('(3.119.0) the Diesel Day Book: each diesel source its own five columns; an entry fills only its source; a transfer two; the day and the period add up (as the web)', () {
+    final d = fx('rptDayBook'), def = kDieselReports.firstWhere((x) => x.key == 'daybook'), doc = def.build(d), tb = doc.tables.single;
+    expect(def.filters, ['range', 'today']);
+    expect(doc.portrait, false);
+    expect(tb.head, ['Type', 'ID', 'Who / what', 'Detail', 'Dispenser – Opening', 'Dispenser – Received', 'Dispenser – Transfer', 'Dispenser – Issued', 'Dispenser – Balance', 'VTR Store – Opening', 'VTR Store – Received', 'VTR Store – Transfer', 'VTR Store – Issued', 'VTR Store – Balance', 'Entered by']);
+    String line(RRow r) => r.cells.map((c) => c.text).join('|');
+    expect(tb.rows.first.kind, RKind.group);
+    expect(tb.rows.first.cells.single.text, '10-02-2026 · Tuesday');
+    expect(line(tb.rows[1]).startsWith('Inward|IN-000001|Test Pump → Dispenser|Bill DB1 · Rate 90|0|1,000|||1,000||||||'), true, reason: line(tb.rows[1]));
+    expect(line(tb.rows[2]).startsWith('Transfer|TR-000001|Dispenser → VTR Store|Day|1,000||−300||700|0||+300||300|'), true, reason: line(tb.rows[2]));
+    final day1 = tb.rows.firstWhere((r) => r.kind == RKind.sub);
+    expect(line(day1), 'Total of 10-02-2026|0|1,000|−300|150|550|0||+300|120|180|');
+    expect(line(tb.foot.single), 'Whole period 10-02-2026 to 12-02-2026|0|1,000|−300|230|470|0||+300|120|180|');
+    expect(tb.rows.where((r) => r.kind == RKind.group).length, 2, reason: 'only the days with an entry');
+    expect(doc.kpis, [('Inward', '1,000'), ('Transfer', '300'), ('Issued', '350')]);
+    final p = ReportPick()..start('2026-10-16', ['Dispenser', 'VTR Store'], def);
+    expect([p.from, p.to], ['2026-10-16', '2026-10-16'], reason: 'it opens on today');
   });
 
   test('the Stock Register: opening, every movement with its balance, the closing (as the web)', () {

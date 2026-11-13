@@ -8835,6 +8835,26 @@ void main() {
     expect(find.text('₹ 1,22,548.39'), findsOneWidget);
     expect(find.text('₹ 1,31,000 a month · 29 days paid · 2 extra'), findsOneWidget);
     expect(find.text('Profession Tax'), findsOneWidget);
+    // (3.119.0) "Download PDF": this month's slip as a PDF – his name and code as the server says them, handed to the phone
+    Uint8List? slipPdf;
+    var slipName = '';
+    final slipOutWas = attendPdfOut, slipLogoWas = attendPdfLogo;
+    attendPdfOut = (b, n) async {
+      slipPdf = b;
+      slipName = n;
+    };
+    attendPdfLogo = (_) async => null;
+    addTearDown(() {
+      attendPdfOut = slipOutWas;
+      attendPdfLogo = slipLogoWas;
+    });
+    await t.ensureVisible(find.byKey(const Key('slip-pdf-0')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('slip-pdf-0')));
+    await net(t);
+    expect(slipName, 'Salary_slip_RCL012_2026-10.pdf');
+    expect(String.fromCharCodes(slipPdf!.sublist(0, 5)), '%PDF-');
+    expect(String.fromCharCodes(slipPdf!).contains('(Salary Slip for the Month October-2026)'), true);
     await t.scrollUntilVisible(find.byKey(const Key('slip-net-1')), 250, scrollable: find.byType(Scrollable).first);
     expect(t.widget<Text>(find.byKey(const Key('slip-net-1'))).data, '₹ 496');
     expect(find.text('₹ 500 a day · 1 days paid'), findsOneWidget);

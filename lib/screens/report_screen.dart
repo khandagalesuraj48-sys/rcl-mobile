@@ -112,6 +112,7 @@ class ReportPick {
     monthA = '${last.year}-${last.month.toString().padLeft(2, '0')}';
     monthB = '${t.year}-${t.month.toString().padLeft(2, '0')}';
     if (def.filters.contains('location1') && locations.isNotEmpty) location = locations.first;
+    if (def.filters.contains('today')) from = to; // (3.119.0) the Diesel Day Book opens on today
   }
 }
 
@@ -272,7 +273,10 @@ class _ReportScreenState extends State<ReportScreen> {
     final t = s.today.isNotEmpty ? parseKey(s.today) : DateTime.now();
     setState(() {
       p.all = false;
-      if (w == 'yday') {
+      if (w == 'today') {
+        p.from = dateKey(t);
+        p.to = dateKey(t);
+      } else if (w == 'yday') {
         final y = t.subtract(const Duration(days: 1));
         p.from = dateKey(y);
         p.to = dateKey(y);
@@ -378,6 +382,7 @@ class _ReportScreenState extends State<ReportScreen> {
         padding: const EdgeInsets.only(top: 6),
         child: Wrap(spacing: 6, children: [
           if (f.contains('all')) FilterChip(key: const Key('rep-all'), label: Text('Start to end'), selected: allOn, onSelected: (v) => setState(() => p.all = v)),
+          if (f.contains('today')) ActionChip(key: const Key('rep-today'), label: Text('Today'), onPressed: () => _range('today')),
           ActionChip(label: Text('Yesterday'), onPressed: () => _range('yday')),
           ActionChip(label: Text('This month'), onPressed: () => _range('this')),
           ActionChip(label: Text('Last month'), onPressed: () => _range('last')),

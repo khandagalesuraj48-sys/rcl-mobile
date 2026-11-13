@@ -275,3 +275,102 @@ Future<Uint8List> attendancePdf({required String company, required String site, 
   p.text('Page 1 of 1', r, 826, 7.5, muted, right: true);
   return p.file('Attendance $title - $name', company);
 }
+
+/// (3.119.0, asked 13-11-2026: "Salary slip che Download PDF") An amount the Indian way – 1,23,456 or 1,23,456.50 (the PDF's
+/// type has no rupee sign: "Rs." stands before the net pay).
+String pdfAmount(Object? v) {
+  final n = v is num ? v : num.tryParse('$v') ?? 0, t = n.abs().toStringAsFixed(n == n.roundToDouble() ? 0 : 2), p = t.split('.');
+  var a = p[0];
+  if (a.length > 3) {
+    final last = a.substring(a.length - 3);
+    var rest = a.substring(0, a.length - 3);
+    final parts = <String>[];
+    while (rest.length > 2) {
+      parts.insert(0, rest.substring(rest.length - 2));
+      rest = rest.substring(0, rest.length - 2);
+    }
+    if (rest.isNotEmpty) parts.insert(0, rest);
+    a = '${parts.join(',')},$last';
+  }
+  return '${n < 0 ? '-' : ''}$a${p.length > 1 ? '.${p[1]}' : ''}';
+}
+
+/// ONE MONTH'S SALARY SLIP as a PDF (A4, one page) – exactly the slip the server made and locked: what was earned, what was
+/// deducted, the net pay. Head as the attendance sheet: the logo, the company's name, the employee, his ID, the site.
+/// [slip]: one of mySlips (month, pay_type, rate, month_days, pay_days, extra_days, earnings, gross, deductions,
+/// total_deductions, net). Nothing is worked out here but the layout.
+Future<Uint8List> payslipPdf({required String company, required String site, required String name, required String code, required Map slip, String made = '', PdfLogo? logo}) async {
+  const ink = 0x111111, muted = 0x555555, navy = 0x0F1F3D, soft = 0xE9EEF5, green = 0x146C2E, red = 0xC22A1B;
+  final (title, _) = pdfMonth('${slip['month'] ?? ''}');
+  final p = _Page();
+  const double l = 30, r = 565, mid = (l + r) / 2, half = (r - l - 14) / 2;
+  var room = r - l;
+  if (logo != null && logo.w > 0) {
+    const lw = 118.0;
+    p.picture(logo, l, 30, lw, lw * logo.h / logo.w);
+    room = 2 * (mid - (l + lw + 10));
+  }
+  final firm = pdfWords(company);
+  var fs = 17.0;
+  while (fs > 11 && pdfWidth(firm, fs, bold: true) > room) {
+    fs -= .5;
+  }
+  p.text(pdfFit(firm, room, fs, bold: true), mid, 46, fs, ink, bold: true, mid: true);
+  p.text('Salary Slip for the Month $title', mid, 63, 11.5, ink, bold: true, mid: true);
+  final daily = '${slip['pay_type']}' == 'daily', extra = slip['extra_days'] is num ? slip['extra_days'] as num : 0;
+  p.text('Employee Name :', l, 86, 9.5, ink, bold: true);
+  p.text(pdfFit(pdfWords(name), 210, 9.5), l + 82, 86, 9.5, ink);
+  p.text('Employee ID :', 330, 86, 9.5, ink, bold: true);
+  p.text(pdfWords(code), 410, 86, 9.5, ink);
+  p.text('Site :', l, 100, 9.5, ink, bold: true);
+  p.text(pdfFit(pdfWords(site), 210, 9.5), l + 82, 100, 9.5, ink);
+  p.text(daily ? 'Rate a day :' : 'Salary a month :', 330, 100, 9.5, ink, bold: true);
+  p.text('Rs. ${pdfAmount(slip['rate'])}', 410, 100, 9.5, ink);
+  p.text('Days of the month :', l, 114, 9.5, ink, bold: true);
+  p.text('${slip['month_days'] ?? ''}', l + 98, 114, 9.5, ink);
+  p.text('Days paid :', 330, 114, 9.5, ink, bold: true);
+  p.text('${slip['pay_days'] ?? ''}${extra > 0 ? '  (+ $extra extra)' : ''}', 410, 114, 9.5, ink);
+  p.across(l, 122, r, navy, 1.8);
+  // ---- two tables side by side: what was earned · what was deducted
+  final earn = [for (final x in (slip['earnings'] as List? ?? const []).whereType<Map>()) x], ded = [for (final x in (slip['deductions'] as List? ?? const []).whereType<Map>()) x];
+  const top = 136.0, rowH = 17.0, headH = 18.0;
+  final lines = earn.length > ded.length ? earn.length : ded.length, bodyH = (lines < 1 ? 1 : lines) * rowH, x2 = l + half + 14;
+  void table(double x, String head, List<Map> rows, String totalLabel, Object? total, int tone) {
+    p.box(x, top, half, headH, navy);
+    p.text(head, x + 7, top + 12.5, 10, 0xFFFFFF, bold: true);
+    p.text('Amount (Rs.)', x + half - 7, top + 12.5, 9, 0xFFFFFF, bold: true, right: true);
+    var y = top + headH;
+    for (final row in rows) {
+      p.text(pdfFit(pdfWords('${row['label'] ?? ''}'), half - 100, 9.5), x + 7, y + 12, 9.5, ink);
+      p.text(pdfAmount(row['amount']), x + half - 7, y + 12, 9.5, ink, right: true);
+      y += rowH;
+    }
+    final ty = top + headH + bodyH;
+    p.box(x, ty, half, headH, soft);
+    p.text(totalLabel, x + 7, ty + 12.5, 10, ink, bold: true);
+    p.text(pdfAmount(total), x + half - 7, ty + 12.5, 10, tone, bold: true, right: true);
+    p.frame(x, top, half, headH + bodyH + headH, ink, .9);
+    p.across(x, ty, x + half, ink, .6);
+  }
+
+  table(l, 'Earnings', earn, 'Gross', slip['gross'], ink);
+  table(x2, 'Deductions', ded, 'Total deductions', slip['total_deductions'] ?? 0, red);
+  // ---- the net pay
+  final ny = top + headH + bodyH + headH + 16;
+  p.box(l, ny, r - l, 26, soft);
+  p.frame(l, ny, r - l, 26, ink, .9);
+  p.text('Net pay', l + 10, ny + 17.5, 12, ink, bold: true);
+  p.text('Rs. ${pdfAmount(slip['net'])}', r - 10, ny + 17.5, 13, green, bold: true, right: true);
+  p.text('Net pay = Gross - Total deductions. This slip is the month\'s pay as the head office made and locked it.', l, ny + 42, 8, muted);
+  // ---- room to sign: HR · Accounts · Director
+  final ly = ny + 110;
+  const sx = <double>[250, 360, 470], sl = 95.0;
+  const who = ['HR', 'Accounts', 'Director'];
+  for (var i = 0; i < 3; i++) {
+    p.across(sx[i], ly, sx[i] + sl, ink, .8);
+    p.text(who[i], sx[i] + sl / 2, ly + 13, 10, ink, bold: true, mid: true);
+  }
+  p.text(made.isEmpty ? 'Made from the RCL ERP app' : 'Made on $made from the RCL ERP app', l, 826, 7.5, muted);
+  p.text('Page 1 of 1', r, 826, 7.5, muted, right: true);
+  return p.file('Salary slip $title - $name', company);
+}

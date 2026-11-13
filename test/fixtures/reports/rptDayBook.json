@@ -1,0 +1,120 @@
+{
+ "company": "Rachana Construction Limited",
+ "title": "Diesel Day Book",
+ "from": "2026-02-10",
+ "to": "2026-02-12",
+ "generated": "13-11-2026 16:31",
+ "places": [
+  "Dispenser",
+  "VTR Store"
+ ],
+ "opening": {
+  "Dispenser": 0,
+  "VTR Store": 0
+ },
+ "closing": {
+  "Dispenser": 470,
+  "VTR Store": 180
+ },
+ "days": [
+  {
+   "date": "2026-02-10",
+   "open": {
+    "Dispenser": 0,
+    "VTR Store": 0
+   },
+   "rows": [
+    {
+     "kind": "Inward",
+     "ref": "IN-000001",
+     "who": "Test Pump → Dispenser",
+     "detail": "Bill DB1 · Rate 90",
+     "qty": 1000,
+     "by": "",
+     "at": "13-11 16:31",
+     "d": {
+      "Dispenser": 1000
+     }
+    },
+    {
+     "kind": "Transfer",
+     "ref": "TR-000001",
+     "who": "Dispenser → VTR Store",
+     "detail": "Day",
+     "qty": 300,
+     "by": "",
+     "at": "13-11 16:31",
+     "d": {
+      "Dispenser": -300,
+      "VTR Store": 300
+     }
+    },
+    {
+     "kind": "Issue",
+     "ref": "DI-000001",
+     "who": "DB-TIP – Tipper (Own)",
+     "detail": "500 km · Driver One · Day",
+     "qty": 120,
+     "by": "",
+     "at": "13-11 16:31",
+     "d": {
+      "VTR Store": -120
+     }
+    },
+    {
+     "kind": "Issue",
+     "ref": "DI-000002",
+     "who": "DB-EXC – Excavator (Rental – Test Vendor)",
+     "detail": "210 hr · Night",
+     "qty": 150,
+     "by": "",
+     "at": "13-11 16:31",
+     "d": {
+      "Dispenser": -150
+     }
+    }
+   ],
+   "inward": 1000,
+   "transfer": 300,
+   "issued": 270,
+   "close": {
+    "Dispenser": 550,
+    "VTR Store": 180
+   }
+  },
+  {
+   "date": "2026-02-12",
+   "open": {
+    "Dispenser": 550,
+    "VTR Store": 180
+   },
+   "rows": [
+    {
+     "kind": "Issue",
+     "ref": "DI-000003",
+     "who": "DB-TIP – Tipper (Own)",
+     "detail": "900 km · Day",
+     "qty": 80,
+     "by": "",
+     "at": "13-11 16:31",
+     "d": {
+      "Dispenser": -80
+     }
+    }
+   ],
+   "inward": 0,
+   "transfer": 0,
+   "issued": 80,
+   "close": {
+    "Dispenser": 470,
+    "VTR Store": 180
+   }
+  }
+ ],
+ "total": {
+  "inward": 1000,
+  "transfer": 300,
+  "issued": 350,
+  "entries": 5
+ }
+}

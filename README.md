@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.119.0 (13-11-2026 – asked: "Sign in box che naw Email or mobile number … Diesel Day Book chi app screen … Salary slip
+che Download PDF"):** the sign-in box says "Email or mobile number" (the Portal's step 12: a number signs in with the password);
+the report **Diesel Day Book** (Mechanical update-237 … 239 – each diesel source its own columns Opening · Received · Transfer ·
+Issued · Balance, a day's entries under its date, Today / Yesterday / This month); a salary slip's **Download PDF** (the slip as
+the server locked it, with the company's name and logo, his name, ID and site). The new details of HR's employee sheet (company,
+project, probation days, sign in / out) show under "My details" by themselves – the server lists them.
+
 **Version 3.118.0 (13-11-2026 – his own attendance sheet as the pattern: "attendnce pdf as asaw … company name bold warti centre la …
 employee name … site employee id … tyachi khali ek dark line … company logo pn … saglyat adhi date nantr day nantr work place …
 late asel tr late as lihun … kiti minute … sign la thodi space … Work place madhe jithun sign in zal te … niyam hawe aahet je rules

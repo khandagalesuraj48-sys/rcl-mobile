@@ -18,6 +18,7 @@ import 'package:image/image.dart' as img;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/attend_pdf.dart' show payslipPdf;
 import '../core/attend_remind.dart';
 import '../core/update.dart';
 import '../ui/hr_look.dart';
@@ -30,6 +31,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'attach_box.dart' show pickAttFiles;
 import 'attend_reqs.dart' show HrAsk;
+import 'attendance.dart' show attendPdfLogo, attendPdfOut;
 import 'email_verify.dart';
 import 'hr_shell.dart' show initials;
 
@@ -356,6 +358,8 @@ class SalarySlipsScreen extends StatefulWidget {
 /// deducted, the net pay. Read only; made by the HO HR on the web.
 class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
   List<Map> slips = const [];
+  Map who = const {}; // (3.119.0) his name and code, as the server says them – the PDF's head
+  int making = -1; // which slip's PDF is being made
   bool loading = true;
   String err = '';
 
@@ -371,6 +375,7 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
       if (!mounted) return;
       setState(() {
         slips = (j['slips'] as List? ?? const []).whereType<Map>().toList();
+        who = j['employee'] is Map ? j['employee'] as Map : const {};
         loading = false;
         err = '';
       });
@@ -389,6 +394,23 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
         });
       }
     }
+  }
+
+  /// (3.119.0, asked 13-11-2026: "Salary slip che Download PDF") this month's slip as a PDF – the slip as the server locked it,
+  /// with the company's name and logo, his name, ID and site. Handed to the phone's own "save / share".
+  Future<void> _pdf(Map s, int i) async {
+    if (making >= 0) return;
+    setState(() => making = i);
+    try {
+      final ses = SessionScope.read(context), name = '${who['name'] ?? ''}'.trim().isEmpty ? ses.name : '${who['name']}'.trim(), code = '${who['code'] ?? ''}'.trim();
+      final company = (ses.site?.company ?? '').isNotEmpty ? ses.site!.company : (ses.company.isNotEmpty ? ses.company : 'Salary slip');
+      final now = DateTime.now().toUtc().add(const Duration(minutes: 330)).toIso8601String();
+      final bytes = await payslipPdf(company: company, site: ses.siteName, name: name, code: code, slip: s, logo: await attendPdfLogo(company), made: '${now.substring(8, 10)}/${now.substring(5, 7)}/${now.substring(0, 4)} ${now.substring(11, 16)}');
+      await attendPdfOut(bytes, 'Salary_slip_${code.isEmpty ? name : code}_${s['month']}.pdf');
+    } catch (_) {
+      if (mounted) toast(context, _t('The PDF could not be made – try again.', 'PDF बनली नाही – पुन्हा करा.'));
+    }
+    if (mounted) setState(() => making = -1);
   }
 
   static String _rs(Object? v) {
@@ -445,6 +467,15 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
         if (ded.isNotEmpty) _line(_t('Total deductions', 'एकूण कपात'), s['total_deductions'], bold: true, color: bad),
         Divider(height: 14, color: sk.hair),
         _line(_t('Net pay', 'हातात येणारा पगार'), s['net'], bold: true, color: good),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            key: Key('slip-pdf-$i'),
+            onPressed: making >= 0 ? null : () => _pdf(s, i),
+            icon: making == i ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.picture_as_pdf_outlined, size: 18),
+            label: m.Text(_t('Download PDF', 'PDF घ्या')),
+          ),
+        ),
       ]),
     );
   }

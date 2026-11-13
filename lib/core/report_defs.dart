@@ -19,6 +19,70 @@ String _period(Map<String, dynamic> d) => blankV(d['from']) ? '' : '${dmy(d['fro
 String _meta(Map<String, dynamic> d, String m) => [if (_period(d).isNotEmpty) _period(d), if (m.isNotEmpty) m, 'Generated ${d['generated'] ?? ''}'].join('  |  ');
 String _file(String name, Map<String, dynamic> d) => 'RCL_${name}_${d['from'] ?? ''}_to_${d['to'] ?? ''}';
 
+/* ---------- (3.119.0) the Diesel Day Book: a block of five columns for each diesel source ---------- */
+const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+RDoc _dayBook(Map<String, dynamic> d) {
+  final places = [for (final p in (d['places'] is List ? d['places'] as List : const [])) '$p'];
+  final days = listOf(d['days']), tot = mapOf(d['total']), width = 4 + 5 * places.length + 1;
+  String sign(num v) => v == 0 ? '' : '${v > 0 ? '+' : '−'}${fmt(v.abs())}';
+  // one source's five cells: the stock before, what came from a pump, a transfer (+ in / − out), what was issued, the stock after
+  List<RCell> block(num open, num rec, num tr, num iss, num bal, {bool bold = false}) => [
+        RCell(fmt(open), n: true, bold: bold, value: open),
+        RCell(rec == 0 ? '' : fmt(rec), n: true, bold: bold, tone: rec == 0 ? '' : 'good', value: rec == 0 ? null : rec),
+        RCell(sign(tr), n: true, bold: bold, tone: tr > 0 ? 'good' : tr < 0 ? 'bad' : '', value: tr == 0 ? null : tr),
+        RCell(iss == 0 ? '' : fmt(iss), n: true, bold: bold, tone: iss == 0 ? '' : 'bad', value: iss == 0 ? null : iss),
+        RCell(fmt(bal), n: true, bold: true, tone: bal < 0 ? 'bad' : '', value: bal),
+      ];
+  const empty = [RCell('', n: true), RCell('', n: true), RCell('', n: true), RCell('', n: true), RCell('', n: true)];
+  final all = {for (final p in places) p: <num>[0, 0, 0]};
+  final rows = <RRow>[];
+  for (final x in days) {
+    final open = mapOf(x['open']), close = mapOf(x['close']), bal = {for (final p in places) p: nOf(open[p])}, sum = {for (final p in places) p: <num>[0, 0, 0]};
+    final dt = DateTime.tryParse('${x['date'] ?? ''}');
+    rows.add(RRow([RCell('${dmy(x['date'])}${dt == null ? '' : ' · ${_weekdays[dt.weekday - 1]}'}', bold: true, span: width)], kind: RKind.group));
+    for (final r in listOf(x['rows'])) {
+      final kind = '${r['kind'] ?? ''}', moved = mapOf(r['d']), cells = <RCell>[tc(kind, bold: true, tone: kind == 'Inward' ? 'good' : kind == 'Transfer' ? 'info' : 'warn'), tc(r['ref']), tc(r['who']), tc(r['detail'])];
+      for (final p in places) {
+        final v = nOf(moved[p]);
+        if (v == 0) {
+          cells.addAll(empty);
+          continue;
+        }
+        final before = bal[p] ?? 0, after = (before + v) * 100 == ((before + v) * 100).roundToDouble() ? before + v : ((before + v) * 100).round() / 100;
+        final k = kind == 'Inward' ? 0 : kind == 'Transfer' ? 1 : 2, amount = k == 2 ? -v : v;
+        bal[p] = after;
+        sum[p]![k] += amount;
+        all[p]![k] += amount;
+        cells.addAll(block(before, k == 0 ? v : 0, k == 1 ? v : 0, k == 2 ? -v : 0, after));
+      }
+      cells.add(tc([if (!blankV(r['by'])) '${r['by']}', if (!blankV(r['at'])) '${r['at']}'].join(' · ')));
+      rows.add(RRow(cells));
+    }
+    rows.add(RRow([RCell('Total of ${dmy(x['date'])}', bold: true, span: 4), for (final p in places) ...block(nOf(open[p]), sum[p]![0], sum[p]![1], sum[p]![2], nOf(close[p]), bold: true), const RCell('')], kind: RKind.sub));
+  }
+  final opening = mapOf(d['opening']), closing = mapOf(d['closing']);
+  return RDoc(
+    title: '${d['title'] ?? 'Diesel Day Book'}',
+    period: _period(d),
+    file: _file('Diesel_Day_Book', d),
+    portrait: false,
+    meta: _meta(d, '${tot['entries'] ?? 0} entries on ${days.length} day${days.length == 1 ? '' : 's'}  |  ${places.length} diesel sources'),
+    kpis: [('Inward', fmt(tot['inward'])), ('Transfer', fmt(tot['transfer'])), ('Issued', fmt(tot['issued']))],
+    blocks: [
+      RTable(
+        sheet: 'Diesel day book',
+        head: ['Type', 'ID', 'Who / what', 'Detail', for (final p in places) ...['$p – Opening', '$p – Received', '$p – Transfer', '$p – Issued', '$p – Balance'], 'Entered by'],
+        numCols: {for (var i = 4; i < 4 + 5 * places.length; i++) i},
+        empty: 'No diesel entry in this period.',
+        rows: rows,
+        foot: [
+          RRow([RCell('Whole period ${_period(d)}', bold: true, span: 4), for (final p in places) ...block(nOf(opening[p]), all[p]![0], all[p]![1], all[p]![2], nOf(closing[p]), bold: true), const RCell('')], kind: RKind.grand),
+        ],
+      ),
+    ],
+  );
+}
+
 /* ---------- Owner summary: transfers and the stock summary (shared by the web) ---------- */
 List<Object> _ownerTransfers(Map<String, dynamic> d) {
   final tr = listOf(d['transfers']);
@@ -543,6 +607,19 @@ final kDieselReports = <ReportDef>[
         ],
       );
     },
+  ),
+  // (3.119.0 – Mechanical update-237 … 239, asked 13-11-2026) every diesel entry of every place, day by day: each diesel source has
+  // its own columns side by side – Opening · Received · Transfer · Issued · Balance. No place is chosen.
+  ReportDef(
+    key: 'daybook',
+    label: 'Diesel Day Book',
+    mr: 'डिझेल डे बुक',
+    fn: 'rptDayBook',
+    pic: 'oil_drum',
+    filters: const ['range', 'today'],
+    portrait: false,
+    note: 'Every diesel entry in one sheet, day by day. Each diesel source has its own columns – Opening, Received, Transfer, Issued, Balance – so the stock of every source is seen entry by entry.',
+    build: _dayBook,
   ),
   ReportDef(
     key: 'compare',
