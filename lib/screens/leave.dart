@@ -2,23 +2,35 @@
  * hawe aahet ya sagle leave chi pn screen"): his balance, what this month added and used, "+ Apply for leave", his requests
  * (waiting – approved – refused; a waiting one is taken back by a touch) and how his site counts leave – the policy the HR
  * office set, nothing fixed here. The form: From, To, the whole day or a half, the reason. The balance is never kept on the
- * phone and never counted here: the server (rcl-hr, lib/act_leave.js) walks it day by day and checks every request again. */
+ * phone and never counted here: the server (rcl-hr, lib/act_leave.js) walks it day by day and checks every request again.
+ * (3.121.0, the Rule Book of HR – rcl-hr step 13; his words: "systeam auto samjel ki ya 2 ni milun leave balance ekach aahe",
+ * "leave form attachment") when the server walks his leave with a Rule Book policy (book: true) the ONE balance is his Paid
+ * leave and his Comp-off days together – he never chooses a type – and his ledger says where every day came from and went; a
+ * request can carry papers (a photo or a PDF – never needed), attached with it or afterwards. A server without step 13 sends
+ * none of this: the screen is then exactly the one of before. */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
+
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
+import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'attach_box.dart' show pickAttFiles;
 import 'attend_reqs.dart';
+import 'hr_me.dart' show docReady;
 
 String _t(String en, String mr) => Lang.i.pair(en, mr);
 String _dmy(String ymd) => ymd.length >= 10 ? '${ymd.substring(8, 10)}-${ymd.substring(5, 7)}-${ymd.substring(0, 4)}' : ymd;
+
+num _num(Object? v) => v is num ? v : num.tryParse('${v ?? ''}') ?? 0;
 
 /// 3, 2.5 – a count of days without a needless ".0".
 String _n(Object? v) {
@@ -73,6 +85,12 @@ class _LeaveScreenState extends State<LeaveScreen> {
     donePop(context, _t('Leave request sent', 'रजेचा अर्ज पाठवला'), detail: _t('It counts when it is approved.', 'मंजूर झाल्यावर धरले जाईल.'));
   }
 
+  // (3.121.0) the papers of a request: looked at, attached, removed – then the list is read again (its count)
+  Future<void> _papers(Map q) async {
+    await Navigator.of(context).push<void>(hrRoute(LeavePapersScreen(ask: widget.ask, request: q)));
+    if (mounted) _load();
+  }
+
   // a request that still waits is taken back by its owner
   Future<void> _back(Map q) async {
     if (busy || !await ask(context, _t('Take this request back?', 'ही विनंती मागे घ्यायची?'), leaveDays(q), yes: _t('Take back', 'मागे घ्या'), danger: true) || !mounted) return;
@@ -91,6 +109,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
 
   /// How his site counts leave – said from the policy of today (the HR office's), never from a number of the app.
   String _how(Map? p) {
+    if (p == null && me?['book'] == true) return _t('Your leave is counted by the leave policy the HR office gave you. Paid leave and Comp-off days are one balance – a leave takes the Comp-off days first.', 'तुमची रजा HR office ने दिलेल्या रजा policy प्रमाणे मोजली जाते. Paid रजा आणि Comp-off दिवस मिळून एकच balance – रजा आधी Comp-off मधून जाते.');
     if (p == null) return _t('No leave policy is set for your site yet – ask the HR office.', 'तुमच्या site साठी अजून रजा policy ठरवलेली नाही – HR office ला सांगा.');
     final per = _n(p['per_month']);
     return [
@@ -104,6 +123,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
   Widget build(BuildContext context) {
     final month = (me?['month'] as Map?) ?? const {}, reqs = [for (final x in (me?['requests'] as List? ?? const []).whereType<Map>()) x];
     final today = '${me?['today'] ?? indiaDay(AttendKit.kit.now())}';
+    final ledger = [for (final x in (me?['ledger'] as List? ?? const []).whereType<Map>()) x];
     Widget box(String key, Object? v, String en, String mr) => Expanded(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 5),
@@ -138,11 +158,31 @@ class _LeaveScreenState extends State<LeaveScreen> {
                             key: Key('lv-${q['id']}'),
                             main: leaveDays(q),
                             small: '${q['status']}' == 'approved' ? _t('Approved by HR office', 'HR office ने मंजूर केले') : s.$3,
-                            chips: [stateChip(s.$1, s.$2, key: waits ? Key('lv-back-${q['id']}') : null, onTap: waits ? () => _back(q) : null)],
+                            chips: [
+                              // (3.121.0) the papers of the request – only when the server keeps them (step 13); never needed
+                              if (q['files'] is num && '${q['status']}' != 'cancelled') stateChip((q['files'] as num) > 0 ? _t('Papers ${_n(q['files'])}', 'कागद ${_n(q['files'])}') : _t('+ Paper', '+ कागद'), 'w', key: Key('lv-files-${q['id']}'), onTap: () => _papers(q)),
+                              stateChip(s.$1, s.$2, key: waits ? Key('lv-back-${q['id']}') : null, onTap: waits ? () => _back(q) : null),
+                            ],
                             last: i == reqs.length - 1);
                       }(),
                     if (reqs.any((q) => '${q['status']}' == 'pending')) Padding(padding: EdgeInsets.only(top: 6), child: Text('Touch "Waiting" to take a request back.', mr: 'विनंती मागे घ्यायला "प्रलंबित" वर touch करा.', style: TextStyle(fontSize: 12, color: sk.faint))),
                   ]),
+                  if (me?['book'] == true) ...[
+                    const SizedBox(height: 12),
+                    hrCard(key: const Key('leave-ledger'), [
+                      hrTitle('My leave ledger', 'माझ्या रजेचा हिशोब'),
+                      m.Text(_t('Paid leave ${_n(me?['paid'])} · Comp-off ${_n(me?['comp'])} – one balance of ${_n(me?['balance'])}', 'Paid रजा ${_n(me?['paid'])} · Comp-off ${_n(me?['comp'])} – मिळून balance ${_n(me?['balance'])}'), key: const Key('leave-two'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sk.muted, height: 1.4)),
+                      const SizedBox(height: 4),
+                      if (ledger.isEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Nothing added or used yet.', mr: 'अजून काही जमा किंवा वापर नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint))),
+                      for (final (i, l) in ledger.indexed)
+                        reqRow(
+                            key: Key('lg-$i'),
+                            main: '${l['text'] ?? ''}'.isEmpty ? _t('Leave', 'रजा') : '${l['text']}',
+                            small: '${_dmy('${l['day'] ?? ''}')} · ${'${l['bucket']}' == 'comp' ? 'Comp-off' : _t('Paid leave', 'Paid रजा')}',
+                            chips: [stateChip('${_num(l['days']) > 0 ? '+' : ''}${_n(l['days'])}', _num(l['days']) > 0 ? 'a' : 'x')],
+                            last: i == ledger.length - 1),
+                    ]),
+                  ],
                   const SizedBox(height: 12),
                   hrCard(key: const Key('leave-how'), [
                     hrTitle('How it is counted', 'कशी मोजली जाते'),
@@ -270,6 +310,139 @@ class _LeaveAskScreenState extends State<LeaveAskScreen> {
           hrButton('Send', 'पाठवा', key: const Key('leave-send'), onTap: _send, busy: busy),
         ]),
       ),
+    );
+  }
+}
+
+/// (3.121.0) THE PAPERS OF ONE LEAVE REQUEST: a photo or a PDF – never needed. He attaches (camera, gallery, PDF), opens and –
+/// while the request still waits – removes his own; a paper the HR office attached is only opened. The server keeps every one.
+class LeavePapersScreen extends StatefulWidget {
+  const LeavePapersScreen({super.key, required this.ask, required this.request});
+  final HrAsk ask;
+  final Map request;
+  @override
+  State<LeavePapersScreen> createState() => _LeavePapersScreenState();
+}
+
+class _LeavePapersScreenState extends State<LeavePapersScreen> {
+  Map<String, dynamic>? got;
+  String err = '';
+  bool loading = true, busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final j = await widget.ask({'action': 'myLeaveFiles', 'request': widget.request['id']});
+      if (!mounted) return;
+      setState(() {
+        got = j;
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _add() async {
+    if (busy) return;
+    final how = await showModalBottomSheet<String>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(key: const Key('lf-camera'), leading: const Icon(Icons.photo_camera_rounded), title: const Text('Take a photo', mr: 'Photo काढा'), onTap: () => Navigator.pop(c, 'camera')),
+          ListTile(key: const Key('lf-gallery'), leading: const Icon(Icons.photo_library_rounded), title: const Text('Choose a photo', mr: 'Photo निवडा'), onTap: () => Navigator.pop(c, 'gallery')),
+          ListTile(key: const Key('lf-pdf'), leading: const Icon(Icons.picture_as_pdf_rounded), title: const Text('Choose a PDF', mr: 'PDF निवडा'), onTap: () => Navigator.pop(c, 'pdf')),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (how == null || !mounted) return;
+    setState(() {
+      busy = true;
+      err = '';
+    });
+    try {
+      final files = await pickAttFiles(how, 1);
+      if (files.isNotEmpty) {
+        final f = docReady(files.first.name, files.first.bytes);
+        if (f == null) throw ApiError('This file could not be read – a photo or a PDF.');
+        final u = await widget.ask({'action': 'myLeaveFileUrl', 'request': widget.request['id'], 'type': f.$2, 'bytes': f.$1.length});
+        if (!mounted) return;
+        await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
+        await widget.ask({'action': 'myLeaveFileAdd', 'request': widget.request['id'], 'path': u['path'], 'name': files.first.name, 'bytes': f.$1.length});
+        await _load();
+        if (mounted) donePop(context, _t('Paper attached', 'कागद जोडला'));
+      }
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _open(Map f) async {
+    try {
+      final j = await widget.ask({'action': 'myLeaveFileLink', 'file': f['id']});
+      await launchUrl(Uri.parse('${j['url']}'), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
+  }
+
+  Future<void> _remove(Map f) async {
+    if (busy || !await ask(context, _t('Remove this paper?', 'हा कागद काढायचा?'), '${f['name'] ?? ''}', yes: _t('Remove', 'काढा'), danger: true) || !mounted) return;
+    setState(() {
+      busy = true;
+      err = '';
+    });
+    try {
+      await widget.ask({'action': 'myLeaveFileRemove', 'file': f['id']});
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
+    if (mounted) setState(() => busy = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final files = [for (final x in (got?['files'] as List? ?? const []).whereType<Map>()) x];
+    final max = _num(got?['max']), room = got?['canAdd'] == true && files.length < max;
+    return Scaffold(
+      appBar: hrHead(context, sky: kLeaveSky, title: 'Papers of the leave', mr: 'रजेचे कागद', pill: headPill(leaveDays(widget.request)), height: 96),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 3)
+          : ListView(key: const Key('lf-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+              if (room) hrButton('+ Attach a paper', '+ कागद जोडा', key: const Key('lf-add'), onTap: _add, busy: busy),
+              if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('lf-err')),
+              const SizedBox(height: 12),
+              hrCard(key: const Key('lf-list'), [
+                hrTitle('Attached', 'जोडलेले'),
+                if (files.isEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('No paper is attached. A paper is never needed for a leave.', mr: 'कागद जोडलेला नाही. रजेसाठी कागद कधीच सक्तीचा नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint, height: 1.4))),
+                for (final (i, f) in files.indexed)
+                  reqRow(
+                      key: Key('lf-${f['id']}'),
+                      main: '${f['name'] ?? ''}'.isEmpty ? ('${f['mime']}' == 'application/pdf' ? 'PDF' : 'Photo') : '${f['name']}',
+                      small: '${'${f['mime']}' == 'application/pdf' ? 'PDF' : 'Photo'} · ${_dmy('${f['added_at'] ?? ''}')}',
+                      chips: [
+                        stateChip(_t('Open', 'उघडा'), 'w', key: Key('lf-open-${f['id']}'), onTap: () => _open(f)),
+                        if (f['canRemove'] == true) stateChip(_t('Remove', 'काढा'), 'x', key: Key('lf-rm-${f['id']}'), onTap: () => _remove(f)),
+                      ],
+                      last: i == files.length - 1),
+              ]),
+              if (got != null && !room && got?['canAdd'] == true) Padding(padding: const EdgeInsets.only(top: 10), child: Text('This request holds ${_n(max)} papers – no more can be attached.', mr: 'या अर्जाला ${_n(max)} कागद आहेत – आणखी जोडता येत नाही.', style: TextStyle(fontSize: 12.5, color: sk.faint))),
+            ]),
     );
   }
 }
