@@ -105,6 +105,12 @@ Future<void> net(WidgetTester t, [int ms = 1200]) async {
   await settle(t, 400);
 }
 
+/// (3.115.0) The HR tile of the full app opens the attendance app itself now; a test of the Attendance page opens that page.
+Future<void> attPage(WidgetTester t) async {
+  Navigator.of(t.element(find.byType(Scaffold).first)).push(hrRoute<void>(const AttendanceScreen())).ignore();
+  await net(t);
+}
+
 Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))..clock = () => DateTime(2026, 10, 14, 10, 30); // (a Day-shift time: the screens are the same every run)
 
 Future<Session> ready(WidgetTester t, FakeServer srv) async {
@@ -8587,10 +8593,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await seen(t, find.text('HR'));
-    await settle(t, 400);
-    await t.tap(find.text('HR'));
-    await net(t);
+    await attPage(t);
     Future<void> punch() async {
       await t.ensureVisible(find.byKey(const Key('att-punch')));
       await settle(t, 300);
@@ -8649,10 +8652,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await seen(t, find.text('HR'));
-    await settle(t, 400);
-    await t.tap(find.text('HR'));
-    await net(t);
+    await attPage(t);
     expect(srv.calls.where((c) => c.startsWith('portal:go:hrme:')).length, 1);
     expect(find.byKey(const Key('att-punch')), findsOneWidget);
   });
@@ -9213,10 +9213,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await seen(t, find.text('HR'));
-    await settle(t, 400);
-    await t.tap(find.text('HR'));
-    await net(t);
+    await attPage(t);
     expect(find.byKey(const Key('att-once')), findsOneWidget);
     expect(find.byKey(const Key('att-closed')), findsNothing);
     expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null, reason: 'nothing more today');
@@ -9227,8 +9224,7 @@ void main() {
     // he forgot OUT: the shift's time has passed – closed by itself, absent; he is told what to do
     srv.hrPunches.removeLast();
     srv.hrClosed = '23:50';
-    await t.tap(find.text('HR'));
-    await net(t);
+    await attPage(t);
     expect(find.byKey(const Key('att-closed')), findsOneWidget);
     expect(find.textContaining('closed by itself at 23:50'), findsOneWidget);
     expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null);
