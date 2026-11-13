@@ -279,11 +279,11 @@ class FakeServer {
         final oct = '${b['month']}' == '2026-10';
         final all = !oct ? <Map<String, dynamic>>[] : [
           {'day': '2026-10-12', 'code': 'A', 'in': '', 'out': '', 'late_min': 0, 'punches': 0, 'review': 0},
-          {'day': '2026-10-13', 'code': 'P', 'in': '09:12', 'out': '18:11', 'late_min': 12, 'punches': 2, 'review': 0},
+          {'day': '2026-10-13', 'code': 'P', 'in': '09:12', 'out': '18:11', 'late_min': 12, 'punches': 2, 'review': 0, 'place': 'Site office'},
           if (hrPunches.isNotEmpty) {'day': '2026-10-14', 'code': hrPunches.last['kind'] == 'in' ? 'IN' : 'A', 'in': hrPunches.first['time'], 'out': hrPunches.length > 1 ? hrPunches.last['time'] : '', 'late_min': 0, 'punches': hrPunches.length, 'review': 0},
           {'day': '2026-10-15', 'code': '', 'in': '', 'out': '', 'late_min': 0, 'punches': 0, 'review': 0},
         ];
-        return _j({'ok': true, 'month': '${b['month']}', 'today': '2026-10-14', 'all': all, 'days': all.where((d) => (d['punches'] as int) > 0).toList(), 'total': {'P': oct ? 1 : 0, 'HD': 0, 'A': oct ? 1 : 0, 'WO': 0, 'H': 0, 'MIS': 0, 'late': oct ? 1 : 0, 'paid': oct ? 1 : 0}, 'reg_days': 60});
+        return _j({'ok': true, 'month': '${b['month']}', 'today': '2026-10-14', 'all': all, 'days': all.where((d) => (d['punches'] as int) > 0).toList(), 'total': {'P': oct ? 1 : 0, 'HD': 0, 'A': oct ? 1 : 0, 'WO': 0, 'H': 0, 'MIS': 0, 'late': oct ? 1 : 0, 'paid': oct ? 1 : 0}, 'rules': ['Full day: 9 working hours or more.', 'Weekly off: Sunday.'], 'reg_days': 60});
       case 'regAsk':
         if ('${b['reason']}'.length < 5) return _j({'error': 'Reason: write what happened (at least 5 letters).', 'code': 'reason'}, 400);
         if ('${b['in_time']}'.isEmpty && '${b['out_time']}'.isEmpty) return _j({'error': 'Give the IN time, the OUT time, or both.', 'code': 'time'}, 400);

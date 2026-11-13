@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
-import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfOut, attendSelfieForTest;
+import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfLogo, attendPdfOut, attendSelfieForTest;
 import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
@@ -8691,12 +8691,16 @@ void main() {
     kit.gps = false;
     Uint8List? pdf;
     var pdfName = '';
-    final pdfWas = attendPdfOut;
+    final pdfWas = attendPdfOut, logoWas = attendPdfLogo;
     attendPdfOut = (b, n) async {
       pdf = b;
       pdfName = n;
     };
-    addTearDown(() => attendPdfOut = pdfWas);
+    attendPdfLogo = (_) async => null; // (a file of the app is not read inside a screen test)
+    addTearDown(() {
+      attendPdfOut = pdfWas;
+      attendPdfLogo = logoWas;
+    });
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await net(t);
