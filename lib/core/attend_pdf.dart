@@ -62,7 +62,7 @@ String pdfFit(String t, double width, double size, {bool bold = false}) {
 
 /// One A4 page being drawn: boxes and words (y from the top of the page, as one reads).
 class _Page {
-  static const double w = 595, h = 842;
+  static const double h = 842; // (A4: 595 wide, 842 high)
   final _b = StringBuffer();
   static String _n(double v) => v.toStringAsFixed(2);
   static String _rgb(int c) => '${_n(((c >> 16) & 255) / 255)} ${_n(((c >> 8) & 255) / 255)} ${_n((c & 255) / 255)}';
