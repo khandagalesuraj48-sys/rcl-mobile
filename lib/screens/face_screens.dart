@@ -15,7 +15,9 @@ import 'package:flutter/material.dart' as m show Text;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import '../core/attend.dart' show smallJpg;
+import '../core/cam_image.dart';
 import '../core/face.dart';
+import '../core/voice.dart' show sayAloud, stopSaying;
 import '../ui/t.dart';
 
 String _t(String en, String mr) => Lang.i.pair(en, mr);
@@ -58,6 +60,9 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
   String err = '', hint = '';
   bool agreed = false, stop = false, good = false;
   int faults = 0;
+  CameraDescription? lens;
+  bool _busy = false; // (a frame is being read – the next ones are let go)
+  int _said = -1; // the step said aloud last
 
   @override
   void initState() {
@@ -69,6 +74,7 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
   @override
   void dispose() {
     stop = true;
+    unawaited(stopSaying());
     cam?.dispose();
     det?.close();
     super.dispose();
@@ -78,8 +84,11 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
     try {
       final all = await availableCameras();
       if (all.isEmpty) throw StateError('none');
-      final lens = all.firstWhere((c) => c.lensDirection == CameraLensDirection.front, orElse: () => all.first);
-      final c = CameraController(lens, ResolutionPreset.medium, enableAudio: false);
+      final l = all.firstWhere((c) => c.lensDirection == CameraLensDirection.front, orElse: () => all.first);
+      lens = l;
+      // (3.117.0, "eyes close kel ki open kel tri te pakn cach nahi krt … face reading fast haway") attendance: the camera's own
+      // frames are read, many a second – a blink is seen. The registration keeps a photo for every look (each is a picture kept).
+      final c = widget.enrol ? CameraController(l, ResolutionPreset.medium, enableAudio: false) : CameraController(l, ResolutionPreset.medium, enableAudio: false, imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888);
       await c.initialize();
       try {
         await c.setFlashMode(FlashMode.off);
@@ -88,15 +97,84 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
         await c.dispose();
         return;
       }
-      det = FaceDetector(options: FaceDetectorOptions(enableClassification: true, performanceMode: FaceDetectorMode.accurate, minFaceSize: .2));
+      det = FaceDetector(options: FaceDetectorOptions(enableClassification: true, performanceMode: widget.enrol ? FaceDetectorMode.accurate : FaceDetectorMode.fast, minFaceSize: .2));
       setState(() => cam = c);
-      unawaited(_loop());
+      _say();
+      if (widget.enrol) {
+        unawaited(_loop());
+      } else {
+        await c.startImageStream(_frame);
+      }
     } catch (_) {
       if (mounted) setState(() => err = _t('The camera could not be opened – allow the camera for the app (Settings › Apps › RCL ERP › Permissions).', 'Camera उघडला नाही – app ला camera ची परवानगी द्या (Settings › Apps › RCL ERP › Permissions).'));
     }
   }
 
   bool get _done => widget.enrol ? en.done : bl.done;
+
+  /// (3.117.0) What is to be done now, said aloud in his language – once for each step.
+  void _say() {
+    final step = widget.enrol ? en.step : bl.step;
+    if (step == _said || _done) return;
+    _said = step;
+    final lang = Lang.i.code == 'mr' || Lang.i.code == 'hi' ? Lang.i.code : 'en';
+    unawaited(sayAloud(faceSay(widget.enrol, step, lang), lang));
+  }
+
+  /// (3.117.0) ATTENDANCE: one frame of the camera – straight, eyes closed, eyes open again. Frames that come while one is
+  /// being read are let go.
+  Future<void> _frame(CameraImage img) async {
+    if (_busy || stop || bl.done || !mounted) return;
+    _busy = true;
+    try {
+      final input = camInput(img, lens?.sensorOrientation ?? 270), d = det;
+      if (input != null && d != null) {
+        final look = lookOf(await d.processImage(input)), took = bl.take(look);
+        faults = 0;
+        if (bl.done) {
+          await _proof(); // (the frames stop here: _busy stays set)
+          return;
+        }
+        if (mounted) {
+          final h = took ? ('', '') : faceHint(look, eyes: true), text = _t(h.$1, h.$2);
+          if (text != hint || good != took || err.isNotEmpty) {
+            setState(() {
+              hint = text;
+              good = took;
+              err = '';
+            });
+          }
+          if (took) _say();
+        }
+      }
+    } catch (_) {
+      if (++faults >= 40 && mounted) setState(() => err = _t('The camera does not give a picture – go back and try again.', 'Camera चित्र देत नाही – मागे जाऊन पुन्हा करा.'));
+    }
+    _busy = false;
+  }
+
+  /// The blink is seen: the proof photo of the punch is taken now, and the page closes with it.
+  Future<void> _proof() async {
+    final c = cam;
+    if (c == null) return;
+    if (mounted) setState(() => good = true);
+    try {
+      await c.stopImageStream();
+    } catch (_) {/* already stopped */}
+    try {
+      final x = await c.takePicture(), jpg = smallJpg(await x.readAsBytes());
+      if (jpg != null) shots['front'] = jpg;
+      try {
+        await File(x.path).delete();
+      } catch (_) {/* the phone clears its own cache */}
+    } catch (_) {/* said below */}
+    if (!mounted) return;
+    if (shots.isEmpty) {
+      setState(() => err = _t('The photo could not be taken – go back and try again.', 'Photo काढता आला नाही – मागे जाऊन पुन्हा करा.'));
+      return;
+    }
+    Navigator.of(context).pop(Map<String, Uint8List>.of(shots));
+  }
 
   // a picture about twice a second, until every step is taken
   Future<void> _loop() async {
@@ -122,6 +200,7 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
           good = took;
           err = '';
         });
+        if (took) _say();
       } catch (_) {
         if (++faults >= 6 && mounted) setState(() => err = _t('The camera does not give a picture – go back and try again.', 'Camera चित्र देत नाही – मागे जाऊन पुन्हा करा.'));
       }
@@ -134,6 +213,7 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
   Widget build(BuildContext context) {
     final ask = widget.enrol ? en.ask : bl.ask, step = widget.enrol ? en.step : bl.step;
     final names = widget.enrol ? const [('Front', 'समोर'), ('Side', 'बाजू'), ('Other side', 'दुसरी बाजू'), ('Up / down', 'वर / खाली'), ('Other way', 'उलट')] : const [('Straight', 'सरळ'), ('Eyes closed', 'डोळे मिटा'), ('Eyes open', 'डोळे उघडा')];
+    final icons = widget.enrol ? const [Icons.face_rounded, Icons.switch_left_rounded, Icons.switch_right_rounded, Icons.swap_vert_rounded, Icons.swap_vert_rounded] : const [Icons.face_rounded, Icons.visibility_off_rounded, Icons.visibility_rounded];
     Widget chip(int i) {
       final on = i == step, was = i < step;
       return Expanded(
@@ -153,7 +233,27 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
       body: !agreed
           ? _agree()
           : Column(children: [
-              if (widget.stamp.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(24, 0, 24, 6), child: m.Text(widget.stamp, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12.5))),
+              // (3.117.0, "te khali yete … khup khali aahe user la te samjat nahi") WHAT TO DO NOW – at the top, big, with its sign;
+              // what is wrong (no face, two faces, eyes not seen) right under it. It is said aloud too.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: .1), borderRadius: BorderRadius.circular(18), border: Border.all(color: good ? const Color(0xFF35C98A) : Colors.white24, width: 2)),
+                  child: Row(children: [
+                    Icon(icons[step < icons.length ? step : icons.length - 1], size: 40, color: const Color(0xFFF1D58A)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text(ask.$1, mr: ask.$2, key: const Key('face-ask'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 23, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2)),
+                        m.Text(cam != null && err.isNotEmpty ? err : hint, key: const Key('face-hint'), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFD98A), fontSize: 13.5, height: 1.3)),
+                      ]),
+                    ),
+                  ]),
+                ),
+              ),
+              Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 6), child: Row(children: [for (var i = 0; i < names.length; i++) chip(i)])),
               Expanded(
                 child: Center(
                   child: cam == null
@@ -167,15 +267,7 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
                         ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 6, 24, 0),
-                child: Text(ask.$1, mr: ask.$2, key: const Key('face-ask'), textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 21, fontWeight: FontWeight.w800, color: Colors.white, height: 1.25)),
-              ),
-              SizedBox(
-                height: 44,
-                child: Padding(padding: const EdgeInsets.fromLTRB(24, 6, 24, 0), child: m.Text(cam != null && err.isNotEmpty ? err : hint, key: const Key('face-hint'), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFD98A), fontSize: 13, height: 1.3))),
-              ),
-              Padding(padding: const EdgeInsets.fromLTRB(20, 4, 20, 10), child: Row(children: [for (var i = 0; i < names.length; i++) chip(i)])),
+              if (widget.stamp.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(24, 6, 24, 8), child: m.Text(widget.stamp, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12.5))),
               Padding(
                 padding: const EdgeInsets.fromLTRB(22, 0, 22, 22),
                 child: Container(
