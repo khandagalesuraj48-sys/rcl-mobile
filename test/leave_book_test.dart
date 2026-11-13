@@ -1,9 +1,8 @@
 // (3.121.0) Leave under the Rule Book of HR (rcl-hr step 13): ONE balance (Paid leave + Comp-off) with its ledger, and the papers of
 // a request. The server's answers are given here as it sends them; a server without step 13 sends none of the new parts.
-import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/screens/leave.dart';
-import 'package:rcl_mobile/ui/t.dart';
 
 Future<void> settle(WidgetTester t, int ms) async {
   for (var i = 0; i < ms ~/ 50; i++) {
