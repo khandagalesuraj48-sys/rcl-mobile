@@ -16,6 +16,18 @@ class FakeAttendKit extends AttendKit {
   Future<Map<String, String>> info() async => {'id': phone, 'model': 'Test Phone', 'os': 'Android 15'};
   @override
   Future<bool> devOptions() async => dev;
+
+  /// (3.117.0) the phone's location switched on / off; how often the app asked to switch it on
+  bool gps = true;
+  int gpsAsked = 0;
+  @override
+  Future<bool> gpsOn() async => gps;
+  @override
+  Future<bool> gpsTurnOn() async {
+    gpsAsked++;
+    gps = true;
+    return true;
+  }
   @override
   Future<int?> elapsed() async => counter;
   @override

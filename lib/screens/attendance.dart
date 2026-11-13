@@ -17,6 +17,7 @@ import 'package:flutter/material.dart' as m show Text;
 
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
+import '../core/attend_pdf.dart';
 import '../core/attend_remind.dart';
 import '../core/session.dart';
 import '../ui/attend_look.dart';
@@ -27,6 +28,7 @@ import '../ui/t.dart';
 import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import '../web/files.dart' show handOver;
 import 'attend_reqs.dart';
 import 'face_screens.dart';
 import 'hr_shell.dart';
@@ -264,7 +266,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     }
     final places = _places;
     if (places.isEmpty) throw AttendProblem('No work place is set for you yet – ask the HR office.', 'तुमच्यासाठी अजून work place ठरवलेले नाही – HR office ला सांगा.', 'noplace');
-    final f = await AttendKit.kit.where();
+    // (3.117.0) one press from the attendance app: its reading of a moment ago is used while it is young – else read now
+    final f = (widget.auto ? AttendWhere.i.fresh() : null) ?? await AttendKit.kit.where();
     if (f.mocked) throw AttendProblem('This phone gives a made-up location: attendance cannot be marked.', 'हा phone खोटे location देत आहे: हजेरी लावता येणार नाही.', 'mock');
     if (!(f.acc >= 0) || f.acc > _maxAcc) {
       throw AttendProblem('Your location is not exact enough yet (${f.acc.round()} m): stand in the open for a moment and try again.', 'तुमचे location अजून नेमके नाही (${f.acc.round()} m): थोडा वेळ मोकळ्या जागेत उभे राहून पुन्हा करा.', 'accuracy');
@@ -857,6 +860,11 @@ class _SelfieScreenState extends State<SelfieScreen> {
 }
 
 /// His month: each day with what it counts as, its first IN and last OUT, as the server has them.
+/// (3.117.0) The month's PDF given to the person (the phone's share sheet: save it, send it) – replaceable in a test.
+Future<void> Function(Uint8List bytes, String name) attendPdfOut = (bytes, name) async {
+  await handOver(bytes, name, 'application/pdf');
+};
+
 class AttendMonthScreen extends StatefulWidget {
   const AttendMonthScreen({super.key, required this.ask, this.who = '', this.embedded = false});
 
@@ -873,10 +881,10 @@ class AttendMonthScreen extends StatefulWidget {
 
 class _AttendMonthScreenState extends State<AttendMonthScreen> {
   String month = '', err = '', today = '', sel = ''; // sel: the day opened under the calendar
-  List<Map> days = [];
+  List<Map> days = [], every = []; // (every: each day of the month as the server said it – the PDF's rows)
   Map total = const {};
   int regDays = 0;
-  bool loading = true;
+  bool loading = true, making = false;
 
   @override
   void initState() {
@@ -897,6 +905,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
         // (rcl-hr step 5) every day of the month with what it counts as; before it: only the days with a punch
         final all = [for (final x in (j['all'] as List? ?? const []).whereType<Map>()) x];
         today = '${j['today'] ?? indiaDay(AttendKit.kit.now())}';
+        every = all.isNotEmpty ? all : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
         days = all.isNotEmpty ? [for (final d in all) if ('${d['code'] ?? ''}'.isNotEmpty || (d['punches'] is num && (d['punches'] as num) > 0)) d] : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
         total = (j['total'] as Map?) ?? const {};
         regDays = j['reg_days'] is num ? (j['reg_days'] as num).toInt() : 0;
@@ -932,6 +941,24 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     final ok = await askRegularize(context, widget.ask, '${d['day']}', inNow: '${d['in'] ?? ''}', outNow: '${d['out'] ?? ''}', code: '${d['code'] ?? ''}');
     if (!ok || !mounted) return;
     toast(context, _t('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
+  }
+
+  /// (3.117.0, "user application madhun attednnce pdf download kru shakel … kontya hi month chi") the month shown, as a PDF:
+  /// the company and the site, the month and its period, every day in a row, the month's count under it.
+  Future<void> _pdf() async {
+    if (making || loading) return;
+    setState(() => making = true);
+    try {
+      final s = SessionScope.read(context), who = widget.who.split(' · ');
+      final name = who.first.trim().isEmpty ? s.name : who.first.trim(), code = who.length > 1 ? who.last.trim() : '';
+      final company = (s.site?.company ?? '').isNotEmpty ? s.site!.company : (s.company.isNotEmpty ? s.company : 'Attendance');
+      final now = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now() + 19800000, isUtc: true).toIso8601String();
+      final bytes = await attendancePdf(company: company, site: s.siteName, name: name, code: code, month: month, days: every, total: total, made: '${now.substring(8, 10)}-${now.substring(5, 7)}-${now.substring(0, 4)} ${now.substring(11, 16)}');
+      await attendPdfOut(bytes, 'Attendance_${code.isEmpty ? name : code}_$month.pdf');
+    } catch (_) {
+      if (mounted) toast(context, _t('The PDF could not be made – try again.', 'PDF बनली नाही – पुन्हा करा.'));
+    }
+    if (mounted) setState(() => making = false);
   }
 
   static const _names = {'P': 'Present', 'HD': 'Half day', 'A': 'Absent', 'L': 'Leave', 'WO': 'Weekly off', 'H': 'Holiday', 'WOP': 'Worked on off', 'HP': 'Worked on holiday', 'IN': 'At work', 'MIS': 'No OUT'};
@@ -1096,6 +1123,10 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
             ),
           ] else if (days.isNotEmpty)
             Padding(padding: const EdgeInsets.fromLTRB(8, 10, 8, 0), child: Text(_t('Touch a day to open it.', 'दिवसावर touch करा.'), style: TextStyle(fontSize: 12.5, color: sk.muted))),
+          if (every.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: hrButton('Download PDF – ${monthName(month)}', 'PDF घ्या – ${monthName(month)}', key: const Key('att-m-pdf'), busy: making, onTap: _pdf)),
+          ],
           if (widget.embedded) ...[
             const SizedBox(height: 12),
             Padding(

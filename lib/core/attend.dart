@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image/image.dart' as img;
@@ -113,6 +114,61 @@ class AttendFix {
   AttendFix(this.lat, this.lng, this.acc, {this.mocked = false});
   final double lat, lng, acc;
   final bool mocked;
+}
+
+/// (3.117.0, his word of 13-11-2026: "app chalu kel kel lagech app fetch krel user location") WHERE HE IS, READ AHEAD: the
+/// attendance app reads the phone's place as soon as it opens (and again while its Home is on the screen), so that IN / OUT
+/// need not wait for it. A reading is used for a punch only while it is young ([fresh]); an old one is read again. The rules
+/// of a punch (inside his work place, exact enough, not a made-up location) are checked on it exactly as on a fresh reading.
+class AttendWhere extends ChangeNotifier {
+  AttendWhere._();
+  static final AttendWhere i = AttendWhere._();
+
+  AttendFix? fix;
+  int at = 0; // the phone's clock at the reading
+
+  /// '' – read (or not asked yet); 'off' – the phone's location is switched off; else why it could not be read
+  String problem = '';
+  bool busy = false;
+
+  Future<void> read() async {
+    if (busy) return;
+    busy = true;
+    notifyListeners();
+    try {
+      if (!await AttendKit.kit.gpsOn()) {
+        problem = 'off';
+        fix = null;
+      } else {
+        final f = await AttendKit.kit.where();
+        fix = f;
+        at = AttendKit.kit.now();
+        problem = '';
+      }
+    } on AttendProblem catch (e) {
+      problem = e.code.isEmpty ? 'gps' : e.code;
+      fix = null;
+    } catch (_) {
+      problem = 'gps';
+      fix = null;
+    }
+    busy = false;
+    notifyListeners();
+  }
+
+  /// The reading, while it is not older than [ms] (a punch is for where he stands now).
+  AttendFix? fresh([int ms = 20000]) {
+    final f = fix, age = AttendKit.kit.now() - at;
+    return f != null && age >= 0 && age <= ms ? f : null;
+  }
+
+  /// The attendance app is closed: nothing of the reading stays.
+  void clear() {
+    fix = null;
+    at = 0;
+    problem = '';
+    busy = false;
+  }
 }
 
 /// Why a punch cannot be taken now – said to the person as it is.
@@ -243,6 +299,34 @@ class AttendKit {
     } on TimeoutException {
       throw AttendProblem('Your location could not be found – stand in the open and try again.', 'तुमचे location मिळाले नाही – मोकळ्या जागेत उभे राहून पुन्हा करा.', 'gps');
     }
+  }
+
+  /// (3.117.0) Is the phone's location (GPS) switched on? (a phone that cannot say: yes – the reading itself will tell)
+  Future<bool> gpsOn() async {
+    try {
+      return await Geolocator.isLocationServiceEnabled();
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// (3.117.0, his word of 13-11-2026: "pop up … turn on location … dabel ki location lagech on app madhunch hoil") asks the
+  /// phone to switch its location on: Android shows its own "Turn on location" box IN the app (a reading asked for while it
+  /// is off brings it up) – one press there and it is on. Where the phone has no such box (iPhone) or he said no there, the
+  /// phone's location settings open. true = it is on now.
+  Future<bool> gpsTurnOn() async {
+    try {
+      var p = await Geolocator.checkPermission();
+      if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
+      if (p != LocationPermission.denied && p != LocationPermission.deniedForever) {
+        await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 10)));
+      }
+    } catch (_) {/* said no, or no reading in time – asked below */}
+    if (await gpsOn()) return true;
+    try {
+      await Geolocator.openLocationSettings();
+    } catch (_) {}
+    return gpsOn();
   }
 
   /// The app's own folder for attendance (what is kept until sent; what was read last).

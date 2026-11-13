@@ -15,6 +15,21 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.117.0 (13-11-2026 – "app chalu kel kel lagech app fetch krel user location … pop up … turn on location … attednnce pdf
+download … te name green … red … face … khup khali aahe … bolun sangel … face reading fast haway"):** the attendance app
+* **reads his place as soon as it opens** (`AttendWhere`, core/attend.dart) and keeps it young while Home is on the screen – IN / OUT
+  use that reading (not older than 20 s) and need not wait; the rules of a punch are checked on it as before;
+* **the phone's location off:** a box at once – "Turn on location" switches it on IN the app (Android's own box; else the phone's
+  settings open);
+* **his work place on Home:** its name in green when the phone is inside it; in red with the metres when outside, when the location
+  is off or not found;
+* **the month as a PDF** (Attendance → "Download PDF"; `core/attend_pdf.dart`, package `pdf`): the company and the site in the head,
+  the month and its period, every day in a row (Sr · Date · Day · Status · IN · OUT · Hours · Remark), the month's count in boxes;
+  any month he opens. Its type has Latin letters only – a name in Devanagari is left out of the PDF;
+* **the face check:** what to do now stands at the TOP, big, with its sign – and is **said aloud in his language** (English / मराठी /
+  हिंदी; `faceSay`, the phone's own speech); the blink is read from the camera's own frames, many a second (`core/cam_image.dart`),
+  no longer from a photo per look – the proof photo is taken when the blink is seen. The registration is as it was.
+
 **Version 3.116.0 (13-11-2026 – his approval of the proposal: "tu je banwale aahe tyala manjuri aahe"):** **one press marks** – the
 dial and the bar's middle button read his place and open the selfie by themselves (`AttendanceScreen(auto: true)`): no page in
 between, nothing to slide; what stops a punch is said on the page as before. **One thing in one place:** Home = today (marking, IN ·

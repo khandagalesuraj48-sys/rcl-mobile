@@ -98,7 +98,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   int teamWait = 0;
   String err = '';
   bool loading = true, started = false, opening = false;
-  Timer? minute;
+  Timer? minute, gps;
+  bool _gpsAsked = false; // (the box "Location is off" is shown once; the place's chip asks again)
 
   @override
   void initState() {
@@ -107,6 +108,13 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     // (3.114.0) the attendance app has its own look – the one he chose on this phone
     HrSkin.i.addListener(_skin);
     unawaited(widget.inErp ? HrSkin.i.load() : HrSkin.i.enter());
+    // (3.117.0, "app chalu kel kel lagech app fetch krel user location") his place is read at once and kept young while Home
+    // is on the screen – IN / OUT need not wait for it; the phone's location off: asked to switch it on, here
+    AttendWhere.i.addListener(_skin);
+    unawaited(_place());
+    gps = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted && tab == 0 && !opening && AttendWhere.i.problem != 'off') AttendWhere.i.read();
+    });
     // on duty: the hours since IN and the dial's dot move on by themselves
     minute = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
@@ -122,12 +130,16 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     HrSkin.i.removeListener(_skin);
     if (!widget.inErp) HrSkin.i.leave();
+    AttendWhere.i.removeListener(_skin);
+    AttendWhere.i.clear();
+    gps?.cancel();
     minute?.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) unawaited(_place()); // (back from the phone's settings: read again)
     if (state == AppLifecycleState.resumed && mounted && !loading) _load();
   }
 
@@ -140,6 +152,68 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   }
 
   Future<Map<String, dynamic>> _hr(Map<String, dynamic> body) => hrCall(context, body);
+
+  /// His place, read now; the phone's location switched off: he is asked – once – to switch it on.
+  Future<void> _place() async {
+    await AttendWhere.i.read();
+    if (!mounted || AttendWhere.i.problem != 'off' || _gpsAsked) return;
+    _gpsAsked = true;
+    await _gpsAsk();
+  }
+
+  /// "Location is off": one press switches it on in the app (Android's own box); else the phone's settings open.
+  Future<void> _gpsAsk() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        key: const Key('gps-ask'),
+        icon: Icon(Icons.location_off_rounded, size: 34, color: sk.tint(const Color(0xFFC22A1B), const Color(0xFFFFE6E3)).$1),
+        title: Text('Location is off', mr: 'Location बंद आहे', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
+        content: Text('Attendance is marked only inside your work place – the location of the phone must be on.', mr: 'हजेरी फक्त तुमच्या work place च्या आत लागते – phone चे location चालू हवे.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14.5, height: 1.4, color: sk.muted)),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(key: const Key('gps-later'), onPressed: () => Navigator.of(c).pop(false), child: Text('Not now', mr: 'आत्ता नाही', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: sk.muted))),
+          FilledButton(key: const Key('gps-on'), style: FilledButton.styleFrom(minimumSize: const Size(170, 48), backgroundColor: sk.accent, foregroundColor: sk.onAccent), onPressed: () => Navigator.of(c).pop(true), child: Text('Turn on location', mr: 'Location चालू करा', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: sk.onAccent))),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    await AttendKit.kit.gpsTurnOn();
+    await AttendWhere.i.read();
+  }
+
+  /// (3.117.0, "jyala ji site ahe te name … location fetch zal ki te name green … match nahi zali tr te red") WHERE HE STANDS,
+  /// on Home: his work place in green when the phone is inside it; in red with the metres when it is outside, when the
+  /// location is off or could not be read. A press reads again (location off: asks to switch it on).
+  Widget _placeChip() {
+    final w = AttendWhere.i, places = [for (final x in (day?['places'] as List? ?? const [])) WorkPlace.fromJson(x)].whereType<WorkPlace>().toList();
+    final f = w.fix, hit = f == null || places.isEmpty ? null : nearestPlace(places, f.lat, f.lng);
+    final (String text, bool? ok) = w.problem == 'off'
+        ? (_t('Location is off – turn on', 'Location बंद – चालू करा'), false)
+        : places.isEmpty
+            ? (_t('No work place for you', 'तुमच्यासाठी work place नाही'), false)
+            : hit != null
+                ? (hit.inside ? hit.place.name : _t('${hit.place.name} · ${hit.distance} m away', '${hit.place.name} · ${hit.distance} m दूर'), hit.inside)
+                : w.busy || w.problem.isEmpty
+                    ? (_t('Finding your place…', 'जागा शोधत आहे…'), null)
+                    : (_t('Location not found – tap', 'Location मिळाले नाही – दाबा'), false);
+    final (Color ink, Color bg) = ok == null ? (sk.muted, sk.blank) : ok ? sk.tint(const Color(0xFF146C2E), const Color(0xFFDDF3E4)) : sk.tint(const Color(0xFFC22A1B), const Color(0xFFFFE6E3));
+    return GestureDetector(
+      key: const Key('hh-place'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => w.problem == 'off' ? _gpsAsk() : w.read(),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 190),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(ok == null ? Icons.my_location_rounded : ok ? Icons.location_on_rounded : Icons.location_off_rounded, size: 14, color: ink),
+          const SizedBox(width: 4),
+          Flexible(child: m.Text(text, key: const Key('hh-place-text'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: ink))),
+        ]),
+      ),
+    );
+  }
 
   // each part by itself: a part the server does not have yet (a step not run) is simply not shown
   Future<Map<String, dynamic>?> _quiet(Map<String, dynamic> body) async {
@@ -331,16 +405,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         Row(children: [
           Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(state, key: const Key('hh-big'), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink)))),
           const SizedBox(width: 8),
-          Container(
-            constraints: const BoxConstraints(maxWidth: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(12)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.location_on_outlined, size: 13, color: sk.muted),
-              const SizedBox(width: 3),
-              Flexible(child: m.Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: sk.muted))),
-            ]),
-          ),
+          _placeChip(),
         ]),
         const SizedBox(height: 10),
         GestureDetector(

@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
-import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendSelfieForTest;
+import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfOut, attendSelfieForTest;
 import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
@@ -8686,9 +8686,29 @@ void main() {
     final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
     await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
     expect([s.hrOnly, s.sites.length, s.stage], [true, 1, Stage.ready]);
+    // (3.117.0) the phone's location is off when the app opens: he is asked at once; one press switches it on, in the app –
+    // and his work place stands in green on Home (the place is read as soon as the app opens, not at IN)
+    kit.gps = false;
+    Uint8List? pdf;
+    var pdfName = '';
+    final pdfWas = attendPdfOut;
+    attendPdfOut = (b, n) async {
+      pdf = b;
+      pdfName = n;
+    };
+    addTearDown(() => attendPdfOut = pdfWas);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await net(t);
+    expect(find.byKey(const Key('gps-ask')), findsOneWidget);
+    expect(find.text('Location is off'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_gps_off.png'));
+    await t.tap(find.byKey(const Key('gps-on')));
+    await net(t);
+    expect([kit.gpsAsked, kit.gps], [1, true]);
+    expect(find.byKey(const Key('gps-ask')), findsNothing);
+    expect(t.widget<Text>(find.byKey(const Key('hh-place-text'))).data, 'Site office', reason: 'inside his work place: its name (green)');
     Future<void> tapKey(String key) async {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
       await t.ensureVisible(find.byKey(Key(key)));
@@ -8741,6 +8761,12 @@ void main() {
     expect(find.byKey(const Key('att-m-reqs')), findsOneWidget);
     expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     expect(find.byKey(const Key('att-punch')), findsNothing);
+    // (3.117.0) the month as a PDF: his code and the month in its name; a real PDF
+    await tapKey('att-m-pdf');
+    await net(t);
+    expect(pdfName, 'Attendance_E00012_2026-10.pdf');
+    expect(String.fromCharCodes(pdf!.sublist(0, 5)), '%PDF-');
+    expect(pdf!.length, greaterThan(1500));
     expect(find.byTooltip('Back'), findsNothing);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_attendance.png'));

@@ -97,3 +97,24 @@ class FaceBlinkSteps {
   if (eyes && !f.eyesKnown) return ('Your eyes are not seen – take off dark glasses, come into the light', 'डोळे दिसत नाहीत – काळा चष्मा काढा, उजेडात या');
   return ('', '');
 }
+
+/// (3.117.0, his word of 13-11-2026: "application sound asel … kay karaych aahe te bolun sangel … ji languge user chi asel tya
+/// madhe karan driver lokana samjat nahi") WHAT IS SAID ALOUD at a step – short, in his language: 'mr', 'hi', else English.
+String faceSay(bool enrol, int step, String lang) {
+  const blink = [
+    ('Look straight at the phone', 'फोनकडे सरळ बघा', 'फ़ोन की तरफ़ सीधे देखिए'),
+    ('Close your eyes', 'डोळे मिटा', 'आँखें बंद कीजिए'),
+    ('Open your eyes', 'डोळे उघडा', 'आँखें खोलिए'),
+  ];
+  const reg = [
+    ('Look straight at the phone', 'फोनकडे सरळ बघा', 'फ़ोन की तरफ़ सीधे देखिए'),
+    ('Turn your head to one side', 'डोके एका बाजूला वळवा', 'सिर एक तरफ़ घुमाइए'),
+    ('Now to the other side', 'आता दुसऱ्या बाजूला', 'अब दूसरी तरफ़'),
+    ('Lift your chin up, or look down', 'हनुवटी वर करा, किंवा खाली बघा', 'ठोड़ी ऊपर कीजिए, या नीचे देखिए'),
+    ('Now the other way', 'आता उलट बाजूला', 'अब उल्टी तरफ़'),
+  ];
+  final list = enrol ? reg : blink;
+  if (step < 0 || step >= list.length) return lang == 'mr' ? 'झाले' : lang == 'hi' ? 'हो गया' : 'Done';
+  final t = list[step];
+  return lang == 'mr' ? t.$2 : lang == 'hi' ? t.$3 : t.$1;
+}
