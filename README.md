@@ -23,7 +23,8 @@ download … te name green … red … face … khup khali aahe … bolun sangel
   settings open);
 * **his work place on Home:** its name in green when the phone is inside it; in red with the metres when outside, when the location
   is off or not found;
-* **the month as a PDF** (Attendance → "Download PDF"; `core/attend_pdf.dart`, package `pdf`): the company and the site in the head,
+* **the month as a PDF** (Attendance → "Download PDF"; `core/attend_pdf.dart` – written by hand as a plain one-page PDF, no
+  package: (3.117.1) the package `pdf` pulled an older `archive` in, with which `image` no longer builds): the company and the site in the head,
   the month and its period, every day in a row (Sr · Date · Day · Status · IN · OUT · Hours · Remark), the month's count in boxes;
   any month he opens. Its type has Latin letters only – a name in Devanagari is left out of the PDF;
 * **the face check:** what to do now stands at the TOP, big, with its sign – and is **said aloud in his language** (English / मराठी /
