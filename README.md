@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.121.0 (13-11-2026 – his picture: "attendance che button etk moth aahe te redesign kruya … scanner che left bajula mark
+attendance he button premium madhe banaw … site change je ahe tyala thode small kr"; and the Rule Book of HR):** on Home the wide
+attendance band is a **small tile left of Scan** (`lib/ui/attend_strip.dart`): "Mark IN" (deep blue to violet, a gold edge), "Mark
+OUT" with the time of IN (green), "Done" with both times (a quiet white tile); a tap opens the attendance app as before. The site
+strip is smaller. **Leave under the Rule Book** (`lib/screens/leave.dart`, rcl-hr step 13): the one balance is Paid leave and
+Comp-off together (he never chooses a type) with **his ledger**; a request can carry **papers** – a photo or a PDF, never needed –
+attached, opened and (his own, while it waits) removed. A server without step 13 sends none of it: the screen of before.
+
 **Version 3.120.0 (13-11-2026 – asked: "je success full che pop up ahet te animation madhe yawet ani khali nahi centre la astil
 te"):** a thing that went well on the HR pages (a leave request or a request to set a day right sent, passed to the HR office, a
 document attached, the photo set, the face registered, the password changed) is said **in the middle of the screen**: a card
