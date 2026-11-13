@@ -27,6 +27,7 @@ import 'package:flutter/material.dart' as m show Text;
 import '../core/attend.dart';
 import '../core/attend_remind.dart';
 import '../core/session.dart';
+import '../core/update.dart' show checkUpdate;
 import '../ui/attend_look.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
@@ -110,6 +111,14 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     // (3.114.0) the attendance app has its own look – the one he chose on this phone
     HrSkin.i.addListener(_skin);
     unawaited(widget.inErp ? HrSkin.i.load() : HrSkin.i.enter());
+    // (3.122.0) the attendance app by itself asks for the newest version too (a compulsory one: its screen – core/update.dart)
+    if (!widget.inErp) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final s = SessionScope.read(context);
+        unawaited(checkUpdate(s.api, beta: s.tester));
+      });
+    }
     // (3.117.0, "app chalu kel kel lagech app fetch krel user location") his place is read at once and kept young while Home
     // is on the screen – IN / OUT need not wait for it; the phone's location off: asked to switch it on, here
     AttendWhere.i.addListener(_skin);

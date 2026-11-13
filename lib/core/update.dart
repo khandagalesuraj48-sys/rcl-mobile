@@ -45,10 +45,26 @@ import '../ui/t.dart';
 import '../ui/motion.dart';
 
 class AppUpdate {
-  AppUpdate({required this.build, required this.version, this.notes = '', this.url = '', this.sha256 = '', this.store = ''});
+  AppUpdate({required this.build, required this.version, this.notes = '', this.url = '', this.sha256 = '', this.store = '', this.must = false});
   final int build;
   final String version, notes, url, sha256, store;
+
+  /// (3.122.0) the app cannot be worked with until this update is taken (see [mustUpdate])
+  final bool must;
+  AppUpdate asMust() => AppUpdate(build: build, version: version, notes: notes, url: url, sha256: sha256, store: store, must: true);
 }
+
+/* (3.122.0, asked 14-11-2026: "jya user ni ajun app update keli nahi ata ethun pudhe app update nasel tr use krta yenar nahi … barech
+ * user app update kartch nahit") THE UPDATE THAT MUST BE TAKEN: a STABLE version newer than the one on this phone is compulsory –
+ * the app shows one screen, "Update now", and nothing else can be used until it is installed. The newest version holds everything
+ * of the versions in between (from 1 straight to 10). A release can be left free (release.yml "optional": its line says
+ * "optional": true). A BETA version is never compulsory (a tester tries it; everybody takes the stable one).
+ * NO NETWORK (or GitHub not reached): nothing is known, so nothing is closed – entries are made and sent later, as always.
+ * It begins with this version: an app older than 3.122.0 does not know this rule and is asked as before. */
+final mustUpdate = ValueNotifier<AppUpdate?>(null);
+
+/// Is this stable release (its JSON) a compulsory one? (not a draft, not a beta, not marked "optional")
+bool _compulsory(Map j, Map meta) => j['draft'] != true && j['prerelease'] != true && meta['optional'] != true;
 
 Future<String> appVersion() async {
   try {
@@ -83,7 +99,7 @@ AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer
   String name(Map a) => (a['name'] ?? '').toString().toLowerCase();
   String link(Map a) => (a['browser_download_url'] ?? '').toString();
   final build = b.toInt();
-  AppUpdate made(String url, String fingerprint) => AppUpdate(build: build, version: (meta['version'] ?? '').toString(), notes: releaseNotes(j), url: url, sha256: fingerprint);
+  AppUpdate made(String url, String fingerprint) => AppUpdate(build: build, version: (meta['version'] ?? '').toString(), notes: releaseNotes(j), url: url, sha256: fingerprint, must: _compulsory(j, meta));
   // (3.19.1) a phone: its own processor's file, when the release has it
   final abi = computer ? '' : appAbi(), own = meta['apk'];
   if (abi.isNotEmpty && own is Map) {
@@ -107,11 +123,13 @@ String releaseNotes(Map<String, dynamic> j) {
 /// (02-11-2026) A tester: of the newest releases (beta ones included), the one with the highest build that is newer – else null.
 AppUpdate? newestOf(List<dynamic> list, int currentBuild, {bool computer = false}) {
   AppUpdate? best;
+  var must = false;
   for (final j in list.whereType<Map>()) {
     final u = parseRelease(j.cast<String, dynamic>(), currentBuild, computer: computer, beta: true);
     if (u != null && (best == null || u.build > best.build)) best = u;
+    if (u != null && u.must) must = true; // (3.122.0) a newer STABLE version is there: the tester too must move on (to the newest he may take)
   }
-  return best;
+  return best != null && must && !best.must ? best.asMust() : best;
 }
 
 /// A newer version than the one on this phone, or null (also when it cannot be asked – the app works on).
@@ -123,11 +141,75 @@ Future<AppUpdate?> checkUpdate(Api api, {bool beta = false}) async {
     final r = await http.get(Uri.parse(beta ? kReleasesListApi : kReleasesApi), headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
     if (r.statusCode != 200) return null;
     final j = jsonDecode(utf8.decode(r.bodyBytes)), mine = int.tryParse(info.buildNumber) ?? 0;
-    if (beta) return j is List ? newestOf(j, mine, computer: onComputer) : null;
-    return parseRelease((j as Map).cast<String, dynamic>(), mine, computer: onComputer);
+    final u = beta ? (j is List ? newestOf(j, mine, computer: onComputer) : null) : parseRelease((j as Map).cast<String, dynamic>(), mine, computer: onComputer);
+    mustUpdate.value = u != null && u.must ? u : null; // (3.122.0) GitHub answered: the wall comes, or goes
+    return u;
   } catch (_) {
-    return null;
+    return null; // not reached: nothing is known – the app works on (and a wall that stands, stays)
   }
+}
+
+/// (3.122.0) THE WALL of a compulsory update: the one screen there is until the update is installed. Back does not close it.
+class UpdateWall extends StatelessWidget {
+  const UpdateWall({super.key, required this.update});
+  final AppUpdate update;
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: false,
+        child: Scaffold(
+          key: const Key('update-wall'),
+          backgroundColor: C.bg,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const Spacer(),
+                const Icon(Icons.system_update_rounded, size: 76, color: C.green),
+                const SizedBox(height: 18),
+                TwoLang('Update the app to go on', 'पुढे जाण्यासाठी ॲप अपडेट करा', size: 24, weight: FontWeight.w800, align: CrossAxisAlignment.center),
+                const SizedBox(height: 10),
+                Text(
+                  'Version ${update.version} is ready. This older version cannot be used any more – everything new since yours comes with this one update.',
+                  mr: 'Version ${update.version} तयार आहे. हे जुने version आता वापरता येणार नाही – तुमच्या version नंतरचे सगळे बदल या एकाच अपडेटमध्ये येतात.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, color: C.muted, height: 1.45),
+                ),
+                if (update.notes.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Flexible(
+                    flex: 6,
+                    child: SingleChildScrollView(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.line)),
+                        child: Text(update.notes, key: const Key('update-wall-notes'), style: const TextStyle(fontSize: 13.5, height: 1.45)),
+                      ),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                FilledButton(
+                  key: const Key('update-wall-go'),
+                  onPressed: () => runUpdate(context, update),
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56), backgroundColor: C.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+                  child: const Text('Update now', mr: 'आता अपडेट करा', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
+/// Shows [UpdateWall] over whatever is open when an update must be taken, once ([nav]: the app's navigator). Called once at the start.
+void watchMustUpdate(GlobalKey<NavigatorState> nav) {
+  var open = false;
+  mustUpdate.addListener(() {
+    final u = mustUpdate.value, n = nav.currentState;
+    if (u == null || n == null || open) return;
+    open = true;
+    n.push<void>(PageRouteBuilder<void>(opaque: true, pageBuilder: (_, __, ___) => UpdateWall(update: u))).whenComplete(() => open = false);
+  });
 }
 
 Future<void> runUpdate(BuildContext context, AppUpdate u) async {

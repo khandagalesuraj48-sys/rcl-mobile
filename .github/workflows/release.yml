@@ -27,6 +27,13 @@ on:
         type: boolean
         required: false
         default: true
+      # (3.122.0, asked 14-11-2026: "app update nasel tr use krta yenar nahi") a stable release is COMPULSORY: the app shows "Update
+      # now" and nothing else until it is installed. Ticked: this one is left free (its line says "optional": true).
+      optional:
+        description: 'Leave this release free (not compulsory) – unticked: everybody must update to it'
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -213,6 +220,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTES: ${{ github.event.inputs.notes }}
+          OPTIONAL: ${{ github.event.inputs.optional }}
           WIN_OK: ${{ needs.windows.result }}
         run: |
           set -e
@@ -226,7 +234,7 @@ jobs:
           else
             echo "::warning::The Windows setup was not made – this release is for Android only (the computers keep their version)."
           fi
-          META=$(python3 -c "import json,os;m={'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':os.environ['SHA']};w=os.environ.get('WSHA','');m.update({'win':w} if w else {});m['apk']={'arm64-v8a':os.environ['S64'],'armeabi-v7a':os.environ['S32']};print(json.dumps(m))")
+          META=$(python3 -c "import json,os;m={'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':os.environ['SHA']};w=os.environ.get('WSHA','');m.update({'win':w} if w else {});m['apk']={'arm64-v8a':os.environ['S64'],'armeabi-v7a':os.environ['S32']};m.update({'optional':True} if os.environ.get('OPTIONAL','')=='true' else {});print(json.dumps(m))")
           MB() { echo $(( $(stat -c %s "$1") / 1048576 )); }
           # (3.24.0) what is new – English, मराठी, हिंदी – between the markers: the app shows it in its update question
           { if [ -n "$NOTES" ]; then printf "<!-- rcl-new -->\n%s\n<!-- /rcl-new -->\n\nRCL ERP %s (%s) – %s.\n" "$NOTES" "$VER" "$BN" "$WHAT"; else printf "RCL ERP %s\n\nRCL ERP %s (%s) – %s.\n" "$VER" "$VER" "$BN" "$WHAT"; fi

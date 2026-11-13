@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/update.dart';
 
@@ -105,6 +106,29 @@ void main() {
     });
     test('a stable version made from a beta one (no longer a pre-release): everybody takes it', () {
       expect(parseRelease(r(203), 202)!.build, 203);
+    });
+    test('(3.122.0) the update that MUST be taken: a newer stable version – never a beta one, not one marked "optional"', () {
+      expect(parseRelease(r(203), 202)!.must, true, reason: 'a newer stable version is compulsory');
+      expect(parseRelease(r(203), 150)!.must, true, reason: 'from far behind: straight to the newest');
+      expect(parseRelease(r(203), 203), isNull, reason: 'the same version: nothing to take, nothing closed');
+      expect(parseRelease(r(203, pre: true), 202, beta: true)!.must, false, reason: 'a beta version is tried, never forced');
+      final free = r(203)..['body'] = (r(203)['body'] as String).replaceFirst('"build":203,', '"build":203,"optional":true,');
+      expect(parseRelease(free, 202)!.must, false, reason: 'a release left free by its line');
+      // a tester: a newer STABLE one in the list makes it compulsory – he moves on to the newest he may take
+      final t = newestOf([r(205, pre: true), r(204), r(203, pre: true)], 203)!;
+      expect([t.build, t.must], [205, true]);
+      final only = newestOf([r(205, pre: true), r(203)], 203)!;
+      expect([only.build, only.must], [205, false], reason: 'only beta versions are newer: his choice');
+      expect(newestOf([r(205, pre: true), r(204)], 205), isNull, reason: 'a tester ahead of the stable one is not held');
+    });
+    testWidgets('(3.122.0) the wall of a compulsory update: one screen, what is new, "Update now"; Back does not close it', (t) async {
+      final u = parseRelease(r(203), 202)!;
+      await t.pumpWidget(MaterialApp(home: UpdateWall(update: u)));
+      await t.pump();
+      expect(find.byKey(const Key('update-wall')), findsOneWidget);
+      expect(find.byKey(const Key('update-wall-go')), findsOneWidget);
+      expect(t.widget<Text>(find.descendant(of: find.byKey(const Key('update-wall-notes')), matching: find.byType(Text))).data, 'New: X');
+      expect(t.widget<PopScope>(find.byType(PopScope)).canPop, false);
     });
   });
 }

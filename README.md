@@ -25,6 +25,11 @@ and its choices rise; in the attendance app Home's parts rise, the dial and the 
 tab grows, the leave numbers count up, the days of the month **turn in**. Every motion ends by itself, keeps the same widgets around
 what it moves (a screen never loses what it holds) and stands still with the phone's "remove animations". No screen, action, check or
 server call is changed. Not done here: the motion of leaving the app (Android's own).
+**The update that must be taken** (asked the same day: "app update nasel tr use krta yenar nahi … barech user app update kartch
+nahit"): a STABLE version newer than the one on the phone is compulsory – one screen, "Update now", over everything
+(`core/update.dart`: `mustUpdate`, `UpdateWall`) until it is installed; the newest version holds all the versions in between. A beta
+version is never compulsory; a release can be left free (release.yml → "optional"). No network: nothing is closed – entries are made
+and sent later as always. It begins with this version (an older app does not know the rule).
 
 **Version 3.121.0 (13-11-2026 – his picture: "attendance che button etk moth aahe te redesign kruya … scanner che left bajula mark
 attendance he button premium madhe banaw … site change je ahe tyala thode small kr"; and the Rule Book of HR):** on Home the wide
