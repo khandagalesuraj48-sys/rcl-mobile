@@ -199,7 +199,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   Future<void> _mark() async {
     if (opening) return;
     opening = true;
-    await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true)));
+    await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true, auto: true)));
     opening = false;
     if (!mounted) return;
     setState(() => gen++);
@@ -208,7 +208,6 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
 
   String get _who => '${(day?['employee'] as Map?)?['name'] ?? SessionScope.read(context).name} · ${(day?['employee'] as Map?)?['code'] ?? ''}';
   void _requests() => _push(AttendRegsScreen(ask: _hr));
-  void _month() => _push(AttendMonthScreen(ask: _hr, who: _who));
   void _docs() => _push(MyDocsScreen(ask: _hr));
   void _slips() => _push(SalarySlipsScreen(ask: _hr));
   Future<void> _photo() async {
@@ -228,7 +227,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       backgroundColor: sk.bg,
       bottomNavigationBar: _nav(),
       body: switch (tab) {
-        1 => AttendanceScreen(key: ValueKey('tab-att-$gen'), embedded: true),
+        // (3.116.0, "ek feture ekach thikani asaw") Attendance = the month; today and marking are Home's
+        1 => AttendMonthScreen(key: ValueKey('tab-att-$gen'), ask: _hr, who: _who, embedded: true),
         2 => LeaveScreen(key: ValueKey('tab-leave-$gen'), ask: _hr, embedded: true),
         3 => HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load, inErp: widget.inErp),
         _ => Container(
@@ -302,12 +302,12 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final since = sky == Sky.day ? sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(nowMs)) : '';
     final closed = '${day?['closed'] ?? ''}'.isNotEmpty;
     final (String state, String top, String big, String under) = switch (sky) {
-      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), _t('HOLD TO MARK', 'धरून लावा'), 'OUT', since.isEmpty ? '' : _t('$since at work', '$since कामावर')),
+      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), _t('TAP TO MARK', 'दाबा'), 'OUT', since.isEmpty ? '' : _t('$since at work', '$since कामावर')),
       Sky.dusk => closed
           ? (_t('Closed by itself – absent', 'आपोआप बंद – गैरहजर'), '', _t('ABSENT', 'गैरहजर'), _t('Ask to set the day right', 'दुरुस्ती मागा'))
           : (_t('Today is done', 'आजची हजेरी पूर्ण'), '', _t('DONE', 'पूर्ण'), tout.isEmpty ? 'IN $tin' : 'IN $tin · OUT $tout'),
       Sky.grey => (_t('Cannot be marked', 'लावता येत नाही'), '', '–', _t('Open Attendance', 'Attendance उघडा')),
-      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), _t('HOLD TO MARK', 'धरून लावा'), 'IN', _t('$hhmm now', 'आता $hhmm')),
+      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), _t('TAP TO MARK', 'दाबा'), 'IN', _t('$hhmm now', 'आता $hhmm')),
     };
     final hours = sky == Sky.day ? since : _span(tin, tout);
     // the day done or stopped: the Attendance page says it all; else the marking page
@@ -381,7 +381,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(children: [
           Expanded(child: Text('This week', mr: 'हा आठवडा', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink))),
-          GestureDetector(key: const Key('hh-month'), behavior: HitTestBehavior.opaque, onTap: _month, child: Padding(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), child: Text('My month', mr: 'माझा महिना', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.link)))),
+          GestureDetector(key: const Key('hh-month'), behavior: HitTestBehavior.opaque, onTap: () => _go(1), child: Padding(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), child: Text('My month', mr: 'माझा महिना', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.link)))),
         ]),
       ),
       const SizedBox(height: 4),

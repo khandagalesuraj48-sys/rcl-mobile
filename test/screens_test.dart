@@ -8705,7 +8705,7 @@ void main() {
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'Not marked yet');
     // (3.114.0) the look is Pearl until he chooses; the dial's disc marks – IN is next
     expect([HrSkin.i.on, HrSkin.i.look], [true, 'pearl']);
-    expect(find.text('HOLD TO MARK'), findsOneWidget);
+    expect(find.text('TAP TO MARK'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('IN')), findsOneWidget);
     expect(t.widget<Text>(find.byKey(const Key('hh-shift'))).data, 'General');
     expect([for (final k in ['hh-leave-sub', 'hh-docs-sub']) t.widget<Text>(find.byKey(Key(k))).data], ['3 left', '4 missing']);
@@ -8719,10 +8719,9 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home.png'));
     // ---- the slide: My attendance opens to mark – IN; said big, then Home again by itself: on duty
+    // (3.116.0) ONE PRESS: the dial reads his place and takes the selfie by itself – no page in between, nothing to slide
     await tapKey('hh-slide');
-    expect(find.byKey(const Key('att-punch')), findsOneWidget);
-    await t.tap(find.byKey(const Key('att-punch')));
-    await net(t);
+    expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     await settle(t, 3200);
     await net(t);
@@ -8735,8 +8734,11 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_duty.png'));
     // ---- (3.114.0) the bar floats on all four pages: Attendance and Leave are pages of the bar (no way back, no second
     // marking bar – the bar's middle button marks); Me is the fourth
+    // (3.116.0) one thing in one place: Attendance is the month – and the way to his requests
     await tapKey('nav-att');
-    expect(find.byKey(const Key('att-page')), findsOneWidget);
+    expect(find.byKey(const Key('att-month-page')), findsOneWidget);
+    expect(find.byKey(const Key('att-page')), findsNothing);
+    expect(find.byKey(const Key('att-m-reqs')), findsOneWidget);
     expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byTooltip('Back'), findsNothing);
@@ -8747,12 +8749,6 @@ void main() {
     expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_leave.png'));
-    // the bar's middle button opens the same marking page as the dial; back from it: where he was
-    await tapKey('nav-mark');
-    expect(find.byKey(const Key('att-punch')), findsOneWidget);
-    await t.pageBack();
-    await net(t);
-    expect(find.byKey(const Key('leave-page')), findsOneWidget);
     await tapKey('nav-me');
     expect(find.byKey(const Key('me-page')), findsOneWidget);
     expect(t.widget<Text>(find.byKey(const Key('me-role'))).data, 'E00012 · Site Engineer');
@@ -8896,13 +8892,9 @@ void main() {
     await tapKey('nav-home');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_home.png'));
-    await tapKey('hh-month');
+    await tapKey('hh-month'); // ("My month" of Home: the Attendance page of the bar)
     expect(find.byKey(const Key('att-month-page')), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_month.png'));
-    await t.pageBack();
-    await net(t);
-    await tapKey('nav-att');
+    expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_attendance.png'));
     await tapKey('nav-leave');
@@ -8917,6 +8909,13 @@ void main() {
     await t.pageBack();
     await net(t);
     expect(find.text('Pearl'), findsOneWidget);
+    // ---- (3.116.0) the bar's middle button marks from any page, in one press: OUT now
+    await tapKey('nav-mark');
+    expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
+    expect(srv.hrPunches.length, 2);
+    await t.tap(find.byKey(const Key('att-ok')));
+    await net(t);
+    expect(find.byKey(const Key('me-page')), findsOneWidget, reason: 'where he was');
   }, tags: ['golden']);
 
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {
@@ -9161,15 +9160,10 @@ void main() {
     await t.tap(find.byKey(const Key('nav-home')));
     await net(t);
     // the dial opens the marking page
+    // (3.116.0) one press on the dial: the place is read, the selfie taken, the server takes it – said big, once
     await t.tap(find.byKey(const Key('hh-slide')));
     await net(t);
-    expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, isNotNull);
-    expect(find.textContaining('Slide to mark IN'), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_in.png'));
-    // IN: the place is read, the selfie taken, the server takes it – said big, once
-    await t.tap(find.byKey(const Key('att-punch')));
-    await net(t);
+    expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     expect(find.text('10:30'), findsOneWidget);
     expect(srv.hrPunches.length, 1);
@@ -9192,12 +9186,6 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('hr-home')), findsOneWidget);
     await t.tap(find.byKey(const Key('hh-slide')));
-    await net(t);
-    expect(find.textContaining('Slide to mark OUT'), findsOneWidget);
-    expect(find.byKey(const Key('att-phone')), findsOneWidget, reason: 'this phone is now the one his attendance is tied to');
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_out.png'));
-    await t.tap(find.byKey(const Key('att-punch')));
     await net(t);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     await t.tap(find.byKey(const Key('att-ok')));

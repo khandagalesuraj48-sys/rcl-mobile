@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.116.0 (13-11-2026 – his approval of the proposal: "tu je banwale aahe tyala manjuri aahe"):** **one press marks** – the
+dial and the bar's middle button read his place and open the selfie by themselves (`AttendanceScreen(auto: true)`): no page in
+between, nothing to slide; what stops a punch is said on the page as before. **One thing in one place:** Home = today (marking, IN ·
+OUT · Hours, this week, For you); the bar's **Attendance = the month** (calendar, a day opened, "Ask to set right", My requests);
+Leave; Me. The requests (regularize) stay – his word: "leave regularize ch option pn thew".
+
 **Version 3.115.0 (13-11-2026 – "jo user aahe erp and attendance wala … tyala old screen distey tyala pn hi new screen disayla
 pahije"):** a person with the full app sees the HR pages in the new look too – marking from Home's strip, the Attendance page, the
 month, leave, the requests and their forms (`hrRoute` / `HrLook` in `lib/ui/hr_skin.dart` put the look's theme around every HR page;

@@ -52,7 +52,12 @@ String _t(String en, String mr) => Lang.i.pair(en, mr);
 String _dmy(String ymd) => ymd.length >= 10 ? '${ymd.substring(8, 10)}-${ymd.substring(5, 7)}-${ymd.substring(0, 4)}' : ymd;
 
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key, this.quick = false, this.embedded = false});
+  const AttendanceScreen({super.key, this.quick = false, this.embedded = false, this.auto = false});
+
+  /// (3.116.0, his word of 13-11-2026: "in out one click madhe pudhe janar jast click kraychi garaj nahiye") opened to mark at
+  /// once: his place is read and the selfie opens by itself – no page to look at, nothing to slide. What stops a punch (outside
+  /// his place, another phone, …) is said on this page as before, with the bar to try again.
+  final bool auto;
 
   /// (3.114.0) a tab of the attendance app: no way back in its head and no bar to mark – the tab bar's middle button marks.
   final bool embedded;
@@ -73,6 +78,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   bool loading = true, started = false, busy = false, offline = false, dev = false, looking = false;
   int teamWait = 0; // the requests of the people who report to him that wait for him (rcl-hr step 5)
   double slide = 0; // how far the punch bar's sun is pulled
+  bool _autoDone = false, _autoOn = false; // (auto) tried once; going on now
   AttendStore? store;
 
   @override
@@ -180,6 +186,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         err = '';
       });
       _team();
+      _auto();
     } catch (e) {
       final last = e is ApiError && e.code == 'net' ? await store!.last() : null;
       if (!mounted) return;
@@ -191,6 +198,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
           me = last;
           offline = true;
           err = '';
+          _autoDone = true; // (no network: the page as read last – he marks with the bar, it is kept on the phone)
         } else {
           offline = e is ApiError && e.code == 'net';
           err = e is StateError ? 'You have no HR on this site – the Super Admin gives it in the Portal.' : errText(e);
@@ -287,6 +295,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     if (mounted) setState(() => looking = false);
   }
 
+  /// (3.116.0) one press: the punch starts by itself, once, when nothing stops it.
+  void _auto() {
+    if (!widget.auto || _autoDone || me == null) return;
+    _autoDone = true;
+    if (me?['may'] == false || dev || '${me?['phone'] ?? ''}' == 'other' || _places.isEmpty || _dayDone) {
+      setState(() {});
+      return;
+    }
+    setState(() => _autoOn = true);
+    _punch().whenComplete(() {
+      if (mounted) setState(() => _autoOn = false);
+    });
+  }
+
   Future<void> _punch() async {
     if (busy || me == null) return;
     final kind = _next;
@@ -306,7 +328,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       } else {
         raw = attendSelfieForTest != null ? await attendSelfieForTest!(context) : await Navigator.of(context).push<Uint8List>(hrRoute(SelfieScreen(stamp: '${_dmy('${me?['day'] ?? ''}')} · ${h.place.name}')));
       }
-      if (raw == null) return; // he went back: nothing taken
+      if (raw == null) {
+        if (_autoOn && mounted) Navigator.of(context).pop(); // (one press) he went back from the selfie: where he came from
+        return; // he went back: nothing taken
+      }
       final jpg = smallJpg(raw);
       if (jpg == null) throw AttendProblem('The photo could not be read – take it again.', 'Photo वाचता आला नाही – पुन्हा काढा.', 'selfie');
       final info = await AttendKit.kit.info(), last = await store!.last();
@@ -378,6 +403,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final blocked = me == null || !may || dev || phone == 'other' || _places.isEmpty;
     // (3.105.0) the sky says where his day stands: dawn – not marked; day – on duty; dusk – done; grey – it cannot be marked here / now
     final sky = skyOf(any: punches.isNotEmpty || kept.isNotEmpty, next: next, stopped: blocked || (hit != null && !hit!.inside));
+    // (3.116.0) one press: while his place is read and the selfie is taken – only the round sign and what is going on
+    if (widget.auto && (!_autoDone || _autoOn) && err.isEmpty) {
+      return Scaffold(
+        body: Container(
+          key: const Key('att-auto'),
+          width: double.infinity,
+          decoration: BoxDecoration(gradient: sk.pageFill),
+          child: SafeArea(
+            child: Stack(children: [
+              Positioned(left: 16, top: 4, child: hrIconBox(Icons.arrow_back_ios_new_rounded, size: 40, icon: 17, tooltip: MaterialLocalizations.of(context).backButtonTooltip, onTap: () => Navigator.of(context).maybePop())),
+              Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  MarkDisc(size: 150, label: me == null ? '' : (next == 'in' ? 'IN' : 'OUT'), out: me != null && next != 'in'),
+                  const SizedBox(height: 26),
+                  Text(me == null ? 'One moment…' : 'Checking your place…', mr: me == null ? 'एक क्षण…' : 'तुमची जागा तपासत आहे…', style: TextStyle(fontFamily: 'Montserrat', fontSize: 18, fontWeight: FontWeight.w800, color: sk.ink)),
+                  const SizedBox(height: 6),
+                  Text('Then your selfie – and it is marked.', mr: 'मग selfie – आणि हजेरी लागते.', style: TextStyle(fontSize: 13.5, color: sk.muted)),
+                ]),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: _head(context, sky, me == null ? '' : '${emp['name'] ?? s.name} · ${emp['code'] ?? ''}', next, punches),
       bottomNavigationBar: me == null || loading || widget.embedded ? null : _punchBar(next, blocked || _dayDone),
@@ -809,7 +858,11 @@ class _SelfieScreenState extends State<SelfieScreen> {
 
 /// His month: each day with what it counts as, its first IN and last OUT, as the server has them.
 class AttendMonthScreen extends StatefulWidget {
-  const AttendMonthScreen({super.key, required this.ask, this.who = ''});
+  const AttendMonthScreen({super.key, required this.ask, this.who = '', this.embedded = false});
+
+  /// (3.116.0, "ek feture ekach thikani asaw") the Attendance page of the attendance app's bar: the month and nothing else –
+  /// no way back in its head, and the way to his requests (to set a day right) under the calendar.
+  final bool embedded;
   final Future<Map<String, dynamic>> Function(Map<String, dynamic> body) ask;
 
   /// his name and code, said in the head
@@ -964,8 +1017,9 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     return Scaffold(
       appBar: hrHead(context,
           sky: kDaySky,
-          title: 'This month',
-          mr: 'हा महिना',
+          title: widget.embedded ? 'Attendance' : 'This month',
+          mr: widget.embedded ? 'हजेरी' : 'हा महिना',
+          back: !widget.embedded,
           height: 158,
           pill: Container(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1042,6 +1096,31 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
             ),
           ] else if (days.isNotEmpty)
             Padding(padding: const EdgeInsets.fromLTRB(8, 10, 8, 0), child: Text(_t('Touch a day to open it.', 'दिवसावर touch करा.'), style: TextStyle(fontSize: 12.5, color: sk.muted))),
+          if (widget.embedded) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: GestureDetector(
+                key: const Key('att-m-reqs'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () async {
+                  await Navigator.of(context).push(hrRoute<void>(AttendRegsScreen(ask: widget.ask)));
+                  if (mounted) _load();
+                },
+                child: hrCard(padding: const EdgeInsets.fromLTRB(16, 12, 10, 12), [
+                  Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text('My requests', mr: 'माझ्या विनंत्या', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink)),
+                        Text('To set a day right – what I asked and what waits for me', mr: 'दिवस दुरुस्ती – मी मागितलेले आणि माझ्याकडे आलेले', style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.3)),
+                      ]),
+                    ),
+                    Icon(Icons.chevron_right_rounded, size: 22, color: sk.blankInk),
+                  ]),
+                ]),
+              ),
+            ),
+          ],
         ],
       ]),
     );
