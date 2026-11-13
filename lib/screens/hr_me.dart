@@ -75,7 +75,7 @@ class HrMeTab extends StatelessWidget {
     final name = '${e['name'] ?? s.name}', role = '${e['designation'] ?? ''}'.isNotEmpty ? '${e['designation']}' : (_cat['${e['category'] ?? ''}'] ?? '');
     final pct = (mine?['complete'] as Map?)?['pct'], miss = ((mine?['docs'] as Map?)?['missing'] as List? ?? const []).length, phone = (mine?['phone'] as Map?) ?? const {};
     final lang = switch (LangScope.of(context).code) { 'mr' => 'मराठी', 'hi' => 'हिन्दी', _ => 'English' };
-    void open(Widget page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+    void open(Widget page) => Navigator.of(context).push(hrRoute<void>(page));
     return Column(children: [
       // (3.114.0) who he is – a card of the look on the page's soft glow (the green sky is gone)
       Container(

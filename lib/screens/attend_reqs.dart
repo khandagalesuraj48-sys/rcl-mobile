@@ -48,7 +48,7 @@ String _note(Map q) {
 
 /// The form for [day] (yyyy-MM-dd; '' = he chooses the day). true = sent.
 Future<bool> askRegularize(BuildContext context, HrAsk ask, String day, {String inNow = '', String outNow = '', String code = ''}) async =>
-    await Navigator.of(context).push<bool>(MaterialPageRoute<bool>(builder: (_) => RegAskScreen(ask: ask, day: day, inNow: inNow, outNow: outNow, code: code, known: day.isNotEmpty))) ?? false;
+    await Navigator.of(context).push<bool>(hrRoute<bool>(RegAskScreen(ask: ask, day: day, inNow: inNow, outNow: outNow, code: code, known: day.isNotEmpty))) ?? false;
 
 /// SET A DAY RIGHT – the form: the day, what it counts as now, IN, OUT, the reason.
 class RegAskScreen extends StatefulWidget {

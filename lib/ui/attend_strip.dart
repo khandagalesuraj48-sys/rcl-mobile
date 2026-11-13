@@ -13,6 +13,7 @@ import 'package:flutter/material.dart' hide Text;
 import '../core/attend.dart';
 import '../screens/attendance.dart';
 import 'attend_look.dart';
+import 'hr_skin.dart';
 import 'scope.dart';
 import 'widgets.dart';
 
@@ -67,7 +68,7 @@ class _AttendStripState extends State<AttendStrip> {
   Future<void> _open() async {
     if (opening) return;
     opening = true;
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AttendanceScreen(quick: true)));
+    await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true)));
     opening = false;
     if (!mounted) return;
     setState(() => drag = 0);

@@ -31,7 +31,7 @@ import 'attend_reqs.dart';
 import 'face_screens.dart';
 import 'leave.dart';
 
-Future<void> openAttendance(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AttendanceScreen()));
+Future<void> openAttendance(BuildContext context) => Navigator.of(context).push(hrRoute<void>(const AttendanceScreen()));
 
 /// (a test) the selfie without a camera; null = the real camera screen.
 Future<Uint8List?> Function(BuildContext context)? attendSelfieForTest;
@@ -303,7 +303,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         if (!await _faceReady() || !mounted) return;
         raw = await FaceKit.kit.check(context, stamp: '${_dmy('${me?['day'] ?? ''}')} · ${h.place.name}');
       } else {
-        raw = attendSelfieForTest != null ? await attendSelfieForTest!(context) : await Navigator.of(context).push<Uint8List>(MaterialPageRoute(builder: (_) => SelfieScreen(stamp: '${_dmy('${me?['day'] ?? ''}')} · ${h.place.name}')));
+        raw = attendSelfieForTest != null ? await attendSelfieForTest!(context) : await Navigator.of(context).push<Uint8List>(hrRoute(SelfieScreen(stamp: '${_dmy('${me?['day'] ?? ''}')} · ${h.place.name}')));
       }
       if (raw == null) return; // he went back: nothing taken
       final jpg = smallJpg(raw);
@@ -355,7 +355,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       }
       // (3.105.0) from Home's strip: the punch the server took is said big, once – then Home again (its strip has turned)
       if (okTime.isNotEmpty && widget.quick && mounted) {
-        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendDone(kind: kind, time: okTime, place: h.place.name)));
+        await Navigator.of(context).push(hrRoute<void>(AttendDone(kind: kind, time: okTime, place: h.place.name)));
         if (mounted) Navigator.of(context).pop();
       }
     } on AttendProblem catch (e) {
@@ -444,13 +444,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   // ---- his month, his leave, his requests (3.108.0: what waits for him of his team is inside "Requests")
                   const SizedBox(height: 14),
                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Expanded(child: _tile(const Key('att-month'), '${_monthDays('${me?['day'] ?? ''}')}', C.blue, C.blueSoft, 'This month', 'हा महिना', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendMonthScreen(ask: _hr, who: '${emp['name'] ?? s.name} · ${emp['code'] ?? ''}'))))),
+                    Expanded(child: _tile(const Key('att-month'), '${_monthDays('${me?['day'] ?? ''}')}', C.blue, C.blueSoft, 'This month', 'हा महिना', () => Navigator.of(context).push(hrRoute<void>(AttendMonthScreen(ask: _hr, who: '${emp['name'] ?? s.name} · ${emp['code'] ?? ''}'))))),
                     const SizedBox(width: 10),
-                    Expanded(child: _tile(const Key('att-leave'), 'L', kPurple, const Color(0xFFF1E8F6), 'Leave', 'रजा', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => LeaveScreen(ask: _hr))))),
+                    Expanded(child: _tile(const Key('att-leave'), 'L', kPurple, const Color(0xFFF1E8F6), 'Leave', 'रजा', () => Navigator.of(context).push(hrRoute<void>(LeaveScreen(ask: _hr))))),
                     const SizedBox(width: 10),
                     Expanded(
                         child: _tile(const Key('att-reqs'), 'R', const Color(0xFF8A5A00), const Color(0xFFFFF3D1), 'Requests', 'विनंत्या', () async {
-                      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AttendRegsScreen(ask: _hr)));
+                      await Navigator.of(context).push(hrRoute<void>(AttendRegsScreen(ask: _hr)));
                       _team();
                     }, badge: teamWait)),
                   ]),
