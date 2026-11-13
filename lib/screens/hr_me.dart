@@ -21,6 +21,7 @@ import '../core/api.dart' show ApiError;
 import '../core/attend_pdf.dart' show payslipPdf;
 import '../core/attend_remind.dart';
 import '../core/update.dart';
+import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
@@ -272,7 +273,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
       await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
       await widget.ask({'action': 'myDocAdd', 'kind': kind['key'], 'path': u['path'], 'bytes': f.$1.length});
       await _load();
-      if (mounted) toast(context, _t('Attached.', 'जोडले.'));
+      if (mounted) donePop(context, _t('Document attached', 'कागदपत्र जोडले'));
     } catch (e) {
       if (mounted) setState(() => err = errText(e));
     } finally {
@@ -626,7 +627,7 @@ class _AccountScreenState extends State<AccountScreen> {
     }
     try {
       await SessionScope.read(context).changePassword(old.text, now.text);
-      if (mounted) toast(context, 'Password changed');
+      if (mounted) donePop(context, 'Password changed');
     } catch (e) {
       if (mounted) toast(context, errText(e), bad: true);
     }
@@ -687,7 +688,7 @@ Future<bool> setMyPhoto(BuildContext context, HrAsk ask) async {
     if (!context.mounted) return false;
     await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
     await ask({'action': 'myDocAdd', 'kind': 'photo', 'path': u['path'], 'bytes': f.$1.length});
-    if (context.mounted) toast(context, _t('Your photo is set.', 'तुमचा photo ठेवला.'));
+    if (context.mounted) donePop(context, _t('Your photo is set', 'तुमचा photo ठेवला'));
     return true;
   } catch (e) {
     if (context.mounted) toast(context, errText(e), bad: true);

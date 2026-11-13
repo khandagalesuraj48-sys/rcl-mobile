@@ -10,6 +10,7 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
+import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/t.dart';
@@ -266,7 +267,7 @@ class _AttendRegsScreenState extends State<AttendRegsScreen> {
   Future<void> _new() async {
     final ok = await askRegularize(context, widget.ask, '');
     if (!ok || !mounted) return;
-    toast(context, _t('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
+    donePop(context, _t('Request sent', 'विनंती पाठवली'), detail: _t('It counts when it is approved.', 'मंजूर झाल्यावर धरले जाईल.'));
     _load();
   }
 
@@ -293,7 +294,11 @@ class _AttendRegsScreenState extends State<AttendRegsScreen> {
         }
         busy = false;
       });
-      toast(context, yes ? _t('Passed to the HR office.', 'HR office कडे पाठवले.') : _t('Refused.', 'नाकारले.'));
+      if (yes) {
+        donePop(context, _t('Passed to the HR office', 'HR office कडे पाठवले'));
+      } else {
+        toast(context, _t('Refused.', 'नाकारले.'));
+      }
     } catch (e) {
       if (mounted) {
         setState(() {

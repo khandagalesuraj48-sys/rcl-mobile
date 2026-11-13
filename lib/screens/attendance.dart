@@ -21,6 +21,7 @@ import '../core/attend_pdf.dart';
 import '../core/attend_remind.dart';
 import '../core/session.dart';
 import '../ui/attend_look.dart';
+import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/scope.dart';
@@ -148,7 +149,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final info = await AttendKit.kit.info();
     await _face({'action': 'faceEnrol', 'token': u['token'], 'device': {'id': info['id'], 'model': info['model']}});
     _faceIn = true;
-    if (mounted) toast(context, _t('Your face is registered.', 'तुमचा चेहरा नोंदवला.'));
+    if (mounted) donePop(context, _t('Your face is registered', 'तुमचा चेहरा नोंदवला'));
     return true;
   }
 
@@ -945,7 +946,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
   Future<void> _ask(Map d) async {
     final ok = await askRegularize(context, widget.ask, '${d['day']}', inNow: '${d['in'] ?? ''}', outNow: '${d['out'] ?? ''}', code: '${d['code'] ?? ''}');
     if (!ok || !mounted) return;
-    toast(context, _t('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
+    donePop(context, _t('Request sent', 'विनंती पाठवली'), detail: _t('It counts when it is approved.', 'मंजूर झाल्यावर धरले जाईल.'));
   }
 
   /// (3.117.0, "user application madhun attednnce pdf download kru shakel … kontya hi month chi") the month shown, as a PDF:
