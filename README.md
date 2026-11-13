@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.120.0 (13-11-2026 – asked: "je success full che pop up ahet te animation madhe yawet ani khali nahi centre la astil
+te"):** a thing that went well on the HR pages (a leave request or a request to set a day right sent, passed to the HR office, a
+document attached, the photo set, the face registered, the password changed) is said **in the middle of the screen**: a card
+comes up, a gold ring and the tick draw themselves, one wave and a few sparks, the words – and it goes by itself
+(`lib/ui/done_pop.dart`). It never catches a tap; "reduce motion" only fades it. A refusal or a fault stays the red message at
+the top with its "Help". Only the look – no server action, nothing new is saved.
+
 **Version 3.119.0 (13-11-2026 – asked: "Sign in box che naw Email or mobile number … Diesel Day Book chi app screen … Salary slip
 che Download PDF"):** the sign-in box says "Email or mobile number" (the Portal's step 12: a number signs in with the password);
 the report **Diesel Day Book** (Mechanical update-237 … 239 – each diesel source its own columns Opening · Received · Transfer ·

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart' as m show Text;
 
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
+import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/t.dart';
@@ -69,7 +70,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
     final j = await Navigator.of(context).push<Map<String, dynamic>>(hrRoute(LeaveAskScreen(ask: widget.ask, today: '${me?['today'] ?? indiaDay(AttendKit.kit.now())}', available: me?['available'])));
     if (j == null || !mounted) return;
     setState(() => me = j);
-    toast(context, _t('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
+    donePop(context, _t('Leave request sent', 'रजेचा अर्ज पाठवला'), detail: _t('It counts when it is approved.', 'मंजूर झाल्यावर धरले जाईल.'));
   }
 
   // a request that still waits is taken back by its owner

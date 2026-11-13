@@ -3,6 +3,7 @@
 // The pictures (tag golden) are made for looking at, in the build's files.
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/ui/done_pop.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart';
 import 'package:rcl_mobile/ui/push_back.dart';
 import 'package:rcl_mobile/ui/t.dart';
@@ -119,6 +120,67 @@ void main() {
     pb.currentState!.close();
     await settle(t, 600);
   });
+
+  testWidgets('(3.120.0) a thing that went well: a card in the MIDDLE of the screen with its words; a tap goes through it; one at a time; gone after its time; "reduce motion" still shows it', (t) async {
+    var under = 0, n = 0;
+    await t.pumpWidget(host(say: (c) => donePop(c, 'Leave request sent ${++n}', detail: 'It counts when it is approved.'), underTap: () => under++));
+    await t.tap(find.byKey(const Key('say')));
+    await t.pump();
+    expect(find.byKey(const Key('done-pop')), findsOneWidget);
+    expect(find.text('Leave request sent 1'), findsOneWidget, reason: 'the words are there at once (they come into sight after the tick)');
+    expect(find.text('It counts when it is approved.'), findsOneWidget);
+    expect(find.descendant(of: find.byType(Material), matching: find.byKey(const Key('done-pop'))), findsOneWidget, reason: 'under a Material: no yellow lines under the words');
+    await settle(t, 1100);
+    // in the middle of the screen – not at the bottom, not at the top
+    final box = t.getRect(find.byKey(const Key('done-pop'))), screen = t.getRect(find.byType(MaterialApp));
+    expect((box.center.dy - screen.center.dy).abs() < 2, isTrue, reason: 'its middle is the screen\'s middle');
+    expect((box.center.dx - screen.center.dx).abs() < 2, isTrue);
+    // it never catches a tap
+    await t.tap(find.byKey(const Key('under')));
+    await t.pump();
+    expect(under, 1, reason: 'the button under the dimmed screen is pressed through it');
+    // one at a time
+    await t.tap(find.byKey(const Key('say')));
+    await t.pump();
+    expect(find.text('Leave request sent 1'), findsNothing);
+    expect(find.text('Leave request sent 2'), findsOneWidget);
+    await settle(t, 3000);
+    expect(find.byKey(const Key('done-pop')), findsOneWidget, reason: 'still there at 3 s');
+    await settle(t, 1000);
+    expect(find.byKey(const Key('done-pop')), findsNothing, reason: 'gone by itself after its time');
+    // doneClear takes it away at once
+    await t.tap(find.byKey(const Key('say')));
+    await t.pump();
+    doneClear();
+    await t.pump();
+    expect(find.byKey(const Key('done-pop')), findsNothing);
+    // reduce motion (the phone's setting): it is still shown, and still goes
+    t.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(t.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await t.pumpWidget(host(say: (c) => donePop(c, 'Saved'), underTap: () {}));
+    await t.tap(find.byKey(const Key('say')));
+    await t.pump();
+    await settle(t, 400);
+    expect(find.text('Saved'), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsNothing, reason: 'no blur with "reduce motion"');
+    await settle(t, 3600);
+    expect(find.text('Saved'), findsNothing);
+  });
+
+  testWidgets('pictures: the pop-up of a thing that went well – as the tick draws itself, and when it is there', (t) async {
+    t.view.physicalSize = const Size(1170, 2532);
+    t.view.devicePixelRatio = 3;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(host(say: (c) => donePop(c, 'Leave request sent', detail: 'It counts when it is approved.'), underTap: () {}));
+    await t.tap(find.byKey(const Key('say')));
+    await t.pump();
+    await settle(t, 550);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/m5_done_drawing.png'));
+    await settle(t, 700);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/m6_done.png'));
+    doneClear();
+    await t.pump();
+  }, tags: ['golden']);
 
   testWidgets('pictures: the message as it spreads and when it has; the menu behind the page', (t) async {
     t.view.physicalSize = const Size(1170, 2532);

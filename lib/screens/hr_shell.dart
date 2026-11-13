@@ -28,6 +28,7 @@ import '../core/attend.dart';
 import '../core/attend_remind.dart';
 import '../core/session.dart';
 import '../ui/attend_look.dart';
+import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/scope.dart';
@@ -528,7 +529,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         out.add(_Note('hh-n-day-${d['day']}', Icons.error_outline_rounded, red, redSoft, _t('${dayName('${d['day']}')} has no punch', '${dayName('${d['day']}')} ला हजेरी नाही'), _t('Ask to set it right', 'दुरुस्ती मागा'), _t('Ask', 'मागा'), () async {
           final ok = await askRegularize(context, _hr, '${d['day']}', code: 'A');
           if (!mounted) return;
-          if (ok) toast(context, _t('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));
+          if (ok) donePop(context, _t('Request sent', 'विनंती पाठवली'), detail: _t('It counts when it is approved.', 'मंजूर झाल्यावर धरले जाईल.'));
           _load();
         }));
         break; // the newest such day; the others are in "This month"
