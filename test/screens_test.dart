@@ -9185,7 +9185,8 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     expect(find.byKey(const Key('att-strip')), findsOneWidget, reason: 'he has HR on this site');
-    expect(find.textContaining('Slide to mark IN'), findsOneWidget);
+    expect(find.text('Mark IN'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('home-scan')), matching: find.text('Scan')), findsOneWidget, reason: '(3.121.0) the tile stands beside Scan');
     expect(srv.hrSent, isEmpty, reason: 'Home asks nothing of the HR server – the strip shows what this phone kept');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_in.png'));
@@ -9228,11 +9229,12 @@ void main() {
     await t.tap(find.byKey(const Key('hh-back')));
     await net(t);
     expect(find.byKey(const Key('hr-home')), findsNothing, reason: 'the ERP again');
-    expect(find.textContaining('On duty'), findsOneWidget);
+    expect(find.text('Mark OUT'), findsOneWidget);
+    expect(find.text('IN 10:30'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_out.png'));
-    // the sun slid back opens it again: OUT
-    await t.drag(find.byKey(const Key('att-strip-knob')), const Offset(-260, 0));
+    // a tap opens it again: OUT
+    await t.tap(find.byKey(const Key('att-strip')));
     await net(t);
     expect(find.byKey(const Key('hr-home')), findsOneWidget);
     await t.tap(find.byKey(const Key('hh-slide')));
@@ -9244,7 +9246,9 @@ void main() {
     expect(find.byKey(const Key('att-punch')), findsNothing);
     await t.tap(find.byKey(const Key('hh-back')));
     await net(t);
-    expect(find.textContaining('Attendance done today'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('att-strip')), matching: find.text('Done')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_done.png'));
   }, tags: ['golden']);
 
   testWidgets('(3.110.0) the site\'s rule "once a day": after the day\'s IN and OUT the bar is off and says so; a day closed by itself (OUT forgotten) is said with its time', (t) async {

@@ -563,20 +563,22 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                           child: Press(
                             onTap: _site,
                             radius: 18,
-                            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                            padding: const EdgeInsets.fromLTRB(10, 9, 6, 9), // (3.121.0) smaller: the attendance tile stands beside it
                             child: Row(children: [
-                              const Icon(Icons.location_on_rounded, color: C.green, size: 26),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.location_on_rounded, color: C.green, size: 22),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                                  Text(s.sites.length > 1 ? bi('Tap to change site', 'साइट बदला') : (s.site?.code ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
+                                  Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                                  Text(s.sites.length > 1 ? bi('Change site', 'साइट बदला') : (s.site?.code ?? ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
                                 ]),
                               ),
-                              if (s.sites.length > 1) const Icon(Icons.chevron_right_rounded, color: C.faint),
+                              if (s.sites.length > 1) const Icon(Icons.chevron_right_rounded, color: C.faint, size: 20),
                             ]),
                           ),
                         ),
+                        // (3.121.0) attendance for a person who has HR on this site: a small tile left of Scan (nothing otherwise)
+                        const AttendStrip(),
                         // (3.14.0) a machinery's QR label: Diesel Issue / Log Book entry / its diesel ledger for it
                         // (3.19.0) the phone's live camera – not on a computer
                         if (!onComputer) ...[
@@ -602,8 +604,6 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                 await openApprovals(context);
                 s.loadApprovals();
               }),
-              // (3.105.0) attendance for a person who has HR on this site: the strip that opens the attendance page (nothing otherwise)
-              const AttendStrip(),
               // (3.104.0) the Portal's reminder "verify your e-mail" – a small strip; nothing when he is verified or it is switched off
               const MailStrip(),
               // ---------- (3.100.0) the Advertise Corner: the Portal's posts for this site (nothing when there is none) ----------

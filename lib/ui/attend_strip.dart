@@ -5,7 +5,8 @@
  * the hours since IN, dusk "attendance done".
  * What it shows is what THIS phone last read from the HR server and kept (core/attend.dart AttendStore – attendance is tied to
  * one phone, so the phone knows its own punches): no question is asked of the server here, Home is not kept waiting. A kept
- * answer of another day counts as "not marked yet". Read again when he comes back from the page. */
+ * answer of another day counts as "not marked yet". Read again when he comes back from the page.
+ * (3.121.0) the wide band became a small tile in Home's top row, left of Scan (see build). */
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
@@ -16,6 +17,8 @@ import '../screens/hr_shell.dart';
 import 'attend_look.dart';
 import 'hr_skin.dart';
 import 'scope.dart';
+import 't.dart';
+import 'theme.dart';
 import 'widgets.dart';
 
 class AttendStrip extends StatefulWidget {
@@ -27,7 +30,6 @@ class AttendStrip extends StatefulWidget {
 class _AttendStripState extends State<AttendStrip> {
   Map<String, dynamic>? last;
   String who = '';
-  double drag = 0;
   bool opening = false;
   Timer? minute;
 
@@ -72,7 +74,6 @@ class _AttendStripState extends State<AttendStrip> {
     await Navigator.of(context).push(hrRoute<void>(const HrShell(inErp: true))); // (3.115.0) the attendance app itself – the same pages as a person with attendance only
     opening = false;
     if (!mounted) return;
-    setState(() => drag = 0);
     _read();
   }
 
@@ -93,63 +94,58 @@ class _AttendStripState extends State<AttendStrip> {
       return '';
     }
 
-    final tin = time('in'), tout = time('out'), since = sky == Sky.day ? sinceText(tin, DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now())) : '';
-    final en = sky == Sky.dawn
-        ? 'Slide to mark IN'
-        : sky == Sky.day
-            ? (since.isEmpty ? 'On duty' : 'On duty · $since')
-            : 'Attendance done today';
-    final mr = sky == Sky.dawn
-        ? 'सरकवा – हजेरी लावा'
-        : sky == Sky.day
-            ? 'कामावर आहात · IN $tin'
-            : (tin.isEmpty || tout.isEmpty ? 'आजची हजेरी पूर्ण' : 'आजची हजेरी पूर्ण · $tin – $tout');
-    final right = sky == Sky.day; // on duty the sun stands on the right and is slid back
+    final tin = time('in'), tout = time('out');
+    /* (3.121.0, his picture of 13-11-2026: "attendance che button etk moth aahe te redesign kruya … scanner che left bajula mark
+     * attendance he button premium madhe banaw") a small tile beside Scan instead of the wide band:
+     *   IN to mark – deep blue to violet with a gold edge, "Mark IN";  on duty – green, "Mark OUT" with the time of IN;
+     *   done – a quiet white tile with both times. A tap opens the attendance app, as the band did. */
+    final dawn = sky == Sky.dawn, day = sky == Sky.day;
+    final en = dawn ? 'Mark IN' : day ? 'Mark OUT' : 'Done';
+    final sub = dawn ? 'हजेरी लावा' : day ? (tin.isEmpty ? 'कामावर' : 'IN $tin') : (tin.isEmpty || tout.isEmpty ? 'हजेरी पूर्ण' : '$tin – $tout');
+    final ink = dawn || day ? Colors.white : C.greenDark;
+    final soft = dawn ? const Color(0xFFE9D9A6) : day ? const Color(0xFFD8F3E2) : C.muted;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: LayoutBuilder(builder: (context, box) {
-        const h = 64.0, knob = 52.0, pad = 6.0;
-        final double run = (box.maxWidth - knob - pad * 2).clamp(0.0, 2000.0).toDouble();
-        void end() {
-          if (drag > run * .5) {
-            _open();
-          } else {
-            setState(() => drag = 0);
-          }
-        }
-
-        return Semantics(
-          button: true,
-          label: en,
-          child: GestureDetector(
-            key: const Key('att-strip'),
-            behavior: HitTestBehavior.opaque,
-            onTap: _open,
-            onHorizontalDragUpdate: (d) => setState(() => drag = (drag + (right ? -d.delta.dx : d.delta.dx)).clamp(0.0, run).toDouble()),
-            onHorizontalDragEnd: (_) => end(),
-            onHorizontalDragCancel: () => setState(() => drag = 0),
-            child: Container(
-              height: h,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(gradient: skyAcross(sky), borderRadius: BorderRadius.circular(h / 2), boxShadow: const [BoxShadow(color: Color(0x47141E3C), blurRadius: 16, offset: Offset(0, 8))]),
-              child: Stack(children: [
-                Positioned.fill(
-                  child: Padding(
-                    padding: EdgeInsets.only(left: right ? 20 : knob + pad + 14, right: right ? knob + pad + 14 : 16),
-                    child: Align(alignment: Alignment.centerLeft, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: TwoLang(en, mr, color: Colors.white, size: 15, weight: FontWeight.w700))),
-                  ),
-                ),
-                Positioned(
-                  top: (h - knob) / 2,
-                  left: right ? null : pad + drag,
-                  right: right ? pad + drag : null,
-                  child: SunDisc(key: const Key('att-strip-knob'), size: knob, label: next == 'in' ? 'IN' : 'OUT', moon: sky == Sky.dusk),
-                ),
-              ]),
+      padding: const EdgeInsets.only(left: 8),
+      child: Semantics(
+        button: true,
+        label: en,
+        child: GestureDetector(
+          key: const Key('att-strip'),
+          behavior: HitTestBehavior.opaque,
+          onTap: _open,
+          child: Container(
+            width: 92,
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              color: dawn || day ? null : Colors.white,
+              gradient: dawn
+                  ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1E2A5A), Color(0xFF4A2B6B), Color(0xFF6B3A7C)])
+                  : day
+                      ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF0F5C3C), Color(0xFF1F7A4D), Color(0xFF2E9C63)])
+                      : null,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: dawn ? const Color(0xBFE8BE60) : day ? const Color(0x8CFFFFFF) : const Color(0xFFCFE8D9), width: 1.3),
+              boxShadow: [BoxShadow(color: dawn ? const Color(0x523C286E) : day ? const Color(0x4D1F7A4D) : const Color(0x1A1E283C), blurRadius: 14, offset: const Offset(0, 6))],
             ),
+            child: Stack(children: [
+              Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  if (dawn) const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 18) else if (!day) const Icon(Icons.check_rounded, color: C.greenDark, size: 17),
+                  FittedBox(fit: BoxFit.scaleDown, child: Text(en, maxLines: 1, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: ink, height: 1.15))),
+                  FittedBox(fit: BoxFit.scaleDown, child: Text(sub, maxLines: 1, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: soft, height: 1.2))),
+                ]),
+              ),
+              if (dawn || day)
+                Positioned(
+                  top: 6,
+                  right: 2,
+                  child: Container(width: 7, height: 7, decoration: BoxDecoration(color: dawn ? const Color(0xFFF5B841) : const Color(0xFF7CF0A8), shape: BoxShape.circle)),
+                ),
+            ]),
           ),
-        );
-      }),
+        ),
+      ),
     );
   }
 }
