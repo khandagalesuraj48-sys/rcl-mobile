@@ -111,7 +111,10 @@ class _DoneState extends State<_Done> with SingleTickerProviderStateMixin {
                   opacity: a,
                   child: Transform.scale(
                     scale: grow,
-                    child: Semantics(
+                    // Material: the words get the app's own letters (without it a text on the screen's top layer is underlined in yellow)
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Semantics(
                       liveRegion: true,
                       container: true,
                       child: Container(
@@ -160,6 +163,7 @@ class _DoneState extends State<_Done> with SingleTickerProviderStateMixin {
                               ),
                             ),
                         ]),
+                      ),
                       ),
                     ),
                   ),

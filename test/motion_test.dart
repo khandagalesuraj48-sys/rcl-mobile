@@ -129,6 +129,7 @@ void main() {
     expect(find.byKey(const Key('done-pop')), findsOneWidget);
     expect(find.text('Leave request sent 1'), findsOneWidget, reason: 'the words are there at once (they come into sight after the tick)');
     expect(find.text('It counts when it is approved.'), findsOneWidget);
+    expect(find.descendant(of: find.byType(Material), matching: find.byKey(const Key('done-pop'))), findsOneWidget, reason: 'under a Material: no yellow lines under the words');
     await settle(t, 1100);
     // in the middle of the screen – not at the bottom, not at the top
     final box = t.getRect(find.byKey(const Key('done-pop'))), screen = t.getRect(find.byType(MaterialApp));
