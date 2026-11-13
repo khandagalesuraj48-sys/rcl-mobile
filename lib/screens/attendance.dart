@@ -865,6 +865,9 @@ Future<void> Function(Uint8List bytes, String name) attendPdfOut = (bytes, name)
   await handOver(bytes, name, 'application/pdf');
 };
 
+/// (3.118.0) The logo of the PDF's head (the app's own picture, read and made a JPEG) – replaceable in a test.
+Future<PdfLogo?> Function(String company) attendPdfLogo = pdfLogo;
+
 class AttendMonthScreen extends StatefulWidget {
   const AttendMonthScreen({super.key, required this.ask, this.who = '', this.embedded = false});
 
@@ -881,6 +884,7 @@ class AttendMonthScreen extends StatefulWidget {
 
 class _AttendMonthScreenState extends State<AttendMonthScreen> {
   String month = '', err = '', today = '', sel = ''; // sel: the day opened under the calendar
+  List<String> rules = []; // (3.118.0) the site's rules in words, as the HR server says them – the PDF's note
   List<Map> days = [], every = []; // (every: each day of the month as the server said it – the PDF's rows)
   Map total = const {};
   int regDays = 0;
@@ -906,6 +910,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
         final all = [for (final x in (j['all'] as List? ?? const []).whereType<Map>()) x];
         today = '${j['today'] ?? indiaDay(AttendKit.kit.now())}';
         every = all.isNotEmpty ? all : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
+        rules = [for (final x in (j['rules'] as List? ?? const [])) '$x'];
         days = all.isNotEmpty ? [for (final d in all) if ('${d['code'] ?? ''}'.isNotEmpty || (d['punches'] is num && (d['punches'] as num) > 0)) d] : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
         total = (j['total'] as Map?) ?? const {};
         regDays = j['reg_days'] is num ? (j['reg_days'] as num).toInt() : 0;
@@ -953,7 +958,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
       final name = who.first.trim().isEmpty ? s.name : who.first.trim(), code = who.length > 1 ? who.last.trim() : '';
       final company = (s.site?.company ?? '').isNotEmpty ? s.site!.company : (s.company.isNotEmpty ? s.company : 'Attendance');
       final now = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now() + 19800000, isUtc: true).toIso8601String();
-      final bytes = await attendancePdf(company: company, site: s.siteName, name: name, code: code, month: month, days: every, total: total, made: '${now.substring(8, 10)}-${now.substring(5, 7)}-${now.substring(0, 4)} ${now.substring(11, 16)}');
+      final bytes = await attendancePdf(company: company, site: s.siteName, name: name, code: code, month: month, days: every, total: total, rules: rules, logo: await attendPdfLogo(company), made: '${now.substring(8, 10)}/${now.substring(5, 7)}/${now.substring(0, 4)} ${now.substring(11, 16)}');
       await attendPdfOut(bytes, 'Attendance_${code.isEmpty ? name : code}_$month.pdf');
     } catch (_) {
       if (mounted) toast(context, _t('The PDF could not be made – try again.', 'PDF बनली नाही – पुन्हा करा.'));

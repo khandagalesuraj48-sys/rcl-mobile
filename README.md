@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.118.0 (13-11-2026 – his own attendance sheet as the pattern: "attendnce pdf as asaw … company name bold warti centre la …
+employee name … site employee id … tyachi khali ek dark line … company logo pn … saglyat adhi date nantr day nantr work place …
+late asel tr late as lihun … kiti minute … sign la thodi space … Work place madhe jithun sign in zal te … niyam hawe aahet je rules
+apan set kelet te"):** the month's PDF in his layout – the logo and the company's name in the head, "Attendance for the Month …", the
+employee, his ID, the site and the period, a dark line; the days in a ruled table (Date · Day · Work place · In Time · Out Time ·
+Total Hrs · Status · Late "Late 12 min"); the Summary; the site's rules in words; room to sign (HR · Accounts · Director). The
+day's work place and the rules come from the HR server (rcl-hr `myMonth`: `place`, `rules` – until that is live the column and the
+note stay empty).
+
 **Version 3.117.0 (13-11-2026 – "app chalu kel kel lagech app fetch krel user location … pop up … turn on location … attednnce pdf
 download … te name green … red … face … khup khali aahe … bolun sangel … face reading fast haway"):** the attendance app
 * **reads his place as soon as it opens** (`AttendWhere`, core/attend.dart) and keeps it young while Home is on the screen – IN / OUT
