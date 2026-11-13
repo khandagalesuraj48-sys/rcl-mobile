@@ -19,7 +19,6 @@ import 'hr_skin.dart';
 import 'scope.dart';
 import 't.dart';
 import 'theme.dart';
-import 'widgets.dart';
 
 class AttendStrip extends StatefulWidget {
   const AttendStrip({super.key});
