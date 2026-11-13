@@ -27,10 +27,12 @@ import 'package:flutter/material.dart' as m show Text;
 import '../core/attend.dart';
 import '../core/attend_remind.dart';
 import '../core/session.dart';
+import '../core/update.dart' show checkUpdate;
 import '../ui/attend_look.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
+import '../ui/motion.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/widgets.dart';
@@ -109,6 +111,14 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     // (3.114.0) the attendance app has its own look – the one he chose on this phone
     HrSkin.i.addListener(_skin);
     unawaited(widget.inErp ? HrSkin.i.load() : HrSkin.i.enter());
+    // (3.122.0) the attendance app by itself asks for the newest version too (a compulsory one: its screen – core/update.dart)
+    if (!widget.inErp) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final s = SessionScope.read(context);
+        unawaited(checkUpdate(s.api, beta: s.tester));
+      });
+    }
     // (3.117.0, "app chalu kel kel lagech app fetch krel user location") his place is read at once and kept young while Home
     // is on the screen – IN / OUT need not wait for it; the phone's location off: asked to switch it on, here
     AttendWhere.i.addListener(_skin);
@@ -301,7 +311,9 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     return Scaffold(
       backgroundColor: sk.bg,
       bottomNavigationBar: _nav(),
-      body: switch (tab) {
+      body: TabSlide(
+        index: tab, // (3.122.0) the page of the tab chosen slides in from that tab's side
+        child: switch (tab) {
         // (3.116.0, "ek feture ekach thikani asaw") Attendance = the month; today and marking are Home's
         1 => AttendMonthScreen(key: ValueKey('tab-att-$gen'), ask: _hr, who: _who, embedded: true),
         2 => LeaveScreen(key: ValueKey('tab-leave-$gen'), ask: _hr, embedded: true),
@@ -318,11 +330,12 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                   if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('hh-err')),
                   if (loading) Padding(padding: const EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: sk.accent))),
                   if (day != null) ...[
-                    _hero(s),
+                    // (3.122.0) the parts of Home come up one after the other
+                    Rise(order: 0, child: _hero(s)),
                     const SizedBox(height: 14),
-                    _week(),
+                    Rise(order: 1, child: _week()),
                     const SizedBox(height: 14),
-                    _tiles(),
+                    Rise(order: 2, child: _tiles()),
                     ..._forYou(),
                   ],
                 ]),
@@ -330,6 +343,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
             ),
           ),
       },
+      ),
     );
   }
 
@@ -414,7 +428,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           behavior: HitTestBehavior.opaque,
           onTap: go,
           onLongPress: go,
-          child: ShiftDial(size: 208, now: at(india.hour * 60 + india.minute), from: at(_hm(lastIn)), out: sky == Sky.day, dim: sky == Sky.grey, done: sky == Sky.dusk, track: sk.blank, tick: sk.dark ? sk.line : const Color(0xFFCBD1DF), top: top, big: big, under: under),
+          child: Bounce(to: .94, child: ShiftDial(size: 208, now: at(india.hour * 60 + india.minute), from: at(_hm(lastIn)), out: sky == Sky.day, dim: sky == Sky.grey, done: sky == Sky.dusk, track: sk.blank, tick: sk.dark ? sk.line : const Color(0xFFCBD1DF), top: top, big: big, under: under)),
         ),
         if (a != null && b0 != null)
           Padding(
@@ -459,7 +473,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 m.Text(const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sk.faint)),
                 const SizedBox(height: 6),
-                Container(
+                Rise(order: 2 + i, from: 14, child: Container(
                   key: Key('hh-w-$d'),
                   height: 38,
                   margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -468,7 +482,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                       ? BoxDecoration(gradient: sk.dark ? Sk.goldFill : null, color: sk.dark ? null : sk.accent, borderRadius: BorderRadius.circular(13))
                       : BoxDecoration(color: lk.$2, borderRadius: BorderRadius.circular(13)),
                   child: m.Text(c.isEmpty ? '${dt.day}' : c == 'MIS' ? '!' : c, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: now ? (sk.dark ? Sk.goldInk : sk.onAccent) : lk.$1)),
-                ),
+                )),
               ]),
             );
           }(),
@@ -590,14 +604,14 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
             key: Key(key),
             behavior: HitTestBehavior.opaque,
             onTap: onTap,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 26, height: 3, decoration: BoxDecoration(gradient: on ? Sk.goldFill : null, borderRadius: BorderRadius.circular(2))),
+            child: Bounce(to: .86, child: Column(mainAxisSize: MainAxisSize.min, children: [
+              AnimatedContainer(duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack, width: on ? 26 : 4, height: 3, decoration: BoxDecoration(gradient: on ? Sk.goldFill : null, borderRadius: BorderRadius.circular(2))), // (3.122.0) the gold line grows out
               const SizedBox(height: 9),
-              Icon(icon, size: 22, color: on ? sk.ink : sk.faint),
+              AnimatedScale(scale: on ? 1.18 : 1, duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack, child: Icon(icon, size: 22, color: on ? sk.ink : sk.faint)),
               const SizedBox(height: 3),
               FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 11, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? sk.ink : sk.faint))),
               const SizedBox(height: 9),
-            ]),
+            ])),
           ),
         );
     return SafeArea(
@@ -631,7 +645,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                 key: const Key('nav-mark'),
                 behavior: HitTestBehavior.opaque,
                 onTap: _mark,
-                child: SizedBox(
+                child: Bounce(to: .84, child: SizedBox(
                   width: 76,
                   height: 76,
                   child: Center(
@@ -645,7 +659,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
-                ),
+                )),
               ),
             ),
           ]),

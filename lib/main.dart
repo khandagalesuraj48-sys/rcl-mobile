@@ -21,7 +21,7 @@ import 'core/push_fcm.dart';
 import 'core/rtc_kit.dart';
 import 'core/scan_link.dart';
 import 'core/session.dart';
-import 'core/update.dart' show updateContext, updateWatch;
+import 'core/update.dart' show updateContext, updateWatch, watchMustUpdate;
 import 'screens/call.dart';
 import 'screens/lock.dart';
 import 'screens/login.dart';
@@ -128,6 +128,7 @@ void main() {
   // (3.31.4) the update downloaded in the background: "Install?" over whatever screen is open – when the app opens and when it
   // comes back (core/update.dart updateWatch)
   updateContext = () => appNav.currentContext;
+  watchMustUpdate(appNav); // (3.122.0) a compulsory update: its one screen over everything (core/update.dart)
   AppLifecycleListener(onResume: () => updateWatch(opened: true)); // (it stays with the app's binding)
   // (3.41.0, asked 25-10-2026: "google scanner mobile scanner madhun jari scan kel adhi app kade jaw") a "Scan with Mobile" QR code
   // read by the phone's camera / Google Lens opens HERE (core/scan_link.dart): the link the app was opened with, and any later one
@@ -251,7 +252,10 @@ class RclApp extends StatelessWidget {
             // (update-155) a touch anywhere keeps the live sync's quick rhythm (Session.touch)
             final app = Listener(
               behavior: HitTestBehavior.translucent,
-              onPointerDown: (_) => SessionScope.read(context).touch(),
+              onPointerDown: (e) {
+                TapSpot.last = e.position; // (3.122.0) the screen that opens grows out of the place that was touched
+                SessionScope.read(context).touch();
+              },
               // (3.41.0) a "Scan with Mobile" QR code waiting: opened as soon as he is signed in, unlocked and at its site
               child: LockLayer(lock: lock, nav: appNav, child: ScanLinkLayer(nav: appNav, lock: lock, child: CallLayer(nav: appNav, child: VoiceLayer(child: child!)))),
             );

@@ -60,9 +60,9 @@ void main() {
     expect(find.text('Stay'), findsNothing);
   });
 
-  test('every new screen: zoom on Android, the iPhone keeps its own slide (and its swipe back)', () {
+  test('every new screen: (3.122.0) opens out of the touched place on Android, the iPhone keeps its own slide (and its swipe back)', () {
     final p = appTheme().pageTransitionsTheme.builders;
-    expect(p[TargetPlatform.android], isA<ZoomPageTransitionsBuilder>());
+    expect(p[TargetPlatform.android], isA<RevealPageTransitionsBuilder>());
     expect(p[TargetPlatform.iOS], isA<CupertinoPageTransitionsBuilder>());
   });
 }

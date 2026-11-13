@@ -18,6 +18,7 @@ import '../core/attend.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
+import '../ui/motion.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
@@ -130,7 +131,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
             padding: const EdgeInsets.fromLTRB(12, 9, 8, 10),
             decoration: BoxDecoration(color: sk.headGlass, borderRadius: BorderRadius.circular(16), border: Border.all(color: sk.headGlassLine), boxShadow: sk.classic ? null : sk.shadow),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              m.Text(me == null ? '–' : _n(v), key: Key('leave-$key'), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 24, fontWeight: FontWeight.w800, color: sk.onHead, height: 1.15)),
+              // (3.122.0) the number counts up to its value
+              me == null ? m.Text('–', key: Key('leave-$key'), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 24, fontWeight: FontWeight.w800, color: sk.onHead, height: 1.15)) : CountUp(value: _num(v), ms: 500, textKey: Key('leave-$key'), text: (x) => _n(x), style: TextStyle(fontFamily: 'Montserrat', fontSize: 24, fontWeight: FontWeight.w800, color: sk.onHead, height: 1.15)),
               Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: sk.onHeadSoft)),
             ]),
           ),
@@ -148,7 +150,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                 if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('leave-err')),
                 if (me != null) ...[
                   const SizedBox(height: 12),
-                  hrCard(key: const Key('leave-mine'), [
+                  Rise(order: 0, child: hrCard(key: const Key('leave-mine'), [
                     hrTitle('My requests', 'माझ्या विनंत्या'),
                     if (reqs.isEmpty) Padding(padding: EdgeInsets.only(bottom: 6), child: Text('No request yet.', mr: 'अजून विनंती नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint))),
                     for (final (i, q) in reqs.indexed)
@@ -166,10 +168,10 @@ class _LeaveScreenState extends State<LeaveScreen> {
                             last: i == reqs.length - 1);
                       }(),
                     if (reqs.any((q) => '${q['status']}' == 'pending')) Padding(padding: EdgeInsets.only(top: 6), child: Text('Touch "Waiting" to take a request back.', mr: 'विनंती मागे घ्यायला "प्रलंबित" वर touch करा.', style: TextStyle(fontSize: 12, color: sk.faint))),
-                  ]),
+                  ])),
                   if (me?['book'] == true) ...[
                     const SizedBox(height: 12),
-                    hrCard(key: const Key('leave-ledger'), [
+                    Rise(order: 1, child: hrCard(key: const Key('leave-ledger'), [
                       hrTitle('My leave ledger', 'माझ्या रजेचा हिशोब'),
                       m.Text(_t('Paid leave ${_n(me?['paid'])} · Comp-off ${_n(me?['comp'])} – one balance of ${_n(me?['balance'])}', 'Paid रजा ${_n(me?['paid'])} · Comp-off ${_n(me?['comp'])} – मिळून balance ${_n(me?['balance'])}'), key: const Key('leave-two'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sk.muted, height: 1.4)),
                       const SizedBox(height: 4),
@@ -181,13 +183,13 @@ class _LeaveScreenState extends State<LeaveScreen> {
                             small: '${_dmy('${l['day'] ?? ''}')} · ${'${l['bucket']}' == 'comp' ? 'Comp-off' : _t('Paid leave', 'Paid रजा')}',
                             chips: [stateChip('${_num(l['days']) > 0 ? '+' : ''}${_n(l['days'])}', _num(l['days']) > 0 ? 'a' : 'x')],
                             last: i == ledger.length - 1),
-                    ]),
+                    ])),
                   ],
                   const SizedBox(height: 12),
-                  hrCard(key: const Key('leave-how'), [
+                  Rise(order: 2, child: hrCard(key: const Key('leave-how'), [
                     hrTitle('How it is counted', 'कशी मोजली जाते'),
                     m.Text(_how(me?['policy'] as Map?), style: TextStyle(fontSize: 13, color: sk.muted, height: 1.5)),
-                  ]),
+                  ])),
                 ],
               ]),
             ),

@@ -52,8 +52,9 @@ class _PressState extends State<Press> {
   bool _down = false;
   @override
   Widget build(BuildContext context) => AnimatedScale(
-        scale: _down ? .97 : 1,
-        duration: const Duration(milliseconds: 110),
+        scale: _down ? .93 : 1, // (3.122.0) a press that is seen: deeper, and it springs back
+        duration: Duration(milliseconds: _down ? 90 : 260),
+        curve: _down ? Curves.easeOut : Curves.easeOutBack,
         child: Container(
           decoration: BoxDecoration(
             color: widget.color,
@@ -65,6 +66,8 @@ class _PressState extends State<Press> {
             type: MaterialType.transparency,
             child: InkWell(
               borderRadius: BorderRadius.circular(widget.radius),
+              splashColor: C.green.withValues(alpha: .22), // (3.122.0) the wave from the finger, clearly seen
+              highlightColor: C.green.withValues(alpha: .06),
               onTap: widget.onTap,
               onHighlightChanged: widget.onTap == null ? null : (v) => setState(() => _down = v),
               child: Padding(padding: widget.padding ?? EdgeInsets.zero, child: widget.child),
