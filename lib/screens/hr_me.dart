@@ -63,7 +63,10 @@ Widget _li({required Key key, required String sign, IconData? icon, required Col
 }
 
 class HrMeTab extends StatelessWidget {
-  const HrMeTab({super.key, required this.mine, required this.day, required this.ask, required this.onDocs, required this.onSlips, required this.onPhoto, required this.reload});
+  const HrMeTab({super.key, required this.mine, required this.day, required this.ask, required this.onDocs, required this.onSlips, required this.onPhoto, required this.reload, this.inErp = false});
+
+  /// (3.115.0) inside the full app: what belongs to the whole app stays in the ERP's own Me
+  final bool inErp;
   final Map<String, dynamic>? mine, day;
   final HrAsk ask;
   final VoidCallback onDocs, onSlips, onPhoto;
@@ -132,13 +135,13 @@ class HrMeTab extends StatelessWidget {
             const SizedBox(height: 12),
             hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
               _li(key: const Key('me-lang'), sign: 'A', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
-              _li(key: const Key('me-account'), sign: '@', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
+              if (!inErp) _li(key: const Key('me-account'), sign: '@', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
               _li(key: const Key('me-look'), sign: '', icon: Icons.palette_outlined, c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Look', mr: 'रूप', sub: sk.dark ? 'Midnight Gold' : 'Pearl', onTap: () => open(const LookScreen())),
               // (the look's name goes with them: a row that keeps its own state is drawn again when the look changes)
-              _RemindRow(look: sk.name),
-              _UpdateRow(look: sk.name),
-              if (s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
-              _li(
+              _RemindRow(look: sk.name, last: inErp),
+              if (!inErp) _UpdateRow(look: sk.name),
+              if (!inErp && s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
+              if (!inErp) _li(
                   key: const Key('me-out'),
                   sign: '',
                   icon: Icons.power_settings_new_rounded,
@@ -739,8 +742,9 @@ class _UpdateRowState extends State<_UpdateRow> {
 
 /// (3.113.0) the IN / OUT reminders: on (as they come) or off – his own choice, kept on this phone.
 class _RemindRow extends StatefulWidget {
-  const _RemindRow({required this.look});
+  const _RemindRow({required this.look, this.last = false});
   final String look;
+  final bool last;
   @override
   State<_RemindRow> createState() => _RemindRowState();
 }
@@ -775,6 +779,7 @@ class _RemindRowState extends State<_RemindRow> {
         mr: 'हजेरीची आठवण',
         sub: off ? _t('Off – tap to switch on', 'बंद – चालू करायला दाबा') : _t('On – half an hour before IN and OUT', 'चालू – IN आणि OUT च्या अर्धा तास आधी'),
         arrow: false,
+        last: widget.last,
         onTap: _flip,
       );
 }

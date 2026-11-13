@@ -29,9 +29,10 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'attend_reqs.dart';
 import 'face_screens.dart';
+import 'hr_shell.dart';
 import 'leave.dart';
 
-Future<void> openAttendance(BuildContext context) => Navigator.of(context).push(hrRoute<void>(const AttendanceScreen()));
+Future<void> openAttendance(BuildContext context) => Navigator.of(context).push(hrRoute<void>(const HrShell(inErp: true))); // (3.115.0) the attendance app itself
 
 /// (a test) the selfie without a camera; null = the real camera screen.
 Future<Uint8List?> Function(BuildContext context)? attendSelfieForTest;

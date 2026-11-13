@@ -55,7 +55,13 @@ String initials(String name) {
 }
 
 class HrShell extends StatefulWidget {
-  const HrShell({super.key});
+  const HrShell({super.key, this.inErp = false});
+
+  /// (3.115.0, his word of 13-11-2026: a person with the ERP and attendance sees "same view as it is … jasa normal attendace
+  /// user cha ahe") opened from the full app's Home: the same four pages over the ERP, with the way back to it; the look's
+  /// theme is around this page only (hrRoute) and what belongs to the whole app (e-mail and password, update, site, sign
+  /// out) stays in the ERP's own Me.
+  final bool inErp;
   @override
   State<HrShell> createState() => _HrShellState();
 }
@@ -100,7 +106,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     // (3.114.0) the attendance app has its own look – the one he chose on this phone
     HrSkin.i.addListener(_skin);
-    unawaited(HrSkin.i.enter());
+    unawaited(widget.inErp ? HrSkin.i.load() : HrSkin.i.enter());
     // on duty: the hours since IN and the dial's dot move on by themselves
     minute = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
@@ -115,7 +121,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     HrSkin.i.removeListener(_skin);
-    HrSkin.i.leave();
+    if (!widget.inErp) HrSkin.i.leave();
     minute?.cancel();
     super.dispose();
   }
@@ -224,7 +230,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       body: switch (tab) {
         1 => AttendanceScreen(key: ValueKey('tab-att-$gen'), embedded: true),
         2 => LeaveScreen(key: ValueKey('tab-leave-$gen'), ask: _hr, embedded: true),
-        3 => HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load),
+        3 => HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load, inErp: widget.inErp),
         _ => Container(
             decoration: BoxDecoration(gradient: sk.pageFill),
             child: SafeArea(
@@ -257,6 +263,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final h = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now() + 19800000, isUtc: true).hour;
     final name = '${(day?['employee'] as Map?)?['name'] ?? s.name}', wait = _notes().any((n) => n.onTap != null);
     return Row(children: [
+      if (widget.inErp) Padding(padding: const EdgeInsets.only(right: 10), child: hrIconBox(Icons.arrow_back_ios_new_rounded, key: const Key('hh-back'), size: 40, icon: 17, tooltip: MaterialLocalizations.of(context).backButtonTooltip, onTap: () => Navigator.of(context).maybePop())),
       hrFace(name, '${mine?['photo'] ?? ''}', size: 48, radius: 24, bg: sk.dark ? sk.card : const Color(0xFF0F1F3D), border: const Color(0xFFDDAD40), ink: sk.dark ? sk.accent : Colors.white),
       const SizedBox(width: 12),
       Expanded(

@@ -18,7 +18,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 **Version 3.115.0 (13-11-2026 – "jo user aahe erp and attendance wala … tyala old screen distey tyala pn hi new screen disayla
 pahije"):** a person with the full app sees the HR pages in the new look too – marking from Home's strip, the Attendance page, the
 month, leave, the requests and their forms (`hrRoute` / `HrLook` in `lib/ui/hr_skin.dart` put the look's theme around every HR page;
-the rest of the app keeps its own). Pearl until a look is chosen on the phone (Me → Look is in the attendance app).
+the rest of the app keeps its own). And ("same view as it is … jasa normal attendace user cha ahe"): Home's attendance strip and the
+HR tile open **the attendance app itself over the ERP** – the same Home with the dial, Attendance, Leave and Me, the same bar –
+with the way back to the ERP on its Home (`HrShell(inErp: true)`); Me → Look is there too. What belongs to the whole app (e-mail
+and password, update, site, sign out) stays in the ERP's own Me. Pearl until a look is chosen on the phone.
 
 **Version 3.114.0 (12-11-2026 – his approval of the two designs: "ok he final 2 ni thew user je haw te switch kru shakel"; only the
 attendance app: "fkt attendance app che boloty mi baki konache design changes nahit"):** the attendance app (a person with HR only) has

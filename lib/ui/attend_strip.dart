@@ -12,6 +12,7 @@ import 'package:flutter/material.dart' hide Text;
 
 import '../core/attend.dart';
 import '../screens/attendance.dart';
+import '../screens/hr_shell.dart';
 import 'attend_look.dart';
 import 'hr_skin.dart';
 import 'scope.dart';
@@ -68,7 +69,7 @@ class _AttendStripState extends State<AttendStrip> {
   Future<void> _open() async {
     if (opening) return;
     opening = true;
-    await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true)));
+    await Navigator.of(context).push(hrRoute<void>(const HrShell(inErp: true))); // (3.115.0) the attendance app itself – the same pages as a person with attendance only
     opening = false;
     if (!mounted) return;
     setState(() => drag = 0);
