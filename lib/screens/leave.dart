@@ -66,7 +66,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
   }
 
   Future<void> _new() async {
-    final j = await Navigator.of(context).push<Map<String, dynamic>>(MaterialPageRoute(builder: (_) => LeaveAskScreen(ask: widget.ask, today: '${me?['today'] ?? indiaDay(AttendKit.kit.now())}', available: me?['available'])));
+    final j = await Navigator.of(context).push<Map<String, dynamic>>(hrRoute(LeaveAskScreen(ask: widget.ask, today: '${me?['today'] ?? indiaDay(AttendKit.kit.now())}', available: me?['available'])));
     if (j == null || !mounted) return;
     setState(() => me = j);
     toast(context, _t('Sent – it counts when it is approved.', 'पाठवले – मंजूर झाल्यावर धरले जाईल.'));

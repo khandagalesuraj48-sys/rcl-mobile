@@ -127,8 +127,45 @@ class Sk {
   Gradient get pageFill => LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [bgTop, bg, bg], stops: const <double>[0, .42, 1]);
 }
 
-/// The look in use. A person with the full app: [Sk.classicLook], always.
+/// The look of the HR pages.
 Sk get sk => HrSkin.i.now;
+
+/// For a page that is not HR's own (the e-mail check): the look inside the attendance app, the app's own colours elsewhere.
+Sk get skApp => HrSkin.i.on ? sk : Sk.classicLook;
+
+/// (3.115.0) An HR page opened in the full app: the look's theme around it (its dialogs, pickers and fields follow), while the
+/// rest of the app keeps its own. In the attendance app the whole app already has it.
+class HrLook extends StatefulWidget {
+  const HrLook({super.key, required this.child});
+  final Widget child;
+  @override
+  State<HrLook> createState() => _HrLookState();
+}
+
+class _HrLookState extends State<HrLook> {
+  @override
+  void initState() {
+    super.initState();
+    HrSkin.i.addListener(_changed);
+    HrSkin.i.load();
+  }
+
+  @override
+  void dispose() {
+    HrSkin.i.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) => Theme(data: hrTheme(sk, Theme.of(context)), child: widget.child);
+}
+
+/// The way to an HR page: always under its look.
+MaterialPageRoute<T> hrRoute<T>(Widget page) => MaterialPageRoute<T>(builder: (_) => HrLook(child: page));
 
 class HrSkin extends ChangeNotifier {
   HrSkin._();
@@ -142,7 +179,25 @@ class HrSkin extends ChangeNotifier {
   bool get on => _users > 0;
   int _users = 0; // (two for a moment while one site's pages give way to another's)
 
-  Sk get now => !on ? Sk.classicLook : (look == 'gold' ? Sk.gold : Sk.pearl);
+  /// (3.115.0, his word of 13-11-2026: a person with the ERP and attendance "tyala pn hi new screen disayla pahije") the HR
+  /// pages are in the look for everybody now – Pearl until he chooses.
+  Sk get now => look == 'gold' ? Sk.gold : Sk.pearl;
+
+  bool _read = false;
+
+  /// The look kept on this phone, read once (a person with the full app opens an HR page).
+  Future<void> load() async {
+    if (_read) return;
+    _read = true;
+    var t = '';
+    try {
+      t = ((await AttendKit.kit.readText(_file)) ?? '').trim();
+    } catch (_) {}
+    if (t == 'gold' && look != 'gold') {
+      look = 'gold';
+      notifyListeners();
+    }
+  }
 
   /// The attendance app opens: its look from this phone (Pearl until he chooses).
   Future<void> enter() async {

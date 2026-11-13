@@ -178,7 +178,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   }
 
   Future<void> _push(Widget page) async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+    await Navigator.of(context).push(hrRoute<void>(page));
     if (mounted) _load();
   }
 
@@ -193,7 +193,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   Future<void> _mark() async {
     if (opening) return;
     opening = true;
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AttendanceScreen(quick: true)));
+    await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true)));
     opening = false;
     if (!mounted) return;
     setState(() => gen++);

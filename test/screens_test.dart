@@ -43,7 +43,7 @@ import 'package:rcl_mobile/screens/car_detail.dart' show CarPhotoPick;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/theme.dart' show C;
-import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin;
+import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin, HrLook;
 import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
@@ -9145,6 +9145,10 @@ void main() {
     await t.tap(find.byKey(const Key('att-strip')));
     await net(t);
     expect(find.textContaining('Not marked yet'), findsOneWidget);
+    // (3.115.0) a person with the full app: the marking page is in the new look too (Pearl), the rest of the app keeps its own
+    expect(find.byType(HrLook), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(HrSkin.i.on, false);
     expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, isNotNull);
     expect(find.textContaining('Slide to mark IN'), findsOneWidget);
     await pics(t);

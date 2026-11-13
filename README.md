@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.115.0 (13-11-2026 – "jo user aahe erp and attendance wala … tyala old screen distey tyala pn hi new screen disayla
+pahije"):** a person with the full app sees the HR pages in the new look too – marking from Home's strip, the Attendance page, the
+month, leave, the requests and their forms (`hrRoute` / `HrLook` in `lib/ui/hr_skin.dart` put the look's theme around every HR page;
+the rest of the app keeps its own). Pearl until a look is chosen on the phone (Me → Look is in the attendance app).
+
 **Version 3.114.0 (12-11-2026 – his approval of the two designs: "ok he final 2 ni thew user je haw te switch kru shakel"; only the
 attendance app: "fkt attendance app che boloty mi baki konache design changes nahit"):** the attendance app (a person with HR only) has
 **two looks – "Pearl" (light, white and gold) and "Midnight Gold" (dark, glass and gold)**; he chooses his own in **Me → Look**, it
