@@ -24,6 +24,7 @@ import '../ui/attend_look.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
+import '../ui/motion.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
@@ -1031,7 +1032,8 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
       );
     }
 
-    final cells = <Widget>[for (var i = 0; i < first; i++) blank(), for (var n = 1; n <= count; n++) cell(n)];
+    // (3.122.0) the days turn in, a row after a row (again when another month is opened)
+    final cells = <Widget>[for (var i = 0; i < first; i++) blank(), for (var n = 1; n <= count; n++) Rise(key: ValueKey('turn-$month-$n'), order: (first + n - 1) ~/ 4, flip: true, child: cell(n))];
     while (cells.length % 7 != 0) {
       cells.add(const SizedBox(height: 38));
     }

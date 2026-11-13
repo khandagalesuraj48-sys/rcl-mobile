@@ -251,7 +251,10 @@ class RclApp extends StatelessWidget {
             // (update-155) a touch anywhere keeps the live sync's quick rhythm (Session.touch)
             final app = Listener(
               behavior: HitTestBehavior.translucent,
-              onPointerDown: (_) => SessionScope.read(context).touch(),
+              onPointerDown: (e) {
+                TapSpot.last = e.position; // (3.122.0) the screen that opens grows out of the place that was touched
+                SessionScope.read(context).touch();
+              },
               // (3.41.0) a "Scan with Mobile" QR code waiting: opened as soon as he is signed in, unlocked and at its site
               child: LockLayer(lock: lock, nav: appNav, child: ScanLinkLayer(nav: appNav, lock: lock, child: CallLayer(nav: appNav, child: VoiceLayer(child: child!)))),
             );

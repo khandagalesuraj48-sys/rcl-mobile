@@ -15,6 +15,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.122.0 (14-11-2026 – the two videos he approved: "mala aple app madhe every click la transitions hawet ui animations hawet
+je clearly visible and feel denare astil … fkt animation transition he sagle banawt ahe baki kahi changes naahit"):** MOTION ONLY, in
+one place (`lib/ui/motion.dart`), for the ERP and the attendance app: a new screen **opens out of the touched place** as a growing
+circle and closes back into it, the screen behind sinks a little (Android and the computers; the iPhone keeps its slide); a `Press`
+goes in deeper, springs back and shows the wave from the finger; the page of a tab **slides in** from that tab's side, the chosen
+tab's picture pops; Home's stock **counts up**, its card and the module cards **rise** one after the other; the gold + **turns** to ×
+and its choices rise; in the attendance app Home's parts rise, the dial and the bar's buttons **bounce**, the gold line of the chosen
+tab grows, the leave numbers count up, the days of the month **turn in**. Every motion ends by itself, keeps the same widgets around
+what it moves (a screen never loses what it holds) and stands still with the phone's "remove animations". No screen, action, check or
+server call is changed. Not done here: the motion of leaving the app (Android's own).
+
 **Version 3.121.0 (13-11-2026 – his picture: "attendance che button etk moth aahe te redesign kruya … scanner che left bajula mark
 attendance he button premium madhe banaw … site change je ahe tyala thode small kr"; and the Rule Book of HR):** on Home the wide
 attendance band is a **small tile left of Scan** (`lib/ui/attend_strip.dart`): "Mark IN" (deep blue to violet, a gold edge), "Mark

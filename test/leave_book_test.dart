@@ -41,7 +41,7 @@ void main() {
       sent.add('${b['action']}');
       return leave(book: false);
     })));
-    await settle(t, 600);
+    await settle(t, 1500);
     expect(find.byKey(const Key('leave-mine')), findsOneWidget);
     expect(find.byKey(const Key('leave-ledger')), findsNothing);
     expect(find.byKey(const Key('lv-files-7')), findsNothing);
@@ -67,7 +67,7 @@ void main() {
           return leave(book: true);
       }
     })));
-    await settle(t, 600);
+    await settle(t, 1500);
     expect(t.widget<Text>(find.byKey(const Key('leave-bal'))).data, '3.5', reason: 'the one balance: paid 2 + comp-off 1.5');
     await t.scrollUntilVisible(find.byKey(const Key('leave-ledger')), 200, scrollable: find.descendant(of: find.byKey(const Key('leave-page')), matching: find.byType(Scrollable)).first);
     expect(find.textContaining('Paid leave 2 · Comp-off 1.5'), findsOneWidget);

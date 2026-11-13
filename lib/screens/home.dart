@@ -18,6 +18,7 @@ import '../core/session.dart';
 import '../core/update.dart';
 import '../ui/advert.dart';
 import '../ui/attend_strip.dart';
+import '../ui/motion.dart';
 import '../ui/mail_strip.dart';
 import '../ui/ask_bot.dart';
 import '../ui/push_back.dart';
@@ -613,7 +614,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
               if (s.cardSite)
                 _HomeCards(at: at, onRefresh: () => _load(init: true))
               else
-              Padding(
+              Rise(order: 1, child: Padding(
                 padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
@@ -642,7 +643,10 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
-                                child: Text(total == null ? '–' : '${fmtNum(total)} ${f0 == 'CNG' ? 'kg' : 'L'}', key: const Key('home-stock'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+                                child: total == null
+                                    ? Text('–', key: const Key('home-stock'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15))
+                                    // (3.122.0) the stock counts up to its value
+                                    : CountUp(value: total, textKey: const Key('home-stock'), text: (v) => '${fmtNum(v)} ${f0 == 'CNG' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
                               ),
                             ),
                             if (pct != null) ...[
@@ -711,7 +715,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                     ]),
                   ]),
                 ),
-              ),
+              )),
               // ---------- the four tiles ----------
               if (!ho)
               Padding(
@@ -778,7 +782,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     childAspectRatio: .95,
-                    children: [for (final m in mods) _ModuleCard(m: m, badge: _badge(m), onTap: () => _module(m))],
+                    children: [for (final (i, m) in mods.indexed) Rise(order: 2 + i, child: _ModuleCard(m: m, badge: _badge(m), onTap: () => _module(m)))], // (3.122.0) one after the other
                   ),
                   // ---------- (3.97.0, his design 3) "Today's work · आज काय बाकी" – what waits for him, in one card. Under the tiles: the
                   // tiles never move under the finger when the other modules' figures come a moment later ----------

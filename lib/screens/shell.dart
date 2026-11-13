@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 
 import '../core/kinds.dart';
 import '../core/session.dart';
+import '../ui/motion.dart';
 import '../ui/push_back.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
@@ -43,6 +44,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
   String entriesKind = '';
   int entriesOpen = 0;
   DateTime? lastBack;
+  bool plusOpen = false; // (3.122.0) the gold + is turned to × while its list is open
 
   void _to(String t) {
     if (t == tab) return;
@@ -144,6 +146,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       toast(context, bi('You may not add entries. Ask the Admin for access.', 'तुम्हाला एंट्री करायची परवानगी नाही. Admin ला विचारा.'));
       return;
     }
+    setState(() => plusOpen = true);
     final pick = await showModalBottomSheet<int>(
       context: context,
       useSafeArea: true,
@@ -162,7 +165,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
               childAspectRatio: .95,
               children: [
                 for (final (i, x) in items.indexed)
-                  Press(
+                  Rise(order: i, child: Press(
                     key: Key('plus-${x.$1}'),
                     onTap: () => Navigator.pop(c, i),
                     color: x.$4,
@@ -175,13 +178,14 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                       const SizedBox(height: 6),
                       Text(x.$1, mr: x.$2, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.15)),
                     ]),
-                  ),
+                  )),
               ],
             ),
           ]),
         ),
       ),
     );
+    if (mounted) setState(() => plusOpen = false);
     if (pick != null && mounted) await items[pick].$5();
   }
 
@@ -236,13 +240,15 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       child: PushBack(
         key: _pb,
         child: Scaffold(
-          body: IndexedStack(index: keys.indexOf(cur), children: [for (final k in keys) pages[k]!]),
+          // (3.122.0) the page of the tab chosen slides in from that tab's side
+          body: TabSlide(index: keys.indexOf(cur), child: IndexedStack(index: keys.indexOf(cur), children: [for (final k in keys) pages[k]!])),
           bottomNavigationBar: _Bar(
             tab: cur,
             tabs: keys,
             meCount: meCount,
             onTab: _go,
             onPlus: _plus,
+            plusOpen: plusOpen,
           ),
         ),
       ),
@@ -254,7 +260,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
 /// tabs – the chosen one opens into a soft green pill with its name, the others are their pictures only – and the gold + as its own
 /// round button on the right. The same tabs, taps and + as before (look only).
 class _Bar extends StatelessWidget {
-  const _Bar({required this.tab, required this.tabs, required this.meCount, required this.onTab, required this.onPlus});
+  const _Bar({required this.tab, required this.tabs, required this.meCount, required this.onTab, required this.onPlus, this.plusOpen = false});
+  final bool plusOpen;
   final String tab;
   final List<String> tabs;
   final int meCount;
@@ -270,15 +277,15 @@ class _Bar extends StatelessWidget {
 
   Widget _item(String k) {
     final on = k == tab, i = _info[k]!;
-    Widget icon = Icon(on ? i.$3 : i.$2, size: 25, color: on ? C.greenDark : C.faint);
+    Widget icon = AnimatedScale(scale: on ? 1.12 : 1, duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack, child: Icon(on ? i.$3 : i.$2, size: 25, color: on ? C.greenDark : C.faint)); // (3.122.0) the chosen tab's picture pops
     if (k == 'me' && meCount > 0) icon = Badge(label: Text('$meCount'), child: icon);
     final cell = Semantics(
       selected: on,
       button: true,
       label: on ? null : tr(i.$1),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutBack,
         height: 48,
         decoration: BoxDecoration(color: on ? C.greenSoft : C.greenSoft.withValues(alpha: 0), borderRadius: BorderRadius.circular(24)),
         child: Material(
@@ -348,7 +355,7 @@ class _Bar extends StatelessWidget {
                   width: 58,
                   height: 58,
                   decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.goldLight, C.gold])),
-                  child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+                  child: Turn(on: plusOpen, child: const Icon(Icons.add_rounded, color: Colors.white, size: 32)),
                 ),
               ),
             ),
