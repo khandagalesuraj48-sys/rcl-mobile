@@ -44,4 +44,23 @@ void main() {
     expect(withLogo.contains('/XObject << /Im1 8 0 R >>') && withLogo.contains('/Filter /DCTDecode') && withLogo.contains('/Width 40 /Height 10'), true);
     expect(await pdfLogo('Some Other Company'), null, reason: 'the logo is Rachana\'s: not put on another company\'s sheet');
   });
+
+  test('(3.119.0) a month\'s salary slip as a PDF: the head, what was earned, what was deducted, the net pay – as the server gave them', () async {
+    expect([pdfAmount(127400), pdfAmount(122548.39), pdfAmount(496), pdfAmount('1800'), pdfAmount(-250.5), pdfAmount(null)], ['1,27,400', '1,22,548.39', '496', '1,800', '-250.50', '0']);
+    const slip = {
+      'month': '2026-10', 'net': 127400, 'pay_type': 'monthly', 'rate': 131000, 'month_days': 31, 'pay_days': 29, 'extra_days': 2, 'gross': 131500, 'total_deductions': 4100,
+      'earnings': [{'label': 'Earned pay', 'amount': 122548.39}, {'label': 'Extra days', 'amount': 8451.61}, {'label': 'arrear', 'amount': 500}],
+      'deductions': [{'label': 'PF', 'amount': 1800}, {'label': 'Profession Tax', 'amount': 200}, {'label': 'Advance', 'amount': 2000}, {'label': 'Other deduction', 'amount': 100}],
+    };
+    final bytes = await payslipPdf(company: 'Rachana Construction Limited', site: 'Mumbai HO', name: 'Test Person', code: 'RCL012', slip: slip, made: '13/11/2026 17:00');
+    final text = String.fromCharCodes(bytes);
+    expect(String.fromCharCodes(bytes.sublist(0, 5)), '%PDF-');
+    for (final w in ['(Rachana Construction Limited)', '(Salary Slip for the Month October-2026)', '(Test Person)', '(RCL012)', '(Mumbai HO)', '(Salary a month :)', '(Rs. 1,31,000)', '(29  \\(+ 2 extra\\))', '(Earnings)', '(Earned pay)', '(1,22,548.39)', '(Gross)', '(1,31,500)', '(Deductions)', '(Profession Tax)', '(Total deductions)', '(4,100)', '(Net pay)', '(Rs. 1,27,400)', '(HR)', '(Accounts)', '(Director)']) {
+      expect(text.contains(w), true, reason: w);
+    }
+    expect(RegExp(r'startxref\n(\d+)\n%%EOF').hasMatch(text), true);
+    // a day's rate, nothing deducted
+    final daily = String.fromCharCodes(await payslipPdf(company: 'Test Company', site: 'Site', name: 'Day Person', code: '', slip: const {'month': '2026-09', 'net': 500, 'pay_type': 'daily', 'rate': 500, 'month_days': 30, 'pay_days': 1, 'extra_days': 0, 'gross': 500, 'total_deductions': 0, 'earnings': [{'label': 'Earned pay', 'amount': 500}], 'deductions': []}));
+    expect(daily.contains('(Rate a day :)') && daily.contains('(Rs. 500)') && daily.contains('(Salary Slip for the Month September-2026)'), true);
+  });
 }

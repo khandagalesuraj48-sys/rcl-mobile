@@ -416,7 +416,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             const Text('Welcome Back', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: C.ink)),
             const SizedBox(height: 2),
             const Text('Sign in to continue to RCL ERP', style: TextStyle(fontSize: 14, color: C.muted)),
-            const MrLine('Portal चाच email आणि password वापरा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
+            const MrLine('Portal चाच email किंवा mobile number, आणि password वापरा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
             const SizedBox(height: 18),
             TextField(
               controller: _mail,
@@ -425,7 +425,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               textInputAction: TextInputAction.next,
               autocorrect: false,
               onSubmitted: (_) => _pwFocus.requestFocus(),
-              decoration: InputDecoration(labelText: tr('Email address'), prefixIcon: const Icon(Icons.mail_outline_rounded)),
+              decoration: InputDecoration(labelText: tr('Email or mobile number'), prefixIcon: const Icon(Icons.person_outline_rounded)),      // (3.119.0, the Portal's step 12) a mobile number signs in too – with the password
             ),
             const SizedBox(height: 12),
             TextField(

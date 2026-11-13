@@ -1865,7 +1865,7 @@ class FakeServer {
           }
           return _j({'result': {'ok': true, 'reminded': ids, 'later': [], 'list': {'requests': flowReqs, 'pending': crPending, 'forMe': crForMe}}});
         // (3.2.0) the reports: the real answers of the test server (test/fixtures/reports)
-        case 'rptDebit' || 'rptLogDebit' || 'rptMachineCost' || 'rptDriver' || 'rptCost' || 'rptPurchase' || 'rptLedger' || 'rptWatch' || 'rptOwner' || 'rptType' || 'rptStock' || 'rptCompare' || 'rptTank' || 'rptAverage' || 'getDailyInwardIssueReport' || 'getMonthlyDieselReport' || 'getMonthlyAvgReport':
+        case 'rptDebit' || 'rptLogDebit' || 'rptMachineCost' || 'rptDriver' || 'rptCost' || 'rptPurchase' || 'rptLedger' || 'rptWatch' || 'rptOwner' || 'rptType' || 'rptStock' || 'rptDayBook' || 'rptCompare' || 'rptTank' || 'rptAverage' || 'getDailyInwardIssueReport' || 'getMonthlyDieselReport' || 'getMonthlyAvgReport':
           reportAsked.add({'fn': action, ...((a.isNotEmpty ? a[0] : const {}) as Map).cast<String, dynamic>()});
           return _j({'result': jsonDecode(File('test/fixtures/reports/$action.json').readAsStringSync())});
         case 'saveDebitRates':
