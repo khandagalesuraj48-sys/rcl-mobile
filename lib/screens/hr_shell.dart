@@ -55,7 +55,13 @@ String initials(String name) {
 }
 
 class HrShell extends StatefulWidget {
-  const HrShell({super.key});
+  const HrShell({super.key, this.inErp = false});
+
+  /// (3.115.0, his word of 13-11-2026: a person with the ERP and attendance sees "same view as it is … jasa normal attendace
+  /// user cha ahe") opened from the full app's Home: the same four pages over the ERP, with the way back to it; the look's
+  /// theme is around this page only (hrRoute) and what belongs to the whole app (e-mail and password, update, site, sign
+  /// out) stays in the ERP's own Me.
+  final bool inErp;
   @override
   State<HrShell> createState() => _HrShellState();
 }
@@ -100,7 +106,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     // (3.114.0) the attendance app has its own look – the one he chose on this phone
     HrSkin.i.addListener(_skin);
-    unawaited(HrSkin.i.enter());
+    unawaited(widget.inErp ? HrSkin.i.load() : HrSkin.i.enter());
     // on duty: the hours since IN and the dial's dot move on by themselves
     minute = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
@@ -115,7 +121,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     HrSkin.i.removeListener(_skin);
-    HrSkin.i.leave();
+    if (!widget.inErp) HrSkin.i.leave();
     minute?.cancel();
     super.dispose();
   }
@@ -193,7 +199,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   Future<void> _mark() async {
     if (opening) return;
     opening = true;
-    await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true)));
+    await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true, auto: true)));
     opening = false;
     if (!mounted) return;
     setState(() => gen++);
@@ -202,7 +208,6 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
 
   String get _who => '${(day?['employee'] as Map?)?['name'] ?? SessionScope.read(context).name} · ${(day?['employee'] as Map?)?['code'] ?? ''}';
   void _requests() => _push(AttendRegsScreen(ask: _hr));
-  void _month() => _push(AttendMonthScreen(ask: _hr, who: _who));
   void _docs() => _push(MyDocsScreen(ask: _hr));
   void _slips() => _push(SalarySlipsScreen(ask: _hr));
   Future<void> _photo() async {
@@ -222,9 +227,10 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       backgroundColor: sk.bg,
       bottomNavigationBar: _nav(),
       body: switch (tab) {
-        1 => AttendanceScreen(key: ValueKey('tab-att-$gen'), embedded: true),
+        // (3.116.0, "ek feture ekach thikani asaw") Attendance = the month; today and marking are Home's
+        1 => AttendMonthScreen(key: ValueKey('tab-att-$gen'), ask: _hr, who: _who, embedded: true),
         2 => LeaveScreen(key: ValueKey('tab-leave-$gen'), ask: _hr, embedded: true),
-        3 => HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load),
+        3 => HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load, inErp: widget.inErp),
         _ => Container(
             decoration: BoxDecoration(gradient: sk.pageFill),
             child: SafeArea(
@@ -257,6 +263,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final h = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now() + 19800000, isUtc: true).hour;
     final name = '${(day?['employee'] as Map?)?['name'] ?? s.name}', wait = _notes().any((n) => n.onTap != null);
     return Row(children: [
+      if (widget.inErp) Padding(padding: const EdgeInsets.only(right: 10), child: hrIconBox(Icons.arrow_back_ios_new_rounded, key: const Key('hh-back'), size: 40, icon: 17, tooltip: MaterialLocalizations.of(context).backButtonTooltip, onTap: () => Navigator.of(context).maybePop())),
       hrFace(name, '${mine?['photo'] ?? ''}', size: 48, radius: 24, bg: sk.dark ? sk.card : const Color(0xFF0F1F3D), border: const Color(0xFFDDAD40), ink: sk.dark ? sk.accent : Colors.white),
       const SizedBox(width: 12),
       Expanded(
@@ -295,12 +302,12 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final since = sky == Sky.day ? sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(nowMs)) : '';
     final closed = '${day?['closed'] ?? ''}'.isNotEmpty;
     final (String state, String top, String big, String under) = switch (sky) {
-      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), _t('HOLD TO MARK', 'धरून लावा'), 'OUT', since.isEmpty ? '' : _t('$since at work', '$since कामावर')),
+      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), _t('TAP TO MARK', 'दाबा'), 'OUT', since.isEmpty ? '' : _t('$since at work', '$since कामावर')),
       Sky.dusk => closed
           ? (_t('Closed by itself – absent', 'आपोआप बंद – गैरहजर'), '', _t('ABSENT', 'गैरहजर'), _t('Ask to set the day right', 'दुरुस्ती मागा'))
           : (_t('Today is done', 'आजची हजेरी पूर्ण'), '', _t('DONE', 'पूर्ण'), tout.isEmpty ? 'IN $tin' : 'IN $tin · OUT $tout'),
       Sky.grey => (_t('Cannot be marked', 'लावता येत नाही'), '', '–', _t('Open Attendance', 'Attendance उघडा')),
-      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), _t('HOLD TO MARK', 'धरून लावा'), 'IN', _t('$hhmm now', 'आता $hhmm')),
+      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), _t('TAP TO MARK', 'दाबा'), 'IN', _t('$hhmm now', 'आता $hhmm')),
     };
     final hours = sky == Sky.day ? since : _span(tin, tout);
     // the day done or stopped: the Attendance page says it all; else the marking page
@@ -374,7 +381,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(children: [
           Expanded(child: Text('This week', mr: 'हा आठवडा', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink))),
-          GestureDetector(key: const Key('hh-month'), behavior: HitTestBehavior.opaque, onTap: _month, child: Padding(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), child: Text('My month', mr: 'माझा महिना', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.link)))),
+          GestureDetector(key: const Key('hh-month'), behavior: HitTestBehavior.opaque, onTap: () => _go(1), child: Padding(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), child: Text('My month', mr: 'माझा महिना', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.link)))),
         ]),
       ),
       const SizedBox(height: 4),

@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
-import 'package:rcl_mobile/screens/attendance.dart' show attendSelfieForTest;
+import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendSelfieForTest;
 import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
@@ -43,7 +43,7 @@ import 'package:rcl_mobile/screens/car_detail.dart' show CarPhotoPick;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/theme.dart' show C;
-import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin, HrLook;
+import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin, HrLook, hrRoute;
 import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
@@ -103,6 +103,12 @@ Future<void> net(WidgetTester t, [int ms = 1200]) async {
   await settle(t, ms);
   await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
   await settle(t, 400);
+}
+
+/// (3.115.0) The HR tile of the full app opens the attendance app itself now; a test of the Attendance page opens that page.
+Future<void> attPage(WidgetTester t) async {
+  Navigator.of(t.element(find.byType(Scaffold).first)).push(hrRoute<void>(const AttendanceScreen())).ignore();
+  await net(t);
 }
 
 Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))..clock = () => DateTime(2026, 10, 14, 10, 30); // (a Day-shift time: the screens are the same every run)
@@ -8315,10 +8321,9 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
+    // (3.115.0) the HR tile opens the attendance app itself now (test further down); this test is of the Attendance page
     Future<void> openHr() async {
-      await seen(t, find.text('HR'));
-      await settle(t, 400);
-      await t.tap(find.text('HR'));
+      Navigator.of(t.element(find.byType(Scaffold).first)).push(hrRoute<void>(const AttendanceScreen())).ignore();
       await net(t);
     }
 
@@ -8588,10 +8593,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await seen(t, find.text('HR'));
-    await settle(t, 400);
-    await t.tap(find.text('HR'));
-    await net(t);
+    await attPage(t);
     Future<void> punch() async {
       await t.ensureVisible(find.byKey(const Key('att-punch')));
       await settle(t, 300);
@@ -8650,10 +8652,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await seen(t, find.text('HR'));
-    await settle(t, 400);
-    await t.tap(find.text('HR'));
-    await net(t);
+    await attPage(t);
     expect(srv.calls.where((c) => c.startsWith('portal:go:hrme:')).length, 1);
     expect(find.byKey(const Key('att-punch')), findsOneWidget);
   });
@@ -8706,7 +8705,7 @@ void main() {
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'Not marked yet');
     // (3.114.0) the look is Pearl until he chooses; the dial's disc marks – IN is next
     expect([HrSkin.i.on, HrSkin.i.look], [true, 'pearl']);
-    expect(find.text('HOLD TO MARK'), findsOneWidget);
+    expect(find.text('TAP TO MARK'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('IN')), findsOneWidget);
     expect(t.widget<Text>(find.byKey(const Key('hh-shift'))).data, 'General');
     expect([for (final k in ['hh-leave-sub', 'hh-docs-sub']) t.widget<Text>(find.byKey(Key(k))).data], ['3 left', '4 missing']);
@@ -8720,10 +8719,9 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home.png'));
     // ---- the slide: My attendance opens to mark – IN; said big, then Home again by itself: on duty
+    // (3.116.0) ONE PRESS: the dial reads his place and takes the selfie by itself – no page in between, nothing to slide
     await tapKey('hh-slide');
-    expect(find.byKey(const Key('att-punch')), findsOneWidget);
-    await t.tap(find.byKey(const Key('att-punch')));
-    await net(t);
+    expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     await settle(t, 3200);
     await net(t);
@@ -8736,8 +8734,11 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_duty.png'));
     // ---- (3.114.0) the bar floats on all four pages: Attendance and Leave are pages of the bar (no way back, no second
     // marking bar – the bar's middle button marks); Me is the fourth
+    // (3.116.0) one thing in one place: Attendance is the month – and the way to his requests
     await tapKey('nav-att');
-    expect(find.byKey(const Key('att-page')), findsOneWidget);
+    expect(find.byKey(const Key('att-month-page')), findsOneWidget);
+    expect(find.byKey(const Key('att-page')), findsNothing);
+    expect(find.byKey(const Key('att-m-reqs')), findsOneWidget);
     expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byTooltip('Back'), findsNothing);
@@ -8748,12 +8749,6 @@ void main() {
     expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_leave.png'));
-    // the bar's middle button opens the same marking page as the dial; back from it: where he was
-    await tapKey('nav-mark');
-    expect(find.byKey(const Key('att-punch')), findsOneWidget);
-    await t.pageBack();
-    await net(t);
-    expect(find.byKey(const Key('leave-page')), findsOneWidget);
     await tapKey('nav-me');
     expect(find.byKey(const Key('me-page')), findsOneWidget);
     expect(t.widget<Text>(find.byKey(const Key('me-role'))).data, 'E00012 · Site Engineer');
@@ -8897,13 +8892,9 @@ void main() {
     await tapKey('nav-home');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_home.png'));
-    await tapKey('hh-month');
+    await tapKey('hh-month'); // ("My month" of Home: the Attendance page of the bar)
     expect(find.byKey(const Key('att-month-page')), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_month.png'));
-    await t.pageBack();
-    await net(t);
-    await tapKey('nav-att');
+    expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_attendance.png'));
     await tapKey('nav-leave');
@@ -8918,6 +8909,13 @@ void main() {
     await t.pageBack();
     await net(t);
     expect(find.text('Pearl'), findsOneWidget);
+    // ---- (3.116.0) the bar's middle button marks from any page, in one press: OUT now
+    await tapKey('nav-mark');
+    expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
+    expect(srv.hrPunches.length, 2);
+    await t.tap(find.byKey(const Key('att-ok')));
+    await net(t);
+    expect(find.byKey(const Key('me-page')), findsOneWidget, reason: 'where he was');
   }, tags: ['golden']);
 
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {
@@ -9141,49 +9139,62 @@ void main() {
     expect(srv.hrSent, isEmpty, reason: 'Home asks nothing of the HR server – the strip shows what this phone kept');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_in.png'));
-    // a tap (or the sun slid across) opens the attendance page
+    // (3.115.0) a tap (or the sun slid across) opens THE ATTENDANCE APP ITSELF over the ERP – the same Home with the dial, the
+    // same bar – in the look; the rest of the app keeps its own theme
     await t.tap(find.byKey(const Key('att-strip')));
     await net(t);
-    expect(find.textContaining('Not marked yet'), findsOneWidget);
-    // (3.115.0) a person with the full app: the marking page is in the new look too (Pearl), the rest of the app keeps its own
-    expect(find.byType(HrLook), findsOneWidget);
-    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.byKey(const Key('hr-home')), findsOneWidget);
+    expect(find.byKey(const Key('hr-nav')), findsOneWidget);
+    expect(find.byType(HrLook), findsWidgets);
     expect(HrSkin.i.on, false);
-    expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, isNotNull);
-    expect(find.textContaining('Slide to mark IN'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'Not marked yet');
+    expect(find.byKey(const Key('hh-back')), findsOneWidget, reason: 'the way back to the ERP');
     await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_in.png'));
-    // IN: the place is read, the selfie taken, the server takes it – said big, once
-    await t.tap(find.byKey(const Key('att-punch')));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_erp_home.png'));
+    // Me inside the ERP: what belongs to the whole app is not repeated here
+    await t.tap(find.byKey(const Key('nav-me')));
     await net(t);
+    expect(find.byKey(const Key('me-look')), findsOneWidget);
+    expect(find.byKey(const Key('me-out')), findsNothing);
+    expect(find.byKey(const Key('me-account')), findsNothing);
+    await t.tap(find.byKey(const Key('nav-home')));
+    await net(t);
+    // the dial opens the marking page
+    // (3.116.0) one press on the dial: the place is read, the selfie taken, the server takes it – said big, once
+    await t.tap(find.byKey(const Key('hh-slide')));
+    await net(t);
+    expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     expect(find.text('10:30'), findsOneWidget);
     expect(srv.hrPunches.length, 1);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_marked.png'));
-    // … and back on Home by itself: the strip has turned
+    // … and back on the attendance app's Home by itself; the way back: the ERP's Home, its strip has turned
     await settle(t, 3200);
     await net(t);
     expect(find.byKey(const Key('att-ok-page')), findsNothing);
-    expect(find.byKey(const Key('att-punch')), findsNothing, reason: 'Home again');
+    expect(find.byKey(const Key('att-punch')), findsNothing);
+    expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
+    await t.tap(find.byKey(const Key('hh-back')));
+    await net(t);
+    expect(find.byKey(const Key('hr-home')), findsNothing, reason: 'the ERP again');
     expect(find.textContaining('On duty'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_out.png'));
-    // the sun slid back opens the page again: OUT
+    // the sun slid back opens it again: OUT
     await t.drag(find.byKey(const Key('att-strip-knob')), const Offset(-260, 0));
     await net(t);
-    expect(find.textContaining('Slide to mark OUT'), findsOneWidget);
-    expect(find.byKey(const Key('att-phone')), findsOneWidget, reason: 'this phone is now the one his attendance is tied to');
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_page_out.png'));
-    await t.tap(find.byKey(const Key('att-punch')));
+    expect(find.byKey(const Key('hr-home')), findsOneWidget);
+    await t.tap(find.byKey(const Key('hh-slide')));
     await net(t);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     await t.tap(find.byKey(const Key('att-ok')));
     await net(t);
     expect(srv.hrPunches.length, 2);
-    expect(find.textContaining('Attendance done today'), findsOneWidget);
     expect(find.byKey(const Key('att-punch')), findsNothing);
+    await t.tap(find.byKey(const Key('hh-back')));
+    await net(t);
+    expect(find.textContaining('Attendance done today'), findsOneWidget);
   }, tags: ['golden']);
 
   testWidgets('(3.110.0) the site\'s rule "once a day": after the day\'s IN and OUT the bar is off and says so; a day closed by itself (OUT forgotten) is said with its time', (t) async {
@@ -9202,10 +9213,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    await seen(t, find.text('HR'));
-    await settle(t, 400);
-    await t.tap(find.text('HR'));
-    await net(t);
+    await attPage(t);
     expect(find.byKey(const Key('att-once')), findsOneWidget);
     expect(find.byKey(const Key('att-closed')), findsNothing);
     expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null, reason: 'nothing more today');
@@ -9216,8 +9224,7 @@ void main() {
     // he forgot OUT: the shift's time has passed – closed by itself, absent; he is told what to do
     srv.hrPunches.removeLast();
     srv.hrClosed = '23:50';
-    await t.tap(find.text('HR'));
-    await net(t);
+    await attPage(t);
     expect(find.byKey(const Key('att-closed')), findsOneWidget);
     expect(find.textContaining('closed by itself at 23:50'), findsOneWidget);
     expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null);
