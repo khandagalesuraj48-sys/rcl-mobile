@@ -558,6 +558,16 @@ String unitOfEntry(Session s, String kindKey, Map r) => s.cardSite && kindKey ==
     ? (s.machine('${r['no'] ?? ''}')?.fuel == 'CNG' ? 'kg' : 'L')
     : s.placeUnit('${kindKey == 'issue' ? r['source'] : kindKey == 'inward' ? r['location'] : r['from']}') == 'kg' ? 'kg' : 'L';
 
+/// (3.123.0) "09:42 AM" from the server's 'yyyy-MM-dd HH:mm' (the site's clock; Mechanical update-246) – and the day too when the
+/// entry was saved on another day than its own date ("06:30 PM · 14-11-2026"). Anything else: ''.
+String savedTime(String at, String date) {
+  final m = RegExp(r'^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)$').firstMatch(at.trim());
+  if (m == null) return '';
+  final h = int.parse(m.group(4)!);
+  final t = '${(h % 12 == 0 ? 12 : h % 12).toString().padLeft(2, '0')}:${m.group(5)} ${h < 12 ? 'AM' : 'PM'}';
+  return at.trim().substring(0, 10) == date.trim() ? t : '$t · ${m.group(3)}-${m.group(2)}-${m.group(1)}';
+}
+
 /// One entry as a card (picture 2).
 class EntryCard extends StatelessWidget {
   const EntryCard({super.key, required this.kind, required this.r, this.onChanged, this.note = ''});
@@ -599,9 +609,40 @@ class EntryCard extends StatelessWidget {
   Widget build(BuildContext context) => Press(
         onTap: () => _details(context),
         padding: const EdgeInsets.all(12),
-        child: note.isEmpty ? _main(_unit(context)) : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child: note.isEmpty && _savedAt.isEmpty && _by.isEmpty ? _main(_unit(context)) : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           _main(_unit(context)),
-          Padding(padding: const EdgeInsets.only(top: 6, left: 4), child: Text(note, style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w600))),
+          if (_savedAt.isNotEmpty || _by.isNotEmpty) _saved(),
+          if (note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6, left: 4), child: Text(note, style: const TextStyle(fontSize: 13, color: C.muted, fontWeight: FontWeight.w600))),
+        ]),
+      );
+
+  /// (3.123.0, Mechanical update-246, asked 14-11-2026: "kiti wajta issue zalel aahe … koni entry keley … first view madhe te patkn
+  /// disayla haway" – his choice: the line under the card) WHEN the entry was saved and WHO saved it – seen in the list itself, without
+  /// opening the entry: the time on the left, the person on the right.
+  String get _savedAt => savedTime('${r['at'] ?? ''}', '${r['date'] ?? ''}');
+  String get _by => '${r['enteredBy'] ?? ''}'.trim();
+
+  Widget _saved() => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Column(children: [
+          const Divider(height: 1, thickness: 1, color: C.line),
+          const SizedBox(height: 7),
+          Row(children: [
+            if (_savedAt.isNotEmpty) ...[
+              const Icon(Icons.schedule_rounded, size: 16, color: C.muted),
+              const SizedBox(width: 5),
+              Text(_savedAt, key: const Key('entry_saved_at'), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+            ],
+            const SizedBox(width: 10),
+            if (_by.isNotEmpty)
+              Expanded(
+                child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  const Icon(Icons.edit_note_rounded, size: 17, color: C.muted),
+                  const SizedBox(width: 4),
+                  Flexible(child: Text('Entry: $_by', key: const Key('entry_saved_by'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600))),
+                ]),
+              ),
+          ]),
         ]),
       );
 

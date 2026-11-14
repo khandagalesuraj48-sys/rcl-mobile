@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.123.0 (14-11-2026 – "user jewa diesel issue krto … kiti wajta issue zalel aahe … koni entry keley … first view madhe te
+patkn disayla haway"; his choice: the line under the card):** in the lists of Diesel Issue, Diesel Inward and Diesel Transfer every
+card has a line under it – the time the entry was saved (the server's `at`, Mechanical update-246; the day too when it was saved on
+another day than its own date) on the left, "Entry: <who>" on the right (`EntryCard._saved`, `savedTime` in
+`lib/screens/entries.dart`). The Log Book: not yet – it does not keep the time of saving in what the app reads.
+
 **Version 3.122.0 (14-11-2026 – the two videos he approved: "mala aple app madhe every click la transitions hawet ui animations hawet
 je clearly visible and feel denare astil … fkt animation transition he sagle banawt ahe baki kahi changes naahit"):** MOTION ONLY, in
 one place (`lib/ui/motion.dart`), for the ERP and the attendance app: a new screen **opens out of the touched place** as a growing
