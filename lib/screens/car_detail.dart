@@ -40,7 +40,7 @@ class CarPhotoPick {
   static Future<Uint8List?> _pick(bool camera) async {
     if (camera && Platform.isAndroid) {
       final st = await Permission.camera.request();
-      if (!st.isGranted) throw CarPhotoProblem('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');
+      if (!st.isGranted) throw CarPhotoProblem('Allow the camera for Sketchline Lion (Settings › Apps › Sketchline Lion › Permissions), then try again.');
     }
     final x = await AppLock.whileOutside(() => ImagePicker().pickImage(source: camera ? ImageSource.camera : ImageSource.gallery, maxWidth: 2400, maxHeight: 2400, imageQuality: 95, preferredCameraDevice: CameraDevice.rear));
     return x == null ? null : x.readAsBytes();

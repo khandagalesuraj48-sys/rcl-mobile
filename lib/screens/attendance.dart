@@ -800,7 +800,7 @@ class _SelfieScreenState extends State<SelfieScreen> {
       }
       setState(() => cam = c);
     } catch (_) {
-      if (mounted) setState(() => err = bi('The camera could not be opened – allow the camera for the app (Settings › Apps › RCL ERP › Permissions).', 'Camera उघडला नाही – app ला camera ची परवानगी द्या (Settings › Apps › RCL ERP › Permissions).', '\n'));
+      if (mounted) setState(() => err = bi('The camera could not be opened – allow the camera for the app (Settings › Apps › Sketchline Lion › Permissions).', 'Camera उघडला नाही – app ला camera ची परवानगी द्या (Settings › Apps › Sketchline Lion › Permissions).', '\n'));
     }
   }
 

@@ -69,7 +69,7 @@ class Alerts {
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
           iOS: DarwinInitializationSettings(),
           // (3.19.0) the computer app: Windows' own notifications (while the app is open)
-          windows: WindowsInitializationSettings(appName: 'RCL ERP', appUserModelId: 'Rachana.RCLERP', guid: '50cd3324-31ea-41a6-8f01-f79497e4d3f0'),
+          windows: WindowsInitializationSettings(appName: 'Sketchline Lion', appUserModelId: 'Rachana.RCLERP', guid: '50cd3324-31ea-41a6-8f01-f79497e4d3f0'),
         ), onDidReceiveNotificationResponse: (r) => onTap?.call(r), onDidReceiveBackgroundNotificationResponse: onBackgroundTap);
         _ready = true;
       }
@@ -98,7 +98,7 @@ class Alerts {
               AndroidNotificationAction('decline', tr('Decline'), cancelNotification: true),
             ]),
         'rcl_calls_missed' => AndroidNotificationDetails('rcl_calls_missed', tr('Missed calls'), channelDescription: 'A call you did not answer', importance: Importance.high, priority: Priority.high),
-        'rcl_updates' => AndroidNotificationDetails('rcl_updates', tr('App updates'), channelDescription: 'A new version of RCL ERP is ready', importance: Importance.high, priority: Priority.high),
+        'rcl_updates' => AndroidNotificationDetails('rcl_updates', tr('App updates'), channelDescription: 'A new version of Sketchline Lion is ready', importance: Importance.high, priority: Priority.high),
         _ => AndroidNotificationDetails('rcl_approvals', 'Approvals', channelDescription: 'Entries waiting for your approval, and entries sent back to you', importance: Importance.high, priority: Priority.high,
             onlyAlertOnce: true, styleInformation: BigTextStyleInformation(n.body)),
       };

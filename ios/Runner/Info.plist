@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>RCL ERP turns what you say to the assistant into words (a question or an entry).</string>
+	<string>Sketchline Lion turns what you say to the assistant into words (a question or an entry).</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -11,17 +11,17 @@
 	<key>CFBundleDisplayName</key>
 	<string>Sketchline Lion</string>
 	<key>NSCameraUsageDescription</key>
-	<string>RCL ERP uses the camera for the photos of an entry (Diesel Issue and others).</string>
+	<string>Sketchline Lion uses the camera for the photos of an entry (Diesel Issue and others).</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>RCL ERP saves the place of every entry, as the web ERP does.</string>
+	<string>Sketchline Lion saves the place of every entry, as the web ERP does.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>RCL ERP opens with your Face ID, so that nobody else can open it on this iPhone.</string>
+	<string>Sketchline Lion opens with your Face ID, so that nobody else can open it on this iPhone.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>RCL ERP uses the phone's motion sensor to turn the box of the meter reading when the phone is held sideways.</string>
+	<string>Sketchline Lion uses the phone's motion sensor to turn the box of the meter reading when the phone is held sideways.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>RCL ERP uses the microphone when you talk with the assistant and for a screen-share help call.</string>
+	<string>Sketchline Lion uses the microphone when you talk with the assistant and for a screen-share help call.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>RCL ERP lets you choose a photo for an entry.</string>
+	<string>Sketchline Lion lets you choose a photo for an entry.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

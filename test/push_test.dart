@@ -68,11 +68,11 @@ void main() {
   });
 
   test('a new version: told when it is newer than this app; in the app\'s language (Marathi / Hindi words of the app)', () async {
-    expect(pushNoteOf({'t': 'upd', 'version': '3.42.0', 'build': '151'}, myBuild: 150)!.title, 'RCL ERP 3.42.0 is ready');
+    expect(pushNoteOf({'t': 'upd', 'version': '3.42.0', 'build': '151'}, myBuild: 150)!.title, 'Sketchline Lion 3.42.0 is ready');
     expect(pushNoteOf({'t': 'upd', 'version': '3.42.0', 'build': '151'}, myBuild: 151), isNull, reason: 'this phone has it');
-    await Lang.i.set('mr', read: (p) async => p.endsWith('app_mr.json') ? jsonEncode({'RCL ERP {0} is ready': 'RCL ERP {0} तयार आहे', 'Tap to update the app.': 'App update करण्यासाठी दाबा.', '{0} is calling': '{0} कॉल करत आहेत', 'Voice call': 'व्हॉइस कॉल'}) : '{}');
+    await Lang.i.set('mr', read: (p) async => p.endsWith('app_mr.json') ? jsonEncode({'Sketchline Lion {0} is ready': 'Sketchline Lion {0} तयार आहे', 'Tap to update the app.': 'App update करण्यासाठी दाबा.', '{0} is calling': '{0} कॉल करत आहेत', 'Voice call': 'व्हॉइस कॉल'}) : '{}');
     final u = pushNoteOf({'t': 'upd', 'version': '3.42.0', 'build': '151'}, myBuild: 150)!;
-    expect([u.title, u.body, u.channel], ['RCL ERP 3.42.0 तयार आहे', 'App update करण्यासाठी दाबा.', 'rcl_updates']);
+    expect([u.title, u.body, u.channel], ['Sketchline Lion 3.42.0 तयार आहे', 'App update करण्यासाठी दाबा.', 'rcl_updates']);
     final n = pushNoteOf({'t': 'ring', 'call': 'k1', 'name': 'Asha', 'mode': 'voice'})!;
     expect([n.title, n.body], ['Asha कॉल करत आहेत', 'व्हॉइस कॉल']);
   });

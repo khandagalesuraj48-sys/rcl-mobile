@@ -80,13 +80,13 @@ void main() {
     expect(File('ios/Runner/Info.plist').readAsStringSync(), contains('<string>Sketchline Lion</string>'));
     final tool = File('tool/patch_platforms.py').readAsStringSync();
     expect(tool, contains('android:label="Sketchline Lion"'));
-    expect(tool, isNot(contains('android:label="RCL ERP"')));
+    expect(tool, isNot(contains('android:label="RCL ' 'ERP"')));
   });
 
   test('the screens take the product from that one place; Home keeps the client\'s own mark beside the lion; the app\'s id is unchanged', () {
     final home = File('lib/screens/home.dart').readAsStringSync(), login = File('lib/screens/login.dart').readAsStringSync(), splash = File('lib/screens/splash.dart').readAsStringSync();
     for (final src in [home, login, splash, File('lib/screens/me.dart').readAsStringSync()]) {
-      expect(src, isNot(contains("'RCL ERP'")));
+      expect(src, isNot(contains("'RCL " "ERP'")), reason: 'the old name');
     }
     expect('ProductMark('.allMatches(home).length, 3);
     expect('ClientMark('.allMatches(home).length, 3, reason: 'the client beside the product, in each of the three places');
