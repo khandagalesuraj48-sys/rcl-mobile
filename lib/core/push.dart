@@ -92,7 +92,7 @@ PushNote? pushNoteOf(Map<String, dynamic> d, {int myBuild = 0}) {
     case 'upd':
       final b = int.tryParse('${d['build'] ?? ''}') ?? 0, v = '${d['version'] ?? ''}';
       if (v.isEmpty || (myBuild > 0 && b > 0 && b <= myBuild)) return null;
-      return PushNote(id: 0x3f0e1, title: tr('RCL ERP $v is ready'), body: tr('Tap to update the app.'), channel: 'rcl_updates', payload: pay({'build': '$b'}));
+      return PushNote(id: 0x3f0e1, title: tr('Sketchline Lion $v is ready'), body: tr('Tap to update the app.'), channel: 'rcl_updates', payload: pay({'build': '$b'}));
   }
   return null;
 }

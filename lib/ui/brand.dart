@@ -6,7 +6,86 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// The Rachana "R" on a white tile (the company's own mark).
+import '../core/product_brand.dart';
+
+/* (3.124.0, asked 14-11-2026: "aple app ch name change kraych aahe ani logo pn – Sketchline Lion … RCL ha Sketchline cha client aasel,
+ * login zale nantr Sketchline Lion ha logo pn asel ani client cha logo pn") THE PRODUCT AND ITS CLIENT. The app is the product
+ * "Sketchline Lion" (its name, its line, its logo – here, in one place); Rachana Construction Limited is the client whose sites it
+ * runs: after the sign-in both marks are shown – the product's lion and the client's own mark. What is printed (bills, reports, the
+ * Log Book) stays the client's alone. */
+class Product {
+  /// (the name, the line and the logo as the Portal's "Branding" keeps them – core/product_brand.dart; the built-in ones until then)
+  static String get first => ProductBrand.i.first;
+  static String get second => ProductBrand.i.second;
+  static String get name => ProductBrand.i.name;
+  static String get line => ProductBrand.i.line;
+  static const logo = 'assets/brand/sketchline_lion.png';
+  static const gold = Color(0xFFE9B94A), goldDeep = Color(0xFFC28A1E);
+}
+
+/// The product's logo on its own black tile – the Portal's one when it has one, the built-in Sketchline lion otherwise.
+class ProductMark extends StatelessWidget {
+  const ProductMark({super.key, this.size = 84, this.radius});
+  final double size;
+  final double? radius;
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: ProductBrand.i,
+        builder: (_, __) {
+          final b = ProductBrand.i.logo;
+          return Container(
+            width: size,
+            height: size,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(radius ?? size * .28)),
+            child: b == null
+                ? Image.asset(Product.logo, fit: BoxFit.cover, filterQuality: FilterQuality.medium, semanticLabel: Product.name)
+                : Image.memory(b, fit: BoxFit.cover, filterQuality: FilterQuality.medium, gaplessPlayback: true, semanticLabel: Product.name,
+                    errorBuilder: (_, __, ___) => Image.asset(Product.logo, fit: BoxFit.cover)),
+          );
+        },
+      );
+}
+
+/// The product's name (or, [line]: the line under it) as text – written again when the Portal's "Branding" changes it.
+class ProductName extends StatelessWidget {
+  const ProductName({super.key, this.style, this.line = false, this.prefix = '', this.suffix = ''});
+  final TextStyle? style;
+  final bool line;
+  final String prefix, suffix;
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: ProductBrand.i,
+        builder: (_, __) => Text('$prefix${line ? Product.line : Product.name}$suffix', maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+      );
+}
+
+/// The client company's own mark on a white tile, beside the product's: the logo the Portal keeps for the company ([companyId]),
+/// the built-in Rachana "R" until there is one.
+class ClientMark extends StatelessWidget {
+  const ClientMark({super.key, required this.companyId, this.size = 40, this.radius = 12, this.pad = 6, this.border = true});
+  final String companyId;
+  final double size, radius, pad;
+  final bool border;
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: ProductBrand.i,
+        builder: (_, __) {
+          final b = ProductBrand.i.client(companyId);
+          return Container(
+            width: size,
+            height: size,
+            padding: EdgeInsets.all(pad),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(radius), border: border ? Border.all(color: const Color(0xFFECE6D9)) : null),
+            child: b == null
+                ? Image.asset('assets/brand/rachana_mark.png', fit: BoxFit.contain)
+                : Image.memory(b, fit: BoxFit.contain, gaplessPlayback: true, errorBuilder: (_, __, ___) => Image.asset('assets/brand/rachana_mark.png', fit: BoxFit.contain)),
+          );
+        },
+      );
+}
+
+/// The Rachana "R" on a white tile (the client company's own mark).
 class Mark extends StatelessWidget {
   const Mark({super.key, this.size = 84});
   final double size;

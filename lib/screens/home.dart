@@ -18,6 +18,7 @@ import '../core/session.dart';
 import '../core/update.dart';
 import '../ui/advert.dart';
 import '../ui/attend_strip.dart';
+import '../ui/brand.dart' show ClientMark, ProductMark, ProductName;
 import '../ui/motion.dart';
 import '../ui/mail_strip.dart';
 import '../ui/ask_bot.dart';
@@ -513,18 +514,15 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       IconButton(key: const Key('home-menu'), tooltip: tr('Menu'), visualDensity: VisualDensity.compact, onPressed: () => pb == null ? Scaffold.of(context).openDrawer() : pb.open(menu()), icon: const Icon(Icons.menu_rounded, size: 26, color: C.ink)),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.line)),
-                        child: Image.asset('assets/brand/rachana_mark.png', fit: BoxFit.contain),
-                      ),
+                      // (3.124.0) the product's lion and, beside it, the client's own mark (Rachana) – both after the sign-in
+                      const ProductMark(key: Key('home-product'), size: 40, radius: 12),
+                      const SizedBox(width: 6),
+                      ClientMark(key: const Key('home-client'), companyId: s.site?.companyId ?? ''),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('RCL ERP', maxLines: 1, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark, height: 1.1)),
-                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Fleet & Diesel Management', maxLines: 1, style: TextStyle(fontSize: 10.5, color: C.muted))),
+                          const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: ProductName(style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark, height: 1.1))),
+                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(s.company.isEmpty ? 'Rachana Construction Limited' : s.company, maxLines: 1, style: const TextStyle(fontSize: 10.5, color: C.muted))),
                         ]),
                       ),
                       // (3.14.0) the search of the whole app (the web's Ctrl + K)
@@ -955,13 +953,15 @@ class _MiniBarState extends State<_MiniBar> {
                           boxShadow: [BoxShadow(color: C.greenDeep.withValues(alpha: .25), blurRadius: 14, offset: const Offset(0, 5))],
                         ),
                         child: Row(children: [
-                          Container(width: 38, height: 38, padding: const EdgeInsets.all(5), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(11)), child: Image.asset('assets/brand/rachana_mark.png', fit: BoxFit.contain)),
+                          const ProductMark(size: 38, radius: 11),
+                          const SizedBox(width: 6),
+                          ClientMark(companyId: SessionScope.of(context).site?.companyId ?? '', size: 38, radius: 11, pad: 5, border: false),
                           const SizedBox(width: 10),
                           Expanded(
                             child: InkWell(
                               onTap: onSite,
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                                const Text('RCL ERP', maxLines: 1, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
+                                const ProductName(style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
                                 Text('${SessionScope.of(context).siteName} ▾', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Color(0xE6FFFFFF))),
                               ]),
                             ),
@@ -1046,11 +1046,13 @@ class _HomeMenu extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
             child: Row(children: [
-              Container(width: 44, height: 44, padding: const EdgeInsets.all(7), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13), border: Border.all(color: C.line)), child: Image.asset('assets/brand/rachana_mark.png')),
+              const ProductMark(size: 44, radius: 13),
+              const SizedBox(width: 6),
+              ClientMark(companyId: s.site?.companyId ?? '', size: 44, radius: 13, pad: 7),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('RCL ERP', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark)),
+                  const ProductName(style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark)),
                   Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 ]),
               ),

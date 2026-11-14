@@ -12,7 +12,7 @@ import '../config.dart' show kMainUrl;
 const kAppPage = '$kMainUrl/app';
 
 /// What is sent – the link and one line in each language.
-String appShareText() => 'RCL ERP app – $kAppPage\n\n'
+String appShareText() => 'Sketchline Lion app – $kAppPage\n\n'
     'नवीन version download करा, install करा आणि Admin ने दिलेला email व password टाकून sign in करा.\n'
     'Download the latest version, install it and sign in with the email and password the Admin gave you.\n'
     'नया version download करें, install करें और Admin का दिया email और password डालकर sign in करें.';
@@ -20,7 +20,7 @@ String appShareText() => 'RCL ERP app – $kAppPage\n\n'
 /// The phone's share; false when it cannot share (then the link is copied). Tests put their own here.
 Future<bool> Function(String text) appShare = (text) async {
   try {
-    final r = await SharePlus.instance.share(ShareParams(text: text, subject: 'RCL ERP app'));
+    final r = await SharePlus.instance.share(ShareParams(text: text, subject: 'Sketchline Lion app'));
     if (r.status != ShareResultStatus.unavailable) return true;
   } catch (_) {
     // no share here (a computer without it): the link is copied instead

@@ -93,7 +93,7 @@ void main() {
   group('the release', () {
     final apkSha = 'a' * 64, winSha = 'b' * 64;
     Map<String, dynamic> rel({String? meta, List<Map<String, dynamic>>? assets}) => {
-          'name': 'RCL ERP 3.19.0 (122)',
+          'name': 'Sketchline Lion 3.19.0 (122)',
           'draft': false,
           'prerelease': false,
           'body': 'New.\n\n${meta ?? '<!-- rcl:{"build":122,"version":"3.19.0","sha256":"$apkSha","win":"$winSha"} -->'}',
@@ -115,10 +115,10 @@ void main() {
     });
     test('(3.24.0) what is new: the notes between <!-- rcl-new --> and <!-- /rcl-new --> – English, मराठी, हिंदी as written; else the name', () {
       const n = 'What is new in 3.19.0:\n• Vendor BOQ: the amendment letter\n\nनवीन काय (3.19.0):\n• Vendor BOQ: amendment पत्र\n\nनया क्या है (3.19.0):\n• Vendor BOQ: संशोधन पत्र';
-      final r = rel()..['body'] = '<!-- rcl-new -->\n$n\n<!-- /rcl-new -->\n\nRCL ERP 3.19.0 (122) – Android and Windows.\n\n<!-- rcl:{"build":122,"version":"3.19.0","sha256":"$apkSha","win":"$winSha"} -->';
+      final r = rel()..['body'] = '<!-- rcl-new -->\n$n\n<!-- /rcl-new -->\n\nSketchline Lion 3.19.0 (122) – Android and Windows.\n\n<!-- rcl:{"build":122,"version":"3.19.0","sha256":"$apkSha","win":"$winSha"} -->';
       expect(parseRelease(r, 121)!.notes, n);
       expect(parseRelease(r, 121, computer: true)!.notes, n);
-      expect(parseRelease(rel(), 121)!.notes, 'RCL ERP 3.19.0 (122)', reason: 'a release without them: its name, as before');
+      expect(parseRelease(rel(), 121)!.notes, 'Sketchline Lion 3.19.0 (122)', reason: 'a release without them: its name, as before');
     });
     test('a computer takes nothing from a release without the setup or without its fingerprint (an Android-only release)', () {
       expect(parseRelease(rel(meta: '<!-- rcl:{"build":122,"version":"3.19.0","sha256":"$apkSha"} -->'), 121, computer: true), isNull);
@@ -186,7 +186,7 @@ void main() {
       startSetup = before;
       updateClient = http.Client.new;
     });
-    final u = AppUpdate(build: 122, version: '3.19.0', notes: 'RCL ERP 3.19.0 (122)', url: 'https://github.com/x/RCL-ERP-Setup-3.19.0-122.exe', sha256: sha256.convert(body).toString());
+    final u = AppUpdate(build: 122, version: '3.19.0', notes: 'Sketchline Lion 3.19.0 (122)', url: 'https://github.com/x/RCL-ERP-Setup-3.19.0-122.exe', sha256: sha256.convert(body).toString());
     await t.pumpWidget(MaterialApp(home: Builder(builder: (c) => Scaffold(body: Center(child: TextButton(onPressed: () => runUpdate(c, u), child: const Text('go')))))));
     await t.tap(find.text('go'));
     await settle(t, 600);

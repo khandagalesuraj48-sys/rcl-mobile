@@ -271,7 +271,7 @@ Future<Uint8List> attendancePdf({required String company, required String site, 
     p.text(who[i], sx[i] + sl / 2, ly + 13, 10, ink, bold: true, mid: true);
   }
   // ---- the foot
-  p.text(made.isEmpty ? 'Made from the RCL ERP attendance app' : 'Made on $made from the RCL ERP attendance app', l, 826, 7.5, muted);
+  p.text(made.isEmpty ? 'Made from the Sketchline Lion attendance app' : 'Made on $made from the Sketchline Lion attendance app', l, 826, 7.5, muted);
   p.text('Page 1 of 1', r, 826, 7.5, muted, right: true);
   return p.file('Attendance $title - $name', company);
 }
@@ -370,7 +370,7 @@ Future<Uint8List> payslipPdf({required String company, required String site, req
     p.across(sx[i], ly, sx[i] + sl, ink, .8);
     p.text(who[i], sx[i] + sl / 2, ly + 13, 10, ink, bold: true, mid: true);
   }
-  p.text(made.isEmpty ? 'Made from the RCL ERP app' : 'Made on $made from the RCL ERP app', l, 826, 7.5, muted);
+  p.text(made.isEmpty ? 'Made from the Sketchline Lion app' : 'Made on $made from the Sketchline Lion app', l, 826, 7.5, muted);
   p.text('Page 1 of 1', r, 826, 7.5, muted, right: true);
   return p.file('Salary slip $title - $name', company);
 }

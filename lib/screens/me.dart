@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 
 import '../core/update.dart';
 import '../ui/ask_bot.dart';
+import '../ui/brand.dart' show Product;
 import 'home.dart' show openHelp;
 import '../ui/scope.dart';
 import '../ui/design.dart';
@@ -164,7 +165,7 @@ class _MeTabState extends State<MeTab> {
             ]),
             const SizedBox(height: 16),
             Row(children: [
-              chip(Icons.apartment_rounded, 'RCL ERP'),
+              chip(Icons.apartment_rounded, Product.name),
               const SizedBox(width: Sp.chips),
               chip(Icons.verified_user_rounded, role, gold: true),
             ]),
@@ -199,7 +200,7 @@ class _MeTabState extends State<MeTab> {
                 pic: 'mobile_phone',
                 en: 'App Version',
                 mr: 'ॲप आवृत्ती',
-                sub: version.isEmpty ? 'RCL ERP' : 'RCL ERP · v$version',
+                sub: version.isEmpty ? Product.name : '${Product.name} · v$version',
                 color: C.greenSoft,
                 trailing: FilledButton(
                   style: FilledButton.styleFrom(minimumSize: const Size(0, 38), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontFamily: 'Rubik', fontSize: 13, fontWeight: FontWeight.w600)),

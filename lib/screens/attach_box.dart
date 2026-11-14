@@ -48,7 +48,7 @@ Future<List<({String name, Uint8List bytes})>> _pickFiles(String how, int room) 
   if (onComputer) camera = false;
   if (camera && Platform.isAndroid) {
     final st = await Permission.camera.request();
-    if (!st.isGranted) throw ApiError('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');
+    if (!st.isGranted) throw ApiError('Allow the camera for Sketchline Lion (Settings › Apps › Sketchline Lion › Permissions), then try again.');
   }
   final picker = ImagePicker();
   final List<XFile> xs;

@@ -8,6 +8,7 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:app_links/app_links.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' show RemoteMessage;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart' show NotificationResponse;
+import 'package:path_provider/path_provider.dart';
 
 import 'config.dart';
 import 'core/alerts.dart';
@@ -16,6 +17,7 @@ import 'core/applock.dart';
 import 'core/device.dart';
 import 'core/lang.dart' show Lang, bi;
 import 'core/lock_gate.dart';
+import 'core/product_brand.dart';
 import 'core/push.dart' show PushTap;
 import 'core/push_fcm.dart';
 import 'core/rtc_kit.dart';
@@ -87,6 +89,14 @@ void pushActionInBackground(NotificationResponse r) {
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   Alerts.onBackgroundTap = pushActionInBackground; // (3.42.0)
+  // (3.124.0) the product's name and logo as the Portal's "Branding" keeps them: what was kept on the phone at once, then asked again
+  // (nothing waits for it – the opening goes on; the built-in ones show until then)
+  () async {
+    try {
+      await ProductBrand.i.open(await getApplicationSupportDirectory());
+    } catch (_) {/* nothing kept */}
+    await ProductBrand.i.refresh(kPortalUrl);
+  }();
   () async {
     if (Platform.isAndroid) {
       try {
@@ -237,7 +247,7 @@ class RclApp extends StatelessWidget {
         child: LangScope(child: ValueListenableBuilder<bool>(valueListenable: session.siteMode, builder: (_, site, __) => ListenableBuilder(listenable: HrSkin.i, builder: (_, __) => MaterialApp(
           navigatorKey: appNav,
           navigatorObservers: [appRoutes], // (update-155) a tab under a closed screen loads if it is old (ui/live.dart)
-          title: 'RCL ERP',
+          title: 'Sketchline Lion', // (3.124.0) the product's name
           debugShowCheckedModeBanner: false,
           // (3.114.0) the attendance app (a person with HR only): the look he chose – Pearl or Midnight Gold (ui/hr_skin.dart)
           theme: HrSkin.i.on ? hrTheme(sk, _theme) : (site ? _siteTheme : _theme),

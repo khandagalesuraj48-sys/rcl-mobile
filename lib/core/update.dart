@@ -279,7 +279,7 @@ Future<void> runUpdate(BuildContext context, AppUpdate u) async {
           case OtaStatus.CHECKSUM_ERROR:
             close('The download was not complete or not genuine – nothing was installed. Try again.');
           case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
-            close('Allow "Install unknown apps" for RCL ERP in Android settings, then try again.');
+            close('Allow "Install unknown apps" for Sketchline Lion in Android settings, then try again.');
           case OtaStatus.CANCELED:
             close(null);
           default:
@@ -485,7 +485,7 @@ Future<void> _bgOffer(BgUpdate s) async {
     final c2 = updateContext();
     if (c2 == null || !c2.mounted) return;
     if (r == 'permission') {
-      toast(c2, bi('Allow "Install unknown apps" for RCL ERP, then come back – Install is asked again.', 'RCL ERP ला "Install unknown apps" परवानगी द्या आणि परत या – Install पुन्हा विचारले जाईल.'), bad: true);
+      toast(c2, bi('Allow "Install unknown apps" for Sketchline Lion, then come back – Install is asked again.', 'Sketchline Lion ला "Install unknown apps" परवानगी द्या आणि परत या – Install पुन्हा विचारले जाईल.'), bad: true);
     } else if (r == 'missing') {
       await _bgForget();
       bgUpdateNow.value = null;

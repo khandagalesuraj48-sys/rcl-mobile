@@ -31,11 +31,11 @@ void main() {
     l.clock = () => now;
     expect(l.locked, true);
     g.answers.add(const LockAnswer(LockOutcome.no));
-    await l.unlock('Unlock RCL ERP');
-    expect(g.reason, 'Unlock RCL ERP');
+    await l.unlock('Unlock Sketchline Lion');
+    expect(g.reason, 'Unlock Sketchline Lion');
     expect(l.locked, true);
     expect(l.said, 'Not unlocked – press Unlock and try again.');
-    await l.unlock('Unlock RCL ERP');
+    await l.unlock('Unlock Sketchline Lion');
     expect(l.locked, false);
     expect(l.said, '');
     l.away0();
@@ -96,7 +96,7 @@ void main() {
     final g = FakeGate(), l = AppLock(g);
     var now = DateTime(2026, 10, 25, 9);
     l.clock = () => now;
-    await l.unlock('Unlock RCL ERP');
+    await l.unlock('Unlock Sketchline Lion');
     expect(l.locked, false);
     final photo = AppLock.whileOutside(() async {
       l.away0(); // (the camera app comes in front of RCL ERP)
@@ -113,7 +113,7 @@ void main() {
       l.back();
     });
     expect(l.locked, true, reason: 'left open too long: locked');
-    await l.unlock('Unlock RCL ERP');
+    await l.unlock('Unlock Sketchline Lion');
     l.away0(); // another app, not the app's own box
     now = now.add(const Duration(minutes: 2));
     l.back();
@@ -131,9 +131,9 @@ void main() {
     g.answers.add(const LockAnswer(LockOutcome.no));
     final l = AppLock(g);
     expect(l.kind, '');
-    await l.unlock('Unlock RCL ERP');
+    await l.unlock('Unlock Sketchline Lion');
     expect(l.kind, 'face');
-    await l.unlock('Unlock RCL ERP');
+    await l.unlock('Unlock Sketchline Lion');
     expect([l.locked, g.kinds], [false, 1], reason: 'asked of the phone once');
   });
 }

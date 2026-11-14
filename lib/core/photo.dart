@@ -60,7 +60,7 @@ Future<Spot> whereNow() async {
   if (p == LocationPermission.denied || p == LocationPermission.deniedForever) {
     throw PhotoProblem(onComputer
         ? 'Allow the location for desktop apps (Windows Settings › Privacy & security › Location), then choose the photo again.'
-        : 'Allow the location for RCL ERP (Settings › Apps › RCL ERP › Permissions), then take the photo again.');
+        : 'Allow the location for Sketchline Lion (Settings › Apps › Sketchline Lion › Permissions), then take the photo again.');
   }
   try {
     final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 25)));
@@ -90,7 +90,7 @@ String stampOf(DateTime d) => '${two(d.day)}-${two(d.month)}-${d.year} ${two(d.h
 Future<TakenPhoto?> takePhoto(String label, String machineId) async {
   if (Platform.isAndroid) {
     final st = await Permission.camera.request();
-    if (!st.isGranted) throw PhotoProblem('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');
+    if (!st.isGranted) throw PhotoProblem('Allow the camera for Sketchline Lion (Settings › Apps › Sketchline Lion › Permissions), then try again.');
   }
   final x = await AppLock.whileOutside(() => ImagePicker().pickImage(source: onComputer ? ImageSource.gallery : ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 92, preferredCameraDevice: CameraDevice.rear));
   if (x == null) return null;
@@ -171,7 +171,7 @@ Future<List<Uint8List>> pickBills({required bool camera, int room = kBillMax}) a
   if (onComputer) camera = false; // (3.19.0) a computer: the files
   if (camera && Platform.isAndroid) {
     final st = await Permission.camera.request();
-    if (!st.isGranted) throw PhotoProblem('Allow the camera for RCL ERP (Settings › Apps › RCL ERP › Permissions), then try again.');
+    if (!st.isGranted) throw PhotoProblem('Allow the camera for Sketchline Lion (Settings › Apps › Sketchline Lion › Permissions), then try again.');
   }
   final picker = ImagePicker();
   final List<XFile> xs;

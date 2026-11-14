@@ -5,7 +5,7 @@ import 'package:rcl_mobile/core/update.dart';
 void main() {
   final sha = 'a' * 64;
   Map<String, dynamic> rel({String body = '', List<Map<String, dynamic>>? assets, bool draft = false}) => {
-        'name': 'RCL ERP 1.0.1 (102)',
+        'name': 'Sketchline Lion 1.0.1 (102)',
         'draft': draft,
         'prerelease': false,
         'body': body,
@@ -85,7 +85,7 @@ void main() {
   group('(02-11-2026) the beta channel: a tester takes a beta version too; everybody else only the stable one', () {
     const base = 'https://github.com/khandagalesuraj48-sys/rcl-mobile/releases/download/';
     Map<String, dynamic> r(int build, {bool pre = false, bool app = true}) => {
-          'name': 'RCL ERP 3.80.0 ($build)',
+          'name': 'Sketchline Lion 3.80.0 ($build)',
           'draft': false,
           'prerelease': pre,
           'body': '<!-- rcl-new -->\nNew: X\n<!-- /rcl-new -->\n<!-- rcl:{"build":$build,"version":"3.80.0",${app ? '"sha256":"$sha",' : ''}"web":{"rclerp":"${'1' * 40}"},"app":"${'2' * 40}"} -->',

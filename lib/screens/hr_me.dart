@@ -767,7 +767,7 @@ class _UpdateRowState extends State<_UpdateRow> {
             ? _t('Checking…', 'तपासत आहे…')
             : found != null
                 ? _t('New version ${found!.version} – tap to update', 'नवीन version ${found!.version} – update साठी दाबा')
-                : (version.isEmpty ? 'RCL ERP' : 'RCL ERP · v$version'),
+                : (version.isEmpty ? 'Sketchline Lion' : 'Sketchline Lion · v$version'),
         onTap: _check,
       );
 }

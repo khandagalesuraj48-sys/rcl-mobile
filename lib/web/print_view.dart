@@ -32,7 +32,7 @@ class _PrintViewState extends State<PrintView> {
       if (onComputer) {
         await c.evaluateJavascript(source: 'window.print()');
       } else {
-        await c.printCurrentPage(settings: PrintJobSettings(jobName: widget.title.isEmpty ? 'RCL ERP' : widget.title));
+        await c.printCurrentPage(settings: PrintJobSettings(jobName: widget.title.isEmpty ? 'Sketchline Lion' : widget.title));
       }
     } catch (_) {
       if (mounted) toast(context, 'Printing could not be opened on this phone.', bad: true);

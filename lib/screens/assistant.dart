@@ -378,9 +378,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
       final a = chat.a;
       await _liveStop(e.code == 'mic'
           ? a.aiL(const {
-              'en': 'The microphone is not allowed for this app. Allow it in the phone\'s Settings → Apps → RCL ERP → Permissions, and press the microphone again.',
-              'mr': 'या app ला microphone ची परवानगी नाही. फोनच्या Settings → Apps → RCL ERP → Permissions मध्ये microphone ला परवानगी द्या आणि mic बटण पुन्हा दाबा.',
-              'hi': 'इस app को microphone की अनुमति नहीं है। फ़ोन की Settings → Apps → RCL ERP → Permissions में microphone की अनुमति दें और mic बटन फिर दबाएँ।',
+              'en': 'The microphone is not allowed for this app. Allow it in the phone\'s Settings → Apps → Sketchline Lion → Permissions, and press the microphone again.',
+              'mr': 'या app ला microphone ची परवानगी नाही. फोनच्या Settings → Apps → Sketchline Lion → Permissions मध्ये microphone ला परवानगी द्या आणि mic बटण पुन्हा दाबा.',
+              'hi': 'इस app को microphone की अनुमति नहीं है। फ़ोन की Settings → Apps → Sketchline Lion → Permissions में microphone की अनुमति दें और mic बटन फिर दबाएँ।',
             })
           : a.aiL(const {'en': 'This phone cannot listen (it has no speech recognition).', 'mr': 'हा फोन ऐकू शकत नाही (त्यावर speech recognition नाही).', 'hi': 'यह फ़ोन सुन नहीं सकता (उस पर speech recognition नहीं है)।'}));
       return;
