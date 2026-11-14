@@ -124,8 +124,8 @@ void main() {
     expect(find.text('68%'), findsNothing);
     expect(find.text('Preparing your workspace...'), findsOneWidget);
     expect(find.text('INTEGRATED CONSTRUCTION MANAGEMENT'), findsOneWidget);
-    expect(find.text('RCL'), findsOneWidget);
-    expect(find.text(' ERP'), findsOneWidget);
+    expect(find.text('SKETCHLINE'), findsOneWidget); // (3.124.0) the product: Sketchline Lion
+    expect(find.text(' LION'), findsOneWidget);
     expect(find.byKey(const Key('splash-logo')), findsOneWidget);
     await t.pumpWidget(_alone(.7));
     await t.pump(const Duration(milliseconds: 100));

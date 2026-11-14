@@ -293,9 +293,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             scale: true,
                             child: Container(
                               key: const Key('login-logo'),
-                              padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
-                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 18, offset: const Offset(0, 6))]),
-                              child: const FittedBox(fit: BoxFit.scaleDown, child: RachanaLogo(height: 44)),
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 18, offset: const Offset(0, 6))]),
+                              child: const FittedBox(fit: BoxFit.scaleDown, child: ProductMark(size: 44, radius: 12)), // (3.124.0) the product's lion – the client is known only after the sign-in
                             ),
                           )),
                         ),
@@ -303,8 +303,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         _lang(),
                       ]),
                       const Spacer(),
-                      Arrive(anim: _open, at: .12, child: const m.Text('RCL ERP', style: TextStyle(fontFamily: 'Rubik', fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .3, shadows: [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
-                      Arrive(anim: _open, at: .18, child: const Text('Fleet & Diesel Management', style: TextStyle(fontSize: 15, color: Color(0xF2FFFFFF), fontWeight: FontWeight.w500, shadows: [Shadow(color: Color(0x66000000), blurRadius: 10)]))),
+                      Arrive(anim: _open, at: .12, child: const m.Text(Product.name, style: TextStyle(fontFamily: 'Rubik', fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .3, shadows: [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
+                      Arrive(anim: _open, at: .18, child: const Text(Product.line, style: TextStyle(fontSize: 15, color: Color(0xF2FFFFFF), fontWeight: FontWeight.w500, shadows: [Shadow(color: Color(0x66000000), blurRadius: 10)]))),
                     ]),
                   ),
                 ]),
@@ -415,7 +415,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Welcome Back', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: C.ink)),
             const SizedBox(height: 2),
-            const Text('Sign in to continue to RCL ERP', style: TextStyle(fontSize: 14, color: C.muted)),
+            const Text('Sign in to continue to ${Product.name}', style: TextStyle(fontSize: 14, color: C.muted)),
             const MrLine('Portal चाच email किंवा mobile number, आणि password वापरा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
             const SizedBox(height: 18),
             TextField(

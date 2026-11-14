@@ -28,7 +28,7 @@ def manifest(s):
              'android.permission.USE_FULL_SCREEN_INTENT']      # (3.42.0) a call's notification rings on the locked phone too
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
-    s = re.sub(r'android:label="[^"]*"', 'android:label="RCL ERP"', s, count=1)
+    s = re.sub(r'android:label="[^"]*"', 'android:label="Sketchline Lion"', s, count=1)
     if 'OtaUpdateFileProvider' not in s:
         block = ('        <provider android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"\n'
                  '            android:authorities="${applicationId}.ota_update_provider"\n'
@@ -122,9 +122,9 @@ USES = [('NSCameraUsageDescription', 'RCL ERP uses the camera for the photos of 
         ('NSSpeechRecognitionUsageDescription', 'RCL ERP turns what you say to the assistant into words (a question or an entry).')]
 def plist(s):
     if '<key>CFBundleDisplayName</key>' in s:
-        s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1RCL ERP\2', s, count=1)
+        s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1Sketchline Lion\2', s, count=1)
     else:
-        s = s.replace('<dict>', '<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>RCL ERP</string>', 1)
+        s = s.replace('<dict>', '<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>Sketchline Lion</string>', 1)
     for k, v in USES:
         if '<key>%s</key>' % k not in s: s = s.replace('<dict>', '<dict>\n\t<key>%s</key>\n\t<string>%s</string>' % (k, v), 1)
     s = s.replace('RCL ERP uses the microphone for a screen-share help call.', dict(USES)['NSMicrophoneUsageDescription'])

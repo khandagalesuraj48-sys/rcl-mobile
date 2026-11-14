@@ -1,3 +1,3 @@
-New: in the lists of Diesel Issue, Diesel Inward and Diesel Transfer every entry now shows, under it, at what time it was saved and who saved it – without opening the entry.
-नवीन: Diesel Issue, Diesel Inward आणि Diesel Transfer च्या list मध्ये प्रत्येक entry च्या खाली आता ती किती वाजता save झाली आणि कोणी केली ते दिसते – entry न उघडता.
-नया: Diesel Issue, Diesel Inward और Diesel Transfer की list में हर entry के नीचे अब दिखता है कि वह कितने बजे save हुई और किसने की – entry खोले बिना.
+New: the app is now "Sketchline Lion" – a new name and the lion logo on the phone, on the opening screen and on the sign-in. After the sign-in you see the Sketchline lion and, beside it, your company's own logo. Everything else works as before.
+नवीन: app चे नाव आता "Sketchline Lion" – phone वर, सुरुवातीच्या screen वर आणि sign-in वर नवीन नाव आणि सिंहाचा logo. Sign-in नंतर Sketchline चा सिंह आणि त्याच्या शेजारी तुमच्या कंपनीचा logo दिसतो. बाकी सगळे पूर्वीसारखेच.
+नया: app का नाम अब "Sketchline Lion" – phone पर, शुरुआती screen पर और sign-in पर नया नाम और शेर का logo. Sign-in के बाद Sketchline का शेर और उसके साथ आपकी कंपनी का logo दिखता है. बाकी सब पहले जैसा.

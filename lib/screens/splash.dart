@@ -11,6 +11,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../ui/brand.dart' show Product;
 import '../ui/t.dart';
 
 /// The colours of the approved design.
@@ -205,20 +206,20 @@ class _Brand extends StatelessWidget {
   final double s;
   @override
   Widget build(BuildContext context) {
-    final tile = s * .218, title = s * .11;
+    final tile = s * .218, title = s * .078; // (3.124.0) "SKETCHLINE LION" is longer than "RCL ERP": smaller letters, one line
     return MediaQuery.withNoTextScaling( // (the design's sizes: "Size of the text" in Settings is for the app's screens)
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
           key: const Key('splash-logo'),
           width: tile,
           height: tile,
-          padding: EdgeInsets.all(tile * .16),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.black, // (3.124.0) the Sketchline lion on its own black
             borderRadius: BorderRadius.circular(tile * .19),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .35), blurRadius: tile * .16, offset: Offset(0, tile * .05))],
           ),
-          child: Image.asset('assets/brand/rachana_mark.png', fit: BoxFit.contain, filterQuality: FilterQuality.medium, semanticLabel: 'Rachana'),
+          child: Image.asset(Product.logo, fit: BoxFit.cover, filterQuality: FilterQuality.medium, semanticLabel: Product.name),
         ),
         SizedBox(height: s * .014),
         FittedBox(
@@ -226,20 +227,20 @@ class _Brand extends StatelessWidget {
           child: Row(key: const Key('splash-title'), mainAxisSize: MainAxisSize.min, children: [
             ShaderMask(
               blendMode: BlendMode.srcIn,
-              shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [SplashC.redTop, SplashC.redBottom]).createShader(r),
-              child: Text('RCL', style: _title(title, Colors.white)),
+              shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Product.gold, Product.goldDeep]).createShader(r), // (3.124.0, his choice A: the name in the logo's gold, then white)
+              child: Text(Product.first.toUpperCase(), style: _title(title, Colors.white)),
             ),
-            Text(' ERP', style: _title(title, Colors.white)),
+            Text(' ${Product.second.toUpperCase()}', style: _title(title, Colors.white)),
           ]),
         ),
         SizedBox(height: s * .008),
-        Container(width: s * .082, height: math.max(2.0, s * .0042), decoration: BoxDecoration(color: SplashC.red, borderRadius: BorderRadius.circular(2))),
+        Container(width: s * .082, height: math.max(2.0, s * .0042), decoration: BoxDecoration(color: Product.gold, borderRadius: BorderRadius.circular(2))),
         SizedBox(height: s * .02),
         SizedBox(
           width: s * .66,
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text('INTEGRATED CONSTRUCTION MANAGEMENT',
+            child: Text(Product.line.toUpperCase(),
                 key: const Key('splash-sub'),
                 maxLines: 1,
                 style: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w400, fontSize: s * .02, height: 1, letterSpacing: s * .02 * .3, color: const Color(0xF2F8F8F8))),

@@ -9,7 +9,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>RCL ERP</string>
+	<string>Sketchline Lion</string>
 	<key>NSCameraUsageDescription</key>
 	<string>RCL ERP uses the camera for the photos of an entry (Diesel Issue and others).</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

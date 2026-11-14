@@ -6,7 +6,34 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// The Rachana "R" on a white tile (the company's own mark).
+/* (3.124.0, asked 14-11-2026: "aple app ch name change kraych aahe ani logo pn – Sketchline Lion … RCL ha Sketchline cha client aasel,
+ * login zale nantr Sketchline Lion ha logo pn asel ani client cha logo pn") THE PRODUCT AND ITS CLIENT. The app is the product
+ * "Sketchline Lion" (its name, its line, its logo – here, in one place); Rachana Construction Limited is the client whose sites it
+ * runs: after the sign-in both marks are shown – the product's lion and the client's own mark. What is printed (bills, reports, the
+ * Log Book) stays the client's alone. */
+class Product {
+  static const first = 'Sketchline', second = 'Lion', name = '$first $second';
+  static const line = 'Integrated Construction Management';
+  static const logo = 'assets/brand/sketchline_lion.png';
+  static const gold = Color(0xFFE9B94A), goldDeep = Color(0xFFC28A1E);
+}
+
+/// The product's logo – the Sketchline lion on its own black tile.
+class ProductMark extends StatelessWidget {
+  const ProductMark({super.key, this.size = 84, this.radius});
+  final double size;
+  final double? radius;
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(radius ?? size * .28)),
+        child: Image.asset(Product.logo, fit: BoxFit.cover, filterQuality: FilterQuality.medium, semanticLabel: Product.name),
+      );
+}
+
+/// The Rachana "R" on a white tile (the client company's own mark).
 class Mark extends StatelessWidget {
   const Mark({super.key, this.size = 84});
   final double size;

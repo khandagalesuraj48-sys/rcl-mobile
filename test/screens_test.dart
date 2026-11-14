@@ -1214,7 +1214,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await t.pump(const Duration(milliseconds: 400));
     expect(find.text('Sign in'), findsOneWidget);
-    final op = t.widget<Opacity>(find.ancestor(of: find.text('Fleet & Diesel Management'), matching: find.byType(Opacity)).first);
+    final op = t.widget<Opacity>(find.ancestor(of: find.text('Integrated Construction Management'), matching: find.byType(Opacity)).first);
     expect(op.opacity, 1);
   });
 

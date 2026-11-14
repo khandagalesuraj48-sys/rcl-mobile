@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.124.0 (14-11-2026 – "aple app ch name change kraych aahe ani logo pn – Sketchline Lion … he app che page same aasel, ethle
+name ani logo change hoil … RCL ha Sketchline cha client aasel, login zale nantr Sketchline Lion ha logo pn asel ani client cha logo
+pn"; his choices: the name in gold + white, the icon and its name too, the prints stay the client's):** THE PRODUCT IS "SKETCHLINE
+LION". One place holds it (`Product`, `ProductMark` in `lib/ui/brand.dart`): the icon on the phone (every size, Android / iPhone /
+Windows) and the name under it; the opening screen – the same page, the lion on its black tile, "SKETCHLINE" in the logo's gold and
+"LION" white, a gold line; the sign-in; Home (three places) – the lion and beside it the client's own mark, with the client company's
+name under the product's; Me. **Not changed:** what is printed (the client's name and logo alone), the lock screen's and the update's
+words, the app's id (`in.rachana.rcl` – the same app is updated, nobody installs anew). Changing these from the Portal without a new
+build (the Super Admin's "Branding") is the next step and needs a database step of the Portal.
+
 **Version 3.123.0 (14-11-2026 – "user jewa diesel issue krto … kiti wajta issue zalel aahe … koni entry keley … first view madhe te
 patkn disayla haway"; his choice: the line under the card):** in the lists of Diesel Issue, Diesel Inward and Diesel Transfer every
 card has a line under it – the time the entry was saved (the server's `at`, Mechanical update-246; the day too when it was saved on
