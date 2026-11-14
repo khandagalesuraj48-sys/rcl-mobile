@@ -6,6 +6,12 @@ void main() {
   test('English, हिंदी, मराठी – words, digits, ₹, units after it, halves and quarters, lakh / crore; nothing heard: empty', () {
     const cases = [
       ('12', '12'),
+      ('1934.', '1934'),
+      ('1,934.', '1934'),
+      ('12.5.', '12.5'),
+      ('१९३४।', '1934'),
+      ('1934?', '1934'),
+      ('twenty five.', '25'),
       ('12.5', '12.5'),
       ('१२.५', '12.5'),
       ('1,200', '1200'),
