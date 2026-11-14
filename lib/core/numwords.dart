@@ -108,6 +108,9 @@ _Wd? _word(String t) {
 String spokenNumber(String text, {bool digits = false}) {
   final toks = _norm(text)
       .replaceAllMapped(RegExp(r'(\d)\s*\.\s*(\d)'), (m) => '${m[1]}.${m[2]}')
+      // (14-11-2026) what is heard often ends as a sentence – "1934." – or with ? ! । : that sign is not part of the number
+      .replaceAllMapped(RegExp(r'(\S)\.(?=\s|$)'), (m) => '${m[1]} ')
+      .replaceAll(RegExp('[।?!…]+'), ' ')
       .split(RegExp(r'[\s\-–,;:/]+|(?<=[^\d.])(?=\d)|(?<=\d)(?=[^\d.])'))
       .map((x) => x.trim())
       .where((x) => x.isNotEmpty)
