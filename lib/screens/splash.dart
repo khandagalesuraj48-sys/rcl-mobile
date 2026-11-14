@@ -11,6 +11,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../core/product_brand.dart';
 import '../ui/brand.dart' show Product;
 import '../ui/t.dart';
 
@@ -207,7 +208,8 @@ class _Brand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tile = s * .218, title = s * .078; // (3.124.0) "SKETCHLINE LION" is longer than "RCL ERP": smaller letters, one line
-    return MediaQuery.withNoTextScaling( // (the design's sizes: "Size of the text" in Settings is for the app's screens)
+    // (3.124.0) the name and the logo are the Portal's ("Branding"): written again when its answer comes while this screen is up
+    return ListenableBuilder(listenable: ProductBrand.i, builder: (context, _) => MediaQuery.withNoTextScaling( // (the design's sizes: "Size of the text" in Settings is for the app's screens)
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
           key: const Key('splash-logo'),
@@ -219,7 +221,9 @@ class _Brand extends StatelessWidget {
             borderRadius: BorderRadius.circular(tile * .19),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .35), blurRadius: tile * .16, offset: Offset(0, tile * .05))],
           ),
-          child: Image.asset(Product.logo, fit: BoxFit.cover, filterQuality: FilterQuality.medium, semanticLabel: Product.name),
+          child: ProductBrand.i.logo == null
+              ? Image.asset(Product.logo, fit: BoxFit.cover, filterQuality: FilterQuality.medium, semanticLabel: Product.name)
+              : Image.memory(ProductBrand.i.logo!, fit: BoxFit.cover, filterQuality: FilterQuality.medium, gaplessPlayback: true, semanticLabel: Product.name),
         ),
         SizedBox(height: s * .014),
         FittedBox(
@@ -247,7 +251,7 @@ class _Brand extends StatelessWidget {
           ),
         ),
       ]),
-    );
+    ));
   }
 
   static TextStyle _title(double size, Color c) => TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w800, fontSize: size, height: 1, letterSpacing: -size * .005, color: c);

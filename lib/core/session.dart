@@ -27,16 +27,19 @@ class Module {
 }
 
 class SiteChoice {
-  SiteChoice(this.code, this.name, this.company, this.modules);
+  SiteChoice(this.code, this.name, this.company, this.modules, {this.companyId = ''});
   final String code, name, company;
+
+  /// (3.124.0) the company's id in the Portal – its own logo is asked for with it (ui/brand.dart ClientMark)
+  final String companyId;
   final List<Module> modules;
-  Map<String, Object> toJson() => {'code': code, 'name': name, 'company': company, 'modules': [for (final m in modules) m.toJson()]};
+  Map<String, Object> toJson() => {'code': code, 'name': name, 'company': company, 'companyId': companyId, 'modules': [for (final m in modules) m.toJson()]};
   static SiteChoice? fromJson(Object? j) {
     if (j is! Map || '${j['code'] ?? ''}'.isEmpty) return null;
     return SiteChoice('${j['code']}', '${j['name'] ?? j['code']}', '${j['company'] ?? ''}', [
       for (final m in (j['modules'] as List? ?? const []).whereType<Map>())
         if ('${m['url'] ?? ''}'.startsWith('https://')) Module('${m['key'] ?? ''}', '${m['name'] ?? ''}', '${m['url']}')
-    ]);
+    ], companyId: '${j['companyId'] ?? ''}');
   }
   Module? module(String key) {
     for (final m in modules) {
@@ -632,7 +635,7 @@ class Session extends ChangeNotifier {
     for (final x in (me['items'] as List? ?? []).whereType<Map>()) {
       final code = (x['site'] ?? '').toString(), url = (x['url'] ?? '').toString().replaceAll(RegExp(r'/+$'), '');
       if (code.isEmpty || !url.startsWith('https://')) continue;
-      by.putIfAbsent(code, () => SiteChoice(code, (x['siteName'] ?? code).toString(), (x['company'] ?? '').toString(), [])).modules.add(Module((x['module'] ?? '').toString(), (x['moduleName'] ?? '').toString(), url));
+      by.putIfAbsent(code, () => SiteChoice(code, (x['siteName'] ?? code).toString(), (x['company'] ?? '').toString(), [], companyId: (x['companyId'] ?? '').toString())).modules.add(Module((x['module'] ?? '').toString(), (x['moduleName'] ?? '').toString(), url));
     }
     // the app works through Mechanical: a site without it cannot be opened here
     sites = by.values.where((s) => s.module('mechanical') != null).toList();

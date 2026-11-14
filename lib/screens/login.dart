@@ -303,8 +303,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         _lang(),
                       ]),
                       const Spacer(),
-                      Arrive(anim: _open, at: .12, child: const m.Text(Product.name, style: TextStyle(fontFamily: 'Rubik', fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .3, shadows: [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
-                      Arrive(anim: _open, at: .18, child: const Text(Product.line, style: TextStyle(fontSize: 15, color: Color(0xF2FFFFFF), fontWeight: FontWeight.w500, shadows: [Shadow(color: Color(0x66000000), blurRadius: 10)]))),
+                      Arrive(anim: _open, at: .12, child: const ProductName(style: TextStyle(fontFamily: 'Rubik', fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .3, shadows: [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
+                      Arrive(anim: _open, at: .18, child: const ProductName(line: true, style: TextStyle(fontSize: 15, color: Color(0xF2FFFFFF), fontWeight: FontWeight.w500, shadows: [Shadow(color: Color(0x66000000), blurRadius: 10)]))),
                     ]),
                   ),
                 ]),
@@ -415,7 +415,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Welcome Back', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: C.ink)),
             const SizedBox(height: 2),
-            const Text('Sign in to continue to ${Product.name}', style: TextStyle(fontSize: 14, color: C.muted)),
+            const ProductName(prefix: 'Sign in to continue to ', style: TextStyle(fontSize: 14, color: C.muted)),
             const MrLine('Portal चाच email किंवा mobile number, आणि password वापरा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
             const SizedBox(height: 18),
             TextField(

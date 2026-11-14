@@ -204,7 +204,7 @@ void main() {
     await settle(t);
     await pics(t);
     expect(find.text('Welcome Back'), findsOneWidget);
-    expect(find.image(const AssetImage('assets/brand/rachana_logo.png')), findsOneWidget);
+    expect(find.image(const AssetImage('assets/brand/sketchline_lion.png')), findsOneWidget); // (3.124.0) before the sign-in: the product's lion (the client is not known yet)
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_sign_in.png'));
     await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
     await t.enterText(find.byType(TextField).at(1), 'wrong');
