@@ -75,14 +75,20 @@ class ProductBlock extends StatelessWidget {
               child: const ProductMark(size: 88, radius: 26),
             ),
             const SizedBox(height: 12),
-            Text(Product.name, key: const Key('brand-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF111111), letterSpacing: .3)),
+            Text(Product.name, key: const Key('brand-name'), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF111111), letterSpacing: .3)),
             if (line.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 3),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Container(width: 16, height: 1, color: const Color(0xFFD4AF37)),
                   const SizedBox(width: 7),
-                  Flexible(child: Text(line.toUpperCase(), key: const Key('brand-line'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 11, letterSpacing: 3, color: Color(0xFFA8821F)))),
+                  // (a long line is made smaller to fit – never cut)
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(line.toUpperCase(), key: const Key('brand-line'), maxLines: 1, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 11, letterSpacing: 3, color: Color(0xFFA8821F))),
+                    ),
+                  ),
                   const SizedBox(width: 7),
                   Container(width: 16, height: 1, color: const Color(0xFFD4AF37)),
                 ]),

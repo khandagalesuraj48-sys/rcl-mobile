@@ -234,11 +234,17 @@ class _LockBodyState extends State<_LockBody> {
       Text(Product.name, key: const Key('lock-name'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 28, fontWeight: FontWeight.w800, color: _L.ink, letterSpacing: .4)),
       if (line.isNotEmpty)
         Padding(
-          padding: const EdgeInsets.only(top: 3),
+          padding: const EdgeInsets.fromLTRB(24, 3, 24, 0),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 18, height: 1, color: _L.gold),
             const SizedBox(width: 8),
-            Text(line.toUpperCase(), key: const Key('lock-line'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 11.5, letterSpacing: 3.2, color: _L.goldText)),
+            // (a long line is made smaller to fit – never cut)
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(line.toUpperCase(), key: const Key('lock-line'), maxLines: 1, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 11.5, letterSpacing: 3.2, color: _L.goldText)),
+              ),
+            ),
             const SizedBox(width: 8),
             Container(width: 18, height: 1, color: _L.gold),
           ]),
