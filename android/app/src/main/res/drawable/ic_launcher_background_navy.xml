@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- (3.124.0, asked 14-11-2026: the app is "Sketchline Lion") the black of the Sketchline logo behind the lion (the file keeps its
+<!-- (3.124.0, asked 14-11-2026: the app is "Sketchline") the black of the Sketchline logo behind the lion (the file keeps its
      name: the adaptive icon points to it) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#000000" />
+    <solid android:color="#0B0D12" />
 </shape>

@@ -212,7 +212,7 @@ String _short(Object e) {
 /// The camera could not be started: why, in the words the web uses.
 String rtcCamErr(Object e) {
   final s = '$e';
-  if (RegExp(r'NotAllowed|denied|permission', caseSensitive: false).hasMatch(s)) return 'The camera is not allowed – allow it for Sketchline Lion (the phone\'s Settings → Apps → Sketchline Lion → Permissions → Camera).';
+  if (RegExp(r'NotAllowed|denied|permission', caseSensitive: false).hasMatch(s)) return 'The camera is not allowed – allow it for Sketchline (the phone\'s Settings → Apps → Sketchline → Permissions → Camera).';
   if (RegExp(r'NotFound|Overconstrained|no camera', caseSensitive: false).hasMatch(s)) return 'The camera was not found on this phone.';
   return 'The camera could not be started (${_short(e)}).';
 }
@@ -1017,7 +1017,7 @@ class Rtc extends ChangeNotifier {
       final x = await rpc('rtcWa', [{'uid': p.uid, 'call': callId}]);
       final mob = x is Map ? '${x['mobile'] ?? ''}'.replaceAll(RegExp(r'[^0-9]'), '') : '';
       if (mob.isNotEmpty) {
-        final msg = '$myName is calling you in the Sketchline Lion app (a call with voice). Please open the app.';
+        final msg = '$myName is calling you in the Sketchline app (a call with voice). Please open the app.';
         _say(text, act: 'Ask on WhatsApp', url: 'https://wa.me/$mob?text=${Uri.encodeComponent(msg)}');
         return;
       }
@@ -1032,7 +1032,7 @@ class Rtc extends ChangeNotifier {
     final c = call;
     if (c == null) return;
     if (c.mic == null) {
-      _say('The microphone is not allowed – allow it for Sketchline Lion (the phone\'s Settings → Apps → Sketchline Lion → Permissions), then call again.', bad: true);
+      _say('The microphone is not allowed – allow it for Sketchline (the phone\'s Settings → Apps → Sketchline → Permissions), then call again.', bad: true);
       return;
     }
     c.micOn = !c.micOn;

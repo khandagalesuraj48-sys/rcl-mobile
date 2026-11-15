@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#000000</color>
+    <color name="ic_launcher_background">#0B0D12</color>
     <!-- (3.37.0) the start screen's navy: the phone shows it until the app's own start screen is drawn (no white / green flash) -->
     <color name="splash_navy">#022646</color>
 </resources>

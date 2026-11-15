@@ -57,7 +57,7 @@ class _LockLayerState extends State<LockLayer> with WidgetsBindingObserver {
         final ctx = widget.nav.currentContext;
         // (3.83.0) as every message of the app: a gooey drop at the top (ui/goo_toast.dart)
         if (ctx != null) {
-          gooToast(ctx, _iphone ? 'This iPhone has no passcode – set one (Settings → Face ID & Passcode), so that Sketchline Lion is locked.' : 'This phone has no screen lock – set a PIN, pattern or fingerprint (the phone\'s Settings → Security), so that Sketchline Lion is locked.',
+          gooToast(ctx, _iphone ? 'This iPhone has no passcode – set one (Settings → Face ID & Passcode), so that Sketchline is locked.' : 'This phone has no screen lock – set a PIN, pattern or fingerprint (the phone\'s Settings → Security), so that Sketchline is locked.',
               color: C.red, stay: const Duration(seconds: 10));
         }
       });
@@ -74,7 +74,7 @@ class _LockLayerState extends State<LockLayer> with WidgetsBindingObserver {
     if (show && !l.asking && !_asked) {
       _asked = true; // the phone's box opens by itself, once each time the app is locked
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) l.unlock(tr('Unlock Sketchline Lion'));
+        if (mounted) l.unlock(tr('Unlock Sketchline'));
       });
     }
     return Stack(children: [
@@ -107,7 +107,7 @@ class _LockScreen extends StatelessWidget {
             bottom: (s) => SplashPanel(children: [
               const Icon(Icons.lock_rounded, color: Colors.white, size: 28),
               const SizedBox(height: 8),
-              const Text('Sketchline Lion is locked', textAlign: TextAlign.center, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+              const Text('Sketchline is locked', textAlign: TextAlign.center, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
               if (name.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, color: Color(0xE6FFFFFF))),
@@ -125,7 +125,7 @@ class _LockScreen extends StatelessWidget {
               const SizedBox(height: 18),
               SplashButton(
                 key: const Key('lock-unlock'),
-                onPressed: lock.asking ? null : () => lock.unlock(tr('Unlock Sketchline Lion')),
+                onPressed: lock.asking ? null : () => lock.unlock(tr('Unlock Sketchline')),
                 icon: lock.kind == 'face' ? Icons.face_rounded : Icons.fingerprint_rounded,
                 label: Text(lockButton(lock.kind, _iphone)),
               ),

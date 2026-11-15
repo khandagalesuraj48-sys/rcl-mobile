@@ -207,7 +207,7 @@ class _Brand extends StatelessWidget {
   final double s;
   @override
   Widget build(BuildContext context) {
-    final tile = s * .218, title = s * .078; // (3.124.0) "SKETCHLINE LION" is longer than "RCL ERP": smaller letters, one line
+    final tile = s * .218, title = s * .095; // (3.125.0) the name is one word ("SKETCHLINE"): one line
     // (3.124.0) the name and the logo are the Portal's ("Branding"): written again when its answer comes while this screen is up
     return ListenableBuilder(listenable: ProductBrand.i, builder: (context, _) => MediaQuery.withNoTextScaling( // (the design's sizes: "Size of the text" in Settings is for the app's screens)
       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -234,7 +234,7 @@ class _Brand extends StatelessWidget {
               shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Product.gold, Product.goldDeep]).createShader(r), // (3.124.0, his choice A: the name in the logo's gold, then white)
               child: Text(Product.first.toUpperCase(), style: _title(title, Colors.white)),
             ),
-            Text(' ${Product.second.toUpperCase()}', style: _title(title, Colors.white)),
+            if (Product.second.isNotEmpty) Text(' ${Product.second.toUpperCase()}', style: _title(title, Colors.white)), // (3.125.0) a second word only when the Portal's Branding has one
           ]),
         ),
         SizedBox(height: s * .008),

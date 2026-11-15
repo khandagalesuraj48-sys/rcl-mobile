@@ -291,7 +291,7 @@ class AttendKit {
     var p = await Geolocator.checkPermission();
     if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
     if (p == LocationPermission.denied || p == LocationPermission.deniedForever) {
-      throw AttendProblem('Allow the location for the app (Settings › Apps › Sketchline Lion › Permissions), then try again.', 'App ला location ची परवानगी द्या (Settings › Apps › Sketchline Lion › Permissions), मग पुन्हा करा.', 'gps');
+      throw AttendProblem('Allow the location for the app (Settings › Apps › Sketchline › Permissions), then try again.', 'App ला location ची परवानगी द्या (Settings › Apps › Sketchline › Permissions), मग पुन्हा करा.', 'gps');
     }
     try {
       final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.best, timeLimit: Duration(seconds: 25)));

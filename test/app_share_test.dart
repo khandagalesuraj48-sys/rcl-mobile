@@ -6,7 +6,7 @@ void main() {
   test('the text: the app\'s page at the main address, what to do in मराठी / English / हिंदी; nothing about who shares', () {
     expect(kAppPage, 'https://oneclicksolution-erp.vercel.app/app');
     final t = appShareText();
-    expect(t.split('\n').first, 'Sketchline Lion app – https://oneclicksolution-erp.vercel.app/app');
+    expect(t.split('\n').first, 'Sketchline app – https://oneclicksolution-erp.vercel.app/app');
     expect(t, contains('Admin ने दिलेला email व password'));
     expect(t, contains('sign in with the email and password the Admin gave you'));
     expect(t, contains('Admin का दिया email और password'));
