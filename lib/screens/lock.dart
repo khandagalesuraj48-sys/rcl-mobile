@@ -279,9 +279,10 @@ class _LockBodyState extends State<_LockBody> {
             const Text('Sign in again with your Sketchline password?', textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, color: C.ink)),
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              TextButton(key: const Key('lock-out-no'), onPressed: () => setState(() => _sure = false), child: const Text('Back')),
+              // (the app's buttons are a whole line wide by themselves: here two side by side)
+              TextButton(key: const Key('lock-out-no'), style: TextButton.styleFrom(minimumSize: const Size(90, 46)), onPressed: () => setState(() => _sure = false), child: const Text('Back')),
               const SizedBox(width: 8),
-              FilledButton(key: const Key('lock-out-yes'), onPressed: () => widget.out(forget), child: const Text('Sign in again')),
+              FilledButton(key: const Key('lock-out-yes'), style: FilledButton.styleFrom(minimumSize: const Size(150, 46)), onPressed: () => widget.out(forget), child: const Text('Sign in again')),
             ]),
           ]),
         )
