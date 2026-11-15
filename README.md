@@ -15,6 +15,22 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.128.0 (15-11-2026 – his decisions: "Beta testing must use a separate Test Database … Beta Testers must also receive
+every Stable release … beta eligibility is additional access, not exclusive access"):** TWO APPS from the same code.
+* **Sketchline** (`in.rachana.rcl.rcl_mobile`) – everybody, testers too: the live data, only the **stable** versions (GitHub's
+  "latest", `<!-- rcl:… -->`); a tester's phone is taken off the beta topic. Settings → **Sketchline Beta (testers)** (a tester only)
+  downloads the Beta app beside it.
+* **Sketchline Beta** (`in.rachana.rcl.rcl_mobile.beta`, "Sketchline Beta", the lion with a BETA pill, a BETA ribbon on every screen)
+  – built only by `beta.yml` (`RCL_CHANNEL=beta` for Gradle, `--dart-define=RCL_CHANNEL=beta`). Every Portal call says
+  `X-RCL-Channel: beta`: the Portal gives a tester only the modules' **beta copies** (the Beta TEST database) – somebody who is not a
+  tester is told to use Sketchline. It takes only its own versions (`<!-- rclb:… -->`) and listens to `rcl-app-update-beta`.
+* `beta.yml`: HR's branch beta too; the **SQL steps** that came with a beta (files added under `sql/`) in its line (`sql`); small
+  updates from the Beta app's own builds (`tool/release_patches.py`, `RCL_APP=beta`); the file must be the Beta app (id and name
+  checked). `release.yml`: the input `from` (the Portal's "Give to everybody") – the Stable app is built only when `main` IS the
+  commit the testers had.
+* Needs (his set-up): the Beta app in Firebase (`in.rachana.rcl.rcl_mobile.beta`) and the new `google-services.json` (both apps) in
+  the secret `GOOGLE_SERVICES_JSON`.
+
 **Version 3.127.1 (15-11-2026 – his picture: "screen bgh ashi distey, fix krayla lagel – te cut zali"):** the lock screen fills the
 whole screen. A Scaffold's page is only as wide as what is in it, so on a phone wider than 360 the lock stood at the left, as wide
 as its Unlock button (280), the rest of the screen plain. `SizedBox.expand` around it; the screen tests check that the PIN pad, the

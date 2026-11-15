@@ -2054,5 +2054,10 @@
 "The two PINs are not the same – type it again.": "दोनों PIN एक जैसे नहीं – फिर से डालें.",
 "At least 6 letters or numbers.": "कम से कम 6 अक्षर / अंक.",
 "At least 6 letters or numbers – for this phone only (not your Sketchline password).": "कम से कम 6 अक्षर / अंक – सिर्फ़ इस phone के लिए (Sketchline का पासवर्ड नहीं).",
-"Same password again": "वही पासवर्ड फिर से"
+"Same password again": "वही पासवर्ड फिर से",
+"Sketchline Beta is only for testers – use the Sketchline app.": "Sketchline Beta केवल टेस्टर्स के लिए है – Sketchline ऐप इस्तेमाल करें।",
+"No module has its Beta (TEST) copy for you yet – ask the Super Admin.": "आपके लिए अभी किसी मॉड्यूल की Beta (TEST) कॉपी नहीं है – Super Admin से पूछें।",
+"No Sketchline Beta version yet.": "अभी Sketchline Beta का कोई संस्करण नहीं है।",
+"Sketchline Beta (testers)": "Sketchline Beta (टेस्टर्स के लिए)",
+"Download": "डाउनलोड करें"
 }

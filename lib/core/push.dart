@@ -21,6 +21,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../config.dart' show kBetaApp;
 import 'api.dart';
 import 'lang.dart';
 
@@ -28,6 +29,9 @@ const kPushTopic = 'rcl-app-update';
 
 /// (02-11-2026) the testers' phones only: "a new BETA version is ready" (.github/workflows/beta.yml)
 const kPushTopicBeta = 'rcl-app-update-beta';
+
+/// (15-11-2026) does this phone listen to the beta versions? Only the Beta app, while he is a tester ([betaApp]: kBetaApp)
+bool betaTopic(bool tester, {bool betaApp = kBetaApp}) => betaApp && tester;
 /// (3.42.0) a new version was told (while the app is open, or its notification pressed): Home asks for the update again
 final pushUpdateTick = ValueNotifier<int>(0);
 const kPushSent = 'push_sent'; // "<who>|<token>|<day>": this phone was given to Mechanical today (not asked again at every start)

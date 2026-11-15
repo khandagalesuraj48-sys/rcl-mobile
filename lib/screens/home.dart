@@ -174,7 +174,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   void _newVersion() {
     if (!mounted) return;
     final s = SessionScope.read(context);
-    checkUpdate(s.api, beta: s.tester).then((u) {
+    checkUpdate(s.api).then((u) {
       if (mounted && u != null) setState(() => update = u);
     });
   }
@@ -186,7 +186,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       _load();
       final s = SessionScope.read(context);
       _ls = s..dataTick.addListener(_live);
-      checkUpdate(s.api, beta: s.tester).then((u) {
+      checkUpdate(s.api).then((u) {
         if (mounted && u != null) setState(() => update = u);
       });
       pushUpdateTick.addListener(_newVersion);

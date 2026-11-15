@@ -13,6 +13,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import '../config.dart' show kBetaApp;
 import 'alerts.dart';
 import 'api.dart';
 import 'push.dart';
@@ -44,7 +45,8 @@ class Fcm {
       debugPrint('Firebase: $e'); // (a build without its settings: as before)
       return false;
     }
-    unawaited(FirebaseMessaging.instance.subscribeToTopic(kPushTopic).catchError((Object _) {}));
+    // (15-11-2026) the stable versions are for the Sketchline app only (the Beta app listens to its own – [channel])
+    if (!kBetaApp) unawaited(FirebaseMessaging.instance.subscribeToTopic(kPushTopic).catchError((Object _) {}));
     return true;
   }
 
@@ -62,11 +64,12 @@ class Fcm {
     });
   }
 
-  /// (02-11-2026) a tester's phone listens to the beta versions too; not a tester (any more): taken off
+  /// (02-11-2026) the beta versions are told only to testers; (15-11-2026) only to the Beta app – the Sketchline app of a tester takes
+  /// every stable version like everybody, so it is taken off the beta topic (a phone that had it from before)
   static Future<void> channel(bool tester) async {
     try {
       final m = FirebaseMessaging.instance;
-      await (tester ? m.subscribeToTopic(kPushTopicBeta) : m.unsubscribeFromTopic(kPushTopicBeta));
+      await (betaTopic(tester) ? m.subscribeToTopic(kPushTopicBeta) : m.unsubscribeFromTopic(kPushTopicBeta));
     } catch (_) {/* (no Firebase: as before) */}
   }
 

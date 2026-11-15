@@ -12,6 +12,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../config.dart' show kBetaApp;
 import 'answers.dart';
 
 /// What the server answered instead of a result – its own words (English, as the web app shows them).
@@ -56,7 +57,11 @@ class MemoryKeep implements Keep {
 }
 
 class Api {
-  Api({required this.portalUrl, required this.keep, http.Client? client, this.timeout = const Duration(seconds: 40)}) : _c = client ?? http.Client();
+  Api({required this.portalUrl, required this.keep, http.Client? client, this.timeout = const Duration(seconds: 40), this.beta = kBetaApp}) : _c = client ?? http.Client();
+
+  /// (15-11-2026) the Sketchline Beta app: every call to the Portal says so (X-RCL-Channel: beta) – the Portal then gives a tester
+  /// only the modules' beta copies (the Beta TEST database) and somebody who is not a tester nothing
+  final bool beta;
 
   final String portalUrl; // https://oneclicksolution-erp.vercel.app/portal
   final Keep keep;
@@ -141,6 +146,7 @@ class Api {
   Map<String, String> get _portalHeaders => {
         'Content-Type': 'application/json',
         'X-RCL': '1', // the Portal takes changes only with this header (a page of another site cannot send it)
+        if (beta) 'X-RCL-Channel': 'beta', // (15-11-2026) the Beta app
         if (_cookie != null) 'Cookie': _cookie!,
       };
 

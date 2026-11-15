@@ -42,7 +42,7 @@ class _MeTabState extends State<MeTab> {
   Future<void> _check() async {
     final s = SessionScope.read(context);
     setState(() => checking = true);
-    final u = await checkUpdate(s.api, beta: s.tester);
+    final u = await checkUpdate(s.api);
     if (!mounted) return;
     setState(() => checking = false);
     if (u == null) {

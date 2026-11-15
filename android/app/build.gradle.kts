@@ -24,9 +24,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // (15-11-2026, his decisions) THE SKETCHLINE BETA APP – built only by .github/workflows/beta.yml (RCL_CHANNEL=beta): another app
+    // beside "Sketchline" (its own id, its own name) – the testers' app on the Beta TEST database; the same signing key
+    val betaApp = System.getenv("RCL_CHANNEL") == "beta"
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "in.rachana.rcl.rcl_mobile"
+        applicationId = if (betaApp) "in.rachana.rcl.rcl_mobile.beta" else "in.rachana.rcl.rcl_mobile"
+        manifestPlaceholders["appLabel"] = if (betaApp) "Sketchline Beta" else "Sketchline"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = maxOf(24, flutter.minSdkVersion)      // (3.27.0) the app lock (local_auth) needs Android 7 or newer

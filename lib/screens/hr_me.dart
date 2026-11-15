@@ -732,7 +732,7 @@ class _UpdateRowState extends State<_UpdateRow> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final s = SessionScope.read(context), u = await checkUpdate(s.api, beta: s.tester);
+      final s = SessionScope.read(context), u = await checkUpdate(s.api);
       if (mounted && u != null) setState(() => found = u);
     });
   }
@@ -741,7 +741,7 @@ class _UpdateRowState extends State<_UpdateRow> {
     if (checking) return;
     final s = SessionScope.read(context);
     setState(() => checking = true);
-    final u = await checkUpdate(s.api, beta: s.tester);
+    final u = await checkUpdate(s.api);
     if (!mounted) return;
     setState(() {
       checking = false;

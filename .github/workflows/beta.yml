@@ -9,6 +9,17 @@
 #   – what is new (English, मराठी, हिंदी): the box when run by hand, else WHATS_NEW.txt of this branch;
 #   – the testers' phones are told (the topic rcl-app-update-beta) when there is an app in it.
 # The same GitHub secrets as release.yml (never in a file). RCL_REPOS_TOKEN (read-only) only if the web repositories become private.
+# (15-11-2026, his decisions: a separate Beta TEST database; a tester also gets every Stable release; one beta a version; several
+# betas ticked together; the SQL first) THE APP OF A BETA IS THE SKETCHLINE BETA APP – another app beside "Sketchline"
+# (in.rachana.rcl.rcl_mobile.beta, "Sketchline Beta", the lion with a BETA pill – tool/beta_icon.py; RCL_CHANNEL=beta for Gradle and
+# the Dart code): it asks the Portal for the modules' BETA copies only (the Beta TEST database) and takes only its own versions.
+#   – the hidden line is <!-- rclb:{…} --> (the Sketchline app reads only "rcl:" – it never takes this file); never GitHub's "latest";
+#   – "sql": the SQL steps that came with it – files added under sql/ between each web repository's main and its beta commit; the
+#     Portal shows them and asks "run in Production?" before "Give to everybody";
+#   – the small updates from the Beta app's own earlier files (tool/release_patches.py, RCL_APP=beta);
+#   – Firebase: GOOGLE_SERVICES_JSON must have the Beta app too (Firebase → Project settings → Add app → Android →
+#     in.rachana.rcl.rcl_mobile.beta, then the new google-services.json – it has both apps – into the same secret).
+#   "Give to everybody" (the Portal) then builds the STABLE app from the same commit (release.yml, input "from").
 name: beta
 on:
   workflow_dispatch:
@@ -31,6 +42,7 @@ jobs:
       SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
       SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RCL_CHANNEL: beta      # (15-11-2026) Gradle: the Sketchline Beta app's own id and name (android/app/build.gradle.kts)
     steps:
       - uses: actions/checkout@v5
       - name: What this version is – the web's beta commits, the app built or not, its number
@@ -40,20 +52,24 @@ jobs:
           set -e
           VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           BN=$(bash tool/next_build.sh)
-          OWNER="${GITHUB_REPOSITORY%%/*}"; WEB='{}'
-          for r in rclerp rcl-portal rcl-store rcl-purchase rcl-engineering; do
+          OWNER="${GITHUB_REPOSITORY%%/*}"; WEB='{}'; SQL='{}'
+          for r in rclerp rcl-portal rcl-store rcl-purchase rcl-engineering rcl-hr; do
             s=$(GH_TOKEN="${READ_TOKEN:-$GH_TOKEN}" gh api "repos/$OWNER/$r/branches/beta" --jq .commit.sha 2>/dev/null || true)
             if [[ "$s" =~ ^[0-9a-f]{40}$ ]]; then
               WEB=$(python3 -c "import json,sys; w=json.loads(sys.argv[1]); w[sys.argv[2]]=sys.argv[3]; print(json.dumps(w, separators=(',', ':')))" "$WEB" "$r" "$s")
               echo "::notice::$r beta: $s"
+              # (15-11-2026) the SQL steps that came with it: files ADDED under sql/ between main and this commit
+              q=$(GH_TOKEN="${READ_TOKEN:-$GH_TOKEN}" timeout 60 gh api "repos/$OWNER/$r/compare/main...$s" --jq '[.files[]? | select(.status == "added") | .filename | select(startswith("sql/") and endswith(".sql"))]' 2>/dev/null || echo '[]')
+              SQL=$(python3 -c "import json,sys; w=json.loads(sys.argv[1]); l=json.loads(sys.argv[3] or '[]'); w.update({sys.argv[2]: l} if l else {}); print(json.dumps(w, separators=(',', ':')))" "$SQL" "$r" "$q")
+              [ "$q" = "[]" ] || echo "::notice::$r – SQL steps to run in Production before it goes to everybody: $q"
             else
               echo "::notice::$r has no branch beta – not in this version"
             fi
           done
-          # the app: the same commit as the newest version that has an app → nothing new for the phones (a version of the web only)
-          LAST=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" --jq '[.[] | select(.draft | not) | select([.assets[].name | endswith(".apk")] | any)][0].target_commitish // ""')
+          # the app: the same commit as the newest Beta app's version → nothing new for the testers' phones (a version of the web only)
+          LAST=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" --jq '[.[] | select(.draft | not) | select((.body // "") | contains("<!-- rclb:")) | select([.assets[].name | endswith(".apk")] | any)][0].target_commitish // ""')
           if [ "$LAST" = "$GITHUB_SHA" ]; then APP=0; echo "::notice::The app did not change since its last version – this version is of the web only."; else APP=1; fi
-          { echo "VER=$VER"; echo "BN=$BN"; echo "APP=$APP"; echo "WEB=$WEB"; } >> "$GITHUB_ENV"
+          { echo "VER=$VER"; echo "BN=$BN"; echo "APP=$APP"; echo "WEB=$WEB"; echo "SQL=$SQL"; } >> "$GITHUB_ENV"
           echo "::notice::Beta $VER ($BN) – app: $([ "$APP" = 1 ] && echo yes || echo 'no – the web only')"
 
       # ---------- the app (only when it changed) – the very steps of release.yml ----------
@@ -92,9 +108,14 @@ jobs:
           import json, sys
           j = json.load(open('android/app/google-services.json'))
           names = [c.get('client_info', {}).get('android_client_info', {}).get('package_name', '') for c in j.get('client', [])]
-          if 'in.rachana.rcl.rcl_mobile' not in names:
-              print('::error::GOOGLE_SERVICES_JSON is not the file of the app in.rachana.rcl.rcl_mobile (it has: %s)' % names); sys.exit(1)
+          if 'in.rachana.rcl.rcl_mobile.beta' not in names:
+              print('::error::GOOGLE_SERVICES_JSON has not the Sketchline Beta app (in.rachana.rcl.rcl_mobile.beta) – Firebase → Project settings → Add app → Android → in.rachana.rcl.rcl_mobile.beta; then its google-services.json (it has both apps) into the same secret. It has: %s' % names); sys.exit(1)
           PY
+      - name: The Sketchline Beta icon (the lion with a BETA pill – only on this checkout)
+        if: env.APP == '1'
+        run: |
+          (python3 -m pip install --quiet pillow==11.3.0 || python3 -m pip install --quiet --break-system-packages pillow==11.3.0)
+          timeout 120 python3 tool/beta_icon.py
       - if: env.APP == '1'
         run: flutter pub get
       - name: Tests (a beta only when they pass)
@@ -103,7 +124,7 @@ jobs:
       - name: Signed Android app
         if: env.APP == '1'
         run: |
-          flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform android-arm,android-arm64 --split-debug-info=build/symbols
+          flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform android-arm,android-arm64 --split-debug-info=build/symbols --dart-define=RCL_CHANNEL=beta
           cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.apk"
       - name: One file per processor (a phone's update downloads only its own)
         if: env.APP == '1'
@@ -111,7 +132,7 @@ jobs:
           set -e
           for a in arm64-v8a:android-arm64 armeabi-v7a:android-arm; do
             abi=${a%%:*}; tp=${a##*:}
-            RCL_ABIS=$abi flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform $tp --split-debug-info=build/symbols
+            RCL_ABIS=$abi flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform $tp --split-debug-info=build/symbols --dart-define=RCL_CHANNEL=beta
             cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.$abi.apk"
             other=$(unzip -l "rcl-erp-$VER-$BN.$abi.apk" | awk '{print $4}' | grep '^lib/' | cut -d/ -f2 | sort -u | grep -vx "$abi" || true)
             [ -z "$other" ] || { echo "::error::rcl-erp-$VER-$BN.$abi.apk also has the parts of: $other"; exit 1; }
@@ -126,7 +147,17 @@ jobs:
             vc=$("${AS}aapt2" dump badging "$f" 2>/dev/null | grep -o "versionCode='[0-9]*'" | head -1)
             [ "$vc" = "versionCode='$BN'" ] || { echo "::error::$f has $vc, not $BN."; exit 1; }
             "${AS}aapt2" dump resources "$f" 2>/dev/null | grep -q "string/google_app_id" || { echo "::error::$f has no Firebase settings (google_app_id) – not released."; exit 1; }
+            # (15-11-2026) the Sketchline Beta app – never a file with the Sketchline app's id (it would replace a person's live app)
+            "${AS}aapt2" dump badging "$f" 2>/dev/null | grep -q "package: name='in.rachana.rcl.rcl_mobile.beta'" || { echo "::error::$f is not the Sketchline Beta app (in.rachana.rcl.rcl_mobile.beta) – not released."; exit 1; }
+            "${AS}aapt2" dump badging "$f" 2>/dev/null | grep -q "application-label:'Sketchline Beta'" || { echo "::error::$f is not named Sketchline Beta – not released."; exit 1; }
           done
+      - name: The small updates (only what changed since the Beta app's builds before)
+        if: env.APP == '1'
+        run: |
+          mkdir -p out && cp rcl-erp-$VER-$BN.arm64-v8a.apk rcl-erp-$VER-$BN.armeabi-v7a.apk out/ && echo '{}' > out/patches.json
+          (python3 -m pip install --quiet bsdiff4==1.4.3 || python3 -m pip install --quiet --break-system-packages bsdiff4==1.4.3) \
+            && RCL_APP=beta timeout 1800 python3 tool/release_patches.py \
+            || { echo "::warning::The small updates were not made – the testers' phones download the whole file this time."; rm -f out/*.patch; echo '{}' > out/patches.json; }
 
       # ---------- the beta version ----------
       - name: GitHub pre-release "Beta" (the app files when there is an app, the web's commits)
@@ -144,20 +175,26 @@ jobs:
           META=$(python3 -c "
           import json, os
           m = {'build': int(os.environ['BN']), 'version': os.environ['VER'], 'web': json.loads(os.environ['WEB']), 'app': os.environ['GITHUB_SHA']}
-          if os.environ['APP'] == '1': m.update({'sha256': os.environ['SHA'], 'apk': {'arm64-v8a': os.environ['S64'], 'armeabi-v7a': os.environ['S32']}})
+          sql = json.loads(os.environ.get('SQL') or '{}')
+          if sql: m['sql'] = sql
+          if os.environ['APP'] == '1':
+              m.update({'sha256': os.environ['SHA'], 'apk': {'arm64-v8a': os.environ['S64'], 'armeabi-v7a': os.environ['S32']}})
+              p = json.load(open('out/patches.json')) if os.path.exists('out/patches.json') else {}
+              if p: m['patch'] = p
           print(json.dumps(m, separators=(',', ':')))")
           MB() { echo $(( $(stat -c %s "$1") / 1048576 )); }
           { if [ -n "$NOTES" ]; then printf "<!-- rcl-new -->\n%s\n<!-- /rcl-new -->\n\n" "$NOTES"; fi
-            printf "RCL ERP %s (%s) – BETA: the testers have it first; the Portal's \"Give to everybody\" makes it the stable one.\n" "$VER" "$BN"
+            printf "RCL ERP %s (%s) – BETA: the testers have it first (the Sketchline Beta app, the TEST data); the Portal's \"Give to everybody\" makes it the stable one.\n" "$VER" "$BN"
             if [ "$APP" = "1" ]; then
               printf "Android (%s MB): rcl-erp-%s-%s.apk – SHA-256 %s\n" "$(MB "$F")" "$VER" "$BN" "$SHA"
               printf "Android, the update inside the app: 64-bit %s MB (SHA-256 %s), 32-bit %s MB (SHA-256 %s)\n" "$(MB "$A64")" "$S64" "$(MB "$A32")" "$S32"
             else
               printf "The web only – no app in this version (the phones keep theirs).\n"
             fi
-            printf "\n<!-- rcl:%s -->\n" "$META"; } > notes.md
+            if [ -n "$(echo "$SQL" | tr -d '{}')" ]; then printf "Database steps – run them in Production (every site) before \"Give to everybody\": %s\n" "$SQL"; fi
+            printf "\n<!-- rclb:%s -->\n" "$META"; } > notes.md
           gh release create "v$VER-$BN" "${FILES[@]}" --title "RCL ERP $VER ($BN)" --notes-file notes.md --target "$GITHUB_SHA" --prerelease
-          if [ "$APP" = "1" ]; then gh release upload "v$VER-$BN" "$A64"; gh release upload "v$VER-$BN" "$A32"; fi
+          if [ "$APP" = "1" ]; then gh release upload "v$VER-$BN" "$A64"; gh release upload "v$VER-$BN" "$A32"; for p in out/*.patch; do if [ -f "$p" ]; then gh release upload "v$VER-$BN" "$p"; fi; done; fi
           echo "::notice::Beta $VER ($BN) – https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VER-$BN"
       - name: Tell the testers' phones (needs the GitHub secret FCM_SERVICE_ACCOUNT_JSON)
         if: env.APP == '1'

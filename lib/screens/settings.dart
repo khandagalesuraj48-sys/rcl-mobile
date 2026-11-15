@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart' hide Text;
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/session.dart';
 import 'start_page.dart' show startPagesFor;
@@ -18,6 +19,7 @@ import '../ui/t.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
 import '../core/applock.dart';
+import '../core/update.dart' show betaAppLink;
 import 'app_lock.dart';
 import 'lock.dart' show LockScope;
 import '../ui/motion.dart';
@@ -144,6 +146,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (v != null) await _save('mobile', () => s.savePrefs({'mobile': v}));
   }
 
+  /// (15-11-2026) the newest Sketchline Beta file for this phone – opened in the browser (Android asks before it installs it)
+  Future<void> _betaApp() async {
+    final link = await betaAppLink();
+    if (!mounted) return;
+    if (link.isEmpty) {
+      toast(context, 'No Sketchline Beta version yet.', bad: true);
+      return;
+    }
+    await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+  }
+
   Widget _row({required IconData icon, required Color color, required String en, required String mr, required String value, VoidCallback? onTap, String id = ''}) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Press(
@@ -233,6 +246,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (mounted) setState(() {});
             },
           ),
+        // (15-11-2026, his decisions) a tester: the testers' own app – Sketchline Beta (the TEST data) – downloaded here; this app stays
+        if (s.tester && !s.api.beta)
+          _row(id: 'betaapp', icon: Icons.science_rounded, color: C.orange, en: 'Sketchline Beta (testers)', mr: 'Sketchline Beta (टेस्टर्ससाठी)', value: 'Download', onTap: _betaApp),
         _row(
           id: 'loc',
           icon: Icons.local_gas_station_rounded,

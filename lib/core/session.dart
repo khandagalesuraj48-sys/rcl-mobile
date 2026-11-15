@@ -629,6 +629,8 @@ class Session extends ChangeNotifier {
     if (me['signedIn'] != true) throw ApiError('Please sign in.', code: 'signin');
     // (15-10-2026) still on the password the Super Admin gave: he sets his own first (here in the app)
     if (me['mustChange'] == true) throw ApiError('Set your own password first.', code: 'mustchange');
+    // (15-11-2026) the Beta app: only a tester (ticked by the Super Admin in the Portal)
+    if (me['notTester'] == true) throw ApiError('Sketchline Beta is only for testers – use the Sketchline app.', code: 'nottester');
     final u = (me['user'] as Map?)?.cast<String, dynamic>() ?? {};
     // (14-10-2026) the Super Admin opens every module of every site too (the Portal lists them all for him, as Admin)
     final by = <String, SiteChoice>{};
@@ -642,7 +644,9 @@ class Session extends ChangeNotifier {
     // (3.108.0, asked 12-11-2026: "home screen new design kr non erp user sathi") nobody gave him Mechanical: a person who uses the
     // app for his own attendance – his sites with HR ("My HR"). The app opens its own four pages for him (screens/hr_shell.dart).
     if (sites.isEmpty) sites = by.values.where((s) => s.module('hr') != null || s.module('hrme') != null).toList();
-    if (sites.isEmpty) throw ApiError('You have no site with Mechanical or HR yet – ask the Super Admin.', code: 'nosite');
+    if (sites.isEmpty) {
+      throw ApiError(api.beta ? 'No module has its Beta (TEST) copy for you yet – ask the Super Admin.' : 'You have no site with Mechanical or HR yet – ask the Super Admin.', code: 'nosite');
+    }
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();
     tester = u['tester'] == true; // (02-11-2026) the Portal's "me" – the beta channel

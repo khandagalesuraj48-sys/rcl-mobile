@@ -28,7 +28,8 @@ def manifest(s):
              'android.permission.USE_FULL_SCREEN_INTENT']      # (3.42.0) a call's notification rings on the locked phone too
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
-    s = re.sub(r'android:label="[^"]*"', 'android:label="Sketchline"', s, count=1)
+    # (15-11-2026) the name comes from Gradle: "Sketchline" – "Sketchline Beta" for the testers' app (RCL_CHANNEL=beta)
+    s = re.sub(r'android:label="[^"]*"', 'android:label="${appLabel}"', s, count=1)
     if 'OtaUpdateFileProvider' not in s:
         block = ('        <provider android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"\n'
                  '            android:authorities="${applicationId}.ota_update_provider"\n'
@@ -99,6 +100,12 @@ def gradle(s):
         need(s2 != s, 'no signingConfigs block'); s = s2
     if 'desugar_jdk_libs' not in s:
         s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+    if 'betaApp' not in s:      # (15-11-2026) the Sketchline Beta app (RCL_CHANNEL=beta): its own id and name
+        s2 = re.sub(r'(\n    defaultConfig \{\n)', '\n    val betaApp = System.getenv("RCL_CHANNEL") == "beta"\\1', s, count=1)
+        need(s2 != s, 'no defaultConfig block'); s = s2
+        s2 = re.sub(r'applicationId = "in\.rachana\.rcl\.rcl_mobile"\n', 'applicationId = if (betaApp) "in.rachana.rcl.rcl_mobile.beta" else "in.rachana.rcl.rcl_mobile"\n'
+                    '        manifestPlaceholders["appLabel"] = if (betaApp) "Sketchline Beta" else "Sketchline"\n', s, count=1)
+        need(s2 != s, 'no applicationId line'); s = s2
     # (3.27.0) the app lock (local_auth): Android 7 or newer, the AppCompat themes (MainActivity.kt – a FlutterFragmentActivity – is in git)
     s = s.replace('minSdk = flutter.minSdkVersion\n', 'minSdk = maxOf(24, flutter.minSdkVersion)\n', 1)
     if 'androidx.appcompat:appcompat' not in s:

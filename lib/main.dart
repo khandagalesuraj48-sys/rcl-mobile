@@ -32,6 +32,7 @@ import 'screens/hr_shell.dart';
 import 'screens/shell.dart';
 import 'screens/site_pick.dart';
 import 'screens/splash.dart';
+import 'ui/beta_mark.dart';
 import 'ui/scope.dart';
 import 'ui/hr_skin.dart';
 import 'ui/theme.dart';
@@ -249,7 +250,7 @@ class RclApp extends StatelessWidget {
         child: LangScope(child: ValueListenableBuilder<bool>(valueListenable: session.siteMode, builder: (_, site, __) => ListenableBuilder(listenable: HrSkin.i, builder: (_, __) => MaterialApp(
           navigatorKey: appNav,
           navigatorObservers: [appRoutes], // (update-155) a tab under a closed screen loads if it is old (ui/live.dart)
-          title: 'Sketchline', // (3.124.0) the product's name
+          title: appTitle(), // (3.124.0) the product's name; (15-11-2026) "Sketchline Beta" – the testers' app
           debugShowCheckedModeBanner: false,
           // (3.114.0) the attendance app (a person with HR only): the look he chose – Pearl or Midnight Gold (ui/hr_skin.dart)
           theme: HrSkin.i.on ? hrTheme(sk, _theme) : (site ? _siteTheme : _theme),
@@ -271,7 +272,8 @@ class RclApp extends StatelessWidget {
               // (3.41.0) a "Scan with Mobile" QR code waiting: opened as soon as he is signed in, unlocked and at its site
               child: LockLayer(lock: lock, nav: appNav, child: ScanLinkLayer(nav: appNav, lock: lock, child: CallLayer(nav: appNav, child: VoiceLayer(child: child!)))),
             );
-            return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
+            // (15-11-2026) the Beta app: the BETA ribbon over every screen (the TEST data)
+            return betaMark(k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app));
           },
           home: const Gate(),
         )))),

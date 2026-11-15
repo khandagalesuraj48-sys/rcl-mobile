@@ -92,10 +92,12 @@ const kAbiFiles = ['.arm64-v8a.apk', '.armeabi-v7a.apk', '.x86_64.apk'];
 
 /// The update in a GitHub Release (its JSON from the GitHub API), when it is newer than [currentBuild] – else null.
 /// [computer]: the Windows setup (.exe, fingerprint "win") instead of the Android app (.apk, fingerprint "sha256").
-/// [beta]: (02-11-2026) a tester – a pre-release (a beta version) is taken too.
-AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer = false, bool beta = false}) {
-  final m = RegExp(r'<!-- rcl:(\{.*?\}) -->').firstMatch((j['body'] ?? '').toString());
-  if (m == null || j['draft'] == true || (j['prerelease'] == true && !beta)) return null;
+/// [betaApp]: (15-11-2026) the Sketchline Beta app – it takes ONLY the Beta app's versions (their line is <!-- rclb:… -->, pre-releases
+/// of beta.yml); the Sketchline app (everybody, testers too) only the stable ones (<!-- rcl:… -->, never a pre-release). An older app
+/// reads only "rcl:" – it never takes the Beta app's file.
+AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer = false, bool betaApp = false}) {
+  final m = RegExp(betaApp ? r'<!-- rclb:(\{.*?\}) -->' : r'<!-- rcl:(\{.*?\}) -->').firstMatch((j['body'] ?? '').toString());
+  if (m == null || j['draft'] == true || (j['prerelease'] == true && !betaApp)) return null;
   Map<String, dynamic> meta;
   try {
     meta = (jsonDecode(m.group(1)!) as Map).cast<String, dynamic>();
@@ -139,12 +141,12 @@ String releaseNotes(Map<String, dynamic> j) {
   return t.isNotEmpty ? t : (j['name'] ?? '').toString();
 }
 
-/// (02-11-2026) A tester: of the newest releases (beta ones included), the one with the highest build that is newer – else null.
+/// (15-11-2026) The Beta app: of the newest releases, its own version with the highest build that is newer – else null.
 AppUpdate? newestOf(List<dynamic> list, int currentBuild, {bool computer = false}) {
   AppUpdate? best;
   var must = false;
   for (final j in list.whereType<Map>()) {
-    final u = parseRelease(j.cast<String, dynamic>(), currentBuild, computer: computer, beta: true);
+    final u = parseRelease(j.cast<String, dynamic>(), currentBuild, computer: computer, betaApp: true);
     if (u != null && (best == null || u.build > best.build)) best = u;
     if (u != null && u.must) must = true; // (3.122.0) a newer STABLE version is there: the tester too must move on (to the newest he may take)
   }
@@ -152,19 +154,33 @@ AppUpdate? newestOf(List<dynamic> list, int currentBuild, {bool computer = false
 }
 
 /// A newer version than the one on this phone, or null (also when it cannot be asked – the app works on).
-/// [beta]: (02-11-2026) a tester (Session.tester) – a beta version too.
-Future<AppUpdate?> checkUpdate(Api api, {bool beta = false}) async {
+/// (15-11-2026) the Sketchline app: the stable version (GitHub's "latest") – for a tester too; the Beta app ([Api.beta]): its own.
+Future<AppUpdate?> checkUpdate(Api api) async {
   if (Platform.isIOS) return null; // (the App Store / TestFlight – later)
   try {
     final info = await PackageInfo.fromPlatform();
+    final beta = api.beta;
     final r = await http.get(Uri.parse(beta ? kReleasesListApi : kReleasesApi), headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
     if (r.statusCode != 200) return null;
     final j = jsonDecode(utf8.decode(r.bodyBytes)), mine = int.tryParse(info.buildNumber) ?? 0;
-    final u = beta ? (j is List ? newestOf(j, mine, computer: onComputer) : null) : parseRelease((j as Map).cast<String, dynamic>(), mine, computer: onComputer);
+    final u = beta ? (j is List ? newestOf(j, mine) : null) : parseRelease((j as Map).cast<String, dynamic>(), mine, computer: onComputer);
     mustUpdate.value = u != null && u.must ? u : null; // (3.122.0) GitHub answered: the wall comes, or goes
     return u;
   } catch (_) {
     return null; // not reached: nothing is known – the app works on (and a wall that stands, stays)
+  }
+}
+
+/// (15-11-2026) a tester's Sketchline app: the link of the newest Sketchline Beta file for this phone – '' when there is none (or
+/// GitHub is not reached). The Beta app is another app beside this one – this one stays as it is.
+Future<String> betaAppLink() async {
+  try {
+    final r = await http.get(Uri.parse(kReleasesListApi), headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
+    if (r.statusCode != 200) return '';
+    final j = jsonDecode(utf8.decode(r.bodyBytes));
+    return j is List ? (newestOf(j, 0)?.url ?? '') : '';
+  } catch (_) {
+    return '';
   }
 }
 

@@ -34,6 +34,13 @@ on:
         type: boolean
         required: false
         default: false
+      # (15-11-2026, his decisions) asked by the Portal's "Give to everybody" on a version of the Sketchline Beta app: the beta's tag.
+      # The STABLE app is built here from main – which the Portal has just moved to that beta's commit – and the run stops unless
+      # main IS that commit (only what the testers had goes to everybody). Empty: a release as before.
+      from:
+        description: 'The beta version this stable one is made from (its tag) – the Portal fills it; empty = as before'
+        required: false
+        default: ''
 permissions:
   contents: write
 concurrency:
@@ -53,6 +60,25 @@ jobs:
           if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "::error::Add PORTAL_SUPABASE_URL and PORTAL_SUPABASE_KEY in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
           SB_URL="${SB_URL%/}"; echo "SB_URL=$SB_URL" >> "$GITHUB_ENV"
       - uses: actions/checkout@v5
+      - name: Made from a beta version? main must be its very commit
+        if: inputs.from != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FROM: ${{ inputs.from }}
+        run: |
+          set -e
+          [[ "$FROM" =~ ^v[0-9A-Za-z._-]{1,60}$ ]] || { echo "::error::'$FROM' is not a version's tag."; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$FROM" > from.json || { echo "::error::The beta version $FROM is not there."; exit 1; }
+          python3 - <<'PY'
+          import json, os, re, sys
+          r = json.load(open('from.json')); b = r.get('body') or ''
+          m = re.search(r'<!-- rclb:(\{.*?\}) -->', b)
+          if not m: print('::error::%s is not a version of the Sketchline Beta app.' % os.environ['FROM']); sys.exit(1)
+          app = json.loads(m.group(1)).get('app') or r.get('target_commitish') or ''
+          if app != os.environ['GITHUB_SHA']:
+              print('::error::main (%s) is not the commit the testers had (%s) – nothing is released. Give it to everybody from the Portal again.' % (os.environ['GITHUB_SHA'][:10], app[:10])); sys.exit(1)
+          print('::notice::The Stable app is made from the beta version %s – the same commit %s.' % (os.environ['FROM'], app[:10]))
+          PY
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -234,6 +260,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTES: ${{ github.event.inputs.notes }}
           OPTIONAL: ${{ github.event.inputs.optional }}
+          FROM: ${{ inputs.from }}
           WIN_OK: ${{ needs.windows.result }}
         run: |
           set -e
@@ -247,7 +274,7 @@ jobs:
           else
             echo "::warning::The Windows setup was not made – this release is for Android only (the computers keep their version)."
           fi
-          META=$(python3 -c "import json,os;m={'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':os.environ['SHA']};w=os.environ.get('WSHA','');m.update({'win':w} if w else {});m['apk']={'arm64-v8a':os.environ['S64'],'armeabi-v7a':os.environ['S32']};m.update({'optional':True} if os.environ.get('OPTIONAL','')=='true' else {});p=json.load(open('out/patches.json'));m.update({'patch':p} if p else {});print(json.dumps(m))")
+          META=$(python3 -c "import json,os;m={'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':os.environ['SHA']};w=os.environ.get('WSHA','');m.update({'win':w} if w else {});m['apk']={'arm64-v8a':os.environ['S64'],'armeabi-v7a':os.environ['S32']};m.update({'optional':True} if os.environ.get('OPTIONAL','')=='true' else {});m.update({'from':os.environ['FROM']} if os.environ.get('FROM','') else {});p=json.load(open('out/patches.json'));m.update({'patch':p} if p else {});print(json.dumps(m))")
           MB() { echo $(( $(stat -c %s "$1") / 1048576 )); }
           # (3.24.0) what is new – English, मराठी, हिंदी – between the markers: the app shows it in its update question
           { if [ -n "$NOTES" ]; then printf "<!-- rcl-new -->\n%s\n<!-- /rcl-new -->\n\nRCL ERP %s (%s) – %s.\n" "$NOTES" "$VER" "$BN" "$WHAT"; else printf "RCL ERP %s\n\nRCL ERP %s (%s) – %s.\n" "$VER" "$VER" "$BN" "$WHAT"; fi

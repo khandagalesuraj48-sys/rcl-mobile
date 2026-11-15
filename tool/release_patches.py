@@ -9,6 +9,8 @@ the released file is kept. Prints {"<abi>": [builds…]} into out/patches.json �
 A patch that cannot be made is left out (a warning): that phone downloads the whole file, as before – the release never fails for it.
 
   needs: GH_TOKEN, GITHUB_REPOSITORY, VER, BN; "pip install bsdiff4"; the gh CLI
+(15-11-2026) TWO APPS: RCL_APP=beta (beta.yml – the Sketchline Beta app) takes only the earlier Beta app's files (their line is
+<!-- rclb:… -->); otherwise (release.yml) only the Sketchline app's (<!-- rcl:… -->) – a file of the other app is never on that phone.
 """
 import hashlib, json, os, re, subprocess, sys
 from concurrent.futures import ProcessPoolExecutor
@@ -46,6 +48,7 @@ def one(job):
 
 def main():
     repo, ver, bn = os.environ['GITHUB_REPOSITORY'], os.environ['VER'], int(os.environ['BN'])
+    mine = '<!-- rclb:' if os.environ.get('RCL_APP') == 'beta' else '<!-- rcl:'
     rels = json.loads(subprocess.run(['gh', 'api', f'repos/{repo}/releases?per_page=40'], check=True, capture_output=True, text=True, timeout=120).stdout)
     jobs = []
     os.makedirs('old', exist_ok=True)
@@ -57,7 +60,7 @@ def main():
         for r in rels:
             m = re.match(r'^v.*-(\d+)$', r.get('tag_name') or '')
             names = [(a['name'], a['id']) for a in r.get('assets', []) if a['name'].endswith(f'.{abi}.apk')]
-            if m and not r.get('draft') and int(m.group(1)) < bn and names:
+            if m and not r.get('draft') and int(m.group(1)) < bn and names and mine in (r.get('body') or ''):
                 before.append((int(m.group(1)), names[0][0], names[0][1]))
         for build, name, asset in sorted(before, reverse=True)[:KEEP]:
             d = f'old/{abi}-{build}'

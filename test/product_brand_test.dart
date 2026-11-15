@@ -76,10 +76,16 @@ void main() {
   });
 
   test('the phone shows the new name: Android, the iPhone, the tool that makes the platform folders', () {
-    expect(File('android/app/src/main/AndroidManifest.xml').readAsStringSync(), contains('android:label="Sketchline"'));
+    // (15-11-2026) the name from Gradle: "Sketchline"; "Sketchline Beta" only for the testers' app (RCL_CHANNEL=beta – its own id)
+    expect(File('android/app/src/main/AndroidManifest.xml').readAsStringSync(), contains(r'android:label="${appLabel}"'));
+    final g = File('android/app/build.gradle.kts').readAsStringSync();
+    expect(g, contains('manifestPlaceholders["appLabel"] = if (betaApp) "Sketchline Beta" else "Sketchline"'));
+    expect(g, contains('applicationId = if (betaApp) "in.rachana.rcl.rcl_mobile.beta" else "in.rachana.rcl.rcl_mobile"'));
+    expect(g, contains('val betaApp = System.getenv("RCL_CHANNEL") == "beta"'));
     expect(File('ios/Runner/Info.plist').readAsStringSync(), contains('<string>Sketchline</string>'));
     final tool = File('tool/patch_platforms.py').readAsStringSync();
-    expect(tool, contains('android:label="Sketchline"'));
+    expect(tool, contains(r'android:label="${appLabel}"'));
+    expect(tool, contains('"Sketchline Beta" else "Sketchline"'));
     expect(tool, isNot(contains('android:label="RCL ' 'ERP"')));
   });
 

@@ -116,7 +116,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final s = SessionScope.read(context);
-        unawaited(checkUpdate(s.api, beta: s.tester));
+        unawaited(checkUpdate(s.api));
       });
     }
     // (3.117.0, "app chalu kel kel lagech app fetch krel user location") his place is read at once and kept young while Home

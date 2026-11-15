@@ -18,6 +18,7 @@ class FakeServer {
   Map<String, dynamic>? mailInfo;
   int alerts = 0;
   bool tester = false; // (02-11-2026) the Portal's "me": a tester (the beta channel)
+  final channels = <String>[]; // (15-11-2026) X-RCL-Channel of each Portal call ("" = none) – the Sketchline Beta app says "beta"
   /// (3.31.2 – update-143) the date and shift asked for is already saved: the server's prefill says so (addTo) and the save adds to it
   Map<String, dynamic>? addTo;
   String newPassword = '';
@@ -1390,6 +1391,7 @@ class FakeServer {
     if (path.endsWith('/portal/api/auth')) {
       final b = jsonDecode(r.body) as Map;
       calls.add('portal:${b['action']}');
+      channels.add(r.headers['X-RCL-Channel'] ?? '');
       if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused'}, 403);
       if (b['action'] == 'login') {
         if (b['password'] != 'Nashik#Road848!') return _j({'error': 'Email or password is wrong.', 'code': 'wrong'}, 401);
@@ -1400,6 +1402,8 @@ class FakeServer {
         if (!portalSignedIn || r.headers['Cookie'] != 'rcl_portal=abc123') return _j({'signedIn': false});
         // (as the Portal: still on a given password – no module until his own is set)
         if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
+        // (15-11-2026, as the Portal) the Beta app of somebody who is not a tester: no module
+        if (r.headers['X-RCL-Channel'] == 'beta' && !tester) return _j({'signedIn': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': [], 'notTester': true});
         if (hrOnlyUser) {
           return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, 'items': [
             {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'hrme', 'moduleName': 'My HR', 'url': 'https://erp.test/hr'},
@@ -1488,6 +1492,7 @@ class FakeServer {
     if (path.endsWith('/portal/api/go')) {
       final q = r.url.queryParameters;
       calls.add('portal:go:${q['module']}:${q['site']}');
+      channels.add(r.headers['X-RCL-Channel'] ?? '');
       if (q['json'] != '1' || r.headers['X-RCL'] != '1') return _j({'error': 'Refused'}, 403);
       if (!portalSignedIn) return _j({'error': 'Sign in on the Portal first.', 'code': 'signin'}, 401);
       tickets++;
