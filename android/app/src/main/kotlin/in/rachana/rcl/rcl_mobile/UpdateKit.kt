@@ -19,13 +19,15 @@ import java.io.File
 /* (3.31.4) THE UPDATE IN THE BACKGROUND (asked 23-10-2026: "app madhun baher al ki updet hoych band hot … background la app updet
  * chaluch asel ani complte al ki konte hi screen war aso mi install karaychi as ek pop up eil"). Channel "rcl/update"
  * (lib/core/update.dart):
- *   start {url, file, version, build, sha} – Android's own Download Manager downloads the update: it goes on when the app is left or
+ *   start {url, file, version, build, sha, alt} – Android's own Download Manager downloads the update: it goes on when the app is left or
  *     closed and after the network comes back (it is not started again from 0); its progress shows in the phone's notifications;
  *   state – the download kept here: {id, path, version, build, sha, status: pending | running | paused | done | failed | gone, got, total};
  *   install {path} – Android's installer with the file (the app checked its fingerprint first); "permission" = Android's page
  *     "Install unknown apps" was opened instead;
  *   forget – the download and its file go (installed, or a newer one);
- *   clearNote – the notification "Update ready" goes (the app shows its own box).
+ *   clearNote – the notification "Update ready" goes (the app shows its own box);
+ *   self – (3.126.0) the app file of the app installed on this phone: a SMALL update (file "….patch" – only what changed; "alt": the
+ *     whole file's address) is made into the new app file from it (lib/core/apk_patch.dart), next to the download ("….apk").
  * UpdateDoneReceiver: the download ended while the app was away – the notification "Update ready – tap to install" opens the app,
  * which then asks "Install?". */
 object UpdateKit {
@@ -38,33 +40,40 @@ object UpdateKit {
 
     private fun dm(c: Context) = c.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
-    fun start(c: Context, url: String, file: String, version: String, build: Int, sha: String): Long {
+    fun start(c: Context, url: String, file: String, version: String, build: Int, sha: String, alt: String = ""): Long {
         val p = prefs(c)
         val old = p.getLong("id", -1L)
         if (old >= 0) try { dm(c).remove(old) } catch (e: Exception) { /* already gone */ }
         val dir = c.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: throw IllegalStateException("no place for the file")
         val f = File(dir, file)
         if (f.exists()) f.delete()
+        made(f.absolutePath)?.let { if (it.exists()) it.delete() }
         val r = DownloadManager.Request(Uri.parse(url))
-            .setTitle("RCL ERP $version")
+            .setTitle("Sketchline $version")
             .setDescription("Update · अपडेट")
-            .setMimeType(APK)
+            .setMimeType(if (file.endsWith(".patch")) "application/octet-stream" else APK)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
             .setDestinationInExternalFilesDir(c, Environment.DIRECTORY_DOWNLOADS, file)
         val id = dm(c).enqueue(r)
         p.edit().putLong("id", id).putString("path", f.absolutePath).putString("version", version).putInt("build", build)
-            .putString("sha", sha).apply()
+            .putString("sha", sha).putString("alt", alt).apply()
         return id
     }
+
+    /** (3.126.0) The app file made from a small update ("x.patch" → "x.apk"); null = [path] is not a small update. */
+    private fun made(path: String): File? = if (path.endsWith(".patch")) File(path.removeSuffix(".patch") + ".apk") else null
+
+    /** (3.126.0) The app file of the app installed on this phone. */
+    fun self(c: Context): String = c.applicationInfo.sourceDir ?: ""
 
     fun state(c: Context): Map<String, Any?> {
         val p = prefs(c)
         val id = p.getLong("id", -1L)
         if (id < 0) return emptyMap()
         val out = mutableMapOf<String, Any?>("id" to id, "path" to (p.getString("path", "") ?: ""), "version" to (p.getString("version", "") ?: ""),
-            "build" to p.getInt("build", 0), "sha" to (p.getString("sha", "") ?: ""), "status" to "gone", "got" to 0L, "total" to -1L, "reason" to 0)
+            "build" to p.getInt("build", 0), "sha" to (p.getString("sha", "") ?: ""), "alt" to (p.getString("alt", "") ?: ""), "status" to "gone", "got" to 0L, "total" to -1L, "reason" to 0)
         try {
             dm(c).query(DownloadManager.Query().setFilterById(id))?.use { cur ->
                 if (cur.moveToFirst()) {
@@ -88,7 +97,7 @@ object UpdateKit {
         val p = prefs(c)
         val id = p.getLong("id", -1L)
         if (id >= 0) try { dm(c).remove(id) } catch (e: Exception) { /* already gone */ }
-        p.getString("path", null)?.let { try { File(it).delete() } catch (e: Exception) { /* not there */ } }
+        p.getString("path", null)?.let { try { File(it).delete(); made(it)?.delete() } catch (e: Exception) { /* not there */ } }
         p.edit().clear().apply()
         clearNote(c)
     }
@@ -116,8 +125,8 @@ object UpdateKit {
         @Suppress("DEPRECATION")
         val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(c, CHANNEL) else Notification.Builder(c)
         b.setSmallIcon(c.applicationInfo.icon).setContentIntent(pi).setAutoCancel(true)
-        if (ok) b.setContentTitle("RCL ERP $version – update ready").setContentText("Tap to install · install करण्यासाठी टॅप करा")
-        else b.setContentTitle("RCL ERP – update not downloaded").setContentText("Open the app and press Update again · ॲप उघडून पुन्हा Update दाबा")
+        if (ok) b.setContentTitle("Sketchline $version – update ready").setContentText("Tap to install · install करण्यासाठी टॅप करा")
+        else b.setContentTitle("Sketchline – update not downloaded").setContentText("Open the app and press Update again · ॲप उघडून पुन्हा Update दाबा")
         try { nm.notify(NOTE, b.build()) } catch (e: Exception) { /* notifications not allowed: the app asks when it is opened */ }
     }
 

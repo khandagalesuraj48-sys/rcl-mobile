@@ -14,6 +14,7 @@ void main() {
   final args = <String, Map<String, Object?>>{};
   Map<String, Object?>? kept; // the download the phone keeps
   var good = 'a' * 64; // the fingerprint of the file on the phone
+  final built = <List<String>>[]; // (3.126.0) the app files made from a small update: [the app on the phone, the patch, the new file]
   final u = AppUpdate(build: 140, version: '3.31.4', notes: 'What is new', url: 'https://github.com/x/rcl-erp-3.31.4-140.arm64-v8a.apk', sha256: 'A' * 64);
 
   setUp(() {
@@ -24,6 +25,8 @@ void main() {
     bgUpdates = () => true;
     appBuild = () async => 139;
     fileSha = (p) async => good;
+    built.clear();
+    patchBuild = (o, p, out) async => built.add([o, p, out]);
     bgCall = (m, [a]) async {
       calls.add(m);
       if (a != null) args[m] = a;
@@ -31,7 +34,7 @@ void main() {
         case 'state':
           return kept ?? <String, Object?>{};
         case 'start':
-          kept = {'id': 1, 'path': '/phone/files/Download/${a!['file']}', 'version': a['version'], 'build': a['build'], 'sha': a['sha'], 'status': 'running', 'got': 0, 'total': 1000};
+          kept = {'id': 1, 'path': '/phone/files/Download/${a!['file']}', 'version': a['version'], 'build': a['build'], 'sha': a['sha'], 'alt': a['alt'] ?? '', 'status': 'running', 'got': 0, 'total': 1000};
           return 1;
         case 'forget':
           kept = null;
@@ -40,6 +43,8 @@ void main() {
           return 'ok';
         case 'clearNote':
           return true;
+        case 'self':
+          return '/data/app/in.rachana.rcl/base.apk';
       }
       return null;
     };
@@ -173,6 +178,65 @@ void main() {
     expect(find.text('Update to 3.31.4?'), findsNothing);
     expect(calls.where((c) => c == 'start').length, 1);
     expect(find.text('Update 3.31.4 is ready'), findsOneWidget);
+    resetBgUpdate();
+  });
+
+  /* (3.126.0, asked 15-11-2026: "je kahi new updet aley tech fkt updet hoil … pratek weli full app download krayla ka lawatoys") THE
+   * SMALL UPDATE: only what changed is downloaded; the new app file is made on the phone and checked like a downloaded one. */
+  final small = AppUpdate(build: 140, version: '3.31.4', url: u.url, sha256: 'A' * 64, patch: 'https://github.com/x/rcl-erp-3.31.4-140.arm64-v8a.from-139.patch');
+
+  test('a release with a small update for this phone\'s build: only that is downloaded (the whole file\'s address is kept with it)', () async {
+    expect(await startBgUpdate(small), 'started');
+    expect(args['start'], {'url': small.patch, 'file': 'rcl-erp-3.31.4-140.patch', 'version': '3.31.4', 'build': 140, 'sha': 'a' * 64, 'alt': u.url});
+  });
+
+  testWidgets('the small update is there: the new app file is made from the app on the phone, its fingerprint checked – "Install?" hands THAT file to Android', (t) async {
+    final nav = GlobalKey<NavigatorState>();
+    updateContext = () => nav.currentContext;
+    addTearDown(() => updateContext = () => null);
+    kept = {'id': 1, 'path': '/phone/files/Download/rcl-erp-3.31.4-140.patch', 'version': '3.31.4', 'build': 140, 'sha': 'a' * 64, 'alt': u.url, 'status': 'done', 'got': 1000, 'total': 1000};
+    await t.pumpWidget(MaterialApp(navigatorKey: nav, home: const Scaffold(body: Text('home'))));
+    unawaited(updateWatch(opened: true));
+    await settle(t);
+    expect(built, [
+      ['/data/app/in.rachana.rcl/base.apk', '/phone/files/Download/rcl-erp-3.31.4-140.patch', '/phone/files/Download/rcl-erp-3.31.4-140.apk']
+    ]);
+    expect(find.text('Update 3.31.4 is ready'), findsOneWidget);
+    await t.tap(find.text('Install'));
+    await settle(t);
+    expect(args['install'], {'path': '/phone/files/Download/rcl-erp-3.31.4-140.apk'});
+    expect(calls.where((c) => c == 'start'), isEmpty);
+    resetBgUpdate();
+  });
+
+  testWidgets('the small update does not fit the app on this phone (the made file\'s fingerprint is not the release\'s): the WHOLE file is downloaded by itself – nothing wrong is offered', (t) async {
+    final nav = GlobalKey<NavigatorState>();
+    updateContext = () => nav.currentContext;
+    addTearDown(() => updateContext = () => null);
+    good = 'f' * 64;
+    kept = {'id': 1, 'path': '/phone/files/Download/rcl-erp-3.31.4-140.patch', 'version': '3.31.4', 'build': 140, 'sha': 'a' * 64, 'alt': u.url, 'status': 'done', 'got': 1000, 'total': 1000};
+    await t.pumpWidget(MaterialApp(navigatorKey: nav, home: const Scaffold(body: Text('home'))));
+    unawaited(updateWatch(opened: true));
+    await settle(t);
+    expect(find.text('Update 3.31.4 is ready'), findsNothing);
+    expect(calls, isNot(contains('install')));
+    expect(args['start'], {'url': u.url, 'file': 'rcl-erp-3.31.4-140.apk', 'version': '3.31.4', 'build': 140, 'sha': 'a' * 64}, reason: 'the whole file – not the small one again');
+    expect(find.textContaining('not complete or not genuine'), findsNothing, reason: 'nothing is said: the update goes on');
+    expect(find.text('Updating'), findsOneWidget);
+    // the whole file came: offered as always
+    good = 'a' * 64;
+    kept!['status'] = 'done';
+    await t.pump(const Duration(seconds: 2));
+    await settle(t);
+    expect(find.text('Update 3.31.4 is ready'), findsOneWidget);
+    await t.tap(find.text('Install'));
+    await settle(t);
+    expect(args['install'], {'path': '/phone/files/Download/rcl-erp-3.31.4-140.apk'});
+    expect(built.length, 1, reason: 'the small update was tried once');
+    // Update pressed again for this build on this phone: the whole file
+    kept = null;
+    expect(await startBgUpdate(small), 'started');
+    expect(args['start']!['url'], u.url);
     resetBgUpdate();
   });
 }

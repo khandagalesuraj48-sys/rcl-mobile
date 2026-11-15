@@ -15,6 +15,22 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.126.0 (15-11-2026 – "app updet krtana je kahi new updet aley tech fkt updet hoil ani baki continue aselch – pratek weli full
+app download krayla ka lawatoys, karan changes small hotat ani updet matr sagle app"; "app 0 pasun pratek weli updet nahi zali pahije"):**
+THE SMALL UPDATE. Android installs only a whole app file, so the phone makes it itself: the release now also carries, for the 5
+newest builds before it (per processor), a file with ONLY WHAT CHANGED (`rcl-erp-<v>-<b>.<abi>.from-<build>.patch`; the builds are
+listed in the release's line as `"patch"`). A phone on one of those builds downloads that file (measured on the real releases
+210–215: **1.5–2.6 MB instead of 75 MB**), makes the new app file from the app file it already has (`lib/core/apk_patch.dart` – piece
+by piece, nothing whole in memory) and checks the SAME fingerprint (SHA-256) as always before Android's "Install?". When the made
+file is not the released one (the phone has another file – the first install's file for every phone, or a build older than the 5), or
+the release has no such file: the whole file is downloaded by itself, as before – nothing is said. The patch is made and checked in
+the release (`tool/apk_patch.py`, `tool/release_patches.py`: every patch is applied there and compared with the released file; one
+that cannot be made is left out – the release never fails for it). `UpdateKit.kt`: `self` (the installed app's file), `alt` (the
+whole file's address kept with a small download); its three notification titles say "Sketchline". **It begins with the update AFTER
+this one** (this version must first be on the phone – it comes as the whole file). The first install and the beta versions
+(`beta.yml`): the whole file, as before. NOT verified on a real phone: the patch is made, applied and compared on the build machine
+and by the tests; that a phone reads its own installed app file and makes the new one was not seen on a phone.
+
 **Version 3.125.0 (15-11-2026 – "ha icon sagli kade use kraych aahe … Sketchline sathi … aple app name madhe kuthech, web aso ki app,
 Lion name nasel – Sketchline; ani logo lion; text name kuthech nasel"):** THE NAME IS "SKETCHLINE" (one word) AND THE LOGO IS THE
 LION HE APPROVED (the realistic lion's head on black – `brand/lion`, made from his picture). The built-in name's second word is

@@ -21,7 +21,12 @@
  * bolel ani install hoil") Android: the update is downloaded by Android's own Download Manager (UpdateKit.kt) – it goes on when the
  * app is left or closed, and is not started again from 0. When it is there and its fingerprint is right: "Install?" over whatever
  * screen of the app is open (or the notification "Update ready – tap to install" when the app is away – it opens the app, which
- * asks). "Later": asked again the next time the app is opened. A phone whose Download Manager cannot be used: as before. */
+ * asks). "Later": asked again the next time the app is opened. A phone whose Download Manager cannot be used: as before.
+ * (3.126.0, asked 15-11-2026: "app updet krtana je kahi new updet aley tech fkt updet hoil … pratek weli full app download krayla ka
+ * lawatoys") THE SMALL UPDATE: the release also has, for the builds just before it, a file with only what changed
+ * ("rcl-erp-<v>-<b>.<abi>.from-<build>.patch", the builds in "patch" – tool/apk_patch.py). A phone on one of those builds downloads
+ * that (1–3 MB, not 75), makes the new app file from the one it has (apk_patch.dart) and checks the SAME fingerprint as always
+ * before Android installs it. Not right (another file on the phone), or no such file in the release: the whole file, by itself. */
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' show Abi;
@@ -38,6 +43,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import 'api.dart';
+import 'apk_patch.dart';
 import 'device.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
@@ -45,13 +51,16 @@ import '../ui/t.dart';
 import '../ui/motion.dart';
 
 class AppUpdate {
-  AppUpdate({required this.build, required this.version, this.notes = '', this.url = '', this.sha256 = '', this.store = '', this.must = false});
+  AppUpdate({required this.build, required this.version, this.notes = '', this.url = '', this.sha256 = '', this.store = '', this.must = false, this.patch = ''});
   final int build;
   final String version, notes, url, sha256, store;
 
+  /// (3.126.0) the small update for THIS phone's build (only what changed); '' = the release has none for it
+  final String patch;
+
   /// (3.122.0) the app cannot be worked with until this update is taken (see [mustUpdate])
   final bool must;
-  AppUpdate asMust() => AppUpdate(build: build, version: version, notes: notes, url: url, sha256: sha256, store: store, must: true);
+  AppUpdate asMust() => AppUpdate(build: build, version: version, notes: notes, url: url, sha256: sha256, store: store, must: true, patch: patch);
 }
 
 /* (3.122.0, asked 14-11-2026: "jya user ni ajun app update keli nahi ata ethun pudhe app update nasel tr use krta yenar nahi … barech
@@ -99,12 +108,22 @@ AppUpdate? parseRelease(Map<String, dynamic> j, int currentBuild, {bool computer
   String name(Map a) => (a['name'] ?? '').toString().toLowerCase();
   String link(Map a) => (a['browser_download_url'] ?? '').toString();
   final build = b.toInt();
-  AppUpdate made(String url, String fingerprint) => AppUpdate(build: build, version: (meta['version'] ?? '').toString(), notes: releaseNotes(j), url: url, sha256: fingerprint, must: _compulsory(j, meta));
+  AppUpdate made(String url, String fingerprint, [String patch = '']) =>
+      AppUpdate(build: build, version: (meta['version'] ?? '').toString(), notes: releaseNotes(j), url: url, sha256: fingerprint, must: _compulsory(j, meta), patch: patch);
   // (3.19.1) a phone: its own processor's file, when the release has it
   final abi = computer ? '' : appAbi(), own = meta['apk'];
   if (abi.isNotEmpty && own is Map) {
     final osha = (own[abi] ?? '').toString(), f = assets.firstWhere((a) => name(a).endsWith('.$abi.apk'), orElse: () => {});
-    if (RegExp(r'^[0-9a-f]{64}$').hasMatch(osha) && link(f).startsWith('https://github.com/')) return made(link(f), osha);
+    if (RegExp(r'^[0-9a-f]{64}$').hasMatch(osha) && link(f).startsWith('https://github.com/')) {
+      // (3.126.0) the small update from this phone's own build, when the release has it
+      final from = meta['patch'], builds = from is Map ? from[abi] : null;
+      var patch = '';
+      if (builds is List && builds.contains(currentBuild)) {
+        patch = link(assets.firstWhere((a) => name(a).endsWith('.$abi.from-$currentBuild.patch'), orElse: () => {}));
+        if (!patch.startsWith('https://github.com/')) patch = '';
+      }
+      return made(link(f), osha, patch);
+    }
   }
   final ext = computer ? '.exe' : '.apk';
   final file = assets.firstWhere((a) => name(a).endsWith(ext) && !kAbiFiles.any(name(a).endsWith), orElse: () => {});
@@ -297,8 +316,15 @@ Future<void> runUpdate(BuildContext context, AppUpdate u) async {
 
 /// A download of an update kept by Android's Download Manager. [status]: pending | running | paused | done | failed | gone.
 class BgUpdate {
-  const BgUpdate({required this.status, this.got = 0, this.total = -1, this.path = '', this.version = '', this.build = 0, this.sha = ''});
+  const BgUpdate({required this.status, this.got = 0, this.total = -1, this.path = '', this.version = '', this.build = 0, this.sha = '', this.alt = ''});
   final String status, path, version, sha;
+
+  /// (3.126.0) a small update ([path] ends with ".patch"): where the whole file is, should the small one not fit
+  final String alt;
+  bool get small => path.endsWith('.patch');
+
+  /// The app file Android installs: the download itself, or the one made from the small update.
+  String get apk => small ? '${path.substring(0, path.length - 6)}.apk' : path;
   final int got, total, build;
   bool get going => status == 'pending' || status == 'running' || status == 'paused';
   int get percent => total > 0 ? (got * 100 ~/ total).clamp(0, 100).toInt() : -1;
@@ -308,7 +334,7 @@ class BgUpdate {
     if (m is! Map || m['id'] == null) return null;
     int n(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
     return BgUpdate(status: '${m['status'] ?? 'gone'}', got: n(m['got']), total: m['total'] == null ? -1 : n(m['total']), path: '${m['path'] ?? ''}',
-        version: '${m['version'] ?? ''}', build: n(m['build']), sha: '${m['sha'] ?? ''}');
+        version: '${m['version'] ?? ''}', build: n(m['build']), sha: '${m['sha'] ?? ''}', alt: '${m['alt'] ?? ''}');
   }
 }
 
@@ -328,6 +354,12 @@ Future<int> Function() appBuild = () async {
 
 /// (a test) a file's fingerprint (SHA-256), worked out in the background
 Future<String> Function(String path) fileSha = (p) => Isolate.run(() async => (await sha256.bind(File(p).openRead()).first).toString());
+
+/// (a test) (3.126.0) the new app file [out] made from the one on the phone [old] and the small update [patch] – in the background
+Future<void> Function(String old, String patch, String out) patchBuild = (o, p, out) => Isolate.run(() => applyPatch(o, p, out));
+
+/// (3.126.0) the builds whose small update did not fit this phone: the whole file for them
+final _patchBad = <int>{};
 
 /// (main.dart) the screen open now – the box "Install?" comes over it, whatever it is
 BuildContext? Function() updateContext = () => null;
@@ -377,6 +409,7 @@ void resetBgUpdate() {
   _bgLater = 0;
   _bgChecked = '';
   _bgRoute = null;
+  _patchBad.clear();
   bgUpdateNow.value = null;
 }
 
@@ -390,8 +423,17 @@ Future<String> startBgUpdate(AppUpdate u) async {
     await updateWatch();
     return s.going ? 'going' : 'done';
   }
+  // (3.126.0) the small update when the release has one for this phone's build – the whole file otherwise (and when it did not fit)
+  final small = u.patch.isNotEmpty && !_patchBad.contains(u.build);
   try {
-    await bgCall('start', {'url': u.url, 'file': 'rcl-erp-${u.version}-${u.build}.apk', 'version': u.version, 'build': u.build, 'sha': u.sha256.toLowerCase()});
+    await bgCall('start', {
+      'url': small ? u.patch : u.url,
+      'file': 'rcl-erp-${u.version}-${u.build}.${small ? 'patch' : 'apk'}',
+      'version': u.version,
+      'build': u.build,
+      'sha': u.sha256.toLowerCase(),
+      if (small) 'alt': u.url,
+    });
   } catch (_) {
     return 'failed';
   }
@@ -453,9 +495,23 @@ Future<void> _bgOffer(BgUpdate s) async {
     if (_bgChecked != s.path) {
       var got = '';
       try {
-        got = await fileSha(s.path);
-      } catch (_) {/* not readable: as not right */}
+        // (3.126.0) a small update: the new app file is made from the one on this phone – then checked like a downloaded one
+        if (s.small) await patchBuild('${await bgCall('self')}', s.path, s.apk);
+        got = await fileSha(s.apk);
+      } catch (_) {/* not readable, or the small update does not fit: as not right */}
       if (got.toLowerCase() != s.sha.toLowerCase() || s.sha.isEmpty) {
+        if (s.small && s.alt.startsWith('https://github.com/') && s.sha.isNotEmpty) {
+          // (3.126.0) the small update did not fit the app file on this phone: the whole file, by itself – nothing is said
+          _patchBad.add(s.build);
+          try {
+            await bgCall('start', {'url': s.alt, 'file': 'rcl-erp-${s.version}-${s.build}.apk', 'version': s.version, 'build': s.build, 'sha': s.sha.toLowerCase()});
+            _bgChecked = '';
+            final c = updateContext();
+            if (c != null && c.mounted) _bgDialog(c);
+            unawaited(updateWatch());
+            return;
+          } catch (_) {/* the Download Manager cannot be used now: said below */}
+        }
         await _bgForget();
         bgUpdateNow.value = null;
         final c = updateContext();
@@ -478,7 +534,7 @@ Future<void> _bgOffer(BgUpdate s) async {
     }
     var r = '';
     try {
-      r = '${await bgCall('install', {'path': s.path})}';
+      r = '${await bgCall('install', {'path': s.apk})}';
     } catch (_) {
       r = 'error';
     }
