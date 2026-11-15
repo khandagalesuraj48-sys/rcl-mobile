@@ -47,6 +47,18 @@ class _LockLayerState extends State<LockLayer> with WidgetsBindingObserver {
   }
 
   @override
+  void didUpdateWidget(covariant LockLayer old) {
+    super.didUpdateWidget(old);
+    if (old.lock != widget.lock) {
+      // (another lock given: listen to the new one – its "5 wrong" and its changes)
+      old.lock?.removeListener(_changed);
+      widget.lock?.addListener(_changed);
+      _asked = false;
+      _out = false;
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.lock?.removeListener(_changed);

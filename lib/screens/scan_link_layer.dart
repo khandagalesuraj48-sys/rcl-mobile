@@ -38,6 +38,16 @@ class _ScanLinkLayerState extends State<ScanLinkLayer> {
   }
 
   @override
+  void didUpdateWidget(covariant ScanLinkLayer old) {
+    super.didUpdateWidget(old);
+    if (old.lock != widget.lock) {
+      // (3.127.0) another lock given: listen to the new one
+      old.lock?.removeListener(_soon);
+      widget.lock?.addListener(_soon);
+    }
+  }
+
+  @override
   void dispose() {
     ScanLink.i.removeListener(_soon);
     widget.lock?.removeListener(_soon);
