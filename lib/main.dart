@@ -109,7 +109,8 @@ void main() {
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
   if (Platform.isAndroid) Session.callKit = () => WebrtcKit(); // (3.26.0) calls with the web – the Android phone first
   Session.moduleCounts = true; // (3.97.0) Home: what waits in his other modules
-  final session = Session(Api(portalUrl: kPortalUrl, keep: SecureKeep())
+  final keep = SecureKeep();
+  final session = Session(Api(portalUrl: kPortalUrl, keep: keep)
         ..askApproval = askApprovalBox
         ..askReason = askReasonBox
         ..askShort = askShortBox)      // (3.85.0) the stock cannot cover it: keep as stock short?
@@ -123,8 +124,9 @@ void main() {
     session.reportFault('$e', '$st');
     return false;
   };
-  // (3.27.0) the app lock: the phone's fingerprint / face / PIN – for everyone, asked again after a minute away (applock.dart)
-  final lock = AppLock(PhoneLockGate());
+  // (3.27.0) the app lock – (3.127.0) only for a person who turned it on (My settings → App lock): his PIN, his password, or only his
+  // fingerprint / face; asked again after a minute away (applock.dart). His choice is read before the first screen.
+  final lock = AppLock(PhoneLockGate(), keep: keep)..open();
   session.freshSignIn = lock.signedIn;
   // (3.42.0) the notifications through Firebase (core/push_fcm.dart): a notification pressed opens what it is about (at its site)
   Alerts.onTap = (r) => Fcm.tapped(session, PushTap.of(r.payload, r.actionId));

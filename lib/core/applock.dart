@@ -1,34 +1,39 @@
-/* THE APP LOCK (3.27.0, asked 20-10-2026: "ॲप उघडायला Fingerprint / Face lock … KR PERFECT"; his choices: for everyone, on by
- * itself and it cannot be switched off; asked again when the app was away for more than a minute).
- *   – The app opens with a kept sign-in → it is locked: the phone's own fingerprint / face – or its PIN / pattern / password – opens
- *     it (Android: BiometricPrompt; iPhone: Face ID / Touch ID; the computer app: Windows Hello). Nothing of the ERP is shown before.
- *   – The app was in the background (another app, the screen off) for more than [away] → locked again when it comes back.
- *   – A sign-in typed just now (the password) is not asked again.
- *   – A phone with NO screen lock at all: the app is not stopped (the people at the sites must be able to work) – it says, in red,
- *     to set a screen lock on the phone. The same when the phone cannot ask (no such part on that device).
+/* THE APP LOCK (3.27.0, asked 20-10-2026: "ॲप उघडायला Fingerprint / Face lock … KR PERFECT"; asked again when the app was away for
+ * more than a minute).
+ * (3.127.0, asked 15-11-2026: "app lock … by default ti on aahe – ata as nasel, te setting madhe asel – app la lock lawaych ki nahi
+ * to user cha perspective asel, ani kas lawaych te user tharwel: pin thewaych ki password ki only finger ki only face – mhanje phone
+ * lock cha nahi"; "jyani phone la lock nahi lawale tyana sakke notification jate lock lawaysathi – te ata band hoil") THE PERSON
+ * CHOOSES:
+ *   – OFF unless he himself turns it on (My settings → App lock) – for every person, also those who had it before.
+ *   – He chooses how it opens: his own 4-digit PIN, his own password (both for this phone only – kept here as a salted fingerprint
+ *     (SHA-256), never sent anywhere), only his fingerprint or only his face (the phone's own popup, WITHOUT the phone's PIN /
+ *     pattern). The phone's own screen lock is not used any more, and nobody is told to set one.
+ *   – Kept on this phone, for each person who signs in on it.
+ *   – Forgot the PIN / password: he signs in again with his Sketchline password (the PIN / password he forgot is gone; he can set a
+ *     new one). Fingerprint / face not working: "Use password instead" – the same sign-in (his choice stays). 5 wrong PINs /
+ *     passwords: signed out – the sign-in with his Sketchline password opens it.
+ *   – A sign-in typed just now (the password) is not asked again. Locked again after more than [away] in the background.
  * Nothing goes to the server: the fingerprint / face never leaves the phone (the phone only answers "it is him" or not). */
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
-/// How the phone is asked (local_auth on the phone – lock_gate.dart; a pretend one in the tests).
+import 'api.dart' show Keep;
+
+/// How the phone is asked for the fingerprint / face (local_auth on the phone – lock_gate.dart; a pretend one in the tests).
 abstract class LockGate {
-  /// Asks the phone; [reason] is shown in the phone's own box.
+  /// Asks the phone for the fingerprint / face only (never the phone's PIN); [reason] is shown in the phone's own popup.
   Future<LockAnswer> ask(String reason);
-  /// (3.92.0) what the phone opens with: 'face' (an iPhone's Face ID, a phone with only face unlock), 'finger' (Touch ID, a phone with
-  /// only a fingerprint) or '' (both, or only the PIN / passcode, or not known).
-  Future<String> kind();
+
+  /// (3.127.0) what this phone can open the app with: 'finger', 'face' (an iPhone says which one it has; an Android phone only says
+  /// that it has one – both are offered, its own popup takes what is set). Empty: none is set on this phone.
+  Future<Set<String>> bios();
 }
 
-/* (3.92.0, asked 09-11-2026: "iphone madhe finer nahi face login aste ata user iphone warun jewa app gheil tewa face login haway mala ok
- * fkt app sathi face android and ios 2 ni sathi pn theu") THE WORDS OF THE LOCK FOR THIS PHONE: an iPhone with Face ID says "Face ID"
- * (its button "Unlock with Face ID"), one with Touch ID "Touch ID"; an Android phone says what it has – face, fingerprint or both.
- * What opens the app is the phone's own lock, as before (local_auth: Face ID / Touch ID / passcode, BiometricPrompt on Android). */
-String lockHow(String kind, bool iphone) => iphone
-    ? (kind == 'face' ? "Use Face ID or the iPhone's passcode." : kind == 'finger' ? "Use Touch ID or the iPhone's passcode." : "Use the iPhone's passcode.")
-    : (kind == 'face' ? "Use your face or the phone's PIN." : kind == 'finger' ? "Use your fingerprint or the phone's PIN." : "Use your fingerprint, face or the phone's PIN.");
-String lockButton(String kind, bool iphone) => !iphone ? 'Unlock' : kind == 'face' ? 'Unlock with Face ID' : kind == 'finger' ? 'Unlock with Touch ID' : 'Unlock';
-
-/// ok – it is him; no – he did not (cancelled, wrong finger); noLock – the phone has no screen lock / cannot ask; busy – asked already;
-/// error – something else (said in [LockAnswer.text]).
+/// ok – it is him; no – he did not (cancelled, wrong finger); noLock – no fingerprint / face is set on this phone; busy – asked
+/// already; error – something else (said in [LockAnswer.text]).
 enum LockOutcome { ok, no, noLock, busy, error }
 
 class LockAnswer {
@@ -37,26 +42,60 @@ class LockAnswer {
   final String text;
 }
 
+/// (3.127.0) what a person chose: [how] 'pin' | 'password' | 'finger' | 'face'; for a PIN / password its salted fingerprint.
+class LockChoice {
+  const LockChoice(this.how, {this.salt = '', this.hash = ''});
+  final String how, salt, hash;
+  bool get code => how == 'pin' || how == 'password';
+  Map<String, String> toJson() => {'how': how, if (code) 'salt': salt, if (code) 'hash': hash};
+  static LockChoice? fromJson(Object? j) {
+    if (j is! Map) return null;
+    final how = '${j['how'] ?? ''}';
+    if (!const ['pin', 'password', 'finger', 'face'].contains(how)) return null;
+    final c = LockChoice(how, salt: '${j['salt'] ?? ''}', hash: '${j['hash'] ?? ''}');
+    return c.code && (c.salt.isEmpty || c.hash.isEmpty) ? null : c;
+  }
+}
+
+/// The words of each way (My settings → App lock).
+String lockWay(String how) => switch (how) { 'pin' => 'PIN', 'password' => 'Password', 'finger' => 'Fingerprint only', 'face' => 'Face only', _ => 'Off' };
+
 class AppLock extends ChangeNotifier {
-  AppLock(this.gate, {this.away = const Duration(minutes: 1)});
+  AppLock(this.gate, {Keep? keep, this.away = const Duration(minutes: 1)})
+      : _keep = keep,
+        loaded = keep == null;
   final LockGate gate;
+  final Keep? _keep;
   final Duration away;
   DateTime Function() clock = DateTime.now;
 
-  /// Locked until the phone says it is him (the app has just been opened).
+  /// Where the choices are kept on the phone.
+  static const kKey = 'applock';
+  /// Wrong PINs / passwords in a row before he must sign in again.
+  static const maxWrong = 5;
+
+  final _choices = <String, LockChoice>{};
+
+  /// The choices are read (until then a signed-in app shows the lock's ground – nothing of the ERP).
+  bool loaded;
+  /// The person signed in now (the lock layer says it).
+  String user = '';
+  /// Locked until he opens it (the app has just been opened, or was away too long).
   bool locked = true;
   /// Asking the phone right now.
   bool asking = false;
-  /// The phone has no screen lock (or cannot ask): the app is open, with the red line.
-  bool noLock = false;
   /// The last "no" / problem, for the lock screen.
   String said = '';
-  /// (3.92.0) what this phone opens with (LockGate.kind) – learnt once, the first time the lock asks.
-  String kind = '';
-  bool _learnt = false;
-  int _errors = 0;
+  /// Wrong PINs / passwords in a row.
+  int wrong = 0;
   DateTime? _left;
   bool _leftForPicker = false;
+
+  /// What the person signed in now chose; null = the lock is off for him.
+  LockChoice? get choice => _choices[user.trim().toLowerCase()];
+  /// The lock screen is over the app now.
+  bool get closed => user.isNotEmpty && (!loaded || (locked && choice != null));
+  bool get tooMany => wrong >= maxWrong;
 
   /// (3.41.0, asked 25-10-2026: "complete process zal shiway madhech cut hou naye") the app's OWN camera, gallery or file box is open
   /// (a photo for an entry, Scan with Mobile, a bill copy …): the phone shows another screen, but the person is still at work in the
@@ -74,9 +113,64 @@ class AppLock extends ChangeNotifier {
     }
   }
 
+  /// Reads the choices kept on this phone (main.dart, at the start; not readable in 5 s: the lock stays off – never a stuck screen).
+  Future<void> open() async {
+    try {
+      final raw = await _keep?.read(kKey).timeout(const Duration(seconds: 5));
+      final j = raw == null || raw.isEmpty ? null : jsonDecode(raw);
+      if (j is Map) {
+        j.forEach((k, v) {
+          final c = LockChoice.fromJson(v);
+          if (c != null) _choices['$k'] = c;
+        });
+      }
+    } catch (_) {/* nothing readable: the lock is off */}
+    loaded = true;
+    notifyListeners();
+  }
+
+  Future<void> _save() async {
+    try {
+      await _keep?.write(kKey, _choices.isEmpty ? null : jsonEncode(_choices.map((k, v) => MapEntry(k, v.toJson()))));
+    } catch (_) {/* kept in memory for now */}
+  }
+
+  static String _hash(String salt, String code) {
+    List<int> d = utf8.encode('$salt|$code');
+    for (var i = 0; i < 20000; i++) {
+      d = sha256.convert(d).bytes;
+    }
+    return base64Url.encode(d);
+  }
+
+  /// He turns the lock on (or changes how it opens): [code] is the PIN / password for 'pin' / 'password'.
+  Future<void> choose(String how, [String code = '']) async {
+    final u = user.trim().toLowerCase();
+    if (u.isEmpty) return;
+    if (how == 'pin' || how == 'password') {
+      final r = Random.secure(), salt = base64Url.encode(List<int>.generate(16, (_) => r.nextInt(256)));
+      _choices[u] = LockChoice(how, salt: salt, hash: _hash(salt, code));
+    } else {
+      _choices[u] = LockChoice(how);
+    }
+    locked = false; // (he is in the app now)
+    wrong = 0;
+    said = '';
+    await _save();
+    notifyListeners();
+  }
+
+  /// He turns the lock off – or forgot his PIN / password (then he signs in again).
+  Future<void> forget() async {
+    final u = user.trim().toLowerCase();
+    if (_choices.remove(u) == null) return;
+    await _save();
+    notifyListeners();
+  }
+
   /// The app went to the background (another app, the screen off).
   void away0() {
-    if (asking) return; // (the phone's own PIN screen is another screen: not "away")
+    if (asking) return; // (the phone's own popup is another screen: not "away")
     if (_left == null) _leftForPicker = outside > 0;
     _left ??= clock();
   }
@@ -93,29 +187,47 @@ class AppLock extends ChangeNotifier {
     }
   }
 
+  /// Locked at once (as after a minute away).
+  void lockNow() {
+    _left = null;
+    locked = true;
+    said = '';
+    notifyListeners();
+  }
+
   /// A password typed just now (a fresh sign-in): not asked again.
   void signedIn() {
     _left = null;
-    if (!locked) return;
+    wrong = 0;
+    if (!locked && said.isEmpty) return;
     locked = false;
     said = '';
     notifyListeners();
   }
 
-  /// Asks the phone (the lock screen does this by itself when it is shown, and on "Unlock").
+  /// His PIN / password typed on the lock screen: right → open; wrong → said (after [maxWrong] he signs in again).
+  Future<bool> tryCode(String code) async {
+    final c = choice;
+    if (c == null || !c.code || !locked) return true;
+    if (_hash(c.salt, code) == c.hash) {
+      locked = false;
+      wrong = 0;
+      said = '';
+      notifyListeners();
+      return true;
+    }
+    wrong++;
+    said = c.how == 'pin' ? 'Wrong PIN.' : 'Wrong password.';
+    notifyListeners();
+    return false;
+  }
+
+  /// Asks the phone for the fingerprint / face (the lock screen does this by itself when it is shown, and on "Unlock").
   Future<void> unlock(String reason) async {
     if (!locked || asking) return;
     asking = true;
     said = '';
     notifyListeners();
-    if (!_learnt) {
-      _learnt = true;
-      try {
-        kind = await gate.kind();
-      } catch (_) {
-        kind = '';
-      }
-    }
     LockAnswer a;
     try {
       a = await gate.ask(reason);
@@ -126,24 +238,15 @@ class AppLock extends ChangeNotifier {
     switch (a.outcome) {
       case LockOutcome.ok:
         locked = false;
-        noLock = false;
-        _errors = 0;
+        wrong = 0;
       case LockOutcome.noLock:
-        locked = false; // (never stops the work: the red line asks for a screen lock)
-        noLock = true;
+        said = 'No fingerprint or face is set on this phone – use your password.';
       case LockOutcome.no:
-        said = a.text.isNotEmpty ? a.text : 'Not unlocked – press Unlock and try again.';
+        said = a.text; // (cancelled: nothing to say – Unlock asks again)
       case LockOutcome.busy:
         break;
       case LockOutcome.error:
-        // the phone could not ask twice in a row (a fault of that phone): the app opens with the red line rather than stopping the work
-        _errors++;
-        if (_errors >= 2) {
-          locked = false;
-          noLock = true;
-        } else {
-          said = 'The phone could not open its lock – press Unlock to try again.';
-        }
+        said = 'The phone could not ask – press Unlock to try again.';
     }
     _left = null;
     notifyListeners();

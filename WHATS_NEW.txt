@@ -1,3 +1,3 @@
-New: updates are now small and quick – after this version the app downloads only what changed (about 1–3 MB), not the whole app (75 MB) every time. This one update is still the whole app.
-नवीन: update आता लहान आणि जलद – या version नंतर app फक्त बदललेला भाग (सुमारे 1–3 MB) download करेल, दर वेळी पूर्ण app (75 MB) नाही. हा एक update मात्र अजून पूर्ण app चा आहे.
-नया: update अब छोटा और तेज़ – इस version के बाद app सिर्फ़ बदला हुआ हिस्सा (लगभग 1–3 MB) download करेगा, हर बार पूरा app (75 MB) नहीं. यह एक update अभी पूरे app का है.
+New: the app lock is now your choice – off unless you turn it on in My settings → App lock, and you choose how it opens: your own PIN, your own password, only your fingerprint or only your face. A new light lock screen. Home shows your company's logo and name; the Sketchline logo is in the ≡ menu.
+नवीन: app lock आता तुमची निवड – My settings → App lock मध्ये तुम्ही चालू केला तरच, आणि app कशाने उघडायचा ते तुम्ही ठरवा: तुमचा PIN, तुमचा password, फक्त fingerprint किंवा फक्त face. Lock ची नवीन light screen. Home वर तुमच्या company चा logo आणि नाव; Sketchline चा logo ≡ menu मध्ये.
+नया: app lock अब आपकी पसंद – My settings → App lock में आप चालू करें तभी, और app किससे खुले यह आप तय करें: अपना PIN, अपना password, सिर्फ़ fingerprint या सिर्फ़ face. Lock की नई light screen. Home पर आपकी company का logo और नाम; Sketchline का logo ≡ menu में.

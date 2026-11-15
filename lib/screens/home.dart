@@ -18,7 +18,7 @@ import '../core/session.dart';
 import '../core/update.dart';
 import '../ui/advert.dart';
 import '../ui/attend_strip.dart';
-import '../ui/brand.dart' show ClientMark, ProductMark, ProductName;
+import '../ui/brand.dart' show ClientMark, ProductBlock;
 import '../ui/motion.dart';
 import '../ui/mail_strip.dart';
 import '../ui/ask_bot.dart';
@@ -514,16 +514,13 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       IconButton(key: const Key('home-menu'), tooltip: tr('Menu'), visualDensity: VisualDensity.compact, onPressed: () => pb == null ? Scaffold.of(context).openDrawer() : pb.open(menu()), icon: const Icon(Icons.menu_rounded, size: 26, color: C.ink)),
-                      // (3.124.0) the product's lion and, beside it, the client's own mark (Rachana) – both after the sign-in
-                      const ProductMark(key: Key('home-product'), size: 40, radius: 12),
-                      const SizedBox(width: 6),
-                      ClientMark(key: const Key('home-client'), companyId: s.site?.companyId ?? ''),
-                      const SizedBox(width: 8),
+                      // (3.127.0, asked 15-11-2026: "home screen la … only client name and logo asel") only the client: his own mark and
+                      // his name (the Portal's "Company & site") – the product's lion and name are in the ≡ menu
+                      ClientMark(key: const Key('home-client'), companyId: s.site?.companyId ?? '', size: 42),
+                      const SizedBox(width: 9),
                       Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: ProductName(style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark, height: 1.1))),
-                          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(s.company.isEmpty ? 'Rachana Construction Limited' : s.company, maxLines: 1, style: const TextStyle(fontSize: 10.5, color: C.muted))),
-                        ]),
+                        child: Text(s.company.isEmpty ? 'Rachana Construction Limited' : s.company,
+                            key: const Key('home-company'), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: C.greenDark, height: 1.15)),
                       ),
                       // (3.14.0) the search of the whole app (the web's Ctrl + K)
                       _RoundBtn(key: const Key('home-search'), icon: Icons.search_rounded, tip: 'Search', onTap: () => openSearch(context, entries: widget.onOpenEntries, reports: widget.onOpenReports)),
@@ -953,15 +950,19 @@ class _MiniBarState extends State<_MiniBar> {
                           boxShadow: [BoxShadow(color: C.greenDeep.withValues(alpha: .25), blurRadius: 14, offset: const Offset(0, 5))],
                         ),
                         child: Row(children: [
-                          const ProductMark(size: 38, radius: 11),
-                          const SizedBox(width: 6),
+                          // (3.127.0) only the client – his mark and his name
                           ClientMark(companyId: SessionScope.of(context).site?.companyId ?? '', size: 38, radius: 11, pad: 5, border: false),
                           const SizedBox(width: 10),
                           Expanded(
                             child: InkWell(
                               onTap: onSite,
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                                const ProductName(style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(SessionScope.of(context).company.isEmpty ? 'Rachana Construction Limited' : SessionScope.of(context).company,
+                                      maxLines: 1, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1)),
+                                ),
                                 Text('${SessionScope.of(context).siteName} ▾', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Color(0xE6FFFFFF))),
                               ]),
                             ),
@@ -1043,21 +1044,11 @@ class _HomeMenu extends StatelessWidget {
         );
     final list = SafeArea(
         child: ListView(padding: const EdgeInsets.fromLTRB(8, 12, 8, 24), children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-            child: Row(children: [
-              const ProductMark(size: 44, radius: 13),
-              const SizedBox(width: 6),
-              ClientMark(companyId: s.site?.companyId ?? '', size: 44, radius: 13, pad: 7),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const ProductName(style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.greenDark)),
-                  Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
-                ]),
-              ),
-            ]),
-          ),
+          // (3.127.0, asked 15-11-2026: "three line la click kela natr … Sketchline logo lion cha, tyach khali name Sketchline, tyach
+          // khali small madhe Version Lion – je mi Portal madhe save kru shakel") the product: its logo, its name and its line – all
+          // three from the Portal's Branding (the built-in ones until then)
+          const Padding(padding: EdgeInsets.fromLTRB(8, 6, 8, 0), child: ProductBlock(key: Key('menu-brand'))),
+          const Divider(height: 20, indent: 12, endIndent: 12, color: C.line),
           const Padding(padding: EdgeInsets.fromLTRB(12, 4, 12, 6), child: Text('Modules', mr: 'विभाग', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.muted))),
           for (final m in mods) row('menu-${m.en}', m.pic, m.en, m.mr, m.soft, () => onModule(m)),
           const Divider(height: 24, indent: 12, endIndent: 12),

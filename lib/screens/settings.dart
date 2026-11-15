@@ -18,6 +18,8 @@ import '../ui/t.dart';
 import '../ui/help.dart' show GuideButton;
 import '../ui/ask_bot.dart';
 import '../core/applock.dart';
+import 'app_lock.dart';
+import 'lock.dart' show LockScope;
 import '../ui/motion.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -217,6 +219,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (v != null && v != shift) await _save('shift', () => s.savePrefs({'shift': v}));
           },
         ),
+        // (3.127.0, asked 15-11-2026) the app lock – off unless he turns it on; how it opens is his choice (screens/app_lock.dart)
+        if (LockScope.of(context) case final lock?)
+          _row(
+            id: 'applock',
+            icon: Icons.lock_rounded,
+            color: C.blue,
+            en: 'App lock',
+            mr: 'ॲप लॉक',
+            value: lockWay(lock.choice?.how ?? ''),
+            onTap: () async {
+              await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AppLockScreen(lock: lock)));
+              if (mounted) setState(() {});
+            },
+          ),
         _row(
           id: 'loc',
           icon: Icons.local_gas_station_rounded,

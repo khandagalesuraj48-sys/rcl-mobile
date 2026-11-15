@@ -38,6 +38,16 @@ class _ScanLinkLayerState extends State<ScanLinkLayer> {
   }
 
   @override
+  void didUpdateWidget(covariant ScanLinkLayer old) {
+    super.didUpdateWidget(old);
+    if (old.lock != widget.lock) {
+      // (3.127.0) another lock given: listen to the new one
+      old.lock?.removeListener(_soon);
+      widget.lock?.addListener(_soon);
+    }
+  }
+
+  @override
   void dispose() {
     ScanLink.i.removeListener(_soon);
     widget.lock?.removeListener(_soon);
@@ -61,7 +71,7 @@ class _ScanLinkLayerState extends State<ScanLinkLayer> {
     if (_busy || !mounted || (!cap && tap == null)) return;
     final s = SessionScope.read(context);
     if (s.stage != Stage.ready && s.stage != Stage.pickSite) return; // signed out, opening, no network: it waits
-    if (widget.lock?.locked == true) return; // the lock first (its listener calls again)
+    if (widget.lock?.closed == true) return; // the lock first (its listener calls again)
     final want = cap ? l.site : tap!.site, key = cap ? l.code : 'tap|${tap!.t}|${tap.id}|${tap.call}';
     void drop() => cap ? l.done() : l.tapDone();
     if (want.isNotEmpty && s.site?.code != want) {
