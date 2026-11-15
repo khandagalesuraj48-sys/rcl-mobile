@@ -191,7 +191,10 @@ class _LockBodyState extends State<_LockBody> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.transparent,
-        body: DecoratedBox(
+        // (3.127.1, his picture of 15-11-2026: "screen … cut zali") the whole screen – a Scaffold's page is only as wide as what is
+        // in it, so the lock stood at the left, as wide as its Unlock button
+        body: SizedBox.expand(
+          child: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: RadialGradient(center: Alignment(0, -.68), radius: 1.25, colors: [_L.top, _L.mid, _L.end], stops: [0, .55, 1]),
           ),
@@ -226,6 +229,7 @@ class _LockBodyState extends State<_LockBody> {
               },
             ),
           ),
+        ),
         ),
       );
 

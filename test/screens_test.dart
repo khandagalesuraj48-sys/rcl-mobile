@@ -7058,6 +7058,10 @@ void main() {
     expect(find.byKey(const Key('lock-mark')), findsOneWidget);
     expect(find.text('Sujit Mule'), findsWidgets);
     expect(find.text('Sketchline is locked'), findsNothing, reason: 'the approved design: no such words');
+    // (3.127.1) the whole screen: the PIN pad in the middle (it stood at the left – as wide as the button)
+    final mid = t.getSize(find.byKey(const Key('lock-screen'))).width / 2;
+    expect(t.getCenter(find.byKey(const Key('lock-key-5'))).dx, moreOrLessEquals(mid, epsilon: 1));
+    expect(t.getCenter(find.byKey(const Key('lock-mark'))).dx, moreOrLessEquals(mid, epsilon: 1));
     await pinIn(t, '1111');
     expect(find.text('Wrong PIN.'), findsOneWidget);
     await pics(t);
@@ -7076,6 +7080,7 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('lock-screen')), findsOneWidget);
     expect(find.byKey(const Key('lock-key-1')), findsNothing, reason: 'a password, not the PIN pad');
+    expect(t.getCenter(find.byKey(const Key('lock-open'))).dx, moreOrLessEquals(t.getSize(find.byKey(const Key('lock-screen'))).width / 2, epsilon: 1));
     await t.enterText(find.byKey(const Key('lock-pass')), 'site-47');
     await t.tap(find.byKey(const Key('lock-open')));
     await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
@@ -7115,6 +7120,8 @@ void main() {
     expect(find.byKey(const Key('lock-unlock')), findsOneWidget);
     expect(find.text('Use password instead'), findsOneWidget);
     expect(find.byIcon(Icons.fingerprint_rounded), findsNothing, reason: 'the phone shows its own');
+    final mid = t.getSize(find.byKey(const Key('lock-screen'))).width / 2;
+    expect(t.getCenter(find.byKey(const Key('lock-unlock'))).dx, moreOrLessEquals(mid, epsilon: 1), reason: '(3.127.1) the whole screen, not the left of it');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58_lock_finger.png'));
     await t.tap(find.byKey(const Key('lock-unlock')));

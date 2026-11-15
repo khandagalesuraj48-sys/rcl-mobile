@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.127.1 (15-11-2026 – his picture: "screen bgh ashi distey, fix krayla lagel – te cut zali"):** the lock screen fills the
+whole screen. A Scaffold's page is only as wide as what is in it, so on a phone wider than 360 the lock stood at the left, as wide
+as its Unlock button (280), the rest of the screen plain. `SizedBox.expand` around it; the screen tests check that the PIN pad, the
+lion, Unlock and the password's Unlock are in the middle of the screen.
+
 **Version 3.127.0 (15-11-2026 – "app lock … by default ti on aahe – ata te setting madhe asel, app la lock lawaych ki nahi to user cha
 perspective asel, ani kas lawaych te user tharwel: pin ki password ki only finger ki only face – mhanje phone lock cha nahi";
 "jyani phone la lock nahi lawale tyana notification jate – te ata band hoil"; "home screen la only client name and logo, three line la
