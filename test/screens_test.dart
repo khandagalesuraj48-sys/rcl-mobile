@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
+import 'package:rcl_mobile/screens/app_lock.dart';
 import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfLogo, attendPdfOut, attendSelfieForTest;
 import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit;
 import 'package:rcl_mobile/core/app_share.dart';
@@ -6978,91 +6979,212 @@ void main() {
     expect(find.byKey(const Key('pur-settings')), findsNothing);
   }, tags: ['golden']);
 
-  // ---------------- (3.27.0) the app lock ----------------
-  testWidgets('(3.27.0) The app lock: the app opens locked – the phone is asked by itself; not him → still locked; Unlock → the app; more than a minute away → locked again', (t) async {
+  // ---------------- (3.27.0) the app lock – (3.127.0) the person's own choice ----------------
+  /// (3.127.0) a lock with [how] already chosen by Sujit, locked (the app opened again)
+  Future<AppLock> lockWith(WidgetTester t, FakeGate g, String how, [String code = '']) async {
+    final lock = AppLock(g, keep: MemoryKeep());
+    await t.runAsync(lock.open);
+    lock.user = 'sujit@rcl.test';
+    await t.runAsync(() => lock.choose(how, code));
+    lock.locked = true;
+    return lock;
+  }
+
+  Future<void> pinIn(WidgetTester t, String pin, [String pre = 'lock-key']) async {
+    for (final d in pin.split('')) {
+      await t.tap(find.byKey(Key('$pre-$d')));
+      await t.pump(const Duration(milliseconds: 60));
+    }
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await settle(t, 600);
+  }
+
+  testWidgets('(3.127.0) The app lock is OFF by itself: Home at once, nothing about a screen lock; My settings → App lock → PIN typed twice; a minute away → the light lock (the lion, the name, its line, his name); a wrong PIN said; the right one opens', (t) async {
     phone(t);
     final srv = FakeServer();
     final s = await ready(t, srv);
-    final g = FakeGate()..answers.add(const LockAnswer(LockOutcome.no));
-    final lock = AppLock(g);
-    var now = DateTime(2026, 10, 14, 10, 30);
+    final g = FakeGate();
+    final lock = AppLock(g, keep: MemoryKeep());
+    await t.runAsync(lock.open);
+    var now = DateTime(2026, 11, 15, 10, 30);
     lock.clock = () => now;
     await t.pumpWidget(RclApp(session: s, lock: lock));
     await net(t);
-    expect(g.asked, 1, reason: 'the phone\'s box comes by itself');
-    expect(find.byKey(const Key('lock-screen')), findsOneWidget);
-    expect(find.text('Sketchline is locked'), findsOneWidget);
-    expect(find.text('Not unlocked – press Unlock and try again.'), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58_lock.png'));
-    await t.tap(find.byKey(const Key('lock-unlock')));
-    await settle(t, 600);
-    expect(g.asked, 2);
-    expect(find.byKey(const Key('lock-screen')), findsNothing);
-    expect(find.text('Home'), findsWidgets, reason: 'the app');
-    // 30 s away: still open; 2 minutes away: locked, asked again by itself
+    expect(find.byKey(const Key('lock-screen')), findsNothing, reason: 'off unless he turns it on');
+    expect(g.asked, 0);
+    expect(find.textContaining('screen lock'), findsNothing, reason: 'nobody is told to set the phone\'s screen lock');
     t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    now = now.add(const Duration(seconds: 30));
+    now = now.add(const Duration(minutes: 5));
     t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await settle(t, 600);
     expect(find.byKey(const Key('lock-screen')), findsNothing);
+    // My settings → App lock: Off → on → PIN
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    await t.tap(find.text('My settings'));
+    await net(t);
+    await t.scrollUntilVisible(find.text('App lock'), 150, scrollable: find.byType(Scrollable).last);
+    expect(find.text('Off'), findsWidgets);
+    await t.tap(find.text('App lock'));
+    await net(t);
+    expect(find.byKey(const Key('al-pin')), findsNothing, reason: 'nothing to choose while it is off');
+    await t.tap(find.byKey(const Key('al-on')));
+    await settle(t, 400);
+    for (final k in ['al-pin', 'al-password', 'al-finger', 'al-face']) {
+      expect(find.byKey(Key(k)), findsOneWidget, reason: k);
+    }
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58_applock_settings.png'));
+    await t.tap(find.byKey(const Key('al-pin')));
+    await net(t);
+    await pinIn(t, '4826', 'set-key');
+    expect(find.text('Type the same PIN again'), findsOneWidget);
+    await pinIn(t, '4827', 'set-key');
+    expect(find.text('The two PINs are not the same – type it again.'), findsOneWidget);
+    await pinIn(t, '4826', 'set-key');
+    await pinIn(t, '4826', 'set-key');
+    await net(t);
+    expect(lock.choice?.how, 'pin');
+    expect(find.byKey(const Key('al-change')), findsOneWidget, reason: 'Change PIN');
+    expect(g.asked, 0, reason: 'a PIN: the phone is not asked');
+    // a minute away: the light lock with the PIN pad
     t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     now = now.add(const Duration(minutes: 2));
-    g.answers.add(const LockAnswer(LockOutcome.no));
     t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await settle(t, 600);
     expect(find.byKey(const Key('lock-screen')), findsOneWidget);
-    expect(g.asked, 3);
-    await t.tap(find.byKey(const Key('lock-unlock')));
-    await settle(t, 600);
+    expect(find.descendant(of: find.byKey(const Key('lock-screen')), matching: find.text('Sketchline')), findsOneWidget, reason: 'the product\'s name');
+    expect(find.byKey(const Key('lock-line')), findsOneWidget, reason: 'the line of the Portal\'s Branding under the name');
+    expect(find.byKey(const Key('lock-mark')), findsOneWidget);
+    expect(find.text('Sujit Mule'), findsWidgets);
+    expect(find.text('Sketchline is locked'), findsNothing, reason: 'the approved design: no such words');
+    await pinIn(t, '1111');
+    expect(find.text('Wrong PIN.'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58_lock_pin.png'));
+    await pinIn(t, '4826');
     expect(find.byKey(const Key('lock-screen')), findsNothing);
+    expect(g.asked, 0);
   }, tags: ['golden']);
 
-  // (3.92.0, asked 09-11-2026: "iphone madhe finer nahi face login aste … face login haway") an iPhone with Face ID: its own words
-  testWidgets('(3.92.0) The app lock on an iPhone with Face ID: "Use Face ID or the iPhone\'s passcode." and "Unlock with Face ID"', (t) async {
-    phone(t);
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    try {
-      final srv = FakeServer();
-      final s = await ready(t, srv);
-      final g = FakeGate()
-        ..has = 'face'
-        ..answers.add(const LockAnswer(LockOutcome.no));
-      await t.pumpWidget(RclApp(session: s, lock: AppLock(g)));
-      await net(t);
-      expect(g.kinds, 1);
-      expect(find.byKey(const Key('lock-screen')), findsOneWidget);
-      expect(find.text("Use Face ID or the iPhone's passcode."), findsOneWidget);
-      expect(find.text('Unlock with Face ID'), findsOneWidget);
-      expect(find.byIcon(Icons.face_rounded), findsOneWidget);
-      await pics(t);
-      await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58b_lock_faceid.png'));
-      await t.tap(find.byKey(const Key('lock-unlock')));
-      await settle(t, 600);
-      expect(find.byKey(const Key('lock-screen')), findsNothing);
-      await t.pumpWidget(const SizedBox());
-    } finally {
-      debugDefaultTargetPlatformOverride = null;
-    }
-  }, tags: ['golden']);
-
-  testWidgets('(3.27.0) A phone with no screen lock: the app opens, with a red line to set one; signed out: no lock screen', (t) async {
+  testWidgets('(3.127.0) His own password on the lock; "Forgot password?" → asked on the screen → signed out, the one he forgot is gone', (t) async {
     phone(t);
     final srv = FakeServer();
     final s = await ready(t, srv);
-    final g = FakeGate()..answers.add(const LockAnswer(LockOutcome.noLock));
-    await t.pumpWidget(RclApp(session: s, lock: AppLock(g)));
+    final g = FakeGate(), lock = await lockWith(t, g, 'password', 'site-48');
+    await t.pumpWidget(RclApp(session: s, lock: lock));
     await net(t);
+    expect(find.byKey(const Key('lock-screen')), findsOneWidget);
+    expect(find.byKey(const Key('lock-key-1')), findsNothing, reason: 'a password, not the PIN pad');
+    await t.enterText(find.byKey(const Key('lock-pass')), 'site-47');
+    await t.tap(find.byKey(const Key('lock-open')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await settle(t, 400);
+    expect(find.text('Wrong password.'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58_lock_password.png'));
+    await t.enterText(find.byKey(const Key('lock-pass')), 'site-48');
+    await t.tap(find.byKey(const Key('lock-open')));
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await settle(t, 400);
     expect(find.byKey(const Key('lock-screen')), findsNothing);
-    expect(find.textContaining('This phone has no screen lock'), findsOneWidget);
-    final s2 = make(FakeServer());
-    await t.runAsync(s2.start);
-    final g2 = FakeGate();
-    await t.pumpWidget(RclApp(session: s2, lock: AppLock(g2)));
+    // locked again; he forgot it
+    lock.lockNow();
+    await settle(t, 400);
+    await t.tap(find.byKey(const Key('lock-forgot')));
+    await settle(t, 300);
+    expect(find.text('Sign in again with your Sketchline password?'), findsOneWidget);
+    await t.tap(find.byKey(const Key('lock-out-yes')));
     await net(t);
-    expect(find.byKey(const Key('lock-screen')), findsNothing, reason: 'nothing of the ERP is open before a sign-in');
-    expect(g2.asked, 0);
+    expect(s.stage, Stage.signedOut);
+    expect(find.byKey(const Key('lock-screen')), findsNothing);
+    lock.user = 'sujit@rcl.test';
+    expect(lock.choice, null, reason: 'the password he forgot is gone – he sets a new one after the sign-in');
+  }, tags: ['golden']);
+
+  testWidgets('(3.127.0) Fingerprint only: the phone\'s own popup comes by itself (not the phone\'s PIN); closed → Unlock and "Use password instead" – nothing of our own fingerprint; 5 wrong PINs → signed out', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    final g = FakeGate()..answers.add(const LockAnswer(LockOutcome.no)), lock = await lockWith(t, g, 'finger');
+    await t.pumpWidget(RclApp(session: s, lock: lock));
+    await net(t);
+    expect(g.asked, 1, reason: 'the popup by itself');
+    expect(g.reason, 'Unlock Sketchline');
+    expect(find.byKey(const Key('lock-screen')), findsOneWidget);
+    expect(find.byKey(const Key('lock-unlock')), findsOneWidget);
+    expect(find.text('Use password instead'), findsOneWidget);
+    expect(find.byIcon(Icons.fingerprint_rounded), findsNothing, reason: 'the phone shows its own');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58_lock_finger.png'));
+    await t.tap(find.byKey(const Key('lock-unlock')));
+    await net(t);
+    expect(g.asked, 2);
+    expect(find.byKey(const Key('lock-screen')), findsNothing);
+    // "Use password instead": signed out, his choice stays
+    lock.lockNow();
+    g.answers.add(const LockAnswer(LockOutcome.no));
+    await net(t);
+    await t.tap(find.byKey(const Key('lock-forgot')));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('lock-out-yes')));
+    await net(t);
+    expect(s.stage, Stage.signedOut);
+    lock.user = 'sujit@rcl.test';
+    expect(lock.choice?.how, 'finger', reason: 'the fingerprint stays his choice');
+    // 5 wrong PINs: he signs in again
+    final s2 = await ready(t, FakeServer()), lock2 = await lockWith(t, FakeGate(), 'pin', '4826');
+    await t.pumpWidget(RclApp(session: s2, lock: lock2));
+    await net(t);
+    for (var i = 0; i < 5; i++) {
+      await pinIn(t, '0000');
+    }
+    await net(t);
+    expect(s2.stage, Stage.signedOut);
+    expect(find.byKey(const Key('lock-screen')), findsNothing);
+  }, tags: ['golden']);
+
+  testWidgets('(3.127.0) App lock on an iPhone with Face ID: "Fingerprint only" is grey (not set on this phone); Face only → the phone asks once → chosen', (t) async {
+    phone(t);
+    final g = FakeGate()..can = {'face'};
+    final lock = AppLock(g, keep: MemoryKeep());
+    await t.runAsync(lock.open);
+    lock.user = 'sujit@rcl.test';
+    await t.pumpWidget(MaterialApp(home: AppLockScreen(lock: lock)));
+    await net(t);
+    await t.tap(find.byKey(const Key('al-on')));
+    await settle(t, 400);
+    expect(find.text('Not set on this phone'), findsOneWidget, reason: 'only the fingerprint');
+    await t.tap(find.byKey(const Key('al-finger')));
+    await settle(t, 300);
+    expect([g.asked, lock.choice], [0, null], reason: 'grey: nothing happens');
+    await t.tap(find.byKey(const Key('al-face')));
+    await net(t);
+    expect(g.asked, 1);
+    expect(lock.choice?.how, 'face');
+    // turned off again
+    await t.tap(find.byKey(const Key('al-on')));
+    await net(t);
+    expect(lock.choice, null);
+    await settle(t, 3500); // (the message goes)
   });
+
+  testWidgets('(3.127.0) Home shows only the client – its mark and its name, no lion; ≡ the menu: the lion, Sketchline and its line', (t) async {
+    phone(t);
+    final s = await ready(t, FakeServer());
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('home-client')), findsOneWidget);
+    expect(find.byKey(const Key('home-company')), findsOneWidget);
+    expect(find.byKey(const Key('home-product')), findsNothing, reason: 'the lion is in the menu');
+    await t.tap(find.byKey(const Key('home-menu')));
+    await settle(t, 800);
+    expect(find.byKey(const Key('menu-brand')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('menu-brand')), matching: find.text('Sketchline')), findsOneWidget);
+    expect(find.byKey(const Key('brand-line')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/13b_menu_brand.png'));
+  }, tags: ['golden']);
 
   // (3.62.1, urgent 29-10-2026: "tyach phone madhun keleli entry disat nahi") a half-filled entry of an EARLIER day brought back
   testWidgets('(3.62.1) a half-filled Diesel Issue kept on an earlier day comes back with TODAY\'s date (its old day no longer comes back unseen – the entries went to that day); one typed today keeps the date picked', (t) async {
@@ -7413,9 +7535,9 @@ void main() {
     addTearDown(ScanLink.i.reset);
     final srv = FakeServer()..perms['Log Book'] = 'Edit';
     final s = await ready(t, srv);
-    final g = FakeGate()..answers.add(const LockAnswer(LockOutcome.no));
+    final g = FakeGate()..answers.add(const LockAnswer(LockOutcome.no)), lock = await lockWith(t, g, 'finger'); // (3.127.0) he turned it on
     ScanLink.i.take('https://oneclicksolution-erp.vercel.app/scan?cap=${srv.capCodeOk}&site=S1'); // (the link the app was opened with)
-    await t.pumpWidget(RclApp(session: s, lock: AppLock(g)));
+    await t.pumpWidget(RclApp(session: s, lock: lock));
     await net(t);
     expect(find.byKey(const Key('lock-screen')), findsOneWidget);
     expect(find.byType(CaptureScreen), findsNothing, reason: 'nothing of the ERP before the fingerprint');

@@ -61,7 +61,7 @@ class _ScanLinkLayerState extends State<ScanLinkLayer> {
     if (_busy || !mounted || (!cap && tap == null)) return;
     final s = SessionScope.read(context);
     if (s.stage != Stage.ready && s.stage != Stage.pickSite) return; // signed out, opening, no network: it waits
-    if (widget.lock?.locked == true) return; // the lock first (its listener calls again)
+    if (widget.lock?.closed == true) return; // the lock first (its listener calls again)
     final want = cap ? l.site : tap!.site, key = cap ? l.code : 'tap|${tap!.t}|${tap.id}|${tap.call}';
     void drop() => cap ? l.done() : l.tapDone();
     if (want.isNotEmpty && s.site?.code != want) {

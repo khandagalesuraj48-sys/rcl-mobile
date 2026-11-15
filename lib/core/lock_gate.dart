@@ -1,5 +1,5 @@
-/* (3.27.0) The app lock asks the phone itself (local_auth): Android's BiometricPrompt (fingerprint / face, or the phone's PIN /
- * pattern / password), the iPhone's Face ID / Touch ID / passcode, Windows Hello on a computer. See applock.dart. */
+/* (3.27.0) The app lock asks the phone itself (local_auth). (3.127.0) Only the fingerprint / face – Android's BiometricPrompt, the
+ * iPhone's Face ID / Touch ID – never the phone's own PIN / pattern / passcode (biometricOnly). See applock.dart. */
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -11,8 +11,7 @@ class PhoneLockGate implements LockGate {
   @override
   Future<LockAnswer> ask(String reason) async {
     try {
-      if (!await _a.isDeviceSupported()) return const LockAnswer(LockOutcome.noLock); // no screen lock, no fingerprint
-      final ok = await _a.authenticate(localizedReason: reason, persistAcrossBackgrounding: true);
+      final ok = await _a.authenticate(localizedReason: reason, biometricOnly: true, persistAcrossBackgrounding: true);
       return LockAnswer(ok ? LockOutcome.ok : LockOutcome.no);
     } on LocalAuthException catch (e) {
       final c = e.code;
@@ -21,7 +20,7 @@ class PhoneLockGate implements LockGate {
       }
       if (c == LocalAuthExceptionCode.authInProgress) return const LockAnswer(LockOutcome.busy);
       if (c == LocalAuthExceptionCode.temporaryLockout || c == LocalAuthExceptionCode.biometricLockout) {
-        return const LockAnswer(LockOutcome.no, 'Too many tries – wait a little, or use the phone\'s PIN.');
+        return const LockAnswer(LockOutcome.no, 'Too many tries – wait a little, or use your password.');
       }
       if (c == LocalAuthExceptionCode.userCanceled || c == LocalAuthExceptionCode.systemCanceled || c == LocalAuthExceptionCode.timeout || c == LocalAuthExceptionCode.userRequestedFallback) {
         return const LockAnswer(LockOutcome.no);
@@ -34,15 +33,19 @@ class PhoneLockGate implements LockGate {
     }
   }
 
-  /// (3.92.0) Face ID / face only → 'face'; Touch ID / fingerprint only → 'finger'; else ''.
+  /// (3.127.0) An iPhone says which one it has (Face ID / Touch ID); an Android phone only that it has one ("weak" / "strong") –
+  /// then both are offered and its own popup takes the one that is set.
   @override
-  Future<String> kind() async {
+  Future<Set<String>> bios() async {
     try {
       final l = await _a.getAvailableBiometrics();
-      final face = l.contains(BiometricType.face), finger = l.contains(BiometricType.fingerprint);
-      return face && !finger ? 'face' : finger && !face ? 'finger' : '';
+      return {
+        if (l.contains(BiometricType.fingerprint)) 'finger',
+        if (l.contains(BiometricType.face)) 'face',
+        if (l.contains(BiometricType.weak) || l.contains(BiometricType.strong)) ...{'finger', 'face'},
+      };
     } catch (_) {
-      return ''; // (not known: the words for every phone)
+      return {};
     }
   }
 }

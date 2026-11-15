@@ -83,13 +83,14 @@ void main() {
     expect(tool, isNot(contains('android:label="RCL ' 'ERP"')));
   });
 
-  test('the screens take the product from that one place; Home keeps the client\'s own mark beside the lion; the app\'s id is unchanged', () {
+  test('the screens take the product from that one place; (3.127.0) Home shows only the client\'s own mark and name, the ≡ menu the product; the app\'s id is unchanged', () {
     final home = File('lib/screens/home.dart').readAsStringSync(), login = File('lib/screens/login.dart').readAsStringSync(), splash = File('lib/screens/splash.dart').readAsStringSync();
     for (final src in [home, login, splash, File('lib/screens/me.dart').readAsStringSync()]) {
       expect(src, isNot(contains("'RCL " "ERP'")), reason: 'the old name');
     }
-    expect('ProductMark('.allMatches(home).length, 3);
-    expect('ClientMark('.allMatches(home).length, 3, reason: 'the client beside the product, in each of the three places');
+    expect('ProductMark('.allMatches(home).length, 0, reason: '(3.127.0) "home screen la only client name and logo"');
+    expect('ClientMark('.allMatches(home).length, 2, reason: 'the client: the top of Home and its bar when scrolled');
+    expect('ProductBlock('.allMatches(home).length, 1, reason: 'the ≡ menu: the lion, the name, its line');
     expect(login, contains('ProductMark(size: 44'));
     expect(splash, contains('Product.first.toUpperCase()'));
     expect(File('android/app/build.gradle.kts').existsSync() ? File('android/app/build.gradle.kts').readAsStringSync() : File('android/app/build.gradle').readAsStringSync(), contains('in.rachana.rcl'));

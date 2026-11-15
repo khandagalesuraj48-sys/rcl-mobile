@@ -60,6 +60,38 @@ class ProductName extends StatelessWidget {
       );
 }
 
+/// (3.127.0, asked 15-11-2026) The product in the ≡ menu: the lion, under it the name, under it – small – its line ("Version Lion"),
+/// each as the Portal's "Branding" keeps it.
+class ProductBlock extends StatelessWidget {
+  const ProductBlock({super.key});
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: ProductBrand.i,
+        builder: (_, __) {
+          final line = Product.line.trim();
+          return Column(children: [
+            Container(
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(26), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .28), blurRadius: 22, offset: const Offset(0, 10))]),
+              child: const ProductMark(size: 88, radius: 26),
+            ),
+            const SizedBox(height: 12),
+            Text(Product.name, key: const Key('brand-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 25, fontWeight: FontWeight.w800, color: Color(0xFF111111), letterSpacing: .3)),
+            if (line.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 16, height: 1, color: const Color(0xFFD4AF37)),
+                  const SizedBox(width: 7),
+                  Flexible(child: Text(line.toUpperCase(), key: const Key('brand-line'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 11, letterSpacing: 3, color: Color(0xFFA8821F)))),
+                  const SizedBox(width: 7),
+                  Container(width: 16, height: 1, color: const Color(0xFFD4AF37)),
+                ]),
+              ),
+          ]);
+        },
+      );
+}
+
 /// The client company's own mark on a white tile, beside the product's: the logo the Portal keeps for the company ([companyId]),
 /// the built-in Rachana "R" until there is one.
 class ClientMark extends StatelessWidget {

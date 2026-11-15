@@ -15,6 +15,23 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.127.0 (15-11-2026 – "app lock … by default ti on aahe – ata te setting madhe asel, app la lock lawaych ki nahi to user cha
+perspective asel, ani kas lawaych te user tharwel: pin ki password ki only finger ki only face – mhanje phone lock cha nahi";
+"jyani phone la lock nahi lawale tyana notification jate – te ata band hoil"; "home screen la only client name and logo, three line la
+click kela natr Sketchline logo lion, tyach khali name Sketchline, tyach khali small madhe Version Lion – je mi Portal madhe save kru
+shakel"; his approved pictures: the light lock, the phone's own popup for the fingerprint / face):** THE APP LOCK IS THE PERSON'S OWN
+CHOICE. Off for everybody (also those who had it) unless he turns it on: My settings → App lock (`screens/app_lock.dart`) – his own
+4-digit PIN (typed twice), his own password (at least 6, twice), only his fingerprint or only his face (the phone asks once to be
+sure; `biometricOnly` – never the phone's PIN). Kept only on this phone, for each person (`AppLock.kKey`; a PIN / password only as a
+salted SHA-256, 20,000 rounds – never the code, never sent). The lock screen (`screens/lock.dart`) on the approved light design: the
+lion, the name, the Portal's line under it, his name; then the PIN pad / password box, or for the fingerprint / face the phone's
+own popup (by itself) with only Unlock and "Use password instead" on the screen. Forgot the PIN / password: asked on the screen, then
+signed out – the forgotten one goes; "Use password instead": signed out, his choice stays; 5 wrong PINs / passwords: signed out. The
+red "set a screen lock on the phone" line is gone. An Android phone says only that it HAS a fingerprint / face (not which) – both
+are offered there and its own popup takes the one that is set; an iPhone says which (the other is grey). HOME: only the client – his
+mark and name (top and the bar when scrolled); THE ≡ MENU: the lion, "Sketchline", and under it, small, the line of the Portal's
+Branding (he saves "Version Lion" there). NOT verified on a real phone (the popup's look is each phone maker's own).
+
 **Version 3.126.0 (15-11-2026 – "app updet krtana je kahi new updet aley tech fkt updet hoil ani baki continue aselch – pratek weli full
 app download krayla ka lawatoys, karan changes small hotat ani updet matr sagle app"; "app 0 pasun pratek weli updet nahi zali pahije"):**
 THE SMALL UPDATE. Android installs only a whole app file, so the phone makes it itself: the release now also carries, for the 5
