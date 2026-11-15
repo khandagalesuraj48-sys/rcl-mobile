@@ -21,7 +21,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
     <application
-        android:label="Sketchline Lion"
+        android:label="Sketchline"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

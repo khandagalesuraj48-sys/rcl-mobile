@@ -1,4 +1,4 @@
-// (3.124.0, asked 14-11-2026) THE PRODUCT IS "SKETCHLINE LION" – its name, line and logo in one place; the client (Rachana) beside it.
+// (3.124.0, asked 14-11-2026) THE PRODUCT IS "SKETCHLINE" (3.125.0: one word) – its name, line and logo in one place; the client (Rachana) beside it.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -27,7 +27,7 @@ void main() {
       return http.Response(jsonEncode(answer), 200, headers: {'content-type': 'application/json'});
     });
     final b = ProductBrand.i;
-    expect([b.name, b.line, b.logo], ['Sketchline Lion', 'Integrated Construction Management', null]);
+    expect([b.name, b.line, b.logo], ['Sketchline', 'Integrated Construction Management', null]);
     await b.open(dir);
     var told = 0;
     void on() => told++;
@@ -69,17 +69,17 @@ void main() {
   });
 
   test('one place for the product: the name, its line, its logo (the file is there and in the build)', () {
-    expect(Product.name, 'Sketchline Lion');
+    expect(Product.name, 'Sketchline');
     expect(Product.line, 'Integrated Construction Management');
     expect(File(Product.logo).existsSync(), true);
     expect(File('pubspec.yaml').readAsStringSync(), contains('- assets/brand/sketchline_lion.png'));
   });
 
   test('the phone shows the new name: Android, the iPhone, the tool that makes the platform folders', () {
-    expect(File('android/app/src/main/AndroidManifest.xml').readAsStringSync(), contains('android:label="Sketchline Lion"'));
-    expect(File('ios/Runner/Info.plist').readAsStringSync(), contains('<string>Sketchline Lion</string>'));
+    expect(File('android/app/src/main/AndroidManifest.xml').readAsStringSync(), contains('android:label="Sketchline"'));
+    expect(File('ios/Runner/Info.plist').readAsStringSync(), contains('<string>Sketchline</string>'));
     final tool = File('tool/patch_platforms.py').readAsStringSync();
-    expect(tool, contains('android:label="Sketchline Lion"'));
+    expect(tool, contains('android:label="Sketchline"'));
     expect(tool, isNot(contains('android:label="RCL ' 'ERP"')));
   });
 

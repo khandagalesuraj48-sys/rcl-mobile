@@ -247,7 +247,7 @@ class RclApp extends StatelessWidget {
         child: LangScope(child: ValueListenableBuilder<bool>(valueListenable: session.siteMode, builder: (_, site, __) => ListenableBuilder(listenable: HrSkin.i, builder: (_, __) => MaterialApp(
           navigatorKey: appNav,
           navigatorObservers: [appRoutes], // (update-155) a tab under a closed screen loads if it is old (ui/live.dart)
-          title: 'Sketchline Lion', // (3.124.0) the product's name
+          title: 'Sketchline', // (3.124.0) the product's name
           debugShowCheckedModeBanner: false,
           // (3.114.0) the attendance app (a person with HR only): the look he chose – Pearl or Midnight Gold (ui/hr_skin.dart)
           theme: HrSkin.i.on ? hrTheme(sk, _theme) : (site ? _siteTheme : _theme),

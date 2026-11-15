@@ -232,7 +232,7 @@ class _CamError extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               switch (code) {
-                MobileScannerErrorCode.permissionDenied => 'The camera is not allowed for the app. Allow it: phone Settings → Apps → Sketchline Lion → Permissions → Camera, then scan again.',
+                MobileScannerErrorCode.permissionDenied => 'The camera is not allowed for the app. Allow it: phone Settings → Apps → Sketchline → Permissions → Camera, then scan again.',
                 MobileScannerErrorCode.unsupported => 'This phone has no camera the scanner can use.',
                 _ => 'The camera could not be started – close this and scan again.',
               },

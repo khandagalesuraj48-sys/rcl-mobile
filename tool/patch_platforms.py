@@ -28,7 +28,7 @@ def manifest(s):
              'android.permission.USE_FULL_SCREEN_INTENT']      # (3.42.0) a call's notification rings on the locked phone too
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
-    s = re.sub(r'android:label="[^"]*"', 'android:label="Sketchline Lion"', s, count=1)
+    s = re.sub(r'android:label="[^"]*"', 'android:label="Sketchline"', s, count=1)
     if 'OtaUpdateFileProvider' not in s:
         block = ('        <provider android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"\n'
                  '            android:authorities="${applicationId}.ota_update_provider"\n'
@@ -114,28 +114,28 @@ def root_gradle(s):
         return s.replace('name == "file_picker")', 'name == "file_picker" || name == "speech_to_text")')
     return s if 'name == "file_picker"' in s else s + ROOT_KT
 
-USES = [('NSCameraUsageDescription', 'Sketchline Lion uses the camera for the photos of an entry (Diesel Issue and others).'),
-        ('NSLocationWhenInUseUsageDescription', 'Sketchline Lion saves the place of every entry, as the web ERP does.'),
-        ('NSMicrophoneUsageDescription', 'Sketchline Lion uses the microphone when you talk with the assistant and for a screen-share help call.'),
-        ('NSPhotoLibraryUsageDescription', 'Sketchline Lion lets you choose a photo for an entry.'),
-        ('NSFaceIDUsageDescription', 'Sketchline Lion opens with your Face ID, so that nobody else can open it on this iPhone.'),      # (3.27.0) the app lock
-        ('NSSpeechRecognitionUsageDescription', 'Sketchline Lion turns what you say to the assistant into words (a question or an entry).')]
+USES = [('NSCameraUsageDescription', 'Sketchline uses the camera for the photos of an entry (Diesel Issue and others).'),
+        ('NSLocationWhenInUseUsageDescription', 'Sketchline saves the place of every entry, as the web ERP does.'),
+        ('NSMicrophoneUsageDescription', 'Sketchline uses the microphone when you talk with the assistant and for a screen-share help call.'),
+        ('NSPhotoLibraryUsageDescription', 'Sketchline lets you choose a photo for an entry.'),
+        ('NSFaceIDUsageDescription', 'Sketchline opens with your Face ID, so that nobody else can open it on this iPhone.'),      # (3.27.0) the app lock
+        ('NSSpeechRecognitionUsageDescription', 'Sketchline turns what you say to the assistant into words (a question or an entry).')]
 def plist(s):
     if '<key>CFBundleDisplayName</key>' in s:
-        s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1Sketchline Lion\2', s, count=1)
+        s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1Sketchline\2', s, count=1)
     else:
-        s = s.replace('<dict>', '<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>Sketchline Lion</string>', 1)
+        s = s.replace('<dict>', '<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>Sketchline</string>', 1)
     for k, v in USES:
         if '<key>%s</key>' % k not in s: s = s.replace('<dict>', '<dict>\n\t<key>%s</key>\n\t<string>%s</string>' % (k, v), 1)
-    s = s.replace('Sketchline Lion uses the microphone for a screen-share help call.', dict(USES)['NSMicrophoneUsageDescription'])
+    s = s.replace('Sketchline uses the microphone for a screen-share help call.', dict(USES)['NSMicrophoneUsageDescription'])
     return s
 
 # ---------- (3.19.0) WINDOWS – run with --windows right after `flutter create --platforms=windows` made windows/ ----------
 # The program's name (rcl_erp.exe) and its details (company, product – also where Windows keeps the app's own files:
 # %APPDATA%\Rachana Construction Limited\RCL ERP), the window (a tall one in the middle of the screen, never smaller than a
 # small phone's screen) and its title.
-WIN_RC = [('CompanyName', 'Rachana Construction Limited'), ('FileDescription', 'Sketchline Lion'), ('InternalName', 'rcl_erp'),
-          ('LegalCopyright', 'Copyright (C) 2026 Rachana Construction Limited'), ('OriginalFilename', 'rcl_erp.exe'), ('ProductName', 'Sketchline Lion')]
+WIN_RC = [('CompanyName', 'Rachana Construction Limited'), ('FileDescription', 'Sketchline'), ('InternalName', 'rcl_erp'),
+          ('LegalCopyright', 'Copyright (C) 2026 Rachana Construction Limited'), ('OriginalFilename', 'rcl_erp.exe'), ('ProductName', 'Sketchline')]
 WIN_CORO = ('# (3.19.0) a plugin (flutter_inappwebview_windows) still uses <experimental/coroutine>: Visual Studio 2026 stops on it\n'
             '# unless it is told to go on (the plugin works as before)\n'
             'add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)\n')
@@ -151,7 +151,7 @@ def win_rc(s):
         s = re.sub(r'(VALUE "%s", )"[^"]*"' % k, lambda m: m.group(1) + '"%s"' % v, s, count=1)
         need('VALUE "%s", "%s"' % (k, v) in s, 'windows/runner/Runner.rc: no %s' % k)
     return s
-WIN_SIZE = ('''  // (3.19.0) Sketchline Lion on a computer: a tall window like the phone's screen, in the middle of the screen (it can be made bigger)
+WIN_SIZE = ('''  // (3.19.0) Sketchline on a computer: a tall window like the phone's screen, in the middle of the screen (it can be made bigger)
   RECT work{};
   ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
   const POINT mid{(work.left + work.right) / 2, (work.top + work.bottom) / 2};
@@ -163,9 +163,9 @@ WIN_SIZE = ('''  // (3.19.0) Sketchline Lion on a computer: a tall window like t
   Win32Window::Point origin(static_cast<unsigned int>(static_cast<int>(work.left / scale) + (work_w - win_w) / 2),
                             static_cast<unsigned int>(static_cast<int>(work.top / scale) + (work_h - win_h) / 2));
   Win32Window::Size size(static_cast<unsigned int>(win_w), static_cast<unsigned int>(win_h));
-  if (!window.Create(L"Sketchline Lion", origin, size)) {''')
+  if (!window.Create(L"Sketchline", origin, size)) {''')
 def win_main(s):
-    if '(3.19.0) Sketchline Lion on a computer' in s: return s
+    if '(3.19.0) Sketchline on a computer' in s: return s
     t = re.sub(r'  Win32Window::Point origin\(\d+, \d+\);\n  Win32Window::Size size\(\d+, \d+\);\n  if \(!window\.Create\(L"[^"]*", origin, size\)\) \{', lambda m: WIN_SIZE, s, count=1)
     need(t != s, 'windows/runner/main.cpp: the window lines look different')
     if '#include <flutter_windows.h>' not in t:

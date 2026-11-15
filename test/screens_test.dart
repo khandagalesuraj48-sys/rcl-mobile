@@ -6991,7 +6991,7 @@ void main() {
     await net(t);
     expect(g.asked, 1, reason: 'the phone\'s box comes by itself');
     expect(find.byKey(const Key('lock-screen')), findsOneWidget);
-    expect(find.text('Sketchline Lion is locked'), findsOneWidget);
+    expect(find.text('Sketchline is locked'), findsOneWidget);
     expect(find.text('Not unlocked – press Unlock and try again.'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/58_lock.png'));
@@ -7133,7 +7133,7 @@ void main() {
     await settle(t, 600);
     await t.tap(find.byKey(const Key('menu-share')));
     await settle(t, 600);
-    expect(shared.single, startsWith('Sketchline Lion app – https://oneclicksolution-erp.vercel.app/app\n'));
+    expect(shared.single, startsWith('Sketchline app – https://oneclicksolution-erp.vercel.app/app\n'));
     expect(find.byKey(const Key('menu-share')), findsNothing, reason: 'the menu closed first');
     // a phone / computer that cannot share: the link copied, said
     appShare = (text) async => false;

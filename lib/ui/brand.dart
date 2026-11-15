@@ -10,7 +10,7 @@ import '../core/product_brand.dart';
 
 /* (3.124.0, asked 14-11-2026: "aple app ch name change kraych aahe ani logo pn – Sketchline Lion … RCL ha Sketchline cha client aasel,
  * login zale nantr Sketchline Lion ha logo pn asel ani client cha logo pn") THE PRODUCT AND ITS CLIENT. The app is the product
- * "Sketchline Lion" (its name, its line, its logo – here, in one place); Rachana Construction Limited is the client whose sites it
+ * "Sketchline" (its name, its line, its logo – here, in one place); Rachana Construction Limited is the client whose sites it
  * runs: after the sign-in both marks are shown – the product's lion and the client's own mark. What is printed (bills, reports, the
  * Log Book) stays the client's alone. */
 class Product {

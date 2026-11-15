@@ -2,7 +2,7 @@
  * changes kel tri sagle changes app madhe … hou shaktil") THE PRODUCT'S NAME AND LOGO COME FROM THE PORTAL. The Super Admin sets them
  * in the Portal's "Branding" (rcl-portal /api/brand): the name in two parts, the line under it, the logo, the opening screen's photo,
  * and a logo for each client company. The app asks when it opens and keeps the answer on the phone – so the next opening shows it at
- * once, also with no network. Until the first answer, and whenever the Portal has nothing, the built-in "Sketchline Lion" and its
+ * once, also with no network. Until the first answer, and whenever the Portal has nothing, the built-in "Sketchline" and its
  * lion are shown. Nothing here needs a sign-in; a client's logo is asked for only with the id of a site's company, which the app
  * learns after the sign-in. A new build is needed only for the icon on the phone and the name under it. */
 import 'dart:convert';
@@ -15,7 +15,8 @@ class ProductBrand extends ChangeNotifier {
   ProductBrand._();
   static final ProductBrand i = ProductBrand._();
 
-  static const firstBuiltIn = 'Sketchline', secondBuiltIn = 'Lion', lineBuiltIn = 'Integrated Construction Management';
+  // (3.125.0, 15-11-2026: "aple app name madhe kuthech … Lion name nasel – Sketchline; logo lion") the name is one word; the lion is the logo
+  static const firstBuiltIn = 'Sketchline', secondBuiltIn = '', lineBuiltIn = 'Integrated Construction Management';
   String first = firstBuiltIn, second = secondBuiltIn, line = lineBuiltIn;
   String get name => second.isEmpty ? first : '$first $second';
 

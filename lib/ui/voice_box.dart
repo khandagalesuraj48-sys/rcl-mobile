@@ -28,7 +28,7 @@ const _say = {
   'hear': {'mr': 'ऐकत आहे… बोला', 'hi': 'सुन रहा है… बोलिए', 'en': 'Listening… speak'},
   'none': {'mr': 'काहीच ऐकू आले नाही – 🎙 दाबून पुन्हा बोला.', 'hi': 'कुछ सुनाई नहीं दिया – 🎙 दबाकर फिर बोलिए।', 'en': 'Nothing was heard – press 🎙 and speak again.'},
   'nonum': {'mr': 'आकडा समजला नाही – पुन्हा बोला', 'hi': 'संख्या समझ नहीं आई – फिर बोलिए', 'en': 'No number understood – speak again'},
-  'mic': {'mr': 'Microphone ला परवानगी नाही – Settings › Apps › Sketchline Lion › Permissions › Microphone.', 'hi': 'Microphone की अनुमति नहीं – Settings › Apps › Sketchline Lion › Permissions › Microphone।', 'en': 'The microphone is not allowed – Settings › Apps › Sketchline Lion › Permissions › Microphone.'},
+  'mic': {'mr': 'Microphone ला परवानगी नाही – Settings › Apps › Sketchline › Permissions › Microphone.', 'hi': 'Microphone की अनुमति नहीं – Settings › Apps › Sketchline › Permissions › Microphone।', 'en': 'The microphone is not allowed – Settings › Apps › Sketchline › Permissions › Microphone.'},
   'cant': {'mr': 'हा device ऐकू शकत नाही.', 'hi': 'यह device सुन नहीं सकता।', 'en': 'This device cannot listen.'},
   'tip': {'mr': 'बोलून लिहा', 'hi': 'बोलकर लिखें', 'en': 'Speak to type'},
   'site': {'mr': 'Site चा शब्द लिहिला', 'hi': 'Site का शब्द लिखा', 'en': 'Written as the site writes it'}, // (3.74.0)

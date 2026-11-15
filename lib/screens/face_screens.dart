@@ -106,7 +106,7 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
         await c.startImageStream(_frame);
       }
     } catch (_) {
-      if (mounted) setState(() => err = _t('The camera could not be opened – allow the camera for the app (Settings › Apps › Sketchline Lion › Permissions).', 'Camera उघडला नाही – app ला camera ची परवानगी द्या (Settings › Apps › Sketchline Lion › Permissions).'));
+      if (mounted) setState(() => err = _t('The camera could not be opened – allow the camera for the app (Settings › Apps › Sketchline › Permissions).', 'Camera उघडला नाही – app ला camera ची परवानगी द्या (Settings › Apps › Sketchline › Permissions).'));
     }
   }
 

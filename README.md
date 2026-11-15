@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.125.0 (15-11-2026 – "ha icon sagli kade use kraych aahe … Sketchline sathi … aple app name madhe kuthech, web aso ki app,
+Lion name nasel – Sketchline; ani logo lion; text name kuthech nasel"):** THE NAME IS "SKETCHLINE" (one word) AND THE LOGO IS THE
+LION HE APPROVED (the realistic lion's head on black – `brand/lion`, made from his picture). The built-in name's second word is
+empty (`ProductBrand.secondBuiltIn`; the opening screen writes a second word only when the Portal's Branding has one); every word of
+the app that named it says "Sketchline"; the built-in logo (`assets/brand/sketchline_lion.png`), the icon of Android (every size,
+the adaptive foreground and its background `#0B0D12`), the iPhone and Windows are the new lion. No text is in the logo. The source
+picture is 736 × 1307, so the 1024 icon is an enlargement of it. Where the picture came from was not checked – he approved it.
+
 **Version 3.124.0 (14-11-2026 – "aple app ch name change kraych aahe ani logo pn – Sketchline Lion … he app che page same aasel, ethle
 name ani logo change hoil … RCL ha Sketchline cha client aasel, login zale nantr Sketchline Lion ha logo pn asel ani client cha logo
 pn"; his choices: the name in gold + white, the icon and its name too, the prints stay the client's):** THE PRODUCT IS "SKETCHLINE
