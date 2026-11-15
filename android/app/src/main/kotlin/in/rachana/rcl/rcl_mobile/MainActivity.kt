@@ -79,11 +79,12 @@ class MainActivity : FlutterFragmentActivity() {
             try {
                 when (call.method) {
                     "start" -> result.success(UpdateKit.start(this, call.argument<String>("url") ?: "", call.argument<String>("file") ?: "rcl-erp.apk",
-                        call.argument<String>("version") ?: "", call.argument<Int>("build") ?: 0, call.argument<String>("sha") ?: ""))
+                        call.argument<String>("version") ?: "", call.argument<Int>("build") ?: 0, call.argument<String>("sha") ?: "", call.argument<String>("alt") ?: ""))
                     "state" -> result.success(UpdateKit.state(this))
                     "install" -> result.success(UpdateKit.install(this, call.argument<String>("path") ?: ""))
                     "forget" -> { UpdateKit.forget(this); result.success(true) }
                     "clearNote" -> { UpdateKit.clearNote(this); result.success(true) }
+                    "self" -> result.success(UpdateKit.self(this))
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {

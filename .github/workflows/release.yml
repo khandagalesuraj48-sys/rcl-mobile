@@ -197,7 +197,7 @@ jobs:
     needs: [android, windows]
     if: always() && needs.android.result == 'success' && inputs.publish
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40      # (3.126.0) the small updates are made here (about a minute each)
     steps:
       - uses: actions/checkout@v5
       - name: Version
@@ -216,6 +216,19 @@ jobs:
         with:
           name: setup
           path: out
+      # (3.126.0, asked 15-11-2026: "je kahi new updet aley tech fkt updet hoil … pratek weli full app download krayla ka lawatoys")
+      # THE SMALL UPDATES: for the newest builds released before this one, a file with only what changed (1–3 MB, not 75) – the phone
+      # makes the new app file from the one it has and checks the same fingerprint (tool/apk_patch.py, lib/core/apk_patch.dart). Each
+      # is applied and compared here; one that cannot be made is left out (that phone takes the whole file) – never a failed release.
+      - name: The small updates (only what changed since the builds before)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo '{}' > out/patches.json
+          (python3 -m pip install --quiet bsdiff4==1.4.3 || python3 -m pip install --quiet --break-system-packages bsdiff4==1.4.3) \
+            && timeout 1800 python3 tool/release_patches.py \
+            || { echo "::warning::The small updates were not made – every phone downloads the whole file this time."; rm -f out/*.patch; echo '{}' > out/patches.json; }
+          ls -la out
       - name: GitHub Release (the app files + their fingerprints)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -234,18 +247,21 @@ jobs:
           else
             echo "::warning::The Windows setup was not made – this release is for Android only (the computers keep their version)."
           fi
-          META=$(python3 -c "import json,os;m={'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':os.environ['SHA']};w=os.environ.get('WSHA','');m.update({'win':w} if w else {});m['apk']={'arm64-v8a':os.environ['S64'],'armeabi-v7a':os.environ['S32']};m.update({'optional':True} if os.environ.get('OPTIONAL','')=='true' else {});print(json.dumps(m))")
+          META=$(python3 -c "import json,os;m={'build':int(os.environ['BN']),'version':os.environ['VER'],'sha256':os.environ['SHA']};w=os.environ.get('WSHA','');m.update({'win':w} if w else {});m['apk']={'arm64-v8a':os.environ['S64'],'armeabi-v7a':os.environ['S32']};m.update({'optional':True} if os.environ.get('OPTIONAL','')=='true' else {});p=json.load(open('out/patches.json'));m.update({'patch':p} if p else {});print(json.dumps(m))")
           MB() { echo $(( $(stat -c %s "$1") / 1048576 )); }
           # (3.24.0) what is new – English, मराठी, हिंदी – between the markers: the app shows it in its update question
           { if [ -n "$NOTES" ]; then printf "<!-- rcl-new -->\n%s\n<!-- /rcl-new -->\n\nRCL ERP %s (%s) – %s.\n" "$NOTES" "$VER" "$BN" "$WHAT"; else printf "RCL ERP %s\n\nRCL ERP %s (%s) – %s.\n" "$VER" "$VER" "$BN" "$WHAT"; fi
             printf "Android, the first install (every phone, %s MB): rcl-erp-%s-%s.apk – SHA-256 %s\n" "$(MB "$F")" "$VER" "$BN" "$SHA"
             printf "Android, the update inside the app (only the phone's own, by itself): 64-bit %s MB (SHA-256 %s), 32-bit %s MB (SHA-256 %s)\n" "$(MB "$A64")" "$S64" "$(MB "$A32")" "$S32"
             [ -n "$WSHA" ] && printf "Windows SHA-256: %s\n" "$WSHA"
+            for p in out/*.patch; do if [ -f "$p" ]; then printf "Android, the small update (only what changed): %s – %s KB\n" "$(basename "$p")" "$(( $(stat -c %s "$p") / 1024 ))"; fi; done
             printf "\n<!-- rcl:%s -->\n" "$META"; } > notes.md
           # the file for every phone (and the setup) first – the apps before 3.19.1 take the first ".apk"
           gh release create "v$VER-$BN" "${FILES[@]}" --title "RCL ERP $VER ($BN)" --notes-file notes.md --target "$GITHUB_SHA" --latest
           gh release upload "v$VER-$BN" "$A64"
           gh release upload "v$VER-$BN" "$A32"
+          # (3.126.0) the small updates (never ".apk": the apps before 3.19.1 take the first ".apk")
+          for p in out/*.patch; do if [ -f "$p" ]; then gh release upload "v$VER-$BN" "$p"; fi; done
           gh release view "v$VER-$BN" --json assets --jq '.assets[] | .name' | sed 's/^/::notice::in the release: /'
           echo "::notice::Released $VER ($BN) – $WHAT – https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VER-$BN"
       # (3.42.0) every phone with the app is told at once: "RCL ERP <version> is ready" (Firebase, the topic rcl-app-update)
