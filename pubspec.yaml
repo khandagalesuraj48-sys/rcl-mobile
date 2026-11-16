@@ -41,6 +41,8 @@ dependencies:
   local_auth: ^3.0.2 # (3.27.0) the app lock: the phone's fingerprint / face / PIN (Android BiometricPrompt, Face ID, Windows Hello)
   video_player: ^2.9.2 # (3.100.0) the Advertise Corner: a post that is a video plays on Home (muted, by itself)
   flutter_webrtc: ^1.6.2+hotfix.4 # (3.26.0) calls with the web: Google's WebRTC (the same as in Chrome) – voice, cameras, the phone's screen
+  flutter_map: ^8.2.2 # (3.132.0, Mechanical update-263) the Live Tracking map – OpenStreetMap, no key (the web's Leaflet)
+  latlong2: ^0.9.1 # (3.132.0) the places on that map
 
 dev_dependencies:
   flutter_test:

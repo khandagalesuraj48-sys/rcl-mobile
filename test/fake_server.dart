@@ -28,6 +28,19 @@ class FakeServer {
   Map<String, dynamic>? vlSess, vlOpenRow;
   final vlIn = <Map<String, dynamic>>[];
   final vlCalls = <Map<String, dynamic>>[];
+  /// (3.132.0) the office pages: the Driver Master, the board (who has which vehicle), the map (vehicles on duty) and a route
+  final drivers = <Map<String, dynamic>>[
+    {'id': 'DR-000001', 'name': 'Mahesh Jadhav', 'mobile': '9800000011', 'licence': 'MH1220190001111', 'licenceExpiry': '2026-10-30', 'category': 'Driver', 'status': 'Active', 'email': 'mahesh@rcl.test', 'hr': '', 'remark': '', 'has': ''},
+    {'id': 'DR-000002', 'name': 'Anil More', 'mobile': '9800000022', 'licence': 'MH1420150002222', 'licenceExpiry': '2026-09-30', 'category': 'Operator', 'status': 'Active', 'email': 'anil@rcl.test', 'hr': '', 'remark': '', 'has': 'MH-12-PQ-1180'},
+    {'id': 'DR-000003', 'name': 'Ravi Pawar', 'mobile': '9800000033', 'licence': '', 'licenceExpiry': '', 'category': 'Driver', 'status': 'Inactive', 'email': '', 'hr': '', 'remark': 'Left', 'has': ''},
+  ];
+  final boardOpen = <Map<String, dynamic>>[
+    {'id': 'VS-7', 'no': 'MH-12-PQ-1180', 'name': 'Tata 2518', 'type': 'Tipper', 'unit': 'KM', 'driver': 'anil@rcl.test', 'driverName': 'Anil More', 'since': '2026-10-14T07:42', 'how': 'qr', 'shiftDate': '2026-10-14', 'shift': 'Day',
+      'gps': {'lat': 18.7604, 'lng': 73.8617, 'speed': 8.4, 'at': '2026-10-14T15:58', 'status': 'on', 'km': 46.2}, 'opening': {'km': 88210, 'hr': null, 'at': '2026-10-14T07:45', 'check': ''}, 'long': false},
+    {'id': 'VS-5', 'no': 'JCB-3DX-07', 'name': 'JCB 3DX', 'type': 'Backhoe', 'unit': 'Hrs', 'driver': 'ganesh@rcl.test', 'driverName': 'Ganesh Shinde', 'since': '2026-10-13T19:05', 'how': 'assign', 'shiftDate': '2026-10-13', 'shift': 'Night',
+      'gps': {'lat': 18.7731, 'lng': 73.8402, 'speed': null, 'at': '2026-10-14T06:10', 'status': 'off', 'km': 3.1}, 'opening': null, 'long': true},
+  ];
+  final routeAsked = <Map<String, dynamic>>[];
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
   /// (3.43.0, Mechanical update-162) his diesel sources (getInit's user.dsrc); [userInSync]: the sync tells the user too (as Mechanical)
   Map<String, dynamic>? dsrc;
@@ -2512,6 +2525,44 @@ class FakeServer {
         case 'logPending':
           dashAsked.add({'fn': action, 'args': a}); // (3.54.0) what was asked: a period for its Print
           return _j({'result': {'items': [['OLD-9', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-13']]}});
+        case 'getDriverMaster' || 'saveDriver' || 'vlBoard' || 'vlAssign' || 'vlRelease' || 'vlResolve' || 'vlLive' || 'vlRoute':
+          if (!slbOn) return _j({'error': 'The Smart Log Book cannot be used yet. This needs one database step first.'}, 500);
+          final x = a.isEmpty ? <String, dynamic>{} : (a[0] as Map).cast<String, dynamic>();
+          vlCalls.add({'fn': action, 'x': x});
+          if (action == 'getDriverMaster') return _j({'result': {'on': true, 'drivers': drivers}});
+          if (action == 'saveDriver') {
+            final name = '${x['name'] ?? ''}'.trim(), id = '${x['id'] ?? ''}';
+            if (name.length < 2) return _j({'error': "Driver Master: enter the driver's name."}, 500);
+            if (id.isEmpty && x['sameName'] != true && drivers.any((d) => '${d['name']}'.toUpperCase() == name.toUpperCase())) {
+              return _j({'error': 'Driver Master: a driver named $name is already there – if this is another person of the same name, press Save again.'}, 500);
+            }
+            final row = {'name': name, 'mobile': x['mobile'], 'licence': x['licence'], 'licenceExpiry': x['licenceExpiry'], 'category': x['category'], 'status': x['status'], 'email': x['email'], 'remark': x['remark'], 'hr': '', 'has': ''};
+            if (id.isNotEmpty) {
+              drivers.firstWhere((d) => d['id'] == id).addAll(row);
+              return _j({'result': {'ok': true, 'id': id}});
+            }
+            final nid = 'DR-${(drivers.length + 1).toString().padLeft(6, '0')}';
+            drivers.add({'id': nid, ...row});
+            return _j({'result': {'ok': true, 'id': nid}});
+          }
+          if (action == 'vlBoard') {
+            return _j({'result': {'on': true, 'today': '2026-10-14', 'open': boardOpen, 'free': [{'no': 'MH-25-AJ-2169', 'name': 'Eicher Pro', 'type': 'Tipper', 'unit': 'KM'}, {'no': 'Sany-SY220', 'name': 'Sany', 'type': 'Excavator', 'unit': 'Hrs'}],
+              'people': [{'email': 'mahesh@rcl.test', 'name': 'Mahesh Jadhav', 'has': '', 'mobile': '9800000011'}, {'email': 'anil@rcl.test', 'name': 'Anil More', 'has': 'MH-12-PQ-1180'}],
+              'asks': [{'id': 'VX-1', 'kind': 'closing missing', 'no': 'OLD-9', 'date': '2026-10-13', 'shift': 'Night', 'who': 'ravi@rcl.test', 'note': 'Released by Site Admin: the driver left without closing', 'at': '2026-10-14T07:00'}], 'can': perms['Vehicle Allocation'] == 'Edit'}});
+          }
+          if (action == 'vlAssign') return _j({'result': {'ok': true, 'session': {'id': 'VS-9', 'no': x['no'], 'driver': x['to'], 'driverName': 'Mahesh Jadhav'}}});
+          if (action == 'vlRelease' || action == 'vlResolve') return _j({'result': {'ok': true}});
+          if (action == 'vlLive') {
+            return _j({'result': {'on': true, 'at': '2026-10-14T16:01', 'vehicles': [
+              {...boardOpen[0], 'ageMin': 3, 'state': 'live'},
+              {...boardOpen[1], 'ageMin': 591, 'state': 'not seen for 591 min'},
+              {'id': 'VS-8', 'no': 'MH-25-AJ-2169', 'driver': 'sujit@rcl.test', 'driverName': 'Sujit Mule', 'since': '2026-10-14T15:50', 'how': 'plate', 'shift': 'Day', 'gps': {'lat': null, 'lng': null, 'speed': null, 'at': '', 'status': '', 'km': 0}, 'ageMin': null, 'state': 'no GPS yet'},
+            ]}});
+          }
+          routeAsked.add(x);
+          if ('${x['no']}' != 'MH-12-PQ-1180') return _j({'result': {'sessions': <dynamic>[], 'points': <dynamic>[], 'off': <dynamic>[]}});
+          return _j({'result': {'sessions': [{...boardOpen[0]}], 'points': [for (var i = 0; i < 40; i++) [18.7400 + i * 0.0006, 73.8500 + (i % 10) * 0.0012 + i * 0.0002, '${(8 + i ~/ 6).toString().padLeft(2, '0')}:${(i * 7 % 60).toString().padLeft(2, '0')}', 6.0]],
+            'off': [{'from': '2026-10-14T11:20', 'to': '2026-10-14T11:41', 'lat': 18.7520, 'lng': 73.8610, 'why': 'GPS off'}]}});
         case 'vlMe' || 'vlTake' || 'vlOpen' || 'vlClose' || 'vlAiText' || 'vlHandover' || 'vlHandAnswer' || 'vlGps':
           if (!slbOn) return _j({'error': 'The Smart Log Book cannot be used yet. This needs one database step first.'}, 500);
           final x = a.isEmpty ? <String, dynamic>{} : (a[0] as Map).cast<String, dynamic>();
