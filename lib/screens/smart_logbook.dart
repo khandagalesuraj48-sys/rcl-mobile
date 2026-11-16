@@ -14,7 +14,7 @@
  * MyVehicleCard – Home's "My vehicle" card (the same size as the Diesel card it swipes with). */
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
+import 'dart:typed_data';      // ignore: unnecessary_import
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
@@ -102,12 +102,15 @@ Widget _box(Widget child, {Key? key, Color color = Colors.white, EdgeInsets? pad
 
 Widget _bigBtn(String key, String en, String mr, IconData icon, VoidCallback? onTap, {Color color = C.green}) => SizedBox(
       height: 56,
-      child: FilledButton.icon(
+      child: FilledButton(
         key: Key(key),
-        style: FilledButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+        style: FilledButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), padding: const EdgeInsets.symmetric(horizontal: 14)),
         onPressed: onTap,
-        icon: Icon(icon),
-        label: Text(bi(en, mr), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon),
+          const SizedBox(width: 8),
+          Flexible(child: Text(bi(en, mr), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+        ]),
       ),
     );
 
@@ -268,11 +271,15 @@ class _ReadingView extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(bi(label, mr), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.muted)),
                   const SizedBox(height: 6),
-                  OutlinedButton.icon(
+                  OutlinedButton(
                     key: const Key('slb-shoot'),
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
                     onPressed: rd.busy ? null : () => rd.shoot(context, label),
-                    icon: rd.busy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(rd.jpg == null ? Icons.photo_camera_rounded : Icons.refresh_rounded),
-                    label: Text(rd.jpg == null ? bi('Take the photo', 'फोटो काढा') : bi('Retake', 'पुन्हा')),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      rd.busy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(rd.jpg == null ? Icons.photo_camera_rounded : Icons.refresh_rounded, size: 18),
+                      const SizedBox(width: 6),
+                      Flexible(child: Text(rd.jpg == null ? bi('Take the photo', 'फोटो काढा') : bi('Retake', 'पुन्हा'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    ]),
                   ),
                   if (rd.said.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(rd.said, key: const Key('slb-said'), style: const TextStyle(fontSize: 12.5, color: C.purple, fontWeight: FontWeight.w600))),
                 ]),
@@ -707,7 +714,7 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
             const SizedBox(width: 6),
             Text(live ? bi('GPS on – live', 'GPS चालू') : gs == 'no-permission' ? bi('Location not allowed – allow it', 'Location ची परवानगी द्या') : bi('GPS off – switch it on', 'GPS बंद – चालू करा'),
                 key: const Key('slb-gps'), style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: live ? C.greenDark : C.red)),
-            if (sent != null) Text('  · ${bi('sent', 'पाठवले')} ${slbSince(_isoLocal(sent), s.clock())} ${bi('ago', 'आधी')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+            if (sent != null) Flexible(child: Text('  · ${bi('sent', 'पाठवले')} ${slbSince(_isoLocal(sent), s.clock())} ${bi('ago', 'आधी')}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted))),
           ]),
         ]),
       ),

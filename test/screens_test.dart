@@ -9859,7 +9859,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s, key: UniqueKey()));
     await net(t);
     expect(find.byKey(const Key('home-myveh-no')), findsOneWidget);
-    await t.scrollUntilVisible(find.byKey(const Key('today-slb-open')), 250, scrollable: find.ancestor(of: find.byKey(const Key('home-menu')), matching: find.byType(Scrollable)).first);
+    await t.scrollUntilVisible(find.byKey(const Key('today-slb-open')), 250, scrollable: find.ancestor(of: find.byKey(const Key('home-myveh')), matching: find.byType(Scrollable)).first);
     expect(find.byKey(const Key('today-slb-open')), findsOneWidget);
     expect(t.takeException(), isNull);
   });
