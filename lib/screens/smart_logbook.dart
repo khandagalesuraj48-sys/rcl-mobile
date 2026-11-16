@@ -713,7 +713,7 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
             ),
           ]),
           const Divider(height: 22),
-          _kv(bi('Opening', 'Opening'), _read(op)),
+          _kv(bi('Opening', 'सुरुवात'), _read(op)),
           _kv(bi('GPS so far', 'GPS आतापर्यंत'), '${fmtNum(gpsKm)} km'),
           const SizedBox(height: 4),
           Row(children: [
@@ -1049,7 +1049,7 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
         await s.api.call('vlClose', [x], true);
       } on ApiError catch (e) {
         if (!(e.noConnection && e.rid.isNotEmpty)) rethrow;
-        await s.keepEntry('vlClose', [x], e.rid, '${bi('Smart Log Book closing', 'Smart Log Book closing')} · ${m.id}');
+        await s.keepEntry('vlClose', [x], e.rid, '${bi('Smart Log Book closing', 'Smart Log Book – shift बंद')} · ${m.id}');
         kept = true;
       }
       await VlGps.i.stop();
@@ -1107,9 +1107,9 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             _field('close-text', text, 'Written by the AI – change it if needed', lines: 2),
             _field('close-work', work, 'Work'),
+            // the trips alone, the two chainages side by side – each wide enough for "12+400"
+            _field('close-trips', trips, 'Trips', kb: TextInputType.number),
             Row(children: [
-              Expanded(child: _field('close-trips', trips, 'Trips', kb: TextInputType.number)),
-              const SizedBox(width: 8),
               Expanded(child: _field('close-chfrom', chFrom, 'Chainage from')),
               const SizedBox(width: 8),
               Expanded(child: _field('close-chto', chTo, 'Chainage to')),
@@ -1204,7 +1204,7 @@ class _HandoverScreenState extends State<HandoverScreen> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${p['name']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    Text('${p['has'] ?? ''}'.isEmpty ? bi('Driver · free now', 'Driver · आत्ता मोकळा') : '${bi('Driver · has', 'Driver · कडे')} ${p['has']}', style: const TextStyle(fontSize: 13, color: C.muted)),
+                    Text('${p['has'] ?? ''}'.isEmpty ? bi('Free now', 'आत्ता मोकळा') : '${bi('Has', 'कडे')} ${p['has']}', style: const TextStyle(fontSize: 13, color: C.muted)),
                   ]),
                 ),
                 if ('${p['has'] ?? ''}'.isNotEmpty) const Pill('busy', color: C.amber, bg: C.amberSoft) else if (to == p['email']) const Icon(Icons.check_circle_rounded, color: C.green),

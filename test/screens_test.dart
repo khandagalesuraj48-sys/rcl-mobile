@@ -9907,10 +9907,12 @@ void main() {
     await t.enterText(find.byKey(const Key('slb-km')), '15240');
     FocusManager.instance.primaryFocus?.unfocus();
     await settle(t, 400);
+    await settle(t, 4000);      // (the short message at the top gone first)
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9w_slb_3_opening.png'));
     await tapK(t, 'slb-confirm');
     await net(t);
+    await settle(t, 4000);      // (the short message at the top gone first)
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_slb_4_on_duty.png'));
     await tapK(t, 'slb-close');
@@ -9923,6 +9925,7 @@ void main() {
     await net(t);
     FocusManager.instance.primaryFocus?.unfocus();
     await settle(t, 400);
+    await settle(t, 4000);      // (the short message at the top gone first)
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_slb_5_close.png'));
     Navigator.of(t.element(find.byKey(const Key('close-list')))).pop();
@@ -9935,6 +9938,7 @@ void main() {
     await tapK(t, 'hand-to-mahesh@rcl.test');
     FocusManager.instance.primaryFocus?.unfocus();
     await settle(t, 400);
+    await settle(t, 4000);      // (the short message at the top gone first)
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_slb_6_handover.png'));
   }, tags: ['golden']);
