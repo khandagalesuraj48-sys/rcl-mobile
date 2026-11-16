@@ -509,7 +509,7 @@ class _VehicleAllocationScreenState extends State<VehicleAllocationScreen> {
               Text([x['type'], x['name']].where((v) => '${v ?? ''}'.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
             ]),
           ),
-          if (ed) OutlinedButton(key: Key('va-rel-${x['id']}'), style: OutlinedButton.styleFrom(foregroundColor: C.red, side: const BorderSide(color: C.red), visualDensity: VisualDensity.compact), onPressed: () => _release(x), child: Text('Release', mr: 'सोडा')),
+          if (ed) OutlinedButton(key: Key('va-rel-${x['id']}'), style: OutlinedButton.styleFrom(foregroundColor: C.red, side: const BorderSide(color: C.red), minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 14)), onPressed: () => _release(x), child: Text('Release', mr: 'सोडा')),
         ]),
         const SizedBox(height: 8),
         Text('👤 ${x['driverName'] ?? x['driver'] ?? ''}${'${x['shift'] ?? ''}'.isEmpty ? '' : ' · ${tr('${x['shift']}')}'}${'${x['shiftDate'] ?? ''}'.isEmpty ? '' : ' · ${showDate('${x['shiftDate']}')}'}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),

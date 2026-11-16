@@ -9926,8 +9926,10 @@ void main() {
     expect([find.byKey(const Key('dm-row-DR-000003')).evaluate().length, find.byKey(const Key('dm-row-DR-000001')).evaluate().length], [1, 0]);
     await t.enterText(find.byKey(const Key('dm-q')), '');
     await tapK(t, 'dm-st-Inactive');
+    await settle(t, 300);
     expect(find.text('1 of 3 drivers'), findsOneWidget);
     await tapK(t, 'dm-st-all');
+    await settle(t, 300);
     // a new driver of a name already there: asked; the second Save says it is another person
     await tapK(t, 'dm-add');
     await settle(t, 600);
