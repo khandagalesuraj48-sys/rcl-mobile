@@ -43,7 +43,7 @@ import 'veh_alerts.dart' show openVehAlerts;
 import '../core/veh_alerts.dart';
 import 'verify.dart';
 import 'logbook.dart';
-import 'smart_logbook.dart' show MyVehicleCard, SmartLogBookScreen, slbSince;
+import 'smart_logbook.dart' show MyVehicleCard, SmartLogBookScreen, slbSince, openLogBook, slbSiteOn;
 import '../core/vl_gps.dart';
 import 'store.dart';
 import 'engineering.dart';
@@ -225,9 +225,11 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
           run = rows.where((x) => !off.contains('${x['mode'] ?? x['unit'] ?? ''}')).map((x) => '${x['no']}').toSet().length;
         }).catchError((_) {}));
       }
-      // (3.132.0, Mechanical update-263) the Smart Log Book: what he has now – a driver (Log Book Edit; not the Admin)
+      // (3.132.0, Mechanical update-263) the Smart Log Book: what he has now – a person with Log Book Edit (3.132.1: the Admin too – his
+      // Log Book button opens it; his Home shows "My vehicle" only while a vehicle is with him or handed to him)
       Map<String, dynamic>? me;
-      if (!s.admin && s.canEdit('Log Book')) {
+      final slbAsk = s.canEdit('Log Book');
+      if (slbAsk) {
         jobs.add(s.api.call('vlMe').then((r) {
           if (r is Map && r['on'] == true) me = r.cast<String, dynamic>();
         }).catchError((_) {}));
@@ -253,7 +255,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         running = run;
         opening = open;
         lbPend = lp;
-        slb = me;
+        slb = me != null && (!s.admin || me!['session'] is Map || ((me!['handoverIn'] as List?)?.isNotEmpty ?? false)) ? me : null;
+        if (slbAsk) slbSiteOn = me != null;      // (3.132.1) the site's Smart Log Book is on: the Log Book button opens it
         if (at != null) fleetTick++;      // (a load again – not the first: My Fleet reads its own at its start)
         at = DateTime.now();
         loading = false;
@@ -331,7 +334,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       return;
     }
     if (m.native == 'logbook') {
-      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()));
+      await openLogBook(context);      // (3.132.1, asked 17-11-2026) the Smart Log Book for a person with Log Book Edit; else as before
+      if (mounted) _load(quiet: true);
       return;
     }
     if (m.native == 'reports') {

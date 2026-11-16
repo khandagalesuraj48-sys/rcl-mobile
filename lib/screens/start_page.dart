@@ -15,10 +15,10 @@ import 'fuel_cards.dart' show FuelCardsScreen;
 import 'maintenance.dart' show MaintScreen;
 import 'vehicle_booking.dart' show BookingScreen;
 import 'slb_admin.dart' show openDriverMaster, openVehicleAllocation, openLiveTracking;
+import 'smart_logbook.dart' show openLogBook;
 import 'vehicle_expenses.dart' show VexpScreen;
 import 'lb_formats.dart';
 import 'log_edit.dart';
-import 'logbook.dart';
 import 'machinery.dart';
 import 'report_screen.dart';
 import 'tank_check.dart';
@@ -96,7 +96,7 @@ Future<void> openStartPage(BuildContext context, Session s, String page, {requir
     case 'vtrack':
       await openLiveTracking(context);
     case 'log':
-      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen()));
+      await openLogBook(context);      // (3.132.1) the Smart Log Book for Log Book Edit; else as before
     case 'logedit':
       await openLogEdit(context);
     case 'tankcheck':

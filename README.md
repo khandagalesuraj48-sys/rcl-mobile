@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.132.1 (17-11-2026, asked: "apan jas tharwale tashi log book entry app madhe ka nahiye" – his choice "Log Book = Smart Log
+Book"):** the app's Log Book (Home's tile, Entries, the start page) opens the Smart Log Book for a person with Log Book (Edit) – the Admin
+too – at a site where it is on (`openLogBook`, `slbSiteOn` – set by Home's vlMe); its "Old Log Book entry" opens the Log Book as before;
+a site without it, or Log Book View only: the Log Book as before. An Admin's Home shows "My vehicle" only while a vehicle is with him.
+
 **Version 3.132.0 (16-11-2026, Mechanical update-263 – the Smart Log Book, his plan approved 15/16-11-2026; his pictures SLB 1, SLB 2 and
 "Home – Log Book only"):** a driver (Log Book Edit) – `screens/smart_logbook.dart`: no vehicle → Scan the QR / number-plate photo / pick it
 → Take a vehicle (vlTake) → ONE opening photo a day (the phone reads it, the AI only when the phone is not sure; vlOpen) → on duty with the

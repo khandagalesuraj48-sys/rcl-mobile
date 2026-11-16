@@ -60,6 +60,7 @@ import 'package:rcl_mobile/screens/vehicle_expenses.dart' show openVexp;
 import 'package:rcl_mobile/core/vl_gps.dart' show VlGps;
 import 'package:rcl_mobile/core/vl_voice.dart' show VlVoice;
 import 'package:rcl_mobile/screens/slb_admin.dart' show openDriverMaster, openVehicleAllocation, openLiveTracking, SlbMap;
+import 'package:rcl_mobile/screens/smart_logbook.dart' show slbSiteOn;
 import 'package:rcl_mobile/screens/masters.dart' show mastersOf;
 import 'fake_rtc.dart';
 import 'lock_test.dart' show FakeGate;
@@ -9742,6 +9743,7 @@ void main() {
     addTearDown(() async {
       await VlGps.i.stop(send: false);
       VlGps.off = false;
+      slbSiteOn = false;
     });
     hoCamera();
     final srv = FakeServer()..slbOn = true;
@@ -9926,6 +9928,37 @@ void main() {
     expect(await s.api.keep.read(VlVoice.kNotBoth), '1', reason: 'from now on it only listens');
     expect(find.textContaining('Nothing was heard'), findsOneWidget);
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.132.1, asked 17-11-2026 "Log Book = Smart Log Book") the app\'s Log Book button opens the Smart Log Book for a person with Log Book Edit at a site where it is on; "Old Log Book entry" there opens the Log Book as before', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(slbSiteOn, true);
+    await t.tap(find.text('Logbook').last);
+    await net(t);
+    expect(find.byKey(const Key('slb-hello')), findsOneWidget, reason: 'the Smart Log Book');
+    await t.scrollUntilVisible(find.byKey(const Key('slb-old')), 250, scrollable: find.descendant(of: find.byKey(const Key('slb-list')), matching: find.byType(Scrollable)).first);
+    await tapK(t, 'slb-old');
+    await net(t);
+    expect(find.byType(LogBookScreen), findsOneWidget, reason: 'the Log Book as before – many machinery, the list, pending');
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.132.1) a site where the Smart Log Book is not on (its step not run): the Log Book button opens the Log Book as before', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    srv.perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(slbSiteOn, false);
+    await t.tap(find.text('Logbook').last);
+    await net(t);
+    expect(find.byType(LogBookScreen), findsOneWidget);
+    expect(find.byKey(const Key('slb-hello')), findsNothing);
   });
 
   // (3.132.0, Mechanical update-263) THE OFFICE PAGES of the Smart Log Book – the app's own screens of the web's three pages
