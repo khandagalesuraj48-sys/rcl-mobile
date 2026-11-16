@@ -2591,7 +2591,7 @@ class FakeServer {
           if ('${x['no']}' != 'MH-12-PQ-1180') return _j({'result': {'sessions': <dynamic>[], 'points': <dynamic>[], 'off': <dynamic>[]}});
           return _j({'result': {'sessions': [{...boardOpen[0]}], 'points': [for (var i = 0; i < 40; i++) [18.7400 + i * 0.0006, 73.8500 + (i % 10) * 0.0012 + i * 0.0002, '${(8 + i ~/ 6).toString().padLeft(2, '0')}:${(i * 7 % 60).toString().padLeft(2, '0')}', 6.0]],
             'off': [{'from': '2026-10-14T11:20', 'to': '2026-10-14T11:41', 'lat': 18.7520, 'lng': 73.8610, 'why': 'GPS off'}]}});
-        case 'vlMe' || 'vlTake' || 'vlOpen' || 'vlClose' || 'vlAiText' || 'vlHandover' || 'vlHandAnswer' || 'vlGps':
+        case 'vlMe' || 'vlTake' || 'vlOpen' || 'vlClose' || 'vlAiText' || 'vlHandover' || 'vlHandAnswer' || 'vlGps' || 'vlVoice':
           if (!slbOn) return _j({'error': 'The Smart Log Book cannot be used yet. This needs one database step first.'}, 500);
           final x = a.isEmpty ? <String, dynamic>{} : (a[0] as Map).cast<String, dynamic>();
           vlCalls.add({'fn': action, 'x': x});
@@ -2608,6 +2608,12 @@ class FakeServer {
           if (action == 'vlClose') {
             vlSess = null;
             return _j({'result': {'ok': true, 'id': 'VE-1'}});
+          }
+          if (action == 'vlVoice') {
+            final d = '${x['data'] ?? ''}';
+            if (!d.startsWith('data:audio/mp4;base64,')) return _j({'error': "Smart Log Book: the voice must be the phone's own recording (.m4a)."}, 500);
+            final sha = crypto.sha256.convert(base64Decode(d.substring(22))).toString();
+            return _j({'result': {'sha': sha, 'p': 'vl-voice/2026-10-14/$sha.m4a', 'mime': 'audio/mp4', 'size': base64Decode(d.substring(22)).length}});
           }
           if (action == 'vlAiText') return _j({'result': {'text': 'Murum transport at Chakan patch, 6 trips, chainage 12+400 to 13+100', 'work': 'Murum transport', 'trips': 6, 'chainage': '12+400 to 13+100'}});
           if (action == 'vlHandAnswer') {

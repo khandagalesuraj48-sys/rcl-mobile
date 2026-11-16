@@ -23,7 +23,7 @@ subprojects {
 // project keeps off (the Flutter template's android.builtInKotlin=false – the other plugins bring the Kotlin plugin themselves):
 // without it their plugin classes are not compiled and the app does not build. Their Kotlin is compiled with the Kotlin plugin.
 subprojects {
-    if (name == "file_picker" || name == "speech_to_text") {
+    if (name == "file_picker" || name == "speech_to_text" || name == "record_android") {      // (3.132.0) record too, if it leaves its Kotlin the same way
         pluginManager.withPlugin("com.android.library") {
             if (!pluginManager.hasPlugin("org.jetbrains.kotlin.android")) pluginManager.apply("org.jetbrains.kotlin.android")
         }

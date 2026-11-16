@@ -24,6 +24,13 @@ with no network, GPS-off pieces and a reminder every 5 minutes) → Close the sh
 phone → or Hand over (the reading, a free driver; he accepts on his own phone – vlHandover / vlHandAnswer). Home: a driver with Diesel too
 – the Diesel card and "My vehicle" the same size, slide from one to the other (two dots); with the Log Book only – "My vehicle" in the
 place of the stock, his four figures (On duty / Today, Pending, GPS km, This month) and his to-do. Android: FOREGROUND_SERVICE_LOCATION.
+(16-11-2026, "je pending aahe banwayche te adhi banaw sagle zal ki app relase") the rest of the plan in the same version: the office
+pages as the app's own screens (`screens/slb_admin.dart` – Driver Master in Machinery, with "Bring from HR"; Vehicle Allocation and Live
+Tracking in Entries → Log Book – the map is OpenStreetMap through flutter_map, no key; the route of a day); an iPhone also sends the
+vehicle's place in the background (its location background mode – Info.plist); the Smart Log Book's messages (`t: 'vl'` – a vehicle
+handed to him opens his Smart Log Book; GPS off / not seen, to the supervisors, opens Live Tracking); the voice of a closing recorded
+while the phone listens (`core/vl_voice.dart`, package record – Android; a phone that gives the microphone only to the recording is
+noted and from then on only listens), sent with the closing (vlVoice) and kept 60 days by the server.
 
 **Version 3.131.0 (16-11-2026, Mechanical update-264, asked: "fuel histry aahe tithch tya entry sobat attch zalel photos pn dakhaw ok ani
 time ani koni entry keli"):** HO's car → Fuel history (and its Vehicle History / Recent Activity – the same row, `FillRow`): each fill also

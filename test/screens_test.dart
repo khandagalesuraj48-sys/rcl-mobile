@@ -58,6 +58,7 @@ import 'package:rcl_mobile/core/grn_reg.dart';
 import 'package:rcl_mobile/screens/vehicle_booking.dart' show openBooking;
 import 'package:rcl_mobile/screens/vehicle_expenses.dart' show openVexp;
 import 'package:rcl_mobile/core/vl_gps.dart' show VlGps;
+import 'package:rcl_mobile/core/vl_voice.dart' show VlVoice;
 import 'package:rcl_mobile/screens/slb_admin.dart' show openDriverMaster, openVehicleAllocation, openLiveTracking, SlbMap;
 import 'package:rcl_mobile/screens/masters.dart' show mastersOf;
 import 'fake_rtc.dart';
@@ -9877,6 +9878,52 @@ void main() {
     await t.scrollUntilVisible(find.byKey(const Key('home-today')), 250, scrollable: find.descendant(of: find.byType(RefreshIndicator).first, matching: find.byType(Scrollable)).first);
     final todo = [for (final e in find.descendant(of: find.byKey(const Key('home-today')), matching: find.byType(RichText)).evaluate()) (e.widget as RichText).text.toPlainText()].join(' | ');
     expect(find.byKey(const Key('today-slb-open')), findsOneWidget, reason: 'the to-do says: $todo');
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.132.0 – Mechanical update-263, his answer "दोन्ही एकत्र") the voice of the closing: recorded while the phone listens and sent with the closing (vlVoice → audio); a phone that gives the microphone only to the recording: the voice kept, noted – from then on it only listens', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    final s = await ready(t, srv);
+    final oL = voice.listenOnce;
+    var said = 'aaj chakan patch la murum vahatuk keli saha trip';
+    voice.listenOnce = (lang, h) async {
+      h(said);
+      return said;
+    };
+    VlVoice.fake = () => Uint8List.fromList([0, 0, 0, 24, ...'ftypM4A '.codeUnits, ...List.filled(3000, 7)]);
+    addTearDown(() {
+      voice.listenOnce = oL;
+      VlVoice.fake = null;
+    });
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await slbOpen(t);
+    await slbTake(t, 15240);
+    await tapK(t, 'slb-close');
+    await net(t);
+    await tapK(t, 'close-mic');
+    await net(t);
+    expect(find.text('Murum transport'), findsOneWidget, reason: 'heard, then written by the AI');
+    await tapK(t, 'slb-shoot');
+    await net(t);
+    await t.enterText(find.byKey(const Key('slb-km')), '15360');
+    await settle(t, 300);
+    await tapK(t, 'close-save');
+    await net(t);
+    final close = srv.vlCalls.lastWhere((c) => c['fn'] == 'vlClose')['x'] as Map;
+    expect('${(close['audio'] as Map)['p']}', startsWith('vl-voice/'), reason: 'the voice goes with the closing');
+    expect([srv.vlCalls.where((c) => c['fn'] == 'vlVoice').length, close['heard']], [1, said]);
+    expect(await s.api.keep.read(VlVoice.kNotBoth), isNull);
+    // the listening heard nothing while the recording has the voice: this phone gives the microphone only to the recording
+    said = '';
+    await slbTake(t, 15360);
+    await tapK(t, 'slb-close');
+    await net(t);
+    await tapK(t, 'close-mic');
+    await net(t);
+    expect(await s.api.keep.read(VlVoice.kNotBoth), '1', reason: 'from now on it only listens');
+    expect(find.textContaining('Nothing was heard'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 

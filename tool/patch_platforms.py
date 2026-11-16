@@ -108,11 +108,13 @@ def gradle(s):
 
 ROOT_KT = ('\n// (3.11.0) file_picker 11 (and 3.15.0 speech_to_text 7.5) leave their Kotlin code to AGP 9\'s built-in Kotlin, which this project\n'
            '// keeps off (android.builtInKotlin=false): their Kotlin is compiled with the Kotlin plugin, as the other plugins do.\n'
-           'subprojects {\n    if (name == "file_picker" || name == "speech_to_text") {\n        pluginManager.withPlugin("com.android.library") {\n'
+           'subprojects {\n    if (name == "file_picker" || name == "speech_to_text" || name == "record_android") {\n        pluginManager.withPlugin("com.android.library") {\n'
            '            if (!pluginManager.hasPlugin("org.jetbrains.kotlin.android")) pluginManager.apply("org.jetbrains.kotlin.android")\n        }\n    }\n}\n')
 def root_gradle(s):
     if 'name == "file_picker")' in s:      # (3.15.0) an older patch: speech_to_text added to it
-        return s.replace('name == "file_picker")', 'name == "file_picker" || name == "speech_to_text")')
+        return s.replace('name == "file_picker")', 'name == "file_picker" || name == "speech_to_text" || name == "record_android")')
+    if 'name == "speech_to_text")' in s:      # (3.132.0) record_android added to it
+        return s.replace('name == "speech_to_text")', 'name == "speech_to_text" || name == "record_android")')
     return s if 'name == "file_picker"' in s else s + ROOT_KT
 
 USES = [('NSCameraUsageDescription', 'Sketchline uses the camera for the photos of an entry (Diesel Issue and others).'),
