@@ -9490,6 +9490,7 @@ void main() {
     for (final k in ['dash', 'pump', 'veh', 'reg']) {
       expect(find.byKey(Key('photo-$k')), findsOneWidget, reason: 'the $k photo can be taken');
     }
+    expect(find.widgetWithText(ChoiceChip, '50'), findsOneWidget, reason: '(3.129.0) another site\'s Diesel Issue as before – its quick litres too');
     final shot = t.getRect(find.byKey(const Key('photo-pump'))), box = t.getRect(find.byKey(const Key('d-qty')));
     expect(shot.right, lessThan(box.left), reason: 'the photo on the left of its box');
     expect((shot.center.dy - box.center.dy).abs(), lessThan(30), reason: 'on the same line');

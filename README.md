@@ -25,8 +25,9 @@ first, searchable) · **Photos** (pump dispenser, pump bill, payment slip – al
 needed, up to 20; the AI reads the three TOGETHER and the server checks them against each other – the litres, rate and amount fill their
 boxes, which stay his to change; what to check is shown) · **Save** (everything once more, a line pressed opens its step). Back keeps
 everything. The same entry, save, checks, no-network keeping and verification as the form. An edit, a correction and every other site:
-the form as before. Home at HO: the fuel ACCOUNT's balance (each account once – never its cards added up). The 20 / 50 / 100 / 150 / 200
-litre buttons are gone from the app. (3.128.0 is the open "Sketchline Beta" pull request.)
+the form as before. Home at HO: the fuel ACCOUNT's balance (each account once – never its cards added up). HO's steps have no 20 / 50 / 100 / 150 / 200
+buttons; every other site's Diesel Issue stays exactly as it was ("other site che diesel issue style change hou naye" – a person with
+HO and another site sees each site's own way after changing the site). (3.128.0 is the open "Sketchline Beta" pull request.)
 
 **Version 3.127.1 (15-11-2026 – his picture: "screen bgh ashi distey, fix krayla lagel – te cut zali"):** the lock screen fills the
 whole screen. A Scaffold's page is only as wide as what is in it, so on a phone wider than 360 the lock stood at the left, as wide
