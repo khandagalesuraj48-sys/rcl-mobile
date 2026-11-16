@@ -57,6 +57,7 @@ import 'package:rcl_mobile/core/grn_reg.dart';
 
 import 'package:rcl_mobile/screens/vehicle_booking.dart' show openBooking;
 import 'package:rcl_mobile/screens/vehicle_expenses.dart' show openVexp;
+import 'package:rcl_mobile/core/vl_gps.dart' show VlGps;
 import 'fake_rtc.dart';
 import 'lock_test.dart' show FakeGate;
 import 'fake_attend.dart';
@@ -9732,6 +9733,196 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9r_ho_fill_4_save.png'));
   }, tags: ['golden']);
+  // (3.132.0, Mechanical update-263) THE SMART LOG BOOK – the driver's own screens and Home's "My vehicle" card
+  Future<FakeServer> slbStart(WidgetTester t, {bool dieselToo = true}) async {
+    VlGps.off = true;
+    addTearDown(() async {
+      await VlGps.i.stop(send: false);
+      VlGps.off = false;
+    });
+    hoCamera();
+    final srv = FakeServer()..slbOn = true;
+    srv.perms['Log Book'] = 'Edit';
+    if (!dieselToo) {
+      srv.perms['Diesel Issue'] = 'None';
+      srv.perms['Diesel Inward'] = 'None';
+      srv.perms['Diesel Transfer'] = 'None';
+    }
+    return srv;
+  }
+
+  Future<void> slbOpen(WidgetTester t) async {
+    final sw = find.byKey(const Key('home-swipe'));
+    if (sw.evaluate().isNotEmpty) {
+      await t.drag(sw, const Offset(-500, 0));
+      await settle(t, 900);
+    }
+    await tapK(t, 'home-myveh-go');
+    await net(t);
+  }
+
+  Future<void> slbTake(WidgetTester t, num km) async {
+    await tapK(t, 'slb-pick');
+    await settle(t, 800);
+    await t.tap(find.text('MH-25-AJ-2169').last);
+    await settle(t, 800);
+    expect(find.byKey(const Key('take-card')), findsOneWidget);
+    await tapK(t, 'take-go');
+    await net(t);
+    expect(find.byKey(const Key('slb-steps')), findsOneWidget, reason: 'taken: now its opening');
+    await tapK(t, 'slb-shoot');
+    await net(t);
+    await t.enterText(find.byKey(const Key('slb-km')), '$km');
+    await settle(t, 300);
+    await tapK(t, 'slb-confirm');
+    await net(t);
+  }
+
+  testWidgets('(3.132.0 – Mechanical update-263) the Smart Log Book: Home swipes from the Diesel card to "My vehicle"; a vehicle picked and taken, its ONE opening (photo + reading), on duty with the GPS, the closing (photo, the work said aloud → written by the AI) = the usual Log Book entry, then the closing; a handover (the reading, a free driver); a vehicle handed to him accepted', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('home-swipe')), findsOneWidget, reason: 'Diesel and Log Book: the two cards, the same size');
+    expect([t.getSize(find.byKey(const Key('home-swipe'))).height, find.byKey(const Key('home-dot-0')).evaluate().length], [228, 1]);
+    await slbOpen(t);
+    expect(find.byKey(const Key('slb-hello')), findsOneWidget);
+    expect(find.textContaining('closing missing · OLD-9'), findsOneWidget, reason: 'what the supervisor asks about');
+    await slbTake(t, 15240);
+    final take = srv.vlCalls.firstWhere((c) => c['fn'] == 'vlTake')['x'] as Map, open = srv.vlCalls.firstWhere((c) => c['fn'] == 'vlOpen')['x'] as Map;
+    expect([take['no'], take['how']], ['MH-25-AJ-2169', 'pick']);
+    expect([open['session'], open['km'], open['hr'], (open['photo'] as Map)['sha'].toString().length], ['VS-1', 15240, null, 64], reason: 'the reading and its photo kept in the store');
+    expect(find.byKey(const Key('slb-duty')), findsOneWidget);
+    expect(find.textContaining('GPS on – live'), findsOneWidget);
+    // ---- close the shift: the photo, the reading, the work said → the AI writes it → the Log Book entry, then the closing
+    await tapK(t, 'slb-close');
+    await net(t);
+    await tapK(t, 'slb-shoot');
+    await net(t);
+    await t.enterText(find.byKey(const Key('slb-km')), '15360');
+    await settle(t, 300);
+    expect(find.textContaining('120 km ✓'), findsOneWidget, reason: 'the work of the shift: from the day\'s opening');
+    await t.enterText(find.byKey(const Key('close-heard')), 'aaj chakan patch la murum vahatuk keli saha trip');
+    await tapK(t, 'close-ai');
+    await net(t);
+    expect(find.text('Murum transport'), findsOneWidget);
+    await tapK(t, 'close-save');
+    await net(t);
+    final row = srv.logSaved.last;
+    expect([row['date'], row['shift'], row['no'], row['mode'], row['openingKm'], row['closingKm'], row['work'], row['chFrom'], row['chTo'], row['driver']],
+        ['2026-10-14', 'Day', 'MH-25-AJ-2169', 'KM', 15240, 15360, 'Murum transport', '12+400', '13+100', 'Sujit Mule'], reason: 'the usual Log Book entry (saveLogRows)');
+    expect((row['attachments'] as List).length, 1, reason: 'the closing photo goes with the entry');
+    final close = srv.vlCalls.lastWhere((c) => c['fn'] == 'vlClose')['x'] as Map;
+    expect([close['session'], close['km'], close['logRow'], '${close['opId']}'.startsWith('VC-'), close['trips'], close['chainage']], ['VS-1', 15360, 'MH-25-AJ-2169|2026-10-14|Day', true, 6, '12+400 to 13+100']);
+    expect(srv.vlCalls.map((c) => c['fn']).where((f) => f != 'vlMe' && f != 'vlGps').toList(), ['vlTake', 'vlOpen', 'vlAiText', 'vlClose'], reason: 'the Log Book entry first, then the closing');
+    expect(find.byKey(const Key('slb-hello')), findsOneWidget, reason: 'the vehicle is not with him any more');
+    // ---- a handover: the reading now and a FREE driver (a busy one cannot be picked)
+    await slbTake(t, 15360);
+    await tapK(t, 'slb-hand');
+    await net(t);
+    await tapK(t, 'slb-shoot');
+    await net(t);
+    await t.enterText(find.byKey(const Key('slb-km')), '15400');
+    await tapK(t, 'hand-to-anil@rcl.test');
+    await settle(t, 300);
+    await tapK(t, 'hand-to-mahesh@rcl.test');
+    await settle(t, 300);
+    await tapK(t, 'hand-go');
+    await net(t);
+    final hand = srv.vlCalls.lastWhere((c) => c['fn'] == 'vlHandover')['x'] as Map;
+    expect([hand['to'], hand['km'], '${hand['opId']}'.startsWith('VH-')], ['mahesh@rcl.test', 15400, true]);
+    // ---- a vehicle handed TO him: accepted on Home's card → it is his, on duty
+    srv.vlSess = null;
+    srv.vlIn.add({'id': 'VE-9', 'no': 'MH-25-AJ-2169', 'from': 'Mahesh Jadhav', 'km': 15400, 'hr': null, 'at': '2026-10-14T13:30'});
+    Navigator.of(t.element(find.byKey(const Key('slb-list')))).pop();
+    await net(t);
+    await slbOpen(t);
+    await tapK(t, 'slb-accept-VE-9');
+    await net(t);
+    expect((srv.vlCalls.lastWhere((c) => c['fn'] == 'vlHandAnswer')['x'] as Map)['yes'], true);
+    expect(find.byKey(const Key('slb-duty')), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.132.0) a driver with the Log Book only: Home shows "My vehicle" in the place of the stock, his four figures and his to-do; a site without the step (or a person without Log Book Edit): Home as before', (t) async {
+    phone(t);
+    final srv = await slbStart(t, dieselToo: false);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect([find.byKey(const Key('home-swipe')).evaluate().length, find.byKey(const Key('home-myveh')).evaluate().length], [0, 1]);
+    expect(find.textContaining('No vehicle yet'), findsOneWidget);
+    expect(find.textContaining('This month'), findsOneWidget);
+    // the vehicle with him, no opening yet: the to-do says so
+    srv.vlSess = {'id': 'VS-1', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'unit': 'KM', 'since': '2026-10-14T08:01', 'how': 'qr', 'shiftDate': '2026-10-14', 'shift': 'Day', 'gps': {'lat': null, 'lng': null, 'speed': null, 'at': '', 'status': 'off', 'km': 0}};
+    await t.pumpWidget(RclApp(session: s, key: UniqueKey()));
+    await net(t);
+    expect(find.byKey(const Key('today-slb-open')), findsOneWidget);
+    expect(find.byKey(const Key('home-myveh-no')), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.132.0 – Mechanical update-263) the Smart Log Book – pictures', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9s_home_swipe_1_diesel.png'));
+    await t.drag(find.byKey(const Key('home-swipe')), const Offset(-500, 0));
+    await settle(t, 900);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9t_home_swipe_2_my_vehicle.png'));
+    await tapK(t, 'home-myveh-go');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9u_slb_1_no_vehicle.png'));
+    await tapK(t, 'slb-pick');
+    await settle(t, 800);
+    await t.tap(find.text('MH-25-AJ-2169').last);
+    await settle(t, 800);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9v_slb_2_take.png'));
+    await tapK(t, 'take-go');
+    await net(t);
+    await tapK(t, 'slb-shoot');
+    await net(t);
+    await t.enterText(find.byKey(const Key('slb-km')), '15240');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 400);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9w_slb_3_opening.png'));
+    await tapK(t, 'slb-confirm');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_slb_4_on_duty.png'));
+    await tapK(t, 'slb-close');
+    await net(t);
+    await tapK(t, 'slb-shoot');
+    await net(t);
+    await t.enterText(find.byKey(const Key('slb-km')), '15360');
+    await t.enterText(find.byKey(const Key('close-heard')), 'आज चाकण पॅचला मुरूम वाहतूक केली, सहा ट्रिप, चेनेज बारा अधिक चारशे ते तेरा अधिक शंभर');
+    await tapK(t, 'close-ai');
+    await net(t);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 400);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_slb_5_close.png'));
+    Navigator.of(t.element(find.byKey(const Key('close-list')))).pop();
+    await net(t);
+    await tapK(t, 'slb-hand');
+    await net(t);
+    await tapK(t, 'slb-shoot');
+    await net(t);
+    await t.enterText(find.byKey(const Key('slb-km')), '15300');
+    await tapK(t, 'hand-to-mahesh@rcl.test');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(t, 400);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_slb_6_handover.png'));
+  }, tags: ['golden']);
 }
 
 /// The face screens without a camera: what he would have shown.
@@ -9750,4 +9941,5 @@ class _FakeFace extends FaceKit {
     checks++;
     return blink ? jpg : null;
   }
+
 }

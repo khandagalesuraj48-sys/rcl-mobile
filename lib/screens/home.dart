@@ -43,6 +43,8 @@ import 'veh_alerts.dart' show openVehAlerts;
 import '../core/veh_alerts.dart';
 import 'verify.dart';
 import 'logbook.dart';
+import 'smart_logbook.dart' show MyVehicleCard, SmartLogBookScreen, slbSince;
+import '../core/vl_gps.dart';
 import 'store.dart';
 import 'engineering.dart';
 import 'attendance.dart';
@@ -142,6 +144,10 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   AppUpdate? update;
   /// (3.87.0) HO's My Fleet reads its cars again with each load of Home
   int fleetTick = 0;
+  /// (3.132.0, Mechanical update-263) the Smart Log Book of a person with Log Book (Edit): his vehicle now, today's opening … (vlMe);
+  /// null = not for him / the site's database step is not run – Home as before
+  Map<String, dynamic>? slb;
+  int _slbPage = 0;
 
   Session? _ls;
   // (3.1.7) live: something changed on the server (another person, the web) – the figures load again by themselves
@@ -219,6 +225,13 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
           run = rows.where((x) => !off.contains('${x['mode'] ?? x['unit'] ?? ''}')).map((x) => '${x['no']}').toSet().length;
         }).catchError((_) {}));
       }
+      // (3.132.0, Mechanical update-263) the Smart Log Book: what he has now – a driver (Log Book Edit; not the Admin)
+      Map<String, dynamic>? me;
+      if (!s.admin && s.canEdit('Log Book')) {
+        jobs.add(s.api.call('vlMe').then((r) {
+          if (r is Map && r['on'] == true) me = r.cast<String, dynamic>();
+        }).catchError((_) {}));
+      }
       num? open;
       int? lp;
       if (!ho && s.canSee('Dashboard')) {
@@ -240,11 +253,18 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
         running = run;
         opening = open;
         lbPend = lp;
+        slb = me;
         if (at != null) fleetTick++;      // (a load again – not the first: My Fleet reads its own at its start)
         at = DateTime.now();
         loading = false;
       });
       if (!quiet) _counts(force: init);
+      final ss = me?['session'];
+      if (ss is Map) {
+        VlGps.i.start(s.api, '${ss['id']}', '${ss['no']}');      // (3.132.0) the GPS of the vehicle with him
+      } else if (me != null && VlGps.i.on) {
+        VlGps.i.stop();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => loading = false);
@@ -429,7 +449,15 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     final ho = s.cardSite;
     final mods = kModules.where((m) => m.visible(s)).toList();
     final locs = s.stockByLoc.entries.toList();
-    final tiles = <Widget>[
+    // (3.132.0, Mechanical update-263, his picture "Home – Log Book only") a driver with the Log Book only: his own four figures
+    final dieselHere = kKinds.any((k) => s.canSee(k.module)), sess = slb?['session'] is Map ? (slb!['session'] as Map) : null;
+    final slbTiles = slb == null || dieselHere ? null : <Widget>[
+      _MiniTile(pic: 'notebook', en: sess == null ? 'Today' : 'On duty', mr: sess == null ? 'आज' : 'काम सुरू', value: sess == null ? '${logEntries ?? 0}' : slbSince(sess['since'], s.clock()), color: C.purpleSoft),
+      _MiniTile(pic: 'clipboard', en: 'Pending', mr: 'बाकी', value: lbPend == null ? '–' : '$lbPend', color: C.greenSoft),
+      _MiniTile(pic: 'round_pushpin', en: 'GPS km', mr: 'GPS km', value: sess == null ? '–' : fmtNum(asNum((sess['gps'] as Map?)?['km']) ?? 0), color: C.blueSoft),
+      _MiniTile(pic: 'calendar', en: 'This month', mr: 'या महिन्यात', value: '${slb?['month'] ?? 0}', color: C.amberSoft),
+    ];
+    final tiles = slbTiles ?? <Widget>[
       for (final (i, l) in locs.indexed)
         _MiniTile(pic: i == 0 ? 'fuel_pump' : 'oil_drum', en: l.key, mr: placeMr(l.key), value: '${fmtNum(l.value)} ${s.placeUnit(l.key) == 'kg' ? 'kg' : 'L'}', color: i == 0 ? C.redSoft : C.blueSoft),
       if (s.canSee('Log Book')) ...[
@@ -445,6 +473,107 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     final total = multi ? byFuel[f0] : s.stockTotal;
     final pct = (!multi && total != null && opening != null && opening! > 0) ? ((total - opening!) / opening! * 100) : null;
     final picH = 236 + top;
+    // ---------- the stock card (green) – (3.132.0) its own height when it swipes with "My vehicle" ----------
+    Widget stockBox(double? h) => Container(
+                  height: h,
+                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, C.greenEnd]),
+                    boxShadow: [BoxShadow(color: C.green.withValues(alpha: .3), blurRadius: 22, offset: const Offset(0, 10))],
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Row(children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .1), border: Border.all(color: Colors.white.withValues(alpha: .45), width: 1.5)),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.local_gas_station_outlined, color: Colors.white, size: 30),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          multi
+                              ? Text('$f0 stock', mr: '$f0 साठा', style: const TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500))
+                              : const Text('Total Diesel Stock', mr: 'डिझेल साठा (एकूण)', style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: total == null
+                                    ? Text('–', key: const Key('home-stock'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15))
+                                    // (3.122.0) the stock counts up to its value
+                                    : CountUp(value: total, textKey: const Key('home-stock'), text: (v) => '${fmtNum(v)} ${f0 == 'CNG' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+                              ),
+                            ),
+                            if (pct != null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                key: const Key('home-pct'),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Icon(pct >= 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 13, color: Colors.white),
+                                  const SizedBox(width: 2),
+                                  Text('${pct >= 0 ? '+' : '−'}${fmtNum((pct.abs() * 10).round() / 10)}%', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+                                ]),
+                              ),
+                            ],
+                          ]),
+                        ]),
+                      ),
+                      IconButton(
+                        tooltip: tr('Refresh'),
+                        style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: .14), fixedSize: const Size(40, 40)),
+                        onPressed: () => _load(init: true),
+                        icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+                      ),
+                    ]),
+                    if (multi)      // the other fuels, never added to it
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Wrap(spacing: 8, runSpacing: 6, children: [
+                          for (final f in s.siteFuels.skip(1))
+                            Container(
+                              key: Key('home-fuel-$f'),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
+                              child: Text('$f ${fmtNum(byFuel[f] ?? 0)} ${f == 'CNG' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ),
+                        ]),
+                      ),
+                    if (!multi && locs.isNotEmpty && (total ?? 0) > 0) ...[
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: SizedBox(
+                          height: 8,
+                          child: Row(children: [
+                            for (final (i, l) in locs.indexed)
+                              if (l.value > 0) Expanded(flex: (l.value * 1000 ~/ total!).clamp(1, 1000), child: ColoredBox(color: _locTone[i % _locTone.length])),
+                          ]),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 12, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      for (final (i, l) in locs.indexed)
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          Container(width: 8, height: 8, decoration: BoxDecoration(color: _locTone[i % _locTone.length], shape: BoxShape.circle)),
+                          const SizedBox(width: 5),
+                          Text('${l.key} ${fmtNum(l.value)} ${s.placeUnit(l.key) == 'kg' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 11.5, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                        ]),
+                      if (at != null)
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.schedule_rounded, size: 13, color: Color(0xCCFFFFFF)),
+                          const SizedBox(width: 4),
+                          Text('Updated ${at!.hour % 12 == 0 ? 12 : at!.hour % 12}:${at!.minute.toString().padLeft(2, '0')} ${at!.hour < 12 ? 'AM' : 'PM'}', style: const TextStyle(fontSize: 11.5, color: Color(0xCCFFFFFF))),
+                        ]),
+                    ]),
+                  ]),
+                );
     // (3.83.0) ≡ – the menu BEHIND the page (ui/push_back.dart); a drawer over it only where the app has no push back
     final pb = PushBack.maybeOf(context);
     Widget menu({bool behind = true}) => _HomeMenu(mods: mods, onModule: _module, onHelp: () => openHelp(context), behind: behind);
@@ -606,110 +735,47 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
               AdCorner(active: widget.active),
               // ---------- the stock card (green) ----------
               // (3.45.0, Mechanical update-164) a site on fuel cards (HO) keeps no stock: the cards' balances in its place
-              if (s.cardSite)
-                _HomeCards(at: at, onRefresh: () => _load(init: true))
+              if (s.cardSite) ...[
+                _HomeCards(at: at, onRefresh: () => _load(init: true)),
+                if (slb != null) Padding(padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0), child: MyVehicleCard(me: slb!, onDone: () => _load(quiet: true))),      // (3.132.0)
+              ] else if (slb != null && !dieselHere)
+                // (3.132.0) a driver with the Log Book only: "My vehicle" in the place of the stock
+                Rise(order: 1, child: Padding(padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0), child: MyVehicleCard(me: slb!, onDone: () => _load(quiet: true))))
+              else if (slb != null)
+                // (3.132.0, asked 16-11-2026: "diesel and log book access asel tr … card style … slide kel ki diesel ch disel slide kel ki log
+                // book ch disel … card size te same") the Diesel card and the Log Book card, the same size – slide from one to the other
+                Rise(order: 1, child: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Column(children: [
+                    SizedBox(
+                      height: _kSwipeH,
+                      child: PageView(
+                        key: const Key('home-swipe'),
+                        onPageChanged: (i) => setState(() => _slbPage = i),
+                        children: [
+                          Padding(padding: const EdgeInsets.symmetric(horizontal: Sp.edge), child: stockBox(_kSwipeH)),
+                          Padding(padding: const EdgeInsets.symmetric(horizontal: Sp.edge), child: MyVehicleCard(me: slb!, height: _kSwipeH, onDone: () => _load(quiet: true))),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      for (final i in [0, 1])
+                        AnimatedContainer(
+                          key: Key('home-dot-$i'),
+                          duration: const Duration(milliseconds: 220),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: _slbPage == i ? 22 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(color: _slbPage == i ? (i == 0 ? C.green : const Color(0xFF6D2FD0)) : C.line, borderRadius: BorderRadius.circular(4)),
+                        ),
+                    ]),
+                  ]),
+                ))
               else
               Rise(order: 1, child: Padding(
                 padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, C.greenEnd]),
-                    boxShadow: [BoxShadow(color: C.green.withValues(alpha: .3), blurRadius: 22, offset: const Offset(0, 10))],
-                  ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Row(children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .1), border: Border.all(color: Colors.white.withValues(alpha: .45), width: 1.5)),
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.local_gas_station_outlined, color: Colors.white, size: 30),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          multi
-                              ? Text('$f0 stock', mr: '$f0 साठा', style: const TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500))
-                              : const Text('Total Diesel Stock', mr: 'डिझेल साठा (एकूण)', style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
-                          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: total == null
-                                    ? Text('–', key: const Key('home-stock'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15))
-                                    // (3.122.0) the stock counts up to its value
-                                    : CountUp(value: total, textKey: const Key('home-stock'), text: (v) => '${fmtNum(v)} ${f0 == 'CNG' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
-                              ),
-                            ),
-                            if (pct != null) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                key: const Key('home-pct'),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
-                                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Icon(pct >= 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 13, color: Colors.white),
-                                  const SizedBox(width: 2),
-                                  Text('${pct >= 0 ? '+' : '−'}${fmtNum((pct.abs() * 10).round() / 10)}%', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
-                                ]),
-                              ),
-                            ],
-                          ]),
-                        ]),
-                      ),
-                      IconButton(
-                        tooltip: tr('Refresh'),
-                        style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: .14), fixedSize: const Size(40, 40)),
-                        onPressed: () => _load(init: true),
-                        icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
-                      ),
-                    ]),
-                    if (multi)      // the other fuels, never added to it
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Wrap(spacing: 8, runSpacing: 6, children: [
-                          for (final f in s.siteFuels.skip(1))
-                            Container(
-                              key: Key('home-fuel-$f'),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
-                              child: Text('$f ${fmtNum(byFuel[f] ?? 0)} ${f == 'CNG' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                            ),
-                        ]),
-                      ),
-                    if (!multi && locs.isNotEmpty && (total ?? 0) > 0) ...[
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(5),
-                        child: SizedBox(
-                          height: 8,
-                          child: Row(children: [
-                            for (final (i, l) in locs.indexed)
-                              if (l.value > 0) Expanded(flex: (l.value * 1000 ~/ total!).clamp(1, 1000), child: ColoredBox(color: _locTone[i % _locTone.length])),
-                          ]),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Wrap(spacing: 12, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                      for (final (i, l) in locs.indexed)
-                        Row(mainAxisSize: MainAxisSize.min, children: [
-                          Container(width: 8, height: 8, decoration: BoxDecoration(color: _locTone[i % _locTone.length], shape: BoxShape.circle)),
-                          const SizedBox(width: 5),
-                          Text('${l.key} ${fmtNum(l.value)} ${s.placeUnit(l.key) == 'kg' ? 'kg' : 'L'}', style: const TextStyle(fontSize: 11.5, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
-                        ]),
-                      if (at != null)
-                        Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.schedule_rounded, size: 13, color: Color(0xCCFFFFFF)),
-                          const SizedBox(width: 4),
-                          Text('Updated ${at!.hour % 12 == 0 ? 12 : at!.hour % 12}:${at!.minute.toString().padLeft(2, '0')} ${at!.hour < 12 ? 'AM' : 'PM'}', style: const TextStyle(fontSize: 11.5, color: Color(0xCCFFFFFF))),
-                        ]),
-                    ]),
-                  ]),
-                ),
+                child: stockBox(null),
               )),
               // ---------- the four tiles ----------
               if (!ho)
@@ -816,8 +882,20 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   /// (3.97.0, his design 3) "Today's work · आज काय बाकी": what waits for him now – approvals, the Log Book entries pending, his
   /// Store work and the items below their minimum, Purchase's lines to order, the RFIs waiting for the IE, entries kept on this
   /// phone, vehicle alerts. A row: tap → that work. Nothing waiting: said so.
+  /// (3.132.0) the Smart Log Book opened on one of its steps; Home reads again when it closes
+  Future<void> _slb(String start) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SmartLogBookScreen(start: start)));
+    if (mounted) _load(quiet: true);
+  }
+
   Widget _todayCard(Session s) {
+    // (3.132.0, Mechanical update-263, his picture "Home – Log Book only": "To do") the Smart Log Book's own work
+    final me = slb, ss = me?['session'] is Map ? me!['session'] as Map : null, inn = (me?['handoverIn'] as List? ?? const []).length, asks = (me?['asks'] as List? ?? const []).length;
     final rows = <(String, String, String, String, int, Color, Color, Future<void> Function())>[
+      if (inn > 0) ('slb-in', 'A vehicle is handed to you – accept it', 'तुम्हाला गाडी दिली आहे – स्वीकारा', 'left-right_arrow', inn, C.purple, C.purpleSoft, () => _slb('')),
+      if (ss != null && me?['opening'] == null) ('slb-open', 'Opening photo of today', 'आजचा opening फोटो', 'camera', 1, C.purple, C.purpleSoft, () => _slb('')),
+      if (ss != null && me?['opening'] != null) ('slb-close', "Close today's ${ss['shift'] ?? ''} shift – photo + say the work", 'आजची shift बंद करा – फोटो आणि कामाचे वर्णन', 'notebook', 1, C.purple, C.purpleSoft, () => _slb('close')),
+      if (asks > 0) ('slb-ask', 'Smart Log Book – asked about', 'Smart Log Book – विचारले आहे', 'clipboard', asks, C.amber, C.amberSoft, () => _slb('')),
       if (s.crForMe > 0) ('appr', 'Approvals waiting for you', 'तुमच्या मंजुरीला थांबलेले', 'clipboard', s.crForMe, C.red, C.redSoft, () async {
         await openApprovals(context);
         s.loadApprovals();
@@ -1197,6 +1275,9 @@ class _PhoneLine extends StatelessWidget {
     );
   }
 }
+
+/// (3.132.0) the Diesel card and the "My vehicle" card side by side: the same height
+const double _kSwipeH = 228;
 
 class _MiniTile extends StatelessWidget {
   const _MiniTile({required this.pic, required this.en, required this.mr, required this.value, required this.color});

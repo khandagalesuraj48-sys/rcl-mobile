@@ -25,6 +25,7 @@ def manifest(s):
              'android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_MICROPHONE', 'android.permission.FOREGROUND_SERVICE_CAMERA',
              'android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION', 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.CHANGE_NETWORK_STATE',
              'android.permission.USE_BIOMETRIC',      # (3.27.0) the app lock
+             'android.permission.FOREGROUND_SERVICE_LOCATION',      # (3.132.0) the Smart Log Book: the place of the vehicle while it is with the driver
              'android.permission.USE_FULL_SCREEN_INTENT']      # (3.42.0) a call's notification rings on the locked phone too
     add = ''.join('    <uses-permission android:name="%s"/>\n' % p for p in perms if p not in s)
     s = re.sub(r'(<manifest[^>]*>\n)', lambda m: m.group(1) + add, s, count=1)
