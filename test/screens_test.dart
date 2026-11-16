@@ -9866,9 +9866,11 @@ void main() {
     expect(find.textContaining('This month'), findsOneWidget);
     // the vehicle with him, no opening yet: the to-do says so
     srv.vlSess = {'id': 'VS-1', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'unit': 'KM', 'since': '2026-10-14T08:01', 'how': 'qr', 'shiftDate': '2026-10-14', 'shift': 'Day', 'gps': {'lat': null, 'lng': null, 'speed': null, 'at': '', 'status': 'off', 'km': 0}};
-    await t.pumpWidget(RclApp(session: s, key: UniqueKey()));
+    // (as on the phone: his screen opened from "My vehicle" and closed – Home reads again)
+    await tapK(t, 'home-myveh-go');
     await net(t);
-    expect(find.byKey(const Key('home-myveh-no')), findsOneWidget);
+    Navigator.of(t.element(find.byKey(const Key('slb-list')))).pop();
+    await net(t);
     expect(find.textContaining('MH-25-AJ-2169'), findsWidgets, reason: 'the vehicle with him is on Home');
     await t.scrollUntilVisible(find.byKey(const Key('home-today')), 250, scrollable: find.descendant(of: find.byType(RefreshIndicator).first, matching: find.byType(Scrollable)).first);
     final todo = [for (final e in find.descendant(of: find.byKey(const Key('home-today')), matching: find.byType(RichText)).evaluate()) (e.widget as RichText).text.toPlainText()].join(' | ');
