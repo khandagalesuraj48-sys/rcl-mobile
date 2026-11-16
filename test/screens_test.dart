@@ -9909,6 +9909,7 @@ void main() {
     await net(t);
     await t.enterText(find.byKey(const Key('slb-km')), '15360');
     await settle(t, 300);
+    await t.scrollUntilVisible(find.byKey(const Key('close-save')), 300, scrollable: find.descendant(of: find.byKey(const Key('close-list')), matching: find.byType(Scrollable)).first);
     await tapK(t, 'close-save');
     await net(t);
     final close = srv.vlCalls.lastWhere((c) => c['fn'] == 'vlClose')['x'] as Map;
@@ -10093,7 +10094,7 @@ void main() {
     expect([find.text('Murum transport, 6 trips').evaluate().length, find.byKey(const Key('vt-voice-0')).evaluate().length], [1, 1], reason: 'the closing of the day and its voice');
     await tapK(t, 'vt-live');
     await net(t);
-    expect(find.byKey(const Key('vt-veh-MH-12-PQ-1180')), findsOneWidget);
+    expect(find.byKey(const Key('vt-veh-MH-12-PQ-1180'), skipOffstage: false), findsOneWidget, reason: 'back to the vehicles on duty');
     expect(t.takeException(), isNull);
   });
 
