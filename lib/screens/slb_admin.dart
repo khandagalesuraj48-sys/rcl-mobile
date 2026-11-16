@@ -16,6 +16,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/format.dart';
 import '../ui/fields.dart';
@@ -871,6 +872,25 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                       for (final (c, l) in const [(Color(0xFF15803D), 'Start'), (Color(0xFFB91C1C), 'End'), (Color(0xFFF59E0B), 'GPS off')])
                         Row(mainAxisSize: MainAxisSize.min, children: [Container(width: 10, height: 10, decoration: BoxDecoration(color: c, shape: BoxShape.circle)), const SizedBox(width: 4), Text(l, style: const TextStyle(fontSize: 12.5))]),
                     ]),
+                    // (update-263) the closings of the day: the work written and its voice (kept 60 days)
+                    for (final (i, c) in _maps(route!['closings']).indexed)
+                      Container(
+                        key: Key('vt-closing-$i'),
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                        child: Row(children: [
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('${tr('Closing')} ${slbTime(c['at'])}${'${c['shift'] ?? ''}'.isEmpty ? '' : ' · ${tr('${c['shift']}')}'}${_read(c).isEmpty ? '' : ' · ${_read(c)}'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                              if ('${c['text'] ?? ''}'.isNotEmpty) Text('${c['text']}', style: const TextStyle(fontSize: 13)),
+                              if (c['voiceGone'] == true) Text('Its voice is gone (kept 60 days).', style: const TextStyle(fontSize: 12, color: C.muted)),
+                            ]),
+                          ),
+                          if ('${c['voice'] ?? ''}'.isNotEmpty)
+                            TextButton.icon(key: Key('vt-voice-$i'), onPressed: () => launchUrl(Uri.parse('${c['voice']}'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.play_circle_fill_rounded), label: Text('Voice', mr: 'आवाज')),
+                        ]),
+                      ),
                     Align(alignment: Alignment.centerRight, child: TextButton.icon(key: const Key('vt-live'), onPressed: _back, icon: const Icon(Icons.my_location_rounded), label: Text('Back to live', mr: 'Live वर परत'))),
                   ]),
                 ),

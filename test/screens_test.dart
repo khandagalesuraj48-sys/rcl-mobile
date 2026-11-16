@@ -10090,6 +10090,7 @@ void main() {
     await net(t);
     expect(srv.routeAsked.last, {'no': 'MH-12-PQ-1180', 'date': '2026-10-14'});
     expect(find.textContaining('46.2 km by GPS · 40 points · GPS off 1 time'), findsOneWidget);
+    expect([find.text('Murum transport, 6 trips').evaluate().length, find.byKey(const Key('vt-voice-0')).evaluate().length], [1, 1], reason: 'the closing of the day and its voice');
     await tapK(t, 'vt-live');
     await net(t);
     expect(find.byKey(const Key('vt-veh-MH-12-PQ-1180')), findsOneWidget);

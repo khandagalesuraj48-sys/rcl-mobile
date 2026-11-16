@@ -2590,7 +2590,8 @@ class FakeServer {
           routeAsked.add(x);
           if ('${x['no']}' != 'MH-12-PQ-1180') return _j({'result': {'sessions': <dynamic>[], 'points': <dynamic>[], 'off': <dynamic>[]}});
           return _j({'result': {'sessions': [{...boardOpen[0]}], 'points': [for (var i = 0; i < 40; i++) [18.7400 + i * 0.0006, 73.8500 + (i % 10) * 0.0012 + i * 0.0002, '${(8 + i ~/ 6).toString().padLeft(2, '0')}:${(i * 7 % 60).toString().padLeft(2, '0')}', 6.0]],
-            'off': [{'from': '2026-10-14T11:20', 'to': '2026-10-14T11:41', 'lat': 18.7520, 'lng': 73.8610, 'why': 'GPS off'}]}});
+            'off': [{'from': '2026-10-14T11:20', 'to': '2026-10-14T11:41', 'lat': 18.7520, 'lng': 73.8610, 'why': 'GPS off'}],
+            'closings': [{'at': '2026-10-14T18:02', 'shift': 'Day', 'km': 88300, 'hr': null, 'text': 'Murum transport, 6 trips', 'voice': 'https://db.test/storage/v1/object/sign/erp-files/vl-voice/2026-10-14/x.m4a?token=t', 'voiceGone': false}]}});
         case 'vlMe' || 'vlTake' || 'vlOpen' || 'vlClose' || 'vlAiText' || 'vlHandover' || 'vlHandAnswer' || 'vlGps' || 'vlVoice':
           if (!slbOn) return _j({'error': 'The Smart Log Book cannot be used yet. This needs one database step first.'}, 500);
           final x = a.isEmpty ? <String, dynamic>{} : (a[0] as Map).cast<String, dynamic>();
