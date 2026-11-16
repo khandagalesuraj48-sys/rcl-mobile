@@ -2884,10 +2884,16 @@ class FakeServer {
           return _j({'result': {'from': x['from'], 'to': x['to'],
             'car': {'no': no, 'name': one ? 'Hycross' : 'Ertiga', 'make': one ? 'Toyota' : 'Maruti Suzuki', 'type': 'Car', 'fuel': one ? 'Petrol' : 'CNG', 'unit': one ? 'Ltr' : 'kg', 'status': 'Active', 'std': 23, 'kmNow': one ? 45210 : 30100, 'kmAt': '2026-10-13', 'photo': carPhotos[no]},
             'sum': {'qty': one ? 30 : 12, 'amount': one ? 3200 : 1100, 'card': one ? 3200 : 0, 'cash': one ? 0 : 1100, 'fills': 1, 'km': one ? 690 : 300, 'avg': one ? 23 : 25},
-            'fills': [if (one) {'date': '2026-10-13', 'fuel': 'Petrol', 'qty': 30, 'unit': 'Ltr', 'amount': 3200, 'paidBy': 'HDFC FUEL', 'cash': false, 'km': 45210} else {'date': '2026-10-12', 'fuel': 'CNG', 'qty': 12, 'unit': 'kg', 'amount': 1100, 'paidBy': 'Cash', 'cash': true, 'km': 30100}],
+            // (3.131.0, Mechanical update-264) a person who may see Diesel Issue: each fill's number, time sent, who entered it, its photos
+            'fills': [if (one) {'date': '2026-10-13', 'fuel': 'Petrol', 'qty': 30, 'unit': 'Ltr', 'amount': 3200, 'paidBy': 'HDFC FUEL', 'cash': false, 'km': 45210,
+                if (perms['Diesel Issue'] != 'None' || superAdmin) ...{'id': 'DI-000412', 'at': '2026-10-13 10:42', 'by': 'Ramesh Clerk', 'photos': [
+                  {'k': 'dash', 'label': 'Dashboard', 'at': '2026-10-13T05:10:00Z', 'lat': 18.52, 'lng': 73.85, 'acc': 6, 'url': ''},
+                  {'k': 'bill', 'label': 'Pump bill', 'at': '2026-10-13T05:11:00Z', 'lat': 18.52, 'lng': 73.85, 'acc': 6, 'url': ''}]}}
+              else {'date': '2026-10-12', 'fuel': 'CNG', 'qty': 12, 'unit': 'kg', 'amount': 1100, 'paidBy': 'Cash', 'cash': true, 'km': 30100,
+                if (perms['Diesel Issue'] != 'None' || superAdmin) ...{'id': 'DI-000398', 'at': '2026-10-13 09:05', 'by': '', 'photos': <dynamic>[]}}],
             'log': perms['Log Book'] == 'None' && !superAdmin ? null : [{'date': '2026-10-13', 'shift': 'Full Day', 'okm': 44520, 'ckm': 45210, 'km': 690, 'driver': 'Gupta', 'work': ''}],
             'maint': [for (final m in maint) if (m['no'] == no) {'id': m['id'], 'date': m['date'], 'garage': m['garage'], 'billNo': m['billNo'], 'km': m['km'], 'amount': m['total'], 'service': m['service'], 'works': [for (final l in (m['lines'] as List)) (l as Map)['work']], 'files': 1}],
-            'may': {'photo': superAdmin, 'log': true, 'maint': true}}});
+            'may': {'photo': superAdmin, 'log': true, 'maint': true, 'fill': perms['Diesel Issue'] != 'None' || superAdmin}, 'phErr': false}});
         case 'getCarPhotoLinks':
           carCalls.add({'fn': action, 'x': a[0]});
           final nos = [for (final n in ((a[0] as Map)['nos'] as List? ?? const [])) '$n'];

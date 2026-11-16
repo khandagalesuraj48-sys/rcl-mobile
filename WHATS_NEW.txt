@@ -1,3 +1,3 @@
-HO: the dashboard photo – the camera reads the KM live on the phone again (OCR, as on every site); when the AI does not see the total KM, the phone reads the photo too. Only when neither sees it, the app asks to show ODO (not TRIP) and take the photo again, or type the reading.
-HO: dashboard फोटो – कॅमेरा पुन्हा फोनवरच KM लगेच वाचतो (OCR, सगळ्या sites सारखा); AI ला एकूण KM दिसले नाही तर फोनही फोटो वाचतो. दोघांनाही दिसले नाही तरच app सांगते – ODO दाखवून (TRIP नाही) पुन्हा फोटो काढा किंवा रीडिंग टाका.
-HO: dashboard photo – कैमरा फिर से फ़ोन पर ही KM तुरंत पढ़ता है (OCR, सभी sites जैसा); AI को कुल KM न दिखे तो फ़ोन भी photo पढ़ता है. दोनों को न दिखे तभी app कहता है – ODO दिखाकर (TRIP नहीं) फिर photo लें या रीडिंग लिखें.
+HO: a car's Fuel history – each fill now shows the time it was entered, who entered it and its photos (dashboard, pump bill, payment slip …); tap a photo to see them all large.
+HO: गाडीची Fuel history – प्रत्येक fill सोबत आता entry ची वेळ, entry कोणी केली आणि त्याचे फोटो (dashboard, pump bill, payment slip …) दिसतात; फोटोवर tap केल्यावर सगळे फोटो मोठे दिसतात.
+HO: गाड़ी की Fuel history – हर fill के साथ अब entry का समय, entry किसने की और उसके फ़ोटो (dashboard, pump bill, payment slip …) दिखते हैं; फ़ोटो पर tap करने पर सभी फ़ोटो बड़े दिखते हैं।

@@ -4584,6 +4584,17 @@ void main() {
       await settle(t, 400);
       expect(find.textContaining('30 L · ₹ 3,200'), findsOneWidget);
       expect(find.byKey(const Key('cf-0')), findsOneWidget);
+      // (3.131.0, Mechanical update-264) the fill's time sent, who entered it and its photos; a tap – all of them large
+      expect(find.text('13-10-2026 · 10:42 AM · Petrol · KM 45,210'), findsOneWidget);
+      expect(find.text('Entry: Ramesh Clerk · DI-000412'), findsOneWidget);
+      expect([find.byKey(const Key('cf-0-ph0')).evaluate().length, find.byKey(const Key('cf-0-ph1')).evaluate().length, find.text('Pump bill').evaluate().length], [1, 1, 1]);
+      await tapK(t, 'cf-0-ph1');
+      await settle(t, 400);
+      expect(find.byKey(const Key('dp-list')), findsOneWidget, reason: 'the Diesel Issue list\'s own photos screen');
+      expect(find.textContaining('Photos – DI-000412 · 13-10-2026 · 10:42 AM · 30 L'), findsOneWidget);
+      expect(find.byKey(const Key('dp-1')), findsOneWidget);
+      Navigator.of(t.element(find.byKey(const Key('dp-list')))).pop();
+      await settle(t, 400);
       await tapK(t, 'cdt-log');
       await settle(t, 400);
       expect(find.textContaining('44,520 → 45,210 · 690 km'), findsOneWidget);

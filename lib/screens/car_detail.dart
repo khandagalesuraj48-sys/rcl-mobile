@@ -27,6 +27,8 @@ import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
+import 'diesel_photos.dart' show DieselPhotosScreen;
+import 'entries.dart' show savedTime;
 import 'forms.dart' show newEntry;
 import 'fuel_cards.dart' show rupees;
 import 'logbook.dart' show LogForm, TankerScreen;
@@ -647,9 +649,68 @@ Widget _row(Key k, IconData ic, Color tint, Color bg, String a, String b, {Widge
       ]),
     );
 
-Widget _fillRow(Key k, Map<String, dynamic> f) => _row(k, Icons.local_gas_station_rounded, C.amber, C.amberSoft, '${fmtNum(asNum(f['qty']))} ${_u(f['unit'])} · ${rupees(asNum(f['amount']))}',
-    '${showDate('${f['date']}')} · ${f['fuel']}${asNum(f['km']) != null ? ' · KM ${fmtNum(asNum(f['km']))}' : ''}',
-    end: Pill('${f['paidBy']}', color: f['cash'] == true ? C.amber : C.blue, bg: f['cash'] == true ? C.amberSoft : C.blueSoft));
+Widget _fillRow(Key k, Map<String, dynamic> f) => FillRow(key: k, f: f);
+
+/// (3.131.0, Mechanical update-264, asked 16-11-2026: "fuel histry aahe tithch tya entry sobat attch zalel photos pn dakhaw ok ani time
+/// ani koni entry keli") A FILL of a car: as before – and, for a person who may see Diesel Issue (the server gives them so), the time it
+/// was sent, "Entry: <who>" with its number, and its photos (a tap: all of them large – the Diesel Issue list's own screen).
+class FillRow extends StatelessWidget {
+  const FillRow({super.key, required this.f});
+  final Map<String, dynamic> f;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = key is ValueKey<String> ? (key as ValueKey<String>).value : 'f';
+    final photos = [for (final p in (f['photos'] as List? ?? const [])) if (p is Map) p];
+    final more = f.containsKey('by'), t = savedTime('${f['at'] ?? ''}', '${f['date'] ?? ''}'), by = '${f['by'] ?? ''}', id = '${f['id'] ?? ''}';
+    void open() => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DieselPhotosScreen(
+        title: 'Photos – ${[if (id.isNotEmpty) id, showDate('${f['date']}'), if (t.isNotEmpty) t, '${fmtNum(asNum(f['qty']))} ${_u(f['unit'])}', rupees(asNum(f['amount']))].join(' · ')}', photos: photos)));
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(width: 34, height: 34, decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.local_gas_station_rounded, size: 19, color: C.amber)),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${fmtNum(asNum(f['qty']))} ${_u(f['unit'])} · ${rupees(asNum(f['amount']))}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+            Text([showDate('${f['date']}'), if (t.isNotEmpty) t, '${f['fuel']}', if (asNum(f['km']) != null) 'KM ${fmtNum(asNum(f['km']))}'].join(' · '), style: const TextStyle(fontSize: 11.5, color: C.muted)),
+          ])),
+          const SizedBox(width: 6),
+          Pill('${f['paidBy']}', color: f['cash'] == true ? C.amber : C.blue, bg: f['cash'] == true ? C.amberSoft : C.blueSoft),
+        ]),
+        if (more) ...[
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text('Entry: ${by.isEmpty ? '–' : by}${id.isNotEmpty ? ' · $id' : ''}', key: Key('$k-by'), style: const TextStyle(fontSize: 12, color: C.muted))),
+          if (photos.isEmpty)
+            Padding(padding: const EdgeInsets.only(top: 4), child: Text('No photos with this fill.', key: Key('$k-nophoto'), style: const TextStyle(fontSize: 12, color: C.muted)))
+          else
+            SizedBox(
+              height: 70,
+              child: ListView(key: Key('$k-photos'), scrollDirection: Axis.horizontal, padding: const EdgeInsets.only(top: 8), children: [
+                for (final (i, p) in photos.indexed)
+                  GestureDetector(
+                    key: Key('$k-ph$i'),
+                    onTap: open,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(width: 64, height: 46, color: C.bg, child: '${p['url'] ?? ''}'.isEmpty ? null
+                              : Image.network('${p['url']}', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, size: 18, color: C.muted))),
+                        ),
+                        SizedBox(width: 64, child: Text('${p['label'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: C.muted))),
+                      ]),
+                    ),
+                  ),
+              ]),
+            ),
+        ],
+      ]),
+    );
+  }
+}
 
 Widget _logRow(Key k, Map<String, dynamic> r) => _row(k, Icons.speed_rounded, C.green, C.greenSoft,
     '${asNum(r['okm']) != null ? fmtNum(asNum(r['okm'])) : '–'} → ${asNum(r['ckm']) != null ? fmtNum(asNum(r['ckm'])) : '–'} · ${fmtNum(asNum(r['km']) ?? 0)} km',

@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.131.0 (16-11-2026, Mechanical update-264, asked: "fuel histry aahe tithch tya entry sobat attch zalel photos pn dakhaw ok ani
+time ani koni entry keli"):** HO's car → Fuel history (and its Vehicle History / Recent Activity – the same row, `FillRow`): each fill also
+shows the time it was sent ("10:42 AM", the day too when it was entered on another day – `savedTime`), "Entry: <who> · DI-…" and its
+photos as small pictures; a tap opens all of them large (the Diesel Issue list's own `DieselPhotosScreen` – no new call: the links come
+with `getCarDetail`). Only for a person who may see Diesel Issue (the server gives them so); others see the fill as before.
+
 **Version 3.130.0 (16-11-2026, asked: "app assa error dete yar asa error nahi ala pahije ocr enable rahude"):** HO's dashboard photo
 goes through the app's own camera that reads the meter live on the phone (OCR – `scan.dart`, as on every site) and takes the photo by
 itself; a reading it gets fills the KM box at once. Without it: the server's AI reads the photo, and when the AI sees no total reading (or
