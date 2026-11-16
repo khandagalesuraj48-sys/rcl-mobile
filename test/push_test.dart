@@ -67,6 +67,16 @@ void main() {
     expect(alertsFrom(d, {'wVF-1': 900, 'bVF-2': 990}, 1000), isEmpty);
   });
 
+  test('(3.132.0 – Mechanical update-263) the Smart Log Book: a vehicle handed to him (pressed: his Smart Log Book), GPS off / not seen to the supervisors (pressed: Live Tracking) – the same message twice is one notification', () {
+    final h = pushNoteOf({'t': 'vl', 'id': 'VE-1', 'open': 'slb', 'title': 'Vehicle handed to you', 'body': 'Sunil hands MH-25-AJ-2169 over to you – accept it in the Smart Log Book.', 'site': 'S1'})!;
+    expect([h.title, PushTap.of(h.payload)!.t, PushTap.of(h.payload)!.id, PushTap.of(h.payload)!.site], ['Vehicle handed to you', 'vl', 'slb', 'S1']);
+    final g = pushNoteOf({'t': 'vl', 'id': 'VS-7-off', 'open': 'vtrack', 'title': 'GPS off – MH-12-PQ-1180', 'body': 'Anil switched off the GPS of MH-12-PQ-1180 at 14:05.'})!;
+    expect([g.title, PushTap.of(g.payload)!.id], ['GPS off – MH-12-PQ-1180', 'vtrack']);
+    expect(pushNoteOf({'t': 'vl', 'id': 'VS-7-off', 'open': 'vtrack', 'title': 'GPS off – MH-12-PQ-1180', 'body': '…'})!.id, g.id, reason: 'the same thing: one notification');
+    expect(pushNoteOf({'t': 'vl', 'id': 'VS-7-ns', 'open': 'vtrack', 'title': 'Not seen – MH-12-PQ-1180', 'body': '…'})!.id, isNot(g.id));
+    expect(pushNoteOf({'t': 'vl', 'open': 'vtrack', 'title': ''}), isNull);
+  });
+
   test('a new version: told when it is newer than this app; in the app\'s language (Marathi / Hindi words of the app)', () async {
     expect(pushNoteOf({'t': 'upd', 'version': '3.42.0', 'build': '151'}, myBuild: 150)!.title, 'Sketchline 3.42.0 is ready');
     expect(pushNoteOf({'t': 'upd', 'version': '3.42.0', 'build': '151'}, myBuild: 151), isNull, reason: 'this phone has it');
