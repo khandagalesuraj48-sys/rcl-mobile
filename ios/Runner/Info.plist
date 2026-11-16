@@ -14,6 +14,12 @@
 	<string>Sketchline uses the camera for the photos of an entry (Diesel Issue and others).</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Sketchline saves the place of every entry, as the web ERP does.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Sketchline shares the place of the vehicle with you while it is on duty (Smart Log Book), also when the app is in the background.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Sketchline opens with your Face ID, so that nobody else can open it on this iPhone.</string>
 	<key>NSMotionUsageDescription</key>

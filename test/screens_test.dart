@@ -58,6 +58,9 @@ import 'package:rcl_mobile/core/grn_reg.dart';
 import 'package:rcl_mobile/screens/vehicle_booking.dart' show openBooking;
 import 'package:rcl_mobile/screens/vehicle_expenses.dart' show openVexp;
 import 'package:rcl_mobile/core/vl_gps.dart' show VlGps;
+import 'package:rcl_mobile/core/vl_voice.dart' show VlVoice;
+import 'package:rcl_mobile/screens/slb_admin.dart' show openDriverMaster, openVehicleAllocation, openLiveTracking, SlbMap;
+import 'package:rcl_mobile/screens/masters.dart' show mastersOf;
 import 'fake_rtc.dart';
 import 'lock_test.dart' show FakeGate;
 import 'fake_attend.dart';
@@ -9877,6 +9880,255 @@ void main() {
     expect(find.byKey(const Key('today-slb-open')), findsOneWidget, reason: 'the to-do says: $todo');
     expect(t.takeException(), isNull);
   });
+
+  testWidgets('(3.132.0 – Mechanical update-263, his answer "दोन्ही एकत्र") the voice of the closing: recorded while the phone listens and sent with the closing (vlVoice → audio); a phone that gives the microphone only to the recording: the voice kept, noted – from then on it only listens', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    final s = await ready(t, srv);
+    final oL = voice.listenOnce;
+    var said = 'aaj chakan patch la murum vahatuk keli saha trip';
+    voice.listenOnce = (lang, h) async {
+      h(said);
+      return said;
+    };
+    VlVoice.fake = () => Uint8List.fromList([0, 0, 0, 24, ...'ftypM4A '.codeUnits, ...List.filled(3000, 7)]);
+    addTearDown(() {
+      voice.listenOnce = oL;
+      VlVoice.fake = null;
+    });
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await slbOpen(t);
+    await slbTake(t, 15240);
+    await tapK(t, 'slb-close');
+    await net(t);
+    await tapK(t, 'close-mic');
+    await net(t);
+    expect(find.text('Murum transport'), findsOneWidget, reason: 'heard, then written by the AI');
+    await tapK(t, 'slb-shoot');
+    await net(t);
+    await t.enterText(find.byKey(const Key('slb-km')), '15360');
+    await settle(t, 300);
+    await t.scrollUntilVisible(find.byKey(const Key('close-save')), 300, scrollable: find.descendant(of: find.byKey(const Key('close-list')), matching: find.byType(Scrollable)).first);
+    await tapK(t, 'close-save');
+    await net(t);
+    final close = srv.vlCalls.lastWhere((c) => c['fn'] == 'vlClose')['x'] as Map;
+    expect('${(close['audio'] as Map)['p']}', startsWith('vl-voice/'), reason: 'the voice goes with the closing');
+    expect([srv.vlCalls.where((c) => c['fn'] == 'vlVoice').length, close['heard']], [1, said]);
+    expect(await s.api.keep.read(VlVoice.kNotBoth), isNull);
+    // the listening heard nothing while the recording has the voice: this phone gives the microphone only to the recording
+    said = '';
+    await slbTake(t, 15360);
+    await tapK(t, 'slb-close');
+    await net(t);
+    await tapK(t, 'close-mic');
+    await net(t);
+    expect(await s.api.keep.read(VlVoice.kNotBoth), '1', reason: 'from now on it only listens');
+    expect(find.textContaining('Nothing was heard'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  // (3.132.0, Mechanical update-263) THE OFFICE PAGES of the Smart Log Book – the app's own screens of the web's three pages
+  Future<Session> slbOffice(WidgetTester t, FakeServer srv) async {
+    SlbMap.tiles = false;      // (no internet in a test: the map without its tiles)
+    addTearDown(() => SlbMap.tiles = true);
+    srv.perms
+      ..['Driver Master'] = 'Edit'
+      ..['Vehicle Allocation'] = 'Edit'
+      ..['Live Tracking'] = 'View';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    return s;
+  }
+
+  testWidgets('(3.132.0 – Mechanical update-263, "every page of the web is in the app as its own screens") the office pages: each by its own access (Machinery → Driver Master; Entries → Vehicle Allocation, Live Tracking; a start page); nobody given them: not there', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    final s0 = await ready(t, srv);
+    expect([for (final p in startPagesFor(s0)) p.$1].where((k) => const ['drivers', 'valloc', 'vtrack'].contains(k)), isEmpty, reason: 'not given: empty = No access');
+    expect(mastersOf(s0).map((p) => p.en), isNot(contains('Driver Master')));
+    srv.perms
+      ..['Driver Master'] = 'View'
+      ..['Vehicle Allocation'] = 'View'
+      ..['Live Tracking'] = 'View';
+    final s = await ready(t, srv);
+    expect([for (final p in startPagesFor(s)) p.$1].where((k) => const ['drivers', 'valloc', 'vtrack'].contains(k)), ['drivers', 'valloc', 'vtrack']);
+    expect(mastersOf(s).map((p) => p.en), contains('Driver Master'));
+  });
+
+  testWidgets('(3.132.0 – Mechanical update-263) Driver Master in the app: the drivers (search, Active / Inactive), a licence expired or ending in 30 days marked, the vehicle with him now; a new driver saved with saveDriver – the same name is asked once more (another person of that name: Save again)', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    final s = await slbOffice(t, srv);
+    expect(s.today, '2026-10-14');
+    openDriverMaster(t.element(find.byType(Scaffold).first));
+    await net(t);
+    expect(find.byKey(const Key('dm-row-DR-000001')), findsOneWidget);
+    expect(find.text('2 of 3 drivers'), findsOneWidget, reason: 'the list opens on Active (as the web)');
+    expect(find.text('16 days left'), findsOneWidget, reason: 'Mahesh: up to 30-10-2026');
+    expect(find.text('expired'), findsOneWidget, reason: 'Anil: up to 30-09-2026');
+    expect(find.textContaining('MH-12-PQ-1180'), findsOneWidget, reason: 'the vehicle with Anil now');
+    await tapK(t, 'dm-st-all');
+    await settle(t, 300);
+    expect(find.text('3 drivers'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('dm-q')), 'ravi');
+    await settle(t, 300);
+    expect([find.byKey(const Key('dm-row-DR-000003')).evaluate().length, find.byKey(const Key('dm-row-DR-000001')).evaluate().length], [1, 0]);
+    await t.enterText(find.byKey(const Key('dm-q')), '');
+    await tapK(t, 'dm-st-Inactive');
+    await settle(t, 300);
+    expect(find.text('1 of 3 drivers'), findsOneWidget);
+    await tapK(t, 'dm-st-all');
+    await settle(t, 300);
+    // a new driver of a name already there: asked; the second Save says it is another person
+    await tapK(t, 'dm-add');
+    await settle(t, 600);
+    await t.enterText(find.byKey(const Key('dmf-name')), 'Mahesh Jadhav');
+    await t.enterText(find.byKey(const Key('dmf-mobile')), '9800000099');
+    await tapK(t, 'dmf-save');
+    await net(t);
+    expect(find.textContaining('press Save again'), findsOneWidget);
+    await tapK(t, 'dmf-save');
+    await net(t);
+    final saves = srv.vlCalls.where((c) => c['fn'] == 'saveDriver').toList();
+    expect([saves.length, (saves.first['x'] as Map)['sameName'], (saves.last['x'] as Map)['sameName'], (saves.last['x'] as Map)['mobile']], [2, false, true, '9800000099']);
+    expect(find.byKey(const Key('dm-row-DR-000004')), findsOneWidget, reason: 'the list read again');
+    // a change: the same form with his values
+    await tapK(t, 'dm-row-DR-000002');
+    await settle(t, 600);
+    expect(find.text('MH1420150002222'), findsOneWidget);
+    Navigator.of(t.element(find.byKey(const Key('dmf-list')))).pop();
+    await net(t);
+    // "Bring from HR": Mahesh is the same person here (Link to him); Ganesh is not here (Add as new)
+    await tapK(t, 'dm-hr');
+    await net(t);
+    expect(find.text('The same person here?'), findsOneWidget);
+    expect(find.text('Not here'), findsOneWidget);
+    await tapK(t, 'dmh-link-e1');
+    await net(t);
+    expect(srv.vlCalls.lastWhere((c) => c['fn'] == 'linkHrDriver')['x'], {'hr': 'e1', 'to': 'DR-000001', 'sameName': false});
+    expect(find.text('Linked'), findsOneWidget);
+    await tapK(t, 'dmh-add-e2');
+    await net(t);
+    expect((srv.vlCalls.lastWhere((c) => c['fn'] == 'linkHrDriver')['x'] as Map)['to'], '');
+    expect(find.text('Linked'), findsNWidgets(2));
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.132.0 – Mechanical update-263) Vehicle Allocation in the app: who has which vehicle now (opening, GPS, open over 16 h), Give a free vehicle to a free driver (vlAssign), Release only with why (vlRelease – its closing missing), Resolve (vlResolve); read again every 30 seconds', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    await slbOffice(t, srv);
+    openVehicleAllocation(t.element(find.byType(Scaffold).first));
+    await net(t);
+    expect(find.byKey(const Key('va-open-VS-7')), findsOneWidget);
+    expect(find.textContaining('88,210 km'), findsOneWidget, reason: 'the opening of the day');
+    expect(find.text('Opening not given yet'), findsOneWidget);
+    expect(find.text('Open over 16 h – closing missing?'), findsOneWidget);
+    expect(find.text('GPS off'), findsOneWidget);
+    final boards = srv.vlCalls.where((c) => c['fn'] == 'vlBoard').length;
+    await settle(t, 31000);
+    await net(t);
+    expect(srv.vlCalls.where((c) => c['fn'] == 'vlBoard').length, boards + 1, reason: 'read again after 30 seconds');
+    // Release: nothing without why
+    await tapK(t, 'va-rel-VS-5');
+    await settle(t, 600);
+    await tapK(t, 'note-ok');
+    expect(srv.vlCalls.where((c) => c['fn'] == 'vlRelease'), isEmpty);
+    await t.enterText(find.byKey(const Key('note-box')), 'The driver left without closing');
+    await tapK(t, 'note-ok');
+    await net(t);
+    expect((srv.vlCalls.lastWhere((c) => c['fn'] == 'vlRelease')['x'] as Map)['reason'], 'The driver left without closing');
+    // Give
+    await t.scrollUntilVisible(find.byKey(const Key('va-give')), 250, scrollable: find.descendant(of: find.byKey(const Key('va-list')), matching: find.byType(Scrollable)).first);
+    await t.tap(find.byKey(const Key('va-no')));
+    await settle(t, 600);
+    await t.tap(find.text('MH-25-AJ-2169 · Tipper').last);
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('va-to')));
+    await settle(t, 600);
+    await t.tap(find.text('Mahesh Jadhav · 9800000011').last);
+    await settle(t, 600);
+    await tapK(t, 'va-give');
+    await net(t);
+    expect(srv.vlCalls.lastWhere((c) => c['fn'] == 'vlAssign')['x'], {'no': 'MH-25-AJ-2169', 'to': 'mahesh@rcl.test', 'shift': ''});
+    // Resolve
+    await t.scrollUntilVisible(find.byKey(const Key('va-res-VX-1')), 250, scrollable: find.descendant(of: find.byKey(const Key('va-list')), matching: find.byType(Scrollable)).first);
+    await tapK(t, 'va-res-VX-1');
+    await settle(t, 600);
+    await t.enterText(find.byKey(const Key('note-box')), 'Entry made from the paper');
+    await tapK(t, 'note-ok');
+    await net(t);
+    expect((srv.vlCalls.lastWhere((c) => c['fn'] == 'vlResolve')['x'] as Map)['id'], 'VX-1');
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.132.0 – Mechanical update-263) Live Tracking in the app: every vehicle on duty (live / not seen / no GPS yet) on the map and in the list; the route of a day (vlRoute) – its km and GPS-off times, Back to live; a day without points says so', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    await slbOffice(t, srv);
+    openLiveTracking(t.element(find.byType(Scaffold).first));
+    await net(t);
+    expect(find.byKey(const Key('vt-map')), findsOneWidget);
+    expect([find.byKey(const Key('vt-veh-MH-12-PQ-1180')), find.byKey(const Key('vt-veh-JCB-3DX-07')), find.byKey(const Key('vt-veh-MH-25-AJ-2169'))].map((f) => f.evaluate().length), [1, 1, 1]);
+    expect(find.text('Live'), findsOneWidget);
+    expect(find.text('No GPS yet'), findsOneWidget);
+    expect(find.textContaining('30 km/h'), findsOneWidget, reason: '8.4 m/s');
+    // a vehicle with no point that day
+    await tapK(t, 'vt-veh-MH-25-AJ-2169');
+    await t.scrollUntilVisible(find.byKey(const Key('vt-route')), 250, scrollable: find.descendant(of: find.byKey(const Key('vt-list')), matching: find.byType(Scrollable)).first);
+    await tapK(t, 'vt-route');
+    await net(t);
+    expect(find.byKey(const Key('vt-rnote')), findsOneWidget);
+    expect(find.textContaining('No GPS point of MH-25-AJ-2169'), findsOneWidget);
+    // the route of Anil's tipper
+    await t.tap(find.byKey(const Key('vt-no')));
+    await settle(t, 600);
+    await t.tap(find.text('MH-12-PQ-1180').last);
+    await settle(t, 600);
+    await tapK(t, 'vt-route');
+    await net(t);
+    expect(srv.routeAsked.last, {'no': 'MH-12-PQ-1180', 'date': '2026-10-14'});
+    expect(find.textContaining('46.2 km by GPS · 40 points · GPS off 1 time'), findsOneWidget);
+    expect([find.text('Murum transport, 6 trips').evaluate().length, find.byKey(const Key('vt-voice-0')).evaluate().length], [1, 1], reason: 'the closing of the day and its voice');
+    await tapK(t, 'vt-live');
+    await net(t);
+    expect(find.byKey(const Key('vt-veh-MH-12-PQ-1180'), skipOffstage: false), findsOneWidget, reason: 'back to the vehicles on duty');
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.132.0 – Mechanical update-263) the office pages – pictures', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    await slbOffice(t, srv);
+    openDriverMaster(t.element(find.byType(Scaffold).first));
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_slb_7_driver_master.png'));
+    Navigator.of(t.element(find.byKey(const Key('dm-list')))).pop();
+    await net(t);
+    openVehicleAllocation(t.element(find.byType(Scaffold).first));
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_slb_8_allocation.png'));
+    Navigator.of(t.element(find.byKey(const Key('va-list')))).pop();
+    await net(t);
+    openLiveTracking(t.element(find.byType(Scaffold).first));
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_slb_9_live.png'));
+    await t.scrollUntilVisible(find.byKey(const Key('vt-route')), 250, scrollable: find.descendant(of: find.byKey(const Key('vt-list')), matching: find.byType(Scrollable)).first);
+    await t.tap(find.byKey(const Key('vt-no')));
+    await settle(t, 600);
+    await t.tap(find.text('MH-12-PQ-1180').last);
+    await settle(t, 600);
+    await tapK(t, 'vt-route');
+    await net(t);
+    await settle(t, 4000);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_slb_9_route.png'));
+  }, tags: ['golden']);
 
   testWidgets('(3.132.0 – Mechanical update-263) the Smart Log Book – pictures', (t) async {
     phone(t);

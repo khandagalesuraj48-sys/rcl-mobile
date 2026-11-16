@@ -7,12 +7,14 @@
  *   3. Opening – ONE dashboard photo a day: the phone reads it (live, or the photo), the AI only when the phone is not sure; Confirm
  *      (vlOpen – a second one is not made).
  *   4. On duty – the vehicle since when, the opening, the GPS (core/vl_gps.dart), Hand over / Close the shift.
- *   5. Close the shift – the meter photo + the work said aloud (the phone hears it, the AI writes it, he corrects it) → the usual Log
+ *   5. Close the shift – the meter photo + the work said aloud (the phone hears it – and records it where the phone gives both the
+ *      microphone: the voice kept 60 days, core/vl_voice.dart – the AI writes it, he corrects it) → the usual Log
  *      Book entry (saveLogRows – the same checks and approval), then vlClose (once per phone action – its number). No network: both
  *      kept on this phone and sent by themselves (as every entry).
  *   6. Hand over – the reading now (photo) and the other driver (free / busy); he accepts on his own phone. No Log Book row.
  * MyVehicleCard – Home's "My vehicle" card (the same size as the Diesel card it swipes with). */
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';      // ignore: unnecessary_import
 
@@ -31,6 +33,7 @@ import '../core/qr_scan.dart';
 import '../core/scan_rules.dart';
 import '../core/session.dart';
 import '../core/vl_gps.dart';
+import '../core/vl_voice.dart';
 import '../core/voice.dart';
 import '../ui/ask_bot.dart';
 import '../ui/scope.dart';
@@ -875,6 +878,8 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
   Map<String, dynamic>? pre;
   String err = '', aiText = '';
   bool busy = false, listening = false, writing = false;
+  /// (his answer "दोन्ही एकत्र") the voice recorded while the phone listened – sent with the closing (core/vl_voice.dart)
+  Uint8List? voice;
   final String opId = 'VC-${DateTime.now().microsecondsSinceEpoch}-${math.Random().nextInt(1 << 30)}';
 
   String get shiftDate => '${widget.session['shiftDate'] ?? ''}'.isEmpty ? SessionScope.read(context).today : '${widget.session['shiftDate']}';
@@ -936,17 +941,26 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
       return;
     }
     setState(() => listening = true);
+    final keep = SessionScope.read(context).api.keep, rec = await VlVoice.i.allowed(keep);
+    if (rec) await VlVoice.i.start();      // (the same words recorded while the phone listens – where the phone gives both the microphone)
     try {
       final lang = const ['mr', 'hi', 'en'].contains(Lang.i.code) ? Lang.i.code : 'mr';
       final w = await listenOnce(lang, (x) {
         if (mounted) setState(() => heard.text = x);
       });
+      final v = rec ? await VlVoice.i.stop() : null;
+      if (v != null) voice = v;
       if (!mounted) return;
       if (w.trim().isNotEmpty) {
         heard.text = w.trim();
         await _write();
+      } else if (v != null && heard.text.trim().isEmpty) {
+        // this phone gave the microphone only to the recording: the voice is kept; from now on it only listens
+        await VlVoice.i.notBoth(keep);
+        if (mounted) toast(context, bi('Nothing was heard – press the mic again and say the work, or type it.', 'काहीच ऐकू आले नाही – mic पुन्हा दाबा आणि काम सांगा, किंवा टाइप करा.'));
       }
     } catch (e) {
+      if (rec) await VlVoice.i.stop();
       if (mounted) toast(context, bi('The phone could not listen – type the work.', 'फोन ऐकू शकला नाही – काम टाइप करा.'), bad: true);
     } finally {
       if (mounted) setState(() => listening = false);
@@ -1040,8 +1054,17 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
           }
         }
       }
+      // the voice (kept 60 days): sent first – no network or a refusal: the closing goes without it (the words are kept)
+      Map<String, dynamic>? audio;
+      if (voice != null && !kept) {
+        try {
+          final r = await s.api.call('vlVoice', [{'data': 'data:audio/mp4;base64,${base64Encode(voice!)}'}]);
+          if (r is Map && '${r['p'] ?? ''}'.isNotEmpty) audio = r.cast<String, dynamic>();
+        } catch (_) {}
+      }
       final x = <String, dynamic>{
         'session': '${widget.session['id']}', 'opId': opId, ...rd.out, 'heard': heard.text.trim(), 'aiText': aiText, 'text': text.text.trim(),
+        if (audio != null) 'audio': audio,
         'trips': asNum(trips.text), 'chainage': [chFrom.text.trim(), chTo.text.trim()].where((v) => v.isNotEmpty).join(' to '), 'work': work.text.trim(),
         'logRow': logRow, 'date': shiftDate, 'shift': shift,
       };

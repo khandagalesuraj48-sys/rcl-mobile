@@ -89,6 +89,12 @@ PushNote? pushNoteOf(Map<String, dynamic> d, {int myBuild = 0}) {
                       ? (id.hashCode & 0x3fffffff, 'w$id')
                       : (_n('$id|$title') ^ 0x77, '');
       return PushNote(id: no, title: tr(title), body: tr(body), payload: pay({'id': id}), seen: seen);
+    case 'vl':
+      // (3.132.0, Mechanical update-263) the Smart Log Book: a vehicle handed to him (a tap: his Smart Log Book); to the supervisors – a
+      // vehicle's GPS off / not seen (a tap: Live Tracking). The same message twice: one notification.
+      final id = '${d['id'] ?? ''}', title = '${d['title'] ?? ''}', body = '${d['body'] ?? ''}';
+      if (title.isEmpty) return null;
+      return PushNote(id: _n('vl|$id|$title') ^ 0x5a17, title: tr(title), body: tr(body), payload: pay({'id': '${d['open'] ?? ''}' == 'vtrack' ? 'vtrack' : 'slb'}));
     case 'upd':
       final b = int.tryParse('${d['build'] ?? ''}') ?? 0, v = '${d['version'] ?? ''}';
       if (v.isEmpty || (myBuild > 0 && b > 0 && b <= myBuild)) return null;

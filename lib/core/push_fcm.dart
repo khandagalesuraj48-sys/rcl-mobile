@@ -82,6 +82,7 @@ class Fcm {
       return;
     }
     if (t == 'cr' && here) unawaited(s.liveTick()); // (the lists of Approvals – fresh)
+    if (t == 'vl' && here) unawaited(s.liveTick()); // (3.132.0) a vehicle handed to him: Home reads again
     await show(d, s.api.keep);
   }
 

@@ -1,6 +1,6 @@
 /* MACHINERY (Home → Machinery) – the web's "Master" group in the app's own screens (3.4.0): Asset Master, Vendor Master,
  * Vendor BOQ, Vehicle Compliance and Log Book Format, each by his access (as the web's menu: Master, Vendor Master, Vendor BOQ,
- * Vehicle Compliance; Log Book Format = Master). */
+ * Vehicle Compliance; Log Book Format = Master; 3.132.0: Driver Master). */
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
@@ -13,6 +13,7 @@ import '../ui/widgets.dart';
 import 'boq.dart';
 import 'compliance.dart';
 import 'lb_formats.dart';
+import 'slb_admin.dart' show openDriverMaster;
 import 'machinery.dart';
 import 'vendors.dart';
 import '../ui/ask_bot.dart';
@@ -29,6 +30,8 @@ final kMasterPages = [
   MasterPage('Vendor Master', 'व्हेंडर मास्टर', 'Owners of the assets: GST, PAN, bank', 'office_building', 'Vendor Master', C.blueSoft, openVendors),
   MasterPage('Vendor BOQ', 'व्हेंडर BOQ', 'Rate contracts, amendments, rate check', 'receipt', 'Vendor BOQ', C.purpleSoft, (c) => openBoq(c)),
   MasterPage('Vehicle Compliance', 'वाहन कागदपत्रे', 'Tax, PUC, Permit, Fitness, Insurance – renew', 'shield', 'Vehicle Compliance', C.amberSoft, openCompliance),
+  // (3.132.0, Mechanical update-263) the Smart Log Book's drivers and operators – its own access "Driver Master"
+  MasterPage('Driver Master', 'ड्रायव्हर मास्टर', 'Drivers and operators: mobile, licence, the phone sign-in', 'clipboard', 'Driver Master', C.purpleSoft, openDriverMaster),
   MasterPage('Log Book Format', 'लॉगबुक फॉरमॅट', 'The print format of each machinery\'s Log Book', 'notebook', 'Master', C.slateSoft, openLbFormats),
 ];
 

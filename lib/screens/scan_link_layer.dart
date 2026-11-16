@@ -16,6 +16,8 @@ import '../ui/widgets.dart';
 import 'approvals.dart' show ApprovalsScreen;
 import 'attach_box.dart' show CaptureScreen;
 import 'call.dart' show CallPickScreen;
+import 'slb_admin.dart' show LiveTrackingScreen;
+import 'smart_logbook.dart' show SmartLogBookScreen;
 
 class ScanLinkLayer extends StatefulWidget {
   const ScanLinkLayer({super.key, required this.nav, required this.child, this.lock});
@@ -113,6 +115,14 @@ class _ScanLinkLayerState extends State<ScanLinkLayer> {
         await nav.push(MaterialPageRoute<void>(builder: (_) => const ApprovalsScreen()));
       case 'missed':
         await nav.push(MaterialPageRoute<void>(builder: (_) => const CallPickScreen()));
+      case 'vl':
+        // (3.132.0) the Smart Log Book's message: GPS off / not seen → Live Tracking (with its access); a vehicle handed to him → his
+        // Smart Log Book (Accept / Refuse there)
+        if (tap.id == 'vtrack' && s.canSee('Live Tracking')) {
+          await nav.push(MaterialPageRoute<void>(builder: (_) => const LiveTrackingScreen()));
+        } else if (tap.id != 'vtrack' && s.canEdit('Log Book')) {
+          await nav.push(MaterialPageRoute<void>(builder: (_) => const SmartLogBookScreen()));
+        }
       case 'ring':
         // Answer on the notification: the ring that comes (or is there) is answered; only looking: its own ring screen
         if (tap.answer) {

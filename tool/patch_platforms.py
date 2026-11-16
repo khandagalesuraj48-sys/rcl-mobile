@@ -108,11 +108,13 @@ def gradle(s):
 
 ROOT_KT = ('\n// (3.11.0) file_picker 11 (and 3.15.0 speech_to_text 7.5) leave their Kotlin code to AGP 9\'s built-in Kotlin, which this project\n'
            '// keeps off (android.builtInKotlin=false): their Kotlin is compiled with the Kotlin plugin, as the other plugins do.\n'
-           'subprojects {\n    if (name == "file_picker" || name == "speech_to_text") {\n        pluginManager.withPlugin("com.android.library") {\n'
+           'subprojects {\n    if (name == "file_picker" || name == "speech_to_text" || name == "record_android") {\n        pluginManager.withPlugin("com.android.library") {\n'
            '            if (!pluginManager.hasPlugin("org.jetbrains.kotlin.android")) pluginManager.apply("org.jetbrains.kotlin.android")\n        }\n    }\n}\n')
 def root_gradle(s):
     if 'name == "file_picker")' in s:      # (3.15.0) an older patch: speech_to_text added to it
-        return s.replace('name == "file_picker")', 'name == "file_picker" || name == "speech_to_text")')
+        return s.replace('name == "file_picker")', 'name == "file_picker" || name == "speech_to_text" || name == "record_android")')
+    if 'name == "speech_to_text")' in s:      # (3.132.0) record_android added to it
+        return s.replace('name == "speech_to_text")', 'name == "speech_to_text" || name == "record_android")')
     return s if 'name == "file_picker"' in s else s + ROOT_KT
 
 USES = [('NSCameraUsageDescription', 'Sketchline uses the camera for the photos of an entry (Diesel Issue and others).'),
@@ -120,7 +122,9 @@ USES = [('NSCameraUsageDescription', 'Sketchline uses the camera for the photos 
         ('NSMicrophoneUsageDescription', 'Sketchline uses the microphone when you talk with the assistant and for a screen-share help call.'),
         ('NSPhotoLibraryUsageDescription', 'Sketchline lets you choose a photo for an entry.'),
         ('NSFaceIDUsageDescription', 'Sketchline opens with your Face ID, so that nobody else can open it on this iPhone.'),      # (3.27.0) the app lock
-        ('NSSpeechRecognitionUsageDescription', 'Sketchline turns what you say to the assistant into words (a question or an entry).')]
+        ('NSSpeechRecognitionUsageDescription', 'Sketchline turns what you say to the assistant into words (a question or an entry).'),
+        # (3.132.0, Mechanical update-263) the Smart Log Book: the place of the vehicle while it is with the driver, also in the background
+        ('NSLocationAlwaysAndWhenInUseUsageDescription', 'Sketchline shares the place of the vehicle with you while it is on duty (Smart Log Book), also when the app is in the background.')]
 def plist(s):
     if '<key>CFBundleDisplayName</key>' in s:
         s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1Sketchline\2', s, count=1)
@@ -129,6 +133,11 @@ def plist(s):
     for k, v in USES:
         if '<key>%s</key>' % k not in s: s = s.replace('<dict>', '<dict>\n\t<key>%s</key>\n\t<string>%s</string>' % (k, v), 1)
     s = s.replace('Sketchline uses the microphone for a screen-share help call.', dict(USES)['NSMicrophoneUsageDescription'])
+    # (3.132.0) the iPhone keeps sending the vehicle's place while the app is in the background (its blue bar shows it)
+    if '<key>UIBackgroundModes</key>' not in s:
+        s = s.replace('<dict>', '<dict>\n\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>location</string>\n\t</array>', 1)
+    elif '<string>location</string>' not in s:
+        s = re.sub(r'(<key>UIBackgroundModes</key>\s*<array>)', r'\1\n\t\t<string>location</string>', s, count=1)
     return s
 
 # ---------- (3.19.0) WINDOWS – run with --windows right after `flutter create --platforms=windows` made windows/ ----------
