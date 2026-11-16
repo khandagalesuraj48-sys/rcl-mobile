@@ -2564,10 +2564,7 @@ class _EntryFormState extends State<EntryForm> {
               ],
               _unit == 'kg' ? _label('Kg', 'किलो') : _label('Litres', 'लिटर'),
               _beside(_shots ? kPhotoKinds.firstWhere((p) => p.key == 'pump') : null, _qtyField()),
-              // (3.129.0) the other sites' form stays exactly as it was (his word of 16-11-2026: "other site che diesel issue style change
-              // hou naye apan fkt ho change keley") – HO's fill in steps has no quick litres
-              const SizedBox(height: 10),
-              _chips<num>(const [(20, '20'), (50, '50'), (100, '100'), (150, '150'), (200, '200')], q, (v) => setState(() => qty.text = '$v')),
+              // (3.129.0, asked 16-11-2026: "20/50/100/150/200 he kadhunch tak he nkoh aahe") no quick litres – on every site
               // the photos that fill no box (the vehicle with its driver, the register / the pump's bill – and the dashboard when no
               // reading is asked): side by side
               if (_shots) ...[
