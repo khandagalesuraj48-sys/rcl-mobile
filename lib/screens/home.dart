@@ -1311,8 +1311,13 @@ class _HomeCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
-    final act = s.cards.where((c) => c.active).toList();
-    final total = act.fold<num>(0, (a, c) => a + c.balance);
+    // (3.129.0, Mechanical update-258, asked 16-11-2026: "fuel card balance mhannje account balance aahe … ethe account balance disayla
+    // haw") the cards of a fuel account all show that ONE balance: the account is counted once – never its cards added up; a card on
+    // its own (no account) with its own balance, as before
+    final accts = s.accounts.where((a) => a.active).toList();
+    final act = s.cards.where((c) => c.active && s.accountOf(c) == null).toList();
+    final total = accts.fold<num>(0, (a, x) => a + x.balance) + act.fold<num>(0, (a, c) => a + c.balance);
+    final none = accts.isEmpty && act.isEmpty;
     final open = s.canSee('Fuel Cards') ? () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FuelCardsScreen())) : null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(Sp.edge, 12, Sp.edge, 0),
@@ -1341,11 +1346,13 @@ class _HomeCards extends StatelessWidget {
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Fuel cards – balance', mr: 'फ्युएल कार्ड – शिल्लक', style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
+                    accts.isNotEmpty
+                        ? const Text('Fuel account – balance', mr: 'फ्युएल account – शिल्लक', key: Key('home-acct-title'), style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500))
+                        : const Text('Fuel cards – balance', mr: 'फ्युएल कार्ड – शिल्लक', style: TextStyle(fontSize: 14, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w500)),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
-                      child: Text(act.isEmpty ? '–' : rupees(total), key: const Key('home-cards-total'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+                      child: Text(none ? '–' : rupees(total), key: const Key('home-cards-total'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
                     ),
                   ]),
                 ),
@@ -1357,10 +1364,21 @@ class _HomeCards extends StatelessWidget {
                 ),
               ]),
               const SizedBox(height: 8),
-              if (act.isEmpty)
+              if (none)
                 const Text('No fuel card yet – add them in Fuel Cards.', mr: 'अजून fuel card नाही – Fuel Cards मध्ये भरा.', style: TextStyle(fontSize: 12.5, color: Color(0xE6FFFFFF)))
               else
                 Wrap(spacing: 8, runSpacing: 6, children: [
+                  // (3.129.0) each account once, with its balance (red under its "Alert below ₹" or below 0)
+                  for (final a in accts)
+                    Container(
+                      key: Key('home-acct-${a.name}'),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: a.balance < 0 || a.low ? C.red : Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(12)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        if (a.low) const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.warning_amber_rounded, size: 15, color: Colors.white)),
+                        Text('${a.name}  ${rupees(a.balance)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                      ]),
+                    ),
                   for (final c in act)
                     Container(
                       key: Key('home-card-${c.name}'),

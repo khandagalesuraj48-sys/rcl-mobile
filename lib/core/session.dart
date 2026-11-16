@@ -81,6 +81,23 @@ class FuelCard {
   bool get low => active && lowAt != null && balance < lowAt!;
   /// 08/2029
   String get expiryMY => RegExp(r'^\d{4}-\d{2}$').hasMatch(expiry) ? '${expiry.substring(5)}/${expiry.substring(0, 4)}' : '';
+  /// (3.129.0, Mechanical update-258) its fuel account ('' = a card on its own, as before) – the account holds the balance
+  String get account => '${m['account'] ?? ''}';
+  /// (3.129.0, Mechanical update-258) a fuel card's whole number ('' = not given / a bank card)
+  String get cardNo => '${m['cardNo'] ?? ''}';
+}
+
+/// (3.129.0, Mechanical update-258, asked 16-11-2026: "fuel card balance mhannje account balance aahe") a fuel ACCOUNT (BPCL
+/// SmartFleet …): the payments go onto it, its cards (one a vehicle) spend it – every card of it shows this one balance.
+class FuelAccount {
+  FuelAccount(this.m);
+  final Map<String, dynamic> m;
+  String get name => '${m['name'] ?? ''}';
+  String get company => '${m['company'] ?? ''}';
+  bool get active => m['active'] != false;
+  num get balance => m['balance'] is num ? m['balance'] as num : 0;
+  num? get lowAt => m['lowAt'] is num && (m['lowAt'] as num) > 0 ? m['lowAt'] as num : null;
+  bool get low => active && lowAt != null && balance < lowAt!;
 }
 
 class Machine {
@@ -348,6 +365,10 @@ class Session extends ChangeNotifier {
   List<String> serverFuels = [];
   List<FuelCard> cards = [];
   FuelCard? card(String name) { final k = name.trim().toUpperCase(); for (final c in cards) { if (c.name.toUpperCase() == k) return c; } return null; }
+  /// (3.129.0, Mechanical update-258) the fuel accounts with their balances (with the stock, a save's answer, the dashboard)
+  List<FuelAccount> accounts = [];
+  /// The account of [c] (null: a card on its own)
+  FuelAccount? accountOf(FuelCard? c) { final k = (c?.account ?? '').trim().toUpperCase(); if (k.isEmpty) return null; for (final a in accounts) { if (a.name.toUpperCase() == k) return a; } return null; }
   /// The cards that may pay for [m] (Active; its cars – none = every car), then Cash
   List<String> payFor(Machine? m) => [for (final c in cards) if (c.active && (c.cars.isEmpty || (m != null && c.cars.any((x) => _nk(x) == _nk(m.id))))) c.name, kCash];
   static String _nk(String v) => v.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
@@ -965,6 +986,12 @@ class Session extends ChangeNotifier {
     cards = [for (final x in l.whereType<Map>()) FuelCard(x.cast<String, dynamic>())];
   }
 
+  /// (3.129.0, Mechanical update-258) the accounts as the server sent them (with the stock and with the cards)
+  void setAccounts(dynamic l) {
+    if (l is! List) return;
+    accounts = [for (final x in l.whereType<Map>()) FuelAccount(x.cast<String, dynamic>())];
+  }
+
   void setStock(dynamic s) {
     if (s is! Map) return;
     final t = s['stock'];
@@ -975,6 +1002,7 @@ class Session extends ChangeNotifier {
     if (hd is Map) stockHeld = {for (final e in hd.entries) if (e.value is Map) '${e.key}': {for (final x in (e.value as Map).entries) if (x.value is num) '${x.key}': x.value as num}};
     if (by is Map && hd == null) stockHeld = {};
     setCards(s['cards']);      // (3.45.0) a site on fuel cards: the cards' balances
+    setAccounts(s['accounts']);      // (3.129.0, Mechanical update-258) and the accounts' – the balance every card of one shows
     notifyListeners();
   }
 
@@ -1512,6 +1540,7 @@ class Session extends ChangeNotifier {
     fuelMode = '';
     serverFuels = [];
     cards = [];
+    accounts = [];
     admin = false;
     superAdmin = false;
     tester = false;

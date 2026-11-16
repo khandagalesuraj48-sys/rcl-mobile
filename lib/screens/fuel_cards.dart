@@ -72,6 +72,7 @@ class _FuelCardsScreenState extends State<FuelCardsScreen> {
       final p = (await s.api.call('getCardPayments', [{'from': from, 'to': to}]) as Map).cast<String, dynamic>();
       if (my != _seq || !mounted) return;
       s.setCards(c['cards']);
+      s.setAccounts(c['accounts']);      // (3.129.0, Mechanical update-258)
       setState(() {
         pays = [for (final x in (p['rows'] as List? ?? const []).whereType<Map>()) x.cast<String, dynamic>()];
         payTotal = asNum(p['total']) ?? 0;
@@ -226,6 +227,7 @@ class _FuelCardsScreenState extends State<FuelCardsScreen> {
       try {
         final r = (await s.api.call('deleteCardPayment', ['${p['id']}'], true) as Map).cast<String, dynamic>();
         s.setCards(r['cards']);
+        s.setAccounts(r['accounts']);      // (3.129.0, Mechanical update-258)
         if (r['stock'] != null) s.setStock(r['stock']);
         if (mounted) toast(context, '${p['id']} deleted.');
         _load();
@@ -325,6 +327,7 @@ class _CardFormState extends State<CardForm> {
       final r = (await s.api.call('saveCard', [{'was': widget.card?.name ?? '', 'name': name.text.trim(), 'type': type, 'last4': last4.text.trim(), 'opening': asNum(opening.text) ?? '', 'openDate': openDate, 'active': active, 'cars': cars.toList(),
         'issuer': issuer.text.trim(), 'holder': holder.text.trim(), 'expiry': expiry.text.trim(), 'custId': custId.text.trim(), 'lowAt': lowAt.text.trim()}], true) as Map).cast<String, dynamic>();
       s.setCards(r['cards']);
+      s.setAccounts(r['accounts']);      // (3.129.0, Mechanical update-258)
       if (r['stock'] != null) s.setStock(r['stock']);
       if (!mounted) return;
       toast(context, r['added'] == true ? 'Fuel card ${r['name']} added.' : 'Fuel card ${r['name']} saved.');
@@ -471,6 +474,7 @@ class _PayFormState extends State<PayForm> {
     try {
       final r = (await (e == null ? s.api.call('saveCardPayment', [d], true) : s.api.call('updateCardPayment', ['${e['id']}', d], true)) as Map).cast<String, dynamic>();
       s.setCards(r['cards']);
+      s.setAccounts(r['accounts']);      // (3.129.0, Mechanical update-258)
       if (r['stock'] != null) s.setStock(r['stock']);
       if (!mounted) return;
       toast(context, 'Payment ${r['id']} saved.');

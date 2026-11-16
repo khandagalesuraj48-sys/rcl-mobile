@@ -177,6 +177,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final r = (await s.api.call('getCardDash', [{'from': from, 'to': to}]) as Map).cast<String, dynamic>();
       if (!mounted || seq != _seq) return;
       s.setCards(r['cards']);
+      s.setAccounts(r['accounts']);      // (3.129.0, Mechanical update-258)
       CarPhotos.i.putAll([for (final c in (r['cars'] as List? ?? const []).whereType<Map>()) c.cast<String, dynamic>()]);      // (3.86.0) their photos
       setState(() {
         cd = r;

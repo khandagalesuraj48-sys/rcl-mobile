@@ -15,6 +15,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.129.0 (16-11-2026 – Mechanical update-259; his pictures approved: "user diesel issue jewa buton dabel first vehicle number ani
+dashbord photo … lagech next selct crd or cash … pump dispenser bill ani other … recent user tyache khali all … auto fill manual edit pn
+ani save"; "ho ha flow fkt ho app user sathi asel … other side madhe ha badal nahi zala pahije"; "dispensor photo required bill ch pn
+required … payment slip … card ni bharo ki cash photo required"; "ai khup storng haway"):** at a site on fuel cards (HO) a NEW fill is four
+steps – **Vehicle** (the dashboard photo, its KM read by the server's AI; no number-plate photo) · **Paid by** (Card or Cash; the account's
+one balance; the cards this person paid with last on top, then all the cards that may pay for the vehicle with their vehicles, its own
+first, searchable) · **Photos** (pump dispenser, pump bill, payment slip – all three needed, for Card and Cash; Other photos as many as
+needed, up to 20; the AI reads the three TOGETHER and the server checks them against each other – the litres, rate and amount fill their
+boxes, which stay his to change; what to check is shown) · **Save** (everything once more, a line pressed opens its step). Back keeps
+everything. The same entry, save, checks, no-network keeping and verification as the form. An edit, a correction and every other site:
+the form as before. Home at HO: the fuel ACCOUNT's balance (each account once – never its cards added up). The 20 / 50 / 100 / 150 / 200
+litre buttons are gone from the app. (3.128.0 is the open "Sketchline Beta" pull request.)
+
 **Version 3.127.1 (15-11-2026 – his picture: "screen bgh ashi distey, fix krayla lagel – te cut zali"):** the lock screen fills the
 whole screen. A Scaffold's page is only as wide as what is in it, so on a phone wider than 360 the lock stood at the left, as wide
 as its Unlock button (280), the rest of the screen plain. `SizedBox.expand` around it; the screen tests check that the PIN pad, the

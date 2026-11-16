@@ -64,6 +64,8 @@ class _Shot {
   /// (3.85.0) the photo as taken (its place and time) – with no network it stays on this phone and goes with the kept entry
   TakenPhoto? taken;
   bool get onPhone => path.isEmpty && taken != null && jpg != null;
+  /// (3.129.0) an Other photo: its own name for the kept entry on this phone (the draft)
+  String tag = '';
 }
 
 /// (3.1.13) a bill copy of an inward: just taken / picked (jpg, being sent until it has its path), or one the inward has (url).
@@ -122,6 +124,26 @@ class _EntryFormState extends State<EntryForm> {
   bool get _sends => SessionScope.read(context).flowWill(k.module, dates: [date], qty: asNum(qty.text) ?? 0);
   bool get issue => k.key == 'issue';
 
+  /* (3.129.0, Mechanical update-259, asked 16-11-2026 – his pictures approved: "user diesel issue jewa buton dabel first vehicle number
+   * ani dashbord photo … lagech next selct crd or cash … cash kel tr tithech prt photos magel pump dispenser bill ani other … jr card
+   * kel lagesh show hotil recent user tyache khali all … card select hoil lagech photos same option … auto fill manual edit pn ani save";
+   * "ho ha flow fkt ho app user sathi asel … other side madhe ha badal nahi zala pahije"; "dispensor photo required bill ch pn required
+   * … payment slip … card ni bharo ki cash photo required"; "ai khup storng haway") A NEW FILL AT A SITE ON FUEL CARDS (HO) in four
+   * steps – Vehicle (and its dashboard photo, the KM read by the AI) · Paid by (Card or Cash; the cards this person used last on top,
+   * then all of them with their vehicles) · Photos (the dispenser, the pump bill and the payment slip – each needed – and Other photos;
+   * the AI reads the three together, the boxes stay his to change) · Save (everything once more). Back keeps what is filled. The same
+   * entry, the same server checks and the same save as the form; an edit, a correction and every other site: the form as before. */
+  int step = 0;
+  /// '' = not picked yet · 'card' (its name in [source]) · 'cash'
+  String payMode = '';
+  final others = <_Shot>[];
+  /// what the AI read on the dispenser / bill / slip: {wait: true} · {litres, rate, amount, check} · {error} · {phone: true …} · {none: true}
+  Map<String, dynamic>? fillAi;
+  int fillTok = 0;
+  final cardQ = TextEditingController();
+  /// the cards this person paid with at this site, newest first: (name, yyyy-mm-dd)
+  List<(String, String)> recentCards = [];
+
   /// (3.97.0, his design 6) the machinery saved last on this phone at this site (newest first) – one tap to pick it again
   List<String> recent = [];
   String _recentKey(Session s) => 'recent_mach|${s.site?.code ?? ''}';
@@ -136,6 +158,23 @@ class _EntryFormState extends State<EntryForm> {
   void _remember(Session s, Machine m) {
     recent = [m.id, ...recent.where((x) => x != m.id)].take(6).toList();
     s.api.keep.write(_recentKey(s), jsonEncode(recent)).catchError((_) {});
+  }
+
+  /// (3.129.0) the cards this person paid with here (this phone), newest first
+  String _cardKey(Session s) => 'recent_card|${s.site?.code ?? ''}|${s.email}';
+  Future<void> _loadRecentCards(Session s) async {
+    try {
+      final v = await s.api.keep.read(_cardKey(s));
+      final l = v == null || v.isEmpty ? <(String, String)>[] : [for (final e in jsonDecode(v) as List) if (e is List && e.length == 2) ('${e[0]}', '${e[1]}')];
+      if (mounted) setState(() => recentCards = l);
+    } catch (_) {/* none kept */}
+  }
+
+  void _rememberCard(Session s) {
+    if (!s.cardSite || source == kCash || source.isEmpty) return;
+    final k = source.toUpperCase();
+    recentCards = [(source, date), ...recentCards.where((x) => x.$1.toUpperCase() != k)].take(8).toList();
+    s.api.keep.write(_cardKey(s), jsonEncode([for (final x in recentCards) [x.$1, x.$2]])).catchError((_) {});
   }
 
   /// (3.97.0, his design 7) the steps of this entry: how many are done (one after the other) – the next one is "now"
@@ -163,6 +202,7 @@ class _EntryFormState extends State<EntryForm> {
     final s = SessionScope.read(context);
     if (source.isEmpty) {
       if (issue && widget.edit == null) _loadRecent(s);      // (3.97.0, design 6)
+      if (issue && widget.edit == null && s.cardSite) _loadRecentCards(s);      // (3.129.0)
       date = s.today.isNotEmpty ? s.today : dateKey(DateTime.now());
       // his usual diesel place and shift (Settings)
       final loc = s.pref('loc');
@@ -239,9 +279,14 @@ class _EntryFormState extends State<EntryForm> {
         billNo.text = v('billNo');
         billDate = v('billDate');
         for (final x in (d['shots'] as List? ?? const []).whereType<Map>()) {
-          final kind = '${x['k'] ?? ''}', path = '${x['p'] ?? ''}', jpg = dr.photo(kind);
-          if (kind.isNotEmpty && path.isNotEmpty && jpg != null) shots[kind] = _Shot()..jpg = jpg..path = path;
+          final kind = '${x['k'] ?? ''}', path = '${x['p'] ?? ''}', tag = '${x['d'] ?? ''}', jpg = dr.photo(kind == 'oth' ? tag : kind);
+          if (kind == 'oth' && tag.isNotEmpty && path.isNotEmpty && jpg != null) {
+            others.add(_Shot()..jpg = jpg..path = path..tag = tag);      // (3.129.0) the Other photos
+          } else if (kind.isNotEmpty && kind != 'oth' && path.isNotEmpty && jpg != null) {
+            shots[kind] = _Shot()..jpg = jpg..path = path;
+          }
         }
+        if (const ['card', 'cash'].contains(v('pay'))) payMode = v('pay');      // (3.129.0) Card or Cash, as picked
         draftAt = v('at');
       });
       if (issue && machine != null) _hist();
@@ -254,7 +299,10 @@ class _EntryFormState extends State<EntryForm> {
   Map<String, dynamic>? _snap() {
     final boxes = {'qty': qty, 'km': km, 'hr': hr, 'driver': driver, 'remark': remark, 'pump': pump, 'rate': rate, 'billNo': billNo, 'amount': amount};
     final typed = {for (final e in boxes.entries) if (e.value.text.trim().isNotEmpty && !(e.key == 'driver' && driverAuto)) e.key: e.value.text};
-    final photos = [for (final e in shots.entries) if (e.value.path.isNotEmpty) {'k': e.key, 'p': e.value.path}];
+    final photos = [
+      for (final e in shots.entries) if (e.value.path.isNotEmpty) {'k': e.key, 'p': e.value.path},
+      for (final o in others) if (o.path.isNotEmpty) {'k': 'oth', 'p': o.path, 'd': o.tag},      // (3.129.0)
+    ];
     if (machine == null && typed.isEmpty && photos.isEmpty) return null;
     return {
       'date': date,
@@ -265,6 +313,7 @@ class _EntryFormState extends State<EntryForm> {
       'way': way,
       'no': machine?.id ?? '',
       'billDate': billDate,
+      if (payMode.isNotEmpty) 'pay': payMode,      // (3.129.0)
       ...typed,
       'shots': photos,
     };
@@ -279,6 +328,7 @@ class _EntryFormState extends State<EntryForm> {
       shots.clear();
       ai.clear();
       aiPut.clear();
+      _hoReset();
       for (final c in [qty, km, hr, driver, remark, rate, billNo, pump, amount]) {
         c.clear();
       }
@@ -325,7 +375,7 @@ class _EntryFormState extends State<EntryForm> {
   @override
   void dispose() {
     _draft?.close();
-    for (final c in [qty, km, hr, driver, remark, pump, rate, billNo, amount, tcPh, tcRs]) {
+    for (final c in [qty, km, hr, driver, remark, pump, rate, billNo, amount, tcPh, tcRs, cardQ]) {
       c.dispose();
     }
     super.dispose();
@@ -521,10 +571,13 @@ class _EntryFormState extends State<EntryForm> {
         shots.clear();
         km.clear();
         hr.clear();
+        others.clear();      // (3.129.0)
+        fillAi = null;
       }
       machine = m;
       way = m.debit ? '' : m.dieselWay;
       _fuelSource(SessionScope.read(context));
+      if (payMode == 'card' && !SessionScope.read(context).payFor(m).contains(source)) payMode = '';      // (3.129.0) its card picked again
     });
     _hist();
     _balance();
@@ -544,10 +597,13 @@ class _EntryFormState extends State<EntryForm> {
         shots.clear(); // the photos belong to one machinery (its number is printed on them)
         km.clear();
         hr.clear();
+        others.clear();      // (3.129.0)
+        fillAi = null;
       }
       machine = m;
       way = m.debit ? '' : m.dieselWay;      // (3.1.8) by itself, from the Asset Master
       _fuelSource(SessionScope.read(context));
+      if (payMode == 'card' && !SessionScope.read(context).payFor(m).contains(source)) payMode = '';      // (3.129.0) its card picked again
     });
     _hist();
     _balance();
@@ -572,14 +628,14 @@ class _EntryFormState extends State<EntryForm> {
         final sc = await _scan(pk, m);
         if (sc == null || !mounted || machine?.id != m.id) return;
         if (sc.failed || sc.file == null) {
-          p = await takePhoto(pk.en, m.id); // this phone's camera cannot be opened in the app: the phone's camera app, as before
+          p = await cameraShot(pk.en, m.id); // this phone's camera cannot be opened in the app: the phone's camera app, as before
         } else {
           p = await photoFrom(sc.file!, pk.en, m.id);
           final v = sc.value;
           if (v != null) live = pk.key == 'pump' ? {'litres': v, 'check': sc.check} : (_want(pk.key, m).km ? {'km': v, 'check': sc.check} : {'hr': v, 'check': sc.check});
         }
       } else {
-        p = await takePhoto(pk.en, m.id);
+        p = await cameraShot(pk.en, m.id);
       }
       if (p == null || !mounted || machine?.id != m.id) return;
       final shot = p;
@@ -1004,8 +1060,11 @@ class _EntryFormState extends State<EntryForm> {
     ].join(' ');
   }
 
-  bool get _photoSending => shots.values.any((x) => x.busy);
-  List<Map<String, String>> get _photoList => [for (final pk in kPhotoKinds) if ((shots[pk.key]?.path ?? '').isNotEmpty) {'k': pk.key, 'p': shots[pk.key]!.path}];
+  bool get _photoSending => shots.values.any((x) => x.busy) || others.any((x) => x.busy);
+  List<Map<String, String>> get _photoList => [
+        for (final pk in kPhotoKinds) if ((shots[pk.key]?.path ?? '').isNotEmpty) {'k': pk.key, 'p': shots[pk.key]!.path},
+        for (final o in others) if (o.path.isNotEmpty) {'k': 'oth', 'p': o.path},      // (3.129.0) the Other photos
+      ];
 
   // ---------- save ----------
   Map<String, dynamic> _data() => switch (k.key) {
@@ -1034,6 +1093,11 @@ class _EntryFormState extends State<EntryForm> {
     if (k.key == 'transfer' && s.placeFuel(from) != s.placeFuel(to)) return 'A transfer goes only between places of the same fuel: $from holds ${s.placeFuel(from)}, $to holds ${s.placeFuel(to)}.';
     if (!((asNum(qty.text) ?? 0) > 0)) return _unit == 'kg' ? 'Enter the kg.' : 'Enter the litres.';
     if (issue && s.cardSite && !((asNum(amount.text) ?? 0) > 0)) return 'Enter the Amount (₹) of this fill.';      // (3.45.0)
+    if (_ho) {      // (3.129.0) the HO fill in steps: Card or Cash picked, the three photos taken
+      final pay = _payProblem(s), ph = _photoProblem();
+      if (pay.isNotEmpty) return pay;
+      if (ph.isNotEmpty) return ph;
+    }
     if (issue && tcDue != null && ed == null && asNum(tcPh.text) == null) return 'Tank check due: type the diesel found in the tank before filling.';      // (3.76.0, update-203)
     // (3.85.0, Mechanical update-211) more than the stock: the server says so and the app asks "keep it as stock short?" – no stop here
     return null;
@@ -1081,7 +1145,7 @@ class _EntryFormState extends State<EntryForm> {
         return;
       }
       // …the network is back: the photos that stayed on the phone go first
-      if (_keepable && shots.values.any((x) => x.onPhone)) {
+      if (_keepable && (shots.values.any((x) => x.onPhone) || others.any((x) => x.onPhone))) {
         if (!await _photosNow(s)) {
           await _keepNow(s, d, s.api.newRid());
           return;
@@ -1115,6 +1179,7 @@ class _EntryFormState extends State<EntryForm> {
       if (r['stock'] != null) s.setStock(r['stock']);
       if (issue && driver.text.trim().isNotEmpty && !s.drivers.contains(driver.text.trim())) s.drivers.add(driver.text.trim());
       if (issue && machine != null) _remember(s, machine!);      // (3.97.0, design 6) for the next one
+      if (issue) _rememberCard(s);      // (3.129.0) the card on top next time
       savedOne = true;
       _draft?.clear();
       draftAt = '';
@@ -1136,6 +1201,7 @@ class _EntryFormState extends State<EntryForm> {
         ai.clear();
         aiPut.clear();
         _billsReset();
+        _hoReset();
         for (final c in [qty, km, hr, remark, rate, billNo, amount, tcPh, tcRs]) {
           c.clear();
         }
@@ -1168,6 +1234,7 @@ class _EntryFormState extends State<EntryForm> {
           ai.clear();
           aiPut.clear();
           _billsReset();
+          _hoReset();
           for (final c in [qty, km, hr, remark, rate, billNo]) {
             c.clear();
           }
@@ -1198,8 +1265,18 @@ class _EntryFormState extends State<EntryForm> {
         paths.add({'k': pk.key, 'p': sh.path});
       }
     }
+    for (final o in others) {      // (3.129.0) the Other photos
+      final t = o.taken;
+      if (o.jpg == null) continue;
+      if (t != null) {
+        local.add({'kind': 'oth', 'jpg': o.jpg, 'lat': t.spot.lat, 'lng': t.spot.lng, 'acc': t.spot.acc, 'at': t.at.toUtc().toIso8601String(), 'no': m0?.id ?? ''});
+      } else if (o.path.isNotEmpty) {
+        paths.add({'k': 'oth', 'p': o.path});
+      }
+    }
     final d2 = {...d}..remove('photos');
     if (paths.isNotEmpty) d2['photos'] = paths;
+    if (issue) _rememberCard(s);      // (3.129.0)
     _draft?.clear();
     draftAt = '';
     await s.keepEntry(k.save, [d2], rid, '${tr(k.en)} · ${showDate(date)}${m0 != null ? ' · ${m0.id}' : ''} · ${qty.text.trim()} ${_unit == 'kg' ? 'kg' : 'L'}', photos: local);
@@ -1214,6 +1291,7 @@ class _EntryFormState extends State<EntryForm> {
       ai.clear();
       aiPut.clear();
       _billsReset();
+      _hoReset();
       for (final c in [qty, km, hr, remark, rate, billNo, amount, tcPh, tcRs]) {
         c.clear();
       }
@@ -1236,6 +1314,20 @@ class _EntryFormState extends State<EntryForm> {
         rethrow;
       } finally {
         if (mounted) setState(() => sh.busy = false);
+      }
+    }
+    for (final o in [...others]) {      // (3.129.0) the Other photos
+      final t = o.taken, m = machine;
+      if (!o.onPhone || t == null || m == null) continue;
+      setState(() => o.busy = true);
+      try {
+        final r = await s.api.call('dieselPhoto', [{'kind': 'oth', 'data': t.dataUrl, 'lat': t.spot.lat, 'lng': t.spot.lng, 'acc': t.spot.acc, 'at': t.at.toUtc().toIso8601String(), 'no': m.id}], true);
+        if (r is Map && mounted) setState(() => o.path = '${r['path'] ?? ''}');
+      } on ApiError catch (e) {
+        if (e.noConnection) return false;
+        rethrow;
+      } finally {
+        if (mounted) setState(() => o.busy = false);
       }
     }
     return true;
@@ -1277,7 +1369,7 @@ class _EntryFormState extends State<EntryForm> {
             const SizedBox(height: 10),
             Text([id, if ((d['no'] ?? '').toString().isNotEmpty) d['no'].toString(), '${fmtNum(asNum(d['qty']))} ${_unit == 'kg' ? 'kg' : 'L'}', if (asNum(d['amount']) != null) '₹ ${fmtNum(asNum(d['amount']))} · ${d['source']}', showDate(d['date']?.toString())].where((e) => e.isNotEmpty).join('  ·  '), textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w500, color: C.muted)),
             if ((d['photos'] as List?)?.isNotEmpty == true)
-              Padding(padding: const EdgeInsets.only(top: 6), child: Text(issue ? 'Photos: ${(d['photos'] as List).length} of 4' : '${tr('Bill copy')}: ${(d['photos'] as List).length}', style: const TextStyle(color: C.muted))),
+              Padding(padding: const EdgeInsets.only(top: 6), child: Text(issue ? (_ho ? 'Photos: ${(d['photos'] as List).length}' : 'Photos: ${(d['photos'] as List).length} of 4') : '${tr('Bill copy')}: ${(d['photos'] as List).length}', style: const TextStyle(color: C.muted))),
             const SizedBox(height: 22),
             Row(children: [
               Expanded(
@@ -1397,6 +1489,27 @@ class _EntryFormState extends State<EntryForm> {
     ];
   }
 
+  /// The Driver / Operator box: the names typed before are offered; (3.14.0) the last fill's driver put in by itself
+  Widget _driverBox(Session s) => Autocomplete<String>(
+        key: ValueKey('drv-$driverGen'), // (3.14.0) made again with the last fill's driver in it
+        initialValue: TextEditingValue(text: driver.text),
+        optionsBuilder: (v) => v.text.isEmpty ? const Iterable<String>.empty() : s.drivers.where((d) => d.toLowerCase().contains(v.text.toLowerCase())).take(8),
+        onSelected: (v) {
+          driver.text = v;
+          driverAuto = false;
+        },
+        fieldViewBuilder: (c, ctl, f, sub) => TextField(
+            key: const Key('d-driver'),
+            controller: ctl,
+            focusNode: f,
+            onChanged: (v) {
+              driver.text = v;
+              driverAuto = false;
+            },
+            textCapitalization: TextCapitalization.words,
+            decoration: InputDecoration(hintText: tr('Name (optional)'), prefixIcon: Icon(Icons.person_outline_rounded))),
+      );
+
   /// (3.44.0) the unit of what is typed: kg for CNG, litres for the others
   String get _unit {
     final s = SessionScope.read(context);
@@ -1494,7 +1607,7 @@ class _EntryFormState extends State<EntryForm> {
   /// the pump's bill only there)
   bool _asked(PhotoKind pk) {
     final card = SessionScope.read(context).cardSite;
-    return (pk.key != 'hrs' || (machine != null && _both(machine!))) && !(pk.key == 'reg' && card) && !(pk.key == 'bill' && !card);
+    return (pk.key != 'hrs' || (machine != null && _both(machine!))) && !(pk.key == 'reg' && card) && !(pk.key == 'bill' && !card) && pk.key != 'slip';      // (3.129.0) the slip: only the HO fill in steps
   }
 
   /// The photos that stand beside no box: every asked one but the dispenser's – and the dashboard's / the Hour meter's when
@@ -1559,6 +1672,793 @@ class _EntryFormState extends State<EntryForm> {
     );
   }
 
+  // ======================= (3.129.0, Mechanical update-259) THE HO FILL IN FOUR STEPS =======================
+  /// A new fill at a site on fuel cards (HO), by a person who may enter: the four steps – the rest as before
+  bool get _ho {
+    final s = SessionScope.read(context);
+    return issue && ed == null && widget.fix == null && s.cardSite && s.canEdit('Diesel Issue');
+  }
+
+  static const _fillKinds = ['pump', 'bill', 'slip'];
+
+  /// After a save (or "Start new"): the first step again, nothing picked, no photos (inside a setState)
+  void _hoReset() {
+    step = 0;
+    payMode = '';
+    others.clear();
+    fillAi = null;
+    fillTok++;
+    cardQ.clear();
+  }
+
+  static String _nk(String x) => x.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+  static String _cardWord(FuelCard c) => c.cardNo.isNotEmpty ? c.cardNo : c.name;
+
+  String _vehicleProblem(Session s) {
+    final m = machine;
+    if (m == null) return bi('Pick the vehicle.', 'गाडी निवडा.');
+    final f = s.fuelProblem(m, source);
+    if (f.isNotEmpty) return f;
+    if (!m.debit && m.dieselWay.isNotEmpty && way != kNoReading) {
+      if (hasKm(way) && asNum(km.text) == null) return bi('Type the KM reading – or take the dashboard photo, the AI reads it.', 'KM रीडिंग टाका – किंवा dashboard चा फोटो काढा, AI वाचेल.');
+      if (hasHr(way) && asNum(hr.text) == null) return bi('Type the hour meter reading.', 'तास मीटर रीडिंग टाका.');
+    }
+    return '';
+  }
+
+  String _payProblem(Session s) {
+    if (payMode == 'cash') return source == kCash ? '' : bi('Pick Card or Cash.', 'Card की Cash ते निवडा.');
+    if (payMode != 'card') return bi('Pick how it was paid – Card or Cash.', 'कशाने भरले ते निवडा – Card की Cash.');
+    if (source == kCash || !s.payFor(machine).contains(source)) return bi('Pick the card again – $source cannot pay for ${machine?.id ?? 'this vehicle'}.', 'कार्ड पुन्हा निवडा – $source ने ${machine?.id ?? 'या गाडी'} चे भरता येत नाही.');
+    return '';
+  }
+
+  static const _needed = [('pump', 'the pump dispenser', 'पंप डिस्पेन्सर'), ('bill', 'the pump bill', 'पंप बिल'), ('slip', 'the payment slip', 'पेमेंट स्लिप')];
+  String _photoProblem() {
+    for (final (k, en, mr) in _needed) {
+      if (shots[k]?.jpg == null) return bi('Take the photo of $en – it is needed.', '$mr चा फोटो काढा – तो लागतो.');
+    }
+    return '';
+  }
+
+  void _hoNext() {
+    final s = SessionScope.read(context);
+    final ph = _photoProblem();
+    final bad = switch (step) {
+      0 => _vehicleProblem(s),
+      1 => _payProblem(s),
+      _ => ph.isNotEmpty
+          ? ph
+          : !((asNum(qty.text) ?? 0) > 0)
+              ? (_unit == 'kg' ? 'Enter the kg.' : 'Enter the litres.')
+              : !((asNum(amount.text) ?? 0) > 0)
+                  ? 'Enter the Amount (₹) of this fill.'
+                  : '',
+    };
+    if (bad.isNotEmpty) {
+      setState(() => err = bad);
+      HapticFeedback.mediumImpact();
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    HapticFeedback.selectionClick();
+    setState(() {
+      step++;
+      err = '';
+    });
+  }
+
+  void _hoBack() {
+    if (step == 0) {
+      Navigator.pop(context, savedOne);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      step--;
+      err = '';
+    });
+  }
+
+  void _hoGo(int to) {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      step = to;
+      err = '';
+    });
+  }
+
+  /// Card or Cash picked: the photos at once ("card select hoil lagech photos"); the slip is read again against the card picked
+  void _pickPay(String name) {
+    HapticFeedback.selectionClick();
+    final again = payMode == 'card' && name != source && _fillKinds.any((k) => shots[k]?.jpg != null);
+    setState(() {
+      source = name;
+      payMode = name == kCash ? 'cash' : 'card';
+      err = '';
+      step = 2;
+    });
+    if (again || (name != kCash && fillAi == null && _fillKinds.any((k) => shots[k]?.jpg != null))) _fillRead();
+  }
+
+  // ---------- the photos of the steps ----------
+  /// A photo of [kind] (dash · pump · bill · slip · oth) taken, sent at once (no network: kept on this phone) and read by the AI
+  Future<void> _hoShoot(String kind) async {
+    final s = SessionScope.read(context), m = machine;
+    if (m == null) {
+      setState(() => err = bi('Pick the vehicle first – its number is printed on the photo.', 'आधी गाडी निवडा – फोटोवर तिचा नंबर छापला जातो.'));
+      return;
+    }
+    final oth = kind == 'oth';
+    if (oth && others.length >= kOtherMax) {
+      toast(context, bi('Up to $kOtherMax other photos.', 'जास्तीत जास्त $kOtherMax इतर फोटो.'), bad: true);
+      return;
+    }
+    final sh = oth ? (_Shot()..tag = 'oth${DateTime.now().microsecondsSinceEpoch}') : shots.putIfAbsent(kind, _Shot.new);
+    if (sh.busy) return;
+    final pk = oth ? kOtherPhoto : kPhotoKinds.firstWhere((p) => p.key == kind);
+    setState(() {
+      sh.busy = true;
+      err = '';
+    });
+    try {
+      final p = await cameraShot(pk.en, m.id);
+      if (p == null || !mounted || machine?.id != m.id) return;
+      setState(() {
+        sh.jpg = p.jpg;
+        sh.taken = p;
+        sh.path = ''; // a photo taken again: the new one is sent (the earlier one is not with the entry)
+        if (oth) others.add(sh);
+      });
+      if (kind == 'dash') {
+        _hoDashRead(m, p);
+      } else if (_fillKinds.contains(kind)) {
+        _fillRead();
+      }
+      if (s.offline) {
+        if (mounted) toast(context, bi('No network – the photo stays on this phone and goes with the entry.', 'नेटवर्क नाही – फोटो फोनवर राहतो आणि entry सोबत जाईल.'));
+        return;
+      }
+      Map r;
+      try {
+        r = (await s.api.call('dieselPhoto', [{'kind': kind, 'data': p.dataUrl, 'lat': p.spot.lat, 'lng': p.spot.lng, 'acc': p.spot.acc, 'at': p.at.toUtc().toIso8601String(), 'no': m.id}], true) as Map);
+      } on ApiError catch (e) {
+        if (!e.noConnection) rethrow;
+        if (mounted) toast(context, bi('No network – the photo stays on this phone and goes with the entry.', 'नेटवर्क नाही – फोटो फोनवर राहतो आणि entry सोबत जाईल.'));
+        return;
+      }
+      if (!mounted || machine?.id != m.id || sh.taken != p) return;
+      setState(() => sh.path = '${r['path'] ?? ''}');
+      final dr = _draft, jpg = sh.jpg;
+      if (dr != null && jpg != null && sh.path.isNotEmpty) dr.putPhoto(oth ? sh.tag : kind, jpg);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          if (sh.path.isEmpty) {
+            sh.jpg = null;
+            sh.taken = null;
+            if (oth) others.remove(sh);
+          }
+        });
+        toast(context, e is PhotoProblem ? e.message : errText(e), bad: true);
+      }
+    } finally {
+      if (mounted) setState(() => sh.busy = false);
+    }
+  }
+
+  /// The dashboard: read by the server's AI (the same as the web); no network / no AI there – read on this phone
+  Future<void> _hoDashRead(Machine m, TakenPhoto p) async {
+    if (!_reads('dash', m)) return;
+    final s = SessionScope.read(context);
+    if (s.offline) {
+      if (canOcr) _phoneRead('dash', m, p);
+      return;
+    }
+    final tok = ++aiTok;
+    setState(() => ai['dash'] = {'wait': true});
+    Map<String, dynamic> r;
+    try {
+      r = ((await s.api.call('getMeterReading', [{'kind': 'dash', 'data': await smallCopy(p.jpg), 'no': m.id}])) as Map).cast<String, dynamic>();
+    } catch (e) {
+      r = {'error': errText(e)};
+    }
+    if (!mounted || machine?.id != m.id || tok < aiTok - 4) return;
+    if ((r['off'] == true || r['error'] != null) && canOcr) {
+      _phoneRead('dash', m, p);
+      return;
+    }
+    setState(() {
+      if (r['off'] == true) {
+        ai.remove('dash');
+        return;
+      }
+      _putRead('dash', r);
+    });
+  }
+
+  /// The dispenser, the bill and the slip taken so far – read by the AI TOGETHER on the server (each checked against the others there);
+  /// no network / no AI – read on this phone. The boxes are filled only when empty or filled this way before (a typed number stays).
+  Future<void> _fillRead() async {
+    final s = SessionScope.read(context), m = machine;
+    if (m == null) return;
+    final have = [for (final k in _fillKinds) if (shots[k]?.jpg != null) (k, shots[k]!)];
+    if (have.isEmpty) return;
+    final tok = ++fillTok;
+    setState(() => fillAi = {'wait': true});
+    Map<String, dynamic> r;
+    try {
+      if (s.offline) throw ApiError('No network', code: 'net');
+      r = ((await s.api.call('getMeterReading', [
+        {'kind': 'fill', 'no': m.id, 'card': payMode == 'card' ? source : '', 'date': date, 'photos': [for (final (k, sh) in have) {'kind': k, 'data': await smallCopy(sh.jpg!)}]}
+      ])) as Map).cast<String, dynamic>();
+    } catch (e) {
+      r = {'error': errText(e)};
+    }
+    if (!mounted || tok != fillTok || machine?.id != m.id) return;
+    if (r['off'] == true || r['error'] != null) {
+      final ph = await _fillPhone(have);
+      if (!mounted || tok != fillTok) return;
+      r = ph ?? {'none': true};
+    }
+    setState(() {
+      fillAi = r;
+      _fill(qty, r['litres']);
+      _fill(rate, r['rate']);
+      _fill(amount, r['amount']);
+    });
+  }
+
+  /// The same three photos read on this phone (Google ML Kit – no internet): the litres and ₹ of the dispenser, the bill's litres, rate, ₹
+  Future<Map<String, dynamic>?> _fillPhone(List<(String, _Shot)> have) async {
+    if (!canOcr) return null;
+    double? litres, amt, rt;
+    try {
+      for (final (k, sh) in have) {
+        final raw = sh.taken?.raw ?? '', jpg = sh.jpg;
+        if (k == 'pump') {
+          final p = pumpFrom(await sevenOnPhoto(await ocrLines(path: raw, jpg: jpg), path: raw, jpg: jpg));
+          litres ??= p.litres;
+          amt ??= p.amount;
+        } else {
+          final b = billFrom(await ocrLines(path: raw, jpg: jpg));
+          litres ??= b.qty;
+          rt ??= b.rate;
+          amt ??= b.amount;
+        }
+      }
+    } catch (_) {/* what was read stays */}
+    if (litres == null && amt == null && rt == null) return {'none': true};
+    return {'litres': litres, 'rate': rt, 'amount': amt, 'check': '', 'phone': true};
+  }
+
+  // ---------- the page ----------
+  Widget _hoPage(Session s) {
+    const names = [('Vehicle', 'गाडी'), ('Paid by', 'कशाने भरले'), ('Photos', 'फोटो'), ('Save', 'सेव्ह')];
+    final last = step == 3;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (step > 0 && !busy) {      // the phone's Back: the step before (what is filled stays)
+          _hoBack();
+          return;
+        }
+        Navigator.pop(context, savedOne);
+      },
+      child: Scaffold(
+        appBar: toneBar(
+          Tone.diesel,
+          leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context, savedOne)),
+          titleSpacing: 0,
+          title: Row(children: [
+            PicDisc(k.pic),
+            const SizedBox(width: 10),
+            Expanded(child: TwoLang('New ${k.en}', k.mr, size: 19, weight: FontWeight.w700, color: Colors.white)),
+          ]),
+          actions: withAsk([GuideButton('diesel')]),
+        ),
+        body: PinTop(
+          top: StepBar(key: const Key('ho-steps'), steps: names, done: step, color: Tone.diesel.b),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 130),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 240),
+              switchInCurve: Curves.easeOutCubic,
+              transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(.06, 0), end: Offset.zero).animate(a), child: c)),
+              layoutBuilder: (cur, prev) => Stack(alignment: Alignment.topCenter, children: [...prev, if (cur != null) cur]),
+              child: Column(
+                key: ValueKey('ho-step-$step'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (step == 0 && draftAt.isNotEmpty && (machine != null || qty.text.isNotEmpty)) DraftLine(at: draftAt, color: k.color, onNew: _startNew),
+                  if (step == 0) VerifyStrip(module: k.module, margin: const EdgeInsets.only(top: 12)),
+                  ...switch (step) { 0 => _hoVehicle(s), 1 => _hoPaid(s), 2 => _hoPhotos(s), _ => _hoCheck(s) },
+                  if (err.isNotEmpty) InfoLine(err, bad: true, key: const Key('ho-err')),
+                ],
+              ),
+            ),
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            decoration: BoxDecoration(color: C.bg, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .05), blurRadius: 12, offset: const Offset(0, -4))]),
+            child: Row(children: [
+              Expanded(
+                flex: 2,
+                child: OutlinedButton.icon(key: const Key('ho-back'), onPressed: busy ? null : _hoBack, icon: const Icon(Icons.arrow_back_rounded), label: const Text('Back', mr: 'मागे')),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 3,
+                child: FilledButton.icon(
+                  key: Key(last ? 'ho-save' : 'ho-next'),
+                  style: FilledButton.styleFrom(backgroundColor: C.green),
+                  onPressed: busy ? null : (last ? _save : _hoNext),
+                  icon: busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)) : Icon(last ? Icons.check_circle_rounded : Icons.arrow_forward_rounded),
+                  label: Text(last ? (busy ? 'Saving…' : _sends ? 'Send to verification' : 'Save') : 'Next', mr: last ? '' : 'पुढे'),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _hoTitle(String en, String mr) => Padding(padding: const EdgeInsets.only(top: 18, bottom: 4, left: 2), child: TwoLang(en, mr, size: 21, weight: FontWeight.w800));
+
+  Widget _sec(String en, String mr) => Padding(
+        padding: const EdgeInsets.only(top: 14, bottom: 8, left: 2),
+        child: Text(en, mr: mr, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: C.muted, letterSpacing: .4)),
+      );
+
+  /// A note under the photos: blue = what was read; amber = what to check
+  Widget _note(String t, {bool warn = false, Key? key}) => Container(
+        key: key,
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: warn ? const Color(0xFFFFF7E6) : C.blueSoft, borderRadius: BorderRadius.circular(14)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(warn ? Icons.error_outline_rounded : Icons.auto_awesome_rounded, color: warn ? const Color(0xFF9A5B00) : C.blue, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(t, style: TextStyle(fontSize: 13.5, color: warn ? const Color(0xFF7A4A00) : C.blue, height: 1.35, fontWeight: FontWeight.w600))),
+        ]),
+      );
+
+  String _stateWord(_Shot sh) => sh.busy ? 'Sending…' : sh.path.isNotEmpty ? 'Sent ✓' : sh.onPhone ? 'On this phone' : '';
+  Widget _stateDot(_Shot sh) => sh.busy
+      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+      : sh.path.isNotEmpty
+          ? const CircleAvatar(radius: 11, backgroundColor: C.green, child: Icon(Icons.check_rounded, size: 15, color: Colors.white))
+          : sh.onPhone
+              ? const CircleAvatar(radius: 11, backgroundColor: C.amber, child: Icon(Icons.smartphone_rounded, size: 13, color: Colors.white))
+              : const SizedBox.shrink();
+
+  /// A reading box (KM / Hrs): blue while it holds what the AI read
+  Widget _readBox(TextEditingController c, String key, String hint, IconData icon) => TextField(
+        key: Key(key),
+        controller: c,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+        onChanged: (_) => setState(() => aiPut.remove(c)),
+        decoration: InputDecoration(hintText: hint, prefixIcon: Icon(icon), fillColor: aiPut.contains(c) ? C.blueSoft : Colors.white, helperText: aiPut.contains(c) ? tr('Read by the AI from the photo – check it') : null),
+      );
+
+  /// A number of the fill (litres, rate, amount): blue while it holds what the AI read; typing makes it his
+  Widget _numBox(String en, String mr, TextEditingController c, String key, {bool big = false, bool money = false, ValueChanged<String>? then}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _label(en, mr),
+        TextField(
+          key: Key(key),
+          controller: c,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+          style: TextStyle(fontSize: big ? 26 : 21, fontWeight: FontWeight.w800),
+          onChanged: (v) => setState(() {
+            aiPut.remove(c);
+            then?.call(v);
+          }),
+          decoration: InputDecoration(hintText: '0.00', prefixText: money ? '₹ ' : null, fillColor: aiPut.contains(c) ? C.blueSoft : Colors.white),
+        ),
+      ]);
+
+  /// The account's balance now and after this fill (a card on its own: its balance); Cash – nothing changes
+  Widget _hoBalance(Session s, {bool save = false}) {
+    if (payMode == 'cash') return InfoLine(bi('Cash – the account balance does not change.', 'Cash – account ची शिल्लक बदलत नाही.'), icon: Icons.payments_outlined, key: const Key('ho-bal'));
+    final c = s.card(source);
+    if (c == null) return const SizedBox.shrink();
+    final a = s.accountOf(c), base = a?.balance ?? c.balance, amt = asNum(amount.text), after = base - (amt ?? 0);
+    final who = a != null ? 'Account balance' : 'Card ${c.name} – balance';
+    final t = amt == null ? '$who ₹ ${fmtNum(base)}' : '$who ₹ ${fmtNum(base)} → after this fill ₹ ${fmtNum(after)}${after < 0 ? ' – not enough (the fill is still saved)' : ''}';
+    return InfoLine(save ? '$t\nThe entry is kept on card ${_cardWord(c)} (${machine?.id ?? ''}).' : t, key: const Key('ho-bal'), bad: amt != null && after < 0, icon: Icons.account_balance_wallet_rounded);
+  }
+
+  // ---------- step 1: the vehicle and its dashboard ----------
+  String get _dashNote {
+    final d = ai['dash'];
+    if (d == null) return '';
+    if (d['wait'] == true) return bi('The AI is reading the meter…', 'AI मीटर वाचत आहे…');
+    if (d['error'] != null) return bi('The meter could not be read now – type the reading.', 'मीटर आता वाचता आले नाही – रीडिंग टाका.');
+    final v = [if (asNum(d['km']) != null) '${fmtNum(asNum(d['km']))} km', if (asNum(d['hr']) != null) '${fmtNum(asNum(d['hr']))} hr'];
+    if (v.isEmpty) return bi('The meter could not be read clearly – type the reading, or take the photo again, closer.', 'मीटर स्पष्ट वाचता आले नाही – रीडिंग टाका किंवा जवळून पुन्हा फोटो काढा.');
+    return bi('Read on the photo: ${v.join(' · ')} – check it; type over it if it is wrong.', 'फोटोवर वाचले: ${v.join(' · ')} – तपासा; चुकले तर बदला.');
+  }
+
+  List<Widget> _hoVehicle(Session s) {
+    final m = machine, chk = '${ai['dash']?['check'] ?? ''}';
+    return [
+      _dateShift(),
+      _hoTitle('Vehicle and its dashboard', 'गाडी आणि dashboard चा फोटो'),
+      const SizedBox(height: 6),
+      _recentRow(s),
+      KeyedSubtree(key: const Key('d-machine'), child: _machineBox()),
+      if (m != null && s.fuelProblem(m, source).isNotEmpty) InfoLine(s.fuelProblem(m, source), bad: true, help: false),
+      if (m != null && m.fuel != 'Electric') ...[
+        const SizedBox(height: 12),
+        _bigShot('dash', 'Dashboard photo – the AI reads the KM', 'Dashboard चा फोटो – AI KM वाचेल'),
+        if (!m.debit && m.dieselWay.isNotEmpty) ...[
+          if (hasKm(way)) ...[_label('KM reading', 'KM रीडिंग'), _readBox(km, 'ho-km', dhHint(hist, 'lastKm').isNotEmpty ? dhHint(hist, 'lastKm') : tr('Odometer km'), Icons.speed_rounded)],
+          if (hasHr(way)) ...[_label('Hour meter', 'तास मीटर'), _readBox(hr, 'ho-hr', dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), Icons.timer_outlined)],
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FilterChip(key: const Key('ho-nometer'), label: Text(tr('Meter not working')), selected: way == kNoReading, onSelected: (on) => setState(() => way = on ? kNoReading : m.dieselWay)),
+            ),
+          ),
+        ],
+        if (_dashNote.isNotEmpty) _note(_dashNote, key: const Key('ho-dash-note')),
+        if (chk.isNotEmpty) _note('${bi('Check', 'तपासा')}: ${tr('reading')} $chk', warn: true),
+      ],
+    ];
+  }
+
+  /// The big dashboard photo: a tap takes it (again)
+  Widget _bigShot(String kind, String en, String mr) {
+    final sh = shots[kind], has = sh?.jpg != null;
+    return Press(
+      key: Key('ho-photo-$kind'),
+      onTap: () => _hoShoot(kind),
+      radius: 20,
+      shadow: false,
+      padding: EdgeInsets.zero,
+      color: has ? Colors.black : k.soft,
+      border: has ? (sh!.path.isNotEmpty ? C.green : C.line) : k.color.withValues(alpha: .55),
+      child: SizedBox(
+        height: 180,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(19),
+          child: Stack(fit: StackFit.expand, children: [
+            if (has) Image.memory(sh!.jpg!, fit: BoxFit.cover, gaplessPlayback: true)
+            else
+              Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 42, color: k.color),
+                const SizedBox(height: 8),
+                Text(onComputer ? 'Choose the photo' : 'Take the photo', mr: 'फोटो काढा', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: k.color)),
+              ]),
+            Positioned(
+              left: 10,
+              right: 10,
+              bottom: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(color: has ? Colors.black54 : Colors.white.withValues(alpha: .9), borderRadius: BorderRadius.circular(12)),
+                child: Text(en, mr: mr, textAlign: TextAlign.center, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: has ? Colors.white : C.ink)),
+              ),
+            ),
+            if (has) Positioned(top: 10, right: 10, child: _stateDot(sh!)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  // ---------- step 2: paid by ----------
+  List<Widget> _hoPaid(Session s) {
+    final m = machine;
+    final can = [for (final n in s.payFor(m)) if (n != kCash && s.card(n) != null) s.card(n)!];
+    final q = _nk(cardQ.text);
+    bool hit(FuelCard c) => q.isEmpty || _nk('${c.cardNo} ${c.name} ${c.cars.join(' ')}').contains(q);
+    bool own(FuelCard c) => m != null && c.cars.any((x) => _nk(x) == _nk(m.id));
+    final mine = <(FuelCard, String)>[
+      for (final r in recentCards)
+        if (can.where((c) => c.name.toUpperCase() == r.$1.toUpperCase()).firstOrNull case final c? when hit(c)) (c, r.$2),
+    ];
+    final all = can.where(hit).toList()..sort((a, b) => own(a) != own(b) ? (own(a) ? -1 : 1) : _cardWord(a).compareTo(_cardWord(b)));
+    final picked = payMode == 'card' ? s.card(source) : null;
+    final accts = {for (final c in can) s.accountOf(c)?.name ?? ''};
+    final acct = picked != null ? s.accountOf(picked) : (accts.length == 1 && accts.first.isNotEmpty ? s.accountOf(can.first) : null);
+    return [
+      _hoTitle('Paid by', 'कशाने भरले'),
+      const SizedBox(height: 8),
+      Row(children: [Expanded(child: _payOpt('card')), const SizedBox(width: 10), Expanded(child: _payOpt('cash'))]),
+      if (payMode != 'cash') ...[
+        if (acct != null) _strip('${acct.name} – account balance', bi('one balance for all its cards', 'सगळ्या कार्डसाठी एकच शिल्लक'), acct.balance, key: const Key('ho-acct'))
+        else if (picked != null) _strip('Card ${picked.name} – balance', '', picked.balance, key: const Key('ho-acct')),
+        const SizedBox(height: 10),
+        TextField(key: const Key('ho-card-q'), controller: cardQ, onChanged: (_) => setState(() {}), decoration: InputDecoration(hintText: tr('Card number or vehicle…'), prefixIcon: const Icon(Icons.search_rounded))),
+        if (can.isEmpty) InfoLine(bi('No card may pay for ${m?.id ?? 'this vehicle'} – pick Cash, or give it a card in Fuel Cards.', '${m?.id ?? 'या गाडी'} साठी कोणतेही कार्ड नाही – Cash निवडा, किंवा Fuel Cards मध्ये कार्ड द्या.'), bad: true),
+        if (mine.isNotEmpty) ...[_sec('RECENT – USED BY YOU', 'अलीकडे – तुम्ही वापरलेली'), for (final (c, d) in mine) _cardRow(s, c, when: d, own: own(c))],
+        if (all.isNotEmpty) ...[_sec('ALL CARDS (${all.length})', 'सगळी कार्ड'), for (final c in all) _cardRow(s, c, own: own(c))],
+      ],
+    ];
+  }
+
+  Widget _payOpt(String kind) {
+    final cash = kind == 'cash', on = cash ? payMode == 'cash' : payMode != 'cash';
+    return Press(
+      key: Key('ho-pay-$kind'),
+      onTap: () {
+        if (cash) {
+          _pickPay(kCash);
+          return;
+        }
+        setState(() {
+          if (payMode == 'cash') payMode = '';
+          err = '';
+        });
+      },
+      radius: 18,
+      shadow: false,
+      color: on ? C.greenSoft : Colors.white,
+      border: on ? C.green : C.line,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Column(children: [
+        Icon(cash ? Icons.payments_rounded : Icons.credit_card_rounded, size: 30, color: on ? C.green : C.ink),
+        const SizedBox(height: 6),
+        Text(cash ? 'Cash' : 'Card', mr: cash ? 'रोख' : 'कार्ड', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: on ? C.greenDark : C.ink)),
+      ]),
+    );
+  }
+
+  Widget _strip(String head, String sub, num bal, {Key? key}) => Container(
+        key: key,
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [C.greenLight, C.green, C.greenEnd])),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(head, style: const TextStyle(fontSize: 13, color: Color(0xE6FFFFFF), fontWeight: FontWeight.w600)),
+              if (sub.isNotEmpty) Text(sub, style: const TextStyle(fontSize: 13.5, color: Colors.white)),
+            ]),
+          ),
+          const SizedBox(width: 10),
+          Text('₹ ${fmtNum(bal)}', key: const Key('ho-acct-bal'), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: bal < 0 ? const Color(0xFFFFD6D6) : Colors.white)),
+        ]),
+      );
+
+  Widget _cardRow(Session s, FuelCard c, {String when = '', bool own = false}) {
+    final on = payMode == 'card' && source.toUpperCase() == c.name.toUpperCase();
+    final sub = [if (c.cardNo.isNotEmpty && !c.cars.any((x) => _nk(x) == _nk(c.name))) c.name, c.cars.isEmpty ? tr('every vehicle') : c.cars.join(', ')].join(' · ');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Press(
+        key: Key('${when.isEmpty ? 'ho-card' : 'ho-rcard'}-${c.name}'),
+        onTap: () => _pickPay(c.name),
+        radius: 16,
+        shadow: false,
+        color: on ? C.greenSoft : Colors.white,
+        border: on ? C.green : C.line,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Text(_cardWord(c), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: .3)),
+                if (own) Pill(tr('this vehicle'), color: C.blue, bg: C.blueSoft),
+              ]),
+              const SizedBox(height: 2),
+              Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, color: C.muted)),
+            ]),
+          ),
+          if (when.isNotEmpty) Text(when == s.today ? tr('today') : showDate(when), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.greenDark)),
+          if (on) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_circle_rounded, color: C.green)),
+        ]),
+      ),
+    );
+  }
+
+  // ---------- step 3: the photos and what they say ----------
+  String get _fillWords {
+    final f = fillAi;
+    if (f == null) return '';
+    if (f['wait'] == true) return bi('The AI is reading the photos…', 'AI फोटो वाचत आहे…');
+    if (f['none'] == true || f['error'] != null) return bi('The photos could not be read now – type the litres, rate and amount from the photos.', 'फोटो आता वाचता आले नाहीत – फोटो बघून लिटर, दर आणि रक्कम टाका.');
+    final u = _unit == 'kg' ? 'kg' : 'L';
+    final put = [if (asNum(f['litres']) != null) '${fmtNum(asNum(f['litres']))} $u', if (asNum(f['rate']) != null) '₹ ${fmtNum(asNum(f['rate']))} / $u', if (asNum(f['amount']) != null) '₹ ${fmtNum(asNum(f['amount']))}'];
+    if (put.isEmpty) return bi('Nothing could be read clearly on the photos – type the litres, rate and amount, or take the photos again, closer.', 'फोटोवर स्पष्ट काही वाचता आले नाही – लिटर, दर आणि रक्कम टाका, किंवा जवळून पुन्हा फोटो काढा.');
+    return f['phone'] == true
+        ? bi('Read on this phone (the AI could not be reached): ${put.join(' · ')} – check with the photos; type over a box if it is wrong.', 'फोनवर वाचले (AI मिळाले नाही): ${put.join(' · ')} – फोटोशी तपासा; चुकले तर बदला.')
+        : bi('Filled by the AI from the photos: ${put.join(' · ')} – check them; type over a box if it is wrong.', 'AI ने फोटोवरून भरले: ${put.join(' · ')} – तपासा; चुकले तर बदला.');
+  }
+
+  List<Widget> _hoPhotos(Session s) {
+    final cash = payMode == 'cash', c = cash ? null : s.card(source), chk = '${fillAi?['check'] ?? ''}';
+    final u = _unit == 'kg';
+    return [
+      Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: Wrap(spacing: 8, runSpacing: 6, children: [
+          Pill(cash ? tr('Cash') : 'Card ${c != null ? _cardWord(c) : source}', key: const Key('ho-paid'), icon: cash ? Icons.payments_rounded : Icons.credit_card_rounded, color: C.greenDark, bg: C.greenSoft),
+          if (machine != null) Pill(machine!.id, icon: Icons.directions_car_rounded),
+        ]),
+      ),
+      _hoTitle('Photos', 'फोटो'),
+      Text('Pump dispenser, pump bill and payment slip – all three are needed; other photos as many as you like.', mr: 'पंप डिस्पेन्सर, पंप बिल आणि पेमेंट स्लिप – तिन्ही लागतात; इतर फोटो हवे तेवढे.', style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
+      const SizedBox(height: 10),
+      GridView.count(
+        key: const Key('ho-photos'),
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.3,
+        children: [
+          _gridShot('pump', 'Pump dispenser', 'पंप डिस्पेन्सर'),
+          _gridShot('bill', 'Pump bill', 'पंप बिल'),
+          _gridShot('slip', 'Payment slip', 'पेमेंट स्लिप'),
+          _otherAdd(),
+        ],
+      ),
+      if (others.isNotEmpty) _othersRow(),
+      if (_fillWords.isNotEmpty) _note(_fillWords, key: const Key('ho-fill-note')),
+      if (chk.isNotEmpty) _note('${bi('Check', 'तपासा')}: $chk', warn: true, key: const Key('ho-fill-check')),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: _numBox(u ? 'Kg' : 'Litres', u ? 'किलो' : 'लिटर', qty, 'd-qty')),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _numBox(u ? 'Rate (₹/kg)' : 'Rate (₹/L)', 'दर', rate, 'd-rate', then: (v) {
+            final r0 = asNum(v), q0 = asNum(qty.text);
+            if (r0 != null && (q0 ?? 0) > 0 && (amount.text.isEmpty || aiPut.contains(amount))) amount.text = fmtNum(r0 * q0!).replaceAll(',', '');
+          }),
+        ),
+      ]),
+      _numBox('Amount (₹)', 'रक्कम (₹)', amount, 'd-amount', big: true, money: true),
+      _hoBalance(s),
+    ];
+  }
+
+  Widget _gridShot(String kind, String en, String mr) {
+    final sh = shots[kind], has = sh?.jpg != null;
+    return Press(
+      key: Key('ho-photo-$kind'),
+      onTap: () => _hoShoot(kind),
+      radius: 18,
+      shadow: false,
+      padding: EdgeInsets.zero,
+      color: has ? Colors.black : k.soft,
+      border: has ? (sh!.path.isNotEmpty ? C.green : C.line) : k.color.withValues(alpha: .55),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(17),
+        child: Stack(fit: StackFit.expand, children: [
+          if (has) Image.memory(sh!.jpg!, fit: BoxFit.cover, gaplessPlayback: true),
+          if (has) const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black87]))),
+          if (!has) Align(alignment: const Alignment(0, -.35), child: Icon(onComputer ? Icons.photo_library_rounded : Icons.photo_camera_rounded, size: 32, color: k.color)),
+          Positioned(
+            left: 10,
+            right: 10,
+            bottom: 8,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: has ? Colors.white : C.ink))),
+              Text(has ? _stateWord(sh!) : tr('Needed – tap to take'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: has ? Colors.white70 : k.color, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+          if (has) Positioned(top: 8, right: 8, child: _stateDot(sh!)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _otherAdd() => Press(
+        key: const Key('ho-photo-oth'),
+        onTap: others.length >= kOtherMax ? null : () => _hoShoot('oth'),
+        radius: 18,
+        shadow: false,
+        color: C.greenSoft,
+        border: C.green.withValues(alpha: .6),
+        padding: const EdgeInsets.all(8),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.add_a_photo_rounded, color: C.green, size: 30),
+          const SizedBox(height: 6),
+          const Text('Other photos', mr: 'इतर फोटो', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: C.greenDark)),
+          Text(others.isEmpty ? tr('as many as needed') : '${others.length} / $kOtherMax', style: const TextStyle(fontSize: 12, color: C.greenDark)),
+        ]),
+      );
+
+  Widget _othersRow() => Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Wrap(key: const Key('ho-others'), spacing: 8, runSpacing: 8, children: [
+          for (final (i, o) in others.indexed)
+            SizedBox(
+              width: 72,
+              height: 72,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(fit: StackFit.expand, children: [
+                  if (o.jpg != null) Image.memory(o.jpg!, fit: BoxFit.cover, gaplessPlayback: true),
+                  Positioned(right: 4, bottom: 4, child: _stateDot(o)),
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: IconButton(
+                      key: Key('ho-oth-x-$i'),
+                      tooltip: tr('Take this photo out'),
+                      visualDensity: VisualDensity.compact,
+                      style: IconButton.styleFrom(backgroundColor: const Color(0xC80F172A), foregroundColor: Colors.white, minimumSize: const Size(28, 28), padding: EdgeInsets.zero),
+                      onPressed: o.busy ? null : () => setState(() => others.remove(o)),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+        ]),
+      );
+
+  // ---------- step 4: everything once more, then Save ----------
+  List<Widget> _hoCheck(Session s) {
+    final m = machine, cash = payMode == 'cash', c = cash ? null : s.card(source);
+    final reading = m == null || m.debit || m.dieselWay.isEmpty
+        ? ''
+        : way == kNoReading
+            ? tr('Meter not working')
+            : [if (hasKm(way)) '${km.text.trim()} km', if (hasHr(way)) '${hr.text.trim()} hr'].join(' · ');
+    final names = [
+      if (shots['dash']?.jpg != null) tr('Dashboard'),
+      if (shots['pump']?.jpg != null) tr('Dispenser'),
+      if (shots['bill']?.jpg != null) tr('Bill'),
+      if (shots['slip']?.jpg != null) tr('Payment slip'),
+      if (others.isNotEmpty) '${tr('Other')} ${others.length}',
+    ];
+    final n = [for (final k in const ['dash', 'pump', 'bill', 'slip']) if (shots[k]?.jpg != null) k].length + others.length;
+    final u = _unit == 'kg' ? 'kg' : 'L';
+    final rows = <Widget>[];
+    void row(String key, String en, String mr, String v, int? go) {
+      if (rows.isNotEmpty) rows.add(const Divider(height: 1, color: C.line));
+      rows.add(InkWell(
+        key: Key('ho-sum-$key'),
+        onTap: go == null ? null : () => _hoGo(go),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(children: [
+            Text(en, mr: mr, style: const TextStyle(fontSize: 14.5, color: C.muted)),
+            const SizedBox(width: 12),
+            Expanded(child: Text(v, textAlign: TextAlign.right, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
+            if (go != null) const Padding(padding: EdgeInsets.only(left: 8), child: Text('edit', mr: 'बदला', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: C.blue))),
+          ]),
+        ),
+      ));
+    }
+
+    row('date', 'Date', 'तारीख', '${showDate(date)} · ${tr(shift)}', 0);
+    row('veh', 'Vehicle', 'गाडी', m?.id ?? '', 0);
+    if (reading.isNotEmpty) row('km', 'Reading', 'रीडिंग', reading, 0);
+    row('paid', 'Paid by', 'कशाने भरले', cash ? tr('Cash') : 'Card ${c != null ? _cardWord(c) : source}', 1);
+    row('qty', u == 'kg' ? 'Kg' : 'Litres', u == 'kg' ? 'किलो' : 'लिटर', '${qty.text.trim()} $u${(asNum(rate.text) ?? 0) > 0 ? ' × ₹ ${rate.text.trim()}' : ''}', 2);
+    row('amt', 'Amount', 'रक्कम', '₹ ${fmtNum(asNum(amount.text) ?? 0)}', 2);
+    row('ph', 'Photos', 'फोटो', '${names.join(' · ')} ($n)', 2);
+    return [
+      _hoTitle('Everything right?', 'सगळे बरोबर? – कोणतीही ओळ दाबून बदला'),
+      Container(
+        key: const Key('ho-sum'),
+        margin: const EdgeInsets.only(top: 10),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.line)),
+        child: ClipRRect(borderRadius: BorderRadius.circular(17), child: Material(color: Colors.white, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows))),
+      ),
+      _hoBalance(s, save: true),
+      _label('Driver / Operator', 'चालक'),
+      _driverBox(s),
+      _label('Remark', 'शेरा'),
+      TextField(key: const Key('ho-remark'), controller: remark, decoration: InputDecoration(hintText: tr('Optional'))),
+      if (tcDue != null) _tcBox(),      // (3.76.0, update-203) a tank check due with this fill
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
@@ -1566,6 +2466,7 @@ class _EntryFormState extends State<EntryForm> {
     final m = machine;
     final avail = bal == null ? null : asNum(bal!['available']);
     if (_draftReady) _draft?.put(_snap());
+    if (_ho) return _hoPage(s);      // (3.129.0) a new fill at a site on fuel cards: the four steps
     return PopScope(
       canPop: false, // the system Back too says whether something was saved (the list then loads again)
       onPopInvokedWithResult: (didPop, _) {
@@ -1663,8 +2564,7 @@ class _EntryFormState extends State<EntryForm> {
               ],
               _unit == 'kg' ? _label('Kg', 'किलो') : _label('Litres', 'लिटर'),
               _beside(_shots ? kPhotoKinds.firstWhere((p) => p.key == 'pump') : null, _qtyField()),
-              const SizedBox(height: 10),
-              _chips<num>(const [(20, '20'), (50, '50'), (100, '100'), (150, '150'), (200, '200')], q, (v) => setState(() => qty.text = '$v')),
+              // (3.129.0, asked 16-11-2026: "app maeh te 20 50 100 150 te nko ahe sagle app amdhun te remove kr") no quick litres
               // the photos that fill no box (the vehicle with its driver, the register / the pump's bill – and the dashboard when no
               // reading is asked): side by side
               if (_shots) ...[
@@ -1692,25 +2592,7 @@ class _EntryFormState extends State<EntryForm> {
               if (bal != null || (s.offline && !s.cardSite))
                 InfoLine(_stockLine(s, q, avail), key: const Key('issue-stock'), bad: bal != null && q != null && q > ((avail ?? double.infinity) - s.keptAt(source))),      // (3.85.0) what waits; no network
               _label('Driver / Operator', 'चालक'),
-              Autocomplete<String>(
-                key: ValueKey('drv-$driverGen'), // (3.14.0) made again with the last fill's driver in it
-                initialValue: TextEditingValue(text: driver.text),
-                optionsBuilder: (v) => v.text.isEmpty ? const Iterable<String>.empty() : s.drivers.where((d) => d.toLowerCase().contains(v.text.toLowerCase())).take(8),
-                onSelected: (v) {
-                  driver.text = v;
-                  driverAuto = false;
-                },
-                fieldViewBuilder: (c, ctl, f, sub) => TextField(
-                    key: const Key('d-driver'),
-                    controller: ctl,
-                    focusNode: f,
-                    onChanged: (v) {
-                      driver.text = v;
-                      driverAuto = false;
-                    },
-                    textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(hintText: tr('Name (optional)'), prefixIcon: Icon(Icons.person_outline_rounded))),
-              ),
+              _driverBox(s),
             ],
             // ---------- Diesel Inward ----------
             if (k.key == 'inward') ...[
