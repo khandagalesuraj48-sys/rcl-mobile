@@ -9662,6 +9662,26 @@ void main() {
     expect(find.textContaining('Take the photo of the pump dispenser'), findsOneWidget, reason: 'Cash too: the photos are needed');
   });
 
+  testWidgets('(3.130.0, asked 16-11-2026: "asa error nahi ala pahije ocr enable rahude") HO: the AI sees no total reading on the dashboard photo – the box stays empty and the note says what to do (ODO, not TRIP); the phone reads it too where it can (an Android / iPhone; not on this test computer)', (t) async {
+    phone(t);
+    final srv = hoServer()..dashAns = {'km': null, 'hr': null, 'check': ''};
+    hoCamera();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await hoNewFill(t);
+    await t.tap(find.byKey(const Key('d-machine')));
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await net(t);
+    await tapK(t, 'ho-photo-dash');
+    await net(t);
+    expect(hoBox(t, 'ho-km'), '', reason: 'nothing made up');
+    expect(find.textContaining('The total reading (ODO) is not seen on this photo – type it, or take the photo again with ODO on the dashboard (not TRIP).'), findsOneWidget);
+    expect(find.textContaining('could not be read clearly'), findsNothing, reason: 'the note of before is gone');
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('(3.129.0 – Mechanical update-259) HO\'s fill in four steps and Home\'s account balance – pictures', (t) async {
     phone(t);
     final srv = hoServer();

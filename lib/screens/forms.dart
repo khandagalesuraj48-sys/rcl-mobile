@@ -1802,7 +1802,24 @@ class _EntryFormState extends State<EntryForm> {
       err = '';
     });
     try {
-      final p = await cameraShot(pk.en, m.id);
+      // (3.130.0, asked 16-11-2026: "ocr enable rahude") the dashboard: the app's own camera reads the meter live on this phone (as on
+      // every site – scan.dart) and takes the photo by itself; a phone that cannot open it: the camera as before
+      TakenPhoto? shot;
+      Map<String, dynamic>? live;
+      if (kind == 'dash' && canOcr && _reads('dash', m)) {
+        final sc = await _scan(pk, m);
+        if (sc == null || !mounted || machine?.id != m.id) return;
+        if (sc.failed || sc.file == null) {
+          shot = await cameraShot(pk.en, m.id);
+        } else {
+          shot = await photoFrom(sc.file!, pk.en, m.id);
+          final v = sc.value;
+          if (v != null) live = _want('dash', m).km ? {'km': v, 'check': sc.check} : {'hr': v, 'check': sc.check};
+        }
+      } else {
+        shot = await cameraShot(pk.en, m.id);
+      }
+      final p = shot;
       if (p == null || !mounted || machine?.id != m.id) return;
       setState(() {
         sh.jpg = p.jpg;
@@ -1811,7 +1828,12 @@ class _EntryFormState extends State<EntryForm> {
         if (oth) others.add(sh);
       });
       if (kind == 'dash') {
-        _hoDashRead(m, p);
+        final got = live;
+        if (got != null) {
+          setState(() => _putRead('dash', got));
+        } else {
+          _hoDashRead(m, p);
+        }
       } else if (_fillKinds.contains(kind)) {
         _fillRead();
       }
@@ -1847,7 +1869,8 @@ class _EntryFormState extends State<EntryForm> {
     }
   }
 
-  /// The dashboard: read by the server's AI (the same as the web); no network / no AI there – read on this phone
+  /// The dashboard (the live camera did not get it): read by the server's AI (the same as the web); no network / no AI there, or the
+  /// AI saw no reading – (3.130.0) read on this phone too, so the note comes only when neither sees it
   Future<void> _hoDashRead(Machine m, TakenPhoto p) async {
     if (!_reads('dash', m)) return;
     final s = SessionScope.read(context);
@@ -1864,7 +1887,8 @@ class _EntryFormState extends State<EntryForm> {
       r = {'error': errText(e)};
     }
     if (!mounted || machine?.id != m.id || tok < aiTok - 4) return;
-    if ((r['off'] == true || r['error'] != null) && canOcr) {
+    final none = asNum(r['km']) == null && asNum(r['hr']) == null;
+    if ((r['off'] == true || r['error'] != null || none) && canOcr) {
       _phoneRead('dash', m, p);
       return;
     }
@@ -2083,7 +2107,10 @@ class _EntryFormState extends State<EntryForm> {
     if (d['wait'] == true) return bi('The AI is reading the meter…', 'AI मीटर वाचत आहे…');
     if (d['error'] != null) return bi('The meter could not be read now – type the reading.', 'मीटर आता वाचता आले नाही – रीडिंग टाका.');
     final v = [if (asNum(d['km']) != null) '${fmtNum(asNum(d['km']))} km', if (asNum(d['hr']) != null) '${fmtNum(asNum(d['hr']))} hr'];
-    if (v.isEmpty) return bi('The meter could not be read clearly – type the reading, or take the photo again, closer.', 'मीटर स्पष्ट वाचता आले नाही – रीडिंग टाका किंवा जवळून पुन्हा फोटो काढा.');
+    if (v.isEmpty) {
+      return bi('The total reading (ODO) is not seen on this photo – type it, or take the photo again with ODO on the dashboard (not TRIP).',
+          'या फोटोत एकूण रीडिंग (ODO) दिसत नाही – रीडिंग टाका, किंवा dashboard वर ODO दाखवून (TRIP नाही) पुन्हा फोटो काढा.');
+    }
     return bi('Read on the photo: ${v.join(' · ')} – check it; type over it if it is wrong.', 'फोटोवर वाचले: ${v.join(' · ')} – तपासा; चुकले तर बदला.');
   }
 
