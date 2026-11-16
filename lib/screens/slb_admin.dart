@@ -308,13 +308,15 @@ class _DriverFormState extends State<DriverForm> {
           const SizedBox(height: 10),
           TextField(key: const Key('dmf-remark'), controller: remark, decoration: InputDecoration(labelText: tr('Remark'))),
         ])),
-        if (err.isNotEmpty) InfoLine(err, key: const Key('dmf-err'), bad: true),
       ]),
-      // (the Save button stays at the bottom – a long message above it never hides it)
+      // (the Save button stays at the bottom, what the server said just above it – never hidden below the form)
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: SizedBox(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (err.isNotEmpty) InfoLine(err, key: const Key('dmf-err'), bad: true),
+            const SizedBox(height: 8),
+            SizedBox(
             height: 54,
             child: FilledButton.icon(
               key: const Key('dmf-save'),
@@ -323,7 +325,8 @@ class _DriverFormState extends State<DriverForm> {
               icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check_rounded),
               label: Text(id.isEmpty ? 'Save driver' : 'Save changes', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ),
-          ),
+            ),
+          ]),
         ),
       ),
     );
