@@ -42,9 +42,22 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'forms.dart' show MachinePicker, dieselHistoryOf;
 import 'label_scan.dart' show QrScanScreen;
+import 'logbook.dart' show LogBookScreen;
 import 'scan.dart';
 
 const _purple = Color(0xFF6D2FD0), _purpleDeep = Color(0xFF5521B5), _purpleSoft = Color(0xFFEFE7FB);
+
+/// (3.132.1, asked 17-11-2026: "apan jas tharwale tashi log book entry app madhe" – "Log Book = Smart Log Book") the site's Smart Log Book
+/// is on (its step 1zo run – Home's vlMe answered); set by Home at each reading. Off: the Log Book button opens the Log Book as before.
+bool slbSiteOn = false;
+
+/// The app's "Log Book" (Home's tile, Entries, the start page): a person with Log Book – Edit (the Admin too) at a site where the Smart
+/// Log Book is on → the Smart Log Book (its "Old Log Book entry" opens the Log Book as before – many machinery at once, the list, pending);
+/// anybody else → the Log Book as before.
+Future<void> openLogBook(BuildContext context) {
+  final s = SessionScope.read(context);
+  return Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => slbSiteOn && s.canEdit('Log Book') ? const SmartLogBookScreen() : const LogBookScreen()));
+}
 
 /// 'yyyy-MM-ddTHH:mm' (the site's time) → "08:01 AM"
 String slbTime(Object? a) {
@@ -544,6 +557,15 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
             ..._openView(ss)
           else
             ..._duty(s, ss, op),
+          // (3.132.1) the Log Book as before: an entry of many machinery at once, the list, what is pending
+          const SizedBox(height: 14),
+          Center(
+            child: TextButton(
+              key: const Key('slb-old'),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen())),
+              child: _iconText(Icons.list_alt_rounded, bi('Old Log Book entry (many machinery, the list)', 'जुनी Log Book नोंद (अनेक गाड्या, यादी)'), size: 14),
+            ),
+          ),
         ]),
       ),
     );
