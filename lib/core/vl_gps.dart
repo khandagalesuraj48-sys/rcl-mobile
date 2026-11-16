@@ -1,7 +1,8 @@
 /* (3.132.0, Mechanical update-263 – the Smart Log Book; the plan approved 15/16-11-2026) THE GPS OF A VEHICLE WITH THE DRIVER.
  * While a vehicle is with him (an open custody – vl_sessions) his phone sends where it is:
  *   – Android: a foreground service with its own notification ("On duty with … – location shared") keeps the place coming while the
- *     app is in the background (geolocator's own service; FOREGROUND_SERVICE_LOCATION). An iPhone: while the app is open.
+ *     app is in the background (geolocator's own service; FOREGROUND_SERVICE_LOCATION). An iPhone: also in the background (the
+ *     app's "location" background mode – Info.plist; iOS shows its blue bar).
  *   – moving: a point about every 20 seconds; standing: one every 3 minutes (a place that has not changed is not kept again);
  *   – the points wait on the phone (also with no network – kept in a file of the app) and go in ONE call about every minute
  *     (vlGps). Each point carries its own number (its second): sent twice, the server keeps it once;
@@ -143,7 +144,8 @@ class VlGps extends ChangeNotifier {
               ),
             )
           : Platform.isIOS
-              ? AppleSettings(accuracy: LocationAccuracy.high, distanceFilter: 10, activityType: ActivityType.automotiveNavigation, pauseLocationUpdatesAutomatically: true)
+              // (an iPhone: also in the background – the app's "location" background mode; iOS shows its blue bar while it is used)
+              ? AppleSettings(accuracy: LocationAccuracy.high, distanceFilter: 10, activityType: ActivityType.automotiveNavigation, pauseLocationUpdatesAutomatically: false, allowBackgroundLocationUpdates: true, showBackgroundLocationIndicator: true)
               : const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10);
       _sub = Geolocator.getPositionStream(locationSettings: ls).listen(_got, onError: (_) {
         state = 'gps-off';

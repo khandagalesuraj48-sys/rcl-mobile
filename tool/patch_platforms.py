@@ -120,7 +120,9 @@ USES = [('NSCameraUsageDescription', 'Sketchline uses the camera for the photos 
         ('NSMicrophoneUsageDescription', 'Sketchline uses the microphone when you talk with the assistant and for a screen-share help call.'),
         ('NSPhotoLibraryUsageDescription', 'Sketchline lets you choose a photo for an entry.'),
         ('NSFaceIDUsageDescription', 'Sketchline opens with your Face ID, so that nobody else can open it on this iPhone.'),      # (3.27.0) the app lock
-        ('NSSpeechRecognitionUsageDescription', 'Sketchline turns what you say to the assistant into words (a question or an entry).')]
+        ('NSSpeechRecognitionUsageDescription', 'Sketchline turns what you say to the assistant into words (a question or an entry).'),
+        # (3.132.0, Mechanical update-263) the Smart Log Book: the place of the vehicle while it is with the driver, also in the background
+        ('NSLocationAlwaysAndWhenInUseUsageDescription', 'Sketchline shares the place of the vehicle with you while it is on duty (Smart Log Book), also when the app is in the background.')]
 def plist(s):
     if '<key>CFBundleDisplayName</key>' in s:
         s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1Sketchline\2', s, count=1)
@@ -129,6 +131,11 @@ def plist(s):
     for k, v in USES:
         if '<key>%s</key>' % k not in s: s = s.replace('<dict>', '<dict>\n\t<key>%s</key>\n\t<string>%s</string>' % (k, v), 1)
     s = s.replace('Sketchline uses the microphone for a screen-share help call.', dict(USES)['NSMicrophoneUsageDescription'])
+    # (3.132.0) the iPhone keeps sending the vehicle's place while the app is in the background (its blue bar shows it)
+    if '<key>UIBackgroundModes</key>' not in s:
+        s = s.replace('<dict>', '<dict>\n\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>location</string>\n\t</array>', 1)
+    elif '<string>location</string>' not in s:
+        s = re.sub(r'(<key>UIBackgroundModes</key>\s*<array>)', r'\1\n\t\t<string>location</string>', s, count=1)
     return s
 
 # ---------- (3.19.0) WINDOWS – run with --windows right after `flutter create --platforms=windows` made windows/ ----------
