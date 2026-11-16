@@ -4593,7 +4593,7 @@ void main() {
       expect(find.byKey(const Key('dp-list')), findsOneWidget, reason: 'the Diesel Issue list\'s own photos screen');
       expect(find.textContaining('Photos – DI-000412 · 13-10-2026 · 10:42 AM · 30 L'), findsOneWidget);
       expect(find.byKey(const Key('dp-1')), findsOneWidget);
-      await t.pageBack();
+      Navigator.of(t.element(find.byKey(const Key('dp-list')))).pop();
       await settle(t, 400);
       await tapK(t, 'cdt-log');
       await settle(t, 400);
