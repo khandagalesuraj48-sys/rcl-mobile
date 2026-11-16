@@ -22,6 +22,12 @@ class FakeServer {
   Map<String, dynamic>? addTo;
   String newPassword = '';
   String expireOnce = ''; // an action that first answers SESSION_EXPIRED (a Mechanical sign-in that ended)
+  // (3.132.0, Mechanical update-263) THE SMART LOG BOOK: on (the site's step 1zo run) or not (Unknown action – Home as before); his
+  // vehicle now, today's opening, a vehicle handed to him; every vl… call noted
+  bool slbOn = false;
+  Map<String, dynamic>? vlSess, vlOpenRow;
+  final vlIn = <Map<String, dynamic>>[];
+  final vlCalls = <Map<String, dynamic>>[];
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
   /// (3.43.0, Mechanical update-162) his diesel sources (getInit's user.dsrc); [userInSync]: the sync tells the user too (as Mechanical)
   Map<String, dynamic>? dsrc;
@@ -2506,6 +2512,39 @@ class FakeServer {
         case 'logPending':
           dashAsked.add({'fn': action, 'args': a}); // (3.54.0) what was asked: a period for its Print
           return _j({'result': {'items': [['OLD-9', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-13']]}});
+        case 'vlMe' || 'vlTake' || 'vlOpen' || 'vlClose' || 'vlAiText' || 'vlHandover' || 'vlHandAnswer' || 'vlGps':
+          if (!slbOn) return _j({'error': 'The Smart Log Book cannot be used yet. This needs one database step first.'}, 500);
+          final x = a.isEmpty ? <String, dynamic>{} : (a[0] as Map).cast<String, dynamic>();
+          vlCalls.add({'fn': action, 'x': x});
+          if (action == 'vlTake') {
+            vlOpenRow = null;      // (a test: each vehicle taken gives its opening)
+            vlSess = {'id': 'VS-1', 'no': x['no'], 'name': '', 'type': 'Tipper', 'unit': 'KM', 'km': true, 'hr': false, 'driver': 'sujit@rcl.test', 'driverName': 'Sujit Mule', 'since': '2026-10-14T08:01', 'how': x['how'], 'shiftDate': '2026-10-14', 'shift': 'Day', 'ended': '', 'endHow': '',
+              'gps': {'lat': null, 'lng': null, 'speed': null, 'at': '', 'status': 'off', 'km': 0}};
+            return _j({'result': {'ok': true, 'session': vlSess}});
+          }
+          if (action == 'vlOpen') {
+            vlOpenRow = {'date': '2026-10-14', 'km': x['km'], 'hr': x['hr'], 'at': '2026-10-14T08:03', 'by': 'sujit@rcl.test', 'how': x['how'], 'check': ''};
+            return _j({'result': {'ok': true, 'opening': vlOpenRow, 'check': ''}});
+          }
+          if (action == 'vlClose') {
+            vlSess = null;
+            return _j({'result': {'ok': true, 'id': 'VE-1'}});
+          }
+          if (action == 'vlAiText') return _j({'result': {'text': 'Murum transport at Chakan patch, 6 trips, chainage 12+400 to 13+100', 'work': 'Murum transport', 'trips': 6, 'chainage': '12+400 to 13+100'}});
+          if (action == 'vlHandAnswer') {
+            if (x['yes'] == true && vlIn.isNotEmpty) {
+              vlSess = {'id': 'VS-2', 'no': vlIn.first['no'], 'name': '', 'type': 'Tipper', 'unit': 'KM', 'km': true, 'hr': false, 'driver': 'sujit@rcl.test', 'driverName': 'Sujit Mule', 'since': '2026-10-14T13:30', 'how': 'handover', 'shiftDate': '2026-10-14', 'shift': 'Day', 'ended': '', 'endHow': '',
+                'gps': {'lat': null, 'lng': null, 'speed': null, 'at': '', 'status': 'off', 'km': 0}};
+              vlOpenRow ??= {'date': '2026-10-14', 'km': 15230, 'hr': null, 'at': '2026-10-14T08:03', 'by': 'mahesh@rcl.test', 'how': 'phone', 'check': ''};
+            }
+            vlIn.clear();
+            return _j({'result': {'ok': true, if (vlSess != null) 'session': vlSess}});
+          }
+          if (action != 'vlMe') return _j({'result': {'ok': true}});
+          return _j({'result': {'on': true, 'me': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'today': '2026-10-14', 'session': vlSess, 'opening': vlSess == null ? null : vlOpenRow, 'month': 26,
+            'people': [{'email': 'mahesh@rcl.test', 'name': 'Mahesh Jadhav', 'has': ''}, {'email': 'anil@rcl.test', 'name': 'Anil More', 'has': 'MH-12-PQ-1180'}],
+            'handoverIn': vlIn, 'handoverOut': <dynamic>[], 'asks': [{'id': 'VX-1', 'kind': 'closing missing', 'no': 'OLD-9', 'date': '2026-10-13', 'shift': 'Night', 'note': 'Released by Site Admin', 'at': '2026-10-14T07:00'}],
+            'last': {'no': 'MH-25-AJ-2169', 'date': '2026-10-13', 'shift': 'Night', 'km': 15230, 'hr': null, 'text': 'Earth carting'}}});
         case 'getLogRowPrefill':
           final no = a[0] as String, askAdd = a.length > 3 && a[3] is Map && (a[3] as Map)['add'] == 1;      // (3.31.2: the app asks for the "add" answer)
           if (addTo != null && !askAdd) throw StateError('getLogRowPrefill without {add: 1}');

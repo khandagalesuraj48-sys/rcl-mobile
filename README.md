@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.132.0 (16-11-2026, Mechanical update-263 – the Smart Log Book, his plan approved 15/16-11-2026; his pictures SLB 1, SLB 2 and
+"Home – Log Book only"):** a driver (Log Book Edit) – `screens/smart_logbook.dart`: no vehicle → Scan the QR / number-plate photo / pick it
+→ Take a vehicle (vlTake) → ONE opening photo a day (the phone reads it, the AI only when the phone is not sure; vlOpen) → on duty with the
+GPS (`core/vl_gps.dart` – an Android foreground service, points in batches of about a minute with their own numbers, kept on the phone
+with no network, GPS-off pieces and a reminder every 5 minutes) → Close the shift: the meter photo + the work said aloud (speech_to_text
+→ vlAiText → he corrects it) → the usual Log Book entry (saveLogRows) then vlClose (once per phone action); no network: both kept on the
+phone → or Hand over (the reading, a free driver; he accepts on his own phone – vlHandover / vlHandAnswer). Home: a driver with Diesel too
+– the Diesel card and "My vehicle" the same size, slide from one to the other (two dots); with the Log Book only – "My vehicle" in the
+place of the stock, his four figures (On duty / Today, Pending, GPS km, This month) and his to-do. Android: FOREGROUND_SERVICE_LOCATION.
+
 **Version 3.131.0 (16-11-2026, Mechanical update-264, asked: "fuel histry aahe tithch tya entry sobat attch zalel photos pn dakhaw ok ani
 time ani koni entry keli"):** HO's car → Fuel history (and its Vehicle History / Recent Activity – the same row, `FillRow`): each fill also
 shows the time it was sent ("10:42 AM", the day too when it was entered on another day – `savedTime`), "Entry: <who> · DI-…" and its
