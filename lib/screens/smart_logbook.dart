@@ -719,8 +719,10 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
           Row(children: [
             Icon(Icons.circle, size: 12, color: live ? C.green : C.red),
             const SizedBox(width: 6),
-            Text(live ? bi('GPS on – live', 'GPS चालू') : gs == 'no-permission' ? bi('Location not allowed – allow it', 'Location ची परवानगी द्या') : bi('GPS off – switch it on', 'GPS बंद – चालू करा'),
-                key: const Key('slb-gps'), style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: live ? C.greenDark : C.red)),
+            Flexible(
+              child: Text(live ? bi('GPS on – live', 'GPS चालू') : gs == 'no-permission' ? bi('Location not allowed – allow it', 'Location ची परवानगी द्या') : bi('GPS off – switch it on', 'GPS बंद – चालू करा'),
+                  key: const Key('slb-gps'), maxLines: 2, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: live ? C.greenDark : C.red)),
+            ),
             if (sent != null) Flexible(child: Text('  · ${bi('sent', 'पाठवले')} ${slbSince(_isoLocal(sent), s.clock())} ${bi('ago', 'आधी')}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted))),
           ]),
         ]),

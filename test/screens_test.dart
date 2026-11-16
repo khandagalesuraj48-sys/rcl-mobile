@@ -9780,6 +9780,14 @@ void main() {
 
   testWidgets('(3.132.0 – Mechanical update-263) the Smart Log Book: Home swipes from the Diesel card to "My vehicle"; a vehicle picked and taken, its ONE opening (photo + reading), on duty with the GPS, the closing (photo, the work said aloud → written by the AI) = the usual Log Book entry, then the closing; a handover (the reading, a free driver); a vehicle handed to him accepted', (t) async {
     phone(t);
+    // a screen's error (a row too wide …) is written down with the widget that made it – its place in the code – for the reason below
+    final errs = <String>[];
+    final was = FlutterError.onError;
+    FlutterError.onError = (d) {
+      errs.add(d.toString().split('\n').where((l) => l.contains('overflowed') || l.contains('relevant error-causing') || l.contains('.dart:')).take(6).join('\n'));
+      was?.call(d);
+    };
+    addTearDown(() => FlutterError.onError = was);
     final srv = await slbStart(t);
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
@@ -9842,8 +9850,9 @@ void main() {
     await net(t);
     expect((srv.vlCalls.lastWhere((c) => c['fn'] == 'vlHandAnswer')['x'] as Map)['yes'], true);
     expect(find.byKey(const Key('slb-duty')), findsOneWidget);
+    FlutterError.onError = was;
     final ex = t.takeException();
-    expect(ex, isNull, reason: ex is FlutterError ? ex.toStringDeep() : '$ex');
+    expect(ex, isNull, reason: errs.join('\n---\n'));
   });
 
   testWidgets('(3.132.0) a driver with the Log Book only: Home shows "My vehicle" in the place of the stock, his four figures and his to-do; a site without the step (or a person without Log Book Edit): Home as before', (t) async {
@@ -9860,8 +9869,10 @@ void main() {
     await t.pumpWidget(RclApp(session: s, key: UniqueKey()));
     await net(t);
     expect(find.byKey(const Key('home-myveh-no')), findsOneWidget);
-    await t.scrollUntilVisible(find.byKey(const Key('today-slb-open')), 250, scrollable: find.descendant(of: find.byType(RefreshIndicator).first, matching: find.byType(Scrollable)).first);
-    expect(find.byKey(const Key('today-slb-open')), findsOneWidget);
+    expect(find.textContaining('MH-25-AJ-2169'), findsWidgets, reason: 'the vehicle with him is on Home');
+    await t.scrollUntilVisible(find.byKey(const Key('home-today')), 250, scrollable: find.descendant(of: find.byType(RefreshIndicator).first, matching: find.byType(Scrollable)).first);
+    final todo = [for (final e in find.descendant(of: find.byKey(const Key('home-today')), matching: find.byType(RichText)).evaluate()) (e.widget as RichText).text.toPlainText()].join(' | ');
+    expect(find.byKey(const Key('today-slb-open')), findsOneWidget, reason: 'the to-do says: $todo');
     expect(t.takeException(), isNull);
   });
 
