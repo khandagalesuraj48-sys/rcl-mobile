@@ -76,6 +76,7 @@ class _HoFleetState extends State<HoFleet> {
       if (!mounted || my != _seq) return;
       final cars = [for (final c in (r['cars'] as List? ?? const []).whereType<Map>()) c.cast<String, dynamic>()];
       if (r['cards'] != null) s.setCards(r['cards']);      // (the cards' balances above, fresh too)
+      s.setAccounts(r['accounts']);      // (3.129.0, Mechanical update-258) and the accounts'
       CarPhotos.i.putAll(cars);
       setState(() => byNo = {for (final c in cars) '${c['no']}': c});
     } catch (_) {/* the cars still show, without their figures; Home's own line says when the network is gone */}

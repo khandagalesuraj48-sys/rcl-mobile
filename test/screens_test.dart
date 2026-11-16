@@ -35,6 +35,7 @@ import 'package:rcl_mobile/screens/logbook.dart' show LogForm, LogBookScreen;
 import 'package:rcl_mobile/screens/home.dart' show reportsOf;
 import 'package:rcl_mobile/screens/start_page.dart' show startPagesFor;
 import 'package:rcl_mobile/core/attach.dart' show attCompute;
+import 'package:rcl_mobile/core/photo.dart' show cameraShot, photoCompute, TakenPhoto, Spot;
 import 'package:rcl_mobile/screens/attach_box.dart' show pickAttFiles, CaptureScreen;
 import 'package:image/image.dart' as img;
 import 'package:http/http.dart' as http;
@@ -179,6 +180,25 @@ Future<void> seen(WidgetTester t, Finder f) async {
     if (bar.evaluate().isEmpty || t.getRect(f.first).top >= t.getRect(bar.first).bottom + 4) break;
     await t.drag(find.ancestor(of: f.first, matching: find.byType(Scrollable)).last, const Offset(0, 110));
   }
+}
+
+/// (3.129.0) the camera of a diesel photo in a test (no phone camera here): a small picture of its own colour each time; the AI's
+/// smaller copy made at once
+void hoCamera() {
+  final c0 = cameraShot, p0 = photoCompute;
+  var n = 0;
+  cameraShot = (label, no) async {
+    n++;
+    final im = img.Image(width: 96, height: 72);
+    img.fill(im, color: img.ColorRgb8(40 + (n * 37) % 160, 70 + (n * 23) % 120, 90 + (n * 53) % 150));
+    img.fillRect(im, x1: 18, y1: 20, x2: 78, y2: 52, color: img.ColorRgb8(240, 244, 236));
+    return TakenPhoto(Uint8List.fromList(img.encodeJpg(im, quality: 85)), DateTime(2026, 10, 14, 9, 30), Spot(18.94, 72.83, 6));
+  };
+  photoCompute = <M, R>(ComputeCallback<M, R> cb, M m, {String? debugLabel}) async => await cb(m);
+  addTearDown(() {
+    cameraShot = c0;
+    photoCompute = p0;
+  });
 }
 
 void main() {
@@ -4418,32 +4438,37 @@ void main() {
     await settle(t, 600);
     await t.tap(find.text('New Entry').last);
     await net(t);
-    Finder chip(String l) => find.widgetWithText(ChoiceChip, l);
-    expect(find.text('Paid by'), findsOneWidget);
-    expect(chip('HDFC FUEL · ₹21,800'), findsOneWidget);
-    expect(chip('Cash'), findsOneWidget);
-    expect(chip('SBI CREDIT · ₹−500'), findsNothing, reason: 'no car yet: only the card of every car');
+    // (3.129.0, Mechanical update-259) a new fill at HO: the four steps – the vehicle first, then its cards (its own card offered then)
+    hoCamera();
+    expect(find.byKey(const Key('ho-steps')), findsOneWidget);
     await t.tap(find.byKey(const Key('d-machine')));
     await settle(t, 800);
     await t.tap(find.text('MH-12-HO-1163').last);
     await net(t);
-    expect(chip('SBI CREDIT · ₹−500'), findsOneWidget, reason: 'its own card');
+    await t.enterText(find.byKey(const Key('ho-km')), '45900');
+    await settle(t, 300);
+    await tapK(t, 'ho-next');
+    await net(t);
+    expect(find.byKey(const Key('ho-card-HDFC FUEL')), findsOneWidget, reason: 'the card of every car');
+    expect(find.byKey(const Key('ho-card-SBI CREDIT')), findsOneWidget, reason: 'its own card');
+    expect(find.byKey(const Key('ho-card-OLD CARD')), findsNothing, reason: 'never an Inactive card');
+    await tapK(t, 'ho-card-SBI CREDIT');
+    await net(t);
     expect(find.byKey(const Key('photo-reg')), findsNothing, reason: 'no Register at a site on fuel cards');
-    expect(find.byKey(const Key('photo-pump')), findsOneWidget);
-    expect(find.byKey(const Key('photo-bill')), findsOneWidget, reason: '(3.90.0, update-215) the Pump bill at a site on fuel cards');
-    await t.tap(chip('SBI CREDIT · ₹−500'));
-    await settle(t, 400);
+    for (final k in ['pump', 'bill', 'slip']) {
+      await tapK(t, 'ho-photo-$k');
+      await net(t);
+    }
     await t.enterText(find.byKey(const Key('d-qty')), '15');
     await settle(t, 300);
-    await tapK(t, 'd-amount');
     await t.enterText(find.byKey(const Key('d-amount')), '1500');
     await settle(t, 400);
-    expect(find.textContaining('balance now ₹ −500 → after this fill ₹ −2,000 – not enough on the card (the fill is still saved)'), findsOneWidget);
-    await seen(t, find.text('Save Diesel Issue'));
-    await settle(t, 300);
-    await t.tap(find.text('Save Diesel Issue'));
+    expect(find.textContaining('Card SBI CREDIT – balance ₹ −500 → after this fill ₹ −2,000 – not enough (the fill is still saved)'), findsOneWidget);
+    await tapK(t, 'ho-next');
     await net(t);
-    expect([srv.saved.last['no'], srv.saved.last['source'], srv.saved.last['qty'], srv.saved.last['amount'], srv.saved.last['rate']], ['MH-12-HO-1163', 'SBI CREDIT', 15, 1500, '']);
+    await tapK(t, 'ho-save');
+    await net(t);
+    expect([srv.saved.last['no'], srv.saved.last['source'], srv.saved.last['qty'], srv.saved.last['amount'], srv.saved.last['rate'], srv.saved.last['kmReading']], ['MH-12-HO-1163', 'SBI CREDIT', 15, 1500, '', 45900]);
     expect(s.card('SBI CREDIT')!.balance, -2000, reason: 'the balances of the save\'s answer');
     expect(find.textContaining('DI-000531  ·  MH-12-HO-1163  ·  15 L  ·  ₹ 1,500 · SBI CREDIT'), findsOneWidget);
     await t.tap(find.text('Done'));
@@ -9465,6 +9490,7 @@ void main() {
     for (final k in ['dash', 'pump', 'veh', 'reg']) {
       expect(find.byKey(Key('photo-$k')), findsOneWidget, reason: 'the $k photo can be taken');
     }
+    expect(find.widgetWithText(ChoiceChip, '50'), findsNothing, reason: '(3.129.0) no quick litres on any site');
     final shot = t.getRect(find.byKey(const Key('photo-pump'))), box = t.getRect(find.byKey(const Key('d-qty')));
     expect(shot.right, lessThan(box.left), reason: 'the photo on the left of its box');
     expect((shot.center.dy - box.center.dy).abs(), lessThan(30), reason: 'on the same line');
@@ -9473,6 +9499,207 @@ void main() {
     expect((day.center.dy - shift.center.dy).abs(), lessThan(30), reason: 'the date and the shift on one line');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/6c_issue_photos_beside.png'));
+  }, tags: ['golden']);
+
+  // ---------- (3.129.0, Mechanical update-259) HO's fill in four steps ----------
+  FakeServer hoServer() {
+    final srv = FakeServer()
+      ..perms.addAll({'Fuel Cards': 'Edit', 'Dashboard': 'View'})
+      ..card = true
+      ..dashAns = {'km': 45900, 'check': ''}
+      ..fillAns = {'litres': 35.88, 'rate': 111.48, 'amount': 4000, 'check': ''};
+    srv.accounts.add({'name': 'BPCL SMARTFLEET', 'company': 'Bharat Petroleum', 'active': true, 'balance': 50045, 'lowAt': 5000});
+    for (final i in [0, 1]) {
+      srv.cards[i]['account'] = 'BPCL SMARTFLEET';
+      srv.cards[i]['balance'] = 50045;
+    }
+    srv.cards[0]['cardNo'] = 'FC1234568913';
+    return srv;
+  }
+
+  Future<void> hoNewFill(WidgetTester t) async {
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await t.tap(find.text('New Entry').last);
+    await net(t);
+  }
+
+  String hoBox(WidgetTester t, String key) => (t.widget(find.byKey(Key(key))) as TextField).controller!.text;
+
+  testWidgets('(3.129.0 – Mechanical update-259) HO: a new fill in four steps – the vehicle and its dashboard (the AI reads the KM), Card or Cash (the cards he used last on top, then all with their vehicles; the account\'s ONE balance), the pump dispenser, bill and payment slip needed and read by the AI together (its checks shown), Other photos; Back keeps everything; the save as before with its photos; Home: the account\'s balance, never its cards added up', (t) async {
+    phone(t);
+    final srv = hoServer();
+    hoCamera();
+    final s = await ready(t, srv);
+    expect([for (final a in s.accounts) a.name], ['BPCL SMARTFLEET']);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    // Home: the account's balance once – not its two cards added up
+    expect(find.byKey(const Key('home-acct-title')), findsOneWidget);
+    expect((t.widget(find.byKey(const Key('home-cards-total'))) as dynamic).data, '₹ 50,045');
+    expect(find.byKey(const Key('home-acct-BPCL SMARTFLEET')), findsOneWidget);
+    expect(find.byKey(const Key('home-card-HDFC FUEL')), findsNothing, reason: 'a card of the account is not counted again');
+    await hoNewFill(t);
+    // 1 – the vehicle and its dashboard
+    expect(find.byKey(const Key('ho-steps')), findsOneWidget);
+    expect(find.byKey(const Key('scan-plate')), findsNothing, reason: 'no number plate photo at HO');
+    expect(find.widgetWithText(ChoiceChip, '50'), findsNothing, reason: 'no quick litres');
+    await tapK(t, 'ho-next');
+    await settle(t, 300);
+    expect(find.textContaining('Pick the vehicle.'), findsOneWidget);
+    await t.tap(find.byKey(const Key('d-machine')));
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await net(t);
+    await tapK(t, 'ho-photo-dash');
+    await net(t);
+    expect(hoBox(t, 'ho-km'), '45900', reason: 'the AI read the KM');
+    expect(find.byKey(const Key('ho-dash-note')), findsOneWidget);
+    await tapK(t, 'ho-next');
+    await net(t);
+    // 2 – paid by: the account's balance; the vehicle's own card first; searched by the number; nothing picked yet
+    expect((t.widget(find.byKey(const Key('ho-acct-bal'))) as dynamic).data, '₹ 50,045');
+    expect(find.text('FC1234568913'), findsOneWidget, reason: 'a fuel card by its whole number');
+    expect(find.byKey(const Key('ho-rcard-HDFC FUEL')), findsNothing, reason: 'nothing used by him yet');
+    expect(t.getRect(find.byKey(const Key('ho-card-SBI CREDIT'))).top < t.getRect(find.byKey(const Key('ho-card-HDFC FUEL'))).top, true, reason: 'the vehicle\'s own card first');
+    expect(find.descendant(of: find.byKey(const Key('ho-card-SBI CREDIT')), matching: find.text('this vehicle')), findsOneWidget);
+    await t.enterText(find.byKey(const Key('ho-card-q')), '8913');
+    await settle(t, 300);
+    expect(find.byKey(const Key('ho-card-SBI CREDIT')), findsNothing, reason: 'searched by the card number');
+    await t.enterText(find.byKey(const Key('ho-card-q')), '');
+    await settle(t, 300);
+    await tapK(t, 'ho-next');
+    await settle(t, 300);
+    expect(find.textContaining('Pick how it was paid'), findsOneWidget);
+    await tapK(t, 'ho-card-HDFC FUEL');
+    await net(t);
+    // 3 – the photos: the three needed; the AI reads them together; its check shown; the balance after
+    expect(find.byKey(const Key('ho-paid')), findsOneWidget);
+    await tapK(t, 'ho-next');
+    await settle(t, 300);
+    expect(find.textContaining('Take the photo of the pump dispenser'), findsOneWidget);
+    await tapK(t, 'ho-photo-pump');
+    await net(t);
+    expect([for (final x in srv.fillAsked.last['photos'] as List) (x as Map)['kind']], ['pump']);
+    expect([hoBox(t, 'd-qty'), hoBox(t, 'd-rate'), hoBox(t, 'd-amount')], ['35.88', '111.48', '4000']);
+    srv.fillAns = {'litres': 35.88, 'rate': 111.48, 'amount': 4000, 'check': 'the payment slip is of card ··1234, not of the card picked (HDFC FUEL ··4321)'};
+    await tapK(t, 'ho-photo-bill');
+    await net(t);
+    await tapK(t, 'ho-next');
+    await settle(t, 300);
+    expect(find.textContaining('Take the photo of the payment slip'), findsOneWidget);
+    await tapK(t, 'ho-photo-slip');
+    await net(t);
+    final ask = srv.fillAsked.last;
+    expect([ask['no'], ask['card'], ask['date'], [for (final x in ask['photos'] as List) (x as Map)['kind']]], ['MH-12-HO-1163', 'HDFC FUEL', '2026-10-14', ['pump', 'bill', 'slip']]);
+    expect(((ask['photos'] as List).first as Map)['data'], startsWith('data:image/jpeg;base64,'));
+    expect(find.textContaining('the payment slip is of card ··1234'), findsOneWidget);
+    expect(find.textContaining('Account balance ₹ 50,045 → after this fill ₹ 46,045'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('d-amount')), '3999.50');
+    await settle(t, 300);
+    await tapK(t, 'ho-photo-oth');
+    await net(t);
+    await tapK(t, 'ho-photo-oth');
+    await net(t);
+    expect(find.byKey(const Key('ho-oth-x-1')), findsOneWidget, reason: 'Other photos: as many as needed');
+    await tapK(t, 'ho-oth-x-1');
+    await settle(t, 300);
+    expect(find.byKey(const Key('ho-oth-x-1')), findsNothing, reason: 'one taken out again');
+    // Back keeps everything: the card picked, the KM; forward again – the photos and the typed ₹ are there
+    await tapK(t, 'ho-back');
+    await net(t);
+    expect(find.descendant(of: find.byKey(const Key('ho-card-HDFC FUEL')), matching: find.byIcon(Icons.check_circle_rounded)), findsOneWidget);
+    await tapK(t, 'ho-back');
+    await net(t);
+    expect(hoBox(t, 'ho-km'), '45900');
+    await tapK(t, 'ho-next');
+    await net(t);
+    await tapK(t, 'ho-next');
+    await net(t);
+    expect(hoBox(t, 'd-amount'), '3999.50', reason: 'a typed number stays his');
+    expect(find.byKey(const Key('ho-oth-x-0')), findsOneWidget);
+    await tapK(t, 'ho-next');
+    await net(t);
+    // 4 – everything once more; a line pressed opens its step
+    for (final w in ['MH-12-HO-1163', '45900 km', 'Card FC1234568913', '35.88 L × ₹ 111.48', '₹ 3,999', '(5)']) {
+      expect(find.descendant(of: find.byKey(const Key('ho-sum')), matching: find.textContaining(w)), findsWidgets, reason: w);
+    }
+    await tapK(t, 'ho-sum-paid');
+    await net(t);
+    expect(find.byKey(const Key('ho-acct')), findsOneWidget);
+    await tapK(t, 'ho-card-HDFC FUEL');
+    await net(t);
+    await tapK(t, 'ho-next');
+    await net(t);
+    await tapK(t, 'ho-save');
+    await net(t);
+    final d = srv.saved.last;
+    expect([d['no'], d['source'], d['qty'], d['rate'], d['amount'], d['kmReading']], ['MH-12-HO-1163', 'HDFC FUEL', 35.88, 111.48, 3999.5, 45900]);
+    expect([for (final x in d['photos'] as List) (x as Map)['k']], ['dash', 'pump', 'bill', 'slip', 'oth']);
+    expect(s.accounts.first.balance, 46045.5, reason: 'the account\'s one balance came down');
+    expect(find.textContaining('Photos: 5'), findsOneWidget);
+    await t.tap(find.text('One more'));
+    await net(t);
+    // the next fill: the first step again; the card he used is on top
+    expect(find.byKey(const Key('ho-photo-dash')), findsNothing, reason: 'no vehicle yet');
+    await t.tap(find.byKey(const Key('d-machine')));
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await net(t);
+    await t.enterText(find.byKey(const Key('ho-km')), '46010');
+    await settle(t, 300);
+    await tapK(t, 'ho-next');
+    await net(t);
+    expect(find.byKey(const Key('ho-rcard-HDFC FUEL')), findsOneWidget, reason: 'the card he used last – on top');
+    // Cash: the same photos needed, nothing off the account
+    await tapK(t, 'ho-pay-cash');
+    await net(t);
+    expect(find.textContaining('Cash – the account balance does not change.'), findsOneWidget);
+    await tapK(t, 'ho-next');
+    await settle(t, 300);
+    expect(find.textContaining('Take the photo of the pump dispenser'), findsOneWidget, reason: 'Cash too: the photos are needed');
+  });
+
+  testWidgets('(3.129.0 – Mechanical update-259) HO\'s fill in four steps and Home\'s account balance – pictures', (t) async {
+    phone(t);
+    final srv = hoServer();
+    hoCamera();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9n_ho_home_account.png'));
+    await hoNewFill(t);
+    await t.tap(find.byKey(const Key('d-machine')));
+    await settle(t, 800);
+    await t.tap(find.text('MH-12-HO-1163').last);
+    await net(t);
+    await tapK(t, 'ho-photo-dash');
+    await net(t);
+    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, 300));
+    await settle(t, 400);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9o_ho_fill_1_vehicle.png'));
+    await tapK(t, 'ho-next');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9p_ho_fill_2_paid_by.png'));
+    await tapK(t, 'ho-card-HDFC FUEL');
+    await net(t);
+    for (final k in ['pump', 'bill', 'slip', 'oth']) {
+      await tapK(t, 'ho-photo-$k');
+      await net(t);
+    }
+    await t.drag(find.byType(SingleChildScrollView).first, const Offset(0, 1200));
+    await settle(t, 400);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9q_ho_fill_3_photos.png'));
+    await tapK(t, 'ho-next');
+    await net(t);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9r_ho_fill_4_save.png'));
   }, tags: ['golden']);
 }
 

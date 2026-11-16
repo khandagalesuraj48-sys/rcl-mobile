@@ -42,6 +42,13 @@ class FakeServer {
     {'name': 'OLD CARD', 'last4': '1111', 'type': 'Debit card', 'cars': <String>[], 'opening': 0, 'openDate': '2026-09-01', 'active': false, 'paid': 0, 'spent': 0, 'balance': 0, 'fills': 0, 'payments': 0, 'lastFill': '', 'used': false},
   ];
   final cardCalls = <Map<String, dynamic>>[];
+  /// (3.129.0, Mechanical update-258) the fuel accounts (none unless a test adds one) – a card names its account in 'account'
+  final accounts = <Map<String, dynamic>>[];
+  /// (3.129.0, Mechanical update-259) what the app asked the AI to read on a fill's photos, and the answer it gets
+  final fillAsked = <Map<String, dynamic>>[];
+  Map<String, dynamic>? fillAns;
+  /// (3.129.0) what the AI reads on a dashboard photo (none set: the Hrs as before)
+  Map<String, dynamic>? dashAns;
   /// (3.86.0, Mechanical update-212) HO's cars: their photos (number → { t, f, exp, v } as the server gives them), the calls about them;
   /// [carLinksEnd]: the links given end at once (the phone must ask for new ones); [carRefuse]: the server refuses a photo (not the Admin)
   final carPhotos = <String, Map<String, dynamic>>{
@@ -114,7 +121,7 @@ class FakeServer {
       });
   /// (3.59.0) as the server's maintHasGa_: a line's GST ₹ as in the old log book (no GST %)
   static bool _hasGa(Map l) => l['gstAmt'] is num && !((l['gst'] is num ? l['gst'] as num : 0) > 0);
-  Map<String, dynamic> get cardStock => {'stock': 0, 'byLoc': <String, dynamic>{}, 'cards': cards};
+  Map<String, dynamic> get cardStock => {'stock': 0, 'byLoc': <String, dynamic>{}, 'cards': cards, if (accounts.isNotEmpty) 'accounts': accounts};
   final issueBal = <List>[];
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
@@ -2491,7 +2498,11 @@ class FakeServer {
           prefs = {...prefs, ...(a[0] as Map).cast<String, dynamic>()};
           return _j({'result': {'ok': true, 'prefs': prefs}});
         case 'getMeterReading':
-          return _j({'result': (a[0] as Map)['kind'] == 'dash' ? {'hr': 4712.5, 'check': ''} : {'litres': 60}});
+          if ((a[0] as Map)['kind'] == 'fill') {      // (3.129.0, Mechanical update-259) the dispenser, the bill and the slip together
+            fillAsked.add((a[0] as Map).cast<String, dynamic>());
+            return _j({'result': fillAns ?? {'litres': 60}});
+          }
+          return _j({'result': (a[0] as Map)['kind'] == 'dash' ? (dashAns ?? {'hr': 4712.5, 'check': ''}) : {'litres': 60}});
         case 'logPending':
           dashAsked.add({'fn': action, 'args': a}); // (3.54.0) what was asked: a period for its Print
           return _j({'result': {'items': [['OLD-9', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-13']]}});
@@ -2752,7 +2763,7 @@ class FakeServer {
           return _j({'result': {'ok': true, 'kind': (a[0] as Map)['kind'], 'path': '2026-10/00000000-0000-0000-0000-000000000001.jpg'}});
         // (3.45.0, Mechanical update-164) the fuel cards
         case 'getCards':
-          return _j({'result': {'mode': card ? 'card' : 'stock', 'types': ['Fuel card', 'Credit card', 'Debit card'], 'cards': card ? cards : []}});
+          return _j({'result': {'mode': card ? 'card' : 'stock', 'types': ['Fuel card', 'Credit card', 'Debit card'], 'cards': card ? cards : [], if (card && accounts.isNotEmpty) 'accounts': accounts}});
         case 'getCardPayments':
           cardCalls.add({'fn': action, 'x': a[0]});
           return _j({'result': {'count': cardPays.length, 'total': cardPays.fold<num>(0, (t, x) => t + (x['amount'] as num)), 'rows': cardPays}});
@@ -2908,7 +2919,15 @@ class FakeServer {
           if (card) {
             saved.add(d);
             final c = cards.where((c) => c['name'] == d['source']).firstOrNull;
-            if (c != null) c['balance'] = (c['balance'] as num) - (d['amount'] as num);
+            final ac = c == null ? null : accounts.where((x) => x['name'] == c['account']).firstOrNull;
+            if (ac != null) {      // (3.129.0, Mechanical update-258) a card of an account: the account's ONE balance goes down – every card of it shows it
+              ac['balance'] = (ac['balance'] as num) - (d['amount'] as num);
+              for (final o in cards.where((o) => o['account'] == ac['name'])) {
+                o['balance'] = ac['balance'];
+              }
+            } else if (c != null) {
+              c['balance'] = (c['balance'] as num) - (d['amount'] as num);
+            }
             return _j({'result': {'ok': true, 'id': 'DI-000531', 'stock': cardStock}});
           }
           if (d['force'] != true && (d['hrReading'] ?? '') == 1) return _j({'result': {'ok': false, 'warning': 'The Hrs reading 1 is lower than the last one (4,700). Save anyway?'}});

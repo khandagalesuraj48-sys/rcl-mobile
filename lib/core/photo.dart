@@ -35,7 +35,18 @@ const kPhotoKinds = [
   PhotoKind('reg', 'Register', 'रजिस्टर', 'notebook'),
   // (3.90.0, Mechanical update-215) the receipt of a fill at a petrol pump – only at a site on fuel cards (HO)
   PhotoKind('bill', 'Pump bill', 'पंप बिल', 'receipt'),
+  // (3.129.0, Mechanical update-259) the payment slip of a fill at a pump (the card machine's slip, or the cash receipt) – only the HO
+  // fill in steps (forms.dart) asks it
+  PhotoKind('slip', 'Payment slip', 'पेमेंट स्लिप', 'receipt'),
 ];
+
+/// (3.129.0, Mechanical update-259, asked 16-11-2026: "baki other pn … kiti upload kru shakel") the Other photos of a fill at HO – as
+/// many as needed (up to [kOtherMax], the server's number); the only kind given more than once
+const kOtherPhoto = PhotoKind('oth', 'Other photo', 'इतर फोटो', 'camera');
+const kOtherMax = 20;
+
+/// (3.129.0) the camera of a diesel photo – a screen test puts its own picture here (the phone's camera is not there in a test)
+Future<TakenPhoto?> Function(String label, String machineId) cameraShot = takePhoto;
 
 /// Why a photo could not be taken – said to the person as it is.
 class PhotoProblem implements Exception {
@@ -149,7 +160,10 @@ Uint8List _toJpg(_Raw r) {
 }
 
 /// A smaller copy for the AI (longest side 1280 px) – it is read faster (as the web: update-87).
-Future<String> smallCopy(Uint8List jpg) async => 'data:image/jpeg;base64,${base64Encode(await compute(_small, jpg))}';
+Future<String> smallCopy(Uint8List jpg) async => 'data:image/jpeg;base64,${base64Encode(await photoCompute(_small, jpg))}';
+
+/// (3.129.0) where a photo is made smaller (off the screen's thread) – a screen test makes it at once
+Future<R> Function<M, R>(ComputeCallback<M, R> callback, M message, {String? debugLabel}) photoCompute = compute;
 
 Uint8List _small(Uint8List jpg) {
   final im = img.decodeJpg(jpg);
