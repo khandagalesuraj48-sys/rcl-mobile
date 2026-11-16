@@ -114,6 +114,13 @@ Widget _bigBtn(String key, String en, String mr, IconData icon, VoidCallback? on
       ),
     );
 
+/// A button's icon and words in one line, never wider than its place (a long Marathi label ends with …)
+Widget _iconText(IconData icon, String text, {double size = 15, FontWeight weight = FontWeight.w700}) => Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 20),
+      const SizedBox(width: 6),
+      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: size, fontWeight: weight))),
+    ]);
+
 // =====================================================================================================================================
 //  A READING OF THE VEHICLE: its photo (the phone reads it; the AI only when the phone is not sure) and the numbers he may correct
 // =====================================================================================================================================
@@ -572,7 +579,7 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
       _choice('slb-plate', 'Photo of the number plate', 'नंबर प्लेटचा फोटो काढा', Icons.photo_camera_rounded, const [Color(0xFF2F6FD6), Color(0xFF1E4FA8)], _plate),
       Align(
         alignment: Alignment.center,
-        child: TextButton.icon(key: const Key('slb-pick'), onPressed: _pick, icon: const Icon(Icons.list_rounded), label: Text(bi('Pick it from the list', 'यादीतून निवडा'))),
+        child: TextButton(key: const Key('slb-pick'), onPressed: _pick, child: _iconText(Icons.list_rounded, bi('Pick it from the list', 'यादीतून निवडा'), size: 14)),
       ),
       _box(
         color: C.blueSoft,
@@ -650,7 +657,7 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
         _bigBtn('slb-confirm', 'Confirm the opening', 'Opening नक्की करा', Icons.check_rounded, opening ? null : _confirmOpening),
       ],
       const SizedBox(height: 10),
-      Center(child: TextButton.icon(key: const Key('slb-hand0'), onPressed: _hand, icon: const Icon(Icons.swap_horiz_rounded), label: Text(bi('Hand over to another driver', 'दुसऱ्याला द्या')))),
+      Center(child: TextButton(key: const Key('slb-hand0'), onPressed: _hand, child: _iconText(Icons.swap_horiz_rounded, bi('Hand over to another driver', 'दुसऱ्याला द्या'), size: 14))),
     ];
   }
 
@@ -730,12 +737,11 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
       const SizedBox(height: 8),
       SizedBox(
         height: 54,
-        child: OutlinedButton.icon(
+        child: OutlinedButton(
           key: const Key('slb-hand'),
-          style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), backgroundColor: Colors.white),
+          style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), backgroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12)),
           onPressed: _hand,
-          icon: const Icon(Icons.swap_horiz_rounded),
-          label: Text(bi('Hand over to another driver', 'दुसऱ्याला द्या'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+          child: _iconText(Icons.swap_horiz_rounded, bi('Hand over to another driver', 'दुसऱ्याला द्या'), size: 15.5),
         ),
       ),
       const SizedBox(height: 12),
@@ -839,7 +845,7 @@ class _TakeVehicleScreenState extends State<TakeVehicleScreen> {
             ]),
           ]),
         ),
-        Center(child: TextButton(key: const Key('take-other'), onPressed: () => Navigator.pop(context, false), child: Text(bi('Not this vehicle? Change it', 'ही गाडी नाही? बदला')))),
+        Center(child: TextButton(key: const Key('take-other'), onPressed: () => Navigator.pop(context, false), child: Text(bi('Not this vehicle? Change it', 'ही गाडी नाही? बदला'), maxLines: 2, textAlign: TextAlign.center))),
         if (err.isNotEmpty) InfoLine(err, bad: true),
         const SizedBox(height: 16),
         _bigBtn('take-go', 'Take this vehicle', 'गाडी घ्या', Icons.check_rounded, busy || !on ? null : _go),
@@ -1091,7 +1097,7 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
         _field('close-heard', heard, 'Heard', lines: 2),
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton.icon(key: const Key('close-ai'), onPressed: writing ? null : _write, icon: writing ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome_rounded), label: Text(bi('Write it with AI', 'AI ने लिहा'))),
+          child: TextButton(key: const Key('close-ai'), onPressed: writing ? null : _write, child: _iconText(writing ? Icons.hourglass_top_rounded : Icons.auto_awesome_rounded, bi('Write it with AI', 'AI ने लिहा'), size: 14)),
         ),
         Container(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),

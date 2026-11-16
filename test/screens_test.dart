@@ -9842,7 +9842,8 @@ void main() {
     await net(t);
     expect((srv.vlCalls.lastWhere((c) => c['fn'] == 'vlHandAnswer')['x'] as Map)['yes'], true);
     expect(find.byKey(const Key('slb-duty')), findsOneWidget);
-    expect(t.takeException(), isNull);
+    final ex = t.takeException();
+    expect(ex, isNull, reason: ex is FlutterError ? ex.toStringDeep() : '$ex');
   });
 
   testWidgets('(3.132.0) a driver with the Log Book only: Home shows "My vehicle" in the place of the stock, his four figures and his to-do; a site without the step (or a person without Log Book Edit): Home as before', (t) async {
@@ -9859,7 +9860,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s, key: UniqueKey()));
     await net(t);
     expect(find.byKey(const Key('home-myveh-no')), findsOneWidget);
-    await t.scrollUntilVisible(find.byKey(const Key('today-slb-open')), 250, scrollable: find.ancestor(of: find.byKey(const Key('home-myveh')), matching: find.byType(Scrollable)).first);
+    await t.scrollUntilVisible(find.byKey(const Key('today-slb-open')), 250, scrollable: find.descendant(of: find.byType(RefreshIndicator).first, matching: find.byType(Scrollable)).first);
     expect(find.byKey(const Key('today-slb-open')), findsOneWidget);
     expect(t.takeException(), isNull);
   });
