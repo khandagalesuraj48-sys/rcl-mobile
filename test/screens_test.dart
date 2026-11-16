@@ -9858,8 +9858,9 @@ void main() {
     srv.vlSess = {'id': 'VS-1', 'no': 'MH-25-AJ-2169', 'type': 'Tipper', 'unit': 'KM', 'since': '2026-10-14T08:01', 'how': 'qr', 'shiftDate': '2026-10-14', 'shift': 'Day', 'gps': {'lat': null, 'lng': null, 'speed': null, 'at': '', 'status': 'off', 'km': 0}};
     await t.pumpWidget(RclApp(session: s, key: UniqueKey()));
     await net(t);
-    expect(find.byKey(const Key('today-slb-open')), findsOneWidget);
     expect(find.byKey(const Key('home-myveh-no')), findsOneWidget);
+    await t.scrollUntilVisible(find.byKey(const Key('today-slb-open')), 250, scrollable: find.ancestor(of: find.byKey(const Key('home-menu')), matching: find.byType(Scrollable)).first);
+    expect(find.byKey(const Key('today-slb-open')), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 

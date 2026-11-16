@@ -115,7 +115,10 @@ Widget _bigBtn(String key, String en, String mr, IconData icon, VoidCallback? on
 //  A READING OF THE VEHICLE: its photo (the phone reads it; the AI only when the phone is not sure) and the numbers he may correct
 // =====================================================================================================================================
 class _Reading extends ChangeNotifier {
-  _Reading(this.m);
+  _Reading(this.m) {
+    km.addListener(notifyListeners);      // (a number typed: the work of the shift beside it at once)
+    hr.addListener(notifyListeners);
+  }
   final Machine m;
   final km = TextEditingController(), hr = TextEditingController();
   Uint8List? jpg;
