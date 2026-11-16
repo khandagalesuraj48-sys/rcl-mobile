@@ -9917,10 +9917,13 @@ void main() {
     openDriverMaster(t.element(find.byType(Scaffold).first));
     await net(t);
     expect(find.byKey(const Key('dm-row-DR-000001')), findsOneWidget);
-    expect(find.text('3 drivers'), findsOneWidget);
+    expect(find.text('2 of 3 drivers'), findsOneWidget, reason: 'the list opens on Active (as the web)');
     expect(find.text('16 days left'), findsOneWidget, reason: 'Mahesh: up to 30-10-2026');
     expect(find.text('expired'), findsOneWidget, reason: 'Anil: up to 30-09-2026');
     expect(find.textContaining('MH-12-PQ-1180'), findsOneWidget, reason: 'the vehicle with Anil now');
+    await tapK(t, 'dm-st-all');
+    await settle(t, 300);
+    expect(find.text('3 drivers'), findsOneWidget);
     await t.enterText(find.byKey(const Key('dm-q')), 'ravi');
     await settle(t, 300);
     expect([find.byKey(const Key('dm-row-DR-000003')).evaluate().length, find.byKey(const Key('dm-row-DR-000001')).evaluate().length], [1, 0]);
@@ -9947,6 +9950,21 @@ void main() {
     await tapK(t, 'dm-row-DR-000002');
     await settle(t, 600);
     expect(find.text('MH1420150002222'), findsOneWidget);
+    Navigator.of(t.element(find.byKey(const Key('dmf-list')))).pop();
+    await net(t);
+    // "Bring from HR": Mahesh is the same person here (Link to him); Ganesh is not here (Add as new)
+    await tapK(t, 'dm-hr');
+    await net(t);
+    expect(find.text('The same person here?'), findsOneWidget);
+    expect(find.text('Not here'), findsOneWidget);
+    await tapK(t, 'dmh-link-e1');
+    await net(t);
+    expect(srv.vlCalls.lastWhere((c) => c['fn'] == 'linkHrDriver')['x'], {'hr': 'e1', 'to': 'DR-000001', 'sameName': false});
+    expect(find.text('Linked'), findsOneWidget);
+    await tapK(t, 'dmh-add-e2');
+    await net(t);
+    expect((srv.vlCalls.lastWhere((c) => c['fn'] == 'linkHrDriver')['x'] as Map)['to'], '');
+    expect(find.text('Linked'), findsNWidgets(2));
     expect(t.takeException(), isNull);
   });
 

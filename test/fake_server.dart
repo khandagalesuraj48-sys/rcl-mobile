@@ -41,6 +41,11 @@ class FakeServer {
       'gps': {'lat': 18.7731, 'lng': 73.8402, 'speed': null, 'at': '2026-10-14T06:10', 'status': 'off', 'km': 3.1}, 'opening': null, 'long': true},
   ];
   final routeAsked = <Map<String, dynamic>>[];
+  /// (3.132.0) the site's Driver / Operator employees in HR (Mechanical's hrDriversToLink asks HR – here made up)
+  final hrEmp = <Map<String, dynamic>>[
+    {'hr': 'e1', 'code': 'RCL-0001', 'name': 'Mahesh Jadhav', 'mobile': '9800000011', 'category': 'Driver', 'status': 'active', 'left': ''},
+    {'hr': 'e2', 'code': 'RCL-0002', 'name': 'Ganesh Shinde', 'mobile': '9800000044', 'category': 'Operator', 'status': 'active', 'left': ''},
+  ];
   Map<String, String> perms = {'Diesel Issue': 'Edit', 'Diesel Inward': 'View', 'Diesel Transfer': 'None', 'Dashboard': 'View', 'Log Book': 'View', 'Reports': 'View', 'Master': 'View'};
   /// (3.43.0, Mechanical update-162) his diesel sources (getInit's user.dsrc); [userInSync]: the sync tells the user too (as Mechanical)
   Map<String, dynamic>? dsrc;
@@ -2525,11 +2530,34 @@ class FakeServer {
         case 'logPending':
           dashAsked.add({'fn': action, 'args': a}); // (3.54.0) what was asked: a period for its Print
           return _j({'result': {'items': [['OLD-9', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-14'], ['MH-25-AJ-2169', '2026-10-13']]}});
-        case 'getDriverMaster' || 'saveDriver' || 'vlBoard' || 'vlAssign' || 'vlRelease' || 'vlResolve' || 'vlLive' || 'vlRoute':
+        case 'getDriverMaster' || 'saveDriver' || 'hrDriversToLink' || 'linkHrDriver' || 'vlBoard' || 'vlAssign' || 'vlRelease' || 'vlResolve' || 'vlLive' || 'vlRoute':
           if (!slbOn) return _j({'error': 'The Smart Log Book cannot be used yet. This needs one database step first.'}, 500);
           final x = a.isEmpty ? <String, dynamic>{} : (a[0] as Map).cast<String, dynamic>();
           vlCalls.add({'fn': action, 'x': x});
           if (action == 'getDriverMaster') return _j({'result': {'on': true, 'drivers': drivers}});
+          if (action == 'hrDriversToLink') {
+            return _j({'result': {'on': true, 'can': perms['Driver Master'] == 'Edit', 'employees': [
+              for (final e in hrEmp)
+                () {
+                  final linked = drivers.where((d) => d['hr'] == e['hr']).toList(), same = linked.isNotEmpty ? const <Map<String, dynamic>>[] : drivers.where((d) => '${d['hr']}'.isEmpty && (d['mobile'] == e['mobile'] || '${d['name']}'.toUpperCase() == '${e['name']}'.toUpperCase())).toList();
+                  final d = linked.isNotEmpty ? linked.first : (same.isNotEmpty ? same.first : null);
+                  return {...e, 'state': linked.isNotEmpty ? 'linked' : same.isNotEmpty ? 'same' : 'new', 'driver': d?['id'] ?? '', 'driverName': d?['name'] ?? '', 'changed': linked.isNotEmpty && linked.first['name'] != e['name'] ? ['name'] : <String>[]};
+                }(),
+            ]}});
+          }
+          if (action == 'linkHrDriver') {
+            final e = hrEmp.firstWhere((y) => y['hr'] == x['hr']), to = '${x['to'] ?? ''}';
+            if (to.isNotEmpty) {
+              drivers.firstWhere((d) => d['id'] == to)['hr'] = e['hr'];
+              return _j({'result': {'ok': true, 'id': to, 'linked': true}});
+            }
+            if (x['sameName'] != true && drivers.any((d) => '${d['name']}'.toUpperCase() == '${e['name']}'.toUpperCase())) {
+              return _j({'error': 'Driver Master: a driver named ${e['name']} (DR-000001) is already there – link to him, or if this is another person of the same name, press Add again.'}, 500);
+            }
+            final nid = 'DR-${(drivers.length + 1).toString().padLeft(6, '0')}';
+            drivers.add({'id': nid, 'name': e['name'], 'mobile': e['mobile'], 'licence': '', 'licenceExpiry': '', 'category': e['category'], 'status': 'Active', 'email': '', 'hr': e['hr'], 'remark': '', 'has': ''});
+            return _j({'result': {'ok': true, 'id': nid}});
+          }
           if (action == 'saveDriver') {
             final name = '${x['name'] ?? ''}'.trim(), id = '${x['id'] ?? ''}';
             if (name.length < 2) return _j({'error': "Driver Master: enter the driver's name."}, 500);

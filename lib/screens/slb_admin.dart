@@ -103,7 +103,7 @@ class DriverMasterScreen extends StatefulWidget {
 class _DriverMasterScreenState extends State<DriverMasterScreen> {
   List<Map<String, dynamic>> list = [];
   bool loading = true;
-  String err = '', status = '';
+  String err = '', status = 'Active';      // (the web's list opens on Active too)
   final q = TextEditingController();
 
   @override
@@ -174,7 +174,19 @@ class _DriverMasterScreenState extends State<DriverMasterScreen> {
             for (final (v, l) in const [('', 'All'), ('Active', 'Active'), ('Inactive', 'Inactive')])
               ChoiceChip(key: Key('dm-st-${v.isEmpty ? 'all' : v}'), label: Text(l), selected: status == v, onSelected: (_) => setState(() => status = v)),
           ]),
-          if (list.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('${shown.length == list.length ? '${list.length}' : '${shown.length} of ${list.length}'} driver${list.length == 1 ? '' : 's'}', key: const Key('dm-count'), style: const TextStyle(fontSize: 13, color: C.muted))),
+          Row(children: [
+            Expanded(child: list.isEmpty ? const SizedBox.shrink() : Text('${shown.length == list.length ? '${list.length}' : '${shown.length} of ${list.length}'} driver${list.length == 1 ? '' : 's'}', key: const Key('dm-count'), style: const TextStyle(fontSize: 13, color: C.muted))),
+            // (update-263) "Bring from HR": the Driver / Operator employees of this site in HR (HR only read)
+            TextButton.icon(
+              key: const Key('dm-hr'),
+              onPressed: () async {
+                await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HrDriversScreen()));
+                await _load();
+              },
+              icon: const Icon(Icons.badge_outlined, size: 20),
+              label: Text('Bring from HR', mr: 'HR मधून आणा'),
+            ),
+          ]),
           const SizedBox(height: 8),
           if (loading && list.isEmpty) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
           if (err.isNotEmpty) InfoLine(err, bad: true),
@@ -296,18 +308,130 @@ class _DriverFormState extends State<DriverForm> {
           TextField(key: const Key('dmf-remark'), controller: remark, decoration: InputDecoration(labelText: tr('Remark'))),
         ])),
         if (err.isNotEmpty) InfoLine(err, key: const Key('dmf-err'), bad: true),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 54,
-          child: FilledButton.icon(
-            key: const Key('dmf-save'),
-            style: FilledButton.styleFrom(backgroundColor: C.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-            onPressed: busy ? null : _save,
-            icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check_rounded),
-            label: Text(id.isEmpty ? 'Save driver' : 'Save changes', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+      ]),
+      // (the Save button stays at the bottom – a long message above it never hides it)
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: SizedBox(
+            height: 54,
+            child: FilledButton.icon(
+              key: const Key('dmf-save'),
+              style: FilledButton.styleFrom(backgroundColor: C.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+              onPressed: busy ? null : _save,
+              icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check_rounded),
+              label: Text(id.isEmpty ? 'Save driver' : 'Save changes', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
           ),
         ),
-      ]),
+      ),
+    );
+  }
+}
+
+/// (update-263) "Bring from HR": the Driver / Operator employees of this site in HR – Linked / the same person here (Link to him) / not here
+/// (Add as new); a change in HR shown, never written over by itself (hrDriversToLink, linkHrDriver – the web's same panel)
+class HrDriversScreen extends StatefulWidget {
+  const HrDriversScreen({super.key});
+  @override
+  State<HrDriversScreen> createState() => _HrDriversScreenState();
+}
+
+class _HrDriversScreenState extends State<HrDriversScreen> {
+  List<Map<String, dynamic>> list = [];
+  bool loading = true, can = false;
+  String err = '', busy = '', again = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    final s = SessionScope.read(context);
+    setState(() {
+      loading = true;
+      err = '';
+    });
+    try {
+      final d = _map(await s.api.call('hrDriversToLink'));
+      if (!mounted) return;
+      setState(() {
+        list = _maps(d['employees']);
+        can = d['can'] == true;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        err = errText(e);
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> _do(Map<String, dynamic> e, String to) async {
+    final s = SessionScope.read(context), hr = '${e['hr']}';
+    setState(() => busy = hr);
+    try {
+      final r = _map(await s.api.call('linkHrDriver', [{'hr': hr, 'to': to, 'sameName': to.isEmpty && again == hr}]));
+      if (!mounted) return;
+      again = '';
+      toast(context, r['again'] == true ? 'Already linked.' : r['linked'] == true ? 'Linked – ${r['id']} is that employee of HR.' : 'Added from HR – ${r['id']}.');
+      await _load();
+    } catch (er) {
+      if (!mounted) return;
+      final m = errText(er);
+      again = m.contains('press Add again') ? hr : '';
+      toast(context, m, bad: true);
+    } finally {
+      if (mounted) setState(() => busy = '');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const st = {'linked': ('Linked', C.greenDark, C.greenSoft), 'same': ('The same person here?', C.amber, C.amberSoft), 'new': ('Not here', C.muted, C.slateSoft)};
+    return Scaffold(
+      appBar: slbBar(context, 'Bring from HR', bi('Drivers and operators of this site in HR', 'HR मधले या site चे drivers'), pic: 'clipboard'),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(key: const Key('dmh-list'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
+          _card(color: _purpleSoft, Text('HR is only read – nothing is written there. "Link to him": the driver here is that employee (no second driver). A change in HR (name, mobile, left) is shown here – never written over by itself.',
+              style: const TextStyle(fontSize: 13.5, height: 1.35, color: Color(0xFF4C1D95)))),
+          if (loading && list.isEmpty) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+          if (err.isNotEmpty) InfoLine(err, bad: true),
+          if (!loading && err.isEmpty && list.isEmpty) const EmptyState('No Driver / Operator of this site in HR.', '', pic: 'clipboard'),
+          for (final e in list)
+            Builder(builder: (_) {
+              final (word, c, bg) = st['${e['state']}'] ?? st['new']!;
+              final changed = (e['changed'] as List? ?? const []).map((x) => tr('$x')).join(', '), left = '${e['status']}' == 'left', hr = '${e['hr']}';
+              return _card(
+                key: Key('dmh-$hr'),
+                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    Expanded(child: Text('${e['name']}', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800))),
+                    Pill(word, color: c, bg: bg),
+                  ]),
+                  Text([e['code'], e['category'], if ('${e['mobile'] ?? ''}'.isNotEmpty) e['mobile'], left ? '${tr('Left')}${'${e['left'] ?? ''}'.isEmpty ? '' : ' ${showDate('${e['left']}')}'}' : _kind(e['status'])].join(' · '),
+                      style: TextStyle(fontSize: 13, color: left ? C.red : C.muted)),
+                  if ('${e['driver'] ?? ''}'.isNotEmpty) Text('${tr('Driver Master')}: ${e['driverName']} (${e['driver']})', style: const TextStyle(fontSize: 13)),
+                  if (changed.isNotEmpty) Text('${tr('Changed in HR')}: $changed', style: const TextStyle(fontSize: 13, color: C.amber, fontWeight: FontWeight.w600)),
+                  if (can && '${e['state']}' != 'linked')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Wrap(spacing: 8, runSpacing: 6, children: [
+                        if ('${e['state']}' == 'same')
+                          FilledButton(key: Key('dmh-link-$hr'), style: FilledButton.styleFrom(backgroundColor: _purple, minimumSize: const Size(0, 40)), onPressed: busy.isNotEmpty ? null : () => _do(e, '${e['driver']}'), child: Text('Link to him', mr: 'त्याच्याशी जोडा')),
+                        OutlinedButton(key: Key('dmh-add-$hr'), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)), onPressed: busy.isNotEmpty ? null : () => _do(e, ''), child: Text('Add as new', mr: 'नवीन म्हणून आणा')),
+                      ]),
+                    ),
+                ]),
+              );
+            }),
+        ]),
+      ),
     );
   }
 }
