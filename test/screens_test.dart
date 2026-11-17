@@ -9245,7 +9245,7 @@ void main() {
   }, tags: ['golden']);
 
   /* (3.133.0) THE THIRD WAY IN – "Login with Mobile OTP", a code on WhatsApp (the Portal's step 14; his brief and answers of 17-11-2026). */
-  testWidgets('(3.133.0) "Login with Mobile OTP" is not there while the Portal has it switched off; "temporarily unavailable" while it is not ready', (t) async {
+  testWidgets('(3.133.0) "Login with Mobile OTP" is not there while the Portal has it switched off – the sign-in exactly as before', (t) async {
     phone(t);
     final off = FakeServer(), s0 = make(off);
     await t.runAsync(s0.start);
@@ -9253,7 +9253,10 @@ void main() {
     await net(t);
     expect(off.calls.where((c) => c == 'portal:options').length, 1, reason: 'one question for both codes');
     expect(find.byKey(const Key('login-wa')), findsNothing, reason: 'switched off: the sign-in exactly as before');
-    // switched on at the Portal, not ready: the button; its card says so – nothing can be sent; the password as ever
+  });
+
+  testWidgets('(3.133.0) switched on at the Portal but not ready: the button; its card says "temporarily unavailable" – nothing can be sent; the password as ever', (t) async {
+    phone(t);
     final half = FakeServer()..waState = 'unavailable';
     final s = make(half);
     await t.runAsync(s.start);
