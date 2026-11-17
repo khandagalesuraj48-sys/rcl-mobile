@@ -800,7 +800,19 @@ class _SixBoxesState extends State<_SixBoxes> {
               autocorrect: false,
               enableSuggestions: false,
               style: const TextStyle(color: Colors.transparent, fontSize: 1),
-              decoration: const InputDecoration.collapsed(hintText: ''),
+              // (no border, no fill of the app's theme – only the six boxes are seen)
+              decoration: const InputDecoration(
+                isCollapsed: true,
+                filled: false,
+                contentPadding: EdgeInsets.zero,
+                counterText: '',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+              ),
               onChanged: (v) {
                 widget.onChanged?.call();
                 if (v.length == 6) widget.onDone();
