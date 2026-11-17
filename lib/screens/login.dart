@@ -9,7 +9,11 @@
  * and the password, Remember me (the email kept on this phone), Forgot password?, Sign in; "Build • Manage • Move Forward".
  * (3.104.0, his rules of 12-11-2026) TWO WAYS IN: under "Sign in" the button "Login with Email OTP" – only when the Portal has
  * it switched on. It turns the card: the e-mail, "Send code", then the 6-digit code that came to his e-mail and "Sign in";
- * "Send again" after the 60 seconds the Portal keeps between two codes; "Continue with Password" turns it back. */
+ * "Send again" after the 60 seconds the Portal keeps between two codes; "Continue with Password" turns it back.
+ * (3.133.0, the Portal's step 14 – his brief and answers of 17-11-2026) THE THIRD WAY IN: "Login with Mobile OTP" – only when the Portal
+ * offers it. +91 and his number, "Send OTP", then six boxes for the code that came on WhatsApp (typed, pasted or filled in by the
+ * phone – six digits sign in at once), "Resend OTP in 60 s", "Change number", "Continue with Password". Switched on but not ready at
+ * the Portal: the card says "temporarily unavailable" – the password works as ever. */
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -18,6 +22,7 @@ import 'package:flutter/material.dart' as m show Text;
 import 'package:flutter/services.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/session.dart' show Session;
 import '../core/update.dart';
 import '../ui/brand.dart';
 import '../ui/scope.dart';
@@ -45,6 +50,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   // (3.104.0) the second way in: a code by e-mail
   final _code = TextEditingController();
   bool _otpOn = false, _otp = false, _sent = false;
+  // (3.133.0) the third way in: a code on WhatsApp – 'off' (not there), 'unavailable' (its card says so), 'on'
+  String _waState = 'off';
+  bool _wa = false;
+  final _mob = TextEditingController();
   int _wait = 0;
   Timer? _tick;
   late final AnimationController _open = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
@@ -63,11 +72,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (!mounted || m == null || m.isEmpty || _mail.text.isNotEmpty) return;
       setState(() => _mail.text = m);
     });
-    // (3.104.0) is "Login with Email OTP" switched on at the Portal? (no answer: the password sign-in as before)
+    // (3.104.0) is "Login with Email OTP" switched on at the Portal? (3.133.0) and "Login with Mobile OTP"? – one question
+    // (no answer: the password sign-in as before)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || widget.setPassword) return;
-      final on = await SessionScope.read(context).otpOffered();
-      if (mounted && on) setState(() => _otpOn = true);
+      final o = await SessionScope.read(context).signInOffers();
+      if (mounted && (o.otp || o.wa != 'off')) {
+        setState(() {
+          _otpOn = o.otp;
+          _waState = o.wa;
+        });
+      }
     });
   }
 
@@ -136,12 +151,87 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     }
   }
 
-  /// Between the two ways in (the e-mail typed stays).
-  void _way(bool otp) {
+  /// (3.133.0) "Send OTP" / "Resend OTP" on WhatsApp: the Portal's answer is the same for every number – the card goes on to the code.
+  Future<void> _waAsk() async {
+    if (_busy) return;
+    final s = SessionScope.read(context);
+    if (Session.mobileOf(_mob.text).isEmpty) {
+      setState(() => _localErr = bi('Enter your 10-digit mobile number.', '10 अंकी mobile number टाका.', '\n'));
+      _shake.forward(from: 0);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _busy = true;
+      _localErr = '';
+    });
+    try {
+      final w = await s.waSend(_mob.text);
+      if (!mounted) return;
+      setState(() {
+        _sent = true;
+        _code.clear();
+      });
+      _count(w);
+    } on ApiError catch (e) {
+      if (!mounted) return;
+      if (e.code == 'waoff') {
+        setState(() => _waState = 'unavailable');
+      } else if (e.code == 'wait' && !_sent) {
+        setState(() {
+          _sent = true;
+          _localErr = e.toString();
+        });
+        _count(60);
+      } else {
+        setState(() => _localErr = e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// (3.133.0) the six digits from WhatsApp: right → signed in (his sites, as after the password); wrong → said, the boxes empty
+  Future<void> _waGo() async {
+    if (_busy) return;
+    final code = _code.text.replaceAll(RegExp(r'\D'), '');
+    if (code.length != 6) {
+      setState(() => _localErr = bi('Type the 6-digit code from WhatsApp.', 'WhatsApp वर आलेला 6 अंकी code टाका.', '\n'));
+      _shake.forward(from: 0);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _busy = true;
+      _localErr = '';
+    });
+    try {
+      await SessionScope.read(context).waSignIn(_mob.text, code);
+    } on ApiError catch (_) {
+      if (mounted) setState(() => _waState = 'unavailable');
+    }
+    if (mounted) {
+      setState(() {
+        _busy = false;
+        _code.clear();
+      });
+    }
+  }
+
+  /// (3.133.0) "Login with Mobile OTP": a mobile number typed in the sign-in box is carried over
+  void _waOpen() {
+    final m = Session.mobileOf(_mail.text);
+    if (m.isNotEmpty && _mob.text.isEmpty) _mob.text = '${m.substring(0, 5)} ${m.substring(5)}';
+    _way(false, wa: true);
+  }
+
+  /// Between the ways in (the e-mail typed stays).
+  void _way(bool otp, {bool wa = false}) {
     _tick?.cancel();
     SessionScope.read(context).error = '';
     setState(() {
       _otp = otp;
+      _wa = wa;
       _sent = false;
       _wait = 0;
       _localErr = '';
@@ -163,6 +253,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   void dispose() {
     _tick?.cancel();
     _code.dispose();
+    _mob.dispose();
     _open.dispose();
     _shake.dispose();
     _mail.dispose();
@@ -324,7 +415,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 24, offset: const Offset(0, -6))],
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      widget.setPassword ? _pwCard(err) : (_otp ? _otpCard(err) : _card(err)),
+                      widget.setPassword ? _pwCard(err) : (_wa ? _waCard(err) : _otp ? _otpCard(err) : _card(err)),
                       const SizedBox(height: 18),
                       if (widget.setPassword)
                         Text('One password for the Portal and every module – the same on the web.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
@@ -470,6 +561,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 child: const Text('Login with Email OTP', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
               ),
             ],
+            // (3.133.0) the third way in – when the Portal offers it
+            if (_waState != 'off') ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                key: const Key('login-wa'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), foregroundColor: C.greenDark, side: const BorderSide(color: C.green), shape: const StadiumBorder()),
+                onPressed: _busy ? null : _waOpen,
+                icon: const Icon(Icons.phone_iphone_rounded, size: 20),
+                label: const Text('Login with Mobile OTP', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ],
           ]),
         ),
       );
@@ -530,6 +632,186 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           TextButton(key: const Key('login-otp-back'), onPressed: _busy ? null : () => _way(false), child: const Text('Continue with Password')),
         ]),
       );
+
+  /// (3.133.0) the code on WhatsApp: +91 and the number, "Send OTP"; then the six boxes and "Verify & sign in"
+  Widget _waCard(String err) {
+    final m = Session.mobileOf(_mob.text), off = _waState != 'on';
+    return AnimatedBuilder(
+      animation: _shake,
+      builder: (_, ch) => Transform.translate(offset: Offset(math.sin(_shake.value * math.pi * 6) * 12 * (1 - _shake.value), 0), child: ch),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('Login with Mobile OTP', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: C.ink)),
+        const SizedBox(height: 4),
+        if (off) ...[
+          // switched on at the Portal but not ready: nothing to send – the password works as ever
+          Container(
+            key: const Key('login-wa-off'),
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(16)),
+            child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Mobile OTP login is temporarily unavailable.', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.amber)),
+              SizedBox(height: 4),
+              Text('Please sign in with your password.', style: TextStyle(fontSize: 14, color: C.ink, height: 1.35)),
+              MrLine('Mobile OTP login सध्या उपलब्ध नाही – कृपया password ने sign in करा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
+            ]),
+          ),
+          const SizedBox(height: 10),
+        ] else if (!_sent) ...[
+          const Text('A 6-digit code comes on WhatsApp to your registered mobile number. It is valid for 5 minutes and works once.', style: TextStyle(fontSize: 14, color: C.muted, height: 1.35)),
+          const MrLine('तुमच्या नोंदलेल्या mobile number वर WhatsApp वर 6 अंकी code येईल – 5 मिनिटांसाठी, एकदाच.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
+          const SizedBox(height: 16),
+          TextField(
+            key: const Key('login-wa-mobile'),
+            controller: _mob,
+            keyboardType: TextInputType.phone,
+            autofillHints: const [AutofillHints.telephoneNumberNational],
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9 +]')), LengthLimitingTextInputFormatter(16)],
+            textInputAction: TextInputAction.done,
+            autocorrect: false,
+            onChanged: (_) {
+              if (_localErr.isNotEmpty) setState(() => _localErr = '');
+            },
+            onSubmitted: (_) => _waAsk(),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: .5),
+            decoration: InputDecoration(
+              labelText: tr('Mobile number'),
+              prefixIcon: const Padding(padding: EdgeInsets.fromLTRB(16, 0, 10, 0), child: Text('+91', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: C.ink))),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+            ),
+          ),
+        ] else ...[
+          const SizedBox(height: 4),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(child: Text('If +91 ${m.isEmpty ? _mob.text.trim() : '${m.substring(0, 5)} ${m.substring(5)}'} is registered, the code is on its way on WhatsApp.', style: const TextStyle(fontSize: 13.5, color: C.muted, height: 1.35))),
+            TextButton(key: const Key('login-wa-change'), onPressed: _busy ? null : () => _way(false, wa: true), child: const Text('Change number')),
+          ]),
+          const SizedBox(height: 10),
+          _SixBoxes(
+            fieldKey: const Key('login-wa-code'),
+            controller: _code,
+            bad: _localErr.isNotEmpty || SessionScope.of(context).error.isNotEmpty,
+            onChanged: () {
+              final s = SessionScope.read(context);
+              if (_localErr.isNotEmpty || s.error.isNotEmpty) {
+                s.error = '';
+                setState(() => _localErr = '');
+              }
+            },
+            onDone: _waGo,
+          ),
+        ],
+        if (!off) ...[
+          _errBox(err),
+          const SizedBox(height: 14),
+          _SignInButton(busy: _busy, onTap: _sent ? _waGo : _waAsk, label: _sent ? 'Verify & sign in' : 'Send OTP'),
+          if (_sent)
+            TextButton(
+              key: const Key('login-wa-again'),
+              onPressed: _busy || _wait > 0 ? null : _waAsk,
+              child: Text(_wait > 0 ? 'Resend OTP in $_wait s' : 'Resend OTP'),
+            ),
+        ],
+        TextButton(key: const Key('login-wa-back'), onPressed: _busy ? null : () => _way(false), child: const Text('Continue with Password')),
+      ]),
+    );
+  }
+}
+
+/// (3.133.0) SIX BOXES for the code from WhatsApp – one box a digit. One hidden field lies over them, so the phone can fill the code in
+/// by itself, a long press pastes it (WhatsApp's "Copy code" gives "123456"; anything else around the digits is dropped), and six digits
+/// sign in at once.
+class _SixBoxes extends StatefulWidget {
+  const _SixBoxes({required this.fieldKey, required this.controller, required this.onDone, this.onChanged, this.bad = false});
+  final Key fieldKey;
+  final TextEditingController controller;
+  final VoidCallback onDone;
+  final VoidCallback? onChanged;
+  final bool bad;
+  @override
+  State<_SixBoxes> createState() => _SixBoxesState();
+}
+
+class _SixBoxesState extends State<_SixBoxes> {
+  final _focus = FocusNode();
+
+  void _again() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_again);
+    _focus.addListener(_again);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _SixBoxes old) {
+    super.didUpdateWidget(old);
+    if (widget.bad && !old.bad) _focus.requestFocus(); // a wrong code: straight back to the first box
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_again);
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.controller.text, at = t.length.clamp(0, 5);
+    return Semantics(
+      label: tr('6-digit code'),
+      child: SizedBox(
+        height: 60,
+        child: Stack(children: [
+          Row(children: [
+            for (var i = 0; i < 6; i++)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(width: _focus.hasFocus && i == at ? 2 : 1.4, color: widget.bad ? C.red : (_focus.hasFocus && i == at ? C.green : C.line)),
+                    ),
+                    child: m.Text(i < t.length ? t[i] : '', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: C.ink)),
+                  ),
+                ),
+              ),
+          ]),
+          Positioned.fill(
+            child: TextField(
+              key: widget.fieldKey,
+              controller: widget.controller,
+              focusNode: _focus,
+              keyboardType: TextInputType.number,
+              autofillHints: const [AutofillHints.oneTimeCode],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+              showCursor: false,
+              autocorrect: false,
+              enableSuggestions: false,
+              style: const TextStyle(color: Colors.transparent, fontSize: 1),
+              decoration: const InputDecoration.collapsed(hintText: ''),
+              onChanged: (v) {
+                widget.onChanged?.call();
+                if (v.length == 6) widget.onDone();
+              },
+              onSubmitted: (_) => widget.onDone(),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
 }
 
 /// (3.31.0) a faint line of a city and a crane under "Build • Manage • Move Forward"

@@ -2153,5 +2153,20 @@
 "Save driver": "Driver जतन करा",
 "New driver": "नवीन driver",
 "\"Live\": the phone sent its place in the last 10 minutes.": "\"Live\": फोनने मागच्या 10 मिनिटांत जागा पाठवली.",
-"No vehicle has sent its place yet – the driver's phone sends it while the vehicle is with him.": "अजून कोणत्याही गाडीने जागा पाठवली नाही – गाडी driver कडे असताना त्याचा फोन ती पाठवतो."
+"No vehicle has sent its place yet – the driver's phone sends it while the vehicle is with him.": "अजून कोणत्याही गाडीने जागा पाठवली नाही – गाडी driver कडे असताना त्याचा फोन ती पाठवतो.",
+"Login with Mobile OTP": "Mobile OTP ने login",
+"A 6-digit code comes on WhatsApp to your registered mobile number. It is valid for 5 minutes and works once.": "तुमच्या नोंदलेल्या mobile number वर WhatsApp वर 6 अंकी code येईल. तो 5 मिनिटे चालतो आणि एकदाच वापरता येतो.",
+"Send OTP": "OTP पाठवा",
+"Resend OTP": "OTP पुन्हा पाठवा",
+"Resend OTP in {0} s": "{0} से. नंतर OTP पुन्हा पाठवा",
+"Change number": "नंबर बदला",
+"Verify & sign in": "तपासा आणि login करा",
+"If +91 {0} is registered, the code is on its way on WhatsApp.": "+91 {0} नोंदलेला असेल तर WhatsApp वर code पाठवला आहे.",
+"Type the 6-digit code from WhatsApp.": "WhatsApp वर आलेला 6 अंकी code टाका.",
+"Enter your 10-digit mobile number.": "10 अंकी mobile number टाका.",
+"Mobile OTP login is temporarily unavailable.": "Mobile OTP login सध्या उपलब्ध नाही.",
+"Please sign in with your password.": "कृपया password ने login करा.",
+"Login with Mobile OTP is temporarily unavailable. Please sign in with your password.": "Mobile OTP login सध्या उपलब्ध नाही. कृपया password ने login करा.",
+"Too many codes were asked for. Try again later, or sign in with your password.": "खूप codes मागितले गेले. थोड्या वेळाने पुन्हा प्रयत्न करा, किंवा password ने login करा.",
+"A code was just sent. Wait {0} seconds before asking for another.": "Code आत्ताच पाठवला आहे. दुसरा मागण्यापूर्वी {0} सेकंद थांबा."
 }

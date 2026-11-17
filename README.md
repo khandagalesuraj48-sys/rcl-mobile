@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.133.0 (17-11-2026, the Portal's step 14 – his brief "Dual Login System – Existing Login + WhatsApp Mobile OTP Login" and his
+answers: every active user with a number, the password and the code both stay, not for the Super Admin):** the sign-in has a third way
+in, **"Login with Mobile OTP"** – only when the Portal offers it (`Session.signInOffers` – one `options` question for both codes; `wa`
+'off' = not there, as before; 'unavailable' = its card says "temporarily unavailable"; 'on'). +91 and the number (a number typed in the
+sign-in box is carried over), "Send OTP" (`waSend` – the Portal's answer is the same for every number), six boxes for the code from
+WhatsApp (one hidden field: typed, pasted or filled in by the phone; six digits sign in at once – `waSignIn`, the same sign-in as with the
+password), "Resend OTP in 60 s", "Change number", "Continue with Password". The Portal keeps and checks everything; nothing of Meta is in
+the app. The password sign-in is not changed.
+
 **Version 3.132.1 (17-11-2026, asked: "apan jas tharwale tashi log book entry app madhe ka nahiye" – his choice "Log Book = Smart Log
 Book"):** the app's Log Book (Home's tile, Entries, the start page) opens the Smart Log Book for a person with Log Book (Edit) – the Admin
 too – at a site where it is on (`openLogBook`, `slbSiteOn` – set by Home's vlMe); its "Old Log Book entry" opens the Log Book as before;

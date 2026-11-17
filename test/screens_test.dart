@@ -9244,6 +9244,133 @@ void main() {
     expect(srv.calls, isNot(contains('portal:login')));
   }, tags: ['golden']);
 
+  /* (3.133.0) THE THIRD WAY IN – "Login with Mobile OTP", a code on WhatsApp (the Portal's step 14; his brief and answers of 17-11-2026). */
+  testWidgets('(3.133.0) "Login with Mobile OTP" is not there while the Portal has it switched off; "temporarily unavailable" while it is not ready', (t) async {
+    phone(t);
+    final off = FakeServer(), s0 = make(off);
+    await t.runAsync(s0.start);
+    await t.pumpWidget(RclApp(session: s0));
+    await net(t);
+    expect(off.calls.where((c) => c == 'portal:options').length, 1, reason: 'one question for both codes');
+    expect(find.byKey(const Key('login-wa')), findsNothing, reason: 'switched off: the sign-in exactly as before');
+    // switched on at the Portal, not ready: the button; its card says so – nothing can be sent; the password as ever
+    final half = FakeServer()..waState = 'unavailable';
+    final s = make(half);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('login-wa')), findsOneWidget);
+    expect(find.byKey(const Key('login-otp')), findsNothing, reason: 'the e-mail code is its own switch');
+    await tapK(t, 'login-wa');
+    await settle(t, 600);
+    expect(find.byKey(const Key('login-wa-off')), findsOneWidget);
+    expect(find.textContaining('temporarily unavailable'), findsOneWidget);
+    expect(find.byKey(const Key('login-wa-mobile')), findsNothing);
+    expect(find.text('Send OTP'), findsNothing);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1g_mobile_otp_unavailable.png'));
+    await tapK(t, 'login-wa-back');
+    await settle(t, 600);
+    await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
+    await t.enterText(find.byType(TextField).at(1), 'Nashik#Road848!');
+    await t.tap(find.text('Sign in'));
+    await net(t);
+    expect(s.stage, Stage.pickSite);
+    expect(half.calls, isNot(contains('portal:waSend')));
+  }, tags: ['golden']);
+
+  testWidgets('(3.133.0) "Login with Mobile OTP": +91 and the number, "Send OTP", six boxes, a wrong code said, "Resend OTP" after 60 s, "Change number", the right code signs in', (t) async {
+    phone(t);
+    final srv = FakeServer()..waState = 'on'..otpOn = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('login-otp')), findsOneWidget);
+    expect(find.byKey(const Key('login-wa')), findsOneWidget, reason: 'the third way in, under the e-mail code');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1e_three_ways_in.png'));
+    // a mobile number typed in the sign-in box is carried over
+    await t.enterText(find.byType(TextField).at(0), '+91 98765 43210');
+    await tapK(t, 'login-wa');
+    await settle(t, 600);
+    expect(t.widget<TextField>(find.byKey(const Key('login-wa-mobile'))).controller!.text, '98765 43210');
+    // no number: said, nothing sent
+    await t.enterText(find.byKey(const Key('login-wa-mobile')), '12345');
+    await seen(t, find.text('Send OTP'));
+    await t.tap(find.text('Send OTP'));
+    await settle(t, 600);
+    expect(find.textContaining('10-digit mobile number'), findsOneWidget);
+    expect(srv.calls, isNot(contains('portal:waSend')));
+    await t.enterText(find.byKey(const Key('login-wa-mobile')), '098765 43210');
+    await settle(t, 300);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1f_mobile_otp_number.png'));
+    await seen(t, find.text('Send OTP'));
+    await t.tap(find.text('Send OTP'));
+    await net(t);
+    expect(srv.waTo, ['9876543210'], reason: 'the number as the Portal takes it: ten digits');
+    expect(find.byKey(const Key('login-wa-code')), findsOneWidget);
+    expect(find.textContaining('If +91 98765 43210 is registered'), findsOneWidget);
+    expect(find.textContaining('Resend OTP in '), findsOneWidget);
+    expect(t.widget<TextButton>(find.byKey(const Key('login-wa-again'))).onPressed, isNull, reason: 'the 60 seconds between two codes');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1h_mobile_otp_code.png'));
+    // a wrong code (six digits sign in at once): said, still on the code, the boxes empty
+    await t.enterText(find.byKey(const Key('login-wa-code')), '111111');
+    await net(t);
+    expect(find.textContaining('The code is wrong or has expired.'), findsOneWidget);
+    expect(s.stage, Stage.signedOut);
+    expect(find.byKey(const Key('login-wa-code')), findsOneWidget, reason: 'still on the code');
+    expect(t.widget<TextField>(find.byKey(const Key('login-wa-code'))).controller!.text, '');
+    // pasted with words around it: only the digits (and at most six)
+    await t.enterText(find.byKey(const Key('login-wa-code')), '12');
+    await settle(t, 300);
+    expect(find.textContaining('wrong or has expired'), findsNothing, reason: 'typing again takes the message away');
+    await seen(t, find.text('Verify & sign in'));
+    await t.tap(find.text('Verify & sign in'));
+    await settle(t, 600);
+    expect(find.textContaining('Type the 6-digit code from WhatsApp'), findsOneWidget);
+    // "Change number" – back to the number; "Send OTP" again after the 60 seconds
+    await tapK(t, 'login-wa-change');
+    await settle(t, 600);
+    expect(find.byKey(const Key('login-wa-mobile')), findsOneWidget);
+    await settle(t, 61000);
+    await seen(t, find.text('Send OTP'));
+    await t.tap(find.text('Send OTP'));
+    await net(t);
+    await settle(t, 61000);
+    expect(t.widget<TextButton>(find.byKey(const Key('login-wa-again'))).onPressed, isNotNull);
+    await tapK(t, 'login-wa-again');
+    await net(t);
+    expect(srv.waTo.length, 3);
+    // the right code: the same sign-in as with the password
+    await t.enterText(find.byKey(const Key('login-wa-code')), '482913');
+    await net(t);
+    expect(s.stage, Stage.pickSite);
+    expect(s.email, 'sujit@rcl.test');
+    expect(srv.calls, containsAllInOrder(['portal:options', 'portal:waSend', 'portal:waLogin', 'portal:waSend', 'portal:waSend', 'portal:waLogin', 'portal:me']));
+    expect(srv.calls, isNot(contains('portal:login')));
+  }, tags: ['golden']);
+
+  testWidgets('(3.133.0) switched off at the Portal while the card is open: "temporarily unavailable" – nothing else changes', (t) async {
+    phone(t);
+    final srv = FakeServer()..waState = 'on';
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await tapK(t, 'login-wa');
+    await settle(t, 600);
+    srv.waState = 'unavailable';
+    await t.enterText(find.byKey(const Key('login-wa-mobile')), '9876543210');
+    await seen(t, find.text('Send OTP'));
+    await t.tap(find.text('Send OTP'));
+    await net(t);
+    expect(find.byKey(const Key('login-wa-off')), findsOneWidget);
+    expect(s.stage, Stage.signedOut);
+  });
+
   testWidgets('(3.104.0) e-mail not verified: the strip on Home, "Verify my e-mail" on Me – his own e-mail, the code, verified; then no strip', (t) async {
     phone(t);
     final srv = FakeServer()..mailInfo = {'verified': false, 'canVerify': true, 'remind': true};

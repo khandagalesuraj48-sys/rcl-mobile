@@ -1,3 +1,3 @@
-Log Book: the Log Book button now opens the Smart Log Book for everybody with Log Book (Edit), the Admin too – take a vehicle, the day's opening photo, close the shift by saying the work. "Old Log Book entry" inside it opens the Log Book as before (many machinery at once, the list, pending).
-Log Book: Log Book बटण आता Log Book (Edit) असलेल्या सगळ्यांसाठी, Admin सह, Smart Log Book उघडते – गाडी घ्या, दिवसाचा opening फोटो, काम बोलून shift बंद करा. आतले "जुनी Log Book नोंद" आधीसारखी Log Book उघडते (एकदम अनेक गाड्या, यादी, बाकी नोंदी).
-Log Book: Log Book बटन अब Log Book (Edit) वाले सभी के लिए, Admin सहित, Smart Log Book खोलता है – गाड़ी लें, दिन का opening photo, काम बोलकर shift बंद करें। अंदर का "पुरानी Log Book entry" पहले जैसी Log Book खोलता है (एक साथ कई गाड़ियाँ, सूची, बाकी entries)।
+Sign-in: "Login with Mobile OTP" – a 6-digit code on WhatsApp to your registered mobile number (valid 5 minutes, works once). It appears when the office switches it on; your password stays exactly as it is.
+Sign-in: "Mobile OTP ने login" – तुमच्या नोंदलेल्या mobile number वर WhatsApp वर 6 अंकी code (5 मिनिटे चालतो, एकदाच). Office ने चालू केल्यावर दिसेल; तुमचा password आहे तसाच राहतो.
+Sign-in: "Mobile OTP से login" – आपके दर्ज mobile number पर WhatsApp पर 6 अंकों का code (5 मिनट चलता है, एक ही बार)। Office के चालू करने पर दिखेगा; आपका password जैसा है वैसा ही रहता है।

@@ -687,12 +687,19 @@ class Session extends ChangeNotifier {
   /// The e-mail he signs in with, once verified.
   String get mailLogin => mailVerified ? '${mail?['login'] ?? email}' : '';
 
-  /// Is "Login with Email OTP" switched on at the Portal? (asked by the sign-in screen; no answer = no)
-  Future<bool> otpOffered() async {
+  /// Is "Login with Email OTP" switched on at the Portal? (no answer = no)
+  Future<bool> otpOffered() async => (await signInOffers()).otp;
+
+  /// (3.133.0) What the Portal offers beside the password – one question for both codes (asked by the sign-in screen):
+  /// the code by e-mail (on / off) and the code on WhatsApp ('on', 'unavailable' – switched on, not ready – or 'off').
+  /// No answer: the password only, as before.
+  Future<({bool otp, String wa})> signInOffers() async {
     try {
-      return (await api.auth({'action': 'options'}))['otp'] == true;
+      final r = await api.auth({'action': 'options'});
+      final wa = '${r['wa'] ?? 'off'}';
+      return (otp: r['otp'] == true, wa: wa == 'on' || wa == 'unavailable' ? wa : 'off');
     } catch (_) {
-      return false;
+      return (otp: false, wa: 'off');
     }
   }
 
@@ -708,6 +715,39 @@ class Session extends ChangeNotifier {
       freshSignIn?.call(); // the code typed just now: the app lock does not ask again
       await _afterSignIn();
     } on ApiError catch (e) {
+      _go(Stage.signedOut, e.toString());
+    }
+  }
+
+  /* (3.133.0, the Portal's step 14 – his brief and answers of 17-11-2026) THE THIRD WAY IN: "Login with Mobile OTP" – a 6-digit code on
+   * WhatsApp to the number put on his user (every active user with a number; not the Super Admin). The Portal keeps and checks
+   * everything (who may get one, the code, the limits); the app only asks. The password stays as it is. */
+
+  /// The number as the Portal takes it: ten digits beginning 6–9 (+91 / 0 / spaces in front are taken off) – else ''.
+  static String mobileOf(String v) {
+    var t = v.replaceAll(RegExp(r'[\s\-().]'), '');
+    if (RegExp(r'^\+?91[6-9]\d{9}$').hasMatch(t)) {
+      t = t.substring(t.length - 10);
+    } else if (RegExp(r'^0[6-9]\d{9}$').hasMatch(t)) {
+      t = t.substring(1);
+    }
+    return RegExp(r'^[6-9]\d{9}$').hasMatch(t) ? t : '';
+  }
+
+  /// "Send OTP" / "Resend OTP": a code on WhatsApp to [mobile]. → the seconds until another may be asked. The answer is the same for
+  /// every number (nothing is said about whether it is registered).
+  Future<int> waSend(String mobile) async => _secs((await api.auth({'action': 'waSend', 'mobile': mobileOf(mobile)}))['wait']);
+
+  /// The code from WhatsApp: the same sign-in as with the password. "Temporarily unavailable" (code waoff) is given back to the screen.
+  Future<void> waSignIn(String mobile, String code) async {
+    error = '';
+    try {
+      final r = await api.auth({'action': 'waLogin', 'mobile': mobileOf(mobile), 'code': code.trim()});
+      if (r['mustChange'] == true) return _go(Stage.setPassword);
+      freshSignIn?.call(); // the code typed just now: the app lock does not ask again
+      await _afterSignIn();
+    } on ApiError catch (e) {
+      if (e.code == 'waoff') rethrow;
       _go(Stage.signedOut, e.toString());
     }
   }
