@@ -415,7 +415,11 @@ class _MyNoticesScreenState extends State<MyNoticesScreen> {
         loading = false;
         err = '';
       });
-      if (rows.any((r) => r['seen_at'] == null)) await widget.ask({'action': 'myNoticeSeen'}).catch((_) => <String, dynamic>{});
+      if (rows.any((r) => r['seen_at'] == null)) {
+        try {
+          await widget.ask({'action': 'myNoticeSeen'});
+        } catch (_) {/* they stay "new" – nothing else is lost */}
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
