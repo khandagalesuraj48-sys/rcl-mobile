@@ -9316,7 +9316,7 @@ void main() {
     await tapKey('me-notices');
     expect(find.byKey(const Key('notices-page')), findsOneWidget);
     expect(find.text('Sign in: your shift General starts at 08:30'), findsOneWidget);
-    expect(srv.hrNoticeSeen, 1, 'opening the list marks them seen');
+    expect(srv.hrNoticeSeen, 1, reason: 'opening the list marks them seen');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_notices.png'));
     await t.pageBack();
