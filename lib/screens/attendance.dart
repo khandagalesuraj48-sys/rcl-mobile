@@ -41,8 +41,27 @@ Future<void> openAttendance(BuildContext context) => Navigator.of(context).push(
 /// (a test) the selfie without a camera; null = the real camera screen.
 Future<Uint8List?> Function(BuildContext context)? attendSelfieForTest;
 
-/// HR's module of the site for this person: the HR office's ('hr') when he has it, else "My HR" ('hrme'); null = none.
-Module? hrModule(Session s) => s.site?.module('hr') ?? s.site?.module('hrme');
+/// (3.141.0, asked 18-11-2026: "user HO cha aahe ani app madhe to VTR madhe aahe tyala HO la jaychi garaj naswi direct VTR madhun
+/// pn mhanje other site madhun pn sign in kru shakel") HIS HR SITE: this site when he has HR here; else the site of his own HR –
+/// "My HR" first (an HO employee working in VTR's ERP: Head Office), then the HR office's. His attendance is marked, his leave and
+/// slips are seen from any of his sites, without changing site; the HR server decides as always (his record, his work places).
+SiteChoice? hrSite(Session s) {
+  bool has(SiteChoice x) => x.module('hr') != null || x.module('hrme') != null;
+  final here = s.site;
+  if (here != null && has(here)) return here;
+  for (final key in const ['hrme', 'hr']) {
+    for (final x in s.sites) {
+      if (x.module(key) != null) return x;
+    }
+  }
+  return null;
+}
+
+/// HR's module of his HR site: the HR office's ('hr') when he has it there, else "My HR" ('hrme'); null = none.
+Module? hrModule(Session s) {
+  final x = hrSite(s);
+  return x?.module('hr') ?? x?.module('hrme');
+}
 
 String _or(Object? v) {
   final t = '${v ?? ''}';
@@ -112,16 +131,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   }
 
   Future<Map<String, dynamic>> _hr(Map<String, dynamic> body) {
-    final s = SessionScope.read(context), m = hrModule(s);
-    if (s.site == null || m == null) throw StateError('none');
-    return s.api.hr(s.site!.code, m.url, m.key, body);
+    final s = SessionScope.read(context), h = hrSite(s), m = hrModule(s);
+    if (h == null || m == null) throw StateError('none');
+    return s.api.hr(h.code, m.url, m.key, body);
   }
 
   /// (3.111.0, rcl-hr step 9) the face for attendance – its own endpoint of the HR server, the same sign-in.
   Future<Map<String, dynamic>> _face(Map<String, dynamic> body) {
-    final s = SessionScope.read(context), m = hrModule(s);
-    if (s.site == null || m == null) throw StateError('none');
-    return s.api.hr(s.site!.code, m.url, m.key, body, path: 'face');
+    final s = SessionScope.read(context), h = hrSite(s), m = hrModule(s);
+    if (h == null || m == null) throw StateError('none');
+    return s.api.hr(h.code, m.url, m.key, body, path: 'face');
   }
 
   /// the site's rule: no attendance without the registered face (as the server said last – also while a reading is going on)
@@ -166,7 +185,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
 
   Future<void> _load({bool quiet = false}) async {
     final s = SessionScope.read(context);
-    store ??= AttendStore('${s.email}|${s.site?.code ?? ''}');
+    store ??= AttendStore('${s.email}|${hrSite(s)?.code ?? ''}');
     if (!quiet) {
       setState(() {
         loading = true;
@@ -980,9 +999,9 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     try {
       final s = SessionScope.read(context), who = widget.who.split(' · ');
       final name = who.first.trim().isEmpty ? s.name : who.first.trim(), code = who.length > 1 ? who.last.trim() : '';
-      final company = (s.site?.company ?? '').isNotEmpty ? s.site!.company : (s.company.isNotEmpty ? s.company : 'Attendance');
+      final hs = hrSite(s) ?? s.site, company = (hs?.company ?? '').isNotEmpty ? hs!.company : (s.company.isNotEmpty ? s.company : 'Attendance');
       final now = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now() + 19800000, isUtc: true).toIso8601String();
-      final bytes = await attendancePdf(company: company, site: s.siteName, name: name, code: code, month: month, days: every, total: total, rules: rules, logo: await attendPdfLogo(company), made: '${now.substring(8, 10)}/${now.substring(5, 7)}/${now.substring(0, 4)} ${now.substring(11, 16)}');
+      final bytes = await attendancePdf(company: company, site: hs?.name ?? s.siteName, name: name, code: code, month: month, days: every, total: total, rules: rules, logo: await attendPdfLogo(company), made: '${now.substring(8, 10)}/${now.substring(5, 7)}/${now.substring(0, 4)} ${now.substring(11, 16)}');
       await attendPdfOut(bytes, 'Attendance_${code.isEmpty ? name : code}_$month.pdf');
     } catch (_) {
       if (mounted) toast(context, _t('The PDF could not be made – try again.', 'PDF बनली नाही – पुन्हा करा.'));

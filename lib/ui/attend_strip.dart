@@ -35,7 +35,7 @@ class _AttendStripState extends State<AttendStrip> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final s = SessionScope.of(context), w = hrModule(s) == null ? '' : '${s.email}|${s.site?.code ?? ''}';
+    final s = SessionScope.of(context), w = hrModule(s) == null ? '' : '${s.email}|${hrSite(s)?.code ?? ''}'; // (3.141.0) his HR site – from any of his sites
     if (w == who) return;
     who = w;
     last = null;

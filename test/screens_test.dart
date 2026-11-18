@@ -13,7 +13,7 @@ import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
 import 'package:rcl_mobile/screens/app_lock.dart';
-import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfLogo, attendPdfOut, attendSelfieForTest;
+import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfLogo, attendPdfOut, attendSelfieForTest, hrSite, hrModule;
 import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit, FaceCamScreen;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
@@ -9378,6 +9378,40 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('hr-home')), findsNothing);
     expect(find.byKey(const Key('hr-nav')), findsNothing);
+  });
+
+  testWidgets('(3.141.0) an ERP user with "My HR" at Head Office only: HO is among his sites – it opens his attendance pages, nothing of Mechanical; his ERP sites as before', (t) async {
+    phone(t);
+    final srv = FakeServer()..hoMyHr = true;
+    final s = await ready(t, srv);
+    expect(s.sites.map((x) => x.code).toList(), ['S1', 'T2', 'HO'], reason: 'HO is not dropped any more (a store-only site and a bad address still are)');
+    expect([s.site?.code, s.hrOnly], ['S1', false], reason: 'his ERP site: the ERP as before');
+    await t.runAsync(() => s.chooseSite('HO'));
+    expect([s.site?.code, s.hrOnly, s.stage, s.api.mechUrl], ['HO', true, Stage.ready, ''], reason: 'Head Office: the attendance pages, nothing of Mechanical');
+    expect(srv.calls.where((c) => c.startsWith('portal:go:mechanical:HO')), isEmpty, reason: 'Mechanical of HO is never asked');
+    await t.runAsync(() => s.chooseSite('S1'));
+    expect([s.site?.code, s.hrOnly], ['S1', false], reason: 'back to his ERP site');
+  });
+
+  testWidgets('(3.141.0) his attendance from his ERP site itself: the HR of Head Office, without changing site; HR of this site wins; none – none', (t) async {
+    phone(t);
+    final srv = FakeServer()..hoMyHr = true;
+    final s = await ready(t, srv);
+    expect([s.site?.code, hrSite(s)?.code, hrModule(s)?.key], ['S1', 'HO', 'hrme']);
+    await t.runAsync(() async {
+      try {
+        await s.api.hr(hrSite(s)!.code, hrModule(s)!.url, hrModule(s)!.key, {'action': 'attMe'});
+      } catch (_) {/* (only the sign-in is looked at here) */}
+    });
+    expect(srv.calls.where((c) => c == 'portal:go:hrme:HO').length, 1, reason: 'the ticket of Head Office\'s "My HR" – he stays in S1');
+    expect(s.site?.code, 'S1');
+    final both = await ready(t, FakeServer()
+      ..hoMyHr = true
+      ..hrSite = true
+      ..hrKey = 'hrme');
+    expect(hrSite(both)?.code, 'S1', reason: 'HR of this site wins');
+    final none = await ready(t, FakeServer());
+    expect([hrSite(none), hrModule(none)], [null, null]);
   });
 
   /* (3.104.0) TWO WAYS TO SIGN IN and "VERIFY MY E-MAIL" (the Portal's steps 10 / 11; his rules of 12-11-2026). */
