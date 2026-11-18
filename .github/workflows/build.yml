@@ -133,6 +133,15 @@ jobs:
           git init -q && git config user.name "rcl-build" && git config user.email "rcl-build@users.noreply.github.com"
           git add . && git commit -qm "Screens of ${GITHUB_SHA}"
           git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/screens/${GITHUB_REF_NAME}"
+      # (18-11-2026) since 17-11 the hosted runner is shut down in the middle of the Android build ("The runner has received a
+      # shutdown signal", exit 143) – the same code built on 16-11 in 9 minutes: it runs out of memory (Gradle may take 8 GB + 4 GB,
+      # the native face-detection parts compile beside it). More room for it: 8 GB of swap and the runner's unused tools removed.
+      # Nothing of the app changes.
+      - name: Room for the Android build (swap, free disk)
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules/@angular "$AGENT_TOOLSDIRECTORY/CodeQL" || true
+          sudo fallocate -l 8G /rcl-swap && sudo chmod 600 /rcl-swap && sudo mkswap /rcl-swap >/dev/null && sudo swapon /rcl-swap || true
+          free -m; df -h / | tail -1
       - name: Android app (debug-signed – for checking only)
         run: |
           flutter build apk --release 2>&1 | tee apk.txt; st=${PIPESTATUS[0]}
