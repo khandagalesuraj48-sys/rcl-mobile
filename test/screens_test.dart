@@ -10203,17 +10203,13 @@ void main() {
     await net(t);
     expect(slbSiteOn, true);
     // the old one: its own tile, the Log Book as before – many machinery, the list, pending
-    await t.ensureVisible(find.text('Logbook').last);
-    await settle(t, 400);
     await t.tap(find.text('Logbook').last);
     await net(t);
     expect(find.byType(LogBookScreen), findsOneWidget, reason: 'the Log Book as before');
     expect(find.byKey(const Key('slb-hello')), findsNothing);
     Navigator.of(t.element(find.byType(LogBookScreen))).pop();
     await net(t);
-    // the new one: its own tile
-    await t.ensureVisible(find.text('Smart Log Book').last);
-    await settle(t, 400);
+    // the new one: its own tile (beside the old one)
     await t.tap(find.text('Smart Log Book').last);
     await net(t);
     expect(find.byKey(const Key('slb-hello')), findsOneWidget, reason: 'the Smart Log Book');
@@ -10279,8 +10275,6 @@ void main() {
     await net(t);
     expect(slbSiteOn, false);
     expect(find.text('Smart Log Book'), findsNothing);
-    await t.ensureVisible(find.text('Logbook').last);
-    await settle(t, 400);
     await t.tap(find.text('Logbook').last);
     await net(t);
     expect(find.byType(LogBookScreen), findsOneWidget);
