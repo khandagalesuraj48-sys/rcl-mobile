@@ -37,6 +37,12 @@ class FaceEnrolSteps {
   double _side = 0, _tilt = 0;
   bool get done => step >= 5;
 
+  /// (3.140.0, asked 18-11-2026: "other side madhe jast wel ghetey … face madhe user la problem alach nahi pahije") A TURN IS TAKEN
+  /// ONLY INSIDE ITS WINDOW: enough to show that the head turns (a photo cannot), little enough that the whole face is still seen
+  /// and matches the picture from the front on the HR server (a head turned too far: "no face" or "not the same face" there).
+  /// Degrees, as the phone measures them.
+  static const sideMin = 15.0, sideMax = 32.0, tiltMin = 10.0, tiltMax = 25.0, level = 20.0;
+
   /// What is asked now (English, Marathi).
   (String, String) get ask => switch (step) {
         0 => ('Look straight at the phone', 'Phone कडे सरळ बघा'),
@@ -54,18 +60,46 @@ class FaceEnrolSteps {
       case 0:
         if (!f.straight) return false;
       case 1:
-        if (f.yaw.abs() < 18 || f.pitch.abs() > 20) return false;
+        if (!_sideOk(f)) return false;
         _side = f.yaw.sign;
       case 2:
-        if (f.yaw.abs() < 18 || f.yaw.sign == _side || f.pitch.abs() > 20) return false;
+        if (!_sideOk(f) || f.yaw.sign == _side) return false;
       case 3:
-        if (f.pitch.abs() < 12 || f.yaw.abs() > 20) return false;
+        if (!_tiltOk(f)) return false;
         _tilt = f.pitch.sign;
       case 4:
-        if (f.pitch.abs() < 12 || f.pitch.sign == _tilt || f.yaw.abs() > 20) return false;
+        if (!_tiltOk(f) || f.pitch.sign == _tilt) return false;
     }
     step++;
     return true;
+  }
+
+  bool _sideOk(FaceLook f) => f.yaw.abs() >= sideMin && f.yaw.abs() <= sideMax && f.pitch.abs() <= level;
+  bool _tiltOk(FaceLook f) => f.pitch.abs() >= tiltMin && f.pitch.abs() <= tiltMax && f.yaw.abs() <= level;
+
+  /// (3.140.0) WHAT TO CHANGE for the step asked now, said on the screen and aloud (English, Marathi, Hindi); ('', '', '') when
+  /// the look is right, or when no face / two faces are seen (faceHint says that).
+  (String, String, String) hint(FaceLook f) {
+    const none = ('', '', '');
+    if (done || !f.one) return none;
+    final y = f.yaw.abs(), p = f.pitch.abs();
+    switch (step) {
+      case 0:
+        if (!f.straight) return ('Look straight at the phone', 'फोनकडे सरळ बघा', 'फ़ोन की तरफ़ सीधे देखिए');
+      case 1:
+      case 2:
+        if (p > level) return ('Keep your chin level – turn only to the side', 'हनुवटी सरळ ठेवा – फक्त बाजूला वळा', 'ठोड़ी सीधी रखिए – सिर्फ़ बगल में घुमाइए');
+        if (step == 2 && y >= sideMin && f.yaw.sign == _side) return ('The OTHER side', 'दुसऱ्या बाजूला', 'दूसरी तरफ़');
+        if (y < sideMin) return ('Turn a little more', 'थोडे अजून वळा', 'थोड़ा और घुमाइए');
+        if (y > sideMax) return ('A little less – your whole face must be seen', 'थोडे कमी – पूर्ण चेहरा दिसला पाहिजे', 'थोड़ा कम – पूरा चेहरा दिखना चाहिए');
+      case 3:
+      case 4:
+        if (y > level) return ('Face the phone – only up or down', 'phone कडे तोंड करा – फक्त वर किंवा खाली', 'फ़ोन की तरफ़ मुँह कीजिए – सिर्फ़ ऊपर या नीचे');
+        if (step == 4 && p >= tiltMin && f.pitch.sign == _tilt) return ('Now the OTHER way', 'आता उलट बाजूला', 'अब उल्टी तरफ़');
+        if (p < tiltMin) return ('A little more', 'थोडे अजून', 'थोड़ा और');
+        if (p > tiltMax) return ('A little less – your whole face must be seen', 'थोडे कमी – पूर्ण चेहरा दिसला पाहिजे', 'थोड़ा कम – पूरा चेहरा दिखना चाहिए');
+    }
+    return none;
   }
 }
 

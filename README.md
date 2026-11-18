@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.140.0 (18-11-2026, asked: "other side madhe jast wel ghetey … face madhe user la problem alach nahi pahije"):** the face
+registration takes a turned picture only inside its window (to a side 15–32°, up / down 10–25°) – a head turned too far could not
+be matched on the HR server ("no face" / "not the same face"); it says what to change ("a little more", "a little less", "the
+other side", "keep your chin level") on the screen and aloud (at most every 3 seconds); the next picture is taken at once (no
+wait of 250 ms). The HR server's match stays as strict as before.
+
 **Version 3.139.0 (18-11-2026, rcl-hr Phase 6 – reports and the manager's dashboard):** Me → **My team** (`myTeam`, shown only when
 `myHr.team` > 0): a reporting manager's own team – today (in, late, on leave, off, not marked), this month's counts, the requests
 waiting for him, papers missing. Read only. The office's 25 reports stay web only (his decision of 18-11-2026).
