@@ -147,10 +147,14 @@ jobs:
           flutter build apk --release 2>&1 | tee apk.txt; st=${PIPESTATUS[0]}
           if [ $st -ne 0 ]; then msg=$(grep -iE -B3 -A10 "error|FAILURE|What went wrong" apk.txt | head -60 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}'); echo "::error title=apk::$msg"; fi
           exit $st
+      # (18-11-2026) the check's own file is kept 3 days (GitHub's storage for these files was full: 90 days × every run); a full
+      # storage does not make the check red – the app was built, analysed and tested above
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 3
       - name: The sizes – the file for every phone, and one processor's file (3.19.1 – what a 64-bit phone's update downloads)
         run: |
           set -e
