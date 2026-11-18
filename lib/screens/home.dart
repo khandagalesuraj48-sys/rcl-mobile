@@ -43,7 +43,7 @@ import 'veh_alerts.dart' show openVehAlerts;
 import '../core/veh_alerts.dart';
 import 'verify.dart';
 import 'logbook.dart';
-import 'smart_logbook.dart' show MyVehicleCard, SmartLogBookScreen, slbSince, openLogBook, slbSiteOn;
+import 'smart_logbook.dart' show MyVehicleCard, SmartLogBookScreen, slbSince, openLogBook, openSmartLogBook, oldLbFor, smartLbFor, slbSiteOn;
 import '../core/vl_gps.dart';
 import 'store.dart';
 import 'engineering.dart';
@@ -67,6 +67,8 @@ class ModuleTile {
     if (native == 'masters') return mastersOf(s).isNotEmpty;
     if (native == 'billing') return seesBilling(s);
     if (native == 'hr') return hrModule(s) != null;
+    if (native == 'slb') return smartLbFor(s);      // (3.142.0) the two Log Book entries – each for whom it is given
+    if (native == 'logbook') return oldLbFor(s);
     return perm.isEmpty || s.canSee(perm);
   }
 }
@@ -74,7 +76,8 @@ class ModuleTile {
 // (3.97.0, his design 2) each module's tile in the module's own colour – the same as the band at the top of its screens
 const kModules = [
   ModuleTile('Machinery', 'यंत्रे', 'tractor', Color(0xFF1E5A40), C.greenSoft, native: 'masters'), // (3.4.0) the app's own Master screens
-  ModuleTile('Logbook', 'लॉगबुक', 'notebook', Color(0xFF5E2BAA), C.purpleSoft, native: 'logbook', perm: 'Log Book'),
+  ModuleTile('Logbook', 'लॉगबुक', 'notebook', Color(0xFF5E2BAA), C.purpleSoft, native: 'logbook', perm: 'Log Book'), // (3.142.0) the Log Book entry (old)
+  ModuleTile('Smart Log Book', 'स्मार्ट लॉगबुक', 'pickup_truck', Color(0xFF6D2FD0), Color(0xFFEFE7FB), native: 'slb', perm: 'Log Book'), // (3.142.0) the Smart Log Book (new)
   ModuleTile('Diesel', 'डिझेल', 'fuel_pump', Color(0xFFA61E1E), C.redSoft, native: 'diesel'),
   ModuleTile('Maintenance', 'देखभाल', 'wrench', Color(0xFFC0461A), C.orangeSoft, native: 'breakdown', perm: 'Breakdown'), // (3.7.0) the app's own Breakdown
   ModuleTile('Billing', 'बिलिंग', 'receipt', Color(0xFF4535B0), Color(0xFFE8E5FB), native: 'billing'), // (3.8.0) the app's own Billing screens
@@ -333,8 +336,9 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       widget.onOpenEntries('');
       return;
     }
-    if (m.native == 'logbook') {
-      await openLogBook(context);      // (3.132.1, asked 17-11-2026) the Smart Log Book for a person with Log Book Edit; else as before
+    if (m.native == 'logbook' || m.native == 'slb') {
+      // (3.142.0, asked 18-11-2026) two Log Book entries: "Logbook" – the Log Book as before; "Smart Log Book" – the new one
+      await (m.native == 'slb' ? openSmartLogBook(context) : openLogBook(context));
       if (mounted) _load(quiet: true);
       return;
     }

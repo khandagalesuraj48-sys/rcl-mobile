@@ -96,7 +96,7 @@ Future<void> openStartPage(BuildContext context, Session s, String page, {requir
     case 'vtrack':
       await openLiveTracking(context);
     case 'log':
-      await openLogBook(context);      // (3.132.1) the Smart Log Book for Log Book Edit; else as before
+      await openLogBook(context);      // (3.142.0) the Log Book entry as before; a driver of the Driver Master – his Smart Log Book
     case 'logedit':
       await openLogEdit(context);
     case 'tankcheck':

@@ -51,12 +51,25 @@ const _purple = Color(0xFF6D2FD0), _purpleDeep = Color(0xFF5521B5), _purpleSoft 
 /// is on (its step 1zo run – Home's vlMe answered); set by Home at each reading. Off: the Log Book button opens the Log Book as before.
 bool slbSiteOn = false;
 
-/// The app's "Log Book" (Home's tile, Entries, the start page): a person with Log Book – Edit (the Admin too) at a site where the Smart
-/// Log Book is on → the Smart Log Book (its "Old Log Book entry" opens the Log Book as before – many machinery at once, the list, pending);
-/// anybody else → the Log Book as before.
+/* (3.142.0, asked 18-11-2026: "prt old log book entry app madhe hawi aahe … app madhe 2 log book entry type astil – jo new aahe to ani
+ * old, jyala jo asign krel tyala app madhun te karta yeil") the app's TWO Log Book entries, each for whom it is given (Home's tiles,
+ * Entries, ≡):
+ *  * the SMART LOG BOOK (new – one vehicle: take it, opening, closing, hand over): at a site where it is on, a person with Log Book –
+ *    Edit (the Admin too) – as 3.132.1;
+ *  * the LOG BOOK entry (old – many machinery at once, the list, pending): a person given Log Book in Users & Access (Edit or View),
+ *    as before 3.132.1 – not a driver of the Driver Master at a site where the Smart Log Book is on (his access is "Log Book (Edit)
+ *    only" for the Smart Log Book, 17-11-2026); where it is not on (or not known – no network), his Log Book as before. */
+bool smartLbFor(Session s) => slbSiteOn && s.canEdit('Log Book');
+bool oldLbFor(Session s) => s.canSee('Log Book') && !(slbSiteOn && s.mechDriver);
+
+/// (3.142.0) the Smart Log Book (Home's "Smart Log Book", Entries)
+Future<void> openSmartLogBook(BuildContext context) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SmartLogBookScreen()));
+
+/// The Log Book entry (Home's "Logbook", Entries, the start page "Log Book"): the Log Book as before; (3.142.0) a driver of the Driver
+/// Master at a site where the Smart Log Book is on – his Smart Log Book.
 Future<void> openLogBook(BuildContext context) {
   final s = SessionScope.read(context);
-  return Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => slbSiteOn && s.canEdit('Log Book') ? const SmartLogBookScreen() : const LogBookScreen()));
+  return Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => !oldLbFor(s) && smartLbFor(s) ? const SmartLogBookScreen() : const LogBookScreen()));
 }
 
 /// 'yyyy-MM-ddTHH:mm' (the site's time) → "08:01 AM"
@@ -557,15 +570,18 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
             ..._openView(ss)
           else
             ..._duty(s, ss, op),
-          // (3.132.1) the Log Book as before: an entry of many machinery at once, the list, what is pending
-          const SizedBox(height: 14),
-          Center(
-            child: TextButton(
-              key: const Key('slb-old'),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen())),
-              child: _iconText(Icons.list_alt_rounded, bi('Old Log Book entry (many machinery, the list)', 'जुनी Log Book नोंद (अनेक गाड्या, यादी)'), size: 14),
+          // (3.132.1) the Log Book as before: an entry of many machinery at once, the list, what is pending – (3.142.0) for whom it is
+          // given (oldLbFor: not a driver of the Driver Master)
+          if (oldLbFor(s)) ...[
+            const SizedBox(height: 14),
+            Center(
+              child: TextButton(
+                key: const Key('slb-old'),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogBookScreen())),
+                child: _iconText(Icons.list_alt_rounded, bi('Old Log Book entry (many machinery, the list)', 'जुनी Log Book नोंद (अनेक गाड्या, यादी)'), size: 14),
+              ),
             ),
-          ),
+          ],
         ]),
       ),
     );

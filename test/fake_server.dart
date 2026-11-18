@@ -271,6 +271,9 @@ class FakeServer {
 
   /// (3.141.0) an ERP user who also has "My HR" at Head Office – and nothing else there (his attendance as an HO employee)
   bool hoMyHr = false;
+
+  /// (3.142.0) Mechanical at S1 given as a DRIVER from the Driver Master (the Portal's line marked pages = { driver: "Yes" })
+  bool mechDriver = false;
   final hrDocs = <Map<String, dynamic>>[];
   final hrDocFiles = <String, String>{};
   final hrLeaves = <Map<String, dynamic>>[];
@@ -1488,7 +1491,7 @@ class FakeServer {
           ]});
         }
         return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, 'items': [
-          {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
+          {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test', 'pages': mechDriver ? {'driver': 'Yes'} : null},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
           if (engSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'engineering', 'moduleName': 'Engineering', 'url': 'https://erp.test/engineering'},      // (3.59.0)
           if (purSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'purchase', 'moduleName': 'Purchase', 'url': 'https://erp.test/purchase'},      // (3.72.0)

@@ -18,7 +18,7 @@ import 'fuel_cards.dart' show FuelCardsScreen;
 import 'maintenance.dart' show MaintScreen;
 import 'vehicle_booking.dart' show BookingScreen;
 import 'slb_admin.dart' show VehicleAllocationScreen, LiveTrackingScreen;
-import 'smart_logbook.dart' show openLogBook;
+import 'smart_logbook.dart' show openLogBook, openSmartLogBook, oldLbFor, smartLbFor;
 import 'vehicle_expenses.dart' show VexpScreen;
 import 'logbook.dart';
 import 'breakdown.dart';
@@ -226,7 +226,9 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
       // (3.91.0, Mechanical update-216) Vehicle Booking (asked; decided by those given "Vehicle Booking – approve"), Vehicle Expenses
       if (s.canSee('Vehicle Booking') || s.canSee('Booking Approve')) ('Vehicle Booking', 'Vehicle Booking', 'गाडी बुकिंग', 'Ask for a vehicle; who approves gives it', C.greenSoft, 'Machinery', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BookingScreen()))),
       if (s.canSee('Vehicle Expenses')) ('Vehicle Expenses', 'Vehicle Expenses', 'गाडी खर्च', 'Toll, parking – typed or the FASTag statement', C.blueSoft, 'Machinery', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VexpScreen()))),
-      if (s.canSee('Log Book')) ('Log Book', 'Log Book', 'लॉग बुक', 'Daily running & working hours', C.purpleSoft, 'Log Book', () => openLogBook(context)),      // (3.132.1) the Smart Log Book for Log Book Edit
+      // (3.142.0, asked 18-11-2026) the two Log Book entries – each for whom it is given (smart_logbook.dart oldLbFor / smartLbFor)
+      if (oldLbFor(s)) ('Log Book', 'Log Book', 'लॉग बुक', 'Daily running & working hours', C.purpleSoft, 'Log Book', () => openLogBook(context)),
+      if (smartLbFor(s)) ('Smart Log Book', 'Smart Log Book', 'स्मार्ट लॉगबुक', 'One vehicle: take it, opening, closing, hand over', C.purpleSoft, 'Log Book', () => openSmartLogBook(context)),
       // (3.132.0, Mechanical update-263) the Smart Log Book's office pages – each its own access
       if (s.canSee('Vehicle Allocation')) ('Vehicle Allocation', 'Vehicle Allocation', 'गाडी वाटप', 'Who has which vehicle now; give, release', C.purpleSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VehicleAllocationScreen()))),
       if (s.canSee('Live Tracking')) ('Live Tracking', 'Live Tracking', 'लाइव्ह ट्रॅकिंग', 'Every vehicle on duty on the map; the route of a day', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LiveTrackingScreen()))),
@@ -234,7 +236,7 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
       if (tankers) ('Tanker Trips', 'Tanker Trips', 'टँकर फेऱ्या', 'Water tanker trips & challans', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: s.today)))),
       if (s.hasModule('store')) ('Store', 'Store', 'स्टोअर', 'Items inward / outward', C.amberSoft, 'Store', () => openStore(context)),
     ];
-    const pics = {'Log Book': 'notebook', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package', 'Fuel Cards': 'ledger', 'Maintenance': 'wrench', 'Vehicle Booking': 'calendar', 'Vehicle Expenses': 'receipt', 'Vehicle Allocation': 'articulated_lorry', 'Live Tracking': 'round_pushpin'};
+    const pics = {'Log Book': 'notebook', 'Smart Log Book': 'pickup_truck', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package', 'Fuel Cards': 'ledger', 'Maintenance': 'wrench', 'Vehicle Booking': 'calendar', 'Vehicle Expenses': 'receipt', 'Vehicle Allocation': 'articulated_lorry', 'Live Tracking': 'round_pushpin'};
     final groups = ['Diesel', 'Machinery', 'Log Book', 'Store'].where((g) => items.any((x) => x.$6 == g)).toList();
     final shown = group.isEmpty || !groups.contains(group) ? items : items.where((x) => x.$6 == group).toList();
     Widget chip(String g, String label) {

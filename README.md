@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.142.0 (18-11-2026, asked: "prt old log book entry app madhe hawi aahe … app madhe 2 log book entry type astil – jo new aahe
+to ani old, jyala jo asign krel tyala app madhun te karta yeil"):** the app has TWO Log Book entries again, each for whom it is given
+(Home's tiles, ≡, Entries – `smartLbFor` / `oldLbFor` in `screens/smart_logbook.dart`): **Logbook** – the Log Book entry as before 3.132.1
+(many machinery at once, the list, pending) for a person given Log Book in Users & Access; **Smart Log Book** – the new one (one vehicle:
+take it, opening, closing, hand over) at a site where it is on, for a person with Log Book – Edit (the Admin too). A driver of the Driver
+Master (his Portal line marked "driver" – `Session.mechDriver`) has the Smart Log Book only; where it is not on, his Log Book as before.
+No server change.
+
 **Version 3.141.0 (18-11-2026, his problem: "HO madhe aahet but ERP use nahit krt HO chi … HO cha access dyawa lagto mg tyana te
 mechanical … sagle diste"):** every site of his is listed – one with Mechanical opens the ERP, one with HR only ("My HR" at Head Office)
 opens his attendance pages only (`Session.hrOnly`, `HrShell`), nothing of Mechanical. Before, a person with Mechanical anywhere did not
