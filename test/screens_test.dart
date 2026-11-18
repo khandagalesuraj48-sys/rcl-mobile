@@ -61,7 +61,7 @@ import 'package:rcl_mobile/screens/vehicle_expenses.dart' show openVexp;
 import 'package:rcl_mobile/core/vl_gps.dart' show VlGps;
 import 'package:rcl_mobile/core/vl_voice.dart' show VlVoice;
 import 'package:rcl_mobile/screens/slb_admin.dart' show openDriverMaster, openVehicleAllocation, openLiveTracking, SlbMap;
-import 'package:rcl_mobile/screens/smart_logbook.dart' show slbSiteOn;
+import 'package:rcl_mobile/screens/smart_logbook.dart' show slbSiteOn, openLogBook;
 import 'package:rcl_mobile/screens/masters.dart' show mastersOf;
 import 'fake_rtc.dart';
 import 'lock_test.dart' show FakeGate;
@@ -10195,21 +10195,95 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('(3.132.1, asked 17-11-2026 "Log Book = Smart Log Book") the app\'s Log Book button opens the Smart Log Book for a person with Log Book Edit at a site where it is on; "Old Log Book entry" there opens the Log Book as before', (t) async {
+  testWidgets('(3.142.0, asked 18-11-2026: "app madhe 2 log book entry type astil") a person given Log Book (Edit) at a site where the Smart Log Book is on: Home has BOTH – "Logbook" opens the Log Book as before, "Smart Log Book" the new one (its "Old Log Book entry" too); Entries lists both', (t) async {
     phone(t);
     final srv = await slbStart(t);
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     expect(slbSiteOn, true);
+    // the old one: its own tile, the Log Book as before – many machinery, the list, pending
+    await t.ensureVisible(find.text('Logbook').last);
+    await settle(t, 400);
     await t.tap(find.text('Logbook').last);
+    await net(t);
+    expect(find.byType(LogBookScreen), findsOneWidget, reason: 'the Log Book as before');
+    expect(find.byKey(const Key('slb-hello')), findsNothing);
+    Navigator.of(t.element(find.byType(LogBookScreen))).pop();
+    await net(t);
+    // the new one: its own tile
+    await t.ensureVisible(find.text('Smart Log Book').last);
+    await settle(t, 400);
+    await t.tap(find.text('Smart Log Book').last);
     await net(t);
     expect(find.byKey(const Key('slb-hello')), findsOneWidget, reason: 'the Smart Log Book');
     await t.scrollUntilVisible(find.byKey(const Key('slb-old')), 250, scrollable: find.descendant(of: find.byKey(const Key('slb-list')), matching: find.byType(Scrollable)).first);
     await tapK(t, 'slb-old');
     await net(t);
-    expect(find.byType(LogBookScreen), findsOneWidget, reason: 'the Log Book as before – many machinery, the list, pending');
+    expect(find.byType(LogBookScreen), findsOneWidget, reason: 'the Log Book as before – from the Smart Log Book too');
+    Navigator.of(t.element(find.byType(LogBookScreen))).pop();
+    await net(t);
+    Navigator.of(t.element(find.byKey(const Key('slb-list')))).pop();
+    await net(t);
+    // Entries: both, each opens its own
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    expect([find.byKey(const Key('entries-Log Book')).evaluate().length, find.byKey(const Key('entries-Smart Log Book')).evaluate().length], [1, 1]);
+    await t.ensureVisible(find.byKey(const Key('entries-Smart Log Book')));
+    await settle(t, 400);
+    await tapK(t, 'entries-Smart Log Book');
+    await net(t);
+    expect(find.byKey(const Key('slb-hello')), findsOneWidget);
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.142.0) a driver of the Driver Master (Log Book – Edit only, his line marked "driver") at a site where the Smart Log Book is on: the Smart Log Book only – no "Logbook" tile, no "Old Log Book entry", Entries the Smart Log Book only; the start page "Log Book" opens his Smart Log Book', (t) async {
+    phone(t);
+    final srv = await slbStart(t, dieselToo: false);
+    srv.mechDriver = true;
+    final s = await ready(t, srv);
+    expect(s.mechDriver, true);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(slbSiteOn, true);
+    expect(find.text('Smart Log Book'), findsWidgets);
+    expect(find.text('Logbook'), findsNothing, reason: 'the old Log Book entry is not his');
+    await t.ensureVisible(find.text('Smart Log Book').last);
+    await settle(t, 400);
+    await t.tap(find.text('Smart Log Book').last);
+    await net(t);
+    expect(find.byKey(const Key('slb-hello')), findsOneWidget);
+    await t.drag(find.byKey(const Key('slb-list')), const Offset(0, -2000));
+    await settle(t, 600);
+    expect(find.byKey(const Key('slb-old')), findsNothing);
+    final ctx = t.element(find.byKey(const Key('slb-list')));
+    Navigator.of(ctx).pop();
+    await net(t);
+    unawaited(openLogBook(t.element(find.byKey(const Key('tab-entries')))));
+    await net(t);
+    expect([find.byKey(const Key('slb-hello')).evaluate().length, find.byType(LogBookScreen).evaluate().length], [1, 0], reason: 'his Log Book is the Smart Log Book');
+    Navigator.of(t.element(find.byKey(const Key('slb-list')))).pop();
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    expect([find.byKey(const Key('entries-Log Book')).evaluate().length, find.byKey(const Key('entries-Smart Log Book')).evaluate().length], [0, 1]);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.142.0) a driver of the Driver Master at a site where the Smart Log Book is not on: his Log Book as before', (t) async {
+    phone(t);
+    final srv = FakeServer()..mechDriver = true;
+    srv.perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(slbSiteOn, false);
+    expect(find.text('Smart Log Book'), findsNothing);
+    await t.ensureVisible(find.text('Logbook').last);
+    await settle(t, 400);
+    await t.tap(find.text('Logbook').last);
+    await net(t);
+    expect(find.byType(LogBookScreen), findsOneWidget);
   });
 
   testWidgets('(3.132.1) a site where the Smart Log Book is not on (its step not run): the Log Book button opens the Log Book as before', (t) async {
@@ -10220,6 +10294,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     expect(slbSiteOn, false);
+    expect(find.text('Smart Log Book'), findsNothing, reason: '(3.142.0) not on at this site: no tile');
     await t.tap(find.text('Logbook').last);
     await net(t);
     expect(find.byType(LogBookScreen), findsOneWidget);

@@ -21,9 +21,13 @@ export 'fuel.dart';      // (3.44.0) kFuels, fuelUnit, fuelText – for every sc
 enum Stage { starting, signedOut, setPassword, pickSite, opening, ready, waiting }
 
 class Module {
-  Module(this.key, this.name, this.url);
+  Module(this.key, this.name, this.url, {this.driver = false});
   final String key, name, url;
-  Map<String, String> toJson() => {'key': key, 'name': name, 'url': url};      // (3.85.0) kept on the phone for opening with no network
+
+  /// (3.142.0) Mechanical given as a DRIVER from the Driver Master (the Portal's api/driverlogin – his access line marked
+  /// pages = { driver: "Yes" }): his Log Book is the Smart Log Book (smart_logbook.dart oldLbFor)
+  final bool driver;
+  Map<String, Object> toJson() => {'key': key, 'name': name, 'url': url, if (driver) 'driver': true};      // (3.85.0) kept on the phone for opening with no network
 }
 
 class SiteChoice {
@@ -38,7 +42,7 @@ class SiteChoice {
     if (j is! Map || '${j['code'] ?? ''}'.isEmpty) return null;
     return SiteChoice('${j['code']}', '${j['name'] ?? j['code']}', '${j['company'] ?? ''}', [
       for (final m in (j['modules'] as List? ?? const []).whereType<Map>())
-        if ('${m['url'] ?? ''}'.startsWith('https://')) Module('${m['key'] ?? ''}', '${m['name'] ?? ''}', '${m['url']}')
+        if ('${m['url'] ?? ''}'.startsWith('https://')) Module('${m['key'] ?? ''}', '${m['name'] ?? ''}', '${m['url']}', driver: m['driver'] == true)
     ], companyId: '${j['companyId'] ?? ''}');
   }
   Module? module(String key) {
@@ -207,6 +211,9 @@ class Session extends ChangeNotifier {
 
   /// (3.108.0) at a site where he has HR only (no Mechanical): the app's own pages for attendance – Home, Attendance, Leave, Me.
   bool get hrOnly => site != null && site!.module('mechanical') == null;
+
+  /// (3.142.0) at this site he has Mechanical as a driver of the Driver Master (Log Book – Edit only): his Log Book is the Smart Log Book
+  bool get mechDriver => site?.module('mechanical')?.driver ?? false;
 
   /// (3.108.0) Me → Language: with his account at Mechanical it is kept there (the same on the web and at all his sites); a
   /// person with HR only has no settings there – his choice is kept on this phone.
@@ -656,7 +663,8 @@ class Session extends ChangeNotifier {
     for (final x in (me['items'] as List? ?? []).whereType<Map>()) {
       final code = (x['site'] ?? '').toString(), url = (x['url'] ?? '').toString().replaceAll(RegExp(r'/+$'), '');
       if (code.isEmpty || !url.startsWith('https://')) continue;
-      by.putIfAbsent(code, () => SiteChoice(code, (x['siteName'] ?? code).toString(), (x['company'] ?? '').toString(), [], companyId: (x['companyId'] ?? '').toString())).modules.add(Module((x['module'] ?? '').toString(), (x['moduleName'] ?? '').toString(), url));
+      by.putIfAbsent(code, () => SiteChoice(code, (x['siteName'] ?? code).toString(), (x['company'] ?? '').toString(), [], companyId: (x['companyId'] ?? '').toString())).modules.add(Module((x['module'] ?? '').toString(), (x['moduleName'] ?? '').toString(), url,
+          driver: x['pages'] is Map && '${(x['pages'] as Map)['driver'] ?? ''}' == 'Yes'));      // (3.142.0) a driver of the Driver Master
     }
     /* (3.141.0, his problem of 18-11-2026: "HO madhe aahet but ERP use nahit krt HO chi … HO cha access dyawa lagto mg tyana te
      * mechanical … sagle diste … acess nahi dila tr HO nighunch jate") EVERY SITE OF HIS: one with Mechanical opens the ERP, one with
