@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.134.0 (18-11-2026, rcl-hr step 14 – Phase 1 of the enterprise HRMS, "PART 16 – SECURITY AND PRIVACY"):** the face
+registration shows the HR server's own consent words (`faceConsentText` – in the app's language, English when none is chosen) on its
+first screen and sends `consent: { version, lang }` with `faceEnrol` (an HR server of before has no words: the screen's own, as
+before). Every punch carries the phone's own key (`attendKey` – 32 random bytes made once, kept in the phone's safe, kept when he signs
+out; only its fingerprint is on the server; the key is never in a kept punch's file) and a kept punch carries the server's seal of
+its time back (`anchor_sig` of myAttend). The HR server checks the key only once the Super Admin sets `HR_DEVICE_KEY_REQUIRED`.
+
 **Version 3.132.1 (17-11-2026, asked: "apan jas tharwale tashi log book entry app madhe ka nahiye" – his choice "Log Book = Smart Log
 Book"):** the app's Log Book (Home's tile, Entries, the start page) opens the Smart Log Book for a person with Log Book (Edit) – the Admin
 too – at a site where it is on (`openLogBook`, `slbSiteOn` – set by Home's vlMe); its "Old Log Book entry" opens the Log Book as before;

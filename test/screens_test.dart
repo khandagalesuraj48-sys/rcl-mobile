@@ -14,9 +14,10 @@ import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
 import 'package:rcl_mobile/screens/app_lock.dart';
 import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfLogo, attendPdfOut, attendSelfieForTest;
-import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit;
+import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit, FaceCamScreen;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
+import 'package:rcl_mobile/ui/t.dart' show LangScope;
 import 'package:rcl_mobile/core/applock.dart';
 import 'package:rcl_mobile/core/lang.dart';
 import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
@@ -8586,6 +8587,13 @@ void main() {
     final pout = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
     expect([pout['kind'], pout['offline'], pout['lat'], pout['elapsed'], pout['anchor_elapsed'], pout['anchor_server'], pout['at_device']],
         ['out', true, 18.52, 5600000, 5000000, DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch, DateTime.utc(2026, 10, 14, 5, 10).toIso8601String()]);
+    // (3.134.0, rcl-hr step 14) the server's seal of that time goes back with it; the phone's own key goes with every punch – the
+    // same key each time, made once and kept in the phone's safe (never in the punch's file on the phone)
+    expect(pout['anchor_sig'], 'seal-of-the-server-time-0000000a');
+    final keys = {for (final x in srv.hrSent.where((x) => x['action'] == 'punch')) '${(x['device'] as Map)['key']}'};
+    expect(keys.length, 1, reason: 'one key for this phone');
+    expect(keys.first.length, 43, reason: '32 random bytes');
+    expect(kit.files.values.whereType<String>().any((v) => v.contains(keys.first)), isFalse, reason: 'the key is not in the phone\'s files');
     expect(srv.hrPunches.length, 2);
     expect(find.byKey(const Key('att-kept-out')), findsNothing);
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
@@ -8776,15 +8784,18 @@ void main() {
     // ---- he goes back from the registration: nothing is asked of the server but the state, no punch
     face.agree = false;
     await punch();
-    expect(faceActs(), ['faceState']);
+    expect(faceActs(), ['faceState', 'faceConsentText']);
     expect([face.enrols, face.checks, punches(), srv.hrFacePics.length], [1, 0, 0, 0]);
     // ---- the registration (once): five pictures to their places, then the blink, the check of THIS punch's photo, the punch
     face.agree = true;
     await punch();
-    expect(faceActs(), ['faceState', 'faceState', 'faceEnrolUrls', 'faceEnrol', 'faceCheck']);
+    expect(faceActs(), ['faceState', 'faceConsentText', 'faceState', 'faceConsentText', 'faceEnrolUrls', 'faceEnrol', 'faceCheck']);
     expect(srv.hrFacePics, ['tok1-front.jpg', 'tok1-left.jpg', 'tok1-right.jpg', 'tok1-up.jpg', 'tok1-down.jpg']);
     final en = srv.hrFaceSent.firstWhere((x) => x['action'] == 'faceEnrol');
     expect([en['token'], (en['device'] as Map)['id']], ['tok1', 'and-test-phone-1']);
+    // (3.134.0, rcl-hr step 14) the server's consent words were shown – and what he agreed to goes with the registration
+    expect(face.words?['version'], 'f1-0123456789');
+    expect(en['consent'], {'version': 'f1-0123456789', 'lang': 'en'});
     final pin = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
     expect(srv.hrFaceSent.last['client_id'], pin['client_id'], reason: 'the face of this very punch was checked');
     expect([face.enrols, face.checks, punches(), oldSelfie], [2, 1, 1, 0], reason: 'the face screen takes the proof photo – not the old selfie screen');
@@ -8796,7 +8807,7 @@ void main() {
     await punch();
     expect(find.textContaining('does not match the registered face'), findsOneWidget);
     expect([face.enrols, face.checks, punches()], [2, 2, 1]);
-    expect(faceActs().sublist(5), ['faceCheck'], reason: 'registered already: not asked again');
+    expect(faceActs().sublist(7), ['faceCheck'], reason: 'registered already: not asked again');
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty, reason: 'refused: nothing stays on the phone');
     // ---- his own face again: OUT
     srv.hrFaceOk = true;
@@ -10227,6 +10238,42 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_slb_6_handover.png'));
   }, tags: ['golden']);
+  // (3.134.0, rcl-hr step 14 – "Add biometric consent records") the face registration's first screen: the HR server's own consent
+  // words, in the app's language – what he agrees to is what is written down (its version goes with faceEnrol)
+  testWidgets('(3.134.0) HR – the face registration first shows the HR server\'s consent words, in his language; nothing opens the camera before "I agree"', (t) async {
+    phone(t);
+    Map<String, Object> w(String title, List<String> points, String agree) => {'title': title, 'points': points, 'agree': agree};
+    final words = {
+      'version': 'f1-0123456789',
+      'text': {
+        'en': w('Your face for attendance – your consent', [
+          'RCL HR uses your face only to confirm that it is you who marks your attendance.',
+          'What is kept: five pictures taken now and numbers measured from them (a face template). At every sign-in and sign-out a photo is taken and compared with these numbers.',
+          'Who sees it: the pictures – only the HR Admin and the Super Admin of your site. The numbers – nobody; only the HR server compares them.',
+          'It is used for nothing else: not to judge mood, character, caste, religion or anything else. It is never sold or shared.',
+          'How long: your face template and pictures are erased when you leave the company. Sign-in photos are removed after 90 days (longer only while an investigation needs them).',
+          'Where your site checks the face, attendance cannot be marked without a registered face. Ask your HR office if you have a question.'
+        ], 'I agree that my face is registered and used for my attendance as written above.'),
+        'mr': w('हजेरीसाठी तुमचा चेहरा – तुमची संमती', ['हजेरी तुम्हीच लावत आहात याची खात्री करण्यासाठीच RCL HR तुमचा चेहरा वापरते.', 'काय ठेवलं जातं: आता काढलेले पाच फोटो आणि त्यावरून मोजलेले आकडे (face template).'], 'वर लिहिल्याप्रमाणे माझा चेहरा नोंदवून माझ्या हजेरीसाठी वापरण्यास माझी संमती आहे.'),
+        'hi': w('हाज़िरी के लिए आपका चेहरा – आपकी सहमति', ['हाज़िरी आप ही लगा रहे हैं, यह पक्का करने के लिए ही RCL HR आपका चेहरा इस्तेमाल करता है.'], 'मैं सहमत हूँ.'),
+      }
+    };
+    await t.pumpWidget(LangScope(child: MaterialApp(home: FaceCamScreen(enrol: true, words: words))));
+    await settle(t, 300);
+    expect(find.byKey(const Key('face-consent')), findsOneWidget);
+    expect(find.byKey(const Key('face-agree')), findsNothing, reason: 'the server\'s words, not the screen\'s own');
+    expect(find.text('Your face for attendance – your consent'), findsOneWidget);
+    expect(find.text('I agree that my face is registered and used for my attendance as written above.'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_face_consent.png'));
+    await Lang.i.set('mr');
+    await settle(t, 300);
+    expect(find.text('हजेरीसाठी तुमचा चेहरा – तुमची संमती'), findsOneWidget, reason: 'in his language');
+    // an HR server of before (no words): the screen's own words, as before
+    await t.pumpWidget(LangScope(child: const MaterialApp(home: FaceCamScreen(enrol: true))));
+    await settle(t, 300);
+    expect(find.byKey(const Key('face-agree')), findsOneWidget);
+  }, tags: ['golden']);
 }
 
 /// The face screens without a camera: what he would have shown.
@@ -10234,9 +10281,11 @@ class _FakeFace extends FaceKit {
   final jpg = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
   bool agree = true, blink = true;
   int enrols = 0, checks = 0;
+  Map<String, dynamic>? words; // (3.134.0) the consent words the screen was given
   @override
-  Future<Map<String, Uint8List>?> enrol(BuildContext context) async {
+  Future<Map<String, Uint8List>?> enrol(BuildContext context, {Map<String, dynamic>? words}) async {
     enrols++;
+    this.words = words;
     return agree ? {for (final p in ['front', 'left', 'right', 'up', 'down']) p: jpg} : null;
   }
 

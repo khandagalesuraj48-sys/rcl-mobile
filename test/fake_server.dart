@@ -236,6 +236,7 @@ class FakeServer {
   List<Map<String, dynamic>> hrSlips = [];
   /// (rcl-hr step 9) the face is needed; is his face registered; does the photo of a punch match; what was asked of api/face;
   /// the punch numbers whose photo was found his
+  bool hrConsentWords = true; // (rcl-hr step 14) false = an HR server of before (no consent words)
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
   final hrFaceSent = <Map<String, dynamic>>[];
   final hrFaceSeen = <String>{};
@@ -270,6 +271,7 @@ class FakeServer {
         'employee': {'code': 'E00012', 'name': 'Sujit Mule', 'category': 'staff'},
         'may': hrMay,
         'now': DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch,
+        'anchor_sig': 'seal-of-the-server-time-0000000a', // (rcl-hr step 14) the server's seal of 'now'
         'day': '2026-10-14',
         'places': hrPlaces,
         'max_accuracy': 100,
@@ -1630,6 +1632,11 @@ class FakeServer {
       switch ('${b['action']}') {
         case 'faceState':
           return _j({'ok': true, 'required': hrFace, 'min': 90, 'enrolled': hrFaceIn, 'poses': ['front', 'left', 'right', 'up', 'down']});
+        case 'faceConsentText': // (rcl-hr step 14) the consent words, by their version
+          if (!hrConsentWords) return _j({'error': 'Unknown action.'}, 400);
+          return _j({'ok': true, 'version': 'f1-0123456789', 'text': {
+            for (final l in ['en', 'mr', 'hi']) l: {'title': 'Your face for attendance – your consent ($l)', 'points': ['Point one ($l)', 'Point two ($l)'], 'agree': 'I agree ($l)'}
+          }});
         case 'faceEnrolUrls':
           if (hrFaceIn) return _j({'error': 'Your face is registered already. Only the HR Admin can reset it – then you register again.', 'code': 'enrolled'}, 409);
           return _j({'ok': true, 'token': 'tok1', 'type': 'image/jpeg', 'pictures': [for (final p in ['front', 'left', 'right', 'up', 'down']) {'pose': p, 'url': 'https://photos.test/hr-docs/faces/emp12/tok1-$p.jpg'}]});

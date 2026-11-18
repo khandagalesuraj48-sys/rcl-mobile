@@ -25,8 +25,9 @@ String _t(String en, String mr) => Lang.i.pair(en, mr);
 class FaceKit {
   static FaceKit kit = FaceKit();
 
-  /// The five pictures of the registration (pose → JPEG), or null when he went back.
-  Future<Map<String, Uint8List>?> enrol(BuildContext context) => Navigator.of(context).push<Map<String, Uint8List>>(MaterialPageRoute(builder: (_) => const FaceCamScreen(enrol: true)));
+  /// The five pictures of the registration (pose → JPEG), or null when he went back. [words]: the HR server's consent words
+  /// (faceConsentText – { version, text: { en, mr, hi } }); without them the screen's own words.
+  Future<Map<String, Uint8List>?> enrol(BuildContext context, {Map<String, dynamic>? words}) => Navigator.of(context).push<Map<String, Uint8List>>(MaterialPageRoute(builder: (_) => FaceCamScreen(enrol: true, words: words)));
 
   /// The proof photo of a punch, taken after the blink – or null when he went back.
   Future<Uint8List?> check(BuildContext context, {String stamp = ''}) async {
@@ -44,10 +45,14 @@ FaceLook lookOf(List<Face> faces) {
   return FaceLook(faces: n, yaw: f.headEulerAngleY ?? 0, pitch: f.headEulerAngleX ?? 0, leftEye: f.leftEyeOpenProbability ?? -1, rightEye: f.rightEyeOpenProbability ?? -1);
 }
 
+/// (3.134.0) the language his consent is shown and written down in: the app's own (English when none is chosen)
+String consentLang() => Lang.i.code == 'mr' || Lang.i.code == 'hi' ? Lang.i.code : 'en';
+
 class FaceCamScreen extends StatefulWidget {
-  const FaceCamScreen({super.key, required this.enrol, this.stamp = ''});
+  const FaceCamScreen({super.key, required this.enrol, this.stamp = '', this.words});
   final bool enrol;
   final String stamp;
+  final Map<String, dynamic>? words;
   @override
   State<FaceCamScreen> createState() => _FaceCamScreenState();
 }
@@ -282,7 +287,42 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
   }
 
   // before the registration: what is kept and why – he agrees himself
-  Widget _agree() => ListView(key: const Key('face-agree'), padding: const EdgeInsets.fromLTRB(22, 10, 22, 30), children: [
+  /// (3.134.0, rcl-hr step 14) the HR server's consent words, in his language – what he agrees to is exactly what is written down
+  Widget? _serverWords() {
+    final text = widget.words?['text'];
+    if (text is! Map) return null;
+    final w = text[consentLang()] ?? text['en'];
+    if (w is! Map || w['title'] == null || w['points'] is! List || w['agree'] == null) return null;
+    return ListView(key: const Key('face-consent'), padding: const EdgeInsets.fromLTRB(22, 10, 22, 30), children: [
+      const Icon(Icons.face_retouching_natural_rounded, size: 64, color: Colors.white70),
+      const SizedBox(height: 12),
+      m.Text('${w['title']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, height: 1.3)),
+      const SizedBox(height: 14),
+      for (final l in (w['points'] as List))
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Padding(padding: EdgeInsets.only(top: 3, right: 10), child: Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF35C98A))),
+            Expanded(child: m.Text('$l', style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4))),
+          ]),
+        ),
+      const SizedBox(height: 16),
+      SizedBox(
+        height: 56,
+        child: FilledButton(
+          key: const Key('face-start'),
+          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF0F1F3D), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+          onPressed: () {
+            setState(() => agreed = true);
+            _open();
+          },
+          child: m.Text('${w['agree']}', textAlign: TextAlign.center, maxLines: 3, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF0F1F3D), height: 1.3)),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _agree() => _serverWords() ?? ListView(key: const Key('face-agree'), padding: const EdgeInsets.fromLTRB(22, 10, 22, 30), children: [
         const Icon(Icons.face_retouching_natural_rounded, size: 72, color: Colors.white70),
         const SizedBox(height: 14),
         Text('Your face is registered once, for your attendance.', mr: 'तुमचा चेहरा हजेरीसाठी एकदाच नोंदवला जातो.', textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: Colors.white, height: 1.3)),

@@ -139,7 +139,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       return true;
     }
     if (!mounted) return false;
-    final shots = await FaceKit.kit.enrol(context);
+    /* (3.134.0, rcl-hr step 14) HIS CONSENT: the words come from the HR server (its version is written down with his "I agree");
+     * an HR server of before has none – the screen's own words then, as before */
+    Map<String, dynamic>? words;
+    try {
+      words = await _face({'action': 'faceConsentText'});
+    } on ApiError catch (e) {
+      if (e.code == 'net') rethrow;
+      words = null;
+    }
+    if (!mounted) return false;
+    final shots = await FaceKit.kit.enrol(context, words: words);
     if (shots == null || !mounted) return false;
     final s = SessionScope.read(context), u = await _face({'action': 'faceEnrolUrls'});
     for (final p in (u['pictures'] as List? ?? const []).whereType<Map>()) {
@@ -148,7 +158,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       await s.api.hrPhoto('${p['url']}', jpg);
     }
     final info = await AttendKit.kit.info();
-    await _face({'action': 'faceEnrol', 'token': u['token'], 'device': {'id': info['id'], 'model': info['model']}});
+    await _face({'action': 'faceEnrol', 'token': u['token'], 'device': {'id': info['id'], 'model': info['model']}, if (words != null && words['version'] != null) 'consent': {'version': words['version'], 'lang': consentLang()}});
     _faceIn = true;
     if (mounted) donePop(context, _t('Your face is registered', 'तुमचा चेहरा नोंदवला'));
     return true;
@@ -233,7 +243,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     // (3.111.0) the site asks for the face: this punch's own photo is compared with his registered face – not his: refused
     // here, nothing of the punch is saved
     if (_faceOn) await _face({'action': 'faceCheck', 'client_id': p.cid});
-    return _hr(p.body(live: live).cast<String, dynamic>());
+    return _hr(p.body(live: live, key: await attendKey(s.api.keep)).cast<String, dynamic>()); // (3.134.0) with the phone's own key
   }
 
   Future<void> _sendKept(List<KeptPunch> list) async {
@@ -351,6 +361,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         elapsed: await AttendKit.kit.elapsed(),
         anchorServer: last?['now'] is num ? (last!['now'] as num).toInt() : null,
         anchorElapsed: last?['anchor_elapsed'] is num ? (last!['anchor_elapsed'] as num).toInt() : null,
+        anchorSig: '${last?['anchor_sig'] ?? ''}', // (3.134.0) the server's seal of that time
         deviceId: info['id'] ?? '',
         model: info['model'] ?? '',
         os: info['os'] ?? '',
