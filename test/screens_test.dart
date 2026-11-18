@@ -9006,7 +9006,9 @@ void main() {
     srv.hrSlips = [
       {'month': '2026-10', 'net': 127400, 'pay_type': 'monthly', 'rate': 131000, 'month_days': 31, 'pay_days': 29, 'extra_days': 2, 'gross': 131500, 'total_deductions': 4100,
         'earnings': [{'label': 'Earned pay', 'amount': 122548.39}, {'label': 'Extra days', 'amount': 8451.61}, {'label': 'arrear', 'amount': 500}],
-        'deductions': [{'label': 'PF', 'amount': 1800}, {'label': 'Profession Tax', 'amount': 200}, {'label': 'Advance', 'amount': 2000}, {'label': 'Other deduction', 'amount': 100}]},
+        'deductions': [{'label': 'PF', 'amount': 1800}, {'label': 'Profession Tax', 'amount': 200}, {'label': 'Advance', 'amount': 2000}, {'label': 'Other deduction', 'amount': 100}],
+        // (3.138.0, rcl-hr step 18) his salary structure's parts and the company's share
+        'components': [{'label': 'Basic', 'amount': 61274.2}, {'label': 'HRA', 'amount': 24509.68}, {'label': 'Special', 'amount': 36764.51}], 'employer': [{'label': 'PF (EPF)', 'amount': 550}, {'label': 'Pension (EPS)', 'amount': 1250}], 'ctc': 133300},
       {'month': '2026-09', 'net': 496, 'pay_type': 'daily', 'rate': 500, 'month_days': 30, 'pay_days': 1, 'extra_days': 0, 'gross': 500, 'total_deductions': 4, 'earnings': [{'label': 'Earned pay', 'amount': 500}], 'deductions': [{'label': 'ESIC', 'amount': 4}]},
     ];
     await tapKey('me-slips');
@@ -9016,6 +9018,10 @@ void main() {
     expect(find.text('₹ 1,22,548.39'), findsOneWidget);
     expect(find.text('₹ 1,31,000 a month · 29 days paid · 2 extra'), findsOneWidget);
     expect(find.text('Profession Tax'), findsOneWidget);
+    expect(find.text('Parts of the earned pay'), findsOneWidget, reason: '(3.138.0) only the slip that has them');
+    expect(find.text('₹ 61,274.20'), findsOneWidget);
+    expect(find.text('Pension (EPS)'), findsOneWidget);
+    expect(find.text('₹ 1,33,300'), findsOneWidget);
     // (3.119.0) "Download PDF": this month's slip as a PDF – his name and code as the server says them, handed to the phone
     Uint8List? slipPdf;
     var slipName = '';

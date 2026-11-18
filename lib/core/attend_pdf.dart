@@ -362,8 +362,31 @@ Future<Uint8List> payslipPdf({required String company, required String site, req
   p.text('Net pay', l + 10, ny + 17.5, 12, ink, bold: true);
   p.text('Rs. ${pdfAmount(slip['net'])}', r - 10, ny + 17.5, 13, green, bold: true, right: true);
   p.text('Net pay = Gross - Total deductions. This slip is the month\'s pay as the head office made and locked it.', l, ny + 42, 8, muted);
+  // ---- (3.138.0, rcl-hr step 18) the parts of the earned pay and what the company pays beside it – only when the slip has them
+  var py = ny + 62;
+  void items(String head, List<Map> rows, String tail) {
+    if (rows.isEmpty) return;
+    p.text(head, l, py, 9.5, ink, bold: true);
+    py += 13;
+    var line = '';
+    for (final w in [for (final x in rows) '${pdfWords('${x['label'] ?? ''}')} Rs. ${pdfAmount(x['amount'])}', if (tail.isNotEmpty) tail]) {
+      final next = line.isEmpty ? w : '$line   |   $w';
+      if (line.isNotEmpty && pdfWidth(next, 9) > r - l) {
+        p.text(line, l, py, 9, ink);
+        py += 12;
+        line = w;
+      } else {
+        line = next;
+      }
+    }
+    if (line.isNotEmpty) p.text(line, l, py, 9, ink);
+    py += 18;
+  }
+
+  items('Parts of the earned pay', [for (final x in (slip['components'] as List? ?? const []).whereType<Map>()) x], '');
+  items('Paid by the company beside the pay', [for (final x in (slip['employer'] as List? ?? const []).whereType<Map>()) x], slip['ctc'] is num ? 'Cost to the company Rs. ${pdfAmount(slip['ctc'])}' : '');
   // ---- room to sign: HR · Accounts · Director
-  final ly = ny + 110;
+  final ly = py + 48 > ny + 110 ? py + 48 : ny + 110;
   const sx = <double>[250, 360, 470], sl = 95.0;
   const who = ['HR', 'Accounts', 'Director'];
   for (var i = 0; i < 3; i++) {

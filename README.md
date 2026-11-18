@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.138.0 (18-11-2026, rcl-hr step 18 – Phase 5 of the enterprise HRMS, payroll):** Me → **Salary slips** show the parts
+of the earned pay (his salary structure: Basic, HRA, …) and what the company pays beside his pay (EPF, EPS, EDLI, ESIC, LWF, the cost
+to the company) – only on a slip that has them; also in the slip's PDF. The office's payroll pages (structures, release & payment, full
+& final, registers) stay web only (his decision of 18-11-2026).
+
 **Version 3.137.0 (18-11-2026, rcl-hr step 17 – Phase 4 of the enterprise HRMS, notifications):** Me → **Notifications**
 (`myNotices`, `myNoticeSeen`): what the HR office sent him – shift reminders, papers pending / running out, a policy to accept, a
 reporting change, the joining link – the new ones marked (Me says how many: `myHr.notices.unread`); opening the list marks them seen.

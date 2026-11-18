@@ -803,6 +803,9 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
   Widget _slip(Map s, int i) {
     final good = sk.tint(const Color(0xFF0F7A45), const Color(0xFFE3F7EC)).$1, bad = sk.tint(C.red, C.redSoft).$1;
     final earn = (s['earnings'] as List? ?? const []).whereType<Map>().toList(), ded = (s['deductions'] as List? ?? const []).whereType<Map>().toList();
+    // (3.138.0, rcl-hr step 18) the parts of his earned pay (his salary structure) and what the company pays beside it – only when there
+    final parts = (s['components'] as List? ?? const []).whereType<Map>().toList(), er = (s['employer'] as List? ?? const []).whereType<Map>().toList();
+    Widget small(String en, String mr) => Padding(padding: const EdgeInsets.only(top: 6, bottom: 2), child: m.Text(_t(en, mr), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sk.muted)));
     final daily = '${s['pay_type']}' == 'daily', extra = s['extra_days'] is num ? s['extra_days'] as num : 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -823,11 +826,21 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
         ),
         for (final l in earn) _line('${l['label']}', l['amount']),
         _line(_t('Gross', 'एकूण'), s['gross'], bold: true),
+        if (parts.isNotEmpty) ...[
+          small('Parts of the earned pay', 'कमावलेल्या पगाराचे भाग'),
+          for (final l in parts) _line('${l['label']}', l['amount']),
+        ],
         if (ded.isNotEmpty) Divider(height: 14, color: sk.hair),
         for (final l in ded) _line('${l['label']}', l['amount'], color: bad),
         if (ded.isNotEmpty) _line(_t('Total deductions', 'एकूण कपात'), s['total_deductions'], bold: true, color: bad),
         Divider(height: 14, color: sk.hair),
         _line(_t('Net pay', 'हातात येणारा पगार'), s['net'], bold: true, color: good),
+        if (er.isNotEmpty) ...[
+          Divider(height: 14, color: sk.hair),
+          small('Paid by the company beside your pay', 'तुमच्या पगाराशिवाय कंपनीने भरलेले'),
+          for (final l in er) _line('${l['label']}', l['amount']),
+          if (s['ctc'] is num) _line(_t('Cost to the company', 'कंपनीचा एकूण खर्च (CTC)'), s['ctc'], bold: true),
+        ],
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(

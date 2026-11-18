@@ -60,6 +60,13 @@ void main() {
     }
     expect(RegExp(r'startxref\n(\d+)\n%%EOF').hasMatch(text), true);
     // a day's rate, nothing deducted
+    // (3.138.0, rcl-hr step 18) the parts of the pay and the company's share – only when the slip has them
+    expect(text.contains('(Parts of the earned pay)'), false);
+    final parts = String.fromCharCodes(await payslipPdf(company: 'Test Company', site: 'Site', name: 'Part Person', code: 'E5', slip: const {'month': '2026-10', 'net': 626, 'pay_type': 'monthly', 'rate': 15500, 'month_days': 31, 'pay_days': 2, 'extra_days': 0, 'gross': 1000, 'total_deductions': 374,
+      'earnings': [{'label': 'Earned pay', 'amount': 1000}], 'deductions': [{'label': 'PF', 'amount': 60}], 'components': [{'label': 'Basic', 'amount': 500}, {'label': 'HRA', 'amount': 200}], 'employer': [{'label': 'PF (EPF)', 'amount': 18}, {'label': 'Pension (EPS)', 'amount': 42}], 'ctc': 1117}));
+    for (final w in ['(Parts of the earned pay)', 'Basic Rs. 500', 'HRA Rs. 200', '(Paid by the company beside the pay)', 'PF \\(EPF\\) Rs. 18', 'Cost to the company Rs. 1,117']) {
+      expect(parts.contains(w), true, reason: w);
+    }
     final daily = String.fromCharCodes(await payslipPdf(company: 'Test Company', site: 'Site', name: 'Day Person', code: '', slip: const {'month': '2026-09', 'net': 500, 'pay_type': 'daily', 'rate': 500, 'month_days': 30, 'pay_days': 1, 'extra_days': 0, 'gross': 500, 'total_deductions': 0, 'earnings': [{'label': 'Earned pay', 'amount': 500}], 'deductions': []}));
     expect(daily.contains('(Rate a day :)') && daily.contains('(Rs. 500)') && daily.contains('(Salary Slip for the Month September-2026)'), true);
   });
