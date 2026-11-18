@@ -2,7 +2,7 @@
  *   FaceKit.kit.enrol  – the registration, once: he agrees, then five pictures (front, one side, the other, up / down, the other)
  *   FaceKit.kit.check  – every attendance: the face straight, the eyes closed for a moment, open again – that picture is the
  *                        proof photo of the punch
- * The camera takes a picture about twice a second and Google's ML Kit (on the phone) says where the head is and whether the
+ * The camera takes a picture as fast as it can (registration) and Google's ML Kit (on the phone) says where the head is and whether the
  * eyes are open; nothing is sent anywhere from here. WHO it is: the HR server, from the pictures this screen gives back.
  * A test sets its own FaceKit – no camera there. */
 import 'dart:async';
@@ -68,6 +68,8 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
   CameraDescription? lens;
   bool _busy = false; // (a frame is being read – the next ones are let go)
   int _said = -1; // the step said aloud last
+  String _hintSaid = ''; // (3.140.0) the last "what to change" said aloud, and when – not said again and again
+  DateTime _hintAt = DateTime(2000);
 
   @override
   void initState() {
@@ -126,6 +128,18 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
     unawaited(sayAloud(faceSay(widget.enrol, step, lang), lang));
   }
 
+  /// (3.140.0) the registration: what to change, said aloud too (drivers do not read) – at most every 3 seconds, the same words
+  /// not before 6 seconds
+  void _sayHint((String, String, String) h) {
+    if (h.$1.isEmpty) return;
+    final now = DateTime.now(), gap = now.difference(_hintAt).inMilliseconds;
+    if (gap < 3000 || (h.$1 == _hintSaid && gap < 6000)) return;
+    _hintSaid = h.$1;
+    _hintAt = now;
+    final lang = Lang.i.code == 'mr' || Lang.i.code == 'hi' ? Lang.i.code : 'en';
+    unawaited(sayAloud(lang == 'mr' ? h.$2 : lang == 'hi' ? h.$3 : h.$1, lang));
+  }
+
   /// (3.117.0) ATTENDANCE: one frame of the camera – straight, eyes closed, eyes open again. Frames that come while one is
   /// being read are let go.
   Future<void> _frame(CameraImage img) async {
@@ -181,7 +195,7 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
     Navigator.of(context).pop(Map<String, Uint8List>.of(shots));
   }
 
-  // a picture about twice a second, until every step is taken
+  // a picture as fast as the phone takes them (3.140.0: no wait of 250 ms between them), until every step is taken
   Future<void> _loop() async {
     while (mounted && !stop && !_done) {
       final c = cam, d = det;
@@ -199,7 +213,13 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
         } catch (_) {/* the phone clears its own cache */}
         faults = 0;
         if (!mounted) return;
-        final h = took ? ('', '') : faceHint(look, eyes: !widget.enrol);
+        var h = took ? ('', '') : faceHint(look, eyes: !widget.enrol);
+        if (!took && widget.enrol && h.$1.isEmpty) {
+          final g = en.hint(look); // (3.140.0) what to change: a little more, a little less, the other side
+          h = (g.$1, g.$2);
+          _sayHint(g);
+        }
+        if (took) _hintAt = DateTime.now(); // (the next step is said now – no old hint over it)
         setState(() {
           hint = _t(h.$1, h.$2);
           good = took;
@@ -209,7 +229,7 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
       } catch (_) {
         if (++faults >= 6 && mounted) setState(() => err = _t('The camera does not give a picture – go back and try again.', 'Camera चित्र देत नाही – मागे जाऊन पुन्हा करा.'));
       }
-      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await Future<void>.delayed(const Duration(milliseconds: 60)); // (3.140.0) faster: the next look at once (was 250 ms)
     }
     if (mounted && _done && shots.length == (widget.enrol ? kFacePoses.length : 1)) Navigator.of(context).pop(Map<String, Uint8List>.of(shots));
   }

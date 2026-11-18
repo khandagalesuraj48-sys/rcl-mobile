@@ -1,6 +1,3 @@
-Me: "My team" – for a reporting manager: your team today (in, late, on leave, not marked), this month's counts, what waits for your decision and whose papers are missing.
-Me: "माझी टीम" – reporting manager साठी: तुमची टीम आज (आत, उशीर, रजेवर, हजेरी नाही), या महिन्याची संख्या, तुमच्या निर्णयाची वाट बघणाऱ्या विनंत्या आणि कोणाची कागदपत्रं बाकी.
-Me: "मेरी टीम" – reporting manager के लिए: आपकी टीम आज (अंदर, देरी, छुट्टी पर, हाज़िरी नहीं), इस महीने की संख्या, आपके निर्णय की प्रतीक्षा में अनुरोध और किसके दस्तावेज़ बाकी।
-Salary slips: the parts of your pay (Basic, HRA, …) and what the company pays beside it, when the head office gives you a salary structure.
-पगार पावती: Head office ने पगार रचना दिली असेल तर पगाराचे भाग (Basic, HRA, …) आणि कंपनीने भरलेले.
-वेतन पर्ची: Head office ने वेतन संरचना दी हो तो वेतन के भाग (Basic, HRA, …) और कंपनी ने जो भरा।
+Face registration made easy: turn your head only a little – the app says "a little more", "a little less" or "the other side", on the screen and aloud, and takes the next picture at once.
+चेहरा नोंदणी सोपी: डोके फक्त थोडे वळवा – app स्क्रीनवर आणि बोलून सांगते "थोडे अजून", "थोडे कमी" किंवा "दुसऱ्या बाजूला", आणि पुढचा फोटो लगेच घेते.
+चेहरा पंजीकरण आसान: सिर सिर्फ़ थोड़ा घुमाइए – app स्क्रीन पर और बोलकर बताता है "थोड़ा और", "थोड़ा कम" या "दूसरी तरफ़", और अगली फ़ोटो तुरंत लेता है।

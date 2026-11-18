@@ -35,6 +35,33 @@ void main() {
     expect(e.done, true);
   });
 
+  test('(3.140.0) a turn is taken only inside its window – too far is refused on the phone (the server could not match it); what to change is said', () {
+    final e = FaceEnrolSteps();
+    expect(e.hint(look(yaw: 25)).$1, 'Look straight at the phone');
+    expect(e.take(look()), true);
+    expect(e.take(look(yaw: 40)), false, reason: 'turned too far: the whole face is not seen');
+    expect(e.hint(look(yaw: 40)).$1, contains('A little less'));
+    expect(e.take(look(yaw: 10)), false);
+    expect(e.hint(look(yaw: 10)).$1, 'Turn a little more');
+    expect(e.hint(look(yaw: 20, pitch: 25)).$1, contains('Keep your chin level'));
+    expect(e.take(look(yaw: 20)), true);
+    expect(e.hint(look(yaw: 22)).$1, 'The OTHER side', reason: 'the same side again: told which way');
+    expect(e.take(look(yaw: 22)), false);
+    expect(e.take(look(yaw: -45)), false);
+    expect(e.hint(look(yaw: -45)).$2, contains('थोडे कमी'));
+    expect(e.take(look(yaw: -16)), true, reason: 'a small turn is enough');
+    expect(e.hint(look(yaw: 25, pitch: 15)).$1, contains('Face the phone'));
+    expect(e.take(look(pitch: 30)), false);
+    expect(e.hint(look(pitch: 30)).$1, contains('A little less'));
+    expect(e.hint(look(pitch: 5)).$1, 'A little more');
+    expect(e.take(look(pitch: 12)), true);
+    expect(e.hint(look(pitch: 14)).$1, 'Now the OTHER way');
+    expect(e.take(look(pitch: -11)), true);
+    expect([e.done, e.hint(look()).$1], [true, '']);
+    expect(FaceEnrolSteps().hint(look(n: 0)), ('', '', ''), reason: 'no face: faceHint says it');
+    expect(FaceEnrolSteps().hint(look()), ('', '', ''), reason: 'right: nothing to change');
+  });
+
   test('every attendance: straight with open eyes → closed → open again; a photo (eyes always open) never passes', () {
     final b = FaceBlinkSteps();
     expect(b.take(look(eyes: .1)), false, reason: 'eyes closed at the start');
