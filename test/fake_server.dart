@@ -248,7 +248,7 @@ class FakeServer {
   /// (rcl-hr step 17) his messages (the app's own list) and how often they were marked seen
   final hrNotices = <Map<String, dynamic>>[];
   // (3.139.0, rcl-hr Phase 6) the people who report to him – "My team"
-  List<Map<String, dynamic>> hrTeam = [];
+  List<Map<String, dynamic>> hrTeamPeople = [];
   int hrNoticeSeen = 0;
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
   final hrFaceSent = <Map<String, dynamic>>[];
@@ -370,13 +370,13 @@ class FakeServer {
           'photo': hrDocs.any((d) => d['kind'] == 'photo') ? 'https://photos.test/hr-docs/open' : '',
           'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'},
           'policies': {'pending': hrPolicies.where((p) => p['mandatory'] == true && p['accepted_at'] == null).length}, 'doc_rule': hrDocRule,
-          'notices': {'unread': hrNotices.where((n) => n['seen_at'] == null).length}, 'team': hrTeam.length});
+          'notices': {'unread': hrNotices.where((n) => n['seen_at'] == null).length}, 'team': hrTeamPeople.length});
       case 'myTeam':
         final counts = <String, int>{};
-        for (final p in hrTeam) {
+        for (final p in hrTeamPeople) {
           counts['${p['now']}'] = (counts['${p['now']}'] ?? 0) + 1;
         }
-        return _j({'ok': true, 'team': hrTeam.length, 'today': '2026-10-14', 'people': hrTeam, 'counts': counts, 'waiting': {'attendance': 1, 'leave': 1}, 'papers_missing': hrTeam.where((p) => (p['papers_missing'] as int? ?? 0) > 0).length});
+        return _j({'ok': true, 'team': hrTeamPeople.length, 'today': '2026-10-14', 'people': hrTeamPeople, 'counts': counts, 'waiting': {'attendance': 1, 'leave': 1}, 'papers_missing': hrTeamPeople.where((p) => (p['papers_missing'] as int? ?? 0) > 0).length});
       case 'myNotices':
         return _j({'ok': true, 'ready': true, 'rows': hrNotices, 'unread': hrNotices.where((n) => n['seen_at'] == null).length});
       case 'myNoticeSeen':

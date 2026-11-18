@@ -9339,7 +9339,7 @@ void main() {
       ..hrSite = true
       ..hrKey = 'hrme'
       ..hrOnlyUser = true;
-    srv.hrTeam = [
+    srv.hrTeamPeople = [
       {'code': 'E00031', 'name': 'Amit Pawar', 'category': 'Staff', 'now': 'late', 'in': '09:22', 'out': '', 'late_min': 22, 'month': {'present': 9, 'absent': 1, 'leave': 0, 'late': 3}, 'papers_missing': 2},
       {'code': 'E00032', 'name': 'Ravi Shinde', 'category': 'Labour', 'now': 'not', 'in': '', 'out': '', 'late_min': 0, 'month': {'present': 10, 'absent': 0, 'leave': 1, 'late': 0}, 'papers_missing': 0},
     ];
