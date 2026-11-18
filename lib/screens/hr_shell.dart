@@ -531,6 +531,14 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   List<_Note> _notes() {
     const blue = Color(0xFF0B5FA5), blueSoft = Color(0xFFE3EEFB), red = Color(0xFFC22A1B), redSoft = Color(0xFFFFE6E3), amber = Color(0xFF8A5A00), amberSoft = Color(0xFFFFF3D1);
     final out = <_Note>[];
+    // (3.136.0, rcl-hr step 16) the seven-day rule: his papers due – held until they are there (first, in red)
+    final dr = mine?['doc_rule'];
+    if (dr is Map && (dr['missing'] as List? ?? const []).isNotEmpty) {
+      final miss = (dr['missing'] as List).map((x) => tr('$x')).join(', '), due = dayName('${dr['due'] ?? ''}');
+      out.add(_Note('hh-n-seven', Icons.assignment_late_outlined, red, redSoft,
+          dr['blocked'] == true ? _t('Attach your papers – the app is held', 'तुमची कागदपत्रे जोडा – app थांबवलं आहे') : dr['late'] == true ? _t('Your papers were due by $due', 'तुमची कागदपत्रे $due पर्यंत हवी होती') : _t('Your papers are due by $due', 'तुमची कागदपत्रे $due पर्यंत द्यायची आहेत'),
+          miss, _t('Attach', 'जोडा'), _docs));
+    }
     for (final q in (leave?['requests'] as List? ?? const []).whereType<Map>()) {
       if (q['status'] == 'pending') out.add(_Note('hh-n-leave-${q['id']}', Icons.event_available_rounded, blue, blueSoft, _t('Leave on ${dayName('${q['from']}')}', '${dayName('${q['from']}')} ची रजा'), _t('Waiting for approval', 'मंजुरीची वाट'), _t('See', 'पहा'), () => _go(2)));
     }

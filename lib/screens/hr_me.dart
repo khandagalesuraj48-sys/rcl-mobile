@@ -144,6 +144,8 @@ class HrMeTab extends StatelessWidget {
                       await reload();
                     });
               }(),
+              // (3.136.0, rcl-hr step 16) where he may mark attendance – IN / OUT, the dates, and why a place does not count today
+              _li(key: const Key('me-places'), sign: '', icon: Icons.place_outlined, c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My work locations', mr: 'माझी कामाची ठिकाणं', sub: _t('Where you may sign in and out', 'कुठे sign in / out करता येतं'), onTap: () => open(MyPlacesScreen(ask: ask))),
               _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('Month by month', 'महिन्यानुसार'), onTap: onSlips),
               _li(key: const Key('me-phone'), sign: 'P', c: kPurple, soft: const Color(0xFFF1E8F6), en: 'My phone', mr: 'माझा phone', sub: phone['bound'] == true ? _t('Registered for attendance', 'हजेरीसाठी नोंदलेला') : _t('No phone registered yet', 'अजून phone नोंदलेला नाही'), last: true, onTap: () => open(MyPhoneScreen(phone: phone, day: day))),
             ]),
@@ -367,6 +369,91 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                         );
                       }(),
                   ]),
+              ]),
+            ),
+    );
+  }
+}
+
+/// (3.136.0, rcl-hr step 16) MY WORK LOCATIONS – "Employee can Sign In / Sign Out at the following locations": the places that count
+/// for him today (IN / OUT), and a place given to him that does not count today with why (the HR office's dates, switched off).
+class MyPlacesScreen extends StatefulWidget {
+  const MyPlacesScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<MyPlacesScreen> createState() => _MyPlacesScreenState();
+}
+
+class _MyPlacesScreenState extends State<MyPlacesScreen> {
+  List<Map> rows = const [];
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final j = await widget.ask({'action': 'myPlaces'});
+      if (!mounted) return;
+      setState(() {
+        rows = (j['places'] as List? ?? const []).whereType<Map>().toList();
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = rows.where((r) => r['counts'] == true).toList(), later = rows.where((r) => r['counts'] != true).toList();
+    Widget line(Map r, int i, int n) => Container(
+          key: Key('place-${r['id']}'),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(border: i == n - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
+          child: Row(children: [
+            Icon(Icons.place_rounded, size: 20, color: r['counts'] == true ? const Color(0xFF0F7A45) : sk.faint),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                m.Text('${r['name']}', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: sk.ink)),
+                if ('${r['why'] ?? ''}'.isNotEmpty) m.Text(_t('Not today – ${r['why']}', 'आज नाही – ${r['why']}'), style: TextStyle(fontSize: 12.5, color: sk.muted)),
+              ]),
+            ),
+            if (r['can_in'] == true) Padding(padding: const EdgeInsets.only(left: 6), child: stateChip('IN', r['counts'] == true ? 'a' : '')),
+            if (r['can_out'] == true) Padding(padding: const EdgeInsets.only(left: 6), child: stateChip('OUT', r['counts'] == true ? 'a' : '')),
+          ]),
+        );
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'My work locations', mr: 'माझी कामाची ठिकाणं', height: 64),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 3)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('places-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('places-err')),
+                if (err.isEmpty && now.isEmpty) InfoLine(_t('No work place counts for you today – ask the HR office.', 'आज तुमच्यासाठी कोणतंही work place नाही – HR office ला सांगा.'), bad: true, key: const Key('places-none')),
+                if (now.isNotEmpty) hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                  hrTitle('You can sign in / out at', 'येथे sign in / out करता येतं'),
+                  for (final (i, r) in now.indexed) line(r, i, now.length),
+                ]),
+                if (later.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                    hrTitle('Given to you – not today', 'तुम्हाला दिलेली – आज नाही'),
+                    for (final (i, r) in later.indexed) line(r, i, later.length),
+                  ]),
+                ],
               ]),
             ),
     );

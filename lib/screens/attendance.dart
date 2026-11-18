@@ -243,7 +243,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     // (3.111.0) the site asks for the face: this punch's own photo is compared with his registered face – not his: refused
     // here, nothing of the punch is saved
     if (_faceOn) await _face({'action': 'faceCheck', 'client_id': p.cid});
-    return _hr(p.body(live: live, key: await attendKey(s.api.keep)).cast<String, dynamic>()); // (3.134.0) with the phone's own key
+    // (3.136.0, rcl-hr step 16) the phone's own proof for this very punch – only when the HR server asks for it
+    final pj = me?['integrity'] is Map ? (me!['integrity'] as Map)['project'] : null;
+    final proof = pj is num && pj > 0 ? await AttendKit.kit.integrity(pj.toInt(), 'rcl-punch|${p.cid}') : '';
+    return _hr(p.body(live: live, key: await attendKey(s.api.keep), proof: proof).cast<String, dynamic>()); // (3.134.0) with the phone's own key
   }
 
   Future<void> _sendKept(List<KeptPunch> list) async {

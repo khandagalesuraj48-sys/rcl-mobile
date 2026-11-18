@@ -9225,6 +9225,66 @@ void main() {
     expect(find.text('Rejected'), findsNothing);
   }, tags: ['golden']);
 
+  // (3.136.0, rcl-hr step 16) the phone's proof is asked only when the HR server asks for it – bound to the punch; the seven-day
+  // rule's note on Home; My work locations
+  testWidgets('(3.136.0) HR – the phone\'s proof goes with a punch when the server asks; Home says the papers are due (held); My work locations with why a place does not count', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    final selfie = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    attendSelfieForTest = (_) async => selfie;
+    addTearDown(() {
+      attendSelfieForTest = null;
+      AttendKit.kit = AttendKit();
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..hrIntegrity = 987654321
+      ..hrDocRule = {'due': '2026-10-10', 'missing': ['PAN card', 'Bank passbook / cancelled cheque'], 'late': true, 'blocked': true, 'override_until': null}
+      ..hrMyPlaces = [
+        {'id': 'pl1', 'name': 'Site office', 'site': 'S1', 'kind': 'site_office', 'can_in': true, 'can_out': true, 'counts': true, 'why': ''},
+        {'id': 'pl2', 'name': 'Exit gate', 'site': 'S1', 'kind': 'gate', 'can_in': false, 'can_out': true, 'counts': true, 'why': ''},
+        {'id': 'pl3', 'name': 'Head office', 'site': 'HO', 'kind': 'office', 'can_in': true, 'can_out': true, 'counts': false, 'why': 'given to you from 20-10-2026'},
+      ];
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    // Home: the seven-day rule's note first
+    await t.scrollUntilVisible(find.byKey(const Key('hh-n-seven')), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Attach your papers – the app is held'), findsOneWidget);
+    expect(find.text('PAN card, Bank passbook / cancelled cheque'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_seven_day.png'));
+    // a punch: the phone's proof for THIS punch goes with it
+    await tapKey('hh-slide');
+    await settle(t, 3200);
+    await net(t);
+    final pu = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
+    expect(kit.proofAsked, [[987654321, 'rcl-punch|${pu['client_id']}']]);
+    expect(pu['integrity_token'], 'play-proof-token');
+    // My work locations
+    await tapKey('nav-me');
+    await tapKey('me-places');
+    expect(find.byKey(const Key('places-page')), findsOneWidget);
+    expect(find.text('Not today – given to you from 20-10-2026'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('place-pl2')), matching: find.text('IN')), findsNothing, reason: 'OUT only');
+    expect(find.descendant(of: find.byKey(const Key('place-pl2')), matching: find.text('OUT')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_my_places.png'));
+  }, tags: ['golden']);
+
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {
     phone(t);
     final srv = FakeServer()..hrSite = true;

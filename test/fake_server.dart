@@ -240,6 +240,11 @@ class FakeServer {
   /// (rcl-hr step 15) the company's policies in force for him (myPolicies) and what he accepted
   final hrPolicies = <Map<String, dynamic>>[];
   final hrPolicyAccepts = <Map<String, dynamic>>[];
+  /// (rcl-hr step 16) the HR server asks for the phone's proof (its Google Cloud project; null = off); the seven-day rule's word
+  /// of him (myHr.doc_rule); his places as "My work locations" gives them
+  int? hrIntegrity;
+  Map<String, dynamic>? hrDocRule;
+  List<Map<String, dynamic>>? hrMyPlaces;
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
   final hrFaceSent = <Map<String, dynamic>>[];
   final hrFaceSeen = <String>{};
@@ -275,6 +280,7 @@ class FakeServer {
         'may': hrMay,
         'now': DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch,
         'anchor_sig': 'seal-of-the-server-time-0000000a', // (rcl-hr step 14) the server's seal of 'now'
+        'integrity': hrIntegrity == null ? null : {'project': hrIntegrity},
         'day': '2026-10-14',
         'places': hrPlaces,
         'max_accuracy': 100,
@@ -358,7 +364,9 @@ class FakeServer {
           ],
           'photo': hrDocs.any((d) => d['kind'] == 'photo') ? 'https://photos.test/hr-docs/open' : '',
           'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'},
-          'policies': {'pending': hrPolicies.where((p) => p['mandatory'] == true && p['accepted_at'] == null).length}});
+          'policies': {'pending': hrPolicies.where((p) => p['mandatory'] == true && p['accepted_at'] == null).length}, 'doc_rule': hrDocRule});
+      case 'myPlaces':
+        return _j({'ok': true, 'day': '2026-10-14', 'places': hrMyPlaces ?? [for (final p in hrPlaces) {...p, 'site': 'S1', 'counts': true, 'why': '', 'can_in': p['can_in'] ?? true, 'can_out': p['can_out'] ?? true}]});
       case 'myPolicies':
         return _j({'ok': true, 'ready': true, 'rows': hrPolicies});
       case 'myPolicyAccept':

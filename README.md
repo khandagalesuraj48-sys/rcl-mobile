@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.136.0 (18-11-2026, rcl-hr step 16 – Phase 3 of the enterprise HRMS, attendance & compliance):** Me → **My work
+locations** (`myPlaces`): where he may sign in / out today (IN / OUT) and a place given to him that does not count today, with why.
+Home's "For you" says when his papers are due under the **seven-day rule** (`myHr.doc_rule`; "Attach your papers – the app is held"
+when the HR server holds his My HR until they are there). **The phone's own proof** (Android, Google Play Integrity – the standard
+request; `com.google.android.play:integrity`): asked only when `myAttend` gives `integrity.project` (the HR server's
+`HR_INTEGRITY`), bound to the punch (`rcl-punch|<punch number>`), sent as `integrity_token`; anything wrong gives none and the punch
+goes as before (the server decides). iPhone (App Attest): not yet – it needs the Apple Developer account.
+
 **Version 3.135.0 (18-11-2026, rcl-hr step 15 – Phase 2 of the enterprise HRMS, the Employee Master):** Me → **Company policies**
 (`myPolicies`): the policies in force for him, each one's version; he opens one, reads it (its PDF: `myPolicyFile`), ticks "I have
 read this policy and I accept it" and accepts it (`myPolicyAccept` – with this phone's model); Me shows how many are still to

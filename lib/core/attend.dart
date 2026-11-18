@@ -225,7 +225,8 @@ class KeptPunch {
   /// What the server is sent for it. [live]: taken with the network, sent at once – the server's own clock counts; else it was
   /// kept: the phone's clocks go with it and the server works out its moment (or keeps it for the HR Admin to look at).
   /// [key]: the phone's own key (attendKey) – read from the phone's safe when it is sent, never kept in the punch's file.
-  Map<String, Object?> body({required bool live, String key = ''}) => {
+  /// [proof]: (3.136.0) the phone's Play Integrity token for this punch ('' = none) – asked when it is sent.
+  Map<String, Object?> body({required bool live, String key = '', String proof = ''}) => {
         'action': 'punch',
         'client_id': cid,
         'kind': kind,
@@ -237,6 +238,7 @@ class KeptPunch {
         'mock': false,
         'at_device': atDevice,
         if (!live) ...{'offline': true, 'anchor_server': anchorServer, 'anchor_elapsed': anchorElapsed, 'elapsed': elapsed, if (anchorSig.isNotEmpty) 'anchor_sig': anchorSig},
+        if (proof.isNotEmpty) 'integrity_token': proof,
       };
 }
 
@@ -289,6 +291,18 @@ class AttendKit {
     if (os.isEmpty) os = '${Platform.operatingSystem} ${Platform.operatingSystemVersion}'.trim();
     if (os.length > 40) os = os.substring(0, 40);
     return _info = {'id': id, 'model': model, 'os': os};
+  }
+
+  /// (3.136.0, rcl-hr step 16) THE PHONE'S OWN PROOF – Google Play Integrity, asked only when the HR server says so (myAttend's
+  /// `integrity.project`): a token bound to this punch ([hash] = "rcl-punch|<punch number>"); the HR server asks Google what it
+  /// says. Not Android, Google not reachable, anything wrong: '' – the punch goes as before (the server decides what that means).
+  Future<String> integrity(int project, String hash) async {
+    if (!Platform.isAndroid || project <= 0) return '';
+    try {
+      return await _ch.invokeMethod<String>('integrity', {'project': project, 'hash': hash}).timeout(const Duration(seconds: 12)) ?? '';
+    } catch (_) {
+      return '';
+    }
   }
 
   /// Developer Options switched on (Android). Not known = false: the server still has the last word on everything else.
