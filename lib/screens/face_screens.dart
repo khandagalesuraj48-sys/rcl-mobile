@@ -291,6 +291,7 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
   Widget? _serverWords() {
     final text = widget.words?['text'];
     if (text is! Map) return null;
+    LangScope.of(context); // (a language chosen while the screen is open turns these words too)
     final w = text[consentLang()] ?? text['en'];
     if (w is! Map || w['title'] == null || w['points'] is! List || w['agree'] == null) return null;
     return ListView(key: const Key('face-consent'), padding: const EdgeInsets.fromLTRB(22, 10, 22, 30), children: [
