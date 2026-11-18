@@ -10263,9 +10263,12 @@ void main() {
     expect(find.byKey(const Key('face-consent')), findsOneWidget);
     expect(find.byKey(const Key('face-agree')), findsNothing, reason: 'the server\'s words, not the screen\'s own');
     expect(find.text('Your face for attendance – your consent'), findsOneWidget);
-    expect(find.text('I agree that my face is registered and used for my attendance as written above.'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_face_consent.png'));
+    // the button is under the words: he reads down to it (a list builds what is on the screen)
+    await t.scrollUntilVisible(find.byKey(const Key('face-start')), 200, scrollable: find.descendant(of: find.byKey(const Key('face-consent')), matching: find.byType(Scrollable)).first);
+    expect(find.text('I agree that my face is registered and used for my attendance as written above.'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_face_consent_agree.png'));
     await Lang.i.set('mr');
     await settle(t, 300);
     expect(find.text('हजेरीसाठी तुमचा चेहरा – तुमची संमती'), findsOneWidget, reason: 'in his language');
