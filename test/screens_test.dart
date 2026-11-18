@@ -9319,6 +9319,7 @@ void main() {
 
     await tapKey('nav-me');
     expect(find.text('1 new'), findsOneWidget);
+    expect(find.byKey(const Key('me-team')), findsNothing, reason: '(3.139.0) nobody reports to him: no "My team"');
     await tapKey('me-notices');
     expect(find.byKey(const Key('notices-page')), findsOneWidget);
     expect(find.text('Sign in: your shift General starts at 08:30'), findsOneWidget);
@@ -9328,6 +9329,44 @@ void main() {
     await t.pageBack();
     await net(t);
     expect(find.text('Messages from the HR office'), findsOneWidget, reason: 'nothing new any more');
+  }, tags: ['golden']);
+
+  testWidgets('(3.139.0) HR – My team: only a manager sees it; his team today, the counts, what waits for him', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    addTearDown(() => AttendKit.kit = AttendKit());
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true;
+    srv.hrTeam = [
+      {'code': 'E00031', 'name': 'Amit Pawar', 'category': 'Staff', 'now': 'late', 'in': '09:22', 'out': '', 'late_min': 22, 'month': {'present': 9, 'absent': 1, 'leave': 0, 'late': 3}, 'papers_missing': 2},
+      {'code': 'E00032', 'name': 'Ravi Shinde', 'category': 'Labour', 'now': 'not', 'in': '', 'out': '', 'late_min': 0, 'month': {'present': 10, 'absent': 0, 'leave': 1, 'late': 0}, 'papers_missing': 0},
+    ];
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    await tapKey('nav-me');
+    await tapKey('me-team');
+    expect(find.byKey(const Key('team-page')), findsOneWidget);
+    expect(find.text('Amit Pawar'), findsOneWidget);
+    expect(find.text('Late'), findsWidgets);
+    expect(find.text('Not marked'), findsWidgets);
+    expect(find.textContaining('this month: 9 present · 1 absent · 3 late'), findsOneWidget);
+    expect(find.byKey(const Key('team-waiting')), findsOneWidget);
+    expect(find.byKey(const Key('team-papers')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_my_team.png'));
   }, tags: ['golden']);
 
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {

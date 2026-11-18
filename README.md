@@ -15,6 +15,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.139.0 (18-11-2026, rcl-hr Phase 6 – reports and the manager's dashboard):** Me → **My team** (`myTeam`, shown only when
+`myHr.team` > 0): a reporting manager's own team – today (in, late, on leave, off, not marked), this month's counts, the requests
+waiting for him, papers missing. Read only. The office's 25 reports stay web only (his decision of 18-11-2026).
+
 **Version 3.138.0 (18-11-2026, rcl-hr step 18 – Phase 5 of the enterprise HRMS, payroll):** Me → **Salary slips** show the parts
 of the earned pay (his salary structure: Basic, HRA, …) and what the company pays beside his pay (EPF, EPS, EDLI, ESIC, LWF, the cost
 to the company) – only on a slip that has them; also in the slip's PDF. The office's payroll pages (structures, release & payment, full

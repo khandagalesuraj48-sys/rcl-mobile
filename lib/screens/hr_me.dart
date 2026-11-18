@@ -155,6 +155,10 @@ class HrMeTab extends StatelessWidget {
                       await reload();
                     });
               }(),
+              // (3.139.0, rcl-hr Phase 6) a reporting manager's dashboard – only when people report to him
+              if (mine?['team'] is num && (mine!['team'] as num) > 0)
+                _li(key: const Key('me-team'), sign: '', icon: Icons.groups_outlined, c: const Color(0xFF1F5FBF), soft: const Color(0xFFE6EEFB), en: 'My team', mr: 'माझी टीम',
+                    sub: _t('${mine!['team']} people report to you', '${mine!['team']} लोक तुम्हाला report करतात'), onTap: () => open(MyTeamScreen(ask: ask))),
               // (3.136.0, rcl-hr step 16) where he may mark attendance – IN / OUT, the dates, and why a place does not count today
               _li(key: const Key('me-places'), sign: '', icon: Icons.place_outlined, c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My work locations', mr: 'माझी कामाची ठिकाणं', sub: _t('Where you may sign in and out', 'कुठे sign in / out करता येतं'), onTap: () => open(MyPlacesScreen(ask: ask))),
               _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('Month by month', 'महिन्यानुसार'), onTap: onSlips),
@@ -460,6 +464,119 @@ class _MyNoticesScreenState extends State<MyNoticesScreen> {
                         ]),
                       ),
                   ]),
+              ]),
+            ),
+    );
+  }
+}
+
+/// (3.139.0, rcl-hr Phase 6) MY TEAM – a reporting manager's own team (read only): today (in, late, on leave, not marked, off), what
+/// waits for him (attendance corrections, leave – approved on their own screens), this month's counts, papers still missing.
+class MyTeamScreen extends StatefulWidget {
+  const MyTeamScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<MyTeamScreen> createState() => _MyTeamScreenState();
+}
+
+class _MyTeamScreenState extends State<MyTeamScreen> {
+  Map j = const {};
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await widget.ask({'action': 'myTeam'});
+      if (!mounted) return;
+      setState(() {
+        j = r;
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  static const _now = {'in': ('In', 'आत', 'a'), 'late': ('Late', 'उशीर', 'w'), 'leave': ('On leave', 'रजेवर', 'i'), 'off': ('Off today', 'आज सुट्टी', 'i'), 'not': ('Not marked', 'हजेरी नाही', 'x')};
+
+  Widget _count(String key, String en, String mr, Object? n, Color c) => Expanded(
+        child: Container(
+          key: Key('team-count-$key'),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          decoration: BoxDecoration(color: c.withValues(alpha: .08), borderRadius: BorderRadius.circular(14)),
+          child: Column(children: [
+            m.Text('${n ?? 0}', style: TextStyle(fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.w800, color: c)),
+            m.Text(_t(en, mr), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: sk.muted)),
+          ]),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final people = (j['people'] as List? ?? const []).whereType<Map>().toList(), c = (j['counts'] as Map?) ?? const {}, w = (j['waiting'] as Map?) ?? const {};
+    final waits = ((w['attendance'] as num?) ?? 0) + ((w['leave'] as num?) ?? 0);
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'My team', mr: 'माझी टीम', height: 64),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 4)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('team-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('team-err')),
+                if (err.isEmpty) ...[
+                  Row(children: [
+                    _count('in', 'In', 'आत', ((c['in'] as num?) ?? 0) + ((c['late'] as num?) ?? 0), const Color(0xFF0F7A45)),
+                    _count('late', 'Late', 'उशीर', c['late'], const Color(0xFF8A5A00)),
+                    _count('leave', 'On leave', 'रजेवर', c['leave'], const Color(0xFF1F5FBF)),
+                    _count('not', 'Not marked', 'हजेरी नाही', c['not'], const Color(0xFFC22A1B)),
+                  ]),
+                  const SizedBox(height: 10),
+                  if (waits > 0)
+                    InfoLine(_t('$waits requests of your team wait for your decision.', 'तुमच्या टीमच्या $waits विनंत्या तुमच्या निर्णयाची वाट बघत आहेत.'), key: const Key('team-waiting')),
+                  if ((j['papers_missing'] as num? ?? 0) > 0)
+                    InfoLine(_t('${j['papers_missing']} of your team still have papers missing.', 'तुमच्या टीममधल्या ${j['papers_missing']} जणांची कागदपत्रं अजून बाकी.'), key: const Key('team-papers')),
+                  const SizedBox(height: 4),
+                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                    for (final (i, p) in people.indexed)
+                      Container(
+                        key: Key('team-${p['code']}'),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        decoration: BoxDecoration(border: i == people.length - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
+                        child: Row(children: [
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                              m.Text('${p['name'] ?? ''}', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: sk.ink)),
+                              m.Text(
+                                  [
+                                    '${p['code'] ?? ''}',
+                                    if ('${p['in'] ?? ''}'.isNotEmpty) _t('in ${p['in']}', 'आत ${p['in']}'),
+                                    _t('this month: ${(p['month'] as Map?)?['present'] ?? 0} present · ${(p['month'] as Map?)?['absent'] ?? 0} absent · ${(p['month'] as Map?)?['late'] ?? 0} late',
+                                        'या महिन्यात: ${(p['month'] as Map?)?['present'] ?? 0} हजर · ${(p['month'] as Map?)?['absent'] ?? 0} गैरहजर · ${(p['month'] as Map?)?['late'] ?? 0} उशीर'),
+                                  ].join(' · '),
+                                  style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
+                            ]),
+                          ),
+                          () {
+                            final n = _now['${p['now']}'] ?? _now['not']!;
+                            return stateChip(_t(n.$1, n.$2), n.$3);
+                          }(),
+                        ]),
+                      ),
+                  ]),
+                ],
               ]),
             ),
     );

@@ -1,3 +1,6 @@
-Salary slips: when the head office gives you a salary structure, your slip shows its parts (Basic, HRA, …) and what the company pays beside your pay (PF, pension, ESIC …) – also in the PDF.
-पगार पावती: Head office ने तुम्हाला पगार रचना दिली असेल तर पावतीत तिचे भाग (Basic, HRA, …) आणि तुमच्या पगाराशिवाय कंपनीने भरलेले (PF, पेन्शन, ESIC …) दिसतात – PDF मध्येही.
-वेतन पर्ची: Head office ने आपको वेतन संरचना दी हो तो पर्ची में उसके भाग (Basic, HRA, …) और आपके वेतन के अलावा कंपनी ने जो भरा (PF, पेंशन, ESIC …) दिखता है – PDF में भी।
+Me: "My team" – for a reporting manager: your team today (in, late, on leave, not marked), this month's counts, what waits for your decision and whose papers are missing.
+Me: "माझी टीम" – reporting manager साठी: तुमची टीम आज (आत, उशीर, रजेवर, हजेरी नाही), या महिन्याची संख्या, तुमच्या निर्णयाची वाट बघणाऱ्या विनंत्या आणि कोणाची कागदपत्रं बाकी.
+Me: "मेरी टीम" – reporting manager के लिए: आपकी टीम आज (अंदर, देरी, छुट्टी पर, हाज़िरी नहीं), इस महीने की संख्या, आपके निर्णय की प्रतीक्षा में अनुरोध और किसके दस्तावेज़ बाकी।
+Salary slips: the parts of your pay (Basic, HRA, …) and what the company pays beside it, when the head office gives you a salary structure.
+पगार पावती: Head office ने पगार रचना दिली असेल तर पगाराचे भाग (Basic, HRA, …) आणि कंपनीने भरलेले.
+वेतन पर्ची: Head office ने वेतन संरचना दी हो तो वेतन के भाग (Basic, HRA, …) और कंपनी ने जो भरा।
