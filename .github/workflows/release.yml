@@ -156,10 +156,13 @@ jobs:
       - name: One place for the app – the Portal's store entry of before (14-10-2026, build 102) is taken out
         run: |
           curl -sS -o /dev/null -w "old store entry: %{http_code}\n" -X DELETE "$SB_URL/storage/v1/object/app-releases" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -d '{"prefixes":["android/latest.json"]}' || true
+      # (18-11-2026) only for the publish job of the same run (minutes later) – kept 7 days, not 90 (GitHub's storage for these
+      # files was full); the released app itself is in the Supabase bucket and the GitHub release
       - uses: actions/upload-artifact@v4
         with:
           name: apk
           path: rcl-erp-*.apk
+          retention-days: 7
       # (3.100.0) the symbol files of this build are kept 90 days: with them the lines of a fault the app reports ("Faults of the
       # app" – only addresses in a release build) can be read
       - uses: actions/upload-artifact@v4
