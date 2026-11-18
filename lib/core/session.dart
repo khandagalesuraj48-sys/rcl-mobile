@@ -658,11 +658,12 @@ class Session extends ChangeNotifier {
       if (code.isEmpty || !url.startsWith('https://')) continue;
       by.putIfAbsent(code, () => SiteChoice(code, (x['siteName'] ?? code).toString(), (x['company'] ?? '').toString(), [], companyId: (x['companyId'] ?? '').toString())).modules.add(Module((x['module'] ?? '').toString(), (x['moduleName'] ?? '').toString(), url));
     }
-    // the app works through Mechanical: a site without it cannot be opened here
-    sites = by.values.where((s) => s.module('mechanical') != null).toList();
-    // (3.108.0, asked 12-11-2026: "home screen new design kr non erp user sathi") nobody gave him Mechanical: a person who uses the
-    // app for his own attendance – his sites with HR ("My HR"). The app opens its own four pages for him (screens/hr_shell.dart).
-    if (sites.isEmpty) sites = by.values.where((s) => s.module('hr') != null || s.module('hrme') != null).toList();
+    /* (3.141.0, his problem of 18-11-2026: "HO madhe aahet but ERP use nahit krt HO chi … HO cha access dyawa lagto mg tyana te
+     * mechanical … sagle diste … acess nahi dila tr HO nighunch jate") EVERY SITE OF HIS: one with Mechanical opens the ERP, one with
+     * HR only ("My HR" – his attendance at Head Office, say) opens the attendance pages only (screens/hr_shell.dart – Session.hrOnly),
+     * nothing of Mechanical. Before, a person with Mechanical anywhere did not see his HR-only sites at all – so he was given
+     * Mechanical there too, and saw its vehicles. (3.108.0) a person with no Mechanical at all: his HR sites, as before. */
+    sites = by.values.where((s) => s.module('mechanical') != null || s.module('hr') != null || s.module('hrme') != null).toList();
     if (sites.isEmpty) throw ApiError('You have no site with Mechanical or HR yet – ask the Super Admin.', code: 'nosite');
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();

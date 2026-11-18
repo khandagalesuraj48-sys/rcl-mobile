@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.141.0 (18-11-2026, his problem: "HO madhe aahet but ERP use nahit krt HO chi … HO cha access dyawa lagto mg tyana te
+mechanical … sagle diste"):** every site of his is listed – one with Mechanical opens the ERP, one with HR only ("My HR" at Head Office)
+opens his attendance pages only (`Session.hrOnly`, `HrShell`), nothing of Mechanical. Before, a person with Mechanical anywhere did not
+see his HR-only sites, so he was given Mechanical there too. The Super Admin gives such a person "My HR" at HO only (Users & Access).
+
 **Version 3.140.0 (18-11-2026, asked: "other side madhe jast wel ghetey … face madhe user la problem alach nahi pahije"):** the face
 registration takes a turned picture only inside its window (to a side 15–32°, up / down 10–25°) – a head turned too far could not
 be matched on the HR server ("no face" / "not the same face"); it says what to change ("a little more", "a little less", "the

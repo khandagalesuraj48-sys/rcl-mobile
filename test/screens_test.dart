@@ -9380,6 +9380,19 @@ void main() {
     expect(find.byKey(const Key('hr-nav')), findsNothing);
   });
 
+  testWidgets('(3.141.0) an ERP user with "My HR" at Head Office only: HO is among his sites – it opens his attendance pages, nothing of Mechanical; his ERP sites as before', (t) async {
+    phone(t);
+    final srv = FakeServer()..hoMyHr = true;
+    final s = await ready(t, srv);
+    expect(s.sites.map((x) => x.code).toList(), ['S1', 'T2', 'HO'], reason: 'HO is not dropped any more (a store-only site and a bad address still are)');
+    expect([s.site?.code, s.hrOnly], ['S1', false], reason: 'his ERP site: the ERP as before');
+    await t.runAsync(() => s.chooseSite('HO'));
+    expect([s.site?.code, s.hrOnly, s.stage, s.api.mechUrl], ['HO', true, Stage.ready, ''], reason: 'Head Office: the attendance pages, nothing of Mechanical');
+    expect(srv.calls.where((c) => c.startsWith('portal:go:mechanical:HO')), isEmpty, reason: 'Mechanical of HO is never asked');
+    await t.runAsync(() => s.chooseSite('S1'));
+    expect([s.site?.code, s.hrOnly], ['S1', false], reason: 'back to his ERP site');
+  });
+
   /* (3.104.0) TWO WAYS TO SIGN IN and "VERIFY MY E-MAIL" (the Portal's steps 10 / 11; his rules of 12-11-2026). */
   testWidgets('(3.104.0) "Login with Email OTP" is not there while the Portal has it switched off – the sign-in exactly as before', (t) async {
     phone(t);

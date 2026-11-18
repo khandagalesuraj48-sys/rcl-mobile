@@ -268,6 +268,9 @@ class FakeServer {
   num hrLeaveBal = 3;
   /// (3.108.0) a person with HR only: the Portal lists no Mechanical for him – only "My HR" at S1; the papers he attached
   bool hrOnlyUser = false;
+
+  /// (3.141.0) an ERP user who also has "My HR" at Head Office – and nothing else there (his attendance as an HO employee)
+  bool hoMyHr = false;
   final hrDocs = <Map<String, dynamic>>[];
   final hrDocFiles = <String, String>{};
   final hrLeaves = <Map<String, dynamic>>[];
@@ -1493,6 +1496,7 @@ class FakeServer {
           {'site': 'T2', 'siteName': '18B Kolhapur', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test'},
           {'site': 'X9', 'siteName': 'Bad', 'company': '', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'javascript:alert(1)'},
           {'site': 'Z5', 'siteName': 'Store only', 'company': '', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
+          if (hoMyHr) {'site': 'HO', 'siteName': 'HEAD OFFICE', 'company': 'RCL', 'module': 'hrme', 'moduleName': 'My HR', 'url': 'https://erp.test/hr'},      // (3.141.0)
         ]});
       }
       if (b['action'] == 'setStart') {
