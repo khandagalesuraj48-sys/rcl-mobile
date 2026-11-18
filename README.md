@@ -19,6 +19,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
 mechanical … sagle diste"):** every site of his is listed – one with Mechanical opens the ERP, one with HR only ("My HR" at Head Office)
 opens his attendance pages only (`Session.hrOnly`, `HrShell`), nothing of Mechanical. Before, a person with Mechanical anywhere did not
 see his HR-only sites, so he was given Mechanical there too. The Super Admin gives such a person "My HR" at HO only (Users & Access).
+And ("tyala HO la jaychi garaj naswi direct VTR madhun … sign in kru shakel") from ANY of his sites his attendance, leave and slips
+are those of his HR site (`hrSite`: this site when he has HR here, else his "My HR" site, then an HR office site) – the HR tile, the
+attendance strip and the HR pages go there without changing site; the HR server decides as ever (his record, his work places – a
+work place of VTR is given to an HO employee by the HO HR office).
 
 **Version 3.140.0 (18-11-2026, asked: "other side madhe jast wel ghetey … face madhe user la problem alach nahi pahije"):** the face
 registration takes a turned picture only inside its window (to a side 15–32°, up / down 10–25°) – a head turned too far could not

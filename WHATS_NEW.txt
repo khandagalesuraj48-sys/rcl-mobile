@@ -1,6 +1,9 @@
 Head Office attendance: a person who works on a site's ERP and is given only "My HR" at Head Office now sees Head Office in his sites – it opens only his attendance, nothing of Mechanical.
 Head Office हजेरी: जो site च्या ERP वर काम करतो आणि ज्याला Head Office ला फक्त "My HR" दिले आहे, त्याला आता Head Office त्याच्या sites मध्ये दिसते – तिथे फक्त त्याची हजेरी उघडते, Mechanical नाही.
 Head Office हाज़िरी: जो site के ERP पर काम करता है और जिसे Head Office में सिर्फ़ "My HR" दिया है, उसे अब Head Office उसकी sites में दिखता है – वहाँ सिर्फ़ उसकी हाज़िरी खुलती है, Mechanical नहीं।
+Your attendance from any of your sites: Head Office's attendance, leave and salary slips open from the site you are working in – no change of site.
+तुमची हजेरी कोणत्याही site वरून: Head Office ची हजेरी, रजा आणि पगार पावती तुम्ही काम करत असलेल्या site वरूनच उघडते – site बदलायची गरज नाही.
+आपकी हाज़िरी किसी भी site से: Head Office की हाज़िरी, छुट्टी और वेतन पर्ची आप जिस site पर काम कर रहे हैं वहीं से खुलती है – site बदलने की ज़रूरत नहीं।
 Face registration made easy: turn your head only a little – the app says "a little more", "a little less" or "the other side", on the screen and aloud, and takes the next picture at once.
 चेहरा नोंदणी सोपी: डोके फक्त थोडे वळवा – app स्क्रीनवर आणि बोलून सांगते "थोडे अजून", "थोडे कमी" किंवा "दुसऱ्या बाजूला", आणि पुढचा फोटो लगेच घेते.
 चेहरा पंजीकरण आसान: सिर सिर्फ़ थोड़ा घुमाइए – app स्क्रीन पर और बोलकर बताता है "थोड़ा और", "थोड़ा कम" या "दूसरी तरफ़", और अगली फ़ोटो तुरंत लेता है।

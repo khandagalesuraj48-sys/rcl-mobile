@@ -33,7 +33,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'attach_box.dart' show pickAttFiles;
 import 'attend_reqs.dart' show HrAsk;
-import 'attendance.dart' show attendPdfLogo, attendPdfOut;
+import 'attendance.dart' show attendPdfLogo, attendPdfOut, hrSite;
 import 'email_verify.dart';
 import 'hr_shell.dart' show initials;
 
@@ -111,7 +111,7 @@ class HrMeTab extends StatelessWidget {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     m.Text(name, key: const Key('me-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.w800, color: sk.ink)),
                     m.Text([if ('${e['code'] ?? ''}'.isNotEmpty) '${e['code']}', if (role.isNotEmpty) role].join(' · '), key: const Key('me-role'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)),
-                    m.Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)),
+                    m.Text(hrSite(s)?.name ?? s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)), // (3.141.0) his HR site
                   ]),
                 ),
                 if (pct is num)
@@ -881,9 +881,9 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
     setState(() => making = i);
     try {
       final ses = SessionScope.read(context), name = '${who['name'] ?? ''}'.trim().isEmpty ? ses.name : '${who['name']}'.trim(), code = '${who['code'] ?? ''}'.trim();
-      final company = (ses.site?.company ?? '').isNotEmpty ? ses.site!.company : (ses.company.isNotEmpty ? ses.company : 'Salary slip');
+      final hs = hrSite(ses) ?? ses.site, company = (hs?.company ?? '').isNotEmpty ? hs!.company : (ses.company.isNotEmpty ? ses.company : 'Salary slip');
       final now = DateTime.now().toUtc().add(const Duration(minutes: 330)).toIso8601String();
-      final bytes = await payslipPdf(company: company, site: ses.siteName, name: name, code: code, slip: s, logo: await attendPdfLogo(company), made: '${now.substring(8, 10)}/${now.substring(5, 7)}/${now.substring(0, 4)} ${now.substring(11, 16)}');
+      final bytes = await payslipPdf(company: company, site: hs?.name ?? ses.siteName, name: name, code: code, slip: s, logo: await attendPdfLogo(company), made: '${now.substring(8, 10)}/${now.substring(5, 7)}/${now.substring(0, 4)} ${now.substring(11, 16)}');
       await attendPdfOut(bytes, 'Salary_slip_${code.isEmpty ? name : code}_${s['month']}.pdf');
     } catch (_) {
       if (mounted) toast(context, _t('The PDF could not be made – try again.', 'PDF बनली नाही – पुन्हा करा.'));

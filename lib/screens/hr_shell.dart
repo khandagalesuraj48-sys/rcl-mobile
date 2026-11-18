@@ -43,11 +43,12 @@ import 'leave.dart';
 
 String _t(String en, String mr) => Lang.i.pair(en, mr);
 
-/// His HR sign-in of this site, for the pages opened from here.
+/// His HR sign-in of his HR site (this site, or – 3.141.0 – the site of his own HR: Head Office for an HO employee in VTR's ERP),
+/// for the pages opened from here.
 Future<Map<String, dynamic>> hrCall(BuildContext context, Map<String, dynamic> body) {
-  final s = SessionScope.read(context), mod = hrModule(s);
-  if (s.site == null || mod == null) throw StateError('none');
-  return s.api.hr(s.site!.code, mod.url, mod.key, body);
+  final s = SessionScope.read(context), h = hrSite(s), mod = hrModule(s);
+  if (h == null || mod == null) throw StateError('none');
+  return s.api.hr(h.code, mod.url, mod.key, body);
 }
 
 /// The first letters of a name ("Babu Demo" → BD).
@@ -240,7 +241,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     try {
       final info = await AttendKit.kit.info();
       final d = await _hr({'action': 'myAttend', 'device_id': info['id']});
-      await AttendStore('${s.email}|${s.site?.code ?? ''}').keep(d, await AttendKit.kit.elapsed());
+      await AttendStore('${s.email}|${hrSite(s)?.code ?? ''}').keep(d, await AttendKit.kit.elapsed());
       unawaited(AttendRemind.set(d)); // (3.113.0) the IN / OUT reminders, from his shift and where his day stands
       if (!mounted) return;
       setState(() {
