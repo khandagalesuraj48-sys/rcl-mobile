@@ -10269,7 +10269,8 @@ void main() {
     await t.scrollUntilVisible(find.byKey(const Key('face-start')), 200, scrollable: find.descendant(of: find.byKey(const Key('face-consent')), matching: find.byType(Scrollable)).first);
     expect(find.text('I agree that my face is registered and used for my attendance as written above.'), findsOneWidget);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_face_consent_agree.png'));
-    await Lang.i.set('mr');
+    // (the app's own word files are not read here: a big file is read on another thread, which a widget test's clock never runs)
+    await Lang.i.set('mr', read: (_) async => '{}');
     await settle(t, 300);
     expect(find.text('हजेरीसाठी तुमचा चेहरा – तुमची संमती'), findsOneWidget, reason: 'in his language');
     // an HR server of before (no words): the screen's own words, as before
