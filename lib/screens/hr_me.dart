@@ -18,6 +18,7 @@ import 'package:image/image.dart' as img;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/attend.dart' show AttendKit;
 import '../core/attend_pdf.dart' show payslipPdf;
 import '../core/attend_remind.dart';
 import '../core/update.dart';
@@ -132,6 +133,17 @@ class HrMeTab extends StatelessWidget {
               _li(key: const Key('me-photo'), sign: '', icon: Icons.account_circle_rounded, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My photo', mr: 'माझा photo', sub: '${mine?['photo'] ?? ''}'.isEmpty ? _t('Take or choose – shown on your profile', 'काढा किंवा निवडा – profile वर दिसेल') : _t('Set – touch to change', 'ठेवला आहे – बदलण्यासाठी touch करा'), onTap: onPhoto),
               _li(key: const Key('me-details'), sign: 'i', c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My details', mr: 'माझी माहिती', sub: _t('Personal, job, bank – ask HR to change', 'वैयक्तिक, नोकरी, bank – बदलासाठी HR ला सांगा'), onTap: () => open(MyDetailsScreen(mine: mine))),
               _li(key: const Key('me-docs'), sign: 'D', c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My documents', mr: 'माझी कागदपत्रे', sub: mine == null ? _t('Upload', 'Upload') : miss > 0 ? _t('Upload – $miss still missing', 'Upload – अजून $miss बाकी') : _t('All expected papers are there', 'अपेक्षित सर्व कागदपत्रे आहेत'), onTap: onDocs),
+              // (3.135.0, rcl-hr step 15) the company's policies: he reads and accepts the version in force himself
+              () {
+                final pend = (mine?['policies'] as Map?)?['pending'];
+                return _li(key: const Key('me-policies'), sign: '', icon: Icons.verified_user_outlined, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'Company policies', mr: 'Company policies',
+                    sub: pend is num && pend > 0 ? _t('$pend to read and accept', '$pend वाचून स्वीकारायच्या आहेत') : _t('Read the policies you accepted', 'स्वीकारलेल्या policies वाचा'),
+                    ink: pend is num && pend > 0 ? const Color(0xFFC22A1B) : null,
+                    onTap: () async {
+                      await Navigator.of(context).push(hrRoute<void>(CompanyPoliciesScreen(ask: ask)));
+                      await reload();
+                    });
+              }(),
               _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('Month by month', 'महिन्यानुसार'), onTap: onSlips),
               _li(key: const Key('me-phone'), sign: 'P', c: kPurple, soft: const Color(0xFFF1E8F6), en: 'My phone', mr: 'माझा phone', sub: phone['bound'] == true ? _t('Registered for attendance', 'हजेरीसाठी नोंदलेला') : _t('No phone registered yet', 'अजून phone नोंदलेला नाही'), last: true, onTap: () => open(MyPhoneScreen(phone: phone, day: day))),
             ]),
@@ -244,7 +256,8 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
 
   static (Uint8List, String)? _ready(String name, Uint8List raw) => docReady(name, raw);
 
-  Future<void> _add(Map kind) async {
+  /// [replaces]: a rejected paper this new one takes the place of (it stays in his record)
+  Future<void> _add(Map kind, {String replaces = ''}) async {
     if (busy.isNotEmpty) return;
     final how = await showModalBottomSheet<String>(
       context: context,
@@ -271,7 +284,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
       final u = await widget.ask({'action': 'myDocUploadUrl', 'kind': kind['key'], 'type': f.$2, 'bytes': f.$1.length});
       if (!mounted) return;
       await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
-      await widget.ask({'action': 'myDocAdd', 'kind': kind['key'], 'path': u['path'], 'bytes': f.$1.length});
+      await widget.ask({'action': 'myDocAdd', 'kind': kind['key'], 'path': u['path'], 'bytes': f.$1.length, if (replaces.isNotEmpty) 'replaces': replaces});
       await _load();
       if (mounted) donePop(context, _t('Document attached', 'कागदपत्र जोडले'));
     } catch (e) {
@@ -309,6 +322,8 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                     for (final (i, k) in kinds.indexed)
                       () {
                         final have = docs.where((d) => d['kind'] == k['key']).toList(), need = missing.contains('${k['name']}');
+                        // (3.135.0, rcl-hr step 15) the HR office's check of the newest one: verified, being checked, or rejected (with why)
+                        final last = have.isEmpty ? null : have.first, st = '${last?['status'] ?? ''}', note = '${last?['verify_note'] ?? ''}';
                         return Container(
                           key: Key('doc-${k['key']}'),
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -316,12 +331,23 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                             Row(children: [
                               Expanded(child: m.Text(tr('${k['name']}'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: sk.ink, height: 1.25))),
-                              if (have.isNotEmpty) stateChip('Attached', 'a') else if (need) stateChip('Missing', 'x'),
+                              if (st == 'rejected')
+                                stateChip('Rejected', 'x', key: Key('doc-st-${k['key']}'))
+                              else if (st == 'verified')
+                                stateChip('Verified', 'a', key: Key('doc-st-${k['key']}'))
+                              else if (st == 'submitted' || st == 'under_verification')
+                                stateChip('Being checked', '', key: Key('doc-st-${k['key']}'))
+                              else if (have.isNotEmpty)
+                                stateChip('Attached', 'a')
+                              else if (need)
+                                stateChip('Missing', 'x'),
                               const SizedBox(width: 6),
                               busy == '${k['key']}'
                                   ? const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5)))
-                                  : stateChip(have.isEmpty ? 'Upload' : 'Add', 'w', key: Key('doc-add-${k['key']}'), onTap: () => _add(k)),
+                                  : stateChip(have.isEmpty ? 'Upload' : st == 'rejected' ? 'Attach again' : 'Add', 'w', key: Key('doc-add-${k['key']}'), onTap: () => _add(k, replaces: st == 'rejected' ? '${last?['id'] ?? ''}' : '')),
                             ]),
+                            if (st == 'rejected' && note.isNotEmpty)
+                              Padding(padding: const EdgeInsets.only(top: 4), child: m.Text('${_t('HR office says', 'HR office म्हणते')}: $note', key: Key('doc-why-${k['key']}'), style: const TextStyle(fontSize: 12.5, color: Color(0xFFC22A1B), height: 1.3))),
                             for (final d in have)
                               GestureDetector(
                                 key: Key('doc-open-${d['id']}'),
@@ -343,6 +369,162 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                   ]),
               ]),
             ),
+    );
+  }
+}
+
+/// (3.135.0, rcl-hr step 15) THE COMPANY'S POLICIES – the ones in force for him (made and published by the HO HR / Super Admin on
+/// the web): each one's version; he opens it, reads it and accepts it himself ("I have read and accept"). A new version is asked
+/// again. What he accepted is kept by the server with the version, the day and this phone.
+class CompanyPoliciesScreen extends StatefulWidget {
+  const CompanyPoliciesScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<CompanyPoliciesScreen> createState() => _CompanyPoliciesScreenState();
+}
+
+class _CompanyPoliciesScreenState extends State<CompanyPoliciesScreen> {
+  List<Map> rows = const [];
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final j = await widget.ask({'action': 'myPolicies'});
+      if (!mounted) return;
+      setState(() {
+        rows = (j['rows'] as List? ?? const []).whereType<Map>().toList();
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'Company policies', mr: 'Company policies', height: 64),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 3)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('pol-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('pol-err')),
+                if (err.isEmpty && rows.isEmpty) InfoLine(_t('No company policy for you yet.', 'तुमच्यासाठी अजून company policy नाही.'), key: const Key('pol-none')),
+                if (rows.isNotEmpty)
+                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                    for (final (i, r) in rows.indexed)
+                      _li(
+                          key: Key('pol-${r['policy']}'),
+                          sign: '',
+                          icon: r['accepted_at'] != null ? Icons.check_circle_rounded : Icons.description_outlined,
+                          c: r['accepted_at'] != null ? const Color(0xFF146C2E) : const Color(0xFF0B5FA5),
+                          soft: r['accepted_at'] != null ? const Color(0xFFDDF3E4) : const Color(0xFFE3EEFB),
+                          en: '${r['title']}',
+                          mr: '${r['title']}',
+                          sub: r['accepted_at'] != null
+                              ? _t('Version ${r['version']} · accepted ${dayName('${r['accepted_at']}'.substring(0, 10))}', 'Version ${r['version']} · स्वीकारली ${dayName('${r['accepted_at']}'.substring(0, 10))}')
+                              : r['mandatory'] == true
+                                  ? _t('Version ${r['version']} · read and accept', 'Version ${r['version']} · वाचा आणि स्वीकारा')
+                                  : _t('Version ${r['version']} · to read', 'Version ${r['version']} · वाचण्यासाठी'),
+                          ink: r['accepted_at'] == null && r['mandatory'] == true ? const Color(0xFFC22A1B) : null,
+                          last: i == rows.length - 1,
+                          onTap: () async {
+                            final done = await Navigator.of(context).push<bool>(hrRoute<bool>(PolicyReadScreen(ask: widget.ask, policy: r)));
+                            if (done == true) await _load();
+                          }),
+                  ]),
+              ]),
+            ),
+    );
+  }
+}
+
+/// One policy: its words, its PDF (if any), and "I have read and accept".
+class PolicyReadScreen extends StatefulWidget {
+  const PolicyReadScreen({super.key, required this.ask, required this.policy});
+  final HrAsk ask;
+  final Map policy;
+  @override
+  State<PolicyReadScreen> createState() => _PolicyReadScreenState();
+}
+
+class _PolicyReadScreenState extends State<PolicyReadScreen> {
+  bool read = false, busy = false;
+  String err = '';
+
+  Future<void> _pdf() async {
+    try {
+      final j = await widget.ask({'action': 'myPolicyFile', 'version': widget.policy['version_id']});
+      await launchUrl(Uri.parse('${j['url']}'), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
+  }
+
+  Future<void> _accept() async {
+    setState(() {
+      busy = true;
+      err = '';
+    });
+    try {
+      var model = '';
+      try {
+        model = '${(await AttendKit.kit.info())['model'] ?? ''}';
+      } catch (_) {/* the acceptance does not wait for the phone's name */}
+      await widget.ask({'action': 'myPolicyAccept', 'version': widget.policy['version_id'], 'read': read, 'via': 'app', 'device': {'model': model}});
+      if (!mounted) return;
+      donePop(context, _t('Accepted', 'स्वीकारली'));
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.policy, accepted = p['accepted_at'] != null, body = '${p['body'] ?? ''}';
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: '${p['title']}', mr: '${p['title']}', height: 64),
+      body: ListView(key: const Key('pol-read'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+        hrCard([
+          m.Text(_t('Version ${p['version']} · in force from ${dayName('${p['effective_from'] ?? ''}')}', 'Version ${p['version']} · ${dayName('${p['effective_from'] ?? ''}')} पासून लागू'), style: TextStyle(fontSize: 12.5, color: sk.muted)),
+          const SizedBox(height: 10),
+          if (body.isNotEmpty) SelectableText(body, key: const Key('pol-body'), style: TextStyle(fontSize: 15, height: 1.55, color: sk.ink)),
+          if (p['has_file'] == true) Padding(padding: const EdgeInsets.only(top: 12), child: stateChip('Open the PDF', 'w', key: const Key('pol-pdf'), onTap: _pdf)),
+        ]),
+        const SizedBox(height: 12),
+        if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('pol-read-err')),
+        if (accepted)
+          InfoLine(_t('You accepted this version on ${dayName('${p['accepted_at']}'.substring(0, 10))}.', 'तुम्ही ही version ${dayName('${p['accepted_at']}'.substring(0, 10))} ला स्वीकारली.'), key: const Key('pol-accepted'))
+        else ...[
+          CheckboxListTile(
+            key: const Key('pol-tick'),
+            value: read,
+            onChanged: busy ? null : (v) => setState(() => read = v == true),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: const Text('I have read this policy and I accept it.', mr: 'मी ही policy वाचली आहे आणि मला ती मान्य आहे.'),
+          ),
+          const SizedBox(height: 8),
+          hrButton('Accept', 'स्वीकारा', key: const Key('pol-accept'), onTap: read && !busy ? _accept : null, busy: busy),
+        ],
+      ]),
     );
   }
 }

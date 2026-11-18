@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.135.0 (18-11-2026, rcl-hr step 15 – Phase 2 of the enterprise HRMS, the Employee Master):** Me → **Company policies**
+(`myPolicies`): the policies in force for him, each one's version; he opens one, reads it (its PDF: `myPolicyFile`), ticks "I have
+read this policy and I accept it" and accepts it (`myPolicyAccept` – with this phone's model); Me shows how many are still to
+accept (`myHr.policies.pending`). **My documents** shows the HR office's check of each paper (Verified / Being checked / Rejected
+with why); a rejected one is attached again in its place (`replaces`). A **work place** may be for IN only or OUT only
+(`can_in` / `can_out` of `myAttend`): the app looks only at the places allowed for this punch and says so – the server checks the
+same. The HR office's own pages (Joining, Papers to verify, Company policies) stay on the web (his decision of 18-11-2026).
+
 **Version 3.134.0 (18-11-2026, rcl-hr step 14 – Phase 1 of the enterprise HRMS, "PART 16 – SECURITY AND PRIVACY"):** the face
 registration shows the HR server's own consent words (`faceConsentText` – in the app's language, English when none is chosen) on its
 first screen and sends `consent: { version, lang }` with `faceEnrol` (an HR server of before has no words: the screen's own, as

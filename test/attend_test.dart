@@ -96,4 +96,14 @@ void main() {
     expect([tall.width, tall.height], [150, 720]);
     expect(smallJpg(Uint8List.fromList([1, 2, 3])), null);
   });
+
+  // (3.135.0, rcl-hr step 15) a work place given to him for IN only / OUT only (a server of before: both)
+  test('a work place for IN, OUT or both – kept with the day; a server of before means both', () {
+    final both = place({'shape': 'circle', 'lat': 18.5, 'lng': 73.8, 'radius_m': 100});
+    expect([both.canIn, both.canOut, both.may('in'), both.may('out')], [true, true, true, true]);
+    final outOnly = place({'shape': 'circle', 'lat': 18.5, 'lng': 73.8, 'radius_m': 100, 'can_in': false, 'can_out': true});
+    expect([outOnly.may('in'), outOnly.may('out')], [false, true]);
+    final back = WorkPlace.fromJson(outOnly.toJson())!;
+    expect([back.canIn, back.canOut], [false, true], reason: 'kept on the phone with the day (offline)');
+  });
 }

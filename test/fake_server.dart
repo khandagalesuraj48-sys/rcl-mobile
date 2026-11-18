@@ -237,6 +237,9 @@ class FakeServer {
   /// (rcl-hr step 9) the face is needed; is his face registered; does the photo of a punch match; what was asked of api/face;
   /// the punch numbers whose photo was found his
   bool hrConsentWords = true; // (rcl-hr step 14) false = an HR server of before (no consent words)
+  /// (rcl-hr step 15) the company's policies in force for him (myPolicies) and what he accepted
+  final hrPolicies = <Map<String, dynamic>>[];
+  final hrPolicyAccepts = <Map<String, dynamic>>[];
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
   final hrFaceSent = <Map<String, dynamic>>[];
   final hrFaceSeen = <String>{};
@@ -354,7 +357,20 @@ class FakeServer {
             {'name': 'Statutory & bank', 'rows': [{'label': 'Bank IFSC code', 'value': 'SBIN0001234'}, {'label': 'Bank account number', 'value': 'XXXX9012'}]},
           ],
           'photo': hrDocs.any((d) => d['kind'] == 'photo') ? 'https://photos.test/hr-docs/open' : '',
-          'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'}});
+          'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'},
+          'policies': {'pending': hrPolicies.where((p) => p['mandatory'] == true && p['accepted_at'] == null).length}});
+      case 'myPolicies':
+        return _j({'ok': true, 'ready': true, 'rows': hrPolicies});
+      case 'myPolicyAccept':
+        if (b['read'] != true) return _j({'error': 'Tick "I have read and accept" first.', 'code': 'read'}, 400);
+        final pol = hrPolicies.where((p) => p['version_id'] == b['version']).toList();
+        if (pol.isEmpty) return _j({'error': 'This policy is not the one in force for you – open the list again.', 'code': 'version'}, 400);
+        pol.first['accepted_at'] = '2026-10-14T05:00:00.000Z';
+        pol.first['via'] = 'app';
+        hrPolicyAccepts.add(Map<String, dynamic>.from(b));
+        return _j({'ok': true, 'policy': pol.first['title'], 'version': pol.first['version']});
+      case 'myPolicyFile':
+        return _j({'ok': true, 'url': 'https://photos.test/hr-docs/policy.pdf'});
       case 'mySlips':
         return _j({'ok': true, 'employee': {'code': 'RCL012', 'name': 'Sujit Mule'}, 'slips': hrSlips});
       case 'myDocs':
@@ -367,7 +383,9 @@ class FakeServer {
         return _j({'ok': true, 'path': path, 'url': 'https://photos.test/hr-docs/$path', 'type': b['type']});
       case 'myDocAdd':
         if (!hrDocFiles.containsKey('${b['path']}')) return _j({'error': 'The file did not arrive – attach it again.', 'code': 'path'}, 400);
-        hrDocs.insert(0, {'id': 'doc${hrDocs.length + 1}', 'kind': b['kind'], 'title': '', 'number': '', 'expires_on': null, 'mime': hrDocFiles['${b['path']}'], 'created_at': '2026-10-14T05:00:00.000Z'});
+        // (rcl-hr step 15) a new paper in place of a rejected one: the old one leaves his list (the server keeps it, "replaced")
+        if ('${b['replaces'] ?? ''}'.isNotEmpty) hrDocs.removeWhere((d) => d['id'] == b['replaces']);
+        hrDocs.insert(0, {'id': 'doc${hrDocs.length + 1}', 'kind': b['kind'], 'title': '', 'number': '', 'expires_on': null, 'mime': hrDocFiles['${b['path']}'], 'created_at': '2026-10-14T05:00:00.000Z', 'status': 'submitted', 'verify_note': '', 'replaced': b['replaces'] ?? ''});
         return _j({'ok': true, 'id': hrDocs.first['id']});
       case 'myDocLink':
         return _j({'ok': true, 'url': 'https://photos.test/hr-docs/open'});

@@ -54,10 +54,14 @@ double _num(Object? v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}'
 
 /// One of his work places, as the server gave it (myAttend).
 class WorkPlace {
-  WorkPlace(this.id, this.name, this.kind, this.shape, this.lat, this.lng, this.radius, this.points);
+  WorkPlace(this.id, this.name, this.kind, this.shape, this.lat, this.lng, this.radius, this.points, {this.canIn = true, this.canOut = true});
   final String id, name, kind, shape;
   final double lat, lng, radius;
   final List<List<double>> points;
+
+  /// (3.135.0, rcl-hr step 15) whether he may mark IN / OUT here (a server of before: both)
+  final bool canIn, canOut;
+  bool may(String kind) => kind == 'out' ? canOut : canIn;
 
   static WorkPlace? fromJson(Object? j) {
     if (j is! Map || '${j['id'] ?? ''}'.isEmpty) return null;
@@ -65,10 +69,10 @@ class WorkPlace {
     for (final p in (j['points'] as List? ?? const [])) {
       if (p is List && p.length >= 2) pts.add([_num(p[0]), _num(p[1])]);
     }
-    return WorkPlace('${j['id']}', '${j['name'] ?? ''}', '${j['kind'] ?? ''}', '${j['shape'] ?? 'circle'}', _num(j['lat']), _num(j['lng']), _num(j['radius_m']), pts);
+    return WorkPlace('${j['id']}', '${j['name'] ?? ''}', '${j['kind'] ?? ''}', '${j['shape'] ?? 'circle'}', _num(j['lat']), _num(j['lng']), _num(j['radius_m']), pts, canIn: j['can_in'] != false, canOut: j['can_out'] != false);
   }
 
-  Map<String, Object?> toJson() => {'id': id, 'name': name, 'kind': kind, 'shape': shape, 'lat': lat.isNaN ? null : lat, 'lng': lng.isNaN ? null : lng, 'radius_m': radius.isNaN ? null : radius, 'points': points};
+  Map<String, Object?> toJson() => {'id': id, 'name': name, 'kind': kind, 'shape': shape, 'lat': lat.isNaN ? null : lat, 'lng': lng.isNaN ? null : lng, 'radius_m': radius.isNaN ? null : radius, 'points': points, 'can_in': canIn, 'can_out': canOut};
 }
 
 /// Where a point is for one place: inside, or how many metres outside its edge.

@@ -8988,7 +8988,7 @@ void main() {
     expect(srv.hrDocFiles.values.toList(), ['image/jpeg']);
     final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([da['kind'], da['path'], da.containsKey('id')], ['pan', 'emp12/f1.jpg', false], reason: 'no employee id is sent – the server knows who he is');
-    expect(find.text('Attached'), findsOneWidget);
+    expect(find.text('Being checked'), findsOneWidget, reason: '(3.135.0, rcl-hr step 15) the HR office checks it now');
     expect(find.text('Missing'), findsNWidgets(3));
     expect(find.byKey(const Key('doc-open-doc1')), findsOneWidget);
     await settle(t, 4000);      // (the message goes)
@@ -9147,6 +9147,82 @@ void main() {
     await t.tap(find.byKey(const Key('att-ok')));
     await net(t);
     expect(find.byKey(const Key('me-page')), findsOneWidget, reason: 'where he was');
+  }, tags: ['golden']);
+
+  // (3.135.0, rcl-hr step 15) the company's policies: he reads the version in force and accepts it himself; a paper the HR office
+  // rejected says why and is attached again in its place
+  testWidgets('(3.135.0) HR – Company policies: the ones still to accept are counted on Me; read, tick, accept; a rejected paper says why and is attached again in its place', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    final jpg = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    final pickWas = pickAttFiles;
+    pickAttFiles = (how, room) async => [(name: 'aadhaar.jpg', bytes: jpg)];
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      pickAttFiles = pickWas;
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true;
+    srv.hrPolicies.addAll([
+      {'policy': 1, 'title': 'Code of conduct', 'category': 'Conduct', 'mandatory': true, 'version': 2, 'version_id': 7, 'effective_from': '2026-10-01', 'body': 'Be on time.\nWear the helmet and the safety shoes on the site.\nNo phone near a running machine.', 'has_file': true, 'accepted_at': null, 'via': ''},
+      {'policy': 2, 'title': 'Use of the company phone', 'category': 'IT', 'mandatory': false, 'version': 1, 'version_id': 8, 'effective_from': '2026-09-01', 'body': 'For work only.', 'has_file': false, 'accepted_at': '2026-10-02T05:00:00.000Z', 'via': 'app'},
+    ]);
+    srv.hrDocs.add({'id': 'd9', 'kind': 'aadhaar', 'title': '', 'number': '', 'expires_on': null, 'mime': 'image/jpeg', 'created_at': '2026-10-10T05:00:00.000Z', 'status': 'rejected', 'verify_note': 'The photo of the card is not readable'});
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    await tapKey('nav-me');
+    expect(find.text('1 to read and accept'), findsOneWidget, reason: 'one mandatory policy is not accepted yet');
+    await tapKey('me-policies');
+    expect(find.byKey(const Key('pol-page')), findsOneWidget);
+    expect(find.text('Version 2 · read and accept'), findsOneWidget);
+    expect(find.text('Version 1 · accepted 2 Oct'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_policies.png'));
+    await tapKey('pol-1');
+    expect(find.byKey(const Key('pol-body')), findsOneWidget);
+    expect(find.byKey(const Key('pol-pdf')), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('pol-accept'))).onPressed, isNull, reason: 'nothing is accepted before the tick');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_policy_read.png'));
+    await tapKey('pol-tick');
+    await tapKey('pol-accept');
+    await settle(t, 2500);
+    await net(t);
+    expect(srv.hrPolicyAccepts.length, 1);
+    expect([srv.hrPolicyAccepts.first['version'], srv.hrPolicyAccepts.first['read'], srv.hrPolicyAccepts.first['via']], [7, true, 'app']);
+    expect(find.byKey(const Key('pol-page')), findsOneWidget, reason: 'back on the list');
+    expect(find.text('Version 2 · accepted 14 Oct'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    expect(find.text('Read the policies you accepted'), findsOneWidget, reason: 'Me is read again');
+    // ---- the rejected paper: why, and "Attach again" – the new one takes its place
+    await tapKey('me-docs');
+    expect(find.byKey(const Key('doc-st-aadhaar')), findsOneWidget);
+    expect(find.text('Rejected'), findsOneWidget);
+    expect(find.text('HR office says: The photo of the card is not readable'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_docs_rejected.png'));
+    await tapKey('doc-add-aadhaar');
+    await t.tap(find.byKey(const Key('doc-gallery')));
+    await net(t);
+    final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
+    expect([da['kind'], da['replaces']], ['aadhaar', 'd9'], reason: 'in place of the rejected one');
+    expect(find.text('Being checked'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
   }, tags: ['golden']);
 
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {
