@@ -245,6 +245,9 @@ class FakeServer {
   int? hrIntegrity;
   Map<String, dynamic>? hrDocRule;
   List<Map<String, dynamic>>? hrMyPlaces;
+  /// (rcl-hr step 17) his messages (the app's own list) and how often they were marked seen
+  final hrNotices = <Map<String, dynamic>>[];
+  int hrNoticeSeen = 0;
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
   final hrFaceSent = <Map<String, dynamic>>[];
   final hrFaceSeen = <String>{};
@@ -364,7 +367,16 @@ class FakeServer {
           ],
           'photo': hrDocs.any((d) => d['kind'] == 'photo') ? 'https://photos.test/hr-docs/open' : '',
           'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'},
-          'policies': {'pending': hrPolicies.where((p) => p['mandatory'] == true && p['accepted_at'] == null).length}, 'doc_rule': hrDocRule});
+          'policies': {'pending': hrPolicies.where((p) => p['mandatory'] == true && p['accepted_at'] == null).length}, 'doc_rule': hrDocRule,
+          'notices': {'unread': hrNotices.where((n) => n['seen_at'] == null).length}});
+      case 'myNotices':
+        return _j({'ok': true, 'ready': true, 'rows': hrNotices, 'unread': hrNotices.where((n) => n['seen_at'] == null).length});
+      case 'myNoticeSeen':
+        hrNoticeSeen++;
+        for (final n in hrNotices) {
+          n['seen_at'] ??= '2026-10-14T05:00:00.000Z';
+        }
+        return _j({'ok': true});
       case 'myPlaces':
         return _j({'ok': true, 'day': '2026-10-14', 'places': hrMyPlaces ?? [for (final p in hrPlaces) {...p, 'site': 'S1', 'counts': true, 'why': '', 'can_in': p['can_in'] ?? true, 'can_out': p['can_out'] ?? true}]});
       case 'myPolicies':

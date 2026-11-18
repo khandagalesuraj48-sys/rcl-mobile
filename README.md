@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.137.0 (18-11-2026, rcl-hr step 17 – Phase 4 of the enterprise HRMS, notifications):** Me → **Notifications**
+(`myNotices`, `myNoticeSeen`): what the HR office sent him – shift reminders, papers pending / running out, a policy to accept, a
+reporting change, the joining link – the new ones marked (Me says how many: `myHr.notices.unread`); opening the list marks them seen.
+The same message may also come by WhatsApp or e-mail (the HR server's queue, `rcl-hr` step 17).
+
 **Version 3.136.0 (18-11-2026, rcl-hr step 16 – Phase 3 of the enterprise HRMS, attendance & compliance):** Me → **My work
 locations** (`myPlaces`): where he may sign in / out today (IN / OUT) and a place given to him that does not count today, with why.
 Home's "For you" says when his papers are due under the **seven-day rule** (`myHr.doc_rule`; "Attach your papers – the app is held"

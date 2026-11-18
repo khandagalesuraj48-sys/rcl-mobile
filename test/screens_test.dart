@@ -9285,6 +9285,45 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_my_places.png'));
   }, tags: ['golden']);
 
+  // (3.137.0, rcl-hr step 17) his messages from HR: Me says how many are new; the list marks them seen
+  testWidgets('(3.137.0) HR – Notifications: Me counts the new ones; the list shows them, new ones marked; opening it marks them seen', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    addTearDown(() => AttendKit.kit = AttendKit());
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true;
+    srv.hrNotices.addAll([
+      {'id': 12, 'kind': 'shift_reminder', 'title': 'Sign in: your shift General starts at 08:30', 'body': 'Dear Sujit Mule, your shift General starts at 08:30 – mark your IN in the RCL app.', 'created_at': '2026-10-14T02:45:00.000Z', 'seen_at': null},
+      {'id': 11, 'kind': 'policy_accept', 'title': 'Please read and accept: Code of conduct', 'body': '', 'created_at': '2026-10-12T06:00:00.000Z', 'seen_at': '2026-10-12T07:00:00.000Z'},
+    ]);
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    await tapKey('nav-me');
+    expect(find.text('1 new'), findsOneWidget);
+    await tapKey('me-notices');
+    expect(find.byKey(const Key('notices-page')), findsOneWidget);
+    expect(find.text('Sign in: your shift General starts at 08:30'), findsOneWidget);
+    expect(srv.hrNoticeSeen, 1, 'opening the list marks them seen');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_notices.png'));
+    await t.pageBack();
+    await net(t);
+    expect(find.text('Messages from the HR office'), findsOneWidget, reason: 'nothing new any more');
+  }, tags: ['golden']);
+
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {
     phone(t);
     final srv = FakeServer()..hrSite = true;

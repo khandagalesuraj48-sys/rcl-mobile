@@ -144,6 +144,17 @@ class HrMeTab extends StatelessWidget {
                       await reload();
                     });
               }(),
+              // (3.137.0, rcl-hr step 17) his messages from HR – the app's own list (shift reminders, papers, policies, a reporting change …)
+              () {
+                final un = (mine?['notices'] as Map?)?['unread'];
+                return _li(key: const Key('me-notices'), sign: '', icon: Icons.notifications_none_rounded, c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Notifications', mr: 'सूचना',
+                    sub: un is num && un > 0 ? _t('$un new', '$un नवीन') : _t('Messages from the HR office', 'HR office कडून आलेले संदेश'),
+                    ink: un is num && un > 0 ? const Color(0xFFC22A1B) : null,
+                    onTap: () async {
+                      await Navigator.of(context).push(hrRoute<void>(MyNoticesScreen(ask: ask)));
+                      await reload();
+                    });
+              }(),
               // (3.136.0, rcl-hr step 16) where he may mark attendance – IN / OUT, the dates, and why a place does not count today
               _li(key: const Key('me-places'), sign: '', icon: Icons.place_outlined, c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My work locations', mr: 'माझी कामाची ठिकाणं', sub: _t('Where you may sign in and out', 'कुठे sign in / out करता येतं'), onTap: () => open(MyPlacesScreen(ask: ask))),
               _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('Month by month', 'महिन्यानुसार'), onTap: onSlips),
@@ -368,6 +379,82 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                           ]),
                         );
                       }(),
+                  ]),
+              ]),
+            ),
+    );
+  }
+}
+
+/// (3.137.0, rcl-hr step 17) MY NOTIFICATIONS – what the HR office sent him (the same message may also have gone by WhatsApp or
+/// e-mail); the new ones are marked; opening the list marks them seen.
+class MyNoticesScreen extends StatefulWidget {
+  const MyNoticesScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<MyNoticesScreen> createState() => _MyNoticesScreenState();
+}
+
+class _MyNoticesScreenState extends State<MyNoticesScreen> {
+  List<Map> rows = const [];
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final j = await widget.ask({'action': 'myNotices'});
+      if (!mounted) return;
+      setState(() {
+        rows = (j['rows'] as List? ?? const []).whereType<Map>().toList();
+        loading = false;
+        err = '';
+      });
+      if (rows.any((r) => r['seen_at'] == null)) await widget.ask({'action': 'myNoticeSeen'}).catch((_) => <String, dynamic>{});
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'Notifications', mr: 'सूचना', height: 64),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 4)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('notices-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('notices-err')),
+                if (err.isEmpty && rows.isEmpty) InfoLine(_t('No message yet.', 'अजून कोणताही संदेश नाही.'), key: const Key('notices-none')),
+                if (rows.isNotEmpty)
+                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                    for (final (i, r) in rows.indexed)
+                      Container(
+                        key: Key('notice-${r['id']}'),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        decoration: BoxDecoration(border: i == rows.length - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Padding(padding: const EdgeInsets.only(top: 5, right: 10), child: Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: r['seen_at'] == null ? const Color(0xFFC22A1B) : Colors.transparent))),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                              m.Text('${r['title'] ?? ''}', style: TextStyle(fontSize: 14.5, fontWeight: r['seen_at'] == null ? FontWeight.w700 : FontWeight.w600, color: sk.ink, height: 1.3)),
+                              if ('${r['body'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: m.Text('${r['body']}', style: TextStyle(fontSize: 13, color: sk.muted, height: 1.4))),
+                              Padding(padding: const EdgeInsets.only(top: 4), child: m.Text(dayName('${r['created_at'] ?? ''}'.length >= 10 ? '${r['created_at']}'.substring(0, 10) : ''), style: TextStyle(fontSize: 11.5, color: sk.faint))),
+                            ]),
+                          ),
+                        ]),
+                      ),
                   ]),
               ]),
             ),
