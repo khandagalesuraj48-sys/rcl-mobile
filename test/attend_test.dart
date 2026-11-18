@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:rcl_mobile/core/api.dart' show MemoryKeep;
 import 'package:rcl_mobile/core/attend.dart';
 
 import 'fake_attend.dart';
@@ -54,6 +55,20 @@ void main() {
     expect(KeptPunch.fromJson({'cid': 'short'}), null);
   });
 
+  test('(3.134.0, rcl-hr step 14) the server\'s seal of its time goes back with a kept punch; the phone\'s key goes when it is sent – never in the file', () async {
+    final p = KeptPunch(cid: 'abcdefabcdefabcdefabcdef', kind: 'in', lat: 18.52, lng: 73.85, acc: 9, atDevice: '2026-10-14T04:10:00.000Z', place: 'Site office', elapsed: 6000, anchorServer: 1000, anchorElapsed: 5000, anchorSig: 'seal-1', deviceId: 'and-x');
+    expect(p.body(live: false)['anchor_sig'], 'seal-1');
+    expect(p.body(live: true).containsKey('anchor_sig'), false, reason: 'with the network the server\'s own clock counts');
+    expect(KeptPunch.fromJson(p.toJson())!.body(live: false)['anchor_sig'], 'seal-1', reason: 'kept and read again');
+    expect(KeptPunch(cid: 'abcdefabcdefabcdefabcdef', kind: 'in', lat: 1, lng: 1, acc: 1, atDevice: '', place: '').body(live: false).containsKey('anchor_sig'), false, reason: 'an old kept punch: as before');
+    expect((p.body(live: true, key: 'k' * 43)['device'] as Map)['key'], 'k' * 43);
+    expect((p.body(live: true)['device'] as Map).containsKey('key'), false);
+    expect(p.toJson().values.any((v) => '$v'.contains('k' * 43)), false, reason: 'the key is never in the punch\'s file');
+    final keep = MemoryKeep(), k1 = await attendKey(keep), k2 = await attendKey(keep);
+    expect([k1.length, k1 == k2, keep.data[kAttendKey] == k1], [43, true, true], reason: 'made once, kept in the safe, the same after');
+    expect(await attendKey(MemoryKeep()) == k1, false, reason: 'another phone: another key');
+  });
+
   test('kept on the phone: written with its photo, read in the order taken, gone when sent; one person\'s are not another\'s', () async {
     final kit = FakeAttendKit();
     AttendKit.kit = kit;
@@ -80,5 +95,15 @@ void main() {
     final tall = img.decodeJpg(smallJpg(Uint8List.fromList(img.encodePng(img.Image(width: 300, height: 1440))))!)!;
     expect([tall.width, tall.height], [150, 720]);
     expect(smallJpg(Uint8List.fromList([1, 2, 3])), null);
+  });
+
+  // (3.135.0, rcl-hr step 15) a work place given to him for IN only / OUT only (a server of before: both)
+  test('a work place for IN, OUT or both – kept with the day; a server of before means both', () {
+    final both = place({'shape': 'circle', 'lat': 18.5, 'lng': 73.8, 'radius_m': 100});
+    expect([both.canIn, both.canOut, both.may('in'), both.may('out')], [true, true, true, true]);
+    final outOnly = place({'shape': 'circle', 'lat': 18.5, 'lng': 73.8, 'radius_m': 100, 'can_in': false, 'can_out': true});
+    expect([outOnly.may('in'), outOnly.may('out')], [false, true]);
+    final back = WorkPlace.fromJson(outOnly.toJson())!;
+    expect([back.canIn, back.canOut], [false, true], reason: 'kept on the phone with the day (offline)');
   });
 }

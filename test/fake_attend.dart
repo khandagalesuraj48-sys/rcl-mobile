@@ -16,6 +16,14 @@ class FakeAttendKit extends AttendKit {
   Future<Map<String, String>> info() async => {'id': phone, 'model': 'Test Phone', 'os': 'Android 15'};
   @override
   Future<bool> devOptions() async => dev;
+  /// (3.136.0) the phone's Play Integrity token it gives ('' = none) and what it was asked: [project, hash]
+  String proof = 'play-proof-token';
+  final proofAsked = <List<Object>>[];
+  @override
+  Future<String> integrity(int project, String hash) async {
+    proofAsked.add([project, hash]);
+    return proof;
+  }
 
   /// (3.117.0) the phone's location switched on / off; how often the app asked to switch it on
   bool gps = true;

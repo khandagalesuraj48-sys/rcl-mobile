@@ -1,3 +1,6 @@
-Log Book: the Log Book button now opens the Smart Log Book for everybody with Log Book (Edit), the Admin too – take a vehicle, the day's opening photo, close the shift by saying the work. "Old Log Book entry" inside it opens the Log Book as before (many machinery at once, the list, pending).
-Log Book: Log Book बटण आता Log Book (Edit) असलेल्या सगळ्यांसाठी, Admin सह, Smart Log Book उघडते – गाडी घ्या, दिवसाचा opening फोटो, काम बोलून shift बंद करा. आतले "जुनी Log Book नोंद" आधीसारखी Log Book उघडते (एकदम अनेक गाड्या, यादी, बाकी नोंदी).
-Log Book: Log Book बटन अब Log Book (Edit) वाले सभी के लिए, Admin सहित, Smart Log Book खोलता है – गाड़ी लें, दिन का opening photo, काम बोलकर shift बंद करें। अंदर का "पुरानी Log Book entry" पहले जैसी Log Book खोलता है (एक साथ कई गाड़ियाँ, सूची, बाकी entries)।
+Me: "My team" – for a reporting manager: your team today (in, late, on leave, not marked), this month's counts, what waits for your decision and whose papers are missing.
+Me: "माझी टीम" – reporting manager साठी: तुमची टीम आज (आत, उशीर, रजेवर, हजेरी नाही), या महिन्याची संख्या, तुमच्या निर्णयाची वाट बघणाऱ्या विनंत्या आणि कोणाची कागदपत्रं बाकी.
+Me: "मेरी टीम" – reporting manager के लिए: आपकी टीम आज (अंदर, देरी, छुट्टी पर, हाज़िरी नहीं), इस महीने की संख्या, आपके निर्णय की प्रतीक्षा में अनुरोध और किसके दस्तावेज़ बाकी।
+Salary slips: the parts of your pay (Basic, HRA, …) and what the company pays beside it, when the head office gives you a salary structure.
+पगार पावती: Head office ने पगार रचना दिली असेल तर पगाराचे भाग (Basic, HRA, …) आणि कंपनीने भरलेले.
+वेतन पर्ची: Head office ने वेतन संरचना दी हो तो वेतन के भाग (Basic, HRA, …) और कंपनी ने जो भरा।

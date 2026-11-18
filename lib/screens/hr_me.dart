@@ -18,6 +18,7 @@ import 'package:image/image.dart' as img;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/attend.dart' show AttendKit;
 import '../core/attend_pdf.dart' show payslipPdf;
 import '../core/attend_remind.dart';
 import '../core/update.dart';
@@ -132,6 +133,34 @@ class HrMeTab extends StatelessWidget {
               _li(key: const Key('me-photo'), sign: '', icon: Icons.account_circle_rounded, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My photo', mr: 'माझा photo', sub: '${mine?['photo'] ?? ''}'.isEmpty ? _t('Take or choose – shown on your profile', 'काढा किंवा निवडा – profile वर दिसेल') : _t('Set – touch to change', 'ठेवला आहे – बदलण्यासाठी touch करा'), onTap: onPhoto),
               _li(key: const Key('me-details'), sign: 'i', c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My details', mr: 'माझी माहिती', sub: _t('Personal, job, bank – ask HR to change', 'वैयक्तिक, नोकरी, bank – बदलासाठी HR ला सांगा'), onTap: () => open(MyDetailsScreen(mine: mine))),
               _li(key: const Key('me-docs'), sign: 'D', c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My documents', mr: 'माझी कागदपत्रे', sub: mine == null ? _t('Upload', 'Upload') : miss > 0 ? _t('Upload – $miss still missing', 'Upload – अजून $miss बाकी') : _t('All expected papers are there', 'अपेक्षित सर्व कागदपत्रे आहेत'), onTap: onDocs),
+              // (3.135.0, rcl-hr step 15) the company's policies: he reads and accepts the version in force himself
+              () {
+                final pend = (mine?['policies'] as Map?)?['pending'];
+                return _li(key: const Key('me-policies'), sign: '', icon: Icons.verified_user_outlined, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'Company policies', mr: 'Company policies',
+                    sub: pend is num && pend > 0 ? _t('$pend to read and accept', '$pend वाचून स्वीकारायच्या आहेत') : _t('Read the policies you accepted', 'स्वीकारलेल्या policies वाचा'),
+                    ink: pend is num && pend > 0 ? const Color(0xFFC22A1B) : null,
+                    onTap: () async {
+                      await Navigator.of(context).push(hrRoute<void>(CompanyPoliciesScreen(ask: ask)));
+                      await reload();
+                    });
+              }(),
+              // (3.137.0, rcl-hr step 17) his messages from HR – the app's own list (shift reminders, papers, policies, a reporting change …)
+              () {
+                final un = (mine?['notices'] as Map?)?['unread'];
+                return _li(key: const Key('me-notices'), sign: '', icon: Icons.notifications_none_rounded, c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Notifications', mr: 'सूचना',
+                    sub: un is num && un > 0 ? _t('$un new', '$un नवीन') : _t('Messages from the HR office', 'HR office कडून आलेले संदेश'),
+                    ink: un is num && un > 0 ? const Color(0xFFC22A1B) : null,
+                    onTap: () async {
+                      await Navigator.of(context).push(hrRoute<void>(MyNoticesScreen(ask: ask)));
+                      await reload();
+                    });
+              }(),
+              // (3.139.0, rcl-hr Phase 6) a reporting manager's dashboard – only when people report to him
+              if (mine?['team'] is num && (mine!['team'] as num) > 0)
+                _li(key: const Key('me-team'), sign: '', icon: Icons.groups_outlined, c: const Color(0xFF1F5FBF), soft: const Color(0xFFE6EEFB), en: 'My team', mr: 'माझी टीम',
+                    sub: _t('${mine!['team']} people report to you', '${mine!['team']} लोक तुम्हाला report करतात'), onTap: () => open(MyTeamScreen(ask: ask))),
+              // (3.136.0, rcl-hr step 16) where he may mark attendance – IN / OUT, the dates, and why a place does not count today
+              _li(key: const Key('me-places'), sign: '', icon: Icons.place_outlined, c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My work locations', mr: 'माझी कामाची ठिकाणं', sub: _t('Where you may sign in and out', 'कुठे sign in / out करता येतं'), onTap: () => open(MyPlacesScreen(ask: ask))),
               _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('Month by month', 'महिन्यानुसार'), onTap: onSlips),
               _li(key: const Key('me-phone'), sign: 'P', c: kPurple, soft: const Color(0xFFF1E8F6), en: 'My phone', mr: 'माझा phone', sub: phone['bound'] == true ? _t('Registered for attendance', 'हजेरीसाठी नोंदलेला') : _t('No phone registered yet', 'अजून phone नोंदलेला नाही'), last: true, onTap: () => open(MyPhoneScreen(phone: phone, day: day))),
             ]),
@@ -244,7 +273,8 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
 
   static (Uint8List, String)? _ready(String name, Uint8List raw) => docReady(name, raw);
 
-  Future<void> _add(Map kind) async {
+  /// [replaces]: a rejected paper this new one takes the place of (it stays in his record)
+  Future<void> _add(Map kind, {String replaces = ''}) async {
     if (busy.isNotEmpty) return;
     final how = await showModalBottomSheet<String>(
       context: context,
@@ -271,7 +301,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
       final u = await widget.ask({'action': 'myDocUploadUrl', 'kind': kind['key'], 'type': f.$2, 'bytes': f.$1.length});
       if (!mounted) return;
       await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
-      await widget.ask({'action': 'myDocAdd', 'kind': kind['key'], 'path': u['path'], 'bytes': f.$1.length});
+      await widget.ask({'action': 'myDocAdd', 'kind': kind['key'], 'path': u['path'], 'bytes': f.$1.length, if (replaces.isNotEmpty) 'replaces': replaces});
       await _load();
       if (mounted) donePop(context, _t('Document attached', 'कागदपत्र जोडले'));
     } catch (e) {
@@ -309,6 +339,8 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                     for (final (i, k) in kinds.indexed)
                       () {
                         final have = docs.where((d) => d['kind'] == k['key']).toList(), need = missing.contains('${k['name']}');
+                        // (3.135.0, rcl-hr step 15) the HR office's check of the newest one: verified, being checked, or rejected (with why)
+                        final last = have.isEmpty ? null : have.first, st = '${last?['status'] ?? ''}', note = '${last?['verify_note'] ?? ''}';
                         return Container(
                           key: Key('doc-${k['key']}'),
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -316,12 +348,23 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                             Row(children: [
                               Expanded(child: m.Text(tr('${k['name']}'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: sk.ink, height: 1.25))),
-                              if (have.isNotEmpty) stateChip('Attached', 'a') else if (need) stateChip('Missing', 'x'),
+                              if (st == 'rejected')
+                                stateChip('Rejected', 'x', key: Key('doc-st-${k['key']}'))
+                              else if (st == 'verified')
+                                stateChip('Verified', 'a', key: Key('doc-st-${k['key']}'))
+                              else if (st == 'submitted' || st == 'under_verification')
+                                stateChip('Being checked', '', key: Key('doc-st-${k['key']}'))
+                              else if (have.isNotEmpty)
+                                stateChip('Attached', 'a')
+                              else if (need)
+                                stateChip('Missing', 'x'),
                               const SizedBox(width: 6),
                               busy == '${k['key']}'
                                   ? const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5)))
-                                  : stateChip(have.isEmpty ? 'Upload' : 'Add', 'w', key: Key('doc-add-${k['key']}'), onTap: () => _add(k)),
+                                  : stateChip(have.isEmpty ? 'Upload' : st == 'rejected' ? 'Attach again' : 'Add', 'w', key: Key('doc-add-${k['key']}'), onTap: () => _add(k, replaces: st == 'rejected' ? '${last?['id'] ?? ''}' : '')),
                             ]),
+                            if (st == 'rejected' && note.isNotEmpty)
+                              Padding(padding: const EdgeInsets.only(top: 4), child: m.Text('${_t('HR office says', 'HR office म्हणते')}: $note', key: Key('doc-why-${k['key']}'), style: const TextStyle(fontSize: 12.5, color: Color(0xFFC22A1B), height: 1.3))),
                             for (final d in have)
                               GestureDetector(
                                 key: Key('doc-open-${d['id']}'),
@@ -343,6 +386,440 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                   ]),
               ]),
             ),
+    );
+  }
+}
+
+/// (3.137.0, rcl-hr step 17) MY NOTIFICATIONS – what the HR office sent him (the same message may also have gone by WhatsApp or
+/// e-mail); the new ones are marked; opening the list marks them seen.
+class MyNoticesScreen extends StatefulWidget {
+  const MyNoticesScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<MyNoticesScreen> createState() => _MyNoticesScreenState();
+}
+
+class _MyNoticesScreenState extends State<MyNoticesScreen> {
+  List<Map> rows = const [];
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final j = await widget.ask({'action': 'myNotices'});
+      if (!mounted) return;
+      setState(() {
+        rows = (j['rows'] as List? ?? const []).whereType<Map>().toList();
+        loading = false;
+        err = '';
+      });
+      if (rows.any((r) => r['seen_at'] == null)) {
+        try {
+          await widget.ask({'action': 'myNoticeSeen'});
+        } catch (_) {/* they stay "new" – nothing else is lost */}
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'Notifications', mr: 'सूचना', height: 64),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 4)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('notices-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('notices-err')),
+                if (err.isEmpty && rows.isEmpty) InfoLine(_t('No message yet.', 'अजून कोणताही संदेश नाही.'), key: const Key('notices-none')),
+                if (rows.isNotEmpty)
+                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                    for (final (i, r) in rows.indexed)
+                      Container(
+                        key: Key('notice-${r['id']}'),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        decoration: BoxDecoration(border: i == rows.length - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Padding(padding: const EdgeInsets.only(top: 5, right: 10), child: Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: r['seen_at'] == null ? const Color(0xFFC22A1B) : Colors.transparent))),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                              m.Text('${r['title'] ?? ''}', style: TextStyle(fontSize: 14.5, fontWeight: r['seen_at'] == null ? FontWeight.w700 : FontWeight.w600, color: sk.ink, height: 1.3)),
+                              if ('${r['body'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: m.Text('${r['body']}', style: TextStyle(fontSize: 13, color: sk.muted, height: 1.4))),
+                              Padding(padding: const EdgeInsets.only(top: 4), child: m.Text(dayName('${r['created_at'] ?? ''}'.length >= 10 ? '${r['created_at']}'.substring(0, 10) : ''), style: TextStyle(fontSize: 11.5, color: sk.faint))),
+                            ]),
+                          ),
+                        ]),
+                      ),
+                  ]),
+              ]),
+            ),
+    );
+  }
+}
+
+/// (3.139.0, rcl-hr Phase 6) MY TEAM – a reporting manager's own team (read only): today (in, late, on leave, not marked, off), what
+/// waits for him (attendance corrections, leave – approved on their own screens), this month's counts, papers still missing.
+class MyTeamScreen extends StatefulWidget {
+  const MyTeamScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<MyTeamScreen> createState() => _MyTeamScreenState();
+}
+
+class _MyTeamScreenState extends State<MyTeamScreen> {
+  Map j = const {};
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await widget.ask({'action': 'myTeam'});
+      if (!mounted) return;
+      setState(() {
+        j = r;
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  static const _now = {'in': ('In', 'आत', 'a'), 'late': ('Late', 'उशीर', 'w'), 'leave': ('On leave', 'रजेवर', 'i'), 'off': ('Off today', 'आज सुट्टी', 'i'), 'not': ('Not marked', 'हजेरी नाही', 'x')};
+
+  Widget _count(String key, String en, String mr, Object? n, Color c) => Expanded(
+        child: Container(
+          key: Key('team-count-$key'),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          decoration: BoxDecoration(color: c.withValues(alpha: .08), borderRadius: BorderRadius.circular(14)),
+          child: Column(children: [
+            m.Text('${n ?? 0}', style: TextStyle(fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.w800, color: c)),
+            m.Text(_t(en, mr), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: sk.muted)),
+          ]),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final people = (j['people'] as List? ?? const []).whereType<Map>().toList(), c = (j['counts'] as Map?) ?? const {}, w = (j['waiting'] as Map?) ?? const {};
+    final waits = ((w['attendance'] as num?) ?? 0) + ((w['leave'] as num?) ?? 0);
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'My team', mr: 'माझी टीम', height: 64),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 4)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('team-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('team-err')),
+                if (err.isEmpty) ...[
+                  Row(children: [
+                    _count('in', 'In', 'आत', ((c['in'] as num?) ?? 0) + ((c['late'] as num?) ?? 0), const Color(0xFF0F7A45)),
+                    _count('late', 'Late', 'उशीर', c['late'], const Color(0xFF8A5A00)),
+                    _count('leave', 'On leave', 'रजेवर', c['leave'], const Color(0xFF1F5FBF)),
+                    _count('not', 'Not marked', 'हजेरी नाही', c['not'], const Color(0xFFC22A1B)),
+                  ]),
+                  const SizedBox(height: 10),
+                  if (waits > 0)
+                    InfoLine(_t('$waits requests of your team wait for your decision.', 'तुमच्या टीमच्या $waits विनंत्या तुमच्या निर्णयाची वाट बघत आहेत.'), key: const Key('team-waiting')),
+                  if ((j['papers_missing'] as num? ?? 0) > 0)
+                    InfoLine(_t('${j['papers_missing']} of your team still have papers missing.', 'तुमच्या टीममधल्या ${j['papers_missing']} जणांची कागदपत्रं अजून बाकी.'), key: const Key('team-papers')),
+                  const SizedBox(height: 4),
+                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                    for (final (i, p) in people.indexed)
+                      Container(
+                        key: Key('team-${p['code']}'),
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        decoration: BoxDecoration(border: i == people.length - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
+                        child: Row(children: [
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                              m.Text('${p['name'] ?? ''}', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: sk.ink)),
+                              m.Text(
+                                  [
+                                    '${p['code'] ?? ''}',
+                                    if ('${p['in'] ?? ''}'.isNotEmpty) _t('in ${p['in']}', 'आत ${p['in']}'),
+                                    _t('this month: ${(p['month'] as Map?)?['present'] ?? 0} present · ${(p['month'] as Map?)?['absent'] ?? 0} absent · ${(p['month'] as Map?)?['late'] ?? 0} late',
+                                        'या महिन्यात: ${(p['month'] as Map?)?['present'] ?? 0} हजर · ${(p['month'] as Map?)?['absent'] ?? 0} गैरहजर · ${(p['month'] as Map?)?['late'] ?? 0} उशीर'),
+                                  ].join(' · '),
+                                  style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
+                            ]),
+                          ),
+                          () {
+                            final n = _now['${p['now']}'] ?? _now['not']!;
+                            return stateChip(_t(n.$1, n.$2), n.$3);
+                          }(),
+                        ]),
+                      ),
+                  ]),
+                ],
+              ]),
+            ),
+    );
+  }
+}
+
+/// (3.136.0, rcl-hr step 16) MY WORK LOCATIONS – "Employee can Sign In / Sign Out at the following locations": the places that count
+/// for him today (IN / OUT), and a place given to him that does not count today with why (the HR office's dates, switched off).
+class MyPlacesScreen extends StatefulWidget {
+  const MyPlacesScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<MyPlacesScreen> createState() => _MyPlacesScreenState();
+}
+
+class _MyPlacesScreenState extends State<MyPlacesScreen> {
+  List<Map> rows = const [];
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final j = await widget.ask({'action': 'myPlaces'});
+      if (!mounted) return;
+      setState(() {
+        rows = (j['places'] as List? ?? const []).whereType<Map>().toList();
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = rows.where((r) => r['counts'] == true).toList(), later = rows.where((r) => r['counts'] != true).toList();
+    Widget line(Map r, int i, int n) => Container(
+          key: Key('place-${r['id']}'),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(border: i == n - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
+          child: Row(children: [
+            Icon(Icons.place_rounded, size: 20, color: r['counts'] == true ? const Color(0xFF0F7A45) : sk.faint),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                m.Text('${r['name']}', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: sk.ink)),
+                if ('${r['why'] ?? ''}'.isNotEmpty) m.Text(_t('Not today – ${r['why']}', 'आज नाही – ${r['why']}'), style: TextStyle(fontSize: 12.5, color: sk.muted)),
+              ]),
+            ),
+            if (r['can_in'] == true) Padding(padding: const EdgeInsets.only(left: 6), child: stateChip('IN', r['counts'] == true ? 'a' : '')),
+            if (r['can_out'] == true) Padding(padding: const EdgeInsets.only(left: 6), child: stateChip('OUT', r['counts'] == true ? 'a' : '')),
+          ]),
+        );
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'My work locations', mr: 'माझी कामाची ठिकाणं', height: 64),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 3)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('places-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('places-err')),
+                if (err.isEmpty && now.isEmpty) InfoLine(_t('No work place counts for you today – ask the HR office.', 'आज तुमच्यासाठी कोणतंही work place नाही – HR office ला सांगा.'), bad: true, key: const Key('places-none')),
+                if (now.isNotEmpty) hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                  hrTitle('You can sign in / out at', 'येथे sign in / out करता येतं'),
+                  for (final (i, r) in now.indexed) line(r, i, now.length),
+                ]),
+                if (later.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                    hrTitle('Given to you – not today', 'तुम्हाला दिलेली – आज नाही'),
+                    for (final (i, r) in later.indexed) line(r, i, later.length),
+                  ]),
+                ],
+              ]),
+            ),
+    );
+  }
+}
+
+/// (3.135.0, rcl-hr step 15) THE COMPANY'S POLICIES – the ones in force for him (made and published by the HO HR / Super Admin on
+/// the web): each one's version; he opens it, reads it and accepts it himself ("I have read and accept"). A new version is asked
+/// again. What he accepted is kept by the server with the version, the day and this phone.
+class CompanyPoliciesScreen extends StatefulWidget {
+  const CompanyPoliciesScreen({super.key, required this.ask});
+  final HrAsk ask;
+  @override
+  State<CompanyPoliciesScreen> createState() => _CompanyPoliciesScreenState();
+}
+
+class _CompanyPoliciesScreenState extends State<CompanyPoliciesScreen> {
+  List<Map> rows = const [];
+  bool loading = true;
+  String err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final j = await widget.ask({'action': 'myPolicies'});
+      if (!mounted) return;
+      setState(() {
+        rows = (j['rows'] as List? ?? const []).whereType<Map>().toList();
+        loading = false;
+        err = '';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          err = errText(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: 'Company policies', mr: 'Company policies', height: 64),
+      body: loading
+          ? const SkeletonList(tiles: 0, rows: 3)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(key: const Key('pol-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('pol-err')),
+                if (err.isEmpty && rows.isEmpty) InfoLine(_t('No company policy for you yet.', 'तुमच्यासाठी अजून company policy नाही.'), key: const Key('pol-none')),
+                if (rows.isNotEmpty)
+                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
+                    for (final (i, r) in rows.indexed)
+                      _li(
+                          key: Key('pol-${r['policy']}'),
+                          sign: '',
+                          icon: r['accepted_at'] != null ? Icons.check_circle_rounded : Icons.description_outlined,
+                          c: r['accepted_at'] != null ? const Color(0xFF146C2E) : const Color(0xFF0B5FA5),
+                          soft: r['accepted_at'] != null ? const Color(0xFFDDF3E4) : const Color(0xFFE3EEFB),
+                          en: '${r['title']}',
+                          mr: '${r['title']}',
+                          sub: r['accepted_at'] != null
+                              ? _t('Version ${r['version']} · accepted ${dayName('${r['accepted_at']}'.substring(0, 10))}', 'Version ${r['version']} · स्वीकारली ${dayName('${r['accepted_at']}'.substring(0, 10))}')
+                              : r['mandatory'] == true
+                                  ? _t('Version ${r['version']} · read and accept', 'Version ${r['version']} · वाचा आणि स्वीकारा')
+                                  : _t('Version ${r['version']} · to read', 'Version ${r['version']} · वाचण्यासाठी'),
+                          ink: r['accepted_at'] == null && r['mandatory'] == true ? const Color(0xFFC22A1B) : null,
+                          last: i == rows.length - 1,
+                          onTap: () async {
+                            final done = await Navigator.of(context).push<bool>(hrRoute<bool>(PolicyReadScreen(ask: widget.ask, policy: r)));
+                            if (done == true) await _load();
+                          }),
+                  ]),
+              ]),
+            ),
+    );
+  }
+}
+
+/// One policy: its words, its PDF (if any), and "I have read and accept".
+class PolicyReadScreen extends StatefulWidget {
+  const PolicyReadScreen({super.key, required this.ask, required this.policy});
+  final HrAsk ask;
+  final Map policy;
+  @override
+  State<PolicyReadScreen> createState() => _PolicyReadScreenState();
+}
+
+class _PolicyReadScreenState extends State<PolicyReadScreen> {
+  bool read = false, busy = false;
+  String err = '';
+
+  Future<void> _pdf() async {
+    try {
+      final j = await widget.ask({'action': 'myPolicyFile', 'version': widget.policy['version_id']});
+      await launchUrl(Uri.parse('${j['url']}'), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
+  }
+
+  Future<void> _accept() async {
+    setState(() {
+      busy = true;
+      err = '';
+    });
+    try {
+      var model = '';
+      try {
+        model = '${(await AttendKit.kit.info())['model'] ?? ''}';
+      } catch (_) {/* the acceptance does not wait for the phone's name */}
+      await widget.ask({'action': 'myPolicyAccept', 'version': widget.policy['version_id'], 'read': read, 'via': 'app', 'device': {'model': model}});
+      if (!mounted) return;
+      donePop(context, _t('Accepted', 'स्वीकारली'));
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.policy, accepted = p['accepted_at'] != null, body = '${p['body'] ?? ''}';
+    return Scaffold(
+      appBar: hrHead(context, sky: kMeSky, title: '${p['title']}', mr: '${p['title']}', height: 64),
+      body: ListView(key: const Key('pol-read'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+        hrCard([
+          m.Text(_t('Version ${p['version']} · in force from ${dayName('${p['effective_from'] ?? ''}')}', 'Version ${p['version']} · ${dayName('${p['effective_from'] ?? ''}')} पासून लागू'), style: TextStyle(fontSize: 12.5, color: sk.muted)),
+          const SizedBox(height: 10),
+          if (body.isNotEmpty) SelectableText(body, key: const Key('pol-body'), style: TextStyle(fontSize: 15, height: 1.55, color: sk.ink)),
+          if (p['has_file'] == true) Padding(padding: const EdgeInsets.only(top: 12), child: stateChip('Open the PDF', 'w', key: const Key('pol-pdf'), onTap: _pdf)),
+        ]),
+        const SizedBox(height: 12),
+        if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('pol-read-err')),
+        if (accepted)
+          InfoLine(_t('You accepted this version on ${dayName('${p['accepted_at']}'.substring(0, 10))}.', 'तुम्ही ही version ${dayName('${p['accepted_at']}'.substring(0, 10))} ला स्वीकारली.'), key: const Key('pol-accepted'))
+        else ...[
+          CheckboxListTile(
+            key: const Key('pol-tick'),
+            value: read,
+            onChanged: busy ? null : (v) => setState(() => read = v == true),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: const Text('I have read this policy and I accept it.', mr: 'मी ही policy वाचली आहे आणि मला ती मान्य आहे.'),
+          ),
+          const SizedBox(height: 8),
+          hrButton('Accept', 'स्वीकारा', key: const Key('pol-accept'), onTap: read && !busy ? _accept : null, busy: busy),
+        ],
+      ]),
     );
   }
 }
@@ -443,6 +920,9 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
   Widget _slip(Map s, int i) {
     final good = sk.tint(const Color(0xFF0F7A45), const Color(0xFFE3F7EC)).$1, bad = sk.tint(C.red, C.redSoft).$1;
     final earn = (s['earnings'] as List? ?? const []).whereType<Map>().toList(), ded = (s['deductions'] as List? ?? const []).whereType<Map>().toList();
+    // (3.138.0, rcl-hr step 18) the parts of his earned pay (his salary structure) and what the company pays beside it – only when there
+    final parts = (s['components'] as List? ?? const []).whereType<Map>().toList(), er = (s['employer'] as List? ?? const []).whereType<Map>().toList();
+    Widget small(String en, String mr) => Padding(padding: const EdgeInsets.only(top: 6, bottom: 2), child: m.Text(_t(en, mr), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sk.muted)));
     final daily = '${s['pay_type']}' == 'daily', extra = s['extra_days'] is num ? s['extra_days'] as num : 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -463,11 +943,21 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
         ),
         for (final l in earn) _line('${l['label']}', l['amount']),
         _line(_t('Gross', 'एकूण'), s['gross'], bold: true),
+        if (parts.isNotEmpty) ...[
+          small('Parts of the earned pay', 'कमावलेल्या पगाराचे भाग'),
+          for (final l in parts) _line('${l['label']}', l['amount']),
+        ],
         if (ded.isNotEmpty) Divider(height: 14, color: sk.hair),
         for (final l in ded) _line('${l['label']}', l['amount'], color: bad),
         if (ded.isNotEmpty) _line(_t('Total deductions', 'एकूण कपात'), s['total_deductions'], bold: true, color: bad),
         Divider(height: 14, color: sk.hair),
         _line(_t('Net pay', 'हातात येणारा पगार'), s['net'], bold: true, color: good),
+        if (er.isNotEmpty) ...[
+          Divider(height: 14, color: sk.hair),
+          small('Paid by the company beside your pay', 'तुमच्या पगाराशिवाय कंपनीने भरलेले'),
+          for (final l in er) _line('${l['label']}', l['amount']),
+          if (s['ctc'] is num) _line(_t('Cost to the company', 'कंपनीचा एकूण खर्च (CTC)'), s['ctc'], bold: true),
+        ],
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(

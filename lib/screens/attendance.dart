@@ -139,7 +139,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       return true;
     }
     if (!mounted) return false;
-    final shots = await FaceKit.kit.enrol(context);
+    /* (3.134.0, rcl-hr step 14) HIS CONSENT: the words come from the HR server (its version is written down with his "I agree");
+     * an HR server of before has none – the screen's own words then, as before */
+    Map<String, dynamic>? words;
+    try {
+      words = await _face({'action': 'faceConsentText'});
+    } on ApiError catch (e) {
+      if (e.code == 'net') rethrow;
+      words = null;
+    }
+    if (!mounted) return false;
+    final shots = await FaceKit.kit.enrol(context, words: words);
     if (shots == null || !mounted) return false;
     final s = SessionScope.read(context), u = await _face({'action': 'faceEnrolUrls'});
     for (final p in (u['pictures'] as List? ?? const []).whereType<Map>()) {
@@ -148,7 +158,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       await s.api.hrPhoto('${p['url']}', jpg);
     }
     final info = await AttendKit.kit.info();
-    await _face({'action': 'faceEnrol', 'token': u['token'], 'device': {'id': info['id'], 'model': info['model']}});
+    await _face({'action': 'faceEnrol', 'token': u['token'], 'device': {'id': info['id'], 'model': info['model']}, if (words != null && words['version'] != null) 'consent': {'version': words['version'], 'lang': consentLang()}});
     _faceIn = true;
     if (mounted) donePop(context, _t('Your face is registered', 'तुमचा चेहरा नोंदवला'));
     return true;
@@ -233,7 +243,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     // (3.111.0) the site asks for the face: this punch's own photo is compared with his registered face – not his: refused
     // here, nothing of the punch is saved
     if (_faceOn) await _face({'action': 'faceCheck', 'client_id': p.cid});
-    return _hr(p.body(live: live).cast<String, dynamic>());
+    // (3.136.0, rcl-hr step 16) the phone's own proof for this very punch – only when the HR server asks for it
+    final pj = me?['integrity'] is Map ? (me!['integrity'] as Map)['project'] : null;
+    final proof = pj is num && pj > 0 ? await AttendKit.kit.integrity(pj.toInt(), 'rcl-punch|${p.cid}') : '';
+    return _hr(p.body(live: live, key: await attendKey(s.api.keep), proof: proof).cast<String, dynamic>()); // (3.134.0) with the phone's own key
   }
 
   Future<void> _sendKept(List<KeptPunch> list) async {
@@ -261,7 +274,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   String get _closed => '${me?['closed'] ?? ''}';
 
   /// Where am I – a fresh reading against his places. Throws AttendProblem.
-  Future<PlaceHit> _where() async {
+  Future<PlaceHit> _where([String kind = '']) async {
     if (await AttendKit.kit.devOptions()) {
       if (mounted) setState(() => dev = true);
       throw AttendProblem('Developer Options are ON in this phone: switch them off (Settings › Developer options) to mark attendance.', 'या phone मध्ये Developer Options चालू आहेत: हजेरीसाठी ते बंद करा (Settings › Developer options).', 'devoptions');
@@ -274,10 +287,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     if (!(f.acc >= 0) || f.acc > _maxAcc) {
       throw AttendProblem('Your location is not exact enough yet (${f.acc.round()} m): stand in the open for a moment and try again.', 'तुमचे location अजून नेमके नाही (${f.acc.round()} m): थोडा वेळ मोकळ्या जागेत उभे राहून पुन्हा करा.', 'accuracy');
     }
-    final h = nearestPlace(places, f.lat, f.lng)!;
+    // (3.135.0, rcl-hr step 15) only the places where he may mark THIS (IN or OUT) – the server checks the same
+    final usable = kind.isEmpty ? places : places.where((p) => p.may(kind)).toList(), k = kind == 'out' ? 'OUT' : 'IN';
+    if (usable.isEmpty) throw AttendProblem('You may not mark $k at any of your work places – ask the HR office.', 'तुमच्या कोणत्याही work place वर $k लावता येत नाही – HR office ला सांगा.', 'inout');
+    final h = nearestPlace(usable, f.lat, f.lng)!;
     fix = f;
     if (mounted) setState(() => hit = h);
     if (!h.inside) {
+      final any = usable.length < places.length ? nearestPlace(places, f.lat, f.lng) : null;
+      if (any != null && any.inside) {
+        final where = usable.take(3).map((p) => p.name).join(', ');
+        throw AttendProblem('At ${any.place.name} you may not mark $k – $k is marked at: $where.', '${any.place.name} येथे $k लावता येत नाही – $k येथे लागते: $where.', 'inout');
+      }
       throw AttendProblem('You are outside your work place (${h.place.name} – ${h.distance} m away). Attendance is marked only inside.', 'तुम्ही work place च्या बाहेर आहात (${h.place.name} – ${h.distance} m). हजेरी फक्त आत लागते.', 'outside');
     }
     return h;
@@ -323,7 +344,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       done = '';
     });
     try {
-      final h = await _where(), f = fix!;
+      final h = await _where(kind), f = fix!;
       if (!mounted) return;
       // (3.111.0) the face is needed: registered first (once); then the living face – straight, a blink – gives the proof photo
       final Uint8List? raw;
@@ -351,6 +372,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         elapsed: await AttendKit.kit.elapsed(),
         anchorServer: last?['now'] is num ? (last!['now'] as num).toInt() : null,
         anchorElapsed: last?['anchor_elapsed'] is num ? (last!['anchor_elapsed'] as num).toInt() : null,
+        anchorSig: '${last?['anchor_sig'] ?? ''}', // (3.134.0) the server's seal of that time
         deviceId: info['id'] ?? '',
         model: info['model'] ?? '',
         os: info['os'] ?? '',

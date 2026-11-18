@@ -114,6 +114,15 @@ jobs:
       - run: flutter pub get
       - name: Tests (a release only when they pass)
         run: flutter test --exclude-tags golden
+      # (18-11-2026) since 17-11 the hosted runner is shut down in the middle of the Android build ("The runner has received a
+      # shutdown signal", exit 143) – the same code built on 16-11 in 9 minutes: it runs out of memory (Gradle may take 8 GB + 4 GB,
+      # the native face-detection parts compile beside it). More room for it: 8 GB of swap and the runner's unused tools removed.
+      # Nothing of the app changes.
+      - name: Room for the Android build (swap, free disk)
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules/@angular "$AGENT_TOOLSDIRECTORY/CodeQL" || true
+          sudo fallocate -l 8G /rcl-swap && sudo chmod 600 /rcl-swap && sudo mkswap /rcl-swap >/dev/null && sudo swapon /rcl-swap || true
+          free -m; df -h / | tail -1
       - name: Signed Android app
         # every Android phone (ARM 32 + 64 bit); the emulator part (x86_64) is left out
         run: |
@@ -147,10 +156,13 @@ jobs:
       - name: One place for the app – the Portal's store entry of before (14-10-2026, build 102) is taken out
         run: |
           curl -sS -o /dev/null -w "old store entry: %{http_code}\n" -X DELETE "$SB_URL/storage/v1/object/app-releases" -H "apikey: $SB_KEY" -H "Content-Type: application/json" -d '{"prefixes":["android/latest.json"]}' || true
+      # (18-11-2026) only for the publish job of the same run (minutes later) – kept 7 days, not 90 (GitHub's storage for these
+      # files was full); the released app itself is in the Supabase bucket and the GitHub release
       - uses: actions/upload-artifact@v4
         with:
           name: apk
           path: rcl-erp-*.apk
+          retention-days: 7
       # (3.100.0) the symbol files of this build are kept 90 days: with them the lines of a fault the app reports ("Faults of the
       # app" – only addresses in a release build) can be read
       - uses: actions/upload-artifact@v4

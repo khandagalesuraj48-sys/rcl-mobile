@@ -15,6 +15,43 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.139.0 (18-11-2026, rcl-hr Phase 6 – reports and the manager's dashboard):** Me → **My team** (`myTeam`, shown only when
+`myHr.team` > 0): a reporting manager's own team – today (in, late, on leave, off, not marked), this month's counts, the requests
+waiting for him, papers missing. Read only. The office's 25 reports stay web only (his decision of 18-11-2026).
+
+**Version 3.138.0 (18-11-2026, rcl-hr step 18 – Phase 5 of the enterprise HRMS, payroll):** Me → **Salary slips** show the parts
+of the earned pay (his salary structure: Basic, HRA, …) and what the company pays beside his pay (EPF, EPS, EDLI, ESIC, LWF, the cost
+to the company) – only on a slip that has them; also in the slip's PDF. The office's payroll pages (structures, release & payment, full
+& final, registers) stay web only (his decision of 18-11-2026).
+
+**Version 3.137.0 (18-11-2026, rcl-hr step 17 – Phase 4 of the enterprise HRMS, notifications):** Me → **Notifications**
+(`myNotices`, `myNoticeSeen`): what the HR office sent him – shift reminders, papers pending / running out, a policy to accept, a
+reporting change, the joining link – the new ones marked (Me says how many: `myHr.notices.unread`); opening the list marks them seen.
+The same message may also come by WhatsApp or e-mail (the HR server's queue, `rcl-hr` step 17).
+
+**Version 3.136.0 (18-11-2026, rcl-hr step 16 – Phase 3 of the enterprise HRMS, attendance & compliance):** Me → **My work
+locations** (`myPlaces`): where he may sign in / out today (IN / OUT) and a place given to him that does not count today, with why.
+Home's "For you" says when his papers are due under the **seven-day rule** (`myHr.doc_rule`; "Attach your papers – the app is held"
+when the HR server holds his My HR until they are there). **The phone's own proof** (Android, Google Play Integrity – the standard
+request; `com.google.android.play:integrity`): asked only when `myAttend` gives `integrity.project` (the HR server's
+`HR_INTEGRITY`), bound to the punch (`rcl-punch|<punch number>`), sent as `integrity_token`; anything wrong gives none and the punch
+goes as before (the server decides). iPhone (App Attest): not yet – it needs the Apple Developer account.
+
+**Version 3.135.0 (18-11-2026, rcl-hr step 15 – Phase 2 of the enterprise HRMS, the Employee Master):** Me → **Company policies**
+(`myPolicies`): the policies in force for him, each one's version; he opens one, reads it (its PDF: `myPolicyFile`), ticks "I have
+read this policy and I accept it" and accepts it (`myPolicyAccept` – with this phone's model); Me shows how many are still to
+accept (`myHr.policies.pending`). **My documents** shows the HR office's check of each paper (Verified / Being checked / Rejected
+with why); a rejected one is attached again in its place (`replaces`). A **work place** may be for IN only or OUT only
+(`can_in` / `can_out` of `myAttend`): the app looks only at the places allowed for this punch and says so – the server checks the
+same. The HR office's own pages (Joining, Papers to verify, Company policies) stay on the web (his decision of 18-11-2026).
+
+**Version 3.134.0 (18-11-2026, rcl-hr step 14 – Phase 1 of the enterprise HRMS, "PART 16 – SECURITY AND PRIVACY"):** the face
+registration shows the HR server's own consent words (`faceConsentText` – in the app's language, English when none is chosen) on its
+first screen and sends `consent: { version, lang }` with `faceEnrol` (an HR server of before has no words: the screen's own, as
+before). Every punch carries the phone's own key (`attendKey` – 32 random bytes made once, kept in the phone's safe, kept when he signs
+out; only its fingerprint is on the server; the key is never in a kept punch's file) and a kept punch carries the server's seal of
+its time back (`anchor_sig` of myAttend). The HR server checks the key only once the Super Admin sets `HR_DEVICE_KEY_REQUIRED`.
+
 **Version 3.132.1 (17-11-2026, asked: "apan jas tharwale tashi log book entry app madhe ka nahiye" – his choice "Log Book = Smart Log
 Book"):** the app's Log Book (Home's tile, Entries, the start page) opens the Smart Log Book for a person with Log Book (Edit) – the Admin
 too – at a site where it is on (`openLogBook`, `slbSiteOn` – set by Home's vlMe); its "Old Log Book entry" opens the Log Book as before;

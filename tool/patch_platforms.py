@@ -104,6 +104,9 @@ def gradle(s):
     s = s.replace('minSdk = flutter.minSdkVersion\n', 'minSdk = maxOf(24, flutter.minSdkVersion)\n', 1)
     if 'androidx.appcompat:appcompat' not in s:
         s = s.replace('    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")', '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n    implementation("androidx.appcompat:appcompat:1.7.1")', 1)
+    # (3.136.0, rcl-hr step 16) Google Play Integrity – the phone's own proof for a punch (MainActivity.kt, channel rcl/attend)
+    if 'com.google.android.play:integrity' not in s:
+        s = s.replace('    implementation("androidx.appcompat:appcompat:1.7.1")', '    implementation("androidx.appcompat:appcompat:1.7.1")\n    implementation("com.google.android.play:integrity:1.4.0")', 1)
     return s
 
 ROOT_KT = ('\n// (3.11.0) file_picker 11 (and 3.15.0 speech_to_text 7.5) leave their Kotlin code to AGP 9\'s built-in Kotlin, which this project\n'

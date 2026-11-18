@@ -20,6 +20,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
+import 'api.dart' show Keep;
+
 const _rad = math.pi / 180, _earth = 6371008.8;
 
 /// Metres between two points.
@@ -52,10 +54,14 @@ double _num(Object? v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}'
 
 /// One of his work places, as the server gave it (myAttend).
 class WorkPlace {
-  WorkPlace(this.id, this.name, this.kind, this.shape, this.lat, this.lng, this.radius, this.points);
+  WorkPlace(this.id, this.name, this.kind, this.shape, this.lat, this.lng, this.radius, this.points, {this.canIn = true, this.canOut = true});
   final String id, name, kind, shape;
   final double lat, lng, radius;
   final List<List<double>> points;
+
+  /// (3.135.0, rcl-hr step 15) whether he may mark IN / OUT here (a server of before: both)
+  final bool canIn, canOut;
+  bool may(String kind) => kind == 'out' ? canOut : canIn;
 
   static WorkPlace? fromJson(Object? j) {
     if (j is! Map || '${j['id'] ?? ''}'.isEmpty) return null;
@@ -63,10 +69,10 @@ class WorkPlace {
     for (final p in (j['points'] as List? ?? const [])) {
       if (p is List && p.length >= 2) pts.add([_num(p[0]), _num(p[1])]);
     }
-    return WorkPlace('${j['id']}', '${j['name'] ?? ''}', '${j['kind'] ?? ''}', '${j['shape'] ?? 'circle'}', _num(j['lat']), _num(j['lng']), _num(j['radius_m']), pts);
+    return WorkPlace('${j['id']}', '${j['name'] ?? ''}', '${j['kind'] ?? ''}', '${j['shape'] ?? 'circle'}', _num(j['lat']), _num(j['lng']), _num(j['radius_m']), pts, canIn: j['can_in'] != false, canOut: j['can_out'] != false);
   }
 
-  Map<String, Object?> toJson() => {'id': id, 'name': name, 'kind': kind, 'shape': shape, 'lat': lat.isNaN ? null : lat, 'lng': lng.isNaN ? null : lng, 'radius_m': radius.isNaN ? null : radius, 'points': points};
+  Map<String, Object?> toJson() => {'id': id, 'name': name, 'kind': kind, 'shape': shape, 'lat': lat.isNaN ? null : lat, 'lng': lng.isNaN ? null : lng, 'radius_m': radius.isNaN ? null : radius, 'points': points, 'can_in': canIn, 'can_out': canOut};
 }
 
 /// Where a point is for one place: inside, or how many metres outside its edge.
@@ -200,35 +206,57 @@ Uint8List? smallJpg(Uint8List raw) {
 
 /// A punch kept on the phone until the server has it (the photo beside it as <cid>.jpg).
 class KeptPunch {
-  KeptPunch({required this.cid, required this.kind, required this.lat, required this.lng, required this.acc, required this.atDevice, required this.place, this.elapsed, this.anchorServer, this.anchorElapsed, this.deviceId = '', this.model = '', this.os = ''});
+  KeptPunch({required this.cid, required this.kind, required this.lat, required this.lng, required this.acc, required this.atDevice, required this.place, this.elapsed, this.anchorServer, this.anchorElapsed, this.anchorSig = '', this.deviceId = '', this.model = '', this.os = ''});
   final String cid, kind, place, atDevice, deviceId, model, os;
+  /// (3.134.0, rcl-hr step 14) the server's seal of [anchorServer] – it proves that time is really the server's
+  final String anchorSig;
   final double lat, lng, acc;
   final int? elapsed, anchorServer, anchorElapsed;
 
-  Map<String, Object?> toJson() => {'cid': cid, 'kind': kind, 'lat': lat, 'lng': lng, 'acc': acc, 'at_device': atDevice, 'place': place, 'elapsed': elapsed, 'anchor_server': anchorServer, 'anchor_elapsed': anchorElapsed, 'device_id': deviceId, 'model': model, 'os': os};
+  Map<String, Object?> toJson() => {'cid': cid, 'kind': kind, 'lat': lat, 'lng': lng, 'acc': acc, 'at_device': atDevice, 'place': place, 'elapsed': elapsed, 'anchor_server': anchorServer, 'anchor_elapsed': anchorElapsed, 'anchor_sig': anchorSig, 'device_id': deviceId, 'model': model, 'os': os};
 
   static KeptPunch? fromJson(Object? j) {
     if (j is! Map || '${j['cid'] ?? ''}'.length < 16) return null;
     int? n(Object? v) => v is num ? v.toInt() : null;
     return KeptPunch(cid: '${j['cid']}', kind: '${j['kind']}' == 'out' ? 'out' : 'in', lat: _num(j['lat']), lng: _num(j['lng']), acc: _num(j['acc']), atDevice: '${j['at_device'] ?? ''}', place: '${j['place'] ?? ''}',
-        elapsed: n(j['elapsed']), anchorServer: n(j['anchor_server']), anchorElapsed: n(j['anchor_elapsed']), deviceId: '${j['device_id'] ?? ''}', model: '${j['model'] ?? ''}', os: '${j['os'] ?? ''}');
+        elapsed: n(j['elapsed']), anchorServer: n(j['anchor_server']), anchorElapsed: n(j['anchor_elapsed']), anchorSig: '${j['anchor_sig'] ?? ''}', deviceId: '${j['device_id'] ?? ''}', model: '${j['model'] ?? ''}', os: '${j['os'] ?? ''}');
   }
 
   /// What the server is sent for it. [live]: taken with the network, sent at once – the server's own clock counts; else it was
   /// kept: the phone's clocks go with it and the server works out its moment (or keeps it for the HR Admin to look at).
-  Map<String, Object?> body({required bool live}) => {
+  /// [key]: the phone's own key (attendKey) – read from the phone's safe when it is sent, never kept in the punch's file.
+  /// [proof]: (3.136.0) the phone's Play Integrity token for this punch ('' = none) – asked when it is sent.
+  Map<String, Object?> body({required bool live, String key = '', String proof = ''}) => {
         'action': 'punch',
         'client_id': cid,
         'kind': kind,
         'lat': lat,
         'lng': lng,
         'accuracy_m': acc,
-        'device': {'id': deviceId, 'model': model, 'os': os},
+        'device': {'id': deviceId, 'model': model, 'os': os, if (key.isNotEmpty) 'key': key},
         'dev_options': false,
         'mock': false,
         'at_device': atDevice,
-        if (!live) ...{'offline': true, 'anchor_server': anchorServer, 'anchor_elapsed': anchorElapsed, 'elapsed': elapsed},
+        if (!live) ...{'offline': true, 'anchor_server': anchorServer, 'anchor_elapsed': anchorElapsed, 'elapsed': elapsed, if (anchorSig.isNotEmpty) 'anchor_sig': anchorSig},
+        if (proof.isNotEmpty) 'integrity_token': proof,
       };
+}
+
+/// (3.134.0, rcl-hr step 14 – the audit's "the device id comes from the app") THE PHONE'S OWN KEY for attendance: made once, at
+/// random, and kept in the phone's safe (Android Keystore / iOS Keychain – [keep]); it stays when he signs out. The HR server keeps
+/// only its fingerprint, so another phone that copies this phone's id has not got it. (Removing the app removes the key: the HR
+/// Admin then releases the phone as for a new one – only once the Super Admin has switched the check on.)
+const kAttendKey = 'hr_device_key';
+Future<String> attendKey(Keep keep, [math.Random? r]) async {
+  try {
+    final had = (await keep.read(kAttendKey)) ?? '';
+    if (had.length >= 43) return had;
+    final rnd = r ?? math.Random.secure(), k = base64Url.encode(List<int>.generate(32, (_) => rnd.nextInt(256))).replaceAll('=', '');
+    await keep.write(kAttendKey, k);
+    return k;
+  } catch (_) {
+    return ''; // (no safe on this phone: the punch goes without a key, as before)
+  }
 }
 
 /// The phone's own part. A test puts its own in [AttendKit.kit].
@@ -263,6 +291,18 @@ class AttendKit {
     if (os.isEmpty) os = '${Platform.operatingSystem} ${Platform.operatingSystemVersion}'.trim();
     if (os.length > 40) os = os.substring(0, 40);
     return _info = {'id': id, 'model': model, 'os': os};
+  }
+
+  /// (3.136.0, rcl-hr step 16) THE PHONE'S OWN PROOF – Google Play Integrity, asked only when the HR server says so (myAttend's
+  /// `integrity.project`): a token bound to this punch ([hash] = "rcl-punch|<punch number>"); the HR server asks Google what it
+  /// says. Not Android, Google not reachable, anything wrong: '' – the punch goes as before (the server decides what that means).
+  Future<String> integrity(int project, String hash) async {
+    if (!Platform.isAndroid || project <= 0) return '';
+    try {
+      return await _ch.invokeMethod<String>('integrity', {'project': project, 'hash': hash}).timeout(const Duration(seconds: 12)) ?? '';
+    } catch (_) {
+      return '';
+    }
   }
 
   /// Developer Options switched on (Android). Not known = false: the server still has the last word on everything else.

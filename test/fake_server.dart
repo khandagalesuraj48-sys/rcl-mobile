@@ -236,6 +236,20 @@ class FakeServer {
   List<Map<String, dynamic>> hrSlips = [];
   /// (rcl-hr step 9) the face is needed; is his face registered; does the photo of a punch match; what was asked of api/face;
   /// the punch numbers whose photo was found his
+  bool hrConsentWords = true; // (rcl-hr step 14) false = an HR server of before (no consent words)
+  /// (rcl-hr step 15) the company's policies in force for him (myPolicies) and what he accepted
+  final hrPolicies = <Map<String, dynamic>>[];
+  final hrPolicyAccepts = <Map<String, dynamic>>[];
+  /// (rcl-hr step 16) the HR server asks for the phone's proof (its Google Cloud project; null = off); the seven-day rule's word
+  /// of him (myHr.doc_rule); his places as "My work locations" gives them
+  int? hrIntegrity;
+  Map<String, dynamic>? hrDocRule;
+  List<Map<String, dynamic>>? hrMyPlaces;
+  /// (rcl-hr step 17) his messages (the app's own list) and how often they were marked seen
+  final hrNotices = <Map<String, dynamic>>[];
+  // (3.139.0, rcl-hr Phase 6) the people who report to him – "My team"
+  List<Map<String, dynamic>> hrTeamPeople = [];
+  int hrNoticeSeen = 0;
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
   final hrFaceSent = <Map<String, dynamic>>[];
   final hrFaceSeen = <String>{};
@@ -270,6 +284,8 @@ class FakeServer {
         'employee': {'code': 'E00012', 'name': 'Sujit Mule', 'category': 'staff'},
         'may': hrMay,
         'now': DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch,
+        'anchor_sig': 'seal-of-the-server-time-0000000a', // (rcl-hr step 14) the server's seal of 'now'
+        'integrity': hrIntegrity == null ? null : {'project': hrIntegrity},
         'day': '2026-10-14',
         'places': hrPlaces,
         'max_accuracy': 100,
@@ -352,7 +368,37 @@ class FakeServer {
             {'name': 'Statutory & bank', 'rows': [{'label': 'Bank IFSC code', 'value': 'SBIN0001234'}, {'label': 'Bank account number', 'value': 'XXXX9012'}]},
           ],
           'photo': hrDocs.any((d) => d['kind'] == 'photo') ? 'https://photos.test/hr-docs/open' : '',
-          'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'}});
+          'docs': {'have': hrDocs.length, 'missing': docsMissing()}, 'phone': {'bound': hrBound.isNotEmpty, 'model': hrBound.isEmpty ? '' : 'Test Phone'},
+          'policies': {'pending': hrPolicies.where((p) => p['mandatory'] == true && p['accepted_at'] == null).length}, 'doc_rule': hrDocRule,
+          'notices': {'unread': hrNotices.where((n) => n['seen_at'] == null).length}, 'team': hrTeamPeople.length});
+      case 'myTeam':
+        final counts = <String, int>{};
+        for (final p in hrTeamPeople) {
+          counts['${p['now']}'] = (counts['${p['now']}'] ?? 0) + 1;
+        }
+        return _j({'ok': true, 'team': hrTeamPeople.length, 'today': '2026-10-14', 'people': hrTeamPeople, 'counts': counts, 'waiting': {'attendance': 1, 'leave': 1}, 'papers_missing': hrTeamPeople.where((p) => (p['papers_missing'] as int? ?? 0) > 0).length});
+      case 'myNotices':
+        return _j({'ok': true, 'ready': true, 'rows': hrNotices, 'unread': hrNotices.where((n) => n['seen_at'] == null).length});
+      case 'myNoticeSeen':
+        hrNoticeSeen++;
+        for (final n in hrNotices) {
+          n['seen_at'] ??= '2026-10-14T05:00:00.000Z';
+        }
+        return _j({'ok': true});
+      case 'myPlaces':
+        return _j({'ok': true, 'day': '2026-10-14', 'places': hrMyPlaces ?? [for (final p in hrPlaces) {...p, 'site': 'S1', 'counts': true, 'why': '', 'can_in': p['can_in'] ?? true, 'can_out': p['can_out'] ?? true}]});
+      case 'myPolicies':
+        return _j({'ok': true, 'ready': true, 'rows': hrPolicies});
+      case 'myPolicyAccept':
+        if (b['read'] != true) return _j({'error': 'Tick "I have read and accept" first.', 'code': 'read'}, 400);
+        final pol = hrPolicies.where((p) => p['version_id'] == b['version']).toList();
+        if (pol.isEmpty) return _j({'error': 'This policy is not the one in force for you – open the list again.', 'code': 'version'}, 400);
+        pol.first['accepted_at'] = '2026-10-14T05:00:00.000Z';
+        pol.first['via'] = 'app';
+        hrPolicyAccepts.add(Map<String, dynamic>.from(b));
+        return _j({'ok': true, 'policy': pol.first['title'], 'version': pol.first['version']});
+      case 'myPolicyFile':
+        return _j({'ok': true, 'url': 'https://photos.test/hr-docs/policy.pdf'});
       case 'mySlips':
         return _j({'ok': true, 'employee': {'code': 'RCL012', 'name': 'Sujit Mule'}, 'slips': hrSlips});
       case 'myDocs':
@@ -365,7 +411,9 @@ class FakeServer {
         return _j({'ok': true, 'path': path, 'url': 'https://photos.test/hr-docs/$path', 'type': b['type']});
       case 'myDocAdd':
         if (!hrDocFiles.containsKey('${b['path']}')) return _j({'error': 'The file did not arrive – attach it again.', 'code': 'path'}, 400);
-        hrDocs.insert(0, {'id': 'doc${hrDocs.length + 1}', 'kind': b['kind'], 'title': '', 'number': '', 'expires_on': null, 'mime': hrDocFiles['${b['path']}'], 'created_at': '2026-10-14T05:00:00.000Z'});
+        // (rcl-hr step 15) a new paper in place of a rejected one: the old one leaves his list (the server keeps it, "replaced")
+        if ('${b['replaces'] ?? ''}'.isNotEmpty) hrDocs.removeWhere((d) => d['id'] == b['replaces']);
+        hrDocs.insert(0, {'id': 'doc${hrDocs.length + 1}', 'kind': b['kind'], 'title': '', 'number': '', 'expires_on': null, 'mime': hrDocFiles['${b['path']}'], 'created_at': '2026-10-14T05:00:00.000Z', 'status': 'submitted', 'verify_note': '', 'replaced': b['replaces'] ?? ''});
         return _j({'ok': true, 'id': hrDocs.first['id']});
       case 'myDocLink':
         return _j({'ok': true, 'url': 'https://photos.test/hr-docs/open'});
@@ -1630,6 +1678,11 @@ class FakeServer {
       switch ('${b['action']}') {
         case 'faceState':
           return _j({'ok': true, 'required': hrFace, 'min': 90, 'enrolled': hrFaceIn, 'poses': ['front', 'left', 'right', 'up', 'down']});
+        case 'faceConsentText': // (rcl-hr step 14) the consent words, by their version
+          if (!hrConsentWords) return _j({'error': 'Unknown action.'}, 400);
+          return _j({'ok': true, 'version': 'f1-0123456789', 'text': {
+            for (final l in ['en', 'mr', 'hi']) l: {'title': 'Your face for attendance – your consent ($l)', 'points': ['Point one ($l)', 'Point two ($l)'], 'agree': 'I agree ($l)'}
+          }});
         case 'faceEnrolUrls':
           if (hrFaceIn) return _j({'error': 'Your face is registered already. Only the HR Admin can reset it – then you register again.', 'code': 'enrolled'}, 409);
           return _j({'ok': true, 'token': 'tok1', 'type': 'image/jpeg', 'pictures': [for (final p in ['front', 'left', 'right', 'up', 'down']) {'pose': p, 'url': 'https://photos.test/hr-docs/faces/emp12/tok1-$p.jpg'}]});

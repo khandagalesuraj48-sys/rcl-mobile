@@ -10,6 +10,8 @@ import android.view.WindowManager
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import com.google.android.play.core.integrity.IntegrityManagerFactory
+import com.google.android.play.core.integrity.StandardIntegrityManager
 
 /* (3.26.0) A call with the web (lib/core/rtc_kit.dart, channel "rcl/call"):
  *   start {mic, cam, screen, title, text} – the notification "Call is on" (CallService, a foreground service): Android shows the phone's
@@ -68,6 +70,23 @@ class MainActivity : FlutterFragmentActivity() {
                         "os" to ("Android " + Build.VERSION.RELEASE)))
                     "devOptions" -> result.success(Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0)
                     "elapsed" -> result.success(SystemClock.elapsedRealtime())
+                    // (3.136.0, rcl-hr step 16) the phone's own proof (Google Play Integrity, the standard request): a token bound
+                    // to this punch; any fault gives "" – the punch goes as before and the HR server decides
+                    "integrity" -> {
+                        val project = (call.argument<Any>("project") as? Number)?.toLong() ?: 0L
+                        val hash = call.argument<String>("hash") ?: ""
+                        if (project <= 0L) { result.success(""); return@setMethodCallHandler }
+                        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+                        val give: (String) -> Unit = { t -> if (done.compareAndSet(false, true)) result.success(t) }
+                        IntegrityManagerFactory.createStandard(applicationContext)
+                            .prepareIntegrityToken(StandardIntegrityManager.PrepareIntegrityTokenRequest.builder().setCloudProjectNumber(project).build())
+                            .addOnSuccessListener { provider ->
+                                provider.request(StandardIntegrityManager.StandardIntegrityTokenRequest.builder().setRequestHash(hash).build())
+                                    .addOnSuccessListener { t -> give(t.token()) }
+                                    .addOnFailureListener { give("") }
+                            }
+                            .addOnFailureListener { give("") }
+                    }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {

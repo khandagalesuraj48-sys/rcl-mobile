@@ -14,9 +14,10 @@ import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
 import 'package:rcl_mobile/screens/app_lock.dart';
 import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfLogo, attendPdfOut, attendSelfieForTest;
-import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit;
+import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit, FaceCamScreen;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
+import 'package:rcl_mobile/ui/t.dart' show LangScope;
 import 'package:rcl_mobile/core/applock.dart';
 import 'package:rcl_mobile/core/lang.dart';
 import 'package:rcl_mobile/core/masters.dart' show gstCheckLetter;
@@ -8586,6 +8587,13 @@ void main() {
     final pout = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
     expect([pout['kind'], pout['offline'], pout['lat'], pout['elapsed'], pout['anchor_elapsed'], pout['anchor_server'], pout['at_device']],
         ['out', true, 18.52, 5600000, 5000000, DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch, DateTime.utc(2026, 10, 14, 5, 10).toIso8601String()]);
+    // (3.134.0, rcl-hr step 14) the server's seal of that time goes back with it; the phone's own key goes with every punch – the
+    // same key each time, made once and kept in the phone's safe (never in the punch's file on the phone)
+    expect(pout['anchor_sig'], 'seal-of-the-server-time-0000000a');
+    final keys = {for (final x in srv.hrSent.where((x) => x['action'] == 'punch')) '${(x['device'] as Map)['key']}'};
+    expect(keys.length, 1, reason: 'one key for this phone');
+    expect(keys.first.length, 43, reason: '32 random bytes');
+    expect(kit.files.values.whereType<String>().any((v) => v.contains(keys.first)), isFalse, reason: 'the key is not in the phone\'s files');
     expect(srv.hrPunches.length, 2);
     expect(find.byKey(const Key('att-kept-out')), findsNothing);
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
@@ -8776,15 +8784,18 @@ void main() {
     // ---- he goes back from the registration: nothing is asked of the server but the state, no punch
     face.agree = false;
     await punch();
-    expect(faceActs(), ['faceState']);
+    expect(faceActs(), ['faceState', 'faceConsentText']);
     expect([face.enrols, face.checks, punches(), srv.hrFacePics.length], [1, 0, 0, 0]);
     // ---- the registration (once): five pictures to their places, then the blink, the check of THIS punch's photo, the punch
     face.agree = true;
     await punch();
-    expect(faceActs(), ['faceState', 'faceState', 'faceEnrolUrls', 'faceEnrol', 'faceCheck']);
+    expect(faceActs(), ['faceState', 'faceConsentText', 'faceState', 'faceConsentText', 'faceEnrolUrls', 'faceEnrol', 'faceCheck']);
     expect(srv.hrFacePics, ['tok1-front.jpg', 'tok1-left.jpg', 'tok1-right.jpg', 'tok1-up.jpg', 'tok1-down.jpg']);
     final en = srv.hrFaceSent.firstWhere((x) => x['action'] == 'faceEnrol');
     expect([en['token'], (en['device'] as Map)['id']], ['tok1', 'and-test-phone-1']);
+    // (3.134.0, rcl-hr step 14) the server's consent words were shown – and what he agreed to goes with the registration
+    expect(face.words?['version'], 'f1-0123456789');
+    expect(en['consent'], {'version': 'f1-0123456789', 'lang': 'en'});
     final pin = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
     expect(srv.hrFaceSent.last['client_id'], pin['client_id'], reason: 'the face of this very punch was checked');
     expect([face.enrols, face.checks, punches(), oldSelfie], [2, 1, 1, 0], reason: 'the face screen takes the proof photo – not the old selfie screen');
@@ -8796,7 +8807,7 @@ void main() {
     await punch();
     expect(find.textContaining('does not match the registered face'), findsOneWidget);
     expect([face.enrols, face.checks, punches()], [2, 2, 1]);
-    expect(faceActs().sublist(5), ['faceCheck'], reason: 'registered already: not asked again');
+    expect(faceActs().sublist(7), ['faceCheck'], reason: 'registered already: not asked again');
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty, reason: 'refused: nothing stays on the phone');
     // ---- his own face again: OUT
     srv.hrFaceOk = true;
@@ -8977,7 +8988,7 @@ void main() {
     expect(srv.hrDocFiles.values.toList(), ['image/jpeg']);
     final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([da['kind'], da['path'], da.containsKey('id')], ['pan', 'emp12/f1.jpg', false], reason: 'no employee id is sent – the server knows who he is');
-    expect(find.text('Attached'), findsOneWidget);
+    expect(find.text('Being checked'), findsOneWidget, reason: '(3.135.0, rcl-hr step 15) the HR office checks it now');
     expect(find.text('Missing'), findsNWidgets(3));
     expect(find.byKey(const Key('doc-open-doc1')), findsOneWidget);
     await settle(t, 4000);      // (the message goes)
@@ -8995,7 +9006,9 @@ void main() {
     srv.hrSlips = [
       {'month': '2026-10', 'net': 127400, 'pay_type': 'monthly', 'rate': 131000, 'month_days': 31, 'pay_days': 29, 'extra_days': 2, 'gross': 131500, 'total_deductions': 4100,
         'earnings': [{'label': 'Earned pay', 'amount': 122548.39}, {'label': 'Extra days', 'amount': 8451.61}, {'label': 'arrear', 'amount': 500}],
-        'deductions': [{'label': 'PF', 'amount': 1800}, {'label': 'Profession Tax', 'amount': 200}, {'label': 'Advance', 'amount': 2000}, {'label': 'Other deduction', 'amount': 100}]},
+        'deductions': [{'label': 'PF', 'amount': 1800}, {'label': 'Profession Tax', 'amount': 200}, {'label': 'Advance', 'amount': 2000}, {'label': 'Other deduction', 'amount': 100}],
+        // (3.138.0, rcl-hr step 18) his salary structure's parts and the company's share
+        'components': [{'label': 'Basic', 'amount': 61274.2}, {'label': 'HRA', 'amount': 24509.68}, {'label': 'Special', 'amount': 36764.51}], 'employer': [{'label': 'PF (EPF)', 'amount': 550}, {'label': 'Pension (EPS)', 'amount': 1250}], 'ctc': 133300},
       {'month': '2026-09', 'net': 496, 'pay_type': 'daily', 'rate': 500, 'month_days': 30, 'pay_days': 1, 'extra_days': 0, 'gross': 500, 'total_deductions': 4, 'earnings': [{'label': 'Earned pay', 'amount': 500}], 'deductions': [{'label': 'ESIC', 'amount': 4}]},
     ];
     await tapKey('me-slips');
@@ -9005,6 +9018,10 @@ void main() {
     expect(find.text('₹ 1,22,548.39'), findsOneWidget);
     expect(find.text('₹ 1,31,000 a month · 29 days paid · 2 extra'), findsOneWidget);
     expect(find.text('Profession Tax'), findsOneWidget);
+    expect(find.text('Parts of the earned pay'), findsOneWidget, reason: '(3.138.0) only the slip that has them');
+    expect(find.text('₹ 61,274.20'), findsOneWidget);
+    expect(find.text('Pension (EPS)'), findsOneWidget);
+    expect(find.text('₹ 1,33,300'), findsOneWidget);
     // (3.119.0) "Download PDF": this month's slip as a PDF – his name and code as the server says them, handed to the phone
     Uint8List? slipPdf;
     var slipName = '';
@@ -9136,6 +9153,220 @@ void main() {
     await t.tap(find.byKey(const Key('att-ok')));
     await net(t);
     expect(find.byKey(const Key('me-page')), findsOneWidget, reason: 'where he was');
+  }, tags: ['golden']);
+
+  // (3.135.0, rcl-hr step 15) the company's policies: he reads the version in force and accepts it himself; a paper the HR office
+  // rejected says why and is attached again in its place
+  testWidgets('(3.135.0) HR – Company policies: the ones still to accept are counted on Me; read, tick, accept; a rejected paper says why and is attached again in its place', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    final jpg = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    final pickWas = pickAttFiles;
+    pickAttFiles = (how, room) async => [(name: 'aadhaar.jpg', bytes: jpg)];
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      pickAttFiles = pickWas;
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true;
+    srv.hrPolicies.addAll([
+      {'policy': 1, 'title': 'Code of conduct', 'category': 'Conduct', 'mandatory': true, 'version': 2, 'version_id': 7, 'effective_from': '2026-10-01', 'body': 'Be on time.\nWear the helmet and the safety shoes on the site.\nNo phone near a running machine.', 'has_file': true, 'accepted_at': null, 'via': ''},
+      {'policy': 2, 'title': 'Use of the company phone', 'category': 'IT', 'mandatory': false, 'version': 1, 'version_id': 8, 'effective_from': '2026-09-01', 'body': 'For work only.', 'has_file': false, 'accepted_at': '2026-10-02T05:00:00.000Z', 'via': 'app'},
+    ]);
+    srv.hrDocs.add({'id': 'd9', 'kind': 'aadhaar', 'title': '', 'number': '', 'expires_on': null, 'mime': 'image/jpeg', 'created_at': '2026-10-10T05:00:00.000Z', 'status': 'rejected', 'verify_note': 'The photo of the card is not readable'});
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    await tapKey('nav-me');
+    expect(find.text('1 to read and accept'), findsOneWidget, reason: 'one mandatory policy is not accepted yet');
+    await tapKey('me-policies');
+    expect(find.byKey(const Key('pol-page')), findsOneWidget);
+    expect(find.text('Version 2 · read and accept'), findsOneWidget);
+    expect(find.text('Version 1 · accepted 2 Oct'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_policies.png'));
+    await tapKey('pol-1');
+    expect(find.byKey(const Key('pol-body')), findsOneWidget);
+    expect(find.byKey(const Key('pol-pdf')), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('pol-accept'))).onPressed, isNull, reason: 'nothing is accepted before the tick');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_policy_read.png'));
+    await tapKey('pol-tick');
+    await tapKey('pol-accept');
+    await settle(t, 2500);
+    await net(t);
+    expect(srv.hrPolicyAccepts.length, 1);
+    expect([srv.hrPolicyAccepts.first['version'], srv.hrPolicyAccepts.first['read'], srv.hrPolicyAccepts.first['via']], [7, true, 'app']);
+    expect(find.byKey(const Key('pol-page')), findsOneWidget, reason: 'back on the list');
+    expect(find.text('Version 2 · accepted 14 Oct'), findsOneWidget);
+    await t.pageBack();
+    await net(t);
+    expect(find.text('Read the policies you accepted'), findsOneWidget, reason: 'Me is read again');
+    // ---- the rejected paper: why, and "Attach again" – the new one takes its place
+    await tapKey('me-docs');
+    expect(find.byKey(const Key('doc-st-aadhaar')), findsOneWidget);
+    expect(find.text('Rejected'), findsOneWidget);
+    expect(find.text('HR office says: The photo of the card is not readable'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_docs_rejected.png'));
+    await tapKey('doc-add-aadhaar');
+    await t.tap(find.byKey(const Key('doc-gallery')));
+    await net(t);
+    final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
+    expect([da['kind'], da['replaces']], ['aadhaar', 'd9'], reason: 'in place of the rejected one');
+    expect(find.text('Being checked'), findsOneWidget);
+    expect(find.text('Rejected'), findsNothing);
+  }, tags: ['golden']);
+
+  // (3.136.0, rcl-hr step 16) the phone's proof is asked only when the HR server asks for it – bound to the punch; the seven-day
+  // rule's note on Home; My work locations
+  testWidgets('(3.136.0) HR – the phone\'s proof goes with a punch when the server asks; Home says the papers are due (held); My work locations with why a place does not count', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    final selfie = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    attendSelfieForTest = (_) async => selfie;
+    addTearDown(() {
+      attendSelfieForTest = null;
+      AttendKit.kit = AttendKit();
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..hrIntegrity = 987654321
+      ..hrDocRule = {'due': '2026-10-10', 'missing': ['PAN card', 'Bank passbook / cancelled cheque'], 'late': true, 'blocked': true, 'override_until': null}
+      ..hrMyPlaces = [
+        {'id': 'pl1', 'name': 'Site office', 'site': 'S1', 'kind': 'site_office', 'can_in': true, 'can_out': true, 'counts': true, 'why': ''},
+        {'id': 'pl2', 'name': 'Exit gate', 'site': 'S1', 'kind': 'gate', 'can_in': false, 'can_out': true, 'counts': true, 'why': ''},
+        {'id': 'pl3', 'name': 'Head office', 'site': 'HO', 'kind': 'office', 'can_in': true, 'can_out': true, 'counts': false, 'why': 'given to you from 20-10-2026'},
+      ];
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    // Home: the seven-day rule's note first
+    await t.scrollUntilVisible(find.byKey(const Key('hh-n-seven')), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Attach your papers – the app is held'), findsOneWidget);
+    expect(find.text('PAN card, Bank passbook / cancelled cheque'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_seven_day.png'));
+    // a punch: the phone's proof for THIS punch goes with it
+    await tapKey('hh-slide');
+    await settle(t, 3200);
+    await net(t);
+    final pu = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
+    expect(kit.proofAsked, [[987654321, 'rcl-punch|${pu['client_id']}']]);
+    expect(pu['integrity_token'], 'play-proof-token');
+    // My work locations
+    await tapKey('nav-me');
+    await tapKey('me-places');
+    expect(find.byKey(const Key('places-page')), findsOneWidget);
+    expect(find.text('Not today – given to you from 20-10-2026'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('place-pl2')), matching: find.text('IN')), findsNothing, reason: 'OUT only');
+    expect(find.descendant(of: find.byKey(const Key('place-pl2')), matching: find.text('OUT')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_my_places.png'));
+  }, tags: ['golden']);
+
+  // (3.137.0, rcl-hr step 17) his messages from HR: Me says how many are new; the list marks them seen
+  testWidgets('(3.137.0) HR – Notifications: Me counts the new ones; the list shows them, new ones marked; opening it marks them seen', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    addTearDown(() => AttendKit.kit = AttendKit());
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true;
+    srv.hrNotices.addAll([
+      {'id': 12, 'kind': 'shift_reminder', 'title': 'Sign in: your shift General starts at 08:30', 'body': 'Dear Sujit Mule, your shift General starts at 08:30 – mark your IN in the RCL app.', 'created_at': '2026-10-14T02:45:00.000Z', 'seen_at': null},
+      {'id': 11, 'kind': 'policy_accept', 'title': 'Please read and accept: Code of conduct', 'body': '', 'created_at': '2026-10-12T06:00:00.000Z', 'seen_at': '2026-10-12T07:00:00.000Z'},
+    ]);
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    await tapKey('nav-me');
+    expect(find.text('1 new'), findsOneWidget);
+    expect(find.byKey(const Key('me-team')), findsNothing, reason: '(3.139.0) nobody reports to him: no "My team"');
+    await tapKey('me-notices');
+    expect(find.byKey(const Key('notices-page')), findsOneWidget);
+    expect(find.text('Sign in: your shift General starts at 08:30'), findsOneWidget);
+    expect(srv.hrNoticeSeen, 1, reason: 'opening the list marks them seen');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_notices.png'));
+    await t.pageBack();
+    await net(t);
+    expect(find.text('Messages from the HR office'), findsOneWidget, reason: 'nothing new any more');
+  }, tags: ['golden']);
+
+  testWidgets('(3.139.0) HR – My team: only a manager sees it; his team today, the counts, what waits for him', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    addTearDown(() => AttendKit.kit = AttendKit());
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true;
+    srv.hrTeamPeople = [
+      {'code': 'E00031', 'name': 'Amit Pawar', 'category': 'Staff', 'now': 'late', 'in': '09:22', 'out': '', 'late_min': 22, 'month': {'present': 9, 'absent': 1, 'leave': 0, 'late': 3}, 'papers_missing': 2},
+      {'code': 'E00032', 'name': 'Ravi Shinde', 'category': 'Labour', 'now': 'not', 'in': '', 'out': '', 'late_min': 0, 'month': {'present': 10, 'absent': 0, 'leave': 1, 'late': 0}, 'papers_missing': 0},
+    ];
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    await tapKey('nav-me');
+    await tapKey('me-team');
+    expect(find.byKey(const Key('team-page')), findsOneWidget);
+    expect(find.text('Amit Pawar'), findsOneWidget);
+    expect(find.text('Late'), findsWidgets);
+    expect(find.text('Not marked'), findsWidgets);
+    expect(find.textContaining('this month: 9 present · 1 absent · 3 late'), findsOneWidget);
+    expect(find.byKey(const Key('team-waiting')), findsOneWidget);
+    expect(find.byKey(const Key('team-papers')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_my_team.png'));
   }, tags: ['golden']);
 
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {
@@ -10227,6 +10458,46 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_slb_6_handover.png'));
   }, tags: ['golden']);
+  // (3.134.0, rcl-hr step 14 – "Add biometric consent records") the face registration's first screen: the HR server's own consent
+  // words, in the app's language – what he agrees to is what is written down (its version goes with faceEnrol)
+  testWidgets('(3.134.0) HR – the face registration first shows the HR server\'s consent words, in his language; nothing opens the camera before "I agree"', (t) async {
+    phone(t);
+    Map<String, Object> w(String title, List<String> points, String agree) => {'title': title, 'points': points, 'agree': agree};
+    final words = {
+      'version': 'f1-0123456789',
+      'text': {
+        'en': w('Your face for attendance – your consent', [
+          'RCL HR uses your face only to confirm that it is you who marks your attendance.',
+          'What is kept: five pictures taken now and numbers measured from them (a face template). At every sign-in and sign-out a photo is taken and compared with these numbers.',
+          'Who sees it: the pictures – only the HR Admin and the Super Admin of your site. The numbers – nobody; only the HR server compares them.',
+          'It is used for nothing else: not to judge mood, character, caste, religion or anything else. It is never sold or shared.',
+          'How long: your face template and pictures are erased when you leave the company. Sign-in photos are removed after 90 days (longer only while an investigation needs them).',
+          'Where your site checks the face, attendance cannot be marked without a registered face. Ask your HR office if you have a question.'
+        ], 'I agree that my face is registered and used for my attendance as written above.'),
+        'mr': w('हजेरीसाठी तुमचा चेहरा – तुमची संमती', ['हजेरी तुम्हीच लावत आहात याची खात्री करण्यासाठीच RCL HR तुमचा चेहरा वापरते.', 'काय ठेवलं जातं: आता काढलेले पाच फोटो आणि त्यावरून मोजलेले आकडे (face template).'], 'वर लिहिल्याप्रमाणे माझा चेहरा नोंदवून माझ्या हजेरीसाठी वापरण्यास माझी संमती आहे.'),
+        'hi': w('हाज़िरी के लिए आपका चेहरा – आपकी सहमति', ['हाज़िरी आप ही लगा रहे हैं, यह पक्का करने के लिए ही RCL HR आपका चेहरा इस्तेमाल करता है.'], 'मैं सहमत हूँ.'),
+      }
+    };
+    await t.pumpWidget(LangScope(child: MaterialApp(home: FaceCamScreen(enrol: true, words: words))));
+    await settle(t, 300);
+    expect(find.byKey(const Key('face-consent')), findsOneWidget);
+    expect(find.byKey(const Key('face-agree')), findsNothing, reason: 'the server\'s words, not the screen\'s own');
+    expect(find.text('Your face for attendance – your consent'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_face_consent.png'));
+    // the button is under the words: he reads down to it (a list builds what is on the screen)
+    await t.scrollUntilVisible(find.byKey(const Key('face-start')), 200, scrollable: find.descendant(of: find.byKey(const Key('face-consent')), matching: find.byType(Scrollable)).first);
+    expect(find.text('I agree that my face is registered and used for my attendance as written above.'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_face_consent_agree.png'));
+    // (the app's own word files are not read here: a big file is read on another thread, which a widget test's clock never runs)
+    await Lang.i.set('mr', read: (_) async => '{}');
+    await settle(t, 300);
+    expect(find.text('हजेरीसाठी तुमचा चेहरा – तुमची संमती'), findsOneWidget, reason: 'in his language');
+    // an HR server of before (no words): the screen's own words, as before
+    await t.pumpWidget(LangScope(child: const MaterialApp(home: FaceCamScreen(enrol: true))));
+    await settle(t, 300);
+    expect(find.byKey(const Key('face-agree')), findsOneWidget);
+  }, tags: ['golden']);
 }
 
 /// The face screens without a camera: what he would have shown.
@@ -10234,9 +10505,11 @@ class _FakeFace extends FaceKit {
   final jpg = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
   bool agree = true, blink = true;
   int enrols = 0, checks = 0;
+  Map<String, dynamic>? words; // (3.134.0) the consent words the screen was given
   @override
-  Future<Map<String, Uint8List>?> enrol(BuildContext context) async {
+  Future<Map<String, Uint8List>?> enrol(BuildContext context, {Map<String, dynamic>? words}) async {
     enrols++;
+    this.words = words;
     return agree ? {for (final p in ['front', 'left', 'right', 'up', 'down']) p: jpg} : null;
   }
 
