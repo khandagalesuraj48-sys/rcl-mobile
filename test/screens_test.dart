@@ -8757,6 +8757,11 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_leave_change.png'));
     await tapKey('lc-save');
     await net(t);
+    // (saved → back on the attendance page → it is read again: the phone's store and the server, one after another)
+    for (var i = 0; i < 10 && find.text('Your leave is changed – mark IN now.').evaluate().isEmpty; i++) {
+      await net(t);
+    }
+    expect(find.byKey(const Key('lc-page')), findsNothing);
     final ch = srv.hrSent.lastWhere((x) => x['action'] == 'leaveChange');
     expect([ch['id'], ch['from'], ch['to'], ch.containsKey('files')], [9, '2026-10-12', '2026-10-13', false], reason: 'shorter: no reason, no paper');
     expect(find.byKey(const Key('att-onleave')), findsNothing, reason: 'read again: today is no leave day');
