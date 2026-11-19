@@ -161,14 +161,62 @@ Future<AppUpdate?> checkUpdate(Api api, {bool beta = false}) async {
     if (r.statusCode != 200) return null;
     final j = jsonDecode(utf8.decode(r.bodyBytes)), mine = int.tryParse(info.buildNumber) ?? 0;
     final u = beta ? (j is List ? newestOf(j, mine, computer: onComputer) : null) : parseRelease((j as Map).cast<String, dynamic>(), mine, computer: onComputer);
-    mustUpdate.value = u != null && u.must ? u : null; // (3.122.0) GitHub answered: the wall comes, or goes
+    // (3.145.0, asked 19-11-2026) no update closes the app any more – it is offered (offerUpdate); the old wall stays down
+    mustUpdate.value = null;
     return u;
   } catch (_) {
     return null; // not reached: nothing is known – the app works on (and a wall that stands, stays)
   }
 }
 
+/* (3.145.0, asked 19-11-2026: "app updet ale ki app kahi kam karu det nahi ata prt pahile sarke kruya app updet ale ki user la jewa jewa
+ * app open krel to pop up yeil updet cha jr updet mhanla tr background madhe updet and install doni chalu rahil ok ani close ch option
+ * pn de jene krun app updet hotana user ch kam adun nahi rahnar ani app madhun kam pn chalu rahil") THE UPDATE IS OFFERED, NEVER
+ * FORCED: every time the app is opened (started, or back after [kOfferAgainAfter] away) and a newer version is there, "Update to …?"
+ * with Update / Close. Update: it downloads in the background (Android's Download Manager – the app is used meanwhile) and "Install?"
+ * comes when it is ready. Close: he works on; asked again at the next opening. A download already going or ready: no question – the
+ * background update asks "Install?" by itself (updateWatch). The wall of 3.122.0 is not shown any more (checkUpdate). */
+const kOfferAgainAfter = Duration(minutes: 10);
+bool _offered = false; // asked in this opening
+DateTime? _awaySince;
+
+/// What looks for the update again at a new opening (Home, the attendance app) – null: nobody.
+void Function()? updateOfferAgain;
+
+/// The app was left (paused) – an opening is counted again when it comes back after [kOfferAgainAfter].
+void updateAway() => _awaySince ??= DateTime.now();
+
+/// The app came back: away long enough – a new opening: the update is offered again.
+void updateBack({DateTime? now}) {
+  final a = _awaySince;
+  _awaySince = null;
+  if (a != null && (now ?? DateTime.now()).difference(a) >= kOfferAgainAfter) {
+    _offered = false;
+    updateOfferAgain?.call();
+  }
+}
+
+/// (a test) a new opening
+void resetUpdateOffer() {
+  _offered = false;
+  _awaySince = null;
+  updateOfferAgain = null;
+}
+
+/// Offers [u] – once in an opening of the app; nothing while a download of it goes on or is ready ("Install?" comes by itself).
+Future<void> offerUpdate(BuildContext context, AppUpdate? u) async {
+  if (u == null || _offered || !context.mounted) return;
+  _offered = true;
+  if (bgUpdates()) {
+    final s = await _bgState();
+    if (s != null && s.build == u.build && (s.going || s.status == 'done')) return;
+  }
+  if (!context.mounted) return;
+  await runUpdate(context, u);
+}
+
 /// (3.122.0) THE WALL of a compulsory update: the one screen there is until the update is installed. Back does not close it.
+/// (3.145.0) no longer shown (offerUpdate).
 class UpdateWall extends StatelessWidget {
   const UpdateWall({super.key, required this.update});
   final AppUpdate update;
@@ -254,7 +302,8 @@ Future<void> runUpdate(BuildContext context, AppUpdate u) async {
       bi('The update downloads in the background – keep working, or leave the app. When it is ready, the app asks you to install it.',
           'अपडेट मागे (background ला) डाउनलोड होईल – काम चालू ठेवा किंवा ॲपमधून बाहेर जा. तयार झाले की ॲप install विचारेल.', '\n\n'),
       plain: u.notes,
-      yes: 'Update');
+      yes: 'Update',
+      no: 'Close'); // (3.145.0) Close: he works on – asked again the next time the app is opened
   if (!ok || !context.mounted) return;
   // (3.31.4) Android's Download Manager; a phone where it cannot be used: the download inside the app, as before
   final bg = await startBgUpdate(u);
@@ -660,7 +709,7 @@ Future<String> downloadSetup(AppUpdate u, Directory dir, void Function(int perce
 Future<void> _updateComputer(BuildContext context, AppUpdate u) async {
   final ok = await ask(context, 'Update to ${u.version}?',
       bi('The app downloads the new version, closes, installs it and opens again (about a minute).', 'नवीन version download होईल; app बंद होऊन install होईल आणि पुन्हा उघडेल (सुमारे 1 मिनिट).', '\n\n'),
-      plain: u.notes, yes: 'Update');
+      plain: u.notes, yes: 'Update', no: 'Close');
   if (!ok || !context.mounted) return;
   final progress = ValueNotifier<String>('Starting…');
   popDialog<void>(

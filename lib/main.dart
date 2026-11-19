@@ -23,7 +23,7 @@ import 'core/push_fcm.dart';
 import 'core/rtc_kit.dart';
 import 'core/scan_link.dart';
 import 'core/session.dart';
-import 'core/update.dart' show updateContext, updateWatch, watchMustUpdate;
+import 'core/update.dart' show updateContext, updateWatch, updateAway, updateBack;
 import 'screens/call.dart';
 import 'screens/lock.dart';
 import 'screens/login.dart';
@@ -140,8 +140,14 @@ void main() {
   // (3.31.4) the update downloaded in the background: "Install?" over whatever screen is open – when the app opens and when it
   // comes back (core/update.dart updateWatch)
   updateContext = () => appNav.currentContext;
-  watchMustUpdate(appNav); // (3.122.0) a compulsory update: its one screen over everything (core/update.dart)
-  AppLifecycleListener(onResume: () => updateWatch(opened: true)); // (it stays with the app's binding)
+  // (3.145.0) no compulsory update any more: offered at every opening (core/update.dart offerUpdate) – back after 10 minutes away
+  // counts as an opening
+  AppLifecycleListener(
+      onResume: () {
+        updateWatch(opened: true);
+        updateBack();
+      },
+      onPause: updateAway); // (it stays with the app's binding)
   // (3.41.0, asked 25-10-2026: "google scanner mobile scanner madhun jari scan kel adhi app kade jaw") a "Scan with Mobile" QR code
   // read by the phone's camera / Google Lens opens HERE (core/scan_link.dart): the link the app was opened with, and any later one
   if (Platform.isAndroid || Platform.isIOS) {

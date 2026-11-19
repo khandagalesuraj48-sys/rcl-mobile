@@ -27,7 +27,7 @@ import 'package:flutter/material.dart' as m show Text;
 import '../core/attend.dart';
 import '../core/attend_remind.dart';
 import '../core/session.dart';
-import '../core/update.dart' show checkUpdate;
+import '../core/update.dart' show checkUpdate, offerUpdate, updateOfferAgain;
 import '../ui/attend_look.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
@@ -112,13 +112,19 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     // (3.114.0) the attendance app has its own look – the one he chose on this phone
     HrSkin.i.addListener(_skin);
     unawaited(widget.inErp ? HrSkin.i.load() : HrSkin.i.enter());
-    // (3.122.0) the attendance app by itself asks for the newest version too (a compulsory one: its screen – core/update.dart)
+    // (3.122.0) the attendance app by itself asks for the newest version too – (3.145.0) offered: "Update to …?" (Update / Close)
+    // once in every opening, never a screen that stops the work (core/update.dart offerUpdate)
     if (!widget.inErp) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      void offer() {
         if (!mounted) return;
         final s = SessionScope.read(context);
-        unawaited(checkUpdate(s.api, beta: s.tester));
-      });
+        checkUpdate(s.api, beta: s.tester).then((u) {
+          if (mounted) unawaited(offerUpdate(context, u));
+        });
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) => offer());
+      updateOfferAgain = offer;
     }
     // (3.117.0, "app chalu kel kel lagech app fetch krel user location") his place is read at once and kept young while Home
     // is on the screen – IN / OUT need not wait for it; the phone's location off: asked to switch it on, here

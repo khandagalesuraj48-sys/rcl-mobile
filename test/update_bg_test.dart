@@ -239,4 +239,53 @@ void main() {
     expect(args['start']!['url'], u.url);
     resetBgUpdate();
   });
+
+  /* (3.145.0, asked 19-11-2026: "app updet ale ki app kahi kam karu det nahi ata prt pahile sarke kruya … jewa jewa app open krel to pop
+   * up yeil updet cha … close ch option pn de") THE UPDATE IS OFFERED, NEVER FORCED: once in every opening – Update / Close; back after
+   * 10 minutes away: asked again; a download already going: no question (it asks "Install?" by itself); the wall never comes. */
+  testWidgets('(3.145.0) offered once in an opening (Update / Close); Close – he works on; back after 10 minutes – asked again; a download going – no question; no wall', (t) async {
+    resetUpdateOffer();
+    addTearDown(resetUpdateOffer);
+    final nav = GlobalKey<NavigatorState>();
+    updateContext = () => nav.currentContext;
+    addTearDown(() => updateContext = () => null);
+    var again = 0;
+    await t.pumpWidget(MaterialApp(navigatorKey: nav, home: Builder(builder: (c) => Scaffold(body: Center(child: TextButton(onPressed: () => offerUpdate(c, u), child: const Text('open')))))));
+    updateOfferAgain = () => again++;
+    await t.tap(find.text('open'));
+    await settle(t);
+    expect(find.text('Update to 3.31.4?'), findsOneWidget);
+    expect(find.text('Close'), findsOneWidget);
+    await t.tap(find.text('Close'));
+    await settle(t);
+    expect(find.text('Update to 3.31.4?'), findsNothing, reason: 'Close: the app is used as before');
+    expect(calls, isNot(contains('start')));
+    await t.tap(find.text('open'));
+    await settle(t);
+    expect(find.text('Update to 3.31.4?'), findsNothing, reason: 'once in an opening');
+    // away 5 minutes: the same opening; away 10 minutes: a new one – asked again
+    final t0 = DateTime.now();
+    updateAway();
+    updateBack(now: t0.add(const Duration(minutes: 5)));
+    expect(again, 0);
+    updateAway();
+    updateBack(now: DateTime.now().add(const Duration(minutes: 11)));
+    expect(again, 1, reason: 'the screen looks again');
+    await t.tap(find.text('open'));
+    await settle(t);
+    expect(find.text('Update to 3.31.4?'), findsOneWidget);
+    await t.tap(find.text('Update'));
+    await settle(t);
+    expect(calls, contains('start'), reason: 'Update: it downloads in the background');
+    await t.tap(find.byKey(const Key('upd-bg-hide')));
+    await settle(t);
+    // a new opening while it downloads: no question – "Install?" comes by itself when it is there
+    updateAway();
+    updateBack(now: DateTime.now().add(const Duration(minutes: 30)));
+    await t.tap(find.text('open'));
+    await settle(t);
+    expect(find.text('Update to 3.31.4?'), findsNothing);
+    expect(mustUpdate.value, isNull, reason: 'no wall');
+    resetBgUpdate();
+  });
 }
