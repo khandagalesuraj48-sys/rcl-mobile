@@ -2160,7 +2160,6 @@
 "Meter changed": "मीटर बदलला",
 "Move to another machinery": "दुसऱ्या machinery वर हलवा",
 "Move": "हलवा",
-"Close": "बंद करा",
 "Nothing was moved": "काहीच हलवले नाही",
 "This entry is already on {0}.": "ही नोंद आधीच {0} वर आहे.",
 "These entries are already on {0}.": "या नोंदी आधीच {0} वर आहेत.",
@@ -2168,5 +2167,7 @@
 "Move {0} entries to {1}?": "{0} नोंदी {1} वर हलवायच्या?",
 "Log Book entry moved to {0} – the diesel stays with {1}.": "Log Book नोंद {0} वर गेली – diesel {1} कडेच राहिले.",
 "{0} Log Book entries moved to {1} – the diesel stays with {2}.": "{0} Log Book नोंदी {1} वर गेल्या – diesel {2} कडेच राहिले.",
-"Change the machinery number by itself: save or undo the other changes first, then pick the right machinery.": "Machinery number एकटाच बदला: आधी बाकी बदल save करा किंवा काढा, मग बरोबर machinery निवडा."
+"Change the machinery number by itself: save or undo the other changes first, then pick the right machinery.": "Machinery number एकटाच बदला: आधी बाकी बदल save करा किंवा काढा, मग बरोबर machinery निवडा.",
+"Move entries to another machinery": "नोंदी दुसऱ्या machinery वर हलवा",
+"Tap the entries to tick them": "नोंदींवर दाबून निवडा"
 }

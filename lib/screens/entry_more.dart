@@ -927,7 +927,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           'driver': r.driver.text.trim(),
           'remark': r.remark.text.trim(),
           'mode': r.wayFor(r.m),
-          'meterChanged': r.mch && (hasKm(r.wayFor(r.m)) || hasHr(r.wayFor(r.m))),      // (3.148.0)
+          if (r.mch && (hasKm(r.wayFor(r.m)) || hasHr(r.wayFor(r.m)))) 'meterChanged': true,      // (3.148.0) only when ticked
           if (r.tcDue != null) 'tc': {'physical': r.tcPh.text.trim(), 'reason': r.tcRs.text.trim()},      // (3.76.0, update-203)
         },
     ];
@@ -1134,7 +1134,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
               'hrReading': hasHr(x.$2.wayFor(m)) ? n(x.$2.hr) : '',
               'driver': x.$2.driver.text.trim(),
               'remark': x.$2.remark.text.trim(),
-              'meterChanged': x.$2.mch && (hasKm(x.$2.wayFor(m)) || hasHr(x.$2.wayFor(m))),      // (3.148.0)
+              if (x.$2.mch && (hasKm(x.$2.wayFor(m)) || hasHr(x.$2.wayFor(m)))) 'meterChanged': true,      // (3.148.0) only when ticked
             }),
         ];
       final res = fx != null ? await s.editFlow(fx.id, note, [out]) : (await s.api.call('importDiesel', [out], true) as Map).cast<String, dynamic>();

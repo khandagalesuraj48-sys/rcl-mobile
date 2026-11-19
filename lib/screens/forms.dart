@@ -1078,7 +1078,7 @@ class _EntryFormState extends State<EntryForm> {
         'issue' => {
             'date': date, 'shift': shift, 'no': machine?.id ?? '', 'qty': asNum(qty.text) ?? '', 'kmReading': hasKm(way) ? (asNum(km.text) ?? '') : '', 'hrReading': hasHr(way) ? (asNum(hr.text) ?? '') : '',
             'driver': driver.text.trim(), 'remark': remark.text.trim(), 'source': source, 'force': false, 'mode': way,
-            'meterChanged': mch && (hasKm(way) || hasHr(way)) && !(machine?.debit ?? false),      // (3.148.0)
+            if (mch && (hasKm(way) || hasHr(way)) && !(machine?.debit ?? false)) 'meterChanged': true,      // (3.148.0) only when ticked: an untouched entry is sent as before
             if (_photoList.isNotEmpty && ed == null) 'photos': _photoList,
             if (SessionScope.read(context).cardSite) ...{'amount': asNum(amount.text) ?? '', 'rate': asNum(rate.text) ?? ''},      // (3.45.0) its ₹
             if (tcDue != null && ed == null) 'tc': {'physical': asNum(tcPh.text) ?? '', 'reason': tcRs.text.trim()},      // (3.76.0, update-203)

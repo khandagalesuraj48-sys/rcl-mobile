@@ -8758,7 +8758,7 @@ void main() {
     await tapKey('lc-save');
     await net(t);
     // (saved → back on the attendance page → it is read again: the phone's store and the server, one after another)
-    for (var i = 0; i < 10 && find.text('Your leave is changed – mark IN now.').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 10 && (find.text('Your leave is changed – mark IN now.').evaluate().isEmpty || find.byKey(const Key('lc-page')).evaluate().isNotEmpty); i++) {
       await net(t);
     }
     expect(find.byKey(const Key('lc-page')), findsNothing);
@@ -10754,11 +10754,15 @@ void main() {
     await net(t);
     await t.tap(find.text('Logbook').last);
     await net(t);
-    expect(find.byKey(const Key('lb-hold-hint')), findsOneWidget);
-    // held: ticked; then a tap ticks another
-    await t.longPress(find.byKey(const Key('lb-row-A|2026-10-14|Day')));
-    await settle(t, 400);
+    // ⋮ → "Move entries to another machinery": a tap now ticks
+    await t.tap(find.byKey(const Key('lb-menu')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('lb-move-start')));
+    await settle(t, 600);
     expect(find.byKey(const Key('lb-selbar')), findsOneWidget);
+    expect(find.textContaining('Tap the entries to tick them'), findsOneWidget);
+    await t.tap(find.byKey(const Key('lb-row-A|2026-10-14|Day')));
+    await settle(t, 400);
     expect(find.textContaining('1 entry ticked'), findsOneWidget);
     await t.tap(find.byKey(const Key('lb-row-B|2026-10-14|Day')));
     await settle(t, 300);
@@ -10775,6 +10779,13 @@ void main() {
     expect(srv.moves.single['to'], 'Sany 210 (No.1)');
     expect([for (final r in srv.moves.single['rows'] as List) (r as Map)['key']], ['A|2026-10-14|Day', 'B|2026-10-14|Day']);
     expect(find.byKey(const Key('lb-selbar')), findsNothing, reason: 'the ticks are gone after the move');
+    // an entry held: ticked at once (Clear takes the ticks away)
+    await t.longPress(find.byKey(const Key('lb-row-B|2026-10-14|Day')));
+    await settle(t, 400);
+    expect(find.textContaining('1 entry ticked'), findsOneWidget);
+    await t.tap(find.byKey(const Key('lb-selclear')));
+    await settle(t, 400);
+    expect(find.byKey(const Key('lb-selbar')), findsNothing);
     // one entry from its details
     await t.tap(find.byKey(const Key('lb-row-C|2026-10-14|Day')));
     await settle(t, 600);

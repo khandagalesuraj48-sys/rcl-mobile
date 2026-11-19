@@ -120,8 +120,10 @@ class _LogBookScreenState extends State<LogBookScreen> {
   String err = '';
   List<Map<String, dynamic>> rows = [];
   int seq = 0;
-  /// (3.148.0, Mechanical update-269) the entries ticked (held) – to move them to another machinery
+  /// (3.148.0, Mechanical update-269) the entries ticked – to move them to another machinery: ⋮ → "Move entries to another machinery"
+  /// (then a tap ticks), or an entry held
   final sel = <String>{};
+  bool picking = false;
 
   @override
   void didChangeDependencies() {
@@ -287,7 +289,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
         });
     return Scaffold(
       // (3.148.0) entries ticked: what to do with them, at the bottom
-      bottomNavigationBar: sel.isEmpty
+      bottomNavigationBar: sel.isEmpty && !picking
           ? null
           : SafeArea(
               child: Container(
@@ -295,19 +297,22 @@ class _LogBookScreenState extends State<LogBookScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                 decoration: const BoxDecoration(color: C.amberSoft, border: Border(top: BorderSide(color: Color(0xFFF3D9A4)))),
                 child: Row(children: [
-                  Expanded(child: TwoLang('${sel.length} ${sel.length == 1 ? 'entry' : 'entries'} ticked', '${sel.length} नोंदी निवडल्या', size: 15, weight: FontWeight.w700)),
-                  TextButton(key: const Key('lb-selclear'), onPressed: () => setState(sel.clear), child: Text(tr('Clear'))),
+                  Expanded(
+                      child: sel.isEmpty
+                          ? const TwoLang('Tap the entries to tick them', 'नोंदींवर दाबून निवडा', size: 15, weight: FontWeight.w700)
+                          : TwoLang('${sel.length} ${sel.length == 1 ? 'entry' : 'entries'} ticked', '${sel.length} नोंदी निवडल्या', size: 15, weight: FontWeight.w700)),
+                  TextButton(key: const Key('lb-selclear'), onPressed: () => setState(() { sel.clear(); picking = false; }), child: Text(tr(sel.isEmpty ? 'Cancel' : 'Clear'))),
                   const SizedBox(width: 6),
                   FilledButton.icon(
                     key: const Key('lb-move'),
                     style: FilledButton.styleFrom(backgroundColor: C.amber, minimumSize: const Size(0, 46)),
-                    onPressed: () async {
+                    onPressed: sel.isEmpty ? null : () async {
                       final picked = [for (final r in rows) if (sel.contains('${r['key'] ?? ''}')) r];
                       final d0 = picked.isEmpty ? '' : '${picked.first['date'] ?? ''}';
                       final to = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: d0.length >= 10 ? d0 : day));
                       if (to == null || !context.mounted) return;
                       if (await moveLogEntries(context, picked, to)) {
-                        setState(sel.clear);
+                        setState(() { sel.clear(); picking = false; });
                         _load(pend: true);
                       }
                     },
@@ -317,7 +322,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
                 ]),
               ),
             ),
-      floatingActionButton: sel.isEmpty && s.canEdit('Log Book')
+      floatingActionButton: sel.isEmpty && !picking && s.canEdit('Log Book')
           ? FloatingActionButton.extended(
               onPressed: () => _new(),
               backgroundColor: Tone.logbook.b,      // (3.97.0, his design 2) the Log Book's own colour
@@ -389,6 +394,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
                       if (k == 'edit') openLogEdit(context);
                       if (k == 'print') printLogBook(context, SessionScope.read(context), rows: rows, from: all && rows.isNotEmpty ? _span.$1 : day, to: all && rows.isNotEmpty ? _span.$2 : day);      // (3.6.0) the entries shown
                       if (k == 'tank') openTankCheck(context);
+                      if (k == 'move') setState(() => picking = true);      // (3.148.0) a tap now ticks an entry
                       if (k == 'guide') showGuide(context, 'log'); // (3.16.0) the web's "?" of the page
                       // (3.12.0) the rest of the web's Log Book page: its list of all dates with the exports, Import from Excel, the templates
                       if (k == 'find') await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LogFindScreen()));
@@ -403,6 +409,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
                       PopupMenuItem(key: const Key('lb-print'), value: 'print', child: Text('Print Log Book')),
                       PopupMenuItem(value: 'tank', child: Text('Tank Check')),
                       if (SessionScope.read(context).canEdit('Log Book')) ...[
+                        PopupMenuItem(key: const Key('lb-move-start'), value: 'move', child: Text('Move entries to another machinery')),
                         PopupMenuItem(key: const Key('lb-import'), value: 'import', child: Text('Import from Excel')),
                         PopupMenuItem(key: const Key('lb-tpl-date'), value: 'tpl-date', child: Text('Template: one date – many machinery')),
                         PopupMenuItem(key: const Key('lb-tpl-mach'), value: 'tpl-mach', child: Text('Template: one machinery – many dates')),
@@ -506,14 +513,6 @@ class _LogBookScreenState extends State<LogBookScreen> {
                 child: TextField(onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Search machinery, work, chainage…'), prefixIcon: Icon(Icons.search_rounded), contentPadding: EdgeInsets.symmetric(vertical: 14))),
               ),
             ),
-            // (3.148.0) how entries are ticked – to move many made on the wrong machinery
-            if (s.canEdit('Log Book') && list.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                  child: Text(bi('Hold an entry to tick it – ticked entries can be moved to another machinery.', 'नोंद दाबून धरा – निवडलेल्या नोंदी दुसऱ्या machinery वर हलवता येतात.', '\n'), key: const Key('lb-hold-hint'), style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.3)),
-                ),
-              ),
             if (loading)
               SliverList.separated(itemCount: 4, separatorBuilder: (_, __) => const SizedBox(height: 10), itemBuilder: (_, __) => const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Shimmer(height: 100)))
             else if (err.isNotEmpty)
@@ -536,7 +535,7 @@ class _LogBookScreenState extends State<LogBookScreen> {
                     final card = GestureDetector(
                       key: Key('lb-row-${r['key'] ?? i}'),
                       onLongPress: pickable ? () { HapticFeedback.selectionClick(); flip(r); } : null,
-                      child: LogCard(r: r, onChanged: () => _load(pend: true), selected: sel.contains('${r['key'] ?? ''}'), onPick: sel.isNotEmpty && pickable ? () => flip(r) : null),
+                      child: LogCard(r: r, onChanged: () => _load(pend: true), selected: sel.contains('${r['key'] ?? ''}'), onPick: (sel.isNotEmpty || picking) && pickable ? () => flip(r) : null),
                     );
                     // (3.106.0) all dates: each date once, above its entries
                     final d = '${list[i]['date'] ?? ''}';
