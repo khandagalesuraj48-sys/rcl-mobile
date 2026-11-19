@@ -547,7 +547,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           miss, _t('Attach', 'जोडा'), _docs));
     }
     for (final q in (leave?['requests'] as List? ?? const []).whereType<Map>()) {
-      if (q['status'] == 'pending') out.add(_Note('hh-n-leave-${q['id']}', Icons.event_available_rounded, blue, blueSoft, _t('Leave on ${dayName('${q['from']}')}', '${dayName('${q['from']}')} ची रजा'), _t('Waiting for approval', 'मंजुरीची वाट'), _t('See', 'पहा'), () => _go(2)));
+      if (q['status'] == 'pending') out.add(_Note('hh-n-leave-${q['id']}', Icons.event_available_rounded, blue, blueSoft, _t('Leave on ${dayName('${q['from']}')}', '${dayName('${q['from']}')} ची रजा'), q['waits'] is Map ? leaveWaits(q) : _t('Waiting for approval', 'मंजुरीची वाट'),      // (3.147.0) who it waits for
+           _t('See', 'पहा'), () => _go(2)));
     }
     final today = '${month?['today'] ?? ''}', back = month?['reg_days'] is num ? (month!['reg_days'] as num).toInt() : 0, t = DateTime.tryParse('${today}T00:00:00Z');
     final asked = {for (final q in regs) if (q['status'] == 'pending') '${q['day']}'};

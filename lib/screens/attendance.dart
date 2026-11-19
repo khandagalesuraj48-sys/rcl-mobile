@@ -102,6 +102,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   int teamWait = 0; // the requests of the people who report to him that wait for him (rcl-hr step 5)
   double slide = 0; // how far the punch bar's sun is pulled
   bool _autoDone = false, _autoOn = false; // (auto) tried once; going on now
+  Map? _leaveErr; // (3.147.0) the server refused IN: today is a day of his leave (the leave it named)
   AttendStore? store;
 
   @override
@@ -340,11 +341,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     if (mounted) setState(() => looking = false);
   }
 
+  /// (3.147.0, rcl-hr of 19-11-2026: "5 tarkela aloy kamawar return … sign in krayla gelo tr app error deil ani suggestions deil ki
+  /// leave madhe jaun date correct kr") today is a day of his leave – approved or waiting: no IN until he makes the leave shorter.
+  Map? get _onLeave {
+    if (_next != 'in') return null;
+    final l = me?['leave'];
+    return l is Map ? l : _leaveErr;
+  }
+
+  // Leave → this leave → Change days; saved: read again – IN is open now (one press from Home: it goes on to mark)
+  Future<void> _changeLeave() async {
+    final lv = _onLeave;
+    if (lv == null || busy) return;
+    try {
+      final j = await _hr({'action': 'myLeave'});
+      if (!mounted) return;
+      final q = [for (final x in (j['requests'] as List? ?? const []).whereType<Map>()) x].where((x) => '${x['id']}' == '${lv['id']}').firstOrNull;
+      if (q == null || (q['can'] is Map && (q['can'] as Map)['change'] != true)) {
+        await Navigator.of(context).push(hrRoute<void>(LeaveScreen(ask: _hr)));
+      } else {
+        final r = await Navigator.of(context).push<Map<String, dynamic>>(hrRoute(LeaveChangeScreen(ask: _hr, request: q, today: '${j['today'] ?? me?['day'] ?? ''}', paper: j['paper'] == true)));
+        if (r == null || !mounted) return;
+      }
+      _leaveErr = null;
+      await _load(quiet: true);
+      if (!mounted) return;
+      if (_onLeave == null) {
+        setState(() => done = _t('Your leave is changed – mark IN now.', 'रजा बदलली – आता IN लावा.'));
+        if (widget.auto) unawaited(_punch());
+      }
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
+  }
+
   /// (3.116.0) one press: the punch starts by itself, once, when nothing stops it.
   void _auto() {
     if (!widget.auto || _autoDone || me == null) return;
     _autoDone = true;
-    if (me?['may'] == false || dev || '${me?['phone'] ?? ''}' == 'other' || _places.isEmpty || _dayDone) {
+    if (me?['may'] == false || dev || '${me?['phone'] ?? ''}' == 'other' || _places.isEmpty || _dayDone || _onLeave != null) {
       setState(() {});
       return;
     }
@@ -357,6 +392,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   Future<void> _punch() async {
     if (busy || me == null) return;
     final kind = _next;
+    if (_onLeave != null) return; // (3.147.0) a day of his leave: the card says what to do
     setState(() {
       busy = true;
       err = '';
@@ -433,7 +469,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     } on AttendProblem catch (e) {
       if (mounted) setState(() => err = _t(e.en, e.mr));
     } on ApiError catch (e) {
-      if (mounted) setState(() => err = e.message);
+      // (3.147.0) the server: today is a day of his leave – the card with "Change leave days" instead of the message
+      if (mounted) {
+        setState(() {
+          if (e.code == 'onleave' && e.data['leave'] is Map) {
+            _leaveErr = e.data['leave'] as Map;
+          } else {
+            err = e.message;
+          }
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => err = 'Something went wrong – please try again.');
     } finally {
@@ -446,7 +491,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final s = SessionScope.of(context), emp = (me?['employee'] as Map?) ?? const {};
     final punches = [for (final x in (me?['punches'] as List? ?? const []).whereType<Map>()) x];
     final next = _next, phone = '${me?['phone'] ?? ''}', may = me?['may'] != false;
-    final blocked = me == null || !may || dev || phone == 'other' || _places.isEmpty;
+    final blocked = me == null || !may || dev || phone == 'other' || _places.isEmpty || _onLeave != null;
     // (3.105.0) the sky says where his day stands: dawn – not marked; day – on duty; dusk – done; grey – it cannot be marked here / now
     final sky = skyOf(any: punches.isNotEmpty || kept.isNotEmpty, next: next, stopped: blocked || (hit != null && !hit!.inside));
     // (3.116.0) one press: while his place is read and the selfie is taken – only the round sign and what is going on
@@ -489,6 +534,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   if (phone == 'other')
                     InfoLine(_t('Your attendance is tied to another phone (${me?['phone_model'] ?? ''}). Only the HR Admin can release it – then this phone will work.', 'तुमची हजेरी दुसऱ्या phone ला बांधलेली आहे (${me?['phone_model'] ?? ''}). फक्त HR Admin तो सोडू शकतो – मग हा phone चालेल.'), bad: true, help: false, key: const Key('att-other')),
                   if (_places.isEmpty) InfoLine(_t('No work place is set for you yet – ask the HR office.', 'तुमच्यासाठी अजून work place ठरवलेले नाही – HR office ला सांगा.'), bad: true, help: false, key: const Key('att-noplace')),
+                  if (_onLeave != null) _leaveCard(_onLeave!),
                   // (3.110.0) once a day / closed by itself – said plainly, with what he can do
                   if (_closed.isNotEmpty)
                     InfoLine(_t('OUT was not marked: today was closed by itself at $_closed and counts as absent. Ask to set the day right (Requests).', 'OUT लावले नाही: आजचा दिवस $_closed ला आपोआप बंद झाला आणि गैरहजर धरला आहे. दुरुस्तीसाठी विनंती करा (Requests).'), bad: true, help: false, key: const Key('att-closed'))
@@ -553,6 +599,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                 ],
               ]),
             ),
+    );
+  }
+
+  // (3.147.0) today is a day of his leave: what it is, and the way to work today
+  Widget _leaveCard(Map lv) {
+    final from = '${lv['from'] ?? ''}', to = '${lv['to'] ?? from}', wait = '${lv['status']}' == 'pending';
+    final span = '${_dmy(from)}${to != from ? ' – ${_dmy(to)}' : ''}';
+    return Container(
+      key: const Key('att-onleave'),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(color: C.amberSoft, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.amber.withValues(alpha: .5))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          const Icon(Icons.beach_access_rounded, size: 20, color: Color(0xFF8A5A00)),
+          const SizedBox(width: 8),
+          Expanded(child: m.Text(_t('You are on leave today', 'आज तुमची रजा आहे'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: Color(0xFF5B4A14)))),
+        ]),
+        const SizedBox(height: 4),
+        m.Text(_t('Leave $span${wait ? ' (waiting for approval)' : ''}. To work today, make your leave shorter – then mark IN.', 'रजा $span${wait ? ' (मंजुरीसाठी प्रलंबित)' : ''}. आज कामावर हजेरीसाठी रजेचे दिवस कमी करा – मग IN लावा.'),
+            style: const TextStyle(fontSize: 13.5, color: Color(0xFF5B4A14), height: 1.35)),
+        const SizedBox(height: 10),
+        hrButton('Change leave days', 'रजेचे दिवस बदला', key: const Key('att-leave-change'), onTap: busy ? null : _changeLeave),
+      ]),
     );
   }
 

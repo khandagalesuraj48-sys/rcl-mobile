@@ -8721,13 +8721,47 @@ void main() {
     expect(find.byKey(const Key('lv-1')), findsOneWidget);
     expect(find.textContaining('14 Oct · half day'), findsOneWidget);
     await settle(t, 4000);      // (the message goes)
-    await tapKey('lv-back-1');
-    await t.tap(find.text('Take back'));
+    // (3.147.0) a touch opens the request: where it stands, its history; "Delete this leave" while it waits
+    await tapKey('lv-open-1');
+    expect(find.byKey(const Key('lvd-page')), findsOneWidget);
+    expect(find.text('Waits for the HR office'), findsOneWidget, reason: 'a server of before: the level says it');
+    expect(find.byKey(const Key('lvd-change')), findsNothing, reason: 'a server of before: no change of days');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_leave_detail.png'));
+    await tapKey('lvd-delete');
+    await t.tap(find.text('Delete'));
     await net(t);
     expect(srv.hrSent.lastWhere((x) => x['action'] == 'leaveCancel')['id'], 1);
-    expect(find.text('Taken back'), findsOneWidget);
+    expect(find.byKey(const Key('lvd-page')), findsNothing);
+    expect(find.text('Deleted'), findsOneWidget);
     await t.pageBack();
     await net(t);
+    // ---- (3.147.0, rcl-hr of 19-11-2026: "1 to 10 … 5 tarkela aloy … sign in krayla gelo tr app error deil ani suggestions deil")
+    // today is a day of his approved leave: no IN – the card says so; "Change leave days" → "Back at work today" → saved → IN is open
+    srv.hrPaper = true;
+    srv.hrLeaves.insert(0, {'id': 9, 'mine': true, 'code': 'E00012', 'name': 'Sujit Mule', 'from': '2026-10-12', 'to': '2026-10-16', 'part': 'full', 'days': 5, 'reason': 'Native place', 'status': 'approved', 'level': 2, 'steps': [], 'note': '',
+      'can': {'delete': false, 'change': true}, 'history': [{'kind': 'asked', 'by': 'Sujit Mule', 'at': '2026-10-01T05:00:00.000Z', 'from': '2026-10-12', 'to': '2026-10-16', 'days': 5}, {'kind': 'approved', 'by': 'Priya (HR)', 'at': '2026-10-02T05:00:00.000Z'}]});
+    srv.hrLeaveToday = {'id': 9, 'from': '2026-10-12', 'to': '2026-10-16', 'status': 'approved', 'days': 5};
+    await t.tap(find.byTooltip('Refresh'));
+    await net(t);
+    expect(find.byKey(const Key('att-onleave')), findsOneWidget);
+    expect(find.textContaining('Leave 12-10-2026 – 16-10-2026. To work today, make your leave shorter'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_onleave.png'));
+    await tapKey('att-leave-change');
+    expect(find.byKey(const Key('lc-page')), findsOneWidget);
+    expect(find.text('Back at work today – leave 12-10-2026 – 13-10-2026'), findsOneWidget);
+    await tapKey('lc-back');
+    expect(find.textContaining('Shorter – saved at once. It stays approved'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_leave_change.png'));
+    await tapKey('lc-save');
+    await net(t);
+    final ch = srv.hrSent.lastWhere((x) => x['action'] == 'leaveChange');
+    expect([ch['id'], ch['from'], ch['to'], ch.containsKey('files')], [9, '2026-10-12', '2026-10-13', false], reason: 'shorter: no reason, no paper');
+    expect(find.byKey(const Key('att-onleave')), findsNothing, reason: 'read again: today is no leave day');
+    expect(find.text('Your leave is changed – mark IN now.'), findsOneWidget);
+    srv.hrPaper = false;
     await t.pageBack();
     await net(t);
     // ---- a person others report to: their requests wait for him first – passed on to the HR office, or refused with the reason

@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.147.0 (19-11-2026, HR's leave of the same day – rcl-hr #81; asked with the Leave screen: "user la aplela takleli leve delet pn
+krta yawi … leave apply krtanaach attachment aswi … status disel ki leave approval kuthh prynt geley ani kona kadhun pending aahe … 1 to 10
+… 5 tarkela aloy kamawar return … sign in krayla gelo tr app error deil ani suggestions deil … swatche leve che days kami krnecha option …
+wadhwayche astil tr approval lagel … user ni keleli changes pn diistel"):** with a server that asks it (myLeave `paper: true`):
+**the paper in the form** (camera / photo / PDF – not sent without it: `myLeavePaperUrl`, then `leaveAsk` with `files`); **a touch on a
+request opens it** (`LeaveDetailScreen`): where it stands and WHO it waits for (the reporting person by name, Site HR Admin, HO HR, the HR
+office), its **history** (asked, verified, approved, refused, made shorter / longer, changed or deleted by the HR office), **Delete** while
+it waits, **Change days** (`LeaveChangeScreen`: shorter – saved at once; longer – the extra days with their reason and paper wait for
+approval; "Back at work today" fills the days in one touch). **On a day of his leave the attendance page says so** – no IN, a card with
+"Change leave days" → saved → read again → IN is open (one press from Home goes on to mark). The HR home's note of a waiting leave says
+who it waits for. A server of before: the screens are as they were (a waiting request opened can be deleted).
+
 **Version 3.146.0 (19-11-2026, asked: "app install hotana mobile madhe khup time ghet aahe donload hote lage install lage hot nahi fix k" –
 where: Android's own "Installing…"; his answer: the app smaller, 79 → ~50 MB):** Android's "Installing…" copies, checks and (Play Protect)
 scans every byte of the app file. The camera's three readers – text reading (number plate, meter), face finding (attendance) and the QR
