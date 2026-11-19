@@ -10812,10 +10812,15 @@ void main() {
     expect(find.byKey(const Key('lf-move-note')), findsOneWidget);
     await t.enterText(find.widgetWithText(TextField, 'Close'), '15300');
     await settle(t, 300);
+    await t.ensureVisible(find.byKey(const Key('lf-machine')));      // (typing scrolled the form: the machinery is at its top)
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('lf-machine')));
     await settle(t, 400);
+    expect(find.byKey(const Key('ask-plain')), findsNothing, reason: 'no question: another change is in the form');
     expect(find.textContaining('Change the machinery number by itself'), findsOneWidget);
     await t.enterText(find.widgetWithText(TextField, 'Close'), '15230');
+    await settle(t, 300);
+    await t.ensureVisible(find.byKey(const Key('lf-machine')));
     await settle(t, 300);
     await t.tap(find.byKey(const Key('lf-machine')));
     await settle(t, 800);
