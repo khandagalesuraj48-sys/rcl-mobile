@@ -8734,6 +8734,7 @@ void main() {
     expect(srv.hrSent.lastWhere((x) => x['action'] == 'leaveCancel')['id'], 1);
     expect(find.byKey(const Key('lvd-page')), findsNothing);
     expect(find.text('Deleted'), findsOneWidget);
+    await settle(t, 4000);      // (the message goes – before the next pictures)
     await t.pageBack();
     await net(t);
     // ---- (3.147.0, rcl-hr of 19-11-2026: "1 to 10 … 5 tarkela aloy … sign in krayla gelo tr app error deil ani suggestions deil")

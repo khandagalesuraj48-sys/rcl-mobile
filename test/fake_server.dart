@@ -450,7 +450,7 @@ class FakeServer {
         q['from'] = b['from'];
         q['to'] = b['to'];
         q['days'] = DateTime.parse('${b['to']}').difference(DateTime.parse('${b['from']}')).inDays + 1;
-        (q['history'] as List? ?? (q['history'] = [])).add({'kind': 'shortened', 'by': 'Sujit Mule', 'self': true, 'at': '2026-10-14T05:00:00.000Z', 'from': b['from'], 'to': b['to'], 'days': q['days'], 'was': was});
+        q['history'] = <dynamic>[...?(q['history'] as List?), <String, dynamic>{'kind': 'shortened', 'by': 'Sujit Mule', 'self': true, 'at': '2026-10-14T05:00:00.000Z', 'from': b['from'], 'to': b['to'], 'days': q['days'], 'was': was}];      // (a list of its own: the test's list literal has its own element type)
         if (hrLeaveToday != null && hrLeaveToday!['id'] == q['id'] && '${b['to']}'.compareTo('2026-10-14') < 0) hrLeaveToday = null;
         return _j({..._hrLeave(), 'changed': {'kind': 'shorter', 'id': q['id'], 'from': b['from'], 'to': b['to'], 'days': q['days']}});
       case 'leaveCancel':
