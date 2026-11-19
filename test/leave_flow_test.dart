@@ -65,7 +65,7 @@ void main() {
     await t.ensureVisible(find.byKey(const Key('leave-send')));
     await t.tap(find.byKey(const Key('leave-send')));
     await settle(t, 600);
-    expect(find.textContaining('Attach a paper'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('leave-err')), matching: find.textContaining('Attach a paper')), findsOneWidget);
     expect(sent.where((b) => b['action'] == 'leaveAsk'), isEmpty, reason: 'nothing is sent without the paper');
     await t.ensureVisible(find.byKey(const Key('lp-add')));
     await t.tap(find.byKey(const Key('lp-add')));
@@ -144,7 +144,7 @@ void main() {
     await t.ensureVisible(find.byKey(const Key('lc-save')));
     await t.tap(find.byKey(const Key('lc-save')));
     await settle(t, 600);
-    expect(find.textContaining('Attach a paper'), findsOneWidget, reason: 'the extra days need their paper');
+    expect(find.descendant(of: find.byKey(const Key('lc-err')), matching: find.textContaining('Attach a paper')), findsOneWidget, reason: 'the extra days need their paper');
     await t.ensureVisible(find.byKey(const Key('lp-add')));
     await t.tap(find.byKey(const Key('lp-add')));
     await settle(t, 600);
