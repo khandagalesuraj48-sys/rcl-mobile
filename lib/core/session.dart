@@ -429,6 +429,10 @@ class Session extends ChangeNotifier {
   /// May add / change (Edit) – as canEdit on the web.
   bool canEdit(String module) => admin || perms[module] == 'Edit';
 
+  /// (3.143.0, Mechanical update-268) the Smart Log Book's own access (Portal → Users & Access → Pages: "Smart Log Book" beside "Log
+  /// Book"); a Mechanical before update-268 sends none – then Log Book's, as 3.142.0. Edit: the phone's Smart Log Book.
+  bool get canSmartLb => admin || (perms.containsKey('Smart Log Book') ? perms['Smart Log Book'] == 'Edit' : perms['Log Book'] == 'Edit');
+
   /// He has this module of the Portal on the site open (the Store …).
   bool hasModule(String key) => site?.module(key) != null;
 

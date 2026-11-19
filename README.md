@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.143.0 (18-11-2026, asked: "jyala jasa access asel tasa to edit kru shakel … portal madhun aahet tyana pn smart log book deta
+yawa"; his answer: the server and one app update – Mechanical update-268):** the Smart Log Book follows its own access – "Smart Log Book"
+beside "Log Book" in the Portal → Users & Access → Pages (`Session.canSmartLb`; a Mechanical before update-268 sends none – then Log
+Book's, as 3.142.0). Log Book + Smart Log Book: both tiles; Smart Log Book "No access": Logbook only (the Smart Log Book is not asked);
+Log Book "No access" + Smart Log Book Edit: the Smart Log Book only (its closing's Log Book entry of his own vehicle – the server
+decides). A change of access in the Portal needs no app update.
+
 **Version 3.142.0 (18-11-2026, asked: "prt old log book entry app madhe hawi aahe … app madhe 2 log book entry type astil – jo new aahe
 to ani old, jyala jo asign krel tyala app madhun te karta yeil"):** the app has TWO Log Book entries again, each for whom it is given
 (Home's tiles, ≡, Entries – `smartLbFor` / `oldLbFor` in `screens/smart_logbook.dart`): **Logbook** – the Log Book entry as before 3.132.1

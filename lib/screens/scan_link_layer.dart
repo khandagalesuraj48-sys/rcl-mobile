@@ -120,7 +120,7 @@ class _ScanLinkLayerState extends State<ScanLinkLayer> {
         // Smart Log Book (Accept / Refuse there)
         if (tap.id == 'vtrack' && s.canSee('Live Tracking')) {
           await nav.push(MaterialPageRoute<void>(builder: (_) => const LiveTrackingScreen()));
-        } else if (tap.id != 'vtrack' && s.canEdit('Log Book')) {
+        } else if (tap.id != 'vtrack' && s.canSmartLb) {      // (3.143.0) the Smart Log Book's own access
           await nav.push(MaterialPageRoute<void>(builder: (_) => const SmartLogBookScreen()));
         }
       case 'ring':

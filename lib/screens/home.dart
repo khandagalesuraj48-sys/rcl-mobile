@@ -231,7 +231,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       // (3.132.0, Mechanical update-263) the Smart Log Book: what he has now – a person with Log Book Edit (3.132.1: the Admin too – his
       // Log Book button opens it; his Home shows "My vehicle" only while a vehicle is with him or handed to him)
       Map<String, dynamic>? me;
-      final slbAsk = s.canEdit('Log Book');
+      final slbAsk = s.canSmartLb;      // (3.143.0) the Smart Log Book's own access
       if (slbAsk) {
         jobs.add(s.api.call('vlMe').then((r) {
           if (r is Map && r['on'] == true) me = r.cast<String, dynamic>();

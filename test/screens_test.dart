@@ -10266,6 +10266,51 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('(3.143.0, Mechanical update-268 – asked 18-11-2026 "jyala jasa access asel tasa") the Smart Log Book\'s own access: "Smart Log Book – Edit" with "Log Book – No access" (a person given it in the Portal): the Smart Log Book only, he takes a vehicle; no Logbook tile', (t) async {
+    phone(t);
+    final srv = await slbStart(t, dieselToo: false);
+    srv.perms['Log Book'] = 'None';
+    srv.perms['Smart Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    expect([s.canSmartLb, s.canSee('Log Book')], [true, false]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(slbSiteOn, true);
+    expect(find.text('Logbook'), findsNothing, reason: 'the Log Book entry is not given to him');
+    await t.ensureVisible(find.text('Smart Log Book').last);
+    await settle(t, 400);
+    await t.tap(find.text('Smart Log Book').last);
+    await net(t);
+    expect(find.byKey(const Key('slb-hello')), findsOneWidget);
+    await t.drag(find.byKey(const Key('slb-list')), const Offset(0, -2000));
+    await settle(t, 600);
+    expect(find.byKey(const Key('slb-old')), findsNothing);
+    await t.drag(find.byKey(const Key('slb-list')), const Offset(0, 2000));
+    await settle(t, 600);
+    await slbTake(t, 15240);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('(3.143.0, Mechanical update-268) "Smart Log Book – No access" with "Log Book – Edit": the Log Book entry only – no Smart Log Book tile, Entries the Log Book only; the Smart Log Book is not asked', (t) async {
+    phone(t);
+    final srv = await slbStart(t);
+    srv.perms['Smart Log Book'] = 'None';
+    final s = await ready(t, srv);
+    expect([s.canSmartLb, s.canEdit('Log Book')], [false, true]);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(slbSiteOn, false, reason: 'vlMe is not asked for him');
+    expect(find.text('Smart Log Book'), findsNothing);
+    await t.tap(find.text('Logbook').last);
+    await net(t);
+    expect(find.byType(LogBookScreen), findsOneWidget);
+    Navigator.of(t.element(find.byType(LogBookScreen))).pop();
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    expect([find.byKey(const Key('entries-Log Book')).evaluate().length, find.byKey(const Key('entries-Smart Log Book')).evaluate().length], [1, 0]);
+  });
+
   testWidgets('(3.142.0) a driver of the Driver Master at a site where the Smart Log Book is not on: his Log Book as before', (t) async {
     phone(t);
     final srv = FakeServer()..mechDriver = true;

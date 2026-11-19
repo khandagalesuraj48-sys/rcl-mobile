@@ -54,12 +54,12 @@ bool slbSiteOn = false;
 /* (3.142.0, asked 18-11-2026: "prt old log book entry app madhe hawi aahe … app madhe 2 log book entry type astil – jo new aahe to ani
  * old, jyala jo asign krel tyala app madhun te karta yeil") the app's TWO Log Book entries, each for whom it is given (Home's tiles,
  * Entries, ≡):
- *  * the SMART LOG BOOK (new – one vehicle: take it, opening, closing, hand over): at a site where it is on, a person with Log Book –
- *    Edit (the Admin too) – as 3.132.1;
+ *  * the SMART LOG BOOK (new – one vehicle: take it, opening, closing, hand over): at a site where it is on, a person with Smart Log
+ *    Book – Edit (the Admin too) – (3.143.0, Mechanical update-268) its own access in the Portal's Pages, empty = Log Book's;
  *  * the LOG BOOK entry (old – many machinery at once, the list, pending): a person given Log Book in Users & Access (Edit or View),
  *    as before 3.132.1 – not a driver of the Driver Master at a site where the Smart Log Book is on (his access is "Log Book (Edit)
  *    only" for the Smart Log Book, 17-11-2026); where it is not on (or not known – no network), his Log Book as before. */
-bool smartLbFor(Session s) => slbSiteOn && s.canEdit('Log Book');
+bool smartLbFor(Session s) => slbSiteOn && s.canSmartLb;
 bool oldLbFor(Session s) => s.canSee('Log Book') && !(slbSiteOn && s.mechDriver);
 
 /// (3.142.0) the Smart Log Book (Home's "Smart Log Book", Entries)
