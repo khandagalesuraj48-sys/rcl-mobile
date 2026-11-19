@@ -110,14 +110,14 @@ void main() {
     await t.pageBack();
     await settle(t, 900);
     // a waiting request opened: who it waits for, its history, Change days, Delete
-    await t.tap(find.byKey(const Key('lv-open-7')));
+    await t.tap(find.byKey(const Key('lv-state-7')));
     await settle(t, 900);
     await shot('9z_lv_3_waiting');
     await t.pageBack();
     await settle(t, 900);
     // his approved leave of today: "Back at work today"
-    await t.ensureVisible(find.byKey(const Key('lv-open-9')));
-    await t.tap(find.byKey(const Key('lv-open-9')));
+    await t.ensureVisible(find.byKey(const Key('lv-state-9')));
+    await t.tap(find.byKey(const Key('lv-state-9')));
     await settle(t, 900);
     await shot('9z_lv_4_approved');
     await t.tap(find.byKey(const Key('lvd-change')));
@@ -130,8 +130,8 @@ void main() {
     await t.pageBack();
     await settle(t, 900);
     // an approved leave to come: longer – the extra days with their reason and paper
-    await t.ensureVisible(find.byKey(const Key('lv-open-8')));
-    await t.tap(find.byKey(const Key('lv-open-8')));
+    await t.ensureVisible(find.byKey(const Key('lv-state-8')));
+    await t.tap(find.byKey(const Key('lv-state-8')));
     await settle(t, 900);
     await t.tap(find.byKey(const Key('lvd-change')));
     await settle(t, 900);
