@@ -85,4 +85,10 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.appcompat:appcompat:1.7.1")      // (3.27.0) the AppCompat themes the fingerprint box needs
     implementation("com.google.android.play:integrity:1.4.0")      // (3.136.0, rcl-hr step 16) the phone's own proof for a punch
+    // (3.146.0) the camera's readers from Google Play services (android/build.gradle.kts) – named here for MlReady.kt, which asks
+    // Play services to fetch them when the app opens
+    implementation("com.google.android.gms:play-services-base:18.5.0")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
+    implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
+    implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
 }

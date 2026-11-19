@@ -24,6 +24,7 @@ import 'package:flutter/services.dart';
 import '../core/api.dart';
 import '../core/format.dart';
 import '../core/imports.dart' show findMachine;
+import '../core/ml_ready.dart';
 import '../core/ocr.dart';
 import '../core/ocr_read.dart';
 import '../core/photo.dart';
@@ -464,8 +465,8 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
     String? text;
     try {
       text = await readPlatePhoto();
-    } catch (_) {
-      if (mounted) toast(context, 'The camera could not be opened – pick the vehicle.', bad: true);
+    } catch (e) {
+      if (mounted) toast(context, mlWaiting(e) ? bi(mlWaitText.$1, mlWaitText.$2) : 'The camera could not be opened – pick the vehicle.', bad: true);
       return;
     }
     if (text == null || !mounted) return;

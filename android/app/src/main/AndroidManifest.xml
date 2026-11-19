@@ -64,6 +64,8 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- (3.146.0) the camera's readers come from Google Play services (not packed in the app): Play services fetches them -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="ocr,face,barcode" />
             <provider android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
             android:authorities="${applicationId}.ota_update_provider"
             android:exported="false" android:grantUriPermissions="true">

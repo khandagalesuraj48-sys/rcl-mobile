@@ -17,6 +17,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import '../core/attend.dart' show smallJpg;
 import '../core/cam_image.dart';
 import '../core/face.dart';
+import '../core/ml_ready.dart';
 import '../core/voice.dart' show sayAloud, stopSaying;
 import '../ui/t.dart';
 
@@ -166,8 +167,14 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
           if (took) _say();
         }
       }
-    } catch (_) {
-      if (++faults >= 40 && mounted) setState(() => err = _t('The camera does not give a picture – go back and try again.', 'Camera चित्र देत नाही – मागे जाऊन पुन्हा करा.'));
+    } catch (e) {
+      // (3.146.0) the face finder comes from Google Play services: not fetched yet on this phone – said as it is
+      if (mlWaiting(e)) {
+        if (mounted && err != _t(mlWaitText.$1, mlWaitText.$2)) setState(() => err = _t(mlWaitText.$1, mlWaitText.$2));
+        await Future<void>.delayed(const Duration(seconds: 2));
+      } else if (++faults >= 40 && mounted) {
+        setState(() => err = _t('The camera does not give a picture – go back and try again.', 'Camera चित्र देत नाही – मागे जाऊन पुन्हा करा.'));
+      }
     }
     _busy = false;
   }
@@ -226,8 +233,14 @@ class _FaceCamScreenState extends State<FaceCamScreen> {
           err = '';
         });
         if (took) _say();
-      } catch (_) {
-        if (++faults >= 6 && mounted) setState(() => err = _t('The camera does not give a picture – go back and try again.', 'Camera चित्र देत नाही – मागे जाऊन पुन्हा करा.'));
+      } catch (e) {
+        // (3.146.0) the face finder comes from Google Play services: not fetched yet on this phone – said as it is, asked again slower
+        if (mlWaiting(e)) {
+          if (mounted) setState(() => err = _t(mlWaitText.$1, mlWaitText.$2));
+          await Future<void>.delayed(const Duration(seconds: 2));
+        } else if (++faults >= 6 && mounted) {
+          setState(() => err = _t('The camera does not give a picture – go back and try again.', 'Camera चित्र देत नाही – मागे जाऊन पुन्हा करा.'));
+        }
       }
       await Future<void>.delayed(const Duration(milliseconds: 60)); // (3.140.0) faster: the next look at once (was 250 ms)
     }
