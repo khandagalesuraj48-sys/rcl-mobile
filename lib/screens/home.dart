@@ -179,6 +179,16 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     super.dispose();
   }
 
+  /* (3.145.0, asked 19-11-2026: "jewa jewa app open krel to pop up yeil updet cha … close ch option pn de") a newer version: its
+   * Update on Home, and "Update to …?" (Update / Close) once in every opening – never a screen that stops the work */
+  void _offer(Session s) {
+    checkUpdate(s.api, beta: s.tester).then((u) {
+      if (!mounted || u == null) return;
+      setState(() => update = u);
+      offerUpdate(context, u);
+    });
+  }
+
   // (3.42.0) a new version was told (Firebase – core/push.dart): its Update on Home now, not at the next opening
   void _newVersion() {
     if (!mounted) return;
@@ -195,9 +205,11 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       _load();
       final s = SessionScope.read(context);
       _ls = s..dataTick.addListener(_live);
-      checkUpdate(s.api, beta: s.tester).then((u) {
-        if (mounted && u != null) setState(() => update = u);
-      });
+      _offer(s);
+      // (3.145.0) back after a while: offered again
+      updateOfferAgain = () {
+        if (mounted) _offer(SessionScope.read(context));
+      };
       pushUpdateTick.addListener(_newVersion);
     });
   }

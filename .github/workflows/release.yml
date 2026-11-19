@@ -29,11 +29,14 @@ on:
         default: true
       # (3.122.0, asked 14-11-2026: "app update nasel tr use krta yenar nahi") a stable release is COMPULSORY: the app shows "Update
       # now" and nothing else until it is installed. Ticked: this one is left free (its line says "optional": true).
+      # (3.145.0, asked 19-11-2026: "app updet ale ki app kahi kam karu det nahi ata prt pahile sarke kruya") FREE by default: the app of
+      # 3.145.0 on never closes for an update (it offers it at every opening); an app of 3.122.0 – 3.144.0 still closes for a release
+      # left unticked here – untick only when everybody MUST move on.
       optional:
-        description: 'Leave this release free (not compulsory) – unticked: everybody must update to it'
+        description: 'Leave this release free (not compulsory) – unticked: an app of 3.122–3.144 must update to it'
         type: boolean
         required: false
-        default: false
+        default: true
 permissions:
   contents: write
 concurrency:

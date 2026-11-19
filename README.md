@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.145.0 (19-11-2026, asked: "app updet ale ki app kahi kam karu det nahi ata prt pahile sarke kruya … jewa jewa app open krel to
+pop up yeil updet cha jr updet mhanla tr background madhe updet and install doni chalu rahil … close ch option pn de"):** NO UPDATE CLOSES
+THE APP ANY MORE (the wall of 3.122.0 is not shown): a newer version is OFFERED at every opening (started, or back after 10 minutes away) –
+"Update to …?" with Update / Close (`offerUpdate`, Home and the attendance app). Update: downloaded in the background (the app is used
+meanwhile), "Install?" when it is ready; Close: he works on, asked again at the next opening. `release.yml`: a release is free by default
+(an app of 3.122–3.144 still closes for one left unticked).
+
 **Version 3.144.0 (19-11-2026, asked: "site hr admin nasel ok to user asel ani tyala pages wise access deta yawa"; his answers: the Portal's
 Pages, Edit / View / No access – the Portal and rcl-hr of 19-11-2026):** Super Admin → a user → HR on a site → "Pages": an HR User's pages
 of HR, Edit / View / No access each (`SaHrPagesScreen`, the Portal's `hrPagesSave`); an HR Admin has every page. HR itself checks them.
