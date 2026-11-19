@@ -23,6 +23,7 @@ import com.google.android.play.core.integrity.StandardIntegrityManager
 class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MlReady.ask(applicationContext)      // (3.146.0) the camera's readers from Google Play services – fetched once if missing
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "rcl/call").setMethodCallHandler { call, result ->
             when (call.method) {
                 "awake" -> {

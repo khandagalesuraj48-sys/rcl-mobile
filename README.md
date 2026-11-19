@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.146.0 (19-11-2026, asked: "app install hotana mobile madhe khup time ghet aahe donload hote lage install lage hot nahi fix k" –
+where: Android's own "Installing…"; his answer: the app smaller, 79 → ~50 MB):** Android's "Installing…" copies, checks and (Play Protect)
+scans every byte of the app file. The camera's three readers – text reading (number plate, meter), face finding (attendance) and the QR
+scanner – are no longer packed inside the app: the same ML Kit, from **Google Play services** (`android/build.gradle.kts` – the plugins'
+bundled ML Kit swapped for Play services', `gradle.properties` – mobile_scanner's own switch, the manifest's
+`com.google.mlkit.vision.DEPENDENCIES`). Play services fetches each once per phone: asked when the app opens (`MlReady.kt`); until it is
+there, the face screens and the number plate say "getting the camera reading ready … keep the internet on" (`lib/core/ml_ready.dart`)
+instead of "the camera does not work". A phone without Google Play services: those three readers do not work (everything else does).
+
 **Version 3.145.0 (19-11-2026, asked: "app updet ale ki app kahi kam karu det nahi ata prt pahile sarke kruya … jewa jewa app open krel to
 pop up yeil updet cha jr updet mhanla tr background madhe updet and install doni chalu rahil … close ch option pn de"):** NO UPDATE CLOSES
 THE APP ANY MORE (the wall of 3.122.0 is not shown): a newer version is OFFERED at every opening (started, or back after 10 minutes away) –

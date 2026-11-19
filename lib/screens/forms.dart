@@ -16,6 +16,7 @@ import '../core/draft.dart';
 import '../core/format.dart';
 import '../core/rdoc.dart' show fmt;
 import '../core/kinds.dart';
+import '../core/ml_ready.dart';
 import '../core/ocr.dart';
 import '../core/ocr_read.dart';
 import '../core/photo.dart';
@@ -543,7 +544,7 @@ class _EntryFormState extends State<EntryForm> {
     try {
       text = await readPlatePhoto();
     } catch (e) {
-      if (mounted) setState(() => err = bi('The number plate could not be read on this phone – pick the machinery.', 'नंबर प्लेट वाचता आली नाही – यंत्र निवडा.'));
+      if (mounted) setState(() => err = mlWaiting(e) ? bi(mlWaitText.$1, mlWaitText.$2) : bi('The number plate could not be read on this phone – pick the machinery.', 'नंबर प्लेट वाचता आली नाही – यंत्र निवडा.'));
     }
     if (!mounted) return;
     setState(() => plateBusy = false);
