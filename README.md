@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.148.0 (19-11-2026, Mechanical update-269 – asked: "diesel issue krtana … meter change kela asel new reading asel tr … ek option thew
+meter changed … log book entry … chukich vehicle war zaley tr ediat kel ki vehicle number change krta yet nhiye … 10 or 20 entry … ek ek
+kel tri ani bulk madhe kel tri … fkt log book transfer hotana diesel transfer nahi"):** **Diesel Issue – "Meter changed"** under the
+reading (one entry, the HO car fill, each row of Multiple entries): ticked, the reading box asks the new meter's reading, the photo's
+reading is not held against the old meter (`getMeterReading` `fresh`), the save sends `meterChanged` – the server keeps "Meter changed"
+in the Remark and does not hold the reading against the old meter; a fill opened for a change shows its tick and the Remark without it.
+**Log Book – an entry made on the wrong machinery goes to the right one** (`moveLogRows`): its **Change screen** – the machinery is
+tapped and another picked (only by itself: with other changes not saved it says so); its **details** – "Move to another machinery";
+**the list** – hold an entry to tick it, a tap ticks more, the bar at the bottom: Move → the machinery → the question (only the Log Book
+moves, the diesel stays) → moved; the server checks every one first – "Nothing was moved" with its reasons. A server of before: the
+move is refused as an unknown action, nothing changes.
+
 **Version 3.147.0 (19-11-2026, HR's leave of the same day – rcl-hr #81; asked with the Leave screen: "user la aplela takleli leve delet pn
 krta yawi … leave apply krtanaach attachment aswi … status disel ki leave approval kuthh prynt geley ani kona kadhun pending aahe … 1 to 10
 … 5 tarkela aloy kamawar return … sign in krayla gelo tr app error deil ani suggestions deil … swatche leve che days kami krnecha option …

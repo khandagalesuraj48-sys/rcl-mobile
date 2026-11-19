@@ -289,7 +289,7 @@ class Api {
    * person may send exactly that save to the Super Admin for approval, with a reason (sendChangeRequest). It is saved only when he
    * approves it (Mechanical → Approvals). [askApproval] is set by the app (a box asking for the reason; null = not sent); the
    * screen then gets [crSent] as its error – nothing was saved. The Super Admin himself is not refused (his ticket says so). */
-  static const crFns = {'saveLogRows', 'saveLogBook', 'saveLogDay', 'updateLogRow', 'deleteLogRow', 'saveLogBulk', 'importLogBook', 'saveTankerTrips', 'deleteTankerTrip',
+  static const crFns = {'saveLogRows', 'saveLogBook', 'saveLogDay', 'updateLogRow', 'deleteLogRow', 'moveLogRows', 'saveLogBulk', 'importLogBook', 'saveTankerTrips', 'deleteTankerTrip',
     'updateTankerTrip', 'saveTankerRange', 'importTankerTrips', 'saveDieselIssue', 'saveDieselBulk', 'importDiesel', 'updateDieselIssue', 'deleteDieselIssue'};
   static const crSent = 'Sent to the Super Admin for approval – it is saved only when he approves (nothing is saved until then).';
   static bool crLocked(String m) => m.contains('is in the submitted RA Bill') || crApproved(m);

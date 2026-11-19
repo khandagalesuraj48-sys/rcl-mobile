@@ -198,6 +198,9 @@ class Machine {
 
 /// "No reading": the meter is not working – a fill without a reading (as on the web: METER_OFF).
 const kNoReading = 'No reading';
+/// (3.148.0, Mechanical update-269) a fill on a new meter: its Remark begins "Meter changed" (then " – " and what was typed) – as the server
+/// (Code.gs meterChOf_); the app shows it as the tick and the Remark without it
+final kMeterCh = RegExp(r'^Meter changed(?:\s*[–-]\s*|\s*$)', caseSensitive: false);
 bool hasKm(String w) => w == 'KM' || w == 'KM + Hrs';
 bool hasHr(String w) => w == 'Hrs' || w == 'KM + Hrs';
 
