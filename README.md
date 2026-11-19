@@ -15,6 +15,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.144.0 (19-11-2026, asked: "site hr admin nasel ok to user asel ani tyala pages wise access deta yawa"; his answers: the Portal's
+Pages, Edit / View / No access – the Portal and rcl-hr of 19-11-2026):** Super Admin → a user → HR on a site → "Pages": an HR User's pages
+of HR, Edit / View / No access each (`SaHrPagesScreen`, the Portal's `hrPagesSave`); an HR Admin has every page. HR itself checks them.
+
 **Version 3.143.0 (18-11-2026, asked: "jyala jasa access asel tasa to edit kru shakel … portal madhun aahet tyana pn smart log book deta
 yawa"; his answer: the server and one app update – Mechanical update-268):** the Smart Log Book follows its own access – "Smart Log Book"
 beside "Log Book" in the Portal → Users & Access → Pages (`Session.canSmartLb`; a Mechanical before update-268 sends none – then Log

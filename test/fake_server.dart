@@ -1225,6 +1225,13 @@ class FakeServer {
   final saHo = <String, Map<String, bool>>{}; // (3.71.0) the sites' workflow Head Office choices
   bool portalStep6 = true;
   bool siteKey = false, siteTables = false; // the New site checklist: the key in Vercel, Mechanical's tables run
+  /// (3.144.0, the Portal of 19-11-2026) HR's pages for an HR User
+  static const kHrPages = [
+    {'key': 'dashboard', 'label': 'Dashboard', 'opts': ['View', 'None']},
+    {'key': 'employees', 'label': 'Employees', 'opts': ['Edit', 'View', 'None']},
+    {'key': 'leave', 'label': 'Leave', 'opts': ['Edit', 'View', 'None']},
+    {'key': 'reports', 'label': 'Reports', 'opts': ['View', 'None']},
+  ];
   static const kStorePages = [
     {'key': 'dashboard', 'label': 'Dashboard', 'opts': ['View', 'None']},
     {'key': 'items', 'label': 'Item Master', 'opts': ['Edit', 'View', 'None']},
@@ -1254,7 +1261,7 @@ class FakeServer {
       case 'overview':
         {
           // (3.71.0) each site with its workflow's Head Office choices (the Portal's step 6)
-          return _j({'users': saUsers, 'sites': [for (final y in saSites) {...y, 'ho': saHo[y['code']] ?? const {'req': true, 'grn': false, 'iss': false}, 'step6': portalStep6}], 'modules': saModules, 'companies': saCompanies, 'access': saAccess, 'storePages': kStorePages});
+          return _j({'users': saUsers, 'sites': [for (final y in saSites) {...y, 'ho': saHo[y['code']] ?? const {'req': true, 'grn': false, 'iss': false}, 'step6': portalStep6}], 'modules': saModules, 'companies': saCompanies, 'access': saAccess, 'storePages': kStorePages, 'hrPages': kHrPages});
         }
       case 'userSave':
         {
@@ -1314,6 +1321,14 @@ class FakeServer {
           saHo[site] = ho;
           log('Workflow', '$site · store', {'headOffice': ho.entries.map((e) => '${e.key}: ${e.value ? 'Yes' : 'No'}').join(', ')});
           return _j({'ok': true, 'ho': ho});
+        }
+      case 'hrPagesSave':
+        {
+          final y = acc(email, site, 'hr');
+          if (y == null) return _no('First give him HR on this site (User), then his pages.', 400, 'noaccess');
+          if (y['role'] == 'admin') return _no('An HR Admin has every page of HR. To give single pages, make him HR User first.', 400, 'admin');
+          y['pages'] = ((x['pages'] as Map?) ?? const {}).cast<String, dynamic>();
+          return _j({'ok': true, 'pages': y['pages']});
         }
       case 'storePagesSave':
         {
