@@ -6230,6 +6230,37 @@ void main() {
 
   List<Map<String, dynamic>> saves(FakeServer srv) => srv.portalAdminSent.where((x) => x['action'] != 'overview').toList();
 
+  testWidgets('(3.144.0, the Portal of 19-11-2026 – asked: "site hr admin nasel ok to user asel ani tyala pages wise access deta yawa") Super Admin – an HR User\'s pages of HR: Edit / View / No access each, saved in the Portal; an HR Admin: every page, nothing to give', (t) async {
+    phone(t);
+    final srv = FakeServer()..superAdmin = true;
+    srv.prefs['brief'] = false;
+    srv.saModules[2] = {'key': 'hr', 'name': 'HR', 'url': 'https://erp.test/hr', 'status': 'live', 'sort': 3};
+    srv.saAccess.add({'email': 'amol@rcl.test', 'site': 'S1', 'module': 'hr', 'role': 'user', 'pages': {'leave': 'None'}});
+    srv.saAccess.add({'email': 'ravi@rcl.test', 'site': 'S1', 'module': 'hr', 'role': 'admin', 'pages': null});
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    await tapK(t, 'me-super');
+    await net(t);
+    await tapK(t, 'sa-u-amol@rcl.test');
+    await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('sa-pages-hr')), 250, scrollable: find.byType(Scrollable).first);
+    await tapK(t, 'sa-pages-hr');
+    await net(t);
+    expect(find.textContaining('Pages in HR'), findsOneWidget);
+    expect([for (final k in ['dashboard', 'employees', 'leave', 'reports']) find.byKey(Key('sa-hpg-$k')).evaluate().length], [1, 1, 1, 1]);
+    expect(find.descendant(of: find.byKey(const Key('sa-hpg-reports')), matching: find.text('Edit')), findsNothing, reason: 'a page that only shows: View / No access');
+    await tapIn(t, 'sa-hpg-employees', 'View');
+    await t.pump();
+    await tapK(t, 'sa-hpg-save');
+    await net(t);
+    expect(saves(srv).last, {'action': 'hrPagesSave', 'site': 'S1', 'email': 'amol@rcl.test', 'pages': {'dashboard': 'View', 'employees': 'View', 'leave': 'None', 'reports': 'View'}});
+    expect(find.text('HR pages saved.'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('(3.17.0) Super Admin – Users & Access: each user\'s modules on a site; a role and a one-time password; a user added (a refusal in the Portal\'s words); his pages in Mechanical and the Store', (t) async {
     phone(t);
     final srv = await openConsole(t);

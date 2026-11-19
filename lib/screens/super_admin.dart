@@ -75,9 +75,10 @@ class SaData {
         modules = _l(d['modules']),
         companies = _l(d['companies']),
         access = _l(d['access']),
-        storePages = _l(d['storePages']);
+        storePages = _l(d['storePages']),
+        hrPages = _l(d['hrPages']);      // (3.144.0) HR's pages for an HR User (a Portal before 19-11-2026: none)
   static List<Map<String, dynamic>> _l(Object? v) => [for (final x in (v is List ? v : const [])) if (x is Map) x.cast<String, dynamic>()];
-  final List<Map<String, dynamic>> users, sites, modules, companies, access, storePages;
+  final List<Map<String, dynamic>> users, sites, modules, companies, access, storePages, hrPages;
 
   String roleOf(String email, String site, String module) =>
       '${access.firstWhere((a) => a['email'] == email && a['site'] == site && a['module'] == module, orElse: () => const {})['role'] ?? ''}';
@@ -643,13 +644,17 @@ class _SaUserScreenState extends State<SaUserScreen> {
             onSelectionChanged: site.isEmpty ? null : (v) => setState(() => roles['${m['key']}'] = v.first),
           ),
           // his pages – once he has the module on this site (as the Portal page: after the access is saved)
-          if (!isNew && (m['key'] == 'mechanical' || m['key'] == 'store') && d.roleOf(mail, site, '${m['key']}').isNotEmpty)
+          if (!isNew && (m['key'] == 'mechanical' || m['key'] == 'store' || (m['key'] == 'hr' && d.hrPages.isNotEmpty)) && d.roleOf(mail, site, '${m['key']}').isNotEmpty)
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 key: Key('sa-pages-${m['key']}'),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => m['key'] == 'mechanical' ? SaMechPagesScreen(console: widget.console, site: site, email: mail) : SaStorePagesScreen(console: widget.console, site: site, email: mail))),
+                    builder: (_) => m['key'] == 'mechanical'
+                        ? SaMechPagesScreen(console: widget.console, site: site, email: mail)
+                        : m['key'] == 'hr'
+                            ? SaHrPagesScreen(console: widget.console, site: site, email: mail)
+                            : SaStorePagesScreen(console: widget.console, site: site, email: mail))),
                 icon: const Icon(Icons.tune_rounded),
                 label: const Text('Pages'),
               ),
@@ -845,6 +850,80 @@ class _SaStorePagesScreenState extends State<SaStorePagesScreen> {
           for (final p in d.storePages) _page(p),
           const SizedBox(height: 12),
           const Text('He gets these at his next opening of the Store.', style: TextStyle(fontSize: 13, color: C.muted)),
+        ],
+      ]),
+    );
+  }
+}
+
+/* (3.144.0, the Portal of 19-11-2026 – asked: "site hr admin nasel ok to user asel ani tyala pages wise access deta yawa") AN HR USER'S
+ * PAGES OF HR on one site: Edit / View / No access each, as the Portal's web page (hrPagesSave). An HR Admin has every page. */
+class SaHrPagesScreen extends StatefulWidget {
+  const SaHrPagesScreen({super.key, required this.console, required this.site, required this.email});
+  final SuperAdminState console;
+  final String site, email;
+  @override
+  State<SaHrPagesScreen> createState() => _SaHrPagesScreenState();
+}
+
+class _SaHrPagesScreenState extends State<SaHrPagesScreen> {
+  final pages = <String, String>{};
+  bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final d = widget.console.d!, a = d.accessOf(widget.email, widget.site, 'hr'), cur = a?['pages'] is Map ? a!['pages'] as Map : const {};
+    for (final p in d.hrPages) {
+      final opts = [for (final o in (p['opts'] as List? ?? const [])) '$o'];
+      final v = '${cur[p['key']] ?? ''}';
+      pages['${p['key']}'] = opts.contains(v) ? v : (opts.isEmpty ? 'Edit' : opts.first);
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => busy = true);
+    final ok = await widget.console.run(() async {
+      await widget.console.api.admin({'action': 'hrPagesSave', 'site': widget.site, 'email': widget.email, 'pages': pages});
+    });
+    if (!mounted) return;
+    setState(() => busy = false);
+    if (!ok) return;
+    widget.console.say('HR pages saved.');
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.console.d!, u = d.user(widget.email) ?? {'name': widget.email}, admin = d.roleOf(widget.email, widget.site, 'hr') == 'admin';
+    return Scaffold(
+      appBar: AppBar(actions: withAsk(), title: mt.Text('${tr('Pages in HR')} – ${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+      bottomNavigationBar: admin
+          ? null
+          : SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 8), child: FilledButton(key: const Key('sa-hpg-save'), onPressed: busy ? null : _save, child: Text(busy ? 'Saving…' : 'Save pages')))),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 30), children: [
+        Text('${d.siteName(widget.site)} (${widget.site}) · Edit = see and change · View = see only · No access = not in his menu, nothing of it', style: const TextStyle(fontSize: 13, color: C.muted)),
+        const SizedBox(height: 10),
+        if (admin)
+          const Text('HR Admin has every page of HR. To give single pages, make him User above and save, then open Pages again.', style: TextStyle(fontSize: 14.5, height: 1.4))
+        else ...[
+          for (final p in d.hrPages)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                mt.Text(tr('${p['label']}'), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                SegmentedButton<String>(
+                  key: Key('sa-hpg-${p['key']}'),
+                  showSelectedIcon: false,
+                  segments: [for (final o in (p['opts'] as List? ?? const [])) ButtonSegment(value: '$o', label: Text(kPageWord['$o'] ?? '$o'))],
+                  selected: {pages['${p['key']}'] ?? ''},
+                  onSelectionChanged: (v) => setState(() => pages['${p['key']}'] = v.first),
+                ),
+              ]),
+            ),
+          const SizedBox(height: 12),
+          const Text('Never set = every page, as before. He gets them within 15 minutes (or when he opens HR again). His own attendance, leave and papers stay his.', style: TextStyle(fontSize: 13, color: C.muted)),
         ],
       ]),
     );
