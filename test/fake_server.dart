@@ -277,11 +277,17 @@ class FakeServer {
   final hrDocs = <Map<String, dynamic>>[];
   final hrDocFiles = <String, String>{};
   final hrLeaves = <Map<String, dynamic>>[];
+
+  /// (3.147.0, rcl-hr of 19-11-2026) today is a day of his leave: myAttend says it, IN is refused with the code "onleave"
+  Map<String, dynamic>? hrLeaveToday;
+
+  /// (3.147.0) the server asks a paper with every leave (myLeave "paper": true)
+  bool hrPaper = false;
   Map<String, dynamic> _hrLeave() {
     final mine = hrLeaves.where((q) => q['mine'] == true).toList();
     final num wait = mine.where((q) => q['status'] == 'pending').fold<num>(0, (a, q) => a + (q['days'] as num));
     return {'ok': true, 'today': '2026-10-14', 'employee': {'code': 'E00012', 'name': 'Sujit Mule'}, 'policy': {'valid_from': '2026-10-01', 'per_month': 4, 'carry': true, 'auto_absent': true, 'levels': 2},
-      'balance': hrLeaveBal, 'booked': 0, 'pending': wait, 'available': hrLeaveBal - wait, 'month': {'credit': 4, 'added': 0, 'used': 1}, 'requests': mine};
+      'balance': hrLeaveBal, 'booked': 0, 'pending': wait, 'available': hrLeaveBal - wait, 'month': {'credit': 4, 'added': 0, 'used': 1}, 'requests': mine, if (hrPaper) 'paper': true};
   }
   List<Map<String, dynamic>> hrPlaces = [
     {'id': 'pl1', 'name': 'Site office', 'kind': 'site_office', 'shape': 'circle', 'lat': 18.52, 'lng': 73.8567, 'radius_m': 150, 'points': []}
@@ -307,7 +313,7 @@ class FakeServer {
   http.Response _hrAct(Map<String, dynamic> b) {
     switch ('${b['action']}') {
       case 'myAttend':
-        return _j({'ok': true, ..._hrDay('${b['device_id']}')});
+        return _j({'ok': true, ..._hrDay('${b['device_id']}'), 'leave': hrLeaveToday});
       case 'selfieUrl':
         return _j({'ok': true, 'there': hrPhotos.containsKey('${b['client_id']}'), 'url': hrPhotos.containsKey('${b['client_id']}') ? '' : 'https://photos.test/hr-selfies/${b['client_id']}.jpg', 'type': 'image/jpeg', 'max': 1048576});
       case 'punch':
@@ -315,6 +321,7 @@ class FakeServer {
         final had = hrPunches.where((p) => p['client_id'] == cid).toList();
         if (had.isNotEmpty) return _j({'ok': true, 'again': true, 'punch': had.first, 'punches': hrPunches, 'next': _hrDay(dev)['next']});
         if (hrFace && !hrFaceSeen.contains(cid)) return _j({'error': 'Not marked: your face was not checked for this punch. Update the app (the face check is needed on your site) and mark again.', 'code': 'face'}, 403);
+        if (hrLeaveToday != null && b['kind'] == 'in') return _j({'error': 'You are on leave today. To work today: open Leave, change the days of this leave, then mark IN.', 'code': 'onleave', 'leave': hrLeaveToday}, 409);
         if (b['dev_options'] == true) return _j({'error': 'Developer Options are ON in this phone: switch them off (Settings → Developer options) to mark attendance.', 'code': 'devoptions'}, 403);
         if (hrBound.isNotEmpty && hrBound != dev) return _j({'error': 'Your attendance is tied to another phone. Only the HR Admin can release it – then this phone will work.', 'code': 'device'}, 403);
         if (!hrPhotos.containsKey(cid)) return _j({'error': 'The photo of this punch did not arrive – take it again.', 'code': 'selfie'}, 400);
@@ -431,6 +438,17 @@ class FakeServer {
         final num days = b['part'] == 'full' ? to.difference(from).inDays + 1 : 0.5;
         hrLeaves.insert(0, {'id': hrLeaves.length + 1, 'mine': true, 'code': 'E00012', 'name': 'Sujit Mule', 'from': b['from'], 'to': b['to'], 'part': b['part'], 'days': days, 'reason': b['reason'], 'status': 'pending', 'level': 2, 'steps': [], 'note': ''});
         return _j(_hrLeave());
+      // (3.147.0) shorter at once – today is no leave day any more when it ends before today
+      case 'leaveChange':
+        final q = hrLeaves.firstWhere((x) => x['id'] == b['id'] && x['mine'] == true, orElse: () => <String, dynamic>{});
+        if (q.isEmpty) return _j({'error': 'This leave request was not found.', 'code': 'notfound'}, 404);
+        final was = {'from': q['from'], 'to': q['to'], 'days': q['days']};
+        q['from'] = b['from'];
+        q['to'] = b['to'];
+        q['days'] = DateTime.parse('${b['to']}').difference(DateTime.parse('${b['from']}')).inDays + 1;
+        (q['history'] as List? ?? (q['history'] = [])).add({'kind': 'shortened', 'by': 'Sujit Mule', 'self': true, 'at': '2026-10-14T05:00:00.000Z', 'from': b['from'], 'to': b['to'], 'days': q['days'], 'was': was});
+        if (hrLeaveToday != null && hrLeaveToday!['id'] == q['id'] && '${b['to']}'.compareTo('2026-10-14') < 0) hrLeaveToday = null;
+        return _j({..._hrLeave(), 'changed': {'kind': 'shorter', 'id': q['id'], 'from': b['from'], 'to': b['to'], 'days': q['days']}});
       case 'leaveCancel':
         final q = hrLeaves.firstWhere((x) => x['id'] == b['id'] && x['mine'] == true && x['status'] == 'pending', orElse: () => <String, dynamic>{});
         if (q.isEmpty) return _j({'error': 'Only a request that still waits can be taken back.', 'code': 'decided'}, 409);
