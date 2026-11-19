@@ -734,6 +734,7 @@ class _DRow {
   String typed = ''; // (3.22.0) a corrected entry's machinery that is not in the Master (as it was sent) – until one is picked
   String date, shift, source;
   bool meterOff = false;
+  bool mch = false; // (3.148.0, Mechanical update-269) "Meter changed": the reading of this row is the new meter's
   Map? hist; // (3.14.0) its machinery's diesel history (the web's "last fill" line)
   int histSeq = 0;
   final qty = TextEditingController(), km = TextEditingController(), hr = TextEditingController(), driver = TextEditingController(), remark = TextEditingController();
@@ -814,7 +815,8 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
       r.km.text = v(x, 'kmReading');
       r.hr.text = v(x, 'hrReading');
       r.driver.text = v(x, 'driver');
-      r.remark.text = v(x, 'remark');
+      r.mch = x['meterChanged'] == true || (x['meterChanged'] == null && kMeterCh.hasMatch(v(x, 'remark')));      // (3.148.0)
+      r.remark.text = v(x, 'remark').replaceFirst(kMeterCh, '');
       return r;
     }
     final f0 = fx.first;
@@ -925,6 +927,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
           'driver': r.driver.text.trim(),
           'remark': r.remark.text.trim(),
           'mode': r.wayFor(r.m),
+          'meterChanged': r.mch && (hasKm(r.wayFor(r.m)) || hasHr(r.wayFor(r.m))),      // (3.148.0)
           if (r.tcDue != null) 'tc': {'physical': r.tcPh.text.trim(), 'reason': r.tcRs.text.trim()},      // (3.76.0, update-203)
         },
     ];
@@ -1131,6 +1134,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
               'hrReading': hasHr(x.$2.wayFor(m)) ? n(x.$2.hr) : '',
               'driver': x.$2.driver.text.trim(),
               'remark': x.$2.remark.text.trim(),
+              'meterChanged': x.$2.mch && (hasKm(x.$2.wayFor(m)) || hasHr(x.$2.wayFor(m))),      // (3.148.0)
             }),
         ];
       final res = fx != null ? await s.editFlow(fx.id, note, [out]) : (await s.api.call('importDiesel', [out], true) as Map).cast<String, dynamic>();
@@ -1493,6 +1497,7 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
                 onSelected: (on) => setState(() {
                   r.meterOff = on;
                   if (on) {
+                    r.mch = false;
                     r.km.clear();
                     r.hr.clear();
                   }
@@ -1505,6 +1510,18 @@ class _IssueManyScreenState extends State<IssueManyScreen> {
               if (hasKm(way) && hasHr(way)) const SizedBox(width: 8),
               if (hasHr(way)) Expanded(child: TextBox(key: Key('$key-hr'), label: 'Hrs Reading', controller: r.hr, kb: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
             ]),
+            // (3.148.0, Mechanical update-269) the machinery got a new meter: its reading is not held against the old meter
+            if (hasKm(way) || hasHr(way))
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilterChip(
+                  key: Key('$key-mch'),
+                  label: Text(tr('Meter changed')),
+                  selected: r.mch,
+                  selectedColor: C.amberSoft,
+                  onSelected: (on) => setState(() => r.mch = on),
+                ),
+              ),
           ],
         ],
         const SizedBox(height: 8),

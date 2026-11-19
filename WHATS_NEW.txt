@@ -1,9 +1,6 @@
-Head Office attendance: a person who works on a site's ERP and is given only "My HR" at Head Office now sees Head Office in his sites – it opens only his attendance, nothing of Mechanical.
-Head Office हजेरी: जो site च्या ERP वर काम करतो आणि ज्याला Head Office ला फक्त "My HR" दिले आहे, त्याला आता Head Office त्याच्या sites मध्ये दिसते – तिथे फक्त त्याची हजेरी उघडते, Mechanical नाही.
-Head Office हाज़िरी: जो site के ERP पर काम करता है और जिसे Head Office में सिर्फ़ "My HR" दिया है, उसे अब Head Office उसकी sites में दिखता है – वहाँ सिर्फ़ उसकी हाज़िरी खुलती है, Mechanical नहीं।
-Your attendance from any of your sites: Head Office's attendance, leave and salary slips open from the site you are working in – no change of site.
-तुमची हजेरी कोणत्याही site वरून: Head Office ची हजेरी, रजा आणि पगार पावती तुम्ही काम करत असलेल्या site वरूनच उघडते – site बदलायची गरज नाही.
-आपकी हाज़िरी किसी भी site से: Head Office की हाज़िरी, छुट्टी और वेतन पर्ची आप जिस site पर काम कर रहे हैं वहीं से खुलती है – site बदलने की ज़रूरत नहीं।
-Face registration made easy: turn your head only a little – the app says "a little more", "a little less" or "the other side", on the screen and aloud, and takes the next picture at once.
-चेहरा नोंदणी सोपी: डोके फक्त थोडे वळवा – app स्क्रीनवर आणि बोलून सांगते "थोडे अजून", "थोडे कमी" किंवा "दुसऱ्या बाजूला", आणि पुढचा फोटो लगेच घेते.
-चेहरा पंजीकरण आसान: सिर सिर्फ़ थोड़ा घुमाइए – app स्क्रीन पर और बोलकर बताता है "थोड़ा और", "थोड़ा कम" या "दूसरी तरफ़", और अगली फ़ोटो तुरंत लेता है।
+Diesel Issue – "Meter changed": when a vehicle got a new meter, tick "Meter changed" under the reading and type the new meter's reading – it is no longer refused as lower than the old meter (one entry and Multiple entries).
+डिझेल देणे – "मीटर बदलला": गाडीला नवीन meter बसवला असेल तर reading खाली "मीटर बदलला" tick करा आणि नवीन meter चे reading टाका – जुन्या meter पेक्षा कमी म्हणून आता अडवले जात नाही (एक entry आणि Multiple entries).
+डीज़ल देना – "मीटर बदला": गाड़ी में नया meter लगा हो तो reading के नीचे "मीटर बदला" tick करें और नए meter की reading डालें – पुराने meter से कम होने पर अब रोका नहीं जाता (एक entry और Multiple entries)।
+Log Book – an entry made on the wrong vehicle goes to the right one: in its Change screen tap the vehicle and pick the right one, or hold entries in the list to tick many and press Move. Only the Log Book moves – the diesel stays with the vehicle it was issued to.
+लॉग बुक – चुकीच्या गाडीवर केलेली नोंद बरोबर गाडीवर जाते: Change screen मध्ये गाडीवर दाबून बरोबर गाडी निवडा, किंवा list मध्ये नोंदी दाबून धरून अनेक निवडा आणि Move दाबा. फक्त Log Book जाते – diesel ज्या गाडीला दिले तिच्याकडेच राहते.
+लॉग बुक – ग़लत गाड़ी पर की गई entry सही गाड़ी पर जाती है: Change screen में गाड़ी पर दबाकर सही गाड़ी चुनें, या list में entries दबाकर रखें, कई चुनें और Move दबाएँ। सिर्फ़ Log Book जाती है – diesel जिस गाड़ी को दिया उसी के पास रहता है।

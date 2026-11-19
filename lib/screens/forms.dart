@@ -96,6 +96,9 @@ class _EntryFormState extends State<EntryForm> {
   Map? hist; // (3.14.0) the machinery's diesel history up to the date (dieselHistory)
   int histSeq = 0, driverGen = 0;
   bool driverAuto = false; // the Driver box holds the last fill's driver (put there by the app, not typed)
+  /// (3.148.0, Mechanical update-269 – asked 19-11-2026: "meter changed as ok user ni he click kel ki tyala new takayla milel reading")
+  /// "Meter changed": the reading of this fill is the new meter's – the server does not hold it against the old meter's last reading.
+  bool mch = false;
   final shots = <String, _Shot>{};
   bool busy = false, savedOne = false;
   String err = '';
@@ -357,6 +360,8 @@ class _EntryFormState extends State<EntryForm> {
         km.text = v('kmReading');
         hr.text = v('hrReading');
         driver.text = v('driver');
+        mch = e['meterChanged'] == true || kMeterCh.hasMatch(v('remark'));      // (3.148.0) "Meter changed" in its Remark (or a returned entry's tick): the tick, the Remark without it
+        remark.text = v('remark').replaceFirst(kMeterCh, '');
         if (s.cardSite) {      // (3.45.0) its ₹
           amount.text = v('amount');
           rate.text = v('rate');
@@ -705,6 +710,7 @@ class _EntryFormState extends State<EntryForm> {
   }
 
   LastReading? _last(Map? h, String key) {
+    if (mch) return null;      // (3.148.0) a new meter: the old meter's last reading is no help
     final v = h?[key];
     final n = v is Map ? asNum(v['value']) : null;
     return n == null ? null : LastReading(n.toDouble(), '${v['date'] ?? ''}');
@@ -744,7 +750,7 @@ class _EntryFormState extends State<EntryForm> {
     setState(() => ai[kind] = {'wait': true});
     Map<String, dynamic> r;
     try {
-      r = ((await s.api.call('getMeterReading', [{'kind': kind, 'data': await smallCopy(jpg), 'no': no}])) as Map).cast<String, dynamic>();
+      r = ((await s.api.call('getMeterReading', [{'kind': kind, 'data': await smallCopy(jpg), 'no': no, if (mch) 'fresh': true}])) as Map).cast<String, dynamic>();
     } catch (e) {
       r = {'error': errText(e)};
     }
@@ -1072,6 +1078,7 @@ class _EntryFormState extends State<EntryForm> {
         'issue' => {
             'date': date, 'shift': shift, 'no': machine?.id ?? '', 'qty': asNum(qty.text) ?? '', 'kmReading': hasKm(way) ? (asNum(km.text) ?? '') : '', 'hrReading': hasHr(way) ? (asNum(hr.text) ?? '') : '',
             'driver': driver.text.trim(), 'remark': remark.text.trim(), 'source': source, 'force': false, 'mode': way,
+            'meterChanged': mch && (hasKm(way) || hasHr(way)) && !(machine?.debit ?? false),      // (3.148.0)
             if (_photoList.isNotEmpty && ed == null) 'photos': _photoList,
             if (SessionScope.read(context).cardSite) ...{'amount': asNum(amount.text) ?? '', 'rate': asNum(rate.text) ?? ''},      // (3.45.0) its ₹
             if (tcDue != null && ed == null) 'tc': {'physical': asNum(tcPh.text) ?? '', 'reason': tcRs.text.trim()},      // (3.76.0, update-203)
@@ -1684,6 +1691,7 @@ class _EntryFormState extends State<EntryForm> {
 
   /// After a save (or "Start new"): the first step again, nothing picked, no photos (inside a setState)
   void _hoReset() {
+    mch = false;      // (3.148.0) every way the form is emptied
     step = 0;
     payMode = '';
     others.clear();
@@ -1883,7 +1891,7 @@ class _EntryFormState extends State<EntryForm> {
     setState(() => ai['dash'] = {'wait': true});
     Map<String, dynamic> r;
     try {
-      r = ((await s.api.call('getMeterReading', [{'kind': 'dash', 'data': await smallCopy(p.jpg), 'no': m.id}])) as Map).cast<String, dynamic>();
+      r = ((await s.api.call('getMeterReading', [{'kind': 'dash', 'data': await smallCopy(p.jpg), 'no': m.id, if (mch) 'fresh': true}])) as Map).cast<String, dynamic>();
     } catch (e) {
       r = {'error': errText(e)};
     }
@@ -2063,6 +2071,35 @@ class _EntryFormState extends State<EntryForm> {
               : const SizedBox.shrink();
 
   /// A reading box (KM / Hrs): blue while it holds what the AI read
+  /// (3.148.0) the hint of a reading box: the last reading – or, "Meter changed" ticked, the new meter's
+  String _mchHint(String key, String none) => mch ? tr('New meter reading') : dhHint(hist, key).isNotEmpty ? dhHint(hist, key) : none;
+  /// (3.148.0, Mechanical update-269) "Meter changed" – under the reading boxes: ticked, the reading typed is the new meter's
+  Widget _mchBox(String key) => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Material(
+          color: mch ? C.amberSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            key: Key(key),
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => mch = !mch),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 6, 10, 6),
+              child: Row(children: [
+                Checkbox(value: mch, onChanged: (v) => setState(() => mch = v == true), activeColor: C.amber),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const TwoLang('Meter changed', 'मीटर बदलला', size: 15, weight: FontWeight.w700),
+                    Text(bi('The machinery got a new meter – type the new meter\'s reading; the old meter\'s last reading is not checked.', 'नवीन meter बसवला – नवीन meter चे reading टाका; जुन्या meter चे शेवटचे reading तपासले जात नाही.', '\n'),
+                        style: const TextStyle(fontSize: 12, color: C.muted, height: 1.3)),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
   Widget _readBox(TextEditingController c, String key, String hint, IconData icon) => TextField(
         key: Key(key),
         controller: c,
@@ -2128,8 +2165,9 @@ class _EntryFormState extends State<EntryForm> {
         const SizedBox(height: 12),
         _bigShot('dash', 'Dashboard photo – the AI reads the KM', 'Dashboard चा फोटो – AI KM वाचेल'),
         if (!m.debit && m.dieselWay.isNotEmpty) ...[
-          if (hasKm(way)) ...[_label('KM reading', 'KM रीडिंग'), _readBox(km, 'ho-km', dhHint(hist, 'lastKm').isNotEmpty ? dhHint(hist, 'lastKm') : tr('Odometer km'), Icons.speed_rounded)],
-          if (hasHr(way)) ...[_label('Hour meter', 'तास मीटर'), _readBox(hr, 'ho-hr', dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), Icons.timer_outlined)],
+          if (hasKm(way)) ...[_label('KM reading', 'KM रीडिंग'), _readBox(km, 'ho-km', _mchHint('lastKm', tr('Odometer km')), Icons.speed_rounded)],
+          if (hasHr(way)) ...[_label('Hour meter', 'तास मीटर'), _readBox(hr, 'ho-hr', _mchHint('lastHr', tr('Hours')), Icons.timer_outlined)],
+          if (hasKm(way) || hasHr(way)) _mchBox('ho-mch'),
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Align(
@@ -2584,12 +2622,13 @@ class _EntryFormState extends State<EntryForm> {
               if (_shots) Padding(padding: const EdgeInsets.only(top: 12, left: 2), child: Text(bi('Photo first – the number is read by itself. Type over it if it is wrong.', 'आधी फोटो – आकडा आपोआप भरतो. चुकला तर टाइप करा.', '\n'), key: const Key('photo-first'), style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.35))),
               if (m != null && hasKm(way)) ...[
                 _label('KM reading', 'KM रीडिंग'),
-                _beside(_shots ? kPhotoKinds.firstWhere((p) => p.key == 'dash') : null, TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: dhHint(hist, 'lastKm').isNotEmpty ? dhHint(hist, 'lastKm') : tr('Odometer km'), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read from the dashboard photo – check it') : null))),
+                _beside(_shots ? kPhotoKinds.firstWhere((p) => p.key == 'dash') : null, TextField(controller: km, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(km)), decoration: InputDecoration(hintText: _mchHint('lastKm', tr('Odometer km')), prefixIcon: const Icon(Icons.speed_rounded), fillColor: aiPut.contains(km) ? C.blueSoft : Colors.white, helperText: aiPut.contains(km) ? tr('Read from the dashboard photo – check it') : null))),
               ],
               if (m != null && hasHr(way)) ...[
                 _label('Hour meter', 'तास मीटर'),
-                _beside(!_shots ? null : _both(m) ? kPhotoKinds.firstWhere((p) => p.key == 'hrs') : hasKm(way) ? null : kPhotoKinds.firstWhere((p) => p.key == 'dash'), TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: dhHint(hist, 'lastHr').isNotEmpty ? dhHint(hist, 'lastHr') : tr('Hours'), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read from the dashboard photo – check it') : null))),
+                _beside(!_shots ? null : _both(m) ? kPhotoKinds.firstWhere((p) => p.key == 'hrs') : hasKm(way) ? null : kPhotoKinds.firstWhere((p) => p.key == 'dash'), TextField(controller: hr, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() => aiPut.remove(hr)), decoration: InputDecoration(hintText: _mchHint('lastHr', tr('Hours')), prefixIcon: const Icon(Icons.timer_outlined), fillColor: aiPut.contains(hr) ? C.blueSoft : Colors.white, helperText: aiPut.contains(hr) ? tr('Read from the dashboard photo – check it') : null))),
               ],
+              if (m != null && !m.debit && (hasKm(way) || hasHr(way))) _mchBox('d-mch'),      // (3.148.0)
               _unit == 'kg' ? _label('Kg', 'किलो') : _label('Litres', 'लिटर'),
               _beside(_shots ? kPhotoKinds.firstWhere((p) => p.key == 'pump') : null, _qtyField()),
               // (3.129.0, asked 16-11-2026: "20/50/100/150/200 he kadhunch tak he nkoh aahe") no quick litres – on every site

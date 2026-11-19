@@ -9,6 +9,8 @@
  *   a water tanker trip by trip (getTankerTrips / saveTankerTrips / deleteTankerTrip).
  * "One date – many machinery" and "One machinery – many dates" of the web: after a save, "Next machinery" (same date) or
  * "Next date" (same machinery) – the usual one first, as set in My settings. */
+import 'dart:convert';
+
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
@@ -118,6 +120,8 @@ class _LogBookScreenState extends State<LogBookScreen> {
   String err = '';
   List<Map<String, dynamic>> rows = [];
   int seq = 0;
+  /// (3.148.0, Mechanical update-269) the entries ticked (held) – to move them to another machinery
+  final sel = <String>{};
 
   @override
   void didChangeDependencies() {
@@ -274,8 +278,46 @@ class _LogBookScreenState extends State<LogBookScreen> {
     final worked = rows.where((r) => !kDayStatus.contains('${r['mode'] ?? r['unit']}')).length;
     final pend = _pendingToday;
     final tankers = s.machines.any((m) => m.onSite(day) && m.waterTanker);
+    // (3.148.0) ticked: only entries still in the list; an entry can be ticked when it can be moved (not a water tanker's trip)
+    sel.removeWhere((k) => !rows.any((r) => '${r['key'] ?? ''}' == k));
+    bool canPick(Map<String, dynamic> r) => s.canEdit('Log Book') && '${r['key'] ?? ''}'.isNotEmpty && r['_t'] == null && !(s.machine('${r['no'] ?? ''}')?.waterTanker ?? false);
+    void flip(Map<String, dynamic> r) => setState(() {
+          final k = '${r['key']}';
+          if (!sel.remove(k)) sel.add(k);
+        });
     return Scaffold(
-      floatingActionButton: s.canEdit('Log Book')
+      // (3.148.0) entries ticked: what to do with them, at the bottom
+      bottomNavigationBar: sel.isEmpty
+          ? null
+          : SafeArea(
+              child: Container(
+                key: const Key('lb-selbar'),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                decoration: const BoxDecoration(color: C.amberSoft, border: Border(top: BorderSide(color: Color(0xFFF3D9A4)))),
+                child: Row(children: [
+                  Expanded(child: TwoLang('${sel.length} ${sel.length == 1 ? 'entry' : 'entries'} ticked', '${sel.length} नोंदी निवडल्या', size: 15, weight: FontWeight.w700)),
+                  TextButton(key: const Key('lb-selclear'), onPressed: () => setState(sel.clear), child: Text(tr('Clear'))),
+                  const SizedBox(width: 6),
+                  FilledButton.icon(
+                    key: const Key('lb-move'),
+                    style: FilledButton.styleFrom(backgroundColor: C.amber, minimumSize: const Size(0, 46)),
+                    onPressed: () async {
+                      final picked = [for (final r in rows) if (sel.contains('${r['key'] ?? ''}')) r];
+                      final d0 = picked.isEmpty ? '' : '${picked.first['date'] ?? ''}';
+                      final to = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: d0.length >= 10 ? d0 : day));
+                      if (to == null || !context.mounted) return;
+                      if (await moveLogEntries(context, picked, to)) {
+                        setState(sel.clear);
+                        _load(pend: true);
+                      }
+                    },
+                    icon: const Icon(Icons.swap_horiz_rounded),
+                    label: Text(tr('Move')),
+                  ),
+                ]),
+              ),
+            ),
+      floatingActionButton: sel.isEmpty && s.canEdit('Log Book')
           ? FloatingActionButton.extended(
               onPressed: () => _new(),
               backgroundColor: Tone.logbook.b,      // (3.97.0, his design 2) the Log Book's own colour
@@ -464,6 +506,14 @@ class _LogBookScreenState extends State<LogBookScreen> {
                 child: TextField(onChanged: (v) => setState(() => q = v), decoration: InputDecoration(hintText: tr('Search machinery, work, chainage…'), prefixIcon: Icon(Icons.search_rounded), contentPadding: EdgeInsets.symmetric(vertical: 14))),
               ),
             ),
+            // (3.148.0) how entries are ticked – to move many made on the wrong machinery
+            if (s.canEdit('Log Book') && list.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(bi('Hold an entry to tick it – ticked entries can be moved to another machinery.', 'नोंद दाबून धरा – निवडलेल्या नोंदी दुसऱ्या machinery वर हलवता येतात.', '\n'), key: const Key('lb-hold-hint'), style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.3)),
+                ),
+              ),
             if (loading)
               SliverList.separated(itemCount: 4, separatorBuilder: (_, __) => const SizedBox(height: 10), itemBuilder: (_, __) => const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Shimmer(height: 100)))
             else if (err.isNotEmpty)
@@ -482,7 +532,12 @@ class _LogBookScreenState extends State<LogBookScreen> {
                   itemBuilder: (_, i) {
                     // (3.106.0) the list is long: said at its end
                     if (i >= list.length) return InfoLine(bi('The newest ${rows.length} of $count are shown. For the older ones pick a day.', 'सर्वात नवीन ${rows.length} (एकूण $count) दाखवल्या आहेत. जुन्या नोंदींसाठी तारीख निवडा.', '\n'), key: const Key('lb-all-more'), help: false);
-                    final card = LogCard(r: list[i], onChanged: () => _load(pend: true));
+                    final r = list[i], pickable = canPick(r);
+                    final card = GestureDetector(
+                      key: Key('lb-row-${r['key'] ?? i}'),
+                      onLongPress: pickable ? () { HapticFeedback.selectionClick(); flip(r); } : null,
+                      child: LogCard(r: r, onChanged: () => _load(pend: true), selected: sel.contains('${r['key'] ?? ''}'), onPick: sel.isNotEmpty && pickable ? () => flip(r) : null),
+                    );
                     // (3.106.0) all dates: each date once, above its entries
                     final d = '${list[i]['date'] ?? ''}';
                     if (!all || d.length < 10 || (i > 0 && '${list[i - 1]['date'] ?? ''}' == d)) return card;
@@ -534,9 +589,12 @@ List<Map<String, dynamic>>? tripsOfRow(Session s, Map<String, dynamic> r) {
 }
 
 class LogCard extends StatelessWidget {
-  const LogCard({super.key, required this.r, this.onChanged});
+  const LogCard({super.key, required this.r, this.onChanged, this.selected = false, this.onPick});
   final Map<String, dynamic> r;
   final VoidCallback? onChanged;
+  /// (3.148.0) ticked in the list; [onPick]: while entries are being ticked, a tap ticks / unticks (instead of opening it)
+  final bool selected;
+  final VoidCallback? onPick;
 
   String get _way => '${r['mode'] ?? r['unit'] ?? ''}';
 
@@ -653,9 +711,12 @@ class LogCard extends StatelessWidget {
     final st = kDayStatus.contains(_way);
     final color = st ? (_way == 'Idle' ? C.amber : C.red) : C.blue, soft = st ? (_way == 'Idle' ? C.amberSoft : C.redSoft) : C.blueSoft;
     return Press(
-      onTap: () => _details(context),
+      onTap: onPick ?? () => _details(context),
       padding: const EdgeInsets.all(12),
+      color: selected ? C.amberSoft : Colors.white,
+      border: selected ? C.amber : null,
       child: Row(children: [
+        if (selected) const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.check_circle_rounded, color: C.amber, key: Key('lc-ticked'))),
         Container(width: 64, height: 64, decoration: BoxDecoration(color: soft.withValues(alpha: .7), borderRadius: BorderRadius.circular(18)), alignment: Alignment.center, child: Pic(picOfType('${r['type'] ?? ''}'), size: 48)),
         const SizedBox(width: 12),
         Expanded(
@@ -762,11 +823,75 @@ class LogCard extends StatelessWidget {
                   ),
                 ),
               ]),
+              // (3.148.0) made on the wrong machinery: only this Log Book entry goes to the right one (its diesel stays)
+              if (!(s.machine('${r['no'] ?? ''}')?.waterTanker ?? false)) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  key: const Key('lc-move'),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                  onPressed: () async {
+                    final d0 = '${r['date'] ?? ''}';
+                    final to = await showModalBottomSheet<Machine>(context: c, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: d0.length >= 10 ? d0 : s.today));
+                    if (to == null || !c.mounted) return;
+                    Navigator.pop(c);
+                    if (!context.mounted) return;
+                    if (await moveLogEntries(context, [r], to)) onChanged?.call();
+                  },
+                  icon: const Icon(Icons.swap_horiz_rounded),
+                  label: Text(tr('Move to another machinery')),
+                ),
+              ],
             ],
           ]),
         ),
       ),
     );
+  }
+}
+
+/// (3.148.0, Mechanical update-269 – asked 19-11-2026: "edit kel ki vehicle number change krta yet nahi … 10 or 20 entry … ek ek kel
+/// tri ani bulk madhe kel tri … fkt log book transfer hotana diesel transfer nahi") Log Book entries made on the WRONG machinery go to
+/// the right one ([to]) – one (its Change screen, its details) or many (ticked in the list). Only the Log Book moves: the diesel stays
+/// with the machinery it was issued to. The server checks every one first (moveLogRows): one does not fit → nothing moves, the reason
+/// is said. true = moved.
+Future<bool> moveLogEntries(BuildContext context, List<Map<String, dynamic>> rows, Machine to) async {
+  final s = SessionScope.read(context);
+  final list = rows.where((r) => '${r['no'] ?? ''}' != to.id).toList();
+  if (list.isEmpty) {
+    toast(context, rows.length == 1 ? tr('This entry is already on ${to.id}.') : tr('These entries are already on ${to.id}.'), bad: true);
+    return false;
+  }
+  if (to.waterTanker) {
+    toast(context, tr('${to.id} is a water tanker – its trips are entered in "Water tanker – trip by trip".'), bad: true);
+    return false;
+  }
+  final from = <String>{for (final r in list) '${r['no'] ?? ''}'}.toList();
+  final dsl = list.fold<double>(0, (a, r) => a + (asNum(r['qty']) ?? 0).toDouble());
+  final lines = [for (final r in list.take(10)) '${r['no']} – ${showDate('${r['date'] ?? ''}')} (${r['shift'] ?? ''})', if (list.length > 10) '… ${list.length - 10} more'];
+  final body = [
+    lines.join('\n'),
+    bi('Only the Log Book ${list.length == 1 ? 'entry moves' : 'entries move'} to ${to.id}. The diesel${dsl > 0 ? ' (${fmtNum(dsl)} L)' : ''} issued to ${from.join(', ')} stays with ${from.length == 1 ? 'it' : 'them'} – ${to.id} shows its own diesel of ${list.length == 1 ? 'that day' : 'those days'}.',
+        'फक्त Log Book ${to.id} वर जाते. ${from.join(', ')} ला दिलेले diesel तिथेच राहते.', '\n'),
+    bi('No other entry is changed. Every entry is checked first: if one does not fit ${to.id}, nothing is moved.', 'दुसरी कोणतीही entry बदलत नाही. एक जुळली नाही तर काहीच हलत नाही.', '\n'),
+  ].join('\n\n');
+  if (!await ask(context, tr(list.length == 1 ? 'Move this entry to ${to.id}?' : 'Move ${list.length} entries to ${to.id}?'), body, yes: tr('Move'))) return false;
+  try {
+    final res = ((await s.api.call('moveLogRows', [
+      {'to': to.id, 'rows': [for (final r in list) {'key': '${r['key'] ?? ''}', 'no': '${r['no'] ?? ''}', 'date': '${r['date'] ?? ''}', 'shift': '${r['shift'] ?? ''}', 'ver': '${r['ver'] ?? ''}'}]},
+    ], true)) as Map).cast<String, dynamic>();
+    if (!context.mounted) return false;
+    if (res['ok'] == false) {
+      final errs = [for (final e in (res['errors'] as List? ?? const []).whereType<Map>()) '${list.length > 1 && (asNum(e['row']) ?? 0) > 0 ? 'Entry ${e['row']}: ' : ''}${'${e['msg'] ?? ''}'.replaceFirst(RegExp(r'^Error:\s*'), '')}'];
+      await ask(context, tr('Nothing was moved'), errs.join('\n\n'), yes: 'OK', no: tr('Close'));
+      return false;
+    }
+    HapticFeedback.lightImpact();
+    toast(context, tr('${(asNum(res['moved']) ?? list.length) == 1 ? 'Log Book entry' : '${fmtNum(asNum(res['moved']) ?? list.length)} Log Book entries'} moved to ${to.id} – the diesel stays with ${from.join(', ')}.'));
+    _logCache.clear();
+    return true;
+  } catch (e) {
+    if (context.mounted) toast(context, errText(e), bad: !isSent(e));      // (sent for verification / to the Super Admin: nothing moved yet – said in green)
+    return isSent(e);
   }
 }
 
@@ -1108,6 +1233,7 @@ class _LogFormState extends State<LogForm> {
           ..addAll(attList(e['att']));
         att0 = attShas(atts);
       });
+      _was = jsonEncode(_change());      // (3.148.0)
       if (atts.isNotEmpty) _attLinks();
     } catch (e) {
       if (mounted) {
@@ -1291,6 +1417,20 @@ class _LogFormState extends State<LogForm> {
 
   /// (Mechanical update-145) the version of the entry when it was opened for a change.
   String _ver = '';
+  String _was = ''; // (3.148.0) the change as it was opened – another machinery is picked only with nothing else changed
+
+  /// (3.148.0, Mechanical update-269) a change of the entry: another machinery picked = the entry moves there (by itself – the other
+  /// changes are made on the moved entry); only the Log Book moves, its diesel stays.
+  Future<void> _moveTo() async {
+    if (jsonEncode(_change()) != _was) {
+      setState(() => err = tr('Change the machinery number by itself: save or undo the other changes first, then pick the right machinery.'));
+      return;
+    }
+    final to = await showModalBottomSheet<Machine>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => MachinePicker(date: date));
+    if (to == null || !mounted || to.id == machine?.id) return;
+    final e = p ?? {};
+    if (await moveLogEntries(context, [{...e, 'key': widget.editKey, 'no': machine?.id ?? '${e['no'] ?? ''}', 'date': date, 'shift': shift, 'ver': _ver}], to) && mounted) Navigator.pop(context, true);
+  }
 
   /// (3.34.0, Mechanical update-153) the entry's photos / PDFs (sent when it is saved) and – a change – what it had when opened
   final List<AttFile> atts = [];
@@ -1647,7 +1787,8 @@ class _LogFormState extends State<LogForm> {
               ]),
               _label('Machinery', 'यंत्र'),
               Press(
-                onTap: editing ? null : _pickMachine,
+                key: const Key('lf-machine'),
+                onTap: editing ? (p == null || (m?.waterTanker ?? false) ? null : _moveTo) : _pickMachine,      // (3.148.0) a change: another machinery = the entry moves
                 radius: 18,
                 shadow: false,
                 padding: const EdgeInsets.all(12),
@@ -1663,8 +1804,15 @@ class _LogFormState extends State<LogForm> {
                           ]),
                   ),
                   if (!editing) const Icon(Icons.unfold_more_rounded, color: C.muted),
+                  if (editing && p != null && !(m?.waterTanker ?? false)) const Icon(Icons.swap_horiz_rounded, color: C.muted),
                 ]),
               ),
+              if (editing && p != null && !(m?.waterTanker ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 4),
+                  child: Text(bi('Made on the wrong machinery? Tap it and pick the right one – only this Log Book entry moves; its diesel stays.', 'चुकीच्या machinery वर केली? त्यावर दाबून बरोबर निवडा – फक्त ही Log Book नोंद जाते; diesel तिथेच राहते.', '\n'),
+                      key: const Key('lf-move-note'), style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.3)),
+                ),
               if (loadingP) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator(minHeight: 3, color: C.blue, backgroundColor: C.blueSoft)),
               if (pErr.isNotEmpty) InfoLine(pErr, bad: true),
               if (p != null && !editing) ...[

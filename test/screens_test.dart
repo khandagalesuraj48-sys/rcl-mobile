@@ -10716,6 +10716,118 @@ void main() {
     await settle(t, 300);
     expect(find.byKey(const Key('face-agree')), findsOneWidget);
   }, tags: ['golden']);
+
+  testWidgets('(3.148.0, Mechanical update-269) Diesel Issue: "Meter changed" under the reading – ticked, the box asks the new meter\'s reading and the save says so (meterChanged)', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-entries')));
+    await net(t);
+    await t.tap(find.byKey(const Key('entries-Diesel Issue')));
+    await net(t);
+    await t.tap(find.text('New Entry'));
+    await net(t);
+    await t.tap(find.text('Pick the machinery'));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)'));
+    await settle(t, 800);
+    expect(find.byKey(const Key('d-mch')), findsOneWidget, reason: 'a machinery with a reading: the tick is there');
+    await t.ensureVisible(find.byKey(const Key('d-mch')));
+    await t.tap(find.byKey(const Key('d-mch')));
+    await settle(t, 300);
+    expect(find.widgetWithText(TextField, 'New meter reading'), findsOneWidget, reason: 'the reading box asks the new meter');
+    await t.enterText(find.widgetWithText(TextField, 'New meter reading'), '12');
+    await t.enterText(find.byType(TextField).at(1), '60');
+    await settle(t, 300);
+    await t.tap(find.text('Save Diesel Issue'));
+    await net(t);
+    expect([srv.saved.single['hrReading'], srv.saved.single['meterChanged']], [12, true]);
+  });
+
+  testWidgets('(3.148.0, Mechanical update-269) Log Book: entries made on the wrong machinery go to another one – held in the list and moved together; one from its details; its Change screen: the machinery tapped (by itself); "nothing moved" said', (t) async {
+    phone(t);
+    final srv = FakeServer()..perms['Log Book'] = 'Edit';
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.text('Logbook').last);
+    await net(t);
+    expect(find.byKey(const Key('lb-hold-hint')), findsOneWidget);
+    // held: ticked; then a tap ticks another
+    await t.longPress(find.byKey(const Key('lb-row-A|2026-10-14|Day')));
+    await settle(t, 400);
+    expect(find.byKey(const Key('lb-selbar')), findsOneWidget);
+    expect(find.textContaining('1 entry ticked'), findsOneWidget);
+    await t.tap(find.byKey(const Key('lb-row-B|2026-10-14|Day')));
+    await settle(t, 300);
+    expect(find.textContaining('2 entries ticked'), findsOneWidget);
+    expect(find.byKey(const Key('lc-ticked')), findsNWidgets(2));
+    await t.tap(find.byKey(const Key('lb-move')));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)').last);
+    await settle(t, 600);
+    expect(find.text('Move 2 entries to Sany 210 (No.1)?'), findsOneWidget);
+    expect(find.textContaining('stays with'), findsOneWidget, reason: 'the diesel stays – said before');
+    await t.tap(find.text('Move').last);
+    await net(t);
+    expect(srv.moves.single['to'], 'Sany 210 (No.1)');
+    expect([for (final r in srv.moves.single['rows'] as List) (r as Map)['key']], ['A|2026-10-14|Day', 'B|2026-10-14|Day']);
+    expect(find.byKey(const Key('lb-selbar')), findsNothing, reason: 'the ticks are gone after the move');
+    // one entry from its details
+    await t.tap(find.byKey(const Key('lb-row-C|2026-10-14|Day')));
+    await settle(t, 600);
+    await t.ensureVisible(find.byKey(const Key('lc-move')));
+    await t.tap(find.byKey(const Key('lc-move')));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)').last);
+    await settle(t, 600);
+    expect(find.text('Move this entry to Sany 210 (No.1)?'), findsOneWidget);
+    await t.tap(find.text('Move').last);
+    await net(t);
+    expect(srv.moves.length, 2);
+    expect(((srv.moves.last['rows'] as List).single as Map)['key'], 'C|2026-10-14|Day');
+    // the server says it does not fit: nothing moved, its reason said
+    srv.moveRefuse = [{'row': 1, 'msg': 'D (14-10-2026, Full Day): Sany 210 (No.1) already saved for 14-10-2026 (Full Day) – it cannot take this entry. Delete or move that entry first.'}];
+    await t.tap(find.byKey(const Key('lb-row-D|2026-10-14|Full Day')));
+    await settle(t, 600);
+    await t.ensureVisible(find.byKey(const Key('lc-move')));
+    await t.tap(find.byKey(const Key('lc-move')));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)').last);
+    await settle(t, 600);
+    await t.tap(find.text('Move').last);
+    await net(t);
+    expect(find.text('Nothing was moved'), findsOneWidget);
+    expect(find.textContaining('it cannot take this entry'), findsOneWidget);
+    expect(srv.moves.length, 2);
+    await t.tap(find.text('Close'));
+    await settle(t, 400);
+    // its Change screen: the machinery is tapped – only by itself
+    await t.tap(find.byKey(const Key('lb-row-A|2026-10-14|Day')));
+    await settle(t, 600);
+    await t.tap(find.text('Change'));
+    await net(t);
+    expect(find.byKey(const Key('lf-move-note')), findsOneWidget);
+    await t.enterText(find.widgetWithText(TextField, 'Close'), '15300');
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('lf-machine')));
+    await settle(t, 400);
+    expect(find.textContaining('Change the machinery number by itself'), findsOneWidget);
+    await t.enterText(find.widgetWithText(TextField, 'Close'), '15230');
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('lf-machine')));
+    await settle(t, 800);
+    await t.tap(find.text('Sany 210 (No.1)').last);
+    await settle(t, 600);
+    expect(find.text('Move this entry to Sany 210 (No.1)?'), findsOneWidget);
+    await t.tap(find.text('Move').last);
+    await net(t);
+    expect(srv.moves.length, 3);
+    expect([((srv.moves.last['rows'] as List).single as Map)['key'], ((srv.moves.last['rows'] as List).single as Map)['no']], ['A|2026-10-14|Day', 'MH-25-AJ-2169']);
+    expect(find.byKey(const Key('lf-machine')), findsNothing, reason: 'moved: the Change screen is closed');
+  });
 }
 
 /// The face screens without a camera: what he would have shown.

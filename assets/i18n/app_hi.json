@@ -2192,5 +2192,18 @@
 "Save driver": "Driver save करें",
 "New driver": "नया driver",
 "\"Live\": the phone sent its place in the last 10 minutes.": "\"Live\": फ़ोन ने पिछले 10 मिनट में जगह भेजी।",
-"No vehicle has sent its place yet – the driver's phone sends it while the vehicle is with him.": "अभी किसी गाड़ी ने जगह नहीं भेजी – गाड़ी driver के पास रहते उसका फ़ोन भेजता है।"
+"No vehicle has sent its place yet – the driver's phone sends it while the vehicle is with him.": "अभी किसी गाड़ी ने जगह नहीं भेजी – गाड़ी driver के पास रहते उसका फ़ोन भेजता है।",
+"New meter reading": "नए meter की reading",
+"Meter changed": "मीटर बदला",
+"Move to another machinery": "दूसरी machinery पर ले जाएँ",
+"Move": "ले जाएँ",
+"Close": "बंद करें",
+"Nothing was moved": "कुछ भी नहीं हटाया गया",
+"This entry is already on {0}.": "यह entry पहले से {0} पर है।",
+"These entries are already on {0}.": "ये entries पहले से {0} पर हैं।",
+"Move this entry to {0}?": "यह entry {0} पर ले जाएँ?",
+"Move {0} entries to {1}?": "{0} entries {1} पर ले जाएँ?",
+"Log Book entry moved to {0} – the diesel stays with {1}.": "Log Book entry {0} पर गई – diesel {1} के पास ही रहा।",
+"{0} Log Book entries moved to {1} – the diesel stays with {2}.": "{0} Log Book entries {1} पर गईं – diesel {2} के पास ही रहा।",
+"Change the machinery number by itself: save or undo the other changes first, then pick the right machinery.": "Machinery number अकेला बदलें: पहले बाकी बदलाव save करें या हटाएँ, फिर सही machinery चुनें।"
 }

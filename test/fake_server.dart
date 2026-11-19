@@ -149,6 +149,10 @@ class FakeServer {
   final issueBal = <List>[];
   final saved = <Map<String, dynamic>>[];
   final logSaved = <Map<String, dynamic>>[];
+  /// (3.148.0, Mechanical update-269) Log Book entries moved to another machinery (moveLogRows) – what was sent; [moveRefuse]: the
+  /// server's "nothing moved" for the next one (its errors)
+  final moves = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>>? moveRefuse;
   // (3.34.0, Mechanical update-153) attachments: the files sent (uploadAttachment), the entry's files (getLogEntry → att), Scan with
   // Mobile (the code the "computer" made, what the phone added) and a saved bill's files (getBillAttachments)
   final uploads = <Map<String, dynamic>>[];
@@ -2734,6 +2738,16 @@ class FakeServer {
           final rows = ((a[0] as Map)['rows'] as List).map((x) => (x as Map).cast<String, dynamic>()).toList();
           logSaved.addAll(rows);
           return _j({'result': {'ok': true, 'count': rows.length, if (addTo != null) 'added': rows.length, if (addTo != null) 'into': 1}});
+        case 'moveLogRows':      // (3.148.0, Mechanical update-269) as moveLogRows_: every entry checked first – one problem, nothing moves
+          final x = (a[0] as Map).cast<String, dynamic>();
+          if (moveRefuse != null) {
+            final e = moveRefuse!;
+            moveRefuse = null;
+            return _j({'result': {'ok': false, 'errors': e}});
+          }
+          moves.add(x);
+          final rs = (x['rows'] as List).whereType<Map>().toList();
+          return _j({'result': {'ok': true, 'moved': rs.length, 'to': x['to'], 'rows': [for (final r in rs) {'from': r['no'], 'date': r['date'], 'shift': r['shift']}]}});
         case 'getLogEntry':
           return _j({'result': {'key': a[0], 'no': 'MH-25-AJ-2169', 'date': '2026-10-14', 'shift': 'Full Day', 'unit': 'KM', 'okm': 15100, 'ckm': 15230, 'ohr': '', 'chr': '', 'work': 'Earth carting', 'chFrom': '12+000', 'chTo': '12+500', 'first': false, 'boqItems': [], 'itemWork': {}, 'lock': null, 'next': null, 'prev': {'date': '2026-10-13', 'shift': 'Full Day'}, if (entryAtt.isNotEmpty) 'att': entryAtt}});
         case 'uploadAttachment':
