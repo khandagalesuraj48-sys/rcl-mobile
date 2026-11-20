@@ -111,7 +111,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// (3.14.0) The web's "Back to the usual settings": every setting as the app comes – his photo and mobile number stay.
   static const kPrefDefault = <String, dynamic>{
-    'theme': 'light', 'text': 'normal', 'density': 'normal', 'lang': 'mr', 'appLang': '', 'lbMode': '', 'lbDays': '2', 'shift': '', 'menu': 'open', //
+    // (20-11-2026, his decision: "app language default english") the app is English until he chooses मराठी / हिंदी in My settings –
+    // the written language ('lang' – help, the assistant's own lines, errors) and the whole app ('appLang') both default to English.
+    'theme': 'light', 'text': 'normal', 'density': 'normal', 'lang': 'en', 'appLang': '', 'lbMode': '', 'lbDays': '2', 'shift': '', 'menu': 'open', //
     'enterNext': false, 'sound': false, 'lessMotion': false, 'intro': true, 'brief': true, 'voiceOut': true, 'start': '', 'loc': '', 'fav': <String>[],
   };
 

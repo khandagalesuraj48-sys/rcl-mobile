@@ -284,6 +284,9 @@ class FakeServer {
   /// (3.142.0) Mechanical at S1 given as a DRIVER from the Driver Master (the Portal's line marked pages = { driver: "Yes" })
   bool mechDriver = false;
   final hrDocs = <Map<String, dynamic>>[];
+  /// (20-11-2026, rcl-hr act_docgate) the documents gate: [hrGate] false = no gate (myGate says not required); the papers marked "Not available"
+  bool hrGate = false;
+  final hrDocNa = <String, String>{};
   final hrDocFiles = <String, String>{};
   final hrLeaves = <Map<String, dynamic>>[];
 
@@ -449,9 +452,36 @@ class FakeServer {
         // (rcl-hr step 15) a new paper in place of a rejected one: the old one leaves his list (the server keeps it, "replaced")
         if ('${b['replaces'] ?? ''}'.isNotEmpty) hrDocs.removeWhere((d) => d['id'] == b['replaces']);
         hrDocs.insert(0, {'id': 'doc${hrDocs.length + 1}', 'kind': b['kind'], 'title': '', 'number': '', 'expires_on': null, 'mime': hrDocFiles['${b['path']}'], 'created_at': '2026-10-14T05:00:00.000Z', 'status': 'submitted', 'verify_note': '', 'replaced': b['replaces'] ?? ''});
+        hrDocNa.remove('${b['kind']}'); // (rcl-hr) a paper attached: its "Not available" goes
         return _j({'ok': true, 'id': hrDocs.first['id']});
       case 'myDocLink':
         return _j({'ok': true, 'url': 'https://photos.test/hr-docs/open'});
+      // (20-11-2026, rcl-hr act_docgate) the documents gate: the five papers before anything else
+      case 'myGate':
+        if (!hrGate) return _j({'ok': true, 'ready': true, 'is_employee': true, 'required': false, 'docs': []});
+        const gk = [['aadhaar', 'Aadhaar card', false], ['pan', 'PAN card', true], ['bank_passbook', 'Bank passbook / cancelled cheque', false], ['licence', 'Driving licence', true], ['education', 'Education certificate', true]];
+        final gdocs = [
+          for (final g in gk)
+            () {
+              final k = g[0] as String, naAllow = g[2] as bool;
+              final good = hrDocs.where((d) => d['kind'] == k && d['status'] != 'rejected').toList(), rej = hrDocs.where((d) => d['kind'] == k && d['status'] == 'rejected').toList();
+              final hasNa = naAllow && hrDocNa.containsKey(k);
+              final state = good.isNotEmpty ? 'uploaded' : hasNa ? 'na' : rej.isNotEmpty ? 'rejected' : 'pending';
+              return {'key': k, 'name': g[1], 'allow_na': naAllow, 'state': state, 'na_reason': hasNa ? hrDocNa[k] : '', 'files': [for (final d in good) {'id': d['id'], 'mime': d['mime'], 'title': '', 'status': d['status'], 'created_at': d['created_at']}], 'rejected': [for (final d in rej) {'id': d['id'], 'mime': d['mime']}]};
+            }()
+        ];
+        final gdone = gdocs.every((d) => d['state'] == 'uploaded' || d['state'] == 'na');
+        return _j({'ok': true, 'ready': true, 'is_employee': true, 'required': !gdone, 'done': gdone, 'submit_ready': gdone, 'docs': gdocs});
+      case 'myDocNa':
+        if (b['na'] == false) {
+          hrDocNa.remove('${b['kind']}');
+        } else {
+          hrDocNa['${b['kind']}'] = '${b['reason'] ?? ''}';
+        }
+        return _j({'ok': true});
+      case 'myDocDelete':
+        hrDocs.removeWhere((d) => d['id'] == b['doc']);
+        return _j({'ok': true});
       case 'myLeave':
         return _j(_hrLeave());
       case 'leaveAsk':

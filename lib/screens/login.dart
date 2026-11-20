@@ -387,9 +387,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             const Text('Type the password you were given, then your new password twice.', style: TextStyle(fontSize: 14, color: C.muted)),
             const MrLine('दिलेला password टाका, मग तुमचा नवीन password दोन वेळा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
             const SizedBox(height: 6),
-            _pwBox(_given, Lang.i.chosen ? tr('Given password') : 'Given password (दिलेला)', Icons.key_rounded),
-            _pwBox(_new, Lang.i.chosen ? tr('New password') : 'New password (नवीन)', Icons.lock_outline_rounded),
-            _pwBox(_again, Lang.i.chosen ? tr('New password again') : 'New password again (परत)', Icons.lock_reset_rounded, next: TextInputAction.go, go: _setOwn),
+            _pwBox(_given, tr('Given password'), Icons.key_rounded),
+            _pwBox(_new, tr('New password'), Icons.lock_outline_rounded),
+            _pwBox(_again, tr('New password again'), Icons.lock_reset_rounded, next: TextInputAction.go, go: _setOwn),
             Row(children: [
               Expanded(
                 child: Padding(

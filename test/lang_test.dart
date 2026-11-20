@@ -1,5 +1,5 @@
 // (15-10-2026) The language of the app: the words turned exactly or by pattern, the app's own Marathi words used for Marathi,
-// "English · मराठी" as before when nothing is chosen; the choice kept with his account and on the phone; the real files read.
+// (20-11-2026) the default is English only (no Marathi mix); the choice kept with his account and on the phone; the real files read.
 import 'dart:convert';
 import 'dart:io';
 
@@ -37,9 +37,9 @@ void main() {
     expect(bi('This cannot be undone.', 'हे परत आणता येणार नाही.'), 'हे परत आणता येणार नाही.');
   });
 
-  test('nothing chosen: the app as before (English · मराठी); English chosen: English only; Hindi from the words', () async {
+  test('nothing chosen: English only (20-11-2026 – the default is English, no Marathi mix); English chosen: English only; Hindi from the words', () async {
     await Lang.i.set('');
-    expect(bi('This cannot be undone.', 'हे परत आणता येणार नाही.'), 'This cannot be undone. · हे परत आणता येणार नाही.');
+    expect(bi('This cannot be undone.', 'हे परत आणता येणार नाही.'), 'This cannot be undone.', reason: 'the default is English only – no "English · मराठी" mix');
     expect(tr('Saved.'), 'Saved.');
     await Lang.i.set('en');
     expect(Lang.i.chosen, true);
