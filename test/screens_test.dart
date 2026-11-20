@@ -9285,6 +9285,7 @@ void main() {
     await t.tap(find.byKey(const Key('pm-close')));
     await net(t);
     // ---- (3.153.0) OUT: the dial asks first ("kahi lokanche chukun sign out hot") – "No" keeps him on duty, "Yes, sign out" marks
+    await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
     await tapKey('hh-slide');
     expect(find.byKey(const Key('so-ask')), findsOneWidget);
     expect(find.byKey(const Key('att-ok-page')), findsNothing);
