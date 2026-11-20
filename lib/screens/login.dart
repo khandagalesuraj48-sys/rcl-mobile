@@ -304,7 +304,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         const SizedBox(height: 14),
                         Arrive(anim: _open, at: .12, child: const ProductName(style: TextStyle(fontFamily: 'Montserrat', fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, height: 1.05, shadows: [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
                         const SizedBox(height: 6),
-                        Arrive(anim: _open, at: .18, child: const ProductName(line: true, upper: true, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, color: kCrestGold, fontWeight: FontWeight.w800, letterSpacing: 3.6))),
+                        Arrive(anim: _open, at: .18, child: const FittedBox(fit: BoxFit.scaleDown, child: ProductName(line: true, upper: true, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, color: kCrestGold, fontWeight: FontWeight.w800, letterSpacing: 3.6)))), // (a long line grows smaller – never cut)
                       ]),
                     ),
                   ]),

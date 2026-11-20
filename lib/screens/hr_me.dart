@@ -144,7 +144,7 @@ class HrMeTab extends StatelessWidget {
     // APP: a pill for each, two in a row (one left over: the whole row)
     final pills = <Widget>[
       _pill(key: const Key('me-lang'), icon: Icons.translate_rounded, en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
-      if (!inErp) _pill(key: const Key('me-account'), icon: Icons.mail_outline_rounded, en: 'E-mail & password', mr: 'E-mail व password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : '', onTap: () => open(const AccountScreen())),
+      if (!inErp) _pill(key: const Key('me-account'), icon: Icons.mail_outline_rounded, en: 'E-mail & password', mr: 'E-mail व password', onTap: () => open(const AccountScreen())),
       // (20-11-2026) the app's terms / location notice and the Privacy Policy – always reachable; "Allow" again from here
       _pill(key: const Key('me-privacy'), icon: Icons.verified_user_outlined, en: 'Privacy', mr: 'Privacy', onTap: () => showConsent(context)),
       // (the look's name goes with them: a pill that keeps its own state is drawn again when the look changes)
@@ -290,7 +290,7 @@ Widget _pill({required Key key, required IconData icon, required String en, requ
           const SizedBox(width: 10),
           Flexible(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: sk.ink))),
+              Text(en, mr: mr, maxLines: sub.isEmpty ? 2 : 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: sk.ink, height: 1.15)),
               if (sub.isNotEmpty) m.Text(sub, key: Key('${(key as ValueKey<String>).value}-st'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: sk.muted, height: 1.2)),
             ]),
           ),
@@ -522,10 +522,8 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Row(children: [
-                Flexible(child: m.Text(tr('${k['name']}'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink, height: 1.25))),
-                if (again) Padding(padding: const EdgeInsets.only(left: 8), child: stateChip('Rejected', 'x', key: Key('doc-st-${k['key']}'))),
-              ]),
+              m.Text(tr('${k['name']}'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink, height: 1.25)),
+              if (again) Padding(padding: const EdgeInsets.only(top: 4), child: Align(alignment: Alignment.centerLeft, child: stateChip('Rejected', 'x', key: Key('doc-st-${k['key']}')))),
               if (again && note.isNotEmpty)
                 Padding(padding: const EdgeInsets.only(top: 3), child: m.Text('${_t('HR office says', 'HR office म्हणते')}: $note', key: Key('doc-why-${k['key']}'), style: TextStyle(fontSize: 12.5, color: red, height: 1.3))),
               for (final d in have)
@@ -541,8 +539,6 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                         const TextSpan(text: '  •  '),
                         TextSpan(text: _t('Open', 'उघडा'), style: TextStyle(fontWeight: FontWeight.w700, color: sk.link)),
                       ]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.3),
                     ),
                   ),

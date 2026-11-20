@@ -289,6 +289,9 @@ void main() {
     expect(find.byIcon(Icons.check_rounded), findsNothing);
     await t.tap(find.byKey(const Key('login-remember')));
     await t.pump(const Duration(milliseconds: 300));
+    await t.pump(const Duration(milliseconds: 300)); // (the tick's gold has come in)
+    await t.tap(find.byTooltip('Hide password'));
+    await t.pump();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_sign_in_dark.png'));
   }, tags: ['golden']);
 
