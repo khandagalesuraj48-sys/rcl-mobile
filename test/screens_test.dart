@@ -9156,6 +9156,8 @@ void main() {
     await tapKey('nav-att');
     expect(find.byKey(const Key('att-month-page')), findsOneWidget);
     expect(find.byKey(const Key('att-page')), findsNothing);
+    // (3.156.0) the way to Regularization is at the end of the longer page
+    await t.scrollUntilVisible(find.byKey(const Key('att-m-reqs')), 250, scrollable: find.descendant(of: find.byKey(const Key('att-month-page')), matching: find.byType(Scrollable)).first);
     expect(find.byKey(const Key('att-m-reqs')), findsOneWidget);
     expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     expect(find.byKey(const Key('att-punch')), findsNothing);
@@ -9166,6 +9168,8 @@ void main() {
     expect(String.fromCharCodes(pdf!.sublist(0, 5)), '%PDF-');
     expect(pdf!.length, greaterThan(1500));
     expect(find.byTooltip('Back'), findsNothing);
+    await t.drag(find.byKey(const Key('att-month-page')), const Offset(0, 3000)); // (back at the top for the picture)
+    await settle(t, 600);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_attendance.png'));
     await tapKey('nav-leave');
