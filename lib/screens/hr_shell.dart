@@ -283,7 +283,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   /// one and is then done once more (so what was just changed is read).
   Future<void>? _reading;
   bool _again = false;
-  int _quiet = 0;
+  int _tries = 0;
   bool _byHand = false;
   Timer? _later;
   Future<void> _load() {
@@ -334,7 +334,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         loading = false;
         err = '';
       });
-      _quiet = 0;
+      _tries = 0;
       _byHand = false;
       // (3.149.0, rcl-hr step 20) his place shared with HR while on duty (IN → OUT) – HR's server says when; after every IN / OUT
       // and whenever Home is opened. Nothing is shown in the app (his decision of 20-11-2026): the start is silent.
@@ -350,8 +350,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         loading = false;
         err = net ? '' : e is StateError ? 'You have no HR on this site – the Super Admin gives it in the Portal.' : errText(e);
       });
-      if (net && _quiet < 3) {
-        _quiet++;
+      if (net && _tries < 3) {
+        _tries++;
         _later?.cancel();
         _later = Timer(const Duration(seconds: 8), () {
           if (mounted) _load();
