@@ -252,7 +252,7 @@ class _DocGateScreenState extends State<DocGateScreen> {
                           ]),
                         ),
                         const Spacer(),
-                        TextButton(key: const Key('dg-signout'), onPressed: () => SessionScope.read(context).signOut(), child: Text('Sign out', mr: 'Sign out', style: TextStyle(fontSize: 12.5, color: sk.muted))),
+                        InkWell(key: const Key('dg-signout'), onTap: () => SessionScope.read(context).signOut(), borderRadius: BorderRadius.circular(8), child: Padding(padding: const EdgeInsets.all(6), child: Text('Sign out', mr: 'Sign out', style: TextStyle(fontSize: 12.5, color: sk.muted)))),
                       ]),
                       const SizedBox(height: 10),
                       Text('Your documents', mr: 'तुमची कागदपत्रे', style: TextStyle(fontFamily: 'Montserrat', fontSize: 25, fontWeight: FontWeight.w800, letterSpacing: -.3, color: sk.ink)),
@@ -350,12 +350,20 @@ class _DocGateScreenState extends State<DocGateScreen> {
     );
   }
 
-  Widget _uploadBtn(Map d) => OutlinedButton.icon(
+  // a plain tappable pill, not a Material button – a Material button in a Row's trailing (non-flex) slot is given an unbounded width
+  Widget _uploadBtn(Map d) => InkWell(
         key: Key('dg-add-${d['key']}'),
-        style: OutlinedButton.styleFrom(foregroundColor: _acc, side: const BorderSide(color: _acc, width: 1.6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9)),
-        onPressed: () => _add(d),
-        icon: const Icon(Icons.upload_rounded, size: 17),
-        label: Text('${d['state']}' == 'rejected' ? _t('Attach again', 'पुन्हा जोडा') : _t('Upload', 'Upload'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+        onTap: () => _add(d),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: _acc, width: 1.6)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.upload_rounded, size: 17, color: _acc),
+            const SizedBox(width: 6),
+            Text('${d['state']}' == 'rejected' ? _t('Attach again', 'पुन्हा जोडा') : _t('Upload', 'Upload'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _acc)),
+          ]),
+        ),
       );
 
   Widget _naTag() => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), decoration: BoxDecoration(color: const Color(0xFFEEF0F3), borderRadius: BorderRadius.circular(999)), child: const m.Text('N / A', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF7E8798))));
