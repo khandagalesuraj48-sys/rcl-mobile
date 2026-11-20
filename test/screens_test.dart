@@ -8734,12 +8734,31 @@ void main() {
     expect(find.byKey(const Key('att-d-2026-10-14')), findsOneWidget);
     expect(find.byKey(const Key('att-d-2026-10-15')), findsNothing, reason: 'a day to come is not listed');
     expect(find.textContaining('Absent'), findsWidgets);
+    // (3.156.0) the month he approved: how much of it he was there, the late days, his average IN, the hours – counted in the app
+    expect(find.byKey(const Key('att-hero')), findsOneWidget);
+    expect(find.byKey(const Key('att-m-pct')), findsOneWidget);
+    expect(find.byKey(const Key('att-i-late')), findsOneWidget);
+    expect(find.byKey(const Key('att-i-in')), findsOneWidget);
+    expect(find.byKey(const Key('att-i-hours')), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_month.png'));
+    // the same days as a list, with a filter; back to the calendar
+    await tapKey('att-v-list');
+    expect(find.byKey(const Key('att-list')), findsOneWidget);
+    expect(find.byKey(const Key('att-r-2026-10-13')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_month_list.png'));
+    await tapKey('att-f-A');
+    expect(find.byKey(const Key('att-r-2026-10-13')), findsNothing, reason: 'only the absent days');
+    expect(find.byKey(const Key('att-r-2026-10-12')), findsOneWidget);
+    await tapKey('att-f-all');
+    await tapKey('att-v-cal');
     // (3.107.0) the month is a calendar: a day is opened under it by a touch; a day gone has "Ask to set right"
     expect(find.byKey(const Key('att-day')), findsNothing);
     await tapKey('att-d-2026-10-14');
     expect(find.byKey(const Key('att-day')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_month_day.png'));
     expect(find.byKey(const Key('att-ask')), findsNothing, reason: 'today is marked with the phone – not asked for');
     await tapKey('att-d-2026-10-12');
     expect(find.byKey(const Key('reg-send')), findsNothing, reason: 'the day is opened first');
@@ -8778,9 +8797,22 @@ void main() {
     await tapKey('att-reqs');
     expect(find.byKey(const Key('regs-new')), findsOneWidget);
     expect(find.byKey(const Key('reg-1')), findsOneWidget);
-    expect(find.textContaining('12 Oct · IN 09:05 · OUT 18:10'), findsOneWidget);
-    expect(find.textContaining('waits for HR office'), findsOneWidget);
-    expect(find.text('Waiting'), findsOneWidget);
+    // (3.156.0) "Regularization": the request is a card with its road, and in words who it is with
+    expect(find.descendant(of: find.byKey(const Key('reg-1')), matching: find.text('IN 09:05 · OUT 18:10')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('reg-1')), matching: find.text('Pending approval')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('reg-1')), matching: find.text('with the HR office')), findsOneWidget);
+    expect([for (final k in ['wait', 'ok', 'no']) t.widget<Text>(find.byKey(Key('regs-n-$k'))).data], ['1', '0', '0']);
+    expect(find.text('Regularization'), findsWidgets);
+    expect(find.byKey(const Key('regs-t-team')), findsNothing, reason: 'nobody reports to him: no "To approve"');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_regs.png'));
+    await tapKey('reg-open-1');
+    expect(find.byKey(const Key('regd-page')), findsOneWidget);
+    expect([for (final k in ['regd-state', 'regd-waits']) t.widget<Text>(find.byKey(Key(k))).data], ['PENDING APPROVAL', 'With the HR office']);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_reg_open.png'));
+    await t.pageBack();
+    await net(t);
     expect(find.byKey(const Key('regs-team')), findsNothing, reason: 'nobody reports to him: nothing to approve');
     await t.pageBack();
     await net(t);
@@ -8871,11 +8903,12 @@ void main() {
     srv.hrLeaves.add({'id': 21, 'code': 'E00020', 'name': 'Ravi Patil', 'from': '2026-10-20', 'to': '2026-10-21', 'part': 'full', 'days': 2, 'reason': 'Village fair', 'status': 'pending', 'level': 1, 'steps': [], 'note': ''});
     await openHr();
     await tapKey('att-reqs');
+    await tapKey('regs-t-team'); // (3.156.0) what waits for him of his team: a part of the page
     expect(find.byKey(const Key('regs-team')), findsOneWidget);
     expect(find.byKey(const Key('reg-11')), findsOneWidget);
     expect(find.byKey(const Key('reg-12')), findsOneWidget);
     expect(find.byKey(const Key('team-yes-1')), findsNothing, reason: 'his own request is not his to decide');
-    expect(find.textContaining('Ravi Patil · Leave 20 – 21 Oct · 2 days'), findsOneWidget, reason: 'his team\'s leave waits for him too');
+    expect(find.textContaining('Leave · 20 – 21 Oct · 2 days'), findsOneWidget, reason: 'his team\'s leave waits for him too');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_team.png'));
     await tapKey('team-yes-11');
@@ -9123,6 +9156,8 @@ void main() {
     await tapKey('nav-att');
     expect(find.byKey(const Key('att-month-page')), findsOneWidget);
     expect(find.byKey(const Key('att-page')), findsNothing);
+    // (3.156.0) the way to Regularization is at the end of the longer page
+    await t.scrollUntilVisible(find.byKey(const Key('att-m-reqs')), 250, scrollable: find.descendant(of: find.byKey(const Key('att-month-page')), matching: find.byType(Scrollable)).first);
     expect(find.byKey(const Key('att-m-reqs')), findsOneWidget);
     expect(find.byKey(const Key('hr-nav')), findsOneWidget);
     expect(find.byKey(const Key('att-punch')), findsNothing);
@@ -9133,6 +9168,8 @@ void main() {
     expect(String.fromCharCodes(pdf!.sublist(0, 5)), '%PDF-');
     expect(pdf!.length, greaterThan(1500));
     expect(find.byTooltip('Back'), findsNothing);
+    await t.drag(find.byKey(const Key('att-month-page')), const Offset(0, 3000)); // (back at the top for the picture)
+    await settle(t, 600);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_attendance.png'));
     await tapKey('nav-leave');

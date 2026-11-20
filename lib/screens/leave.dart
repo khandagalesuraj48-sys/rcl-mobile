@@ -788,8 +788,9 @@ LeaveRoad leaveRoad(Map q) {
   switch (st) {
     case 'pending':
       final stage = w != null ? '${w['stage']}' : (q['level'] == 1 ? 'verify' : 'approve');
-      final who = w != null ? names(w) : (q['level'] == 1 ? _t('the reporting person', 'Reporting person') : _t('the HR office', 'HR office'));
-      final sub = _t('with $who', '$who कडे');
+      final who = w != null ? names(w) : (q['level'] == 1 ? _t('Reporting person', 'Reporting person') : _t('HR office', 'HR office'));
+      // (a server of before names no person: "with the HR office")
+      final sub = _t(w != null ? 'with $who' : 'with the ${q['level'] == 1 ? 'reporting person' : 'HR office'}', '$who कडे');
       if (stage == 'verify') {
         return LeaveRoad([sent, step('v', who, 'now', _t('Waiting', 'प्रलंबित')), step('a', '', 'todo', _t('After verification', 'Verification नंतर'))], _t('In verification', 'Verification मध्ये'), sub, 'w', who);
       }
@@ -854,15 +855,15 @@ Widget leaveTrack(LeaveRoad road) {
 }
 
 /// The first letters of the person a request is with (a role: its first letters).
-Widget _roadFace(String who, {double size = 34}) => Container(
+Widget roadFace(String who, {double size = 34}) => Container(
       width: size,
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(shape: BoxShape.circle, gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF24408A), Color(0xFF0B1733)]), border: Border.all(color: _roadGold, width: 1.5)),
-      child: who.isEmpty ? Icon(Icons.person_outline_rounded, size: size * .5, color: const Color(0xFFF3D889)) : m.Text(initials(who.split('(').first.split('/').first), style: TextStyle(fontFamily: 'Montserrat', fontSize: size * .35, fontWeight: FontWeight.w800, color: const Color(0xFFF3D889))),
+      child: who.isEmpty ? Icon(Icons.person_outline_rounded, size: size * .5, color: const Color(0xFFF3D889)) : m.Text(who.startsWith('HR ') ? 'HR' : initials(who.split('(').first.split('/').first), style: TextStyle(fontFamily: 'Montserrat', fontSize: size * .35, fontWeight: FontWeight.w800, color: const Color(0xFFF3D889))),
     );
 
-(Color, Color, Color) _roadTone(String tone) => switch (tone) {
+(Color, Color, Color) roadTone(String tone) => switch (tone) {
       'a' => (sk.dark ? const Color(0xFF58D68D) : const Color(0xFF0F7A45), const Color(0xFF0F7A45).withValues(alpha: sk.dark ? .16 : .1), const Color(0xFF0F7A45).withValues(alpha: .35)),
       'x' => (sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B), const Color(0xFFC22A1B).withValues(alpha: sk.dark ? .16 : .09), const Color(0xFFC22A1B).withValues(alpha: .35)),
       's' => (sk.muted, sk.blank, sk.cardLine ?? sk.line),
@@ -871,7 +872,7 @@ Widget _roadFace(String who, {double size = 34}) => Container(
 
 /// One request on the Leave page: its days, its reason, its papers, the road, and in words who it is with.
 Widget leaveCard(Map q, {Key? key, VoidCallback? onPapers}) {
-  final road = leaveRoad(q), tone = _roadTone(road.tone), from = '${q['from'] ?? ''}', d = DateTime.tryParse('${from}T00:00:00Z');
+  final road = leaveRoad(q), tone = roadTone(road.tone), from = '${q['from'] ?? ''}', d = DateTime.tryParse('${from}T00:00:00Z');
   const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
   return Container(
     key: key,
@@ -922,7 +923,7 @@ Widget leaveCard(Map q, {Key? key, VoidCallback? onPapers}) {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(color: tone.$2, borderRadius: BorderRadius.circular(16), border: Border.all(color: tone.$3)),
         child: Row(children: [
-          _roadFace(road.holder),
+          roadFace(road.holder),
           const SizedBox(width: 11),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -1027,7 +1028,7 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hist = [for (final x in (q['history'] as List? ?? const []).whereType<Map>()) x], road = leaveRoad(q), tone = _roadTone(road.tone);
+    final hist = [for (final x in (q['history'] as List? ?? const []).whereType<Map>()) x], road = leaveRoad(q), tone = roadTone(road.tone);
     final bad = road.tone == 'x';
     return Scaffold(
       appBar: hrHead(context, sky: kLeaveSky, title: 'My leave', mr: 'माझी रजा', pill: headPill(leaveDays(q)), height: 96),
@@ -1038,7 +1039,7 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
           edge: bad ? const Color(0xB3E5484D) : const Color(0x8CE6B94E),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
-              Container(decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: _roadGold.withValues(alpha: .2), spreadRadius: 5)]), child: _roadFace(road.holder, size: 54)),
+              Container(decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: _roadGold.withValues(alpha: .2), spreadRadius: 5)]), child: roadFace(road.holder, size: 54)),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -1090,7 +1091,7 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
                           margin: const EdgeInsets.only(top: 7, bottom: 5),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(color: x.state == 'now' ? _roadGold.withValues(alpha: .1) : x.state == 'bad' ? _roadRed.withValues(alpha: .08) : sk.blank, borderRadius: BorderRadius.circular(14), border: x.state == 'now' ? Border.all(color: _roadGold.withValues(alpha: .5)) : x.state == 'bad' ? Border.all(color: _roadRed.withValues(alpha: .35)) : null),
-                          child: Row(children: [_roadFace(x.who, size: 32), const SizedBox(width: 10), Expanded(child: m.Text(x.who, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: sk.ink, height: 1.25)))]),
+                          child: Row(children: [roadFace(x.who, size: 32), const SizedBox(width: 10), Expanded(child: m.Text(x.who, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: sk.ink, height: 1.25)))]),
                         ),
                       if (x.when.isNotEmpty) m.Text(i == 0 ? '${x.when} · ${_t('by you', 'तुम्ही')}' : x.when, style: TextStyle(fontSize: 12, height: 1.3, fontWeight: x.state == 'now' || x.state == 'bad' ? FontWeight.w600 : FontWeight.w400, color: x.state == 'now' ? sk.link : x.state == 'bad' ? tone.$1 : sk.muted)),
                       if (x.state == 'bad' && '${q['note'] ?? ''}'.isNotEmpty) m.Text('“${q['note']}”', style: TextStyle(fontSize: 12.5, height: 1.3, color: tone.$1)),

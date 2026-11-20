@@ -560,7 +560,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final (String state, String big, String under) = switch (sky) {
       Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), 'SIGN OUT', _t('Tap to mark', 'दाबा')),
       Sky.dusk => closed
-          ? (_t('Closed by itself – absent', 'आपोआप बंद – गैरहजर'), _t('ABSENT', 'गैरहजर'), _t('Ask to set the day right', 'दुरुस्ती मागा'))
+          ? (_t('Closed by itself – absent', 'आपोआप बंद – गैरहजर'), _t('ABSENT', 'गैरहजर'), _t('Regularize the day', 'Regularize करा'))
           : (_t('Today is done', 'आजची हजेरी पूर्ण'), _t('DONE', 'पूर्ण'), _t('See your month', 'महिना पहा')),
       Sky.grey => (_t('Cannot be marked', 'लावता येत नाही'), '–', _t('Open Attendance', 'Attendance उघडा')),
       _ => (_t('Not marked yet', 'अजून लावलेली नाही'), 'SIGN IN', _t('Tap to mark', 'दाबा')),
@@ -767,7 +767,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
 
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       tile('hh-leave', Icons.event_available_rounded, kPurple, const Color(0xFFF1E8F6), 'Leave', 'रजा', left, () => _go(2)),
-      tile('hh-reqs', Icons.fact_check_outlined, const Color(0xFF8A5A00), const Color(0xFFFFF3D1), 'Requests', 'विनंत्या', waiting > 0 ? _t('$waiting waiting', '$waiting प्रलंबित') : '', _requests),
+      tile('hh-reqs', Icons.fact_check_outlined, const Color(0xFF8A5A00), const Color(0xFFFFF3D1), 'Regularization', 'Regularization', waiting > 0 ? _t('$waiting waiting', '$waiting प्रलंबित') : '', _requests),
       tile('hh-docs', Icons.description_outlined, const Color(0xFF0F7A45), const Color(0xFFE3F7EC), 'Documents', 'कागदपत्रे', mine == null ? '' : miss > 0 ? _t('$miss missing', '$miss बाकी') : _t('All there', 'सर्व आहेत'), _docs),
       tile('hh-slip', Icons.payments_outlined, const Color(0xFF0B5FA5), const Color(0xFFE3EEFB), 'Salary slip', 'पगार पावती', '', _slips),
     ]);
@@ -796,7 +796,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       for (final d in (month?['all'] as List? ?? const []).whereType<Map>().toList().reversed) {
         final dd = DateTime.tryParse('${d['day']}T00:00:00Z');
         if (d['code'] != 'A' || dd == null || !dd.isBefore(t) || t.difference(dd).inDays > back || asked.contains('${d['day']}')) continue;
-        out.add(_Note('hh-n-day-${d['day']}', Icons.error_outline_rounded, red, redSoft, _t('${dayName('${d['day']}')} has no punch', '${dayName('${d['day']}')} ला हजेरी नाही'), _t('Ask to set it right', 'दुरुस्ती मागा'), _t('Ask', 'मागा'), () async {
+        out.add(_Note('hh-n-day-${d['day']}', Icons.error_outline_rounded, red, redSoft, _t('${dayName('${d['day']}')} has no punch', '${dayName('${d['day']}')} ला हजेरी नाही'), _t('Regularize it', 'Regularize करा'), _t('Regularize', 'Regularize'), () async {
           final ok = await askRegularize(context, _hr, '${d['day']}', code: 'A');
           if (!mounted) return;
           if (ok) donePop(context, _t('Request sent', 'विनंती पाठवली'), detail: _t('It counts when it is approved.', 'मंजूर झाल्यावर धरले जाईल.'));
