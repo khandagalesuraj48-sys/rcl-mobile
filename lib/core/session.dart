@@ -14,6 +14,7 @@ import 'api.dart';
 import 'rtc.dart';
 import 'format.dart';
 import 'fuel.dart';
+import 'hr_track.dart';
 import 'lang.dart';
 import 'sitewords.dart';
 export 'fuel.dart';      // (3.44.0) kFuels, fuelUnit, fuelText – for every screen that has the session
@@ -1536,6 +1537,10 @@ class Session extends ChangeNotifier {
         await off(this).timeout(const Duration(seconds: 4));
       } catch (_) {/* signing out never waits for it */}
     }
+    // (3.149.0, rcl-hr step 20) his place for HR stops at sign-out (what waits is sent once more – never waits long)
+    try {
+      await HrTrack.i.stop().timeout(const Duration(seconds: 4));
+    } catch (_) {/* signing out never waits for it */}
     stopLive();
     rtcOff();
     clearMemory(); // (update-155) nothing the screens kept stays after sign-out

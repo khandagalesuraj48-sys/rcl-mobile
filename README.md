@@ -15,6 +15,25 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.149.0 (20-11-2026, HR's location tracking – rcl-hr step 20; asked: "saglet main location tracking pratek employee ch karaych
+aahe … bydefault saglenche on asel off pn krta yeil date wise pn … 1 month sathi asel 1 month nantr auto delet hoil backup gheta yenaar
+nahi"; his answer: "duety in zzal ki out prynt track aasel tya nantr nahi"; and his decision of 20-11-2026 "user la samjle nahi pahije
+ki tyachi location track keli jatey … app madhe he samjnarach nahi … fkt ho hr and super admin la web warun disel"):** **his location is
+sent to HR only from his IN to his OUT, and nothing of it is shown anywhere in the app** (`lib/core/hr_track.dart`). Home asks HR's server
+(`myTrack` – on duty and not switched off for him today) after every IN / OUT and whenever it is read; on: a point every 5 minutes (one in
+5 minutes is kept), waiting on the phone in a file (also with no network) and sent in one call about every 5 minutes (`trackSend` – each
+with its own number: sent twice, kept once; at most 500 a call).
+* **Shown to the employee: nothing.** No box, no card, on any of the four pages; his "My HR" on the web shows nothing either. Only the
+  HO HR / the Super Admin see it, on the web (rcl-hr's tracking page). The start at IN is silent.
+* **What the phone itself shows cannot be hidden** (the system forces it; he chose this knowing so): Android a foreground-service
+  notification – its words are plain **"Attendance"**, no mention of HR, location or sharing – keeps it coming while the app is in the
+  background; an iPhone the "location" background mode and its blue bar. `NSLocationAlwaysAndWhenInUseUsageDescription` names **attendance
+  and the vehicle log book only, not HR** (Info.plist and `tool/patch_platforms.py`).
+* A driver whose Smart Log Book GPS already runs: no second GPS (`VlGps.taps` / `VlGps.before`). It stops at OUT, at sign-out, and when
+  HR's answer says off. The app opened again on the ERP's Home while on duty: what was on goes on, nothing asked of the server (`HrTrack.resume`).
+* HR keeps the points 30 days, then they are deleted; never in a backup (the HR server). A server of before (no step 20): `myTrack` is an
+  unknown action – nothing is started, nothing changes.
+
 **Version 3.148.0 (19-11-2026, Mechanical update-269 – asked: "diesel issue krtana … meter change kela asel new reading asel tr … ek option thew
 meter changed … log book entry … chukich vehicle war zaley tr ediat kel ki vehicle number change krta yet nhiye … 10 or 20 entry … ek ek
 kel tri ani bulk madhe kel tri … fkt log book transfer hotana diesel transfer nahi"):** **Diesel Issue – "Meter changed"** under the

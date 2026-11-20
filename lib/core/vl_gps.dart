@@ -48,6 +48,13 @@ class VlGps extends ChangeNotifier {
   @visibleForTesting
   static bool off = false;
 
+  /// (3.149.0, rcl-hr step 20) others who use the same places (HR's location while on duty – hr_track.dart): no second GPS
+  static final List<void Function(Position)> taps = [];
+
+  /// (3.149.0) asked to let go of their own GPS before this one starts: the phone's GPS gives ONE stream to the whole app (the
+  /// first one's settings) – the vehicle's must be its own (every 20 seconds), not HR's (every 5 minutes)
+  static final List<Future<void> Function()> before = [];
+
   Api? _api;
   String session = '';
   String no = '';
@@ -147,6 +154,11 @@ class VlGps extends ChangeNotifier {
               // (an iPhone: also in the background – the app's "location" background mode; iOS shows its blue bar while it is used)
               ? AppleSettings(accuracy: LocationAccuracy.high, distanceFilter: 10, activityType: ActivityType.automotiveNavigation, pauseLocationUpdatesAutomatically: false, allowBackgroundLocationUpdates: true, showBackgroundLocationIndicator: true)
               : const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10);
+      for (final f in List.of(before)) {
+        try {
+          await f();
+        } catch (_) {/* the vehicle's GPS starts anyway */}
+      }
       _sub = Geolocator.getPositionStream(locationSettings: ls).listen(_got, onError: (_) {
         state = 'gps-off';
         notifyListeners();
@@ -165,6 +177,11 @@ class VlGps extends ChangeNotifier {
   }
 
   void _got(Position p) {
+    for (final t in List.of(taps)) {
+      try {
+        t(p);
+      } catch (_) {/* the vehicle's GPS goes on */}
+    }
     if (_offNow != null) _offEnd();
     state = 'on';
     final moving = (p.speed.isFinite && p.speed > 1.5);

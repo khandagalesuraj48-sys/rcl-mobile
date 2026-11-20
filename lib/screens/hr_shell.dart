@@ -26,6 +26,7 @@ import 'package:flutter/material.dart' as m show Text;
 
 import '../core/attend.dart';
 import '../core/attend_remind.dart';
+import '../core/hr_track.dart';
 import '../core/session.dart';
 import '../core/update.dart' show checkUpdate, offerUpdate, updateOfferAgain;
 import '../ui/attend_look.dart';
@@ -45,8 +46,11 @@ String _t(String en, String mr) => Lang.i.pair(en, mr);
 
 /// His HR sign-in of his HR site (this site, or – 3.141.0 – the site of his own HR: Head Office for an HO employee in VTR's ERP),
 /// for the pages opened from here.
-Future<Map<String, dynamic>> hrCall(BuildContext context, Map<String, dynamic> body) {
-  final s = SessionScope.read(context), h = hrSite(s), mod = hrModule(s);
+Future<Map<String, dynamic>> hrCall(BuildContext context, Map<String, dynamic> body) => hrAsk(SessionScope.read(context), body);
+
+/// (3.149.0) the same with the session itself – for what goes on after the page is closed (his location for HR while on duty).
+Future<Map<String, dynamic>> hrAsk(Session s, Map<String, dynamic> body) {
+  final h = hrSite(s), mod = hrModule(s);
   if (h == null || mod == null) throw StateError('none');
   return s.api.hr(h.code, mod.url, mod.key, body);
 }
@@ -179,6 +183,12 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     await _gpsAsk();
   }
 
+  // (3.149.0, rcl-hr step 20 – his decision of 20-11-2026: "user la samjle nahi pahije ki tyachi location track keli jatey … app
+  // madhe he samjnarach nahi … fkt ho hr and super admin la web warun disel") NOTHING of the location is shown in the app: no box,
+  // no card on any page. The employee does not learn it from the app or from his "My HR" on the web. Only the HO HR / the Super
+  // Admin see it, on the web. (The phone's own foreground notification / iOS indicator cannot be removed – the system shows it –
+  // so its words are made plain "Attendance", with no mention of HR or sharing: lib/core/hr_track.dart.)
+
   /// "Location is off": one press switches it on in the app (Android's own box); else the phone's settings open.
   Future<void> _gpsAsk() async {
     final yes = await showDialog<bool>(
@@ -255,6 +265,9 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         loading = false;
         err = '';
       });
+      // (3.149.0, rcl-hr step 20) his place shared with HR while on duty (IN → OUT) – HR's server says when; after every IN / OUT
+      // and whenever Home is opened. Nothing is shown in the app (his decision of 20-11-2026): the start is silent.
+      unawaited(HrTrack.i.sync((b) => hrAsk(s, b)));
     } catch (e) {
       if (!mounted) return;
       setState(() {

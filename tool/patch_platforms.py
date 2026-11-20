@@ -126,8 +126,10 @@ USES = [('NSCameraUsageDescription', 'Sketchline uses the camera for the photos 
         ('NSPhotoLibraryUsageDescription', 'Sketchline lets you choose a photo for an entry.'),
         ('NSFaceIDUsageDescription', 'Sketchline opens with your Face ID, so that nobody else can open it on this iPhone.'),      # (3.27.0) the app lock
         ('NSSpeechRecognitionUsageDescription', 'Sketchline turns what you say to the assistant into words (a question or an entry).'),
-        # (3.132.0, Mechanical update-263) the Smart Log Book: the place of the vehicle while it is with the driver, also in the background
-        ('NSLocationAlwaysAndWhenInUseUsageDescription', 'Sketchline shares the place of the vehicle with you while it is on duty (Smart Log Book), also when the app is in the background.')]
+        # (3.132.0, Mechanical update-263) the Smart Log Book: the place of the vehicle while it is with the driver, also in the background;
+        # (3.149.0, rcl-hr step 20) and attendance location while on duty (IN -> OUT); the words name attendance only, not HR (his
+        # decision of 20-11-2026: the employee is not told it goes to HR)
+        ('NSLocationAlwaysAndWhenInUseUsageDescription', 'Sketchline uses your location for attendance while you are on duty and for the vehicle log book while a vehicle is with you, also when the app is in the background.')]
 def plist(s):
     if '<key>CFBundleDisplayName</key>' in s:
         s = re.sub(r'(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)', r'\1Sketchline\2', s, count=1)
@@ -136,6 +138,9 @@ def plist(s):
     for k, v in USES:
         if '<key>%s</key>' % k not in s: s = s.replace('<dict>', '<dict>\n\t<key>%s</key>\n\t<string>%s</string>' % (k, v), 1)
     s = s.replace('Sketchline uses the microphone for a screen-share help call.', dict(USES)['NSMicrophoneUsageDescription'])
+    for _old in ('Sketchline shares the place of the vehicle with you while it is on duty (Smart Log Book), also when the app is in the background.',
+                 'Sketchline shares your location with HR while you are on duty (from your IN to your OUT) and the place of the vehicle while it is with you (Smart Log Book), also when the app is in the background.'):
+        s = s.replace(_old, dict(USES)['NSLocationAlwaysAndWhenInUseUsageDescription'])   # (3.149.0) the words of before -> attendance-framed
     # (3.132.0) the iPhone keeps sending the vehicle's place while the app is in the background (its blue bar shows it)
     if '<key>UIBackgroundModes</key>' not in s:
         s = s.replace('<dict>', '<dict>\n\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>location</string>\n\t</array>', 1)
