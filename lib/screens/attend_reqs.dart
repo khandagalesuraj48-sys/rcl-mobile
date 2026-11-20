@@ -431,7 +431,7 @@ class _AttendRegsScreenState extends State<AttendRegsScreen> {
                           ShaderMask(
                             blendMode: BlendMode.srcIn,
                             shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFBEBB5), Color(0xFFE6B94E), Color(0xFFB8860B)], stops: <double>[0, .6, 1]).createShader(r),
-                            child: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Regularization', mr: 'Regularization', maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, height: 1.25))),
+                            child: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Regularization', mr: 'Regularization', maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, height: 1.25))),
                           ),
                           const Text('Forgot IN or OUT? It counts only when approved.', mr: 'IN किंवा OUT राहिले? मंजूर झाल्यावरच धरले जाते.', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFF3D889), height: 1.3)),
                         ]),
@@ -506,7 +506,9 @@ String _at(Object? at) {
 LeaveRoad regRoad(Map q, {String? boss}) {
   final st = '${q['status']}', steps = [for (final x in (q['steps'] as List? ?? const []).whereType<Map>()) x];
   final mgr = boss ?? '${((HrCache.now('myHr')?['employee'] as Map?)?['manager']) ?? ''}';
-  final rp = mgr.isNotEmpty ? mgr : _t('the reporting person', 'Reporting person'), hr = _t('the HR office', 'HR office');
+  final rp = mgr.isNotEmpty ? mgr : _t('Reporting person', 'Reporting person'), hr = _t('HR office', 'HR office');
+  // (in a sentence: "with Amit Patil", "with the HR office")
+  String the(String who) => who == mgr && mgr.isNotEmpty ? who : _t('the ${who == hr ? 'HR office' : 'reporting person'}', who);
   Map? of(int level) => steps.where((x) => x['level'] == level).lastOrNull;
   final s1 = of(1), s2 = of(2);
   ({String name, String who, String state, String when}) step(bool verify, String who, String state, String when) => (name: verify ? 'Verification' : _t('Approval', 'मंजुरी'), who: who, state: state, when: when);
@@ -514,18 +516,18 @@ LeaveRoad regRoad(Map q, {String? boss}) {
   final verDone = s1 != null && '${s1['decision']}' == 'approved' ? step(true, rp, 'done', '${_t('Verified', 'Verify केली')} · ${_at(s1['at'])}') : null;
   switch (st) {
     case 'approved':
-      return LeaveRoad([sent, if (verDone != null) verDone, step(false, hr, 'done', '${_t('Approved', 'मंजूर')}${s2 == null ? '' : ' · ${_at(s2['at'])}'}')], _t('Approved', 'मंजूर'), _t('by $hr', '$hr ने'), 'a', hr);
+      return LeaveRoad([sent, if (verDone != null) verDone, step(false, hr, 'done', '${_t('Approved', 'मंजूर')}${s2 == null ? '' : ' · ${_at(s2['at'])}'}')], _t('Approved', 'मंजूर'), _t('by ${the(hr)}', '$hr ने'), 'a', hr);
     case 'refused':
       final atVerify = verDone == null && s1 != null, by = atVerify ? rp : hr, last = atVerify ? s1 : s2, note = _note(q);
       final bad = step(atVerify, by, 'bad', '${_t('Rejected', 'नाकारले')}${last == null ? '' : ' · ${_at(last['at'])}'}');
-      return LeaveRoad([sent, if (verDone != null) verDone, bad, if (atVerify) step(false, hr, 'todo', '')], _t('Rejected', 'नाकारले'), [_t('by $by', '$by यांनी'), if (note.isNotEmpty) '“$note”'].join(' – '), 'x', by);
+      return LeaveRoad([sent, if (verDone != null) verDone, bad, if (atVerify) step(false, hr, 'todo', '')], _t('Rejected', 'नाकारले'), [_t('by ${the(by)}', '$by यांनी'), if (note.isNotEmpty) '“$note”'].join(' – '), 'x', by);
     case 'cancelled':
       return LeaveRoad([sent, step(false, hr, 'todo', '')], _t('Taken back', 'मागे घेतले'), '', 's', '');
     default:
       if (q['level'] == 1) {
-        return LeaveRoad([sent, step(true, rp, 'now', _t('Waiting', 'प्रलंबित')), step(false, hr, 'todo', _t('After verification', 'Verification नंतर'))], _t('In verification', 'Verification मध्ये'), _t('with $rp', '$rp कडे'), 'w', rp);
+        return LeaveRoad([sent, step(true, rp, 'now', _t('Waiting', 'प्रलंबित')), step(false, hr, 'todo', _t('After verification', 'Verification नंतर'))], _t('In verification', 'Verification मध्ये'), _t('with ${the(rp)}', '$rp कडे'), 'w', rp);
       }
-      return LeaveRoad([sent, if (verDone != null) verDone, step(false, hr, 'now', _t('Waiting', 'प्रलंबित'))], _t('Pending approval', 'मंजुरीसाठी प्रलंबित'), _t('with $hr', '$hr कडे'), 'w', hr);
+      return LeaveRoad([sent, if (verDone != null) verDone, step(false, hr, 'now', _t('Waiting', 'प्रलंबित'))], _t('Pending approval', 'मंजुरीसाठी प्रलंबित'), _t('with ${the(hr)}', '$hr कडे'), 'w', hr);
   }
 }
 

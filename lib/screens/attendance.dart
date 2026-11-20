@@ -1139,8 +1139,8 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
   static int? _worked(Map d) {
     final a = _hm(d['in']), b = _hm(d['out']);
     if (a == null || b == null) return null;
-    final x = b - a + (d['next_day'] == true || b < a ? 1440 : 0);
-    return x <= 0 ? null : x;
+    final x = b - a + (d['next_day'] == true ? 1440 : 0);
+    return x <= 0 ? null : x; // (an OUT before the IN that is not said to be of the next day: not counted)
   }
 
   static String _span(int mins) => '${mins ~/ 60} h ${(mins % 60).toString().padLeft(2, '0')} m';
@@ -1393,7 +1393,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                m.Text(has ? '${_or(d['in'])} → ${_or(d['out'])}' : tr(_names[code] ?? code), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink)),
+                m.Text(has ? '${_or(d['in'])} – ${_or(d['out'])}' : tr(_names[code] ?? code), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink)),
                 m.Text([if (mins != null) _span(mins), if (late(d)) _t('late ${d['late_min']} min', 'उशीर ${d['late_min']} मि'), if ('${d['place'] ?? ''}'.isNotEmpty) '${d['place']}'].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: sk.muted)),
               ]),
             ),

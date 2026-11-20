@@ -788,8 +788,9 @@ LeaveRoad leaveRoad(Map q) {
   switch (st) {
     case 'pending':
       final stage = w != null ? '${w['stage']}' : (q['level'] == 1 ? 'verify' : 'approve');
-      final who = w != null ? names(w) : (q['level'] == 1 ? _t('the reporting person', 'Reporting person') : _t('the HR office', 'HR office'));
-      final sub = _t('with $who', '$who कडे');
+      final who = w != null ? names(w) : (q['level'] == 1 ? _t('Reporting person', 'Reporting person') : _t('HR office', 'HR office'));
+      // (a server of before names no person: "with the HR office")
+      final sub = _t(w != null ? 'with $who' : 'with the ${q['level'] == 1 ? 'reporting person' : 'HR office'}', '$who कडे');
       if (stage == 'verify') {
         return LeaveRoad([sent, step('v', who, 'now', _t('Waiting', 'प्रलंबित')), step('a', '', 'todo', _t('After verification', 'Verification नंतर'))], _t('In verification', 'Verification मध्ये'), sub, 'w', who);
       }
@@ -859,7 +860,7 @@ Widget roadFace(String who, {double size = 34}) => Container(
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(shape: BoxShape.circle, gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF24408A), Color(0xFF0B1733)]), border: Border.all(color: _roadGold, width: 1.5)),
-      child: who.isEmpty ? Icon(Icons.person_outline_rounded, size: size * .5, color: const Color(0xFFF3D889)) : m.Text(initials(who.split('(').first.split('/').first), style: TextStyle(fontFamily: 'Montserrat', fontSize: size * .35, fontWeight: FontWeight.w800, color: const Color(0xFFF3D889))),
+      child: who.isEmpty ? Icon(Icons.person_outline_rounded, size: size * .5, color: const Color(0xFFF3D889)) : m.Text(who.startsWith('HR ') ? 'HR' : initials(who.split('(').first.split('/').first), style: TextStyle(fontFamily: 'Montserrat', fontSize: size * .35, fontWeight: FontWeight.w800, color: const Color(0xFFF3D889))),
     );
 
 (Color, Color, Color) roadTone(String tone) => switch (tone) {
