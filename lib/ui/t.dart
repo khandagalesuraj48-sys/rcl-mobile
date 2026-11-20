@@ -80,6 +80,9 @@ class Text extends StatelessWidget {
 }
 
 /// The Marathi line under an English title: shown as before while no language is chosen; once one is, the title itself is in it.
+/// (20-11-2026, his decision: "app language default english asel … english madhe marathi mix as ny disnar") the Marathi second
+/// line under an English title is GONE – the app is English by itself; मराठी / हिंदी are chosen in My settings and then the title
+/// itself is in that language. So this never draws anything now (kept so the many call sites need no change).
 class MrLine extends StatelessWidget {
   const MrLine(this.data, {super.key, this.style, this.textAlign, this.maxLines, this.overflow});
   final String data;
@@ -88,6 +91,5 @@ class MrLine extends StatelessWidget {
   final int? maxLines;
   final TextOverflow? overflow;
   @override
-  Widget build(BuildContext context) =>
-      LangScope.of(context).chosen ? const SizedBox.shrink() : m.Text(data, style: style, textAlign: textAlign, maxLines: maxLines, overflow: overflow);
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

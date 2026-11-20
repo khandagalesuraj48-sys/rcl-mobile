@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.150.0 (20-11-2026, his decision: "app language default english asel sagli kde user setting mdhun change kru shakel english
+mdhe marathi mix as ny disnar"):** the app is **English by default** – no Marathi second line / "English · मराठी" mix anywhere. मराठी /
+हिंदी are chosen in **Me → My settings → App language**, and then the whole app (titles, buttons, messages, the assistant's own lines,
+help, errors) is in that language. What changed:
+* `lib/ui/t.dart` `MrLine` now draws nothing (the Marathi line under an English title is gone); `lib/core/lang.dart` `bi(...)` returns
+  English when no language is chosen (was "English · मराठी"); `lib/screens/login.dart` the password boxes drop their "(दिलेला)" hints.
+* `lib/screens/settings.dart` the written-language default (`lang` – help, the assistant's own lines, errors) and the app default
+  (`appLang`) are English; a person who never chose sees English. One stored as मराठी / हिंदी keeps it.
+* **Voice stays मराठी / हिंदी by itself** – understanding speech is separate; it is not forced to English.
+* Tests: `lang_test` (default English, no mix); the brief / help / memory tests pinned to a Marathi-written user so they still cover
+  the Marathi path; the login and settings "second line" checks now expect no Marathi line.
+
 **Version 3.149.0 (20-11-2026, HR's location tracking – rcl-hr step 20; asked: "saglet main location tracking pratek employee ch karaych
 aahe … bydefault saglenche on asel off pn krta yeil date wise pn … 1 month sathi asel 1 month nantr auto delet hoil backup gheta yenaar
 nahi"; his answer: "duety in zzal ki out prynt track aasel tya nantr nahi"; and his decision of 20-11-2026 "user la samjle nahi pahije

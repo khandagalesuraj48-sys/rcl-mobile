@@ -1211,7 +1211,7 @@ void main() {
     await net(t);
     expect(s.stage, Stage.setPassword);
     expect(find.text('Set your own password'), findsOneWidget);
-    expect(find.text('तुमचा स्वतःचा password बनवा'), findsOneWidget);
+    expect(find.text('तुमचा स्वतःचा password बनवा'), findsNothing, reason: '(20-11-2026) the app is English by default – no Marathi second line / mix');
     expect(find.byType(TextField), findsNWidgets(3));
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1b_own_password.png'));
@@ -1383,7 +1383,7 @@ void main() {
     await t.tap(find.text('My settings'));
     await net(t);
     await t.scrollUntilVisible(find.text('App language'), 200, scrollable: find.byType(Scrollable).last);
-    expect(find.text('ॲपची भाषा'), findsOneWidget, reason: 'nothing chosen yet: English with the Marathi line, as before');
+    expect(find.text('ॲपची भाषा'), findsNothing, reason: '(20-11-2026) the default is English only – no Marathi second line under "App language"');
     await t.tap(find.text('App language'));
     await settle(t, 600);
     await t.tap(find.text('मराठी').last);
@@ -5970,6 +5970,7 @@ void main() {
     phone(t);
     forgetChat();
     final srv = FakeServer();
+    srv.prefs['lang'] = 'mr'; // (20-11-2026) his written language is Marathi here: the brief / the app's own lines come in Marathi (the default is now English)
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
@@ -6159,6 +6160,7 @@ void main() {
     addTearDown(() => helpPicked = null);
     final srv = FakeServer()..aiOn = true;
     srv.prefs['brief'] = false;
+    srv.prefs['lang'] = 'mr'; // (20-11-2026) his written language is Marathi: the help opens in Marathi (the default is now English), then the test switches it to English and back
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
@@ -8177,6 +8179,7 @@ void main() {
     phone(t);
     forgetChat();
     final srv = liveSrv();
+    srv.prefs['lang'] = 'mr'; // (20-11-2026) his written language is Marathi: the app's own lines (History, "removed from Memory") are Marathi (the default is now English; the English question still gets an English answer)
     await askLive(t, srv);
     expect(srv.aiStreamed.length, 2, reason: 'each step asked word by word');
     expect(srv.calls.where((c) => c == 'mech:getAiReply'), isEmpty, reason: 'nothing asked in one piece');

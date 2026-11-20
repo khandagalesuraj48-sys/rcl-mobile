@@ -2,8 +2,9 @@
  * marathi english … jya language madhe selection asel purn app tyach language madhe asel error suggestions pn tyach language
  * madhe"). Me → My settings → App language: मराठी / हिंदी / English – kept with his account (the web ERP's "Language of the app"
  * is the same setting, and it is the same at all his sites).
- *   ''  – not chosen yet: the app as before (English with the Marathi line under it);
+ *   ''  – not chosen yet: English (20-11-2026, his decision: the default is English, with NO Marathi line / mix);
  *   'en' – English only;  'mr' – मराठी only;  'hi' – हिंदी only.
+ * (The spoken-word language for voice is separate – it still defaults to Marathi/Hindi: voice is for understanding speech.)
  * The app's code stays English. What is shown is turned here, from the web's words (assets/i18n/web_<lang>.json – the same
  * file the web uses, with the server's messages) and the app's own (assets/i18n/app_<lang>.json): a text exactly, or a pattern
  * whose {0}, {1}… are filled by the app (a machinery, a date, a number). Where the app already has its own Marathi words (the
@@ -174,9 +175,10 @@ class Lang extends ChangeNotifier {
     return tr(en);
   }
 
-  /// A message written in both ("English · मराठी"): as before when no language is chosen, else the chosen one.
+  /// A message in the app's language. (20-11-2026, his decision: the default is English, no Marathi mix – so when nothing is
+  /// chosen it is English only; मराठी / हिंदी chosen in My settings gives that language.)
   String bi(String en, String mr, [String sep = ' · ']) {
-    if (!chosen) return mr.isEmpty ? en : '$en$sep$mr';
+    if (!chosen) return en;
     return pair(en, mr);
   }
 }
