@@ -9026,21 +9026,32 @@ void main() {
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'Not marked yet');
     // (3.114.0) the look is Pearl until he chooses; the dial's disc marks – IN is next
     expect([HrSkin.i.on, HrSkin.i.look], [true, 'pearl']);
-    expect(find.text('TAP TO MARK'), findsOneWidget);
-    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('IN')), findsOneWidget);
+    // (3.153.0) the dial he approved: the server's live clock, SIGN IN, "Tap to mark"; his code, designation and manager above it
+    expect(find.text('Tap to mark'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('SIGN IN')), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('hh-clock'))).data, '10:30:00', reason: 'the clock of the server (India)');
+    expect([for (final k in ['hh-code', 'hh-desig', 'hh-boss']) t.widget<Text>(find.byKey(Key(k))).data], ['E00012', 'Site Engineer', 'Amit Patil']);
+    expect(find.byKey(const Key('nav-mark')), findsNothing, reason: 'one thing in one place: the dial marks');
     expect(t.widget<Text>(find.byKey(const Key('hh-shift'))).data, 'General');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_top.png'));
+    // (his work locations stand between the dial and the week now: the tiles are further down)
+    expect(find.byKey(const Key('hh-locs')), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('pl-at-pl1'))).data, 'You are here');
+    await t.scrollUntilVisible(find.byKey(const Key('hh-leave-sub')), 200, scrollable: find.byType(Scrollable).first);
     expect([for (final k in ['hh-leave-sub', 'hh-docs-sub']) t.widget<Text>(find.byKey(Key(k))).data], ['3 left', '4 missing']);
     expect(find.byKey(const Key('hh-w-2026-10-13')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('hh-w-2026-10-13')), matching: find.text('P')), findsOneWidget);
     await t.scrollUntilVisible(find.byKey(const Key('hh-n-day-2026-10-12')), 200, scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('12 Oct has no punch'), findsOneWidget);
-    expect(find.byKey(const Key('hh-dot')), findsOneWidget, reason: 'something waits');
+    expect(find.byKey(const Key('hh-dot')), findsNothing, reason: '(3.153.0) the bell is lit only by a notification not seen yet');
     expect(find.text('Driving licence'), findsOneWidget);
     expect(find.textContaining('runs out in 10 days'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home.png'));
     // ---- the slide: My attendance opens to mark – IN; said big, then Home again by itself: on duty
     // (3.116.0) ONE PRESS: the dial reads his place and takes the selfie by itself – no page in between, nothing to slide
+    await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
     await tapKey('hh-slide');
     expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
@@ -9050,7 +9061,7 @@ void main() {
     expect(srv.hrPunches.length, 1);
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
     expect(t.widget<Text>(find.byKey(const Key('hh-in'))).data, '10:30');
-    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('OUT')), findsOneWidget, reason: 'the disc is red now: OUT is next');
+    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('SIGN OUT')), findsOneWidget, reason: 'OUT is next');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_duty.png'));
     // ---- (3.114.0) the bar floats on all four pages: Attendance and Leave are pages of the bar (no way back, no second
@@ -9081,7 +9092,11 @@ void main() {
     expect(t.widget<Text>(find.byKey(const Key('me-role'))).data, 'E00012 · Site Engineer');
     expect(t.widget<Text>(find.byKey(const Key('me-pct'))).data, '64%');
     expect(find.textContaining('4 still missing'), findsOneWidget);
-    expect(find.textContaining('Registered for attendance'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('me-boss'))).data, 'Reports to Amit Patil');
+    // (3.153.0) My photo, My phone, Notifications, My work locations, Salary slips and Look are not rows of Me any more
+    for (final k in ['me-photo', 'me-phone', 'me-notices', 'me-places', 'me-slips', 'me-look']) {
+      expect(find.byKey(Key(k)), findsNothing, reason: k);
+    }
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_me.png'));
     // ---- my details: to read – the account number comes masked
@@ -9113,8 +9128,9 @@ void main() {
     await t.pageBack();
     await net(t);
     expect(find.textContaining('3 still missing'), findsOneWidget, reason: 'Me is read again');
-    // ---- salary slips: nothing made up before payroll; my phone
-    await tapKey('me-slips');
+    // ---- salary slips (Home's tile – not a row of Me any more): nothing made up before payroll
+    await tapKey('nav-home');
+    await tapKey('hh-slip');
     expect(find.textContaining('No salary slip yet'), findsOneWidget);
     await t.pageBack();
     await net(t);
@@ -9127,7 +9143,7 @@ void main() {
         'components': [{'label': 'Basic', 'amount': 61274.2}, {'label': 'HRA', 'amount': 24509.68}, {'label': 'Special', 'amount': 36764.51}], 'employer': [{'label': 'PF (EPF)', 'amount': 550}, {'label': 'Pension (EPS)', 'amount': 1250}], 'ctc': 133300},
       {'month': '2026-09', 'net': 496, 'pay_type': 'daily', 'rate': 500, 'month_days': 30, 'pay_days': 1, 'extra_days': 0, 'gross': 500, 'total_deductions': 4, 'earnings': [{'label': 'Earned pay', 'amount': 500}], 'deductions': [{'label': 'ESIC', 'amount': 4}]},
     ];
-    await tapKey('me-slips');
+    await tapKey('hh-slip');
     expect(find.textContaining('No salary slip yet'), findsNothing);
     expect(find.text('Oct 2026'), findsOneWidget);
     expect(t.widget<Text>(find.byKey(const Key('slip-net-0'))).data, '₹ 1,27,400');
@@ -9165,12 +9181,17 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_hr_slips.png'));
     await t.pageBack();
     await net(t);
-    await tapKey('me-phone');
+    // ---- (3.153.0) my phone is in My details now
+    await tapKey('nav-me');
+    await tapKey('me-details');
+    await t.scrollUntilVisible(find.byKey(const Key('phone-model')), 250, scrollable: find.byType(Scrollable).first);
     expect(t.widget<Text>(find.byKey(const Key('phone-model'))).data, 'Test Phone');
+    expect(find.textContaining('Registered for attendance'), findsOneWidget);
     await t.pageBack();
     await net(t);
     // ---- (3.109.0) my photo: he sets his own profile picture – kept as his paper "Photo"; Me is read again and shows it
     expect(find.byKey(const Key('face-pic')), findsNothing, reason: 'no photo yet: his letters');
+    await tapKey('me-details'); // (3.153.0) My photo is on top of My details
     await tapKey('me-photo');
     await t.tap(find.byKey(const Key('photo-gallery')));
     await net(t);
@@ -9178,8 +9199,8 @@ void main() {
     final ph = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([ph['kind'], ph.containsKey('id')], ['photo', false]);
     expect(srv.hrDocs.where((d) => d['kind'] == 'photo').length, 1);
+    expect(find.byKey(const Key('det-page')), findsNothing, reason: 'a new photo: back on Me');
     expect(find.byKey(const Key('face-pic')), findsOneWidget, reason: 'his photo is asked for on Me');
-    expect(find.textContaining('Set – touch to change'), findsOneWidget);
     await settle(t, 4000);      // (the message goes)
     // ---- the language: the whole app in one – kept on this phone (he has no settings at Mechanical)
     await tapKey('me-lang');
@@ -9224,22 +9245,14 @@ void main() {
     await net(t);
     await tapKey('nav-home');
     expect(find.byKey(const Key('hr-home')), findsOneWidget);
-    // ---- (3.114.0) LOOK: Me → Look – "Midnight Gold" changes the whole app at once and is kept on this phone; Pearl again the same way
+    // ---- (3.153.0) THE LOOK FOLLOWS THE PHONE: its dark mode → "Midnight Gold" on every page at once; light again → "Pearl".
+    // Nobody chooses it in the app (Me → Look is gone).
     await tapKey('nav-me');
-    await tapKey('me-look');
-    expect(find.byKey(const Key('look-page')), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_look.png'));
-    await t.tap(find.byKey(const Key('look-gold')));
+    t.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
     await net(t);
     expect(HrSkin.i.look, 'gold');
-    expect(kit.files['hr_look.txt'], 'gold');
-    expect(Theme.of(t.element(find.byKey(const Key('look-page')))).brightness, Brightness.dark);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_look.png'));
-    await t.pageBack();
-    await net(t);
-    expect(find.text('Midnight Gold'), findsOneWidget, reason: 'said on Me');
+    expect(Theme.of(t.element(find.byKey(const Key('me-page')))).brightness, Brightness.dark);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_me.png'));
     await tapKey('nav-home');
@@ -9253,22 +9266,42 @@ void main() {
     await tapKey('nav-leave');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_leave.png'));
-    await tapKey('nav-me');
-    await tapKey('me-look');
-    await t.tap(find.byKey(const Key('look-pearl')));
+    await tapKey('nav-home');
+    // ---- (3.153.0) the big map of his work locations: a touch on Home's small map opens it; ✕ goes back to Home
+    await tapKey('hh-map-open');
+    expect(find.byKey(const Key('pm-page')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_places_map.png'));
+    await t.tap(find.byKey(const Key('pm-close')));
     await net(t);
-    expect([HrSkin.i.look, kit.files['hr_look.txt']], ['pearl', 'pearl']);
-    expect(Theme.of(t.element(find.byKey(const Key('look-page')))).brightness, Brightness.light);
-    await t.pageBack();
+    expect(find.byKey(const Key('hr-home')), findsOneWidget);
+    t.platformDispatcher.platformBrightnessTestValue = Brightness.light;
     await net(t);
-    expect(find.text('Pearl'), findsOneWidget);
-    // ---- (3.116.0) the bar's middle button marks from any page, in one press: OUT now
-    await tapKey('nav-mark');
+    expect(HrSkin.i.look, 'pearl');
+    expect(Theme.of(t.element(find.byKey(const Key('hr-home')))).brightness, Brightness.light);
+    await tapKey('hh-map-open');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_places_map.png'));
+    await t.tap(find.byKey(const Key('pm-close')));
+    await net(t);
+    // ---- (3.153.0) OUT: the dial asks first ("kahi lokanche chukun sign out hot") – "No" keeps him on duty, "Yes, sign out" marks
+    await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
+    await tapKey('hh-slide');
+    expect(find.byKey(const Key('so-ask')), findsOneWidget);
+    expect(find.byKey(const Key('att-ok-page')), findsNothing);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_sign_out_ask.png'));
+    await t.tap(find.byKey(const Key('so-no')));
+    await net(t);
+    expect(srv.hrPunches.length, 1, reason: 'still on duty');
+    await tapKey('hh-slide');
+    await t.tap(find.byKey(const Key('so-yes')));
+    await net(t); // (one wait only: the message of a punch goes by itself after three seconds)
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     expect(srv.hrPunches.length, 2);
     await t.tap(find.byKey(const Key('att-ok')));
     await net(t);
-    expect(find.byKey(const Key('me-page')), findsOneWidget, reason: 'where he was');
+    expect(find.byKey(const Key('hr-home')), findsOneWidget, reason: 'where he was');
   }, tags: ['golden']);
 
   // (3.135.0, rcl-hr step 15) the company's policies: he reads the version in force and accepts it himself; a paper the HR office
@@ -9390,6 +9423,7 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_seven_day.png'));
     // a punch: the phone's proof for THIS punch goes with it
+    await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
     await tapKey('hh-slide');
     await settle(t, 3200);
     await net(t);
@@ -9397,8 +9431,7 @@ void main() {
     expect(kit.proofAsked, [[987654321, 'rcl-punch|${pu['client_id']}']]);
     expect(pu['integrity_token'], 'play-proof-token');
     // My work locations
-    await tapKey('nav-me');
-    await tapKey('me-places');
+    await tapKey('hh-places'); // (3.153.0) from Home's "My work locations" – not a row of Me any more
     expect(find.byKey(const Key('places-page')), findsOneWidget);
     expect(find.text('Not today – given to you from 20-10-2026'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('place-pl2')), matching: find.text('IN')), findsNothing, reason: 'OUT only');
@@ -9485,6 +9518,8 @@ void main() {
     kit.counter = 5000000 + 1800000;
     kit.clock += 1800000;
     await tapKey('hh-slide');
+    await t.tap(find.byKey(const Key('so-yes'))); // (3.153.0) OUT is asked first
+    await net(t);
     await settle(t, 3200);
     await net(t);
     if (find.byKey(const Key('att-ok')).evaluate().isNotEmpty) {
@@ -9614,10 +9649,12 @@ void main() {
       await net(t);
     }
 
+    // (3.153.0) the bell of Home is the one way to his notifications; it is lit while one is not seen yet
+    expect(find.byKey(const Key('hh-dot')), findsOneWidget);
     await tapKey('nav-me');
-    expect(find.text('1 new'), findsOneWidget);
     expect(find.byKey(const Key('me-team')), findsNothing, reason: '(3.139.0) nobody reports to him: no "My team"');
-    await tapKey('me-notices');
+    await tapKey('nav-home');
+    await tapKey('hh-bell');
     expect(find.byKey(const Key('notices-page')), findsOneWidget);
     expect(find.text('Sign in: your shift General starts at 08:30'), findsOneWidget);
     expect(srv.hrNoticeSeen, 1, reason: 'opening the list marks them seen');
@@ -9625,7 +9662,7 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_notices.png'));
     await t.pageBack();
     await net(t);
-    expect(find.text('Messages from the HR office'), findsOneWidget, reason: 'nothing new any more');
+    expect(find.byKey(const Key('hh-dot')), findsNothing, reason: 'nothing new any more');
   }, tags: ['golden']);
 
   testWidgets('(3.139.0) HR – My team: only a manager sees it; his team today, the counts, what waits for him', (t) async {
@@ -9937,7 +9974,7 @@ void main() {
     // Me inside the ERP: what belongs to the whole app is not repeated here
     await t.tap(find.byKey(const Key('nav-me')));
     await net(t);
-    expect(find.byKey(const Key('me-look')), findsOneWidget);
+    expect(find.byKey(const Key('me-look')), findsNothing);
     expect(find.byKey(const Key('me-out')), findsNothing);
     expect(find.byKey(const Key('me-account')), findsNothing);
     await t.tap(find.byKey(const Key('nav-home')));
@@ -9971,6 +10008,8 @@ void main() {
     expect(find.byKey(const Key('hr-home')), findsOneWidget);
     await t.tap(find.byKey(const Key('hh-slide')));
     await net(t);
+    await t.tap(find.byKey(const Key('so-yes'))); // (3.153.0) OUT is asked first
+    await net(t); // (one wait only: the message of a punch goes by itself after three seconds)
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     await t.tap(find.byKey(const Key('att-ok')));
     await net(t);

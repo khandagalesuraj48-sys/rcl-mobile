@@ -33,6 +33,7 @@ import '../core/update.dart' show checkUpdate, offerUpdate, updateOfferAgain;
 import '../ui/attend_look.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
+import '../ui/home_dial.dart';
 import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
 import '../ui/scope.dart';
@@ -41,6 +42,7 @@ import '../ui/widgets.dart';
 import 'attend_reqs.dart';
 import 'attendance.dart';
 import 'hr_me.dart';
+import 'hr_places.dart';
 import 'leave.dart';
 
 String _t(String en, String mr) => Lang.i.pair(en, mr);
@@ -109,6 +111,13 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   bool loading = true, started = false, opening = false;
   Timer? minute, gps;
   bool _gpsAsked = false; // (the box "Location is off" is shown once; the place's chip asks again)
+
+  // (3.153.0, "ek live watch asel digital je server la connect asel timing sathi") THE SERVER'S CLOCK: its time at the last
+  // reading (myAttend's `now`), kept going by the phone since then. Home's clock, the ring's "now" and the hours at work use it –
+  // a phone whose own clock is wrong still shows the right time. (No reading yet: the phone's clock.)
+  int? _srv;
+  int _srvAt = 0;
+  int _nowMs() => _srv == null ? AttendKit.kit.now() : _srv! + (AttendKit.kit.now() - _srvAt);
 
   @override
   void initState() {
@@ -263,6 +272,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         day = d;
+        _srv = d['now'] is num ? (d['now'] as num).toInt() : null;
+        _srvAt = AttendKit.kit.now();
         loading = false;
         err = '';
       });
@@ -305,6 +316,16 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   Future<void> _mark() async {
     if (opening) return;
     opening = true;
+    // (3.153.0, asked 20-11-2026: "sign out krtana confirmation gheil kharach sign out kraych aahe ka karan kahi lokanche chukun
+    // sign out hot") before OUT he is asked once; IN goes straight on
+    if (day != null && _punches.isNotEmpty && _next == 'out' && !await _askOut()) {
+      opening = false;
+      return;
+    }
+    if (!mounted) {
+      opening = false;
+      return;
+    }
     await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true, auto: true)));
     opening = false;
     if (!mounted) return;
@@ -314,10 +335,48 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
 
   String get _who => '${(day?['employee'] as Map?)?['name'] ?? SessionScope.read(context).name} · ${(day?['employee'] as Map?)?['code'] ?? ''}';
   void _requests() => _push(AttendRegsScreen(ask: _hr));
+  void _notices() => _push(MyNoticesScreen(ask: _hr)); // (3.153.0) the bell: his notifications only
+  void _places() => _push(MyPlacesScreen(ask: _hr));
   void _docs() => _push(MyDocsScreen(ask: _hr));
   void _slips() => _push(SalarySlipsScreen(ask: _hr));
-  Future<void> _photo() async {
-    if (await setMyPhoto(context, _hr) && mounted) _load();
+  Future<bool> _photo() async {
+    final ok = await setMyPhoto(context, _hr);
+    if (ok && mounted) await _load();
+    return ok;
+  }
+
+  /// "Do you really want to sign out?" – No (stays on duty) is the big button; true only on "Yes, sign out".
+  Future<bool> _askOut() async {
+    final shift = day?['shift'] is Map ? day!['shift'] as Map : const {};
+    var lastIn = '';
+    for (final p in _punches) {
+      if (p['kind'] == 'in') lastIn = '${p['time'] ?? ''}';
+    }
+    final worked = sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(_nowMs())), end = '${shift['end'] ?? ''}';
+    final (Color red, Color redSoft) = sk.tint(const Color(0xFFC22A1B), const Color(0xFFFFE9E5));
+    final yes = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: sk.card,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: Padding(
+          key: const Key('so-ask'),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 60, height: 60, alignment: Alignment.center, decoration: BoxDecoration(color: redSoft, borderRadius: BorderRadius.circular(20)), child: Icon(Icons.logout_rounded, size: 28, color: red)),
+            const SizedBox(height: 14),
+            Text('Do you really want to sign out?', mr: 'खरंच sign out करायचं आहे का?', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
+            const SizedBox(height: 8),
+            m.Text([if (worked.isNotEmpty) _t('You have worked $worked.', 'तुम्ही $worked काम केलं आहे.'), if (end.isNotEmpty) _t('Your shift ends at $end.', 'तुमची shift $end ला संपते.')].join(' '), key: const Key('so-text'), textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, height: 1.45, color: sk.muted)),
+            const SizedBox(height: 18),
+            SizedBox(width: double.infinity, height: 54, child: FilledButton(key: const Key('so-no'), style: FilledButton.styleFrom(backgroundColor: sk.accent, foregroundColor: sk.onAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(false), child: Text('No, stay on duty', mr: 'नाही, कामावर आहे', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: sk.onAccent)))),
+            const SizedBox(height: 10),
+            SizedBox(width: double.infinity, height: 54, child: OutlinedButton(key: const Key('so-yes'), style: OutlinedButton.styleFrom(foregroundColor: red, side: BorderSide(color: red, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(true), child: Text('Yes, sign out', mr: 'हो, sign out करा', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: red)))),
+          ]),
+        ),
+      ),
+    );
+    return yes == true;
   }
 
   List<Map> get _punches => [for (final x in (day?['punches'] as List? ?? const []).whereType<Map>()) x];
@@ -338,7 +397,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         // (3.116.0, "ek feture ekach thikani asaw") Attendance = the month; today and marking are Home's
         1 => AttendMonthScreen(key: ValueKey('tab-att-$gen'), ask: _hr, who: _who, embedded: true),
         2 => LeaveScreen(key: ValueKey('tab-leave-$gen'), ask: _hr, embedded: true),
-        3 => HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onSlips: _slips, onPhoto: _photo, reload: _load, inErp: widget.inErp),
+        3 => HrMeTab(key: const Key('hr-me'), mine: mine, day: day, ask: _hr, onDocs: _docs, onPhoto: _photo, reload: _load, inErp: widget.inErp),
         _ => Container(
             decoration: BoxDecoration(gradient: sk.pageFill),
             child: SafeArea(
@@ -352,11 +411,15 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                   if (loading) Padding(padding: const EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: sk.accent))),
                   if (day != null) ...[
                     // (3.122.0) the parts of Home come up one after the other
-                    Rise(order: 0, child: _hero(s)),
+                    // (3.153.0) the Home he approved on 20-11-2026: who he is → the dial → his work locations → this week → the tiles
+                    Rise(order: 0, child: _idCard()),
+                    const SizedBox(height: 12),
+                    Rise(order: 1, child: _hero(s)),
+                    ..._placesCard(),
+                    const SizedBox(height: 16),
+                    Rise(order: 2, child: _week()),
                     const SizedBox(height: 14),
-                    Rise(order: 1, child: _week()),
-                    const SizedBox(height: 14),
-                    Rise(order: 2, child: _tiles()),
+                    Rise(order: 3, child: _tiles()),
                     ..._forYou(),
                   ],
                 ]),
@@ -370,8 +433,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
 
   // ---- "Good afternoon, Babu Demo" and the bell (red dot: something waits)
   Widget _top(Session s) {
-    final h = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now() + 19800000, isUtc: true).hour;
-    final name = '${(day?['employee'] as Map?)?['name'] ?? s.name}', wait = _notes().any((n) => n.onTap != null);
+    final h = DateTime.fromMillisecondsSinceEpoch(_nowMs() + 19800000, isUtc: true).hour;
+    final name = '${(day?['employee'] as Map?)?['name'] ?? s.name}', un = (mine?['notices'] as Map?)?['unread'], wait = un is num && un > 0; // (the red dot: a notification not seen yet)
     return Row(children: [
       if (widget.inErp) Padding(padding: const EdgeInsets.only(right: 10), child: hrIconBox(Icons.arrow_back_ios_new_rounded, key: const Key('hh-back'), size: 40, icon: 17, tooltip: MaterialLocalizations.of(context).backButtonTooltip, onTap: () => Navigator.of(context).maybePop())),
       hrFace(name, '${mine?['photo'] ?? ''}', size: 48, radius: 24, bg: sk.dark ? sk.card : const Color(0xFF0F1F3D), border: const Color(0xFFDDAD40), ink: sk.dark ? sk.accent : Colors.white),
@@ -382,11 +445,52 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           m.Text(name, key: const Key('hh-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
         ]),
       ),
-      hrIconBox(Icons.notifications_none_rounded, key: const Key('hh-bell'), dot: wait, onTap: _requests),
+      hrIconBox(Icons.notifications_none_rounded, key: const Key('hh-bell'), dot: wait, onTap: _notices),
     ]);
   }
 
-  // ---- THE DIAL: his shift as a ring, the disc that marks, IN · OUT · Hours
+  // ---- WHO HE IS: his code, his designation, the person he reports to (asked 20-11-2026: "employee code and designation pn
+  //      disawa … reporting manager pn disel")
+  Widget _idCard() {
+    final e = (mine?['employee'] as Map?) ?? (day?['employee'] as Map?) ?? const {};
+    final des = '${e['designation'] ?? ''}'.isNotEmpty ? '${e['designation']}' : switch ('${e['category'] ?? ''}') { 'staff' => 'Staff', 'operator' => 'Operator', 'driver' => 'Driver', 'labour' => 'Labour', _ => '' };
+    Widget cell(String key, IconData icon, String en, String mr, String v, {bool first = false, int flex = 10}) => Expanded(
+          flex: flex,
+          child: Container(
+            padding: EdgeInsets.only(left: first ? 0 : 10),
+            decoration: BoxDecoration(border: first ? null : Border(left: BorderSide(color: sk.line))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 28, height: 28, alignment: Alignment.center, decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(10)), child: Icon(icon, size: 15, color: sk.link)),
+              const SizedBox(height: 7),
+              FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: sk.muted))),
+              const SizedBox(height: 2),
+              // (a long designation is made a little smaller rather than cut)
+              FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(v.isEmpty ? '–' : v, key: Key(key), maxLines: 1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: v.isEmpty ? sk.faint : sk.ink))),
+            ]),
+          ),
+        );
+    return Container(
+      key: const Key('hh-id'),
+      clipBehavior: Clip.antiAlias,
+      decoration: sk.box(radius: 22),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(height: 3, decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFC9960A), Color(0xFFF7DE8E), Color(0xFFC9960A)]))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 11, 12, 12),
+          child: IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              cell('hh-code', Icons.badge_outlined, 'Employee code', 'Employee code', '${e['code'] ?? ''}', first: true, flex: 9),
+              cell('hh-desig', Icons.work_outline_rounded, 'Designation', 'पद', des),
+              cell('hh-boss', Icons.person_outline_rounded, 'Reporting manager', 'Reporting manager', '${e['manager'] ?? ''}', flex: 11),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ---- THE DIAL: his shift as a ring with the hours on it, the disc that marks (the server's live clock, SIGN IN / SIGN OUT);
+  //      Check in · Check out · Total working hours
   Widget _hero(Session s) {
     final punches = _punches, next = _next;
     // ('done' – the site's rule "once a day": nothing more today – reads as the day done)
@@ -398,8 +502,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       if (p['kind'] == 'in') lastIn = '${p['time'] ?? ''}';
       if (p['kind'] == 'out') tout = '${p['time'] ?? ''}';
     }
-    final nowMs = AttendKit.kit.now(), india = DateTime.fromMillisecondsSinceEpoch(nowMs + 19800000, isUtc: true);
-    final hhmm = '${india.hour.toString().padLeft(2, '0')}:${india.minute.toString().padLeft(2, '0')}';
+    final nowMs = _nowMs(), india = DateTime.fromMillisecondsSinceEpoch(nowMs + 19800000, isUtc: true);
     final shift = day?['shift'] is Map ? day!['shift'] as Map : const {};
     final a = _hm(shift['start']), b0 = _hm(shift['end']);
     // where a time of the day stands on the ring (a night shift ends on the next day)
@@ -411,25 +514,26 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
 
     final since = sky == Sky.day ? sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(nowMs)) : '';
     final closed = '${day?['closed'] ?? ''}'.isNotEmpty;
-    final (String state, String top, String big, String under) = switch (sky) {
-      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), _t('TAP TO MARK', 'दाबा'), 'OUT', since.isEmpty ? '' : _t('$since at work', '$since कामावर')),
+    final (String state, String big, String under) = switch (sky) {
+      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), 'SIGN OUT', _t('Tap to mark', 'दाबा')),
       Sky.dusk => closed
-          ? (_t('Closed by itself – absent', 'आपोआप बंद – गैरहजर'), '', _t('ABSENT', 'गैरहजर'), _t('Ask to set the day right', 'दुरुस्ती मागा'))
-          : (_t('Today is done', 'आजची हजेरी पूर्ण'), '', _t('DONE', 'पूर्ण'), tout.isEmpty ? 'IN $tin' : 'IN $tin · OUT $tout'),
-      Sky.grey => (_t('Cannot be marked', 'लावता येत नाही'), '', '–', _t('Open Attendance', 'Attendance उघडा')),
-      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), _t('TAP TO MARK', 'दाबा'), 'IN', _t('$hhmm now', 'आता $hhmm')),
+          ? (_t('Closed by itself – absent', 'आपोआप बंद – गैरहजर'), _t('ABSENT', 'गैरहजर'), _t('Ask to set the day right', 'दुरुस्ती मागा'))
+          : (_t('Today is done', 'आजची हजेरी पूर्ण'), _t('DONE', 'पूर्ण'), _t('See your month', 'महिना पहा')),
+      Sky.grey => (_t('Cannot be marked', 'लावता येत नाही'), '–', _t('Open Attendance', 'Attendance उघडा')),
+      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), 'SIGN IN', _t('Tap to mark', 'दाबा')),
     };
     final hours = sky == Sky.day ? since : _span(tin, tout);
     // the day done or stopped: the Attendance page says it all; else the marking page
     final VoidCallback go = sky == Sky.dusk || sky == Sky.grey ? () => _go(1) : _mark;
-    Widget stat(String key, String v, String en, String mr) => Expanded(
+    Widget stat(String key, String v, String en, String mr, {int flex = 10}) => Expanded(
+          flex: flex,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
             decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(16)),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              FittedBox(fit: BoxFit.scaleDown, child: m.Text(v.isEmpty ? '– –' : v, key: Key(key), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: v.isEmpty ? sk.faint : sk.ink))),
-              const SizedBox(height: 2),
-              Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: .8, color: sk.faint)),
+              FittedBox(fit: BoxFit.scaleDown, child: m.Text(v.isEmpty ? '– –:– –' : v, key: Key(key), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: v.isEmpty ? sk.faint : sk.ink))),
+              const SizedBox(height: 3),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: sk.muted))),
             ]),
           ),
         );
@@ -443,30 +547,80 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           const SizedBox(width: 8),
           _placeChip(),
         ]),
-        const SizedBox(height: 10),
-        GestureDetector(
-          key: const Key('hh-slide'),
-          behavior: HitTestBehavior.opaque,
-          onTap: go,
-          onLongPress: go,
-          child: Bounce(to: .94, child: ShiftDial(size: 208, now: at(india.hour * 60 + india.minute), from: at(_hm(lastIn)), out: sky == Sky.day, dim: sky == Sky.grey, done: sky == Sky.dusk, track: sk.blank, tick: sk.dark ? sk.line : const Color(0xFFCBD1DF), top: top, big: big, under: under)),
-        ),
-        if (a != null && b0 != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
-            child: Row(children: [
-              m.Text('${shift['start']}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: sk.muted)),
-              Expanded(child: m.Text('${shift['name'] ?? ''}', key: const Key('hh-shift'), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sk.faint))),
-              m.Text('${shift['end']}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: sk.muted)),
-            ]),
+        const SizedBox(height: 6),
+        LayoutBuilder(
+          builder: (_, box) => GestureDetector(
+            key: const Key('hh-slide'),
+            behavior: HitTestBehavior.opaque,
+            onTap: go,
+            onLongPress: go,
+            child: Bounce(to: .96, child: HomeDial(size: math.min(310.0, box.maxWidth), now: at(india.hour * 60 + india.minute), start: a, end: b0, dim: sky == Sky.grey || sky == Sky.dusk, clock: _nowMs, big: big, under: under)),
           ),
+        ),
+        if (a != null && b0 != null) m.Text('${shift['name'] ?? ''}', key: const Key('hh-shift'), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sk.faint)),
         const SizedBox(height: 12),
-        Row(children: [stat('hh-in', tin, 'IN', 'IN'), const SizedBox(width: 8), stat('hh-out', tout, 'OUT', 'OUT'), const SizedBox(width: 8), stat('hh-hours', hours, 'HOURS', 'तास')]),
+        Row(children: [stat('hh-in', tin, 'Check in', 'Check in'), const SizedBox(width: 8), stat('hh-out', tout, 'Check out', 'Check out'), const SizedBox(width: 8), stat('hh-hours', hours, 'Total working hours', 'एकूण कामाचे तास', flex: 13)]),
       ]),
     );
   }
 
-  // ---- this week, Monday first: what each day counts as (the month's own letters); a day with nothing yet shows its date
+  // ---- MY WORK LOCATIONS: a small map that stays still (a touch opens the big one), each place with where he stands
+  List<Widget> _placesCard() {
+    final places = shownPlaces([for (final x in (day?['places'] as List? ?? const [])) WorkPlace.fromJson(x)].whereType<WorkPlace>());
+    if (places.isEmpty) return const [];
+    final fix = AttendWhere.i.fix, hits = placeHits(places, fix);
+    void big() => Navigator.of(context).push(hrRoute<void>(PlacesMapScreen(places: places)));
+    return [
+      const SizedBox(height: 16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(children: [
+          Expanded(child: Text('My work locations', mr: 'माझी कामाची ठिकाणं', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink))),
+          GestureDetector(key: const Key('hh-places'), behavior: HitTestBehavior.opaque, onTap: _places, child: Padding(padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), child: m.Text(places.length == 1 ? _t('1 place', '1 ठिकाण') : _t('${places.length} places', '${places.length} ठिकाणं'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.link)))),
+        ]),
+      ),
+      const SizedBox(height: 4),
+      Container(
+        key: const Key('hh-locs'),
+        clipBehavior: Clip.antiAlias,
+        decoration: sk.box(radius: 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // the map of Home never moves: every touch on it opens the big map (so the page is never scrolled into the map)
+          GestureDetector(
+            key: const Key('hh-map-open'),
+            behavior: HitTestBehavior.opaque,
+            onTap: big,
+            child: SizedBox(
+              height: 150,
+              child: Stack(children: [
+                Positioned.fill(child: IgnorePointer(child: PlacesMap(places: places, fix: fix, live: false))),
+                Positioned(
+                  right: 10,
+                  bottom: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(color: sk.accent, borderRadius: BorderRadius.circular(99), boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 14, offset: Offset(0, 6))]),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.open_in_full_rounded, size: 13, color: sk.onAccent),
+                      const SizedBox(width: 6),
+                      Text('Tap to open map', mr: 'Map उघडण्यासाठी दाबा', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sk.onAccent)),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 14, 6),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [for (var i = 0; i < places.length; i++) placeRow(places[i], hits[places[i].id], first: i == 0)]),
+          ),
+        ]),
+      ),
+    ];
+  }
+
+  // ---- this week, Monday first (asked 20-11-2026: "this week madhe correction kr nit samajw … date ani kay aahe te nit samjaw"):
+  //      the day, its date, what it counts as (the month's own letters) and the same in a word; today stands out
   Widget _week() {
     final today = '${day?['day'] ?? indiaDay(AttendKit.kit.now())}', t = DateTime.parse('${today}T00:00:00Z'), mon = t.subtract(Duration(days: t.weekday - 1));
     final by = <String, String>{for (final d in (month?['all'] as List? ?? const []).whereType<Map>()) '${d['day']}': '${d['code'] ?? ''}'};
@@ -477,6 +631,19 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           'L' => sk.tint(kPurple, const Color(0xFFF1E8F6)),
           _ => (sk.muted, sk.blank),
         };
+    String word(String c) => switch (c) {
+          'P' => _t('Present', 'हजर'),
+          'HD' => _t('Half day', 'अर्धा दिवस'),
+          'A' => _t('Absent', 'गैरहजर'),
+          'L' => _t('Leave', 'रजा'),
+          'WO' => _t('Week off', 'सुट्टी'),
+          'H' => _t('Holiday', 'सुट्टी'),
+          'WOP' || 'HP' => _t('Worked', 'काम केले'),
+          'IN' => _t('On duty', 'कामावर'),
+          'MIS' => _t('No OUT', 'OUT नाही'),
+          _ => '',
+        };
+    const names = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     return Column(mainAxisSize: MainAxisSize.min, children: [
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -486,28 +653,41 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         ]),
       ),
       const SizedBox(height: 4),
-      Row(key: const Key('hh-week'), children: [
-        for (var i = 0; i < 7; i++)
-          () {
-            final dt = mon.add(Duration(days: i)), d = dt.toIso8601String().substring(0, 10), c = by[d] ?? '', lk = look(c), now = d == today;
-            return Expanded(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                m.Text(const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sk.faint)),
-                const SizedBox(height: 6),
-                Rise(order: 2 + i, from: 14, child: Container(
+      Container(
+        padding: const EdgeInsets.fromLTRB(5, 10, 5, 10),
+        decoration: sk.box(radius: 22),
+        child: Row(key: const Key('hh-week'), crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (var i = 0; i < 7; i++)
+            () {
+              final dt = mon.add(Duration(days: i)), d = dt.toIso8601String().substring(0, 10), c = by[d] ?? '', lk = look(c), now = d == today;
+              final ink = now ? sk.onAccent : sk.ink, soft = now ? sk.onAccent.withValues(alpha: .78) : sk.faint;
+              return Expanded(
+                child: Rise(order: 2 + i, from: 14, child: Container(
                   key: Key('hh-w-$d'),
-                  height: 38,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  alignment: Alignment.center,
-                  decoration: now
-                      ? BoxDecoration(gradient: sk.dark ? Sk.goldFill : null, color: sk.dark ? null : sk.accent, borderRadius: BorderRadius.circular(13))
-                      : BoxDecoration(color: lk.$2, borderRadius: BorderRadius.circular(13)),
-                  child: m.Text(c.isEmpty ? '${dt.day}' : c == 'MIS' ? '!' : c, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: now ? (sk.dark ? Sk.goldInk : sk.onAccent) : lk.$1)),
+                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  decoration: now ? BoxDecoration(gradient: sk.dark ? Sk.goldFill : null, color: sk.dark ? null : sk.accent, borderRadius: BorderRadius.circular(14)) : null,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    m.Text(names[i], maxLines: 1, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, letterSpacing: .3, color: soft)),
+                    const SizedBox(height: 2),
+                    m.Text('${dt.day}', maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: c.isEmpty && !now ? sk.faint : ink)),
+                    const SizedBox(height: 5),
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 30),
+                      height: 22,
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: now ? sk.onAccent.withValues(alpha: .16) : lk.$2, borderRadius: BorderRadius.circular(8)),
+                      child: m.Text(c.isEmpty ? '–' : c == 'MIS' ? '!' : c, maxLines: 1, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: now ? ink : lk.$1)),
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(fit: BoxFit.scaleDown, child: m.Text(word(c).isEmpty ? ' ' : word(c), maxLines: 1, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: now ? ink : c.isEmpty ? sk.faint : lk.$1))),
+                  ]),
                 )),
-              ]),
-            );
-          }(),
-      ]),
+              );
+            }(),
+        ]),
+      ),
     ]);
   }
 
@@ -626,72 +806,72 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     ];
   }
 
-  // ---- the bar that floats: Home · Attendance · (mark) · Leave · Me
+  // ---- THE BAR (3.153.0 – his choice of 20-11-2026: "s2 gheu ok soft gold ani ha jasa aahe tasa same banaw … tab bar pn approved"):
+  //      a soft, raised bar; the page that is open sits in a pressed-in well with a gold edge and a gold sign, and the well glides
+  //      to the page chosen. Home · Attendance · Leave · Me – the marking button of the middle is gone (one thing in one place:
+  //      SIGN IN / SIGN OUT is the dial's).
   Widget _nav() {
-    final out = day != null && _next == 'out';
+    final dark = sk.dark;
+    final surface = dark ? const Color(0xFF161D36) : const Color(0xFFF8F9FB), stage = dark ? const Color(0xFF0B1024) : const Color(0xFFECEFF4);
+    final wellBg = dark ? const Color(0xFF0E142A) : const Color(0xFFEEF1F6), shade = dark ? const Color(0x99000000) : const Color(0x38606C8C);
+    final gold = dark ? const Color(0xFFF2CC62) : const Color(0xFFC9960A), mute = dark ? const Color(0xFF66709A) : const Color(0xFFA3ABBD);
     Widget item(String key, IconData icon, String en, String mr, bool on, VoidCallback onTap) => Expanded(
           child: GestureDetector(
             key: Key(key),
             behavior: HitTestBehavior.opaque,
             onTap: onTap,
-            child: Bounce(to: .86, child: Column(mainAxisSize: MainAxisSize.min, children: [
-              AnimatedContainer(duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack, width: on ? 26 : 4, height: 3, decoration: BoxDecoration(gradient: on ? Sk.goldFill : null, borderRadius: BorderRadius.circular(2))), // (3.122.0) the gold line grows out
-              const SizedBox(height: 9),
-              AnimatedScale(scale: on ? 1.18 : 1, duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack, child: Icon(icon, size: 22, color: on ? sk.ink : sk.faint)),
-              const SizedBox(height: 3),
-              FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 11, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? sk.ink : sk.faint))),
-              const SizedBox(height: 9),
+            child: Bounce(to: .9, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              AnimatedScale(scale: on ? 1.08 : 1, duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack, child: Icon(icon, size: 23, color: on ? gold : mute)),
+              const SizedBox(height: 4),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 11, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? sk.ink : mute))),
             ])),
           ),
         );
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: SizedBox(
-          height: 90,
-          child: Stack(clipBehavior: Clip.none, alignment: Alignment.bottomCenter, children: [
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                key: const Key('hr-nav'),
-                height: 66,
-                decoration: sk.box(radius: 24),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  item('nav-home', Icons.home_outlined, 'Home', 'Home', tab == 0, () => _go(0)),
-                  item('nav-att', Icons.calendar_today_outlined, 'Attendance', 'हजेरी', tab == 1, () => _go(1)),
-                  const SizedBox(width: 78),
-                  item('nav-leave', Icons.description_outlined, 'Leave', 'रजा', tab == 2, () => _go(2)),
-                  item('nav-me', Icons.person_outline_rounded, 'Me', 'मी', tab == 3, () => _go(3)),
-                ]),
-              ),
-            ),
-            // the marking button, raised in the middle: gold while IN is next, red while OUT is
-            Positioned(
-              top: 0,
-              child: GestureDetector(
-                key: const Key('nav-mark'),
-                behavior: HitTestBehavior.opaque,
-                onTap: _mark,
-                child: Bounce(to: .84, child: SizedBox(
-                  width: 76,
-                  height: 76,
-                  child: Center(
-                    child: Transform.rotate(
-                      angle: math.pi / 4,
-                      child: Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(gradient: out ? Sk.redFill : Sk.goldFill, borderRadius: BorderRadius.circular(17), boxShadow: [BoxShadow(color: (out ? const Color(0xFFE5484D) : const Color(0xFFDDAD40)).withValues(alpha: .45), blurRadius: 16, offset: const Offset(4, 4))]),
-                        child: Transform.rotate(angle: -math.pi / 4, child: Icon(Icons.sentiment_satisfied_alt_rounded, size: 26, color: out ? Colors.white : Sk.goldInk)),
-                      ),
-                    ),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+        child: Container(
+          key: const Key('hr-nav'),
+          height: 74,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(37),
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [surface, surface, stage], stops: const <double>[0, .45, 1]),
+            border: Border.all(color: dark ? const Color(0x29788CD2) : Colors.white, width: 1.2),
+            boxShadow: [
+              BoxShadow(color: dark ? const Color(0x1F788CD2) : const Color(0xF2FFFFFF), blurRadius: 11, offset: const Offset(0, -5)),
+              BoxShadow(color: dark ? const Color(0x99000000) : const Color(0x42606C8C), blurRadius: 13, spreadRadius: -3, offset: const Offset(0, 10)),
+              BoxShadow(color: dark ? const Color(0x59000000) : const Color(0x1F606C8C), blurRadius: 34, spreadRadius: -10, offset: const Offset(0, 20)),
+            ],
+          ),
+          child: Stack(children: [
+            // the well of the page that is open: it glides to the page chosen
+            AnimatedAlign(
+              alignment: Alignment(-1 + 2 * tab / 3, 0),
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutCubic,
+              child: FractionallySizedBox(
+                widthFactor: .25,
+                heightFactor: 1,
+                child: Container(
+                  key: const Key('nav-well'),
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(31),
+                    // (pressed in: the shade falls in from its top edge)
+                    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(shade, wellBg), wellBg, wellBg], stops: const <double>[0, .32, 1]),
+                    border: Border.all(color: const Color(0xFFDDAD40).withValues(alpha: .6), width: 1.2),
                   ),
-                )),
+                ),
               ),
             ),
+            Row(children: [
+              item('nav-home', Icons.home_outlined, 'Home', 'Home', tab == 0, () => _go(0)),
+              item('nav-att', Icons.event_available_outlined, 'Attendance', 'हजेरी', tab == 1, () => _go(1)),
+              item('nav-leave', Icons.description_outlined, 'Leave', 'रजा', tab == 2, () => _go(2)),
+              item('nav-me', Icons.person_outline_rounded, 'Me', 'मी', tab == 3, () => _go(3)),
+            ]),
           ]),
         ),
       ),

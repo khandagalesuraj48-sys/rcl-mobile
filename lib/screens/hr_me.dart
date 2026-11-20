@@ -68,20 +68,24 @@ Widget _li({required Key key, required String sign, IconData? icon, required Col
 }
 
 class HrMeTab extends StatelessWidget {
-  const HrMeTab({super.key, required this.mine, required this.day, required this.ask, required this.onDocs, required this.onSlips, required this.onPhoto, required this.reload, this.inErp = false});
+  const HrMeTab({super.key, required this.mine, required this.day, required this.ask, required this.onDocs, required this.onPhoto, required this.reload, this.inErp = false});
 
   /// (3.115.0) inside the full app: what belongs to the whole app stays in the ERP's own Me
   final bool inErp;
   final Map<String, dynamic>? mine, day;
   final HrAsk ask;
-  final VoidCallback onDocs, onSlips, onPhoto;
+  final VoidCallback onDocs;
+
+  /// he takes or chooses his photo; true when a new one was set
+  final Future<bool> Function() onPhoto;
   final Future<void> Function() reload;
 
   @override
   Widget build(BuildContext context) {
     final s = SessionScope.of(context), e = (mine?['employee'] as Map?) ?? (day?['employee'] as Map?) ?? const {};
     final name = '${e['name'] ?? s.name}', role = '${e['designation'] ?? ''}'.isNotEmpty ? '${e['designation']}' : (_cat['${e['category'] ?? ''}'] ?? '');
-    final pct = (mine?['complete'] as Map?)?['pct'], miss = ((mine?['docs'] as Map?)?['missing'] as List? ?? const []).length, phone = (mine?['phone'] as Map?) ?? const {};
+    final pct = (mine?['complete'] as Map?)?['pct'], miss = ((mine?['docs'] as Map?)?['missing'] as List? ?? const []).length;
+    final team = mine?['team'] is num && (mine!['team'] as num) > 0, boss = '${e['manager'] ?? ''}';
     final lang = switch (LangScope.of(context).code) { 'mr' => 'मराठी', 'hi' => 'हिन्दी', _ => 'English' };
     void open(Widget page) => Navigator.of(context).push(hrRoute<void>(page));
     return Column(children: [
@@ -93,34 +97,49 @@ class HrMeTab extends StatelessWidget {
           bottom: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            // (3.153.0, asked 20-11-2026: "me war ek stylish card asel") his identity card: navy and gold in both modes
             child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 14, 16),
-              decoration: sk.box(radius: 26),
-              child: Row(children: [
-                // (3.109.0) his own photo – a touch sets it
-                GestureDetector(
-                  key: const Key('me-face'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onPhoto,
-                  child: Stack(clipBehavior: Clip.none, children: [
-                    hrFace(name, '${mine?['photo'] ?? ''}', size: 62, radius: 31, bg: sk.dark ? sk.blank : const Color(0xFF0F1F3D), border: const Color(0xFFDDAD40), ink: sk.dark ? sk.accent : Colors.white, letters: 21),
-                    Positioned(right: -4, bottom: -4, child: Container(width: 24, height: 24, alignment: Alignment.center, decoration: BoxDecoration(gradient: Sk.goldFill, shape: BoxShape.circle, border: Border.all(color: sk.card, width: 2)), child: const Icon(Icons.photo_camera_rounded, size: 12, color: Sk.goldInk))),
+              key: const Key('me-card'),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF0B1733), Color(0xFF1B2F66), Color(0xFF24408A)], stops: <double>[0, .6, 1]),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: const Color(0x80E6B94E)),
+                boxShadow: const [BoxShadow(color: Color(0x590B1733), blurRadius: 30, offset: Offset(0, 14))],
+              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(height: 4, decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFC9960A), Color(0xFFF7DE8E), Color(0xFFC9960A)]))),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 14, 16),
+                  child: Row(children: [
+                    // (3.109.0) his own photo – a touch sets it
+                    GestureDetector(
+                      key: const Key('me-face'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onPhoto,
+                      child: Stack(clipBehavior: Clip.none, children: [
+                        hrFace(name, '${mine?['photo'] ?? ''}', size: 66, radius: 33, bg: const Color(0xFF14224A), border: const Color(0xFFDDAD40), ink: const Color(0xFFF3D889), letters: 22),
+                        Positioned(right: -4, bottom: -4, child: Container(width: 24, height: 24, alignment: Alignment.center, decoration: BoxDecoration(gradient: Sk.goldFill, shape: BoxShape.circle, border: Border.all(color: const Color(0xFF14224A), width: 2)), child: const Icon(Icons.photo_camera_rounded, size: 12, color: Sk.goldInk))),
+                      ]),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        m.Text(name, key: const Key('me-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: Colors.white)),
+                        const SizedBox(height: 2),
+                        m.Text([if ('${e['code'] ?? ''}'.isNotEmpty) '${e['code']}', if (role.isNotEmpty) role].join(' · '), key: const Key('me-role'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFF3D889))),
+                        m.Text(hrSite(s)?.name ?? s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Color(0xFFA9B6D6))), // (3.141.0) his HR site
+                        if (boss.isNotEmpty) m.Text('${_t('Reports to', 'Reporting')} $boss', key: const Key('me-boss'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Color(0xFFA9B6D6))),
+                      ]),
+                    ),
+                    if (pct is num)
+                      Column(mainAxisSize: MainAxisSize.min, children: [
+                        Container(width: 50, height: 50, alignment: Alignment.center, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFDDAD40), width: 5)), child: m.Text('${pct.round()}%', key: const Key('me-pct'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white))),
+                        const SizedBox(height: 3),
+                        const Text('Profile', mr: 'Profile', style: TextStyle(fontSize: 11, color: Color(0xFFA9B6D6))),
+                      ]),
                   ]),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    m.Text(name, key: const Key('me-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 20, fontWeight: FontWeight.w800, color: sk.ink)),
-                    m.Text([if ('${e['code'] ?? ''}'.isNotEmpty) '${e['code']}', if (role.isNotEmpty) role].join(' · '), key: const Key('me-role'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)),
-                    m.Text(hrSite(s)?.name ?? s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)), // (3.141.0) his HR site
-                  ]),
-                ),
-                if (pct is num)
-                  Column(mainAxisSize: MainAxisSize.min, children: [
-                    Container(width: 50, height: 50, alignment: Alignment.center, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFDDAD40), width: 5)), child: m.Text('${pct.round()}%', key: const Key('me-pct'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 12.5, fontWeight: FontWeight.w800, color: sk.ink))),
-                    const SizedBox(height: 3),
-                    Text('Profile', mr: 'Profile', style: TextStyle(fontSize: 11, color: sk.muted)),
-                  ]),
               ]),
             ),
           ),
@@ -131,8 +150,7 @@ class HrMeTab extends StatelessWidget {
           onRefresh: reload,
           child: ListView(key: const Key('me-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
             hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
-              _li(key: const Key('me-photo'), sign: '', icon: Icons.account_circle_rounded, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My photo', mr: 'माझा photo', sub: '${mine?['photo'] ?? ''}'.isEmpty ? _t('Take or choose – shown on your profile', 'काढा किंवा निवडा – profile वर दिसेल') : _t('Set – touch to change', 'ठेवला आहे – बदलण्यासाठी touch करा'), onTap: onPhoto),
-              _li(key: const Key('me-details'), sign: 'i', c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My details', mr: 'माझी माहिती', sub: _t('Personal, job, bank – ask HR to change', 'वैयक्तिक, नोकरी, bank – बदलासाठी HR ला सांगा'), onTap: () => open(MyDetailsScreen(mine: mine))),
+              _li(key: const Key('me-details'), sign: 'i', c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My details', mr: 'माझी माहिती', sub: _t('Photo, personal, job, bank, phone', 'Photo, वैयक्तिक, नोकरी, bank, phone'), onTap: () => open(MyDetailsScreen(mine: mine, day: day, onPhoto: onPhoto))),
               _li(key: const Key('me-docs'), sign: 'D', c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My documents', mr: 'माझी कागदपत्रे', sub: mine == null ? _t('Upload', 'Upload') : miss > 0 ? _t('Upload – $miss still missing', 'Upload – अजून $miss बाकी') : _t('All expected papers are there', 'अपेक्षित सर्व कागदपत्रे आहेत'), onTap: onDocs),
               // (3.135.0, rcl-hr step 15) the company's policies: he reads and accepts the version in force himself
               () {
@@ -140,36 +158,21 @@ class HrMeTab extends StatelessWidget {
                 return _li(key: const Key('me-policies'), sign: '', icon: Icons.verified_user_outlined, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'Company policies', mr: 'Company policies',
                     sub: pend is num && pend > 0 ? _t('$pend to read and accept', '$pend वाचून स्वीकारायच्या आहेत') : _t('Read the policies you accepted', 'स्वीकारलेल्या policies वाचा'),
                     ink: pend is num && pend > 0 ? const Color(0xFFC22A1B) : null,
+                    last: !team,
                     onTap: () async {
                       await Navigator.of(context).push(hrRoute<void>(CompanyPoliciesScreen(ask: ask)));
                       await reload();
                     });
               }(),
-              // (3.137.0, rcl-hr step 17) his messages from HR – the app's own list (shift reminders, papers, policies, a reporting change …)
-              () {
-                final un = (mine?['notices'] as Map?)?['unread'];
-                return _li(key: const Key('me-notices'), sign: '', icon: Icons.notifications_none_rounded, c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Notifications', mr: 'सूचना',
-                    sub: un is num && un > 0 ? _t('$un new', '$un नवीन') : _t('Messages from the HR office', 'HR office कडून आलेले संदेश'),
-                    ink: un is num && un > 0 ? const Color(0xFFC22A1B) : null,
-                    onTap: () async {
-                      await Navigator.of(context).push(hrRoute<void>(MyNoticesScreen(ask: ask)));
-                      await reload();
-                    });
-              }(),
               // (3.139.0, rcl-hr Phase 6) a reporting manager's dashboard – only when people report to him
-              if (mine?['team'] is num && (mine!['team'] as num) > 0)
+              if (team)
                 _li(key: const Key('me-team'), sign: '', icon: Icons.groups_outlined, c: const Color(0xFF1F5FBF), soft: const Color(0xFFE6EEFB), en: 'My team', mr: 'माझी टीम',
-                    sub: _t('${mine!['team']} people report to you', '${mine!['team']} लोक तुम्हाला report करतात'), onTap: () => open(MyTeamScreen(ask: ask))),
-              // (3.136.0, rcl-hr step 16) where he may mark attendance – IN / OUT, the dates, and why a place does not count today
-              _li(key: const Key('me-places'), sign: '', icon: Icons.place_outlined, c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My work locations', mr: 'माझी कामाची ठिकाणं', sub: _t('Where you may sign in and out', 'कुठे sign in / out करता येतं'), onTap: () => open(MyPlacesScreen(ask: ask))),
-              _li(key: const Key('me-slips'), sign: '₹', c: const Color(0xFF8A5A00), soft: const Color(0xFFFFF3D1), en: 'Salary slips', mr: 'पगार पावत्या', sub: _t('Month by month', 'महिन्यानुसार'), onTap: onSlips),
-              _li(key: const Key('me-phone'), sign: 'P', c: kPurple, soft: const Color(0xFFF1E8F6), en: 'My phone', mr: 'माझा phone', sub: phone['bound'] == true ? _t('Registered for attendance', 'हजेरीसाठी नोंदलेला') : _t('No phone registered yet', 'अजून phone नोंदलेला नाही'), last: true, onTap: () => open(MyPhoneScreen(phone: phone, day: day))),
+                    sub: _t('${mine!['team']} people report to you', '${mine!['team']} लोक तुम्हाला report करतात'), last: true, onTap: () => open(MyTeamScreen(ask: ask))),
             ]),
             const SizedBox(height: 12),
             hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
               _li(key: const Key('me-lang'), sign: 'A', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
               if (!inErp) _li(key: const Key('me-account'), sign: '@', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
-              _li(key: const Key('me-look'), sign: '', icon: Icons.palette_outlined, c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Look', mr: 'रूप', sub: sk.dark ? 'Midnight Gold' : 'Pearl', onTap: () => open(const LookScreen())),
               // (20-11-2026) the app's terms / location notice and the Privacy Policy – always reachable; "Allow" again from here
               _li(key: const Key('me-privacy'), sign: '', icon: Icons.verified_user_outlined, c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Privacy & permissions', mr: 'Privacy व परवानग्या', sub: _t('How the app uses your location and data', 'app तुमची location व माहिती कशी वापरते'), onTap: () => showConsent(context)),
               // (the look's name goes with them: a row that keeps its own state is drawn again when the look changes)
@@ -200,19 +203,48 @@ class HrMeTab extends StatelessWidget {
 
 Future<bool> _askSignOut(BuildContext context) => ask(context, 'Sign out?', _t('You will be signed out of the app.', 'App मधून sign out होईल.'), yes: 'Sign out', danger: true);
 
-/// MY DETAILS – read only.
+/// MY DETAILS – read only. (3.153.0, asked 20-11-2026: "my photo my details he weg wegle aahe he ektr kr … my phone he my details
+/// madhech ghe") his photo (he takes or chooses it here) on top, then what the HR office has of him, then his phone of attendance.
 class MyDetailsScreen extends StatelessWidget {
-  const MyDetailsScreen({super.key, required this.mine});
-  final Map<String, dynamic>? mine;
+  const MyDetailsScreen({super.key, required this.mine, this.day, this.onPhoto});
+  final Map<String, dynamic>? mine, day;
+  final Future<bool> Function()? onPhoto;
   @override
   Widget build(BuildContext context) {
     final groups = [for (final g in (mine?['details'] as List? ?? const []).whereType<Map>()) g];
     final missing = [for (final x in ((mine?['complete'] as Map?)?['missing'] as List? ?? const [])) '$x'];
+    final e = (mine?['employee'] as Map?) ?? const {}, name = '${e['name'] ?? SessionScope.of(context).name}', has = '${mine?['photo'] ?? ''}'.isNotEmpty;
+    final phone = (mine?['phone'] as Map?) ?? const {}, bound = phone['bound'] == true, here = '${day?['phone'] ?? ''}';
     return Scaffold(
       appBar: hrHead(context, sky: kMeSky, title: 'My details', mr: 'माझी माहिती', height: 100, below: [
         Text('What the HR office has of you. To change a detail, ask the HR office.', mr: 'HR office कडे तुमची असलेली माहिती. बदलासाठी HR office ला सांगा.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
       ]),
       body: ListView(key: const Key('det-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+        if (onPhoto != null) ...[
+          hrCard(key: const Key('det-photo'), [
+            Row(children: [
+              hrFace(name, '${mine?['photo'] ?? ''}', size: 64, radius: 32, bg: sk.dark ? sk.blank : const Color(0xFF0F1F3D), border: const Color(0xFFDDAD40), ink: sk.dark ? sk.accent : Colors.white, letters: 21),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text('My photo', mr: 'माझा photo', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.ink)),
+                  m.Text(has ? _t('Shown on your profile', 'तुमच्या profile वर दिसतो') : _t('Take or choose – shown on your profile', 'काढा किंवा निवडा – profile वर दिसेल'), style: TextStyle(fontSize: 12, color: sk.muted, height: 1.3)),
+                ]),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                key: const Key('me-photo'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () async {
+                  // a new photo: back to Me, where it shows
+                  if (await onPhoto!() && context.mounted) Navigator.of(context).maybePop();
+                },
+                child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9), decoration: BoxDecoration(color: sk.accent, borderRadius: BorderRadius.circular(99)), child: m.Text(has ? _t('Change', 'बदला') : _t('Set', 'ठेवा'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: sk.onAccent))),
+              ),
+            ]),
+          ]),
+          const SizedBox(height: 12),
+        ],
         if (mine == null) hrNote(_t('Your details could not be read – pull down on Me to try again.', 'माहिती वाचता आली नाही – Me वर खाली ओढून पुन्हा करा.')),
         if (missing.isNotEmpty) ...[hrNote('${_t('Still needed', 'अजून हवे')}: ${missing.join(', ')}', key: const Key('det-missing')), const SizedBox(height: 12)],
         for (final g in groups) ...[
@@ -231,6 +263,20 @@ class MyDetailsScreen extends StatelessWidget {
           ]),
           const SizedBox(height: 12),
         ],
+        if (onPhoto != null)
+          hrCard(key: const Key('me-phone'), [
+            hrTitle('My phone', 'माझा phone'),
+            m.Text(bound ? _t('Registered for attendance', 'हजेरीसाठी नोंदलेला') : _t('No phone registered yet', 'अजून phone नोंदलेला नाही'), style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: sk.ink)),
+            if (bound && '${phone['model'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: m.Text('${phone['model']}', key: const Key('phone-model'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: sk.ink))),
+            if (here == 'this') Padding(padding: const EdgeInsets.only(top: 8), child: stateChip('This phone', 'a')) else if (here == 'other') Padding(padding: const EdgeInsets.only(top: 8), child: stateChip('Another phone', 'x')),
+            const SizedBox(height: 8),
+            Text(
+                bound
+                    ? 'Your attendance is marked only from this one phone. Another phone works only after the HR Admin releases this one.'
+                    : 'The phone you mark your first attendance with becomes your phone. Afterwards another phone works only after the HR Admin releases it.',
+                mr: bound ? 'तुमची हजेरी फक्त या एका phone वरून लागते. HR Admin ने हा सोडल्यावरच दुसरा phone चालतो.' : 'ज्या phone वरून पहिली हजेरी लावाल तो तुमचा phone होतो. नंतर HR Admin ने सोडल्यावरच दुसरा phone चालतो.',
+                style: TextStyle(fontSize: 13, color: sk.muted, height: 1.5)),
+          ]),
       ]),
     );
   }
@@ -991,33 +1037,6 @@ class _SalarySlipsScreenState extends State<SalarySlipsScreen> {
       );
 }
 
-/// MY PHONE – the one his attendance is tied to.
-class MyPhoneScreen extends StatelessWidget {
-  const MyPhoneScreen({super.key, required this.phone, required this.day});
-  final Map phone;
-  final Map<String, dynamic>? day;
-  @override
-  Widget build(BuildContext context) {
-    final bound = phone['bound'] == true, here = '${day?['phone'] ?? ''}';
-    return Scaffold(
-      appBar: hrHead(context, sky: kMeSky, title: 'My phone', mr: 'माझा phone', height: 64),
-      body: ListView(key: const Key('phone-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
-        hrCard([
-          hrTitle(bound ? 'Registered for attendance' : 'No phone registered yet', bound ? 'हजेरीसाठी नोंदलेला' : 'अजून phone नोंदलेला नाही'),
-          if (bound && '${phone['model'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: m.Text('${phone['model']}', key: const Key('phone-model'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: sk.ink))),
-          if (here == 'this') Padding(padding: const EdgeInsets.only(bottom: 8), child: stateChip('This phone', 'a')) else if (here == 'other') Padding(padding: const EdgeInsets.only(bottom: 8), child: stateChip('Another phone', 'x')),
-          Text(
-              bound
-                  ? 'Your attendance is marked only from this one phone. Another phone works only after the HR Admin releases this one.'
-                  : 'The phone you mark your first attendance with becomes your phone. Afterwards another phone works only after the HR Admin releases it.',
-              mr: bound ? 'तुमची हजेरी फक्त या एका phone वरून लागते. HR Admin ने हा सोडल्यावरच दुसरा phone चालतो.' : 'ज्या phone वरून पहिली हजेरी लावाल तो तुमचा phone होतो. नंतर HR Admin ने सोडल्यावरच दुसरा phone चालतो.',
-              style: TextStyle(fontSize: 13, color: sk.muted, height: 1.5)),
-        ]),
-      ]),
-    );
-  }
-}
-
 /// LANGUAGE – the whole app in one language.
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
@@ -1181,6 +1200,7 @@ Future<bool> setMyPhoto(BuildContext context, HrAsk ask) async {
     if (!context.mounted) return false;
     await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
     await ask({'action': 'myDocAdd', 'kind': 'photo', 'path': u['path'], 'bytes': f.$1.length});
+    hrFaceForget();
     if (context.mounted) donePop(context, _t('Your photo is set', 'तुमचा photo ठेवला'));
     return true;
   } catch (e) {
@@ -1192,15 +1212,39 @@ Future<bool> setMyPhoto(BuildContext context, HrAsk ask) async {
 /// His face: his photo when he has set one (a link of the HR server), else the first letters of his name.
 Widget hrFace(String name, String url, {required double size, required double radius, Color bg = const Color(0xFF0F1F3D), Color? border, Color ink = Colors.white, double letters = 15}) {
   final abc = m.Text(initials(name), style: TextStyle(fontFamily: 'Montserrat', fontSize: letters, fontWeight: FontWeight.w800, color: ink));
+  // (3.153.0, asked 20-11-2026: "user cha jo image aahe to sarkha blink krt asto … stable nahi rahat, proper circle madhe disat
+  // nahi") The HR server gives a NEW link to the same picture at every reading (good for ten minutes): the picture was fetched
+  // again each time and the letters showed meanwhile – the blink. The first link of a picture is kept while the app runs, so the
+  // picture already on the phone is shown and nothing is fetched twice; a link that no longer works is forgotten (the next
+  // reading's link is used). The picture fills the whole circle; the gold ring is drawn over its edge.
+  final file = url.split('?').first, link = url.isEmpty ? '' : _faceLink.putIfAbsent(file, () => url);
   return Container(
     width: size,
     height: size,
-    alignment: Alignment.center,
-    clipBehavior: Clip.antiAlias,
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(radius), border: border == null ? null : Border.all(color: border, width: 2)),
-    child: url.isEmpty ? abc : Image.network(url, key: const Key('face-pic'), width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => abc, loadingBuilder: (_, child, p) => p == null ? child : abc),
+    foregroundDecoration: border == null ? null : BoxDecoration(borderRadius: BorderRadius.circular(radius), border: Border.all(color: border, width: 2)),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Container(
+        width: size,
+        height: size,
+        color: bg,
+        alignment: Alignment.center,
+        child: url.isEmpty
+            ? abc
+            : Image.network(link, key: const Key('face-pic'), width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) {
+                _faceLink.remove(file);
+                return abc;
+              }, frameBuilder: (_, child, frame, sync) => sync || frame != null ? child : abc),
+      ),
+    ),
   );
 }
+
+/// the first link of each photo, by its file (see [hrFace])
+final Map<String, String> _faceLink = {};
+
+/// A new photo was set: the kept links are let go.
+void hrFaceForget() => _faceLink.clear();
 
 /// (3.112.0, asked 12-11-2026: "attendance app madhe app update check update as kahi nahiye te banaw") the app's version and its
 /// update, for a person with HR only – the same check and the same update as Me of the full app. A newer version is said on the
@@ -1307,93 +1351,4 @@ class _RemindRowState extends State<_RemindRow> {
         last: widget.last,
         onTap: _flip,
       );
-}
-
-/// (3.114.0, his word of 12-11-2026: "ok he final 2 ni thew user je haw te switch kru shakel") LOOK – the two looks of the
-/// attendance app; a touch changes the whole app at once. Kept on this phone.
-class LookScreen extends StatefulWidget {
-  const LookScreen({super.key});
-  @override
-  State<LookScreen> createState() => _LookScreenState();
-}
-
-class _LookScreenState extends State<LookScreen> {
-  @override
-  void initState() {
-    super.initState();
-    HrSkin.i.addListener(_changed);
-  }
-
-  @override
-  void dispose() {
-    HrSkin.i.removeListener(_changed);
-    super.dispose();
-  }
-
-  void _changed() {
-    if (mounted) setState(() {});
-  }
-
-  /// A small picture of a look: its page, a card, the gold disc and the bar.
-  Widget _pic(Sk l) => Container(
-        width: 74,
-        height: 104,
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(gradient: l.pageFill, borderRadius: BorderRadius.circular(14), border: Border.all(color: l.cardLine ?? l.line)),
-        child: Column(children: [
-          Container(height: 8, margin: const EdgeInsets.only(right: 26), decoration: BoxDecoration(color: l.ink, borderRadius: BorderRadius.circular(4))),
-          const SizedBox(height: 7),
-          Expanded(
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: l.card, borderRadius: BorderRadius.circular(10), border: Border.all(color: l.cardLine ?? l.line)),
-              child: Container(width: 30, height: 30, decoration: const BoxDecoration(shape: BoxShape.circle, gradient: Sk.goldFill)),
-            ),
-          ),
-          const SizedBox(height: 7),
-          Container(height: 12, decoration: BoxDecoration(color: l.card, borderRadius: BorderRadius.circular(6), border: Border.all(color: l.cardLine ?? l.line))),
-        ]),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    Widget choice(String code, Sk l, String name, String en, String mr) {
-      final on = HrSkin.i.look == code;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: GestureDetector(
-          key: Key('look-$code'),
-          behavior: HitTestBehavior.opaque,
-          onTap: () => HrSkin.i.choose(code),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: sk.card, borderRadius: BorderRadius.circular(20), border: Border.all(color: on ? sk.accent : (sk.cardLine ?? Colors.transparent), width: 2), boxShadow: sk.shadow),
-            child: Row(children: [
-              _pic(l),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  m.Text(name, style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: sk.ink)),
-                  const SizedBox(height: 3),
-                  Text(en, mr: mr, style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.3)),
-                ]),
-              ),
-              const SizedBox(width: 8),
-              Container(width: 22, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: on ? sk.accent : sk.line, width: on ? 7 : 2))),
-            ]),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: hrHead(context, sky: kMeSky, title: 'Look', mr: 'रूप', height: 96, below: [
-        Text('Choose how the app looks. It changes at once.', mr: 'App कसे दिसावे ते निवडा. लगेच बदलते.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: sk.onHeadSoft)),
-      ]),
-      body: ListView(key: const Key('look-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
-        choice('pearl', Sk.pearl, 'Pearl', 'Light – white and gold', 'उजळ – पांढरा आणि सोनेरी'),
-        choice('gold', Sk.gold, 'Midnight Gold', 'Dark – glass and gold', 'गडद – काच आणि सोनेरी'),
-      ]),
-    );
-  }
 }

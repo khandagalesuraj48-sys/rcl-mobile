@@ -983,6 +983,8 @@ class _SelfieScreenState extends State<SelfieScreen> {
 /// His month: each day with what it counts as, its first IN and last OUT, as the server has them.
 /// (3.117.0) The month's PDF given to the person (the phone's share sheet: save it, send it) – replaceable in a test.
 Future<void> Function(Uint8List bytes, String name) attendPdfOut = (bytes, name) async {
+  // (3.153.0) Android: straight into the phone's Downloads, with a notification that opens it; else the share sheet as before
+  if (await AttendKit.kit.saveDownload(bytes, name, 'application/pdf', Lang.i.pair('Downloaded – touch to open', 'Download झाले – उघडण्यासाठी touch करा'))) return;
   await handOver(bytes, name, 'application/pdf');
 };
 

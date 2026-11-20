@@ -1,13 +1,12 @@
 /* THE TWO LOOKS OF THE ATTENDANCE APP (3.114.0 – his approval of 12-11-2026: "ok he final 2 ni thew user je haw te switch kru
- * shakel"): "Pearl" (light, white and gold) and "Midnight Gold" (dark, glass and gold). The person chooses his own in Me → Look;
- * it is kept on this phone. Only for a person with HR only (the attendance app – "fkt attendance app che boloty mi baki konache
+ * shakel"): "Pearl" (light, white and gold) and "Midnight Gold" (dark, glass and gold). (3.153.0, 20-11-2026: the look follows
+ * the PHONE's dark / light mode now – nobody chooses it in the app.) Only for a person with HR only (the attendance app – "fkt attendance app che boloty mi baki konache
  * design changes nahit"): everybody else keeps the HR pages exactly as they were ([Sk.classic]).
  * Only the colours and the shapes are here – what may be done is decided where it always was (the HR server). */
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../core/attend.dart' show AttendKit;
 import 'theme.dart';
 
 /// One look: its colours. Every HR page asks [sk] for them.
@@ -167,46 +166,44 @@ class _HrLookState extends State<HrLook> {
 /// The way to an HR page: always under its look.
 MaterialPageRoute<T> hrRoute<T>(Widget page) => MaterialPageRoute<T>(builder: (_) => HrLook(child: page));
 
-class HrSkin extends ChangeNotifier {
+class HrSkin extends ChangeNotifier with WidgetsBindingObserver {
   HrSkin._();
   static final HrSkin i = HrSkin._();
-  static const _file = 'hr_look.txt';
 
-  /// 'pearl' or 'gold' – his choice (Pearl until he chooses).
-  String look = 'pearl';
+  /// (3.153.0, his decision of 20-11-2026: "user cha phone dark mode madhe asel tr app purn dark mode premium … light madhe asel
+  /// tr purn light – look and feel cha option remove kr") THE LOOK FOLLOWS THE PHONE: its dark mode → Midnight Gold, its light
+  /// mode → Pearl. Nobody chooses it in the app any more (Me → Look is gone; what was kept on the phone is not read).
+  bool get _dark => WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+
+  /// 'pearl' or 'gold' – as the phone is now.
+  String get look => _dark ? 'gold' : 'pearl';
 
   /// true while the attendance app (a person with HR only) is on the screen.
   bool get on => _users > 0;
   int _users = 0; // (two for a moment while one site's pages give way to another's)
 
-  /// (3.115.0, his word of 13-11-2026: a person with the ERP and attendance "tyala pn hi new screen disayla pahije") the HR
-  /// pages are in the look for everybody now – Pearl until he chooses.
-  Sk get now => look == 'gold' ? Sk.gold : Sk.pearl;
+  Sk get now => _dark ? Sk.gold : Sk.pearl;
 
-  bool _read = false;
-
-  /// The look kept on this phone, read once (a person with the full app opens an HR page).
-  Future<void> load() async {
-    if (_read) return;
-    _read = true;
-    var t = '';
-    try {
-      t = ((await AttendKit.kit.readText(_file)) ?? '').trim();
-    } catch (_) {}
-    if (t == 'gold' && look != 'gold') {
-      look = 'gold';
-      notifyListeners();
-    }
+  bool _watching = false;
+  void _watch() {
+    if (_watching) return;
+    _watching = true;
+    WidgetsBinding.instance.addObserver(this);
   }
 
-  /// The attendance app opens: its look from this phone (Pearl until he chooses).
+  /// The phone went dark / light while the app is open: every HR page follows at once.
+  @override
+  void didChangePlatformBrightness() => notifyListeners();
+
+  /// An HR page of the full app opens: the phone's mode is watched from now on.
+  Future<void> load() async => _watch();
+
+  /// The attendance app opens.
   Future<void> enter() async {
     _users++;
-    var t = '';
-    try {
-      t = ((await AttendKit.kit.readText(_file)) ?? '').trim();
-    } catch (_) {}
-    look = t == 'gold' ? 'gold' : 'pearl';
+    _watch();
+    // (said a moment later: this is called while the page is being built)
+    await Future<void>.value();
     if (on) notifyListeners();
   }
 
@@ -215,15 +212,6 @@ class HrSkin extends ChangeNotifier {
   void leave() {
     if (_users > 0) _users--;
     scheduleMicrotask(notifyListeners);
-  }
-
-  Future<void> choose(String v) async {
-    if (v != 'gold' && v != 'pearl') return;
-    look = v;
-    notifyListeners();
-    try {
-      await AttendKit.kit.writeText(_file, v);
-    } catch (_) {}
   }
 }
 
