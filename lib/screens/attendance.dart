@@ -1060,7 +1060,8 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
       if (mounted && month == asked) {
         setState(() {
           loading = false;
-          err = errText(e);
+          // (3.157.0) the month is on the page (what was read before) and only the network did not answer: nothing red
+          err = e is ApiError && e.code == 'net' && every.isNotEmpty ? '' : errText(e);
         });
       }
     }

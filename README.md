@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.157.0 (21-11-2026 – his picture of Home under "The server did not answer in time": "ha error server kadhun ka aala check
+kr, as sarkhe hote, he nahi aale pahije") HOME STAYS QUIET WHEN ONLY THE NETWORK IS SLOW.**
+* **What it was:** the line is the APP's own – no answer within its 40 seconds (the HR server itself may take 30 at most) – not an
+  error the server sent. Since 3.154.0 Home shows what it read before at once; when the reading behind it failed, the red line was
+  put over a page that was working. And Home was read again at every opening, every return to the app, every page and tab: on a
+  slow network several readings (six calls each) ran side by side.
+* **Now** (`screens/hr_shell.dart`): **one reading at a time** (one asked for meanwhile waits and is done once after it); when his
+  day is on the page and only the network did not answer, **nothing red** – it is tried again by itself after 8 seconds, three
+  times; a part that could not be read stays as it was shown. Pulled down by hand, or with nothing to show, or any other error:
+  said as before. The same for Attendance, Leave and My documents when they show what was read before.
+* **Not verified:** why the answer did not come that time (the server's own log is not readable from here), a real phone.
+
 **Version 3.156.0 (21-11-2026 – the pictures he approved: Attendance "ok he attendance che design approved ahe", Regularization "approved …
 he ask to set he name nay thewaych, ethe regularization as") THE NEW ATTENDANCE PAGE AND "REGULARIZATION".**
 * **Attendance** (`screens/attendance.dart`, the month): the navy card – a gold ring of how much of the month he was there, his days

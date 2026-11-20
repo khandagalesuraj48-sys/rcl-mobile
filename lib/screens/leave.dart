@@ -100,7 +100,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
       if (mounted) {
         setState(() {
           loading = false;
-          err = errText(e);
+          // (3.157.0) his leave is on the page (what was read before) and only the network did not answer: nothing red
+          err = e is ApiError && e.code == 'net' && me != null ? '' : errText(e);
         });
       }
     }

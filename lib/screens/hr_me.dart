@@ -425,7 +425,8 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
       if (mounted) {
         setState(() {
           loading = false;
-          err = errText(e);
+          // (3.157.0) the papers are on the page (what was read before) and only the network did not answer: nothing red
+          err = e is ApiError && e.code == 'net' && data != null ? '' : errText(e);
         });
       }
     }

@@ -1,3 +1,3 @@
-New Attendance page: how much of the month you were there, late days, your average IN and the hours worked; the calendar or a list of days; touch a day for its check in, check out, total hours and place. "Requests" is now Regularization – every request shows who it is with.
-नवीन Attendance पान: महिन्यात किती हजेरी, उशिराचे दिवस, सरासरी IN आणि कामाचे तास; calendar किंवा दिवसांची यादी; दिवसावर touch केल्यावर check in, check out, एकूण तास आणि ठिकाण. "Requests" आता Regularization – प्रत्येक विनंती कोणाकडे आहे ते दिसते.
-नया Attendance पन्ना: महीने में कितनी हाज़िरी, देर के दिन, औसत IN और काम के घंटे; calendar या दिनों की सूची; दिन छूने पर check in, check out, कुल घंटे और जगह. "Requests" अब Regularization – हर अनुरोध किसके पास है दिखता है.
+Home no longer shows a red "server did not answer" line while your day is on the screen – it tries again by itself. Home reads once at a time, so a slow network does not pile up.
+Home वर तुमचा दिवस दिसत असताना "सर्व्हरने उत्तर दिले नाही" ही लाल ओळ आता येत नाही – app स्वतः पुन्हा प्रयत्न करते. Home एका वेळी एकदाच वाचते, त्यामुळे slow network वर अडकत नाही.
+Home पर आपका दिन दिखते समय "server ने जवाब नहीं दिया" की लाल पंक्ति अब नहीं आती – app खुद फिर कोशिश करता है. Home एक समय में एक ही बार पढ़ता है, इसलिए slow network पर नहीं अटकता.
