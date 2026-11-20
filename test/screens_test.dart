@@ -9051,6 +9051,7 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home.png'));
     // ---- the slide: My attendance opens to mark – IN; said big, then Home again by itself: on duty
     // (3.116.0) ONE PRESS: the dial reads his place and takes the selfie by itself – no page in between, nothing to slide
+    await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
     await tapKey('hh-slide');
     expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
@@ -9294,8 +9295,7 @@ void main() {
     expect(srv.hrPunches.length, 1, reason: 'still on duty');
     await tapKey('hh-slide');
     await t.tap(find.byKey(const Key('so-yes')));
-    await net(t);
-    await net(t);
+    await net(t); // (one wait only: the message of a punch goes by itself after three seconds)
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     expect(srv.hrPunches.length, 2);
     await t.tap(find.byKey(const Key('att-ok')));
@@ -9422,6 +9422,7 @@ void main() {
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_seven_day.png'));
     // a punch: the phone's proof for THIS punch goes with it
+    await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
     await tapKey('hh-slide');
     await settle(t, 3200);
     await net(t);
@@ -10007,8 +10008,7 @@ void main() {
     await t.tap(find.byKey(const Key('hh-slide')));
     await net(t);
     await t.tap(find.byKey(const Key('so-yes'))); // (3.153.0) OUT is asked first
-    await net(t);
-    await net(t);
+    await net(t); // (one wait only: the message of a punch goes by itself after three seconds)
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     await t.tap(find.byKey(const Key('att-ok')));
     await net(t);
