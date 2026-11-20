@@ -15,6 +15,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.152.0 (20-11-2026, his decision: "app open krel user terms and condition pop up yeil … allow decline … decline kel tr
+attendance mark nahi krta yet … kuthun pn deta yaw … user ne allow kel ki te data store aswa"; the Portal's step 14) THE APP'S TERMS /
+LOCATION NOTICE.** Once, when the app opens (`screens/consent_gate.dart`, `core/app_consent.dart`): what the app uses – location for
+attendance while on duty and for the live tracking of a vehicle with a driver (also in the background, shared with HR / the employer),
+the camera and the face, the helper (AI) – with links to the website's Privacy Policy and Terms, and **Allow** / **Decline**. Allow is
+recorded on the Portal (`auth` → `appConsent`; its "me" says `consent.need` while it is still to accept). Decline records nothing: the
+app opens, but attendance cannot be marked, and the vehicle's GPS and the on-duty location do not start, until he allows – asked again
+at the punch, and at any time in **Me → Privacy & permissions** (both Me pages). Not shown again on opening once seen; a new version of
+the notice (`AppConsent.version` = the Portal's `APP_CONSENT_VERSION`) is shown once more. While he is on duty the app itself shows
+nothing about tracking (the phone's own location mark stays). Before the first typed question goes to the AI service the assistant asks
+once ("Use the helper (AI)?" – kept on the phone). A Portal of before step 14 (no `consent` in "me"): nothing is shown, nothing changes.
+Tests: "the app's terms / location notice" (screens_test). Not run on a real phone.
+
 **Version 3.151.0 (20-11-2026, his decision: "jy user ni documents upload keleli nastil tyana compulsory aahe document upload krne … app
 open krel direct document upload screen yeil … adhar card pan card bank details driving lience ani eduction … ek ek ki mg submit hoil …
 upload zalel asel tr ti screen nahi yenar … sobat anek documents … edit delet"; all compulsory, PAN / Licence / Education may be "Not

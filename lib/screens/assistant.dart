@@ -21,6 +21,7 @@ import '../ui/help.dart' show helpLangOf;
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'admin.dart' show ReadMeScreen;
+import 'consent_gate.dart' show aiConsent;
 import 'dashboard.dart' show openDashboard;
 import 'forms.dart' show newEntry;
 import 'home.dart' show reportsOf;
@@ -205,6 +206,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
   Future<void> _send() async {
     final t = input.text;
     if (t.trim().isEmpty || chat.busy) return;
+    // (20-11-2026) once, before the first question goes to the AI service: his "Allow" (kept on this phone)
+    if (!await aiConsent(context, SessionScope.read(context)) || !mounted) return;
     input.clear();
     HapticFeedback.selectionClick();
     // (3.61.0) a question typed during a talk: said while it is written, as a spoken one; after its answer the talk listens again

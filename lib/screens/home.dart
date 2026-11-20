@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../core/app_consent.dart';
 import '../core/app_share.dart';
 import '../core/device.dart';
 import '../core/format.dart';
@@ -279,7 +280,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
       if (!quiet) _counts(force: init);
       final ss = me?['session'];
       if (ss is Map) {
-        VlGps.i.start(s.api, '${ss['id']}', '${ss['no']}');      // (3.132.0) the GPS of the vehicle with him
+        if (AppConsent.ok(s)) VlGps.i.start(s.api, '${ss['id']}', '${ss['no']}');      // (3.132.0) the GPS of the vehicle with him – (20-11-2026) only with the app's location notice allowed
       } else if (me != null && VlGps.i.on) {
         VlGps.i.stop();
       }

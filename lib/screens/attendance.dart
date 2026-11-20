@@ -16,6 +16,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 
 import '../core/api.dart' show ApiError;
+import '../core/app_consent.dart';
 import '../core/attend.dart';
 import '../core/attend_pdf.dart';
 import '../core/attend_remind.dart';
@@ -32,6 +33,7 @@ import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../web/files.dart' show handOver;
 import 'attend_reqs.dart';
+import 'consent_gate.dart' show showConsent;
 import 'face_screens.dart';
 import 'hr_shell.dart';
 import 'leave.dart';
@@ -393,6 +395,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     if (busy || me == null) return;
     final kind = _next;
     if (_onLeave != null) return; // (3.147.0) a day of his leave: the card says what to do
+    // (20-11-2026) attendance needs the app's terms / location notice to be allowed: shown here when it is not in force yet
+    final s0 = SessionScope.read(context);
+    if (!AppConsent.ok(s0)) {
+      if (!await showConsent(context) || !mounted) return;
+    }
     setState(() {
       busy = true;
       err = '';

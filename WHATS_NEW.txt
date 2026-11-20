@@ -1,3 +1,3 @@
-New: before you start, upload your documents (Aadhaar, PAN, Bank, Driving licence, Education). Aadhaar and Bank are a must; for the others you can tap “I don’t have this”.
-नवीन: सुरू करण्याआधी तुमची कागदपत्रे upload करा (Aadhaar, PAN, Bank, Driving licence, Education). Aadhaar आणि Bank आवश्यक; बाकीसाठी “माझ्याकडे नाही” दाबू शकता.
-नया: शुरू करने से पहले अपने documents upload करें (Aadhaar, PAN, Bank, Driving licence, Education). Aadhaar और Bank ज़रूरी; बाकी के लिए “मेरे पास नहीं है” दबा सकते हैं.
+New: when the app opens, read how it uses your location and data and tap Allow (once). You can open it again in Me → Privacy & permissions. Live Tracking now shows a Google map.
+नवीन: app उघडल्यावर ते तुमची location व माहिती कशी वापरते ते वाचा आणि “परवानगी द्या” दाबा (एकदाच). Me → Privacy व परवानग्या मधून परत उघडता येतं. Live Tracking आता Google map वर.
+नया: app खोलने पर पढ़ें कि वह आपकी location और जानकारी कैसे इस्तेमाल करता है और “अनुमति दें” दबाएँ (एक बार)। Me → Privacy और अनुमतियाँ से फिर खोल सकते हैं। Live Tracking अब Google map पर।

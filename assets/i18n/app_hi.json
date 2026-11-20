@@ -2206,5 +2206,21 @@
 "{0} Log Book entries moved to {1} – the diesel stays with {2}.": "{0} Log Book entries {1} पर गईं – diesel {2} के पास ही रहा।",
 "Change the machinery number by itself: save or undo the other changes first, then pick the right machinery.": "Machinery number अकेला बदलें: पहले बाकी बदलाव save करें या हटाएँ, फिर सही machinery चुनें।",
 "Move entries to another machinery": "entries दूसरी machinery पर ले जाएँ",
-"Tap the entries to tick them": "entries पर दबाकर चुनें"
+"Tap the entries to tick them": "entries पर दबाकर चुनें",
+"Before you start": "शुरू करने से पहले",
+"Please read how this app uses your information, and allow it to continue.": "यह app आपकी जानकारी कैसे इस्तेमाल करता है, पढ़ें और आगे बढ़ने के लिए अनुमति दें।",
+"Location for attendance: while you are on duty (after you mark IN, until you mark OUT), the app records your location and shares it with your HR / employer. This continues while the app is in the background.": "हाज़िरी के लिए location: जब आप duty पर हों (IN लगाने से OUT लगाने तक) app आपकी location दर्ज करता है और आपके HR / कंपनी को देता है। App background में हो तब भी यह चलता रहता है।",
+"Live vehicle tracking: for drivers and operators, while a vehicle is with you the app shares its location, also in the background, until the vehicle is released.": "गाड़ी की live tracking: driver और operator के लिए – जब तक गाड़ी आपके पास है, app उसकी location देता है, background में भी, गाड़ी छोड़ने तक।",
+"Camera and face: a photo is taken with each attendance entry, and where your site uses it, your face is checked to confirm it is you.": "Camera और चेहरा: हर हाज़िरी के साथ एक photo ली जाती है, और जहाँ आपकी site पर लागू हो, यह पक्का करने के लिए कि हाज़िरी आप ही लगा रहे हैं, चेहरा जाँचा जाता है।",
+"Helper (AI): when you use the assistant or ask it to read a document, what you send is passed to an AI service only to produce the result.": "सहायक (AI): जब आप assistant इस्तेमाल करते हैं या उससे कोई काग़ज़ पढ़वाते हैं, तो आपका भेजा हुआ सिर्फ़ जवाब बनाने के लिए AI service को जाता है।",
+"Privacy Policy": "Privacy Policy",
+"Terms & Conditions": "Terms & Conditions",
+"Allow": "अनुमति दें",
+"Decline – I cannot mark attendance until I allow": "नहीं – अनुमति देने तक मैं हाज़िरी नहीं लगा सकूँगा",
+"Could not save your choice – check your network and try again.": "आपका चुनाव save नहीं हुआ – network जाँचें और फिर कोशिश करें।",
+"Use the helper (AI)?": "सहायक (AI) इस्तेमाल करें?",
+"To help you, what you type or the document you choose is sent to an AI service and is not used for anything else. You can use the rest of the app without it.": "आपकी मदद के लिए आपका लिखा हुआ या चुना हुआ काग़ज़ AI service को भेजा जाता है; किसी और काम में नहीं लिया जाता। इसके बिना भी बाक़ी app चलता है।",
+"Not now": "अभी नहीं",
+"Privacy & permissions": "Privacy और अनुमतियाँ",
+"How the app uses your location and data": "app आपकी location और जानकारी कैसे इस्तेमाल करता है"
 }

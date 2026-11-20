@@ -32,6 +32,7 @@ import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'attach_box.dart' show pickAttFiles;
+import 'consent_gate.dart' show showConsent;
 import 'attend_reqs.dart' show HrAsk;
 import 'attendance.dart' show attendPdfLogo, attendPdfOut, hrSite;
 import 'email_verify.dart';
@@ -169,6 +170,8 @@ class HrMeTab extends StatelessWidget {
               _li(key: const Key('me-lang'), sign: 'A', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
               if (!inErp) _li(key: const Key('me-account'), sign: '@', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
               _li(key: const Key('me-look'), sign: '', icon: Icons.palette_outlined, c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Look', mr: 'रूप', sub: sk.dark ? 'Midnight Gold' : 'Pearl', onTap: () => open(const LookScreen())),
+              // (20-11-2026) the app's terms / location notice and the Privacy Policy – always reachable; "Allow" again from here
+              _li(key: const Key('me-privacy'), sign: '', icon: Icons.verified_user_outlined, c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Privacy & permissions', mr: 'Privacy व परवानग्या', sub: _t('How the app uses your location and data', 'app तुमची location व माहिती कशी वापरते'), onTap: () => showConsent(context)),
               // (the look's name goes with them: a row that keeps its own state is drawn again when the look changes)
               _RemindRow(look: sk.name, last: inErp),
               if (!inErp) _UpdateRow(look: sk.name),

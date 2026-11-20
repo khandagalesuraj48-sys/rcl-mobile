@@ -21,6 +21,7 @@ import 'dart:typed_data';      // ignore: unnecessary_import
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../core/app_consent.dart';
 import '../core/api.dart';
 import '../core/format.dart';
 import '../core/imports.dart' show findMachine;
@@ -400,7 +401,7 @@ class _SmartLogBookScreenState extends State<SmartLogBookScreen> {
       if (!mounted) return;
       final ss = _map(r['session']);
       if (ss != null) {
-        unawaited(VlGps.i.start(s.api, '${ss['id']}', '${ss['no']}'));
+        if (AppConsent.ok(s)) unawaited(VlGps.i.start(s.api, '${ss['id']}', '${ss['no']}'));      // (20-11-2026) only with the app's location notice allowed
       } else if (VlGps.i.on) {
         unawaited(VlGps.i.stop());
       }
@@ -832,7 +833,7 @@ class _TakeVehicleScreenState extends State<TakeVehicleScreen> {
     try {
       final r = ((await s.api.call('vlTake', [{'no': widget.m.id, 'how': widget.how}])) as Map).cast<String, dynamic>();
       final ss = _map(r['session']);
-      if (ss != null) unawaited(VlGps.i.start(s.api, '${ss['id']}', '${ss['no']}'));
+      if (ss != null && AppConsent.ok(s)) unawaited(VlGps.i.start(s.api, '${ss['id']}', '${ss['no']}'));
       if (!mounted) return;
       HapticFeedback.lightImpact();
       toast(context, bi('${widget.m.id} is with you – now its opening photo.', '${widget.m.id} तुमच्याकडे – आता opening फोटो.'));
