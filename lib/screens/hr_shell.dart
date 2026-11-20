@@ -464,7 +464,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
               const SizedBox(height: 7),
               FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: sk.muted))),
               const SizedBox(height: 2),
-              m.Text(v.isEmpty ? '–' : v, key: Key(key), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: v.isEmpty ? sk.faint : sk.ink)),
+              // (a long designation is made a little smaller rather than cut)
+              FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: m.Text(v.isEmpty ? '–' : v, key: Key(key), maxLines: 1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: v.isEmpty ? sk.faint : sk.ink))),
             ]),
           ),
         );

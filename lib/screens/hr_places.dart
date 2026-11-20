@@ -114,7 +114,15 @@ class PlacesMap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hits = placeHits(places, fix), f = fix;
-    final pts = <LatLng>[for (final p in places) if (placeCentre(p) != null) placeCentre(p)!, if (f != null) LatLng(f.lat, f.lng)];
+    final pts = <LatLng>[
+      for (final p in places) ...[
+        if (placeCentre(p) != null) placeCentre(p)!,
+        // (a circle's own edge is part of what must be seen: its top and its bottom)
+        if (p.shape == 'circle' && p.lat.isFinite && p.lng.isFinite && p.radius > 0) ...[LatLng(p.lat + p.radius * 1.6 / 111320, p.lng), LatLng(p.lat - p.radius * 1.6 / 111320, p.lng)],
+        if (p.shape != 'circle') for (final q in p.points) LatLng(q[0], q[1]),
+      ],
+      if (f != null) LatLng(f.lat, f.lng),
+    ];
     // the middle of everything and how near to look: all of it on the map, with some room round it
     var mid = const LatLng(19.0, 75.5);
     var zoom = 7.0;
