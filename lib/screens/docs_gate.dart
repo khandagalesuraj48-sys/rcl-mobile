@@ -240,7 +240,7 @@ class _DocGateScreenState extends State<DocGateScreen> {
               ? const Center(child: CircularProgressIndicator(color: _acc))
               : Column(children: [
                   Expanded(
-                    child: ListView(padding: const EdgeInsets.fromLTRB(18, 14, 18, 8), children: [
+                    child: ListView(key: const Key('dg-list'), padding: const EdgeInsets.fromLTRB(18, 14, 18, 8), children: [
                       Row(children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

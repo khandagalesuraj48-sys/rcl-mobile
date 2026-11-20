@@ -9495,9 +9495,13 @@ void main() {
     expect(t.widget<FilledButton>(find.byKey(const Key('dg-submit'))).onPressed, isNull, reason: 'Submit is off until every one is done');
 
     Future<void> scrollTo(String key) async {
-      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 220, scrollable: find.byType(Scrollable).first);
-      await t.ensureVisible(find.byKey(Key(key)));
-      await settle(t, 250);
+      final f = find.byKey(Key(key));
+      for (var i = 0; i < 10 && f.evaluate().isEmpty; i++) {
+        await t.drag(find.byKey(const Key('dg-list')), const Offset(0, -160));
+        await settle(t, 150);
+      }
+      await t.ensureVisible(f);
+      await settle(t, 200);
     }
 
     Future<void> upload(String key, Uint8List bytes, String name, String pick) async {
