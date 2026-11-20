@@ -26,6 +26,7 @@ import 'package:flutter/material.dart' as m show Text;
 
 import '../core/attend.dart';
 import '../core/attend_remind.dart';
+import '../core/hr_track.dart';
 import '../core/session.dart';
 import '../core/update.dart' show checkUpdate, offerUpdate, updateOfferAgain;
 import '../ui/attend_look.dart';
@@ -45,8 +46,11 @@ String _t(String en, String mr) => Lang.i.pair(en, mr);
 
 /// His HR sign-in of his HR site (this site, or – 3.141.0 – the site of his own HR: Head Office for an HO employee in VTR's ERP),
 /// for the pages opened from here.
-Future<Map<String, dynamic>> hrCall(BuildContext context, Map<String, dynamic> body) {
-  final s = SessionScope.read(context), h = hrSite(s), mod = hrModule(s);
+Future<Map<String, dynamic>> hrCall(BuildContext context, Map<String, dynamic> body) => hrAsk(SessionScope.read(context), body);
+
+/// (3.149.0) the same with the session itself – for what goes on after the page is closed (his location for HR while on duty).
+Future<Map<String, dynamic>> hrAsk(Session s, Map<String, dynamic> body) {
+  final h = hrSite(s), mod = hrModule(s);
   if (h == null || mod == null) throw StateError('none');
   return s.api.hr(h.code, mod.url, mod.key, body);
 }
@@ -179,6 +183,63 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     await _gpsAsk();
   }
 
+  /// (3.149.0, rcl-hr step 20) told once, the first time his place is shared: what is shared, when, for how long
+  Future<void> _trackNotice() async {
+    if (!mounted || !HrTrack.i.on) return;
+    final s = SessionScope.read(context);
+    try {
+      if ((await s.api.keep.read('hr_track_notice')) == '1') return;
+    } catch (_) {/* asked once more */}
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (c) => AlertDialog(
+        key: const Key('hh-track-notice'),
+        icon: Icon(Icons.share_location_rounded, size: 34, color: sk.tint(const Color(0xFF12A150), const Color(0xFFE3F7EC)).$1),
+        title: Text('Location shared with HR', mr: 'Location HR सोबत share होत आहे', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
+        content: Text('While you are on duty – from your IN to your OUT – this phone sends your location to HR every 5 minutes, also when the app is closed. After OUT nothing is sent. HR keeps it 30 days, then it is deleted.',
+            mr: 'तुम्ही duty वर असताना – IN पासून OUT पर्यंत – हा phone दर 5 मिनिटांनी तुमचे location HR ला पाठवतो, app बंद असतानाही. OUT नंतर काहीही जात नाही. HR ते 30 दिवस ठेवते, नंतर delete होते.',
+            textAlign: TextAlign.center, style: TextStyle(fontSize: 15, height: 1.4, color: sk.muted)),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          FilledButton(key: const Key('hh-track-ok'), style: FilledButton.styleFrom(minimumSize: const Size(170, 48), backgroundColor: sk.accent, foregroundColor: sk.onAccent), onPressed: () => Navigator.of(c).pop(), child: Text('OK, understood', mr: 'ठीक आहे, समजले', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    try {
+      await s.api.keep.write('hr_track_notice', '1');
+    } catch (_) {/* told again next time */}
+  }
+
+  // (3.149.0) Home: "Location shared with HR" while it is (green); no permission / location off – said so (red)
+  Widget _trackCard() {
+    final t = HrTrack.i, bad = t.state == 'no-permission' || t.state == 'gps-off';
+    final ink = bad ? const Color(0xFFC22A1B) : const Color(0xFF0F7A45), fill = bad ? const Color(0xFFFFE6E3) : const Color(0xFFE3F7EC);
+    return Container(
+      key: const Key('hh-track'),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(color: sk.tint(ink, fill).$2, borderRadius: BorderRadius.circular(18), border: Border.all(color: sk.tint(ink, fill).$1.withValues(alpha: .55), width: 1.2)),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(bad ? Icons.location_off_rounded : Icons.share_location_rounded, size: 22, color: sk.tint(ink, fill).$1),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(bad ? 'Location not shared – switch it on' : 'Location shared with HR', mr: bad ? 'Location share होत नाही – सुरू करा' : 'Location HR सोबत share होत आहे', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: sk.ink)),
+            const SizedBox(height: 3),
+            Text(
+                bad
+                    ? (t.state == 'no-permission' ? 'Allow the location for this app in the phone\'s settings – HR asks for it while you are on duty.' : 'The location (GPS) of the phone is off – switch it on.')
+                    : 'Only from your IN to your OUT – every 5 minutes. HR sees where you are and your route of the day. Kept 30 days, then deleted.',
+                mr: bad
+                    ? (t.state == 'no-permission' ? 'Phone च्या settings मध्ये या app ला location द्या – duty वर असताना HR ला ते लागते.' : 'Phone चे location (GPS) बंद आहे – सुरू करा.')
+                    : 'फक्त तुमच्या IN पासून OUT पर्यंत – दर 5 मिनिटांनी. तुम्ही कुठे आहात आणि दिवसाचा रस्ता HR ला दिसतो. 30 दिवस ठेवले जाते, नंतर delete.',
+                style: TextStyle(fontSize: 13.5, height: 1.4, color: sk.muted)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
   /// "Location is off": one press switches it on in the app (Android's own box); else the phone's settings open.
   Future<void> _gpsAsk() async {
     final yes = await showDialog<bool>(
@@ -255,6 +316,9 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         loading = false;
         err = '';
       });
+      // (3.149.0, rcl-hr step 20) his place shared with HR while on duty (IN → OUT) – HR's server says when; after every IN / OUT
+      // and whenever Home is opened
+      unawaited(HrTrack.i.sync((b) => hrAsk(s, b)).then((_) => _trackNotice()));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -339,6 +403,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                   if (day != null) ...[
                     // (3.122.0) the parts of Home come up one after the other
                     Rise(order: 0, child: _hero(s)),
+                    // (3.149.0) "Location shared with HR" – only while it is
+                    ListenableBuilder(listenable: HrTrack.i, builder: (_, __) => HrTrack.i.on ? Padding(padding: const EdgeInsets.only(top: 14), child: _trackCard()) : const SizedBox.shrink()),
                     const SizedBox(height: 14),
                     Rise(order: 1, child: _week()),
                     const SizedBox(height: 14),

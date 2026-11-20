@@ -15,7 +15,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Sketchline saves the place of every entry, as the web ERP does.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Sketchline shares the place of the vehicle with you while it is on duty (Smart Log Book), also when the app is in the background.</string>
+	<string>Sketchline shares your location with HR while you are on duty (from your IN to your OUT) and the place of the vehicle while it is with you (Smart Log Book), also when the app is in the background.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

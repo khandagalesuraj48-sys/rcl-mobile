@@ -254,6 +254,11 @@ class FakeServer {
   // (3.139.0, rcl-hr Phase 6) the people who report to him – "My team"
   List<Map<String, dynamic>> hrTeamPeople = [];
   int hrNoticeSeen = 0;
+  /// (3.149.0, rcl-hr step 20) location tracking: [hrTrack] false (as by itself) = an HR server of before (no step 20); switched off for him today;
+  /// the points his phone sent (trackSend) and how often it asked (myTrack)
+  bool hrTrack = false, hrTrackOffToday = false;
+  final hrTrackPoints = <Map<String, dynamic>>[];
+  int hrTrackAsked = 0;
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
   final hrFaceSent = <Map<String, dynamic>>[];
   final hrFaceSeen = <String>{};
@@ -318,6 +323,19 @@ class FakeServer {
     switch ('${b['action']}') {
       case 'myAttend':
         return _j({'ok': true, ..._hrDay('${b['device_id']}'), 'leave': hrLeaveToday});
+      case 'myTrack':
+        hrTrackAsked++;
+        if (!hrTrack) return _j({'error': 'Unknown action.'}, 400);
+        final duty = hrPunches.isNotEmpty && hrPunches.last['kind'] == 'in';
+        return _j({'ok': true, 'ready': true, 'on': duty && !hrTrackOffToday, 'duty': duty, 'off_today': hrTrackOffToday, 'every_min': 5, 'keep_days': 30});
+      case 'trackSend':
+        final duty2 = hrPunches.isNotEmpty && hrPunches.last['kind'] == 'in', pts = (b['points'] as List? ?? const []).whereType<Map>().toList();
+        if (duty2 && !hrTrackOffToday) {
+          for (final q in pts) {
+            if (!hrTrackPoints.any((x) => x['seq'] == q['seq'])) hrTrackPoints.add(q.cast<String, dynamic>());
+          }
+        }
+        return _j({'ok': true, 'kept': duty2 && !hrTrackOffToday ? pts.length : 0, 'dropped': duty2 && !hrTrackOffToday ? 0 : pts.length, 'on': duty2 && !hrTrackOffToday, 'every_min': 5});
       case 'selfieUrl':
         return _j({'ok': true, 'there': hrPhotos.containsKey('${b['client_id']}'), 'url': hrPhotos.containsKey('${b['client_id']}') ? '' : 'https://photos.test/hr-selfies/${b['client_id']}.jpg', 'type': 'image/jpeg', 'max': 1048576});
       case 'punch':

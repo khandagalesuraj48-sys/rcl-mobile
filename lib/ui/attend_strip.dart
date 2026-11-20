@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Text;
 
 import '../core/attend.dart';
+import '../core/hr_track.dart';
 import '../screens/attendance.dart';
 import '../screens/hr_shell.dart';
 import 'attend_look.dart';
@@ -52,6 +53,10 @@ class _AttendStripState extends State<AttendStrip> {
     minute?.cancel();
     minute = null;
     if (_today.isNotEmpty && _next == 'out') {
+      // (3.149.0, rcl-hr step 20) on duty by what this phone knows (the app opened again on the ERP's Home): his location for HR
+      // goes on if it was on when the app was closed – nothing is asked of the server here
+      final s = SessionScope.read(context);
+      if (!HrTrack.i.on) unawaited(HrTrack.i.resume((b) => hrAsk(s, b)));
       minute = Timer.periodic(const Duration(minutes: 1), (_) {
         if (mounted) setState(() {});
       });
