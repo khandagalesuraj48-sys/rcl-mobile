@@ -115,10 +115,13 @@ void main() {
     expect(find.byKey(const Key('lvd-page')), findsOneWidget);
     expect([for (final k in ['lvd-state', 'lvd-waits']) t.widget<Text>(find.byKey(Key(k))).data], ['IN VERIFICATION', 'With Ravi Patil (Reporting person)']);
     expect(find.byKey(const Key('lvd-road')), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Made shorter'), 150, scrollable: find.descendant(of: find.byKey(const Key('lvd-page')), matching: find.byType(Scrollable)).first); // (the full history is further down the page)
     expect(find.text('Asked'), findsOneWidget);
     expect(find.text('Made shorter'), findsOneWidget);
     expect(find.textContaining('you · 14-10-2026 10:30 · 20-10-2026 – 23-10-2026 (4) → 20-10-2026 – 22-10-2026 (3)'), findsOneWidget, reason: 'what he changed, with when');
     expect(find.byKey(const Key('lvd-change')), findsOneWidget);
+    await t.ensureVisible(find.byKey(const Key('lvd-delete')));
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('lvd-delete')));
     await settle(t, 600);
     await t.tap(find.text('Delete'));
@@ -143,8 +146,11 @@ void main() {
     await settle(t, 1500);
     await t.tap(find.byKey(const Key('lv-open-8')));
     await settle(t, 900);
+    await t.scrollUntilVisible(find.text('An approved leave is deleted by the HR office.'), 150, scrollable: find.descendant(of: find.byKey(const Key('lvd-page')), matching: find.byType(Scrollable)).first);
     expect(find.byKey(const Key('lvd-delete')), findsNothing);
     expect(find.text('An approved leave is deleted by the HR office.'), findsOneWidget);
+    await t.ensureVisible(find.byKey(const Key('lvd-change')));
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('lvd-change')));
     await settle(t, 900);
     expect(find.byKey(const Key('lc-page')), findsOneWidget);
