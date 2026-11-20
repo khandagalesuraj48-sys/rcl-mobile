@@ -16,6 +16,7 @@ import '../ui/design.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import 'approvals.dart';
+import 'consent_gate.dart' show showConsent;
 import 'email_verify.dart';
 import 'settings.dart';
 import 'super_admin.dart';
@@ -248,6 +249,8 @@ class _MeTabState extends State<MeTab> {
                   onTap: () => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const KeptSheet()),
                 ),
               _row(key: const Key('me-help'), pic: 'robot', en: 'Help & Support', mr: 'मदत', sub: 'Ask the app, page guides', color: C.blueSoft, onTap: () => openHelp(context)),
+              // (20-11-2026) the app's terms / location notice and the Privacy Policy – always reachable; "Allow" again from here
+              _row(key: const Key('me-privacy'), pic: 'locked_with_key', en: 'Privacy & permissions', mr: 'Privacy व परवानग्या', sub: 'How the app uses your location and data', color: C.blueSoft, onTap: () => showConsent(context)),
               _row(pic: 'locked_with_key', en: 'Sign out', mr: 'साईन आउट करा', sub: 'Sign out from your account', color: C.redSoft, text: C.red, onTap: _signOut),
               const SizedBox(height: 8),
             ]),

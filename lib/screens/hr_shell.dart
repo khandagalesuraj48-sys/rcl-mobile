@@ -24,6 +24,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 
+import '../core/app_consent.dart';
 import '../core/attend.dart';
 import '../core/attend_remind.dart';
 import '../core/hr_track.dart';
@@ -267,7 +268,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       });
       // (3.149.0, rcl-hr step 20) his place shared with HR while on duty (IN → OUT) – HR's server says when; after every IN / OUT
       // and whenever Home is opened. Nothing is shown in the app (his decision of 20-11-2026): the start is silent.
-      unawaited(HrTrack.i.sync((b) => hrAsk(s, b)));
+      if (AppConsent.ok(s)) unawaited(HrTrack.i.sync((b) => hrAsk(s, b)));      // (20-11-2026) only with the app's location notice allowed
     } catch (e) {
       if (!mounted) return;
       setState(() {

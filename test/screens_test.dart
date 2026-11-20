@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show ComputeCallback;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/core/app_consent.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
@@ -121,7 +122,9 @@ Future<void> attPage(WidgetTester t) async {
   await net(t);
 }
 
-Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))..clock = () => DateTime(2026, 10, 14, 10, 30); // (a Day-shift time: the screens are the same every run)
+Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))
+  ..api.keep.write('ai_consent_ok', '1') // (20-11-2026) the assistant's one-time "Allow" (before a typed question goes to the AI service) is given already
+  ..clock = () => DateTime(2026, 10, 14, 10, 30); // (a Day-shift time: the screens are the same every run)
 
 Future<Session> ready(WidgetTester t, FakeServer srv) async {
   final s = make(srv);
@@ -1150,6 +1153,41 @@ void main() {
     await net(t);
     expect(srv.saved.single['pump'], 'IOC Bunk');
     expect(srv.saved.single.containsKey('photos'), false);
+  });
+
+  /* (20-11-2026, the Portal's step 14 – his decision: "app open krel user terms and condition pop up yeil … allow decline … decline kel tr
+   * attendance mark nahi krta yet … kuthun pn deta yaw … user ne allow kel ki te data store aswa") the notice once on opening. */
+  testWidgets('(3.152.0) the app\'s terms / location notice: once on opening; Decline opens the app and records nothing; Me → Privacy & permissions → Allow is recorded on the Portal', (t) async {
+    phone(t);
+    final srv = FakeServer()..consentNeed = AppConsent.version;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('consent-allow')), findsOneWidget);
+    expect(find.byKey(const Key('tab-me')), findsNothing, reason: 'the notice first');
+    expect(find.text('Privacy Policy'), findsOneWidget);
+    expect(find.text('Terms & Conditions'), findsOneWidget);
+    expect(AppConsent.ok(s), false);
+    await t.tap(find.byKey(const Key('consent-decline')));
+    await net(t);
+    expect(find.byKey(const Key('consent-allow')), findsNothing);
+    expect(srv.calls.contains('portal:appConsent'), false, reason: 'Decline records nothing');
+    expect(AppConsent.ok(s), false, reason: 'attendance stays closed until he allows');
+    expect(await t.runAsync(() => AppConsent.popupOnOpen(s)), false, reason: 'asked once: not shown again on opening');
+    // from Me, at any time
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    await t.ensureVisible(find.byKey(const Key('me-privacy')));
+    await settle(t, 300);
+    await t.tap(find.byKey(const Key('me-privacy')));
+    await net(t);
+    expect(find.byKey(const Key('consent-allow')), findsOneWidget);
+    await t.tap(find.byKey(const Key('consent-allow')));
+    await net(t);
+    expect(find.byKey(const Key('consent-allow')), findsNothing);
+    expect(srv.consentSent.single['version'], AppConsent.version);
+    expect(AppConsent.ok(s), true);
+    expect(srv.consentNeed, '');
   });
 
   testWidgets('Me: name, role, site, version, sign out', (t) async {

@@ -18,6 +18,10 @@ class FakeServer {
   Map<String, dynamic>? mailInfo;
   int alerts = 0;
   bool tester = false; // (02-11-2026) the Portal's "me": a tester (the beta channel)
+  /// (20-11-2026, the Portal's step 14) the version of the app's terms / location notice he still has to accept ('' = none – as
+  /// after his "Allow", or a Portal of before); what his "Allow" sent
+  String consentNeed = '';
+  final List<Map> consentSent = [];
   /// (3.31.2 – update-143) the date and shift asked for is already saved: the server's prefill says so (addTo) and the save adds to it
   Map<String, dynamic>? addTo;
   String newPassword = '';
@@ -1571,11 +1575,11 @@ class FakeServer {
         // (as the Portal: still on a given password – no module until his own is set)
         if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
         if (hrOnlyUser) {
-          return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, 'items': [
+          return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, 'items': [
             {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'hrme', 'moduleName': 'My HR', 'url': 'https://erp.test/hr'},
           ]});
         }
-        return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, 'items': [
+        return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, 'items': [
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test', 'pages': mechDriver ? {'driver': 'Yes'} : null},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
           if (engSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'engineering', 'moduleName': 'Engineering', 'url': 'https://erp.test/engineering'},      // (3.59.0)
@@ -1586,6 +1590,13 @@ class FakeServer {
           {'site': 'Z5', 'siteName': 'Store only', 'company': '', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
           if (hoMyHr) {'site': 'HO', 'siteName': 'HEAD OFFICE', 'company': 'RCL', 'module': 'hrme', 'moduleName': 'My HR', 'url': 'https://erp.test/hr'},      // (3.141.0)
         ]});
+      }
+      if (b['action'] == 'appConsent') {
+        if (!portalSignedIn) return _j({'error': 'Please sign in.', 'code': 'signin'}, 401);
+        if (consentNeed.isNotEmpty && b['version'] != consentNeed) return _j({'error': 'This version of the terms is out of date – open the app again.', 'code': 'version'}, 400);
+        consentSent.add(b);
+        consentNeed = '';
+        return _j({'ok': true});
       }
       if (b['action'] == 'setStart') {
         start = b['module'] == '' ? '' : '${b['module']}|${b['site']}';

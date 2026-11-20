@@ -258,6 +258,9 @@ class Session extends ChangeNotifier {
   /// (02-11-2026) a TESTER (ticked in the Portal): the beta versions of the app (update.dart) and of the web (the Portal gives him
   /// the beta links); everybody else the stable ones
   bool tester = false;
+  /// (20-11-2026) the version of the app's terms / location notice the user still needs to accept (the Portal's "me" consent.need);
+  /// empty = nothing to accept (in force). See lib/core/app_consent.dart.
+  String consentNeed = '';
   Map<String, String> perms = {};
 
   /// (3.64.0, Mechanical update-189) the pages where he is Admin (a page with a date): Edit, and their entries of an earlier day
@@ -484,7 +487,7 @@ class Session extends ChangeNotifier {
     final c = site?.code ?? '';
     if (c.isEmpty || email.isEmpty) return;
     try {
-      await api.keep.write(kSnap, jsonEncode({'email': email, 'name': name, 'tester': tester, 'site': c, 'sites': [for (final x in sites) x.toJson()], 'init': d, 'at': clock().toUtc().toIso8601String(), 'stamp': api.stamp}));
+      await api.keep.write(kSnap, jsonEncode({'email': email, 'name': name, 'tester': tester, 'consent': consentNeed, 'site': c, 'sites': [for (final x in sites) x.toJson()], 'init': d, 'at': clock().toUtc().toIso8601String(), 'stamp': api.stamp}));
     } catch (_) {/* only for opening with no network */}
   }
 
@@ -518,6 +521,7 @@ class Session extends ChangeNotifier {
     email = '${j['email']}';
     if ('${j['name'] ?? ''}'.isNotEmpty) name = '${j['name']}';
     tester = j['tester'] == true;
+    consentNeed = '${j['consent'] ?? ''}'; // (20-11-2026) the notice still to accept, as the Portal last said
     if (api.stamp.isEmpty && '${j['stamp'] ?? ''}'.isNotEmpty) api.stamp = '${j['stamp']}';
     _applyInit((j['init'] as Map).cast<String, dynamic>());
     today = phoneToday();
@@ -684,6 +688,7 @@ class Session extends ChangeNotifier {
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();
     tester = u['tester'] == true; // (02-11-2026) the Portal's "me" – the beta channel
+    consentNeed = ((me['consent'] as Map?)?['need'] ?? '').toString(); // (20-11-2026) the app's terms / location notice, if still to accept
     startItem = (me['start'] ?? '').toString();
     mail = (me['email'] as Map?)?.cast<String, dynamic>(); // (3.104.0) his e-mail at the Portal: verified or not
   }
@@ -1565,6 +1570,7 @@ class Session extends ChangeNotifier {
     admin = false;
     superAdmin = false;
     tester = false;
+    consentNeed = '';
     _go(Stage.signedOut, msg);
   }
 }
