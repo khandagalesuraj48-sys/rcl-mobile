@@ -92,16 +92,36 @@ void main() {
       return leave();
     })));
     await settle(t, 1500);
-    expect(find.descendant(of: find.byKey(const Key('lv-7')), matching: find.text('Waits for verify: Ravi Patil (Reporting person)')), findsOneWidget, reason: 'on the list too');
-    expect(find.descendant(of: find.byKey(const Key('lv-8')), matching: find.text('Approved by Priya Shinde')), findsOneWidget);
+    // (3.155.0) the road of each request, and in words who it is with
+    expect(find.descendant(of: find.byKey(const Key('lv-7')), matching: find.text('In verification')), findsOneWidget, reason: 'on the list too');
+    expect(find.descendant(of: find.byKey(const Key('lv-7')), matching: find.text('with Ravi Patil (Reporting person)')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('lv-7')), matching: find.text('Verification')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('lv-8')), matching: find.text('by Priya Shinde')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('lv-8')), matching: find.text('Verification')), findsNothing, reason: 'it had no verification step: Sent → Approval');
+    final r7 = leaveRoad(waiting), r8 = leaveRoad(approved);
+    expect([for (final x in r7.steps) '${x.name}:${x.state}:${x.who}'], ['Sent:done:You', 'Verification:now:Ravi Patil (Reporting person)', 'Approval:todo:']);
+    expect([r7.title, r7.sub, r7.tone, r7.holder], ['In verification', 'with Ravi Patil (Reporting person)', 'w', 'Ravi Patil (Reporting person)']);
+    expect([for (final x in r8.steps) '${x.name}:${x.state}:${x.who}'], ['Sent:done:You', 'Approval:done:Priya Shinde']);
+    expect([r8.title, r8.sub, r8.far], ['Approved', 'by Priya Shinde', 1]);
+    // verified, now with the approver; refused at the approval with the reason
+    final r9 = leaveRoad({...waiting, 'level': 2, 'waits': {'stage': 'approve', 'who': [{'role': 'person', 'name': 'Amit Patil'}]}, 'history': [...waiting['history'] as List, {'kind': 'verified', 'by': 'Ravi Patil', 'at': '2026-10-14T06:00:00.000Z'}]});
+    expect([for (final x in r9.steps) '${x.name}:${x.state}:${x.who}'], ['Sent:done:You', 'Verification:done:Ravi Patil', 'Approval:now:Amit Patil']);
+    expect([r9.title, r9.sub], ['Pending approval', 'with Amit Patil']);
+    final r10 = leaveRoad({...waiting, 'status': 'refused', 'level': 2, 'note': 'Site work that week', 'waits': null, 'history': [...waiting['history'] as List, {'kind': 'verified', 'by': 'Ravi Patil', 'at': '2026-10-14T06:00:00.000Z'}, {'kind': 'refused', 'by': 'Amit Patil', 'at': '2026-10-14T07:00:00.000Z'}]});
+    expect([for (final x in r10.steps) '${x.name}:${x.state}:${x.who}'], ['Sent:done:You', 'Verification:done:Ravi Patil', 'Approval:bad:Amit Patil']);
+    expect([r10.title, r10.sub, r10.tone], ['Rejected', 'by Amit Patil – “Site work that week”', 'x']);
     await t.tap(find.byKey(const Key('lv-open-7')));
     await settle(t, 900);
     expect(find.byKey(const Key('lvd-page')), findsOneWidget);
-    expect(t.widget<Text>(find.byKey(const Key('lvd-waits'))).data, 'Waits for verify: Ravi Patil (Reporting person)');
+    expect([for (final k in ['lvd-state', 'lvd-waits']) t.widget<Text>(find.byKey(Key(k))).data], ['IN VERIFICATION', 'With Ravi Patil (Reporting person)']);
+    expect(find.byKey(const Key('lvd-road')), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Made shorter'), 150, scrollable: find.descendant(of: find.byKey(const Key('lvd-page')), matching: find.byType(Scrollable)).first); // (the full history is further down the page)
     expect(find.text('Asked'), findsOneWidget);
     expect(find.text('Made shorter'), findsOneWidget);
     expect(find.textContaining('you · 14-10-2026 10:30 · 20-10-2026 – 23-10-2026 (4) → 20-10-2026 – 22-10-2026 (3)'), findsOneWidget, reason: 'what he changed, with when');
     expect(find.byKey(const Key('lvd-change')), findsOneWidget);
+    await t.ensureVisible(find.byKey(const Key('lvd-delete')));
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('lvd-delete')));
     await settle(t, 600);
     await t.tap(find.text('Delete'));
@@ -124,10 +144,15 @@ void main() {
       }
     })));
     await settle(t, 1500);
+    await t.ensureVisible(find.byKey(const Key('lv-open-8'))); // (the second card: further down the page)
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('lv-open-8')));
     await settle(t, 900);
+    await t.scrollUntilVisible(find.text('An approved leave is deleted by the HR office.'), 150, scrollable: find.descendant(of: find.byKey(const Key('lvd-page')), matching: find.byType(Scrollable)).first);
     expect(find.byKey(const Key('lvd-delete')), findsNothing);
     expect(find.text('An approved leave is deleted by the HR office.'), findsOneWidget);
+    await t.ensureVisible(find.byKey(const Key('lvd-change')));
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('lvd-change')));
     await settle(t, 900);
     expect(find.byKey(const Key('lc-page')), findsOneWidget);

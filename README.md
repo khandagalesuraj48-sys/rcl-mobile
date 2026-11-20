@@ -15,6 +15,23 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.155.0 (21-11-2026 – the Leave pages he chose from the pictures: the page "yes first wali ok aahe perfect", its card "b ok ahe
+he fix", the inner pages "ok aahet he sagle"; asked with them: "leave status he samjaw ki verification madhe aahe konakade aahe tyach
+name, approval sathi pending konakade tyach name") THE NEW LEAVE PAGE, ITS FORM AND A REQUEST'S PAGE – WITH THE ROAD OF EVERY LEAVE.**
+* **Leave** (`screens/leave.dart`): the navy card with gold survey lines – the balance large in gold (Paid leave · Comp-off under it
+  for a person with a leave policy), **+ Apply** on it, and one strip: Added this month · Used · Requests. Under it the parts of the
+  page: **Requests · Ledger** (a person with a leave policy) **· Rules** (how it is counted).
+* **Every request is a card with its road** (`leaveRoad`, `leaveTrack`, `leaveCard`): Sent → Verification → Approval, each step with
+  its person; and in words **"In verification · with Ravi Patil"**, **"Pending approval · with Amit Patil"**, "Approved · by …",
+  "Rejected · by … – why", "Deleted". All of it is what the HR server already says (`waits`: the step and its people; `history`:
+  who verified / approved / refused, and when) – **no server change, no SQL**. A leave without a verification step has the road
+  Sent → Approval. The person of a step still to come is not known to the app and is not written.
+* **A request opened**: the card says who it is with now (large) and how far it has come; "Where it stands" – each step with its
+  person and its time; the buttons (Change days, Delete this leave), the papers and the full History as before.
+* **Apply for leave**: on top "Balance now → After approval" (it follows the days chosen); From / To, Full day · First half · Second
+  half, Reason, the paper, Send – as before.
+* **Not verified here:** a real phone, iPhone; a leave refused at the verification step (drawn from the same rules, not seen with real data).
+
 **Version 3.154.0 (21-11-2026 – the screens he chose from the pictures: the opening "ha mi photo dilay … he lau", the sign-in "login
 p1 choose krel mi ekdam perfect aahe", Me "me card 2 he perfect aahe", My documents "d3 use kr"; and three things he asked for with
 them) THE CREST, THE NEW SIGN-IN, ME AND MY DOCUMENTS; HOME'S HEADER STAYS; THE BAR IS A GLASS PILL; THE HR PAGES KEEP WHAT THEY READ.**

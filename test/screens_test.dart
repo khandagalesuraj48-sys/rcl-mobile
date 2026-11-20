@@ -8786,17 +8786,19 @@ void main() {
     await net(t);
     // ---- (3.108.0) Leave: the balance, this month, used; "+ Apply for leave" – the form; the request waits; taken back by a touch
     await tapKey('att-leave');
-    expect(find.descendant(of: find.byKey(const Key('leave-page')), matching: find.text('My requests')), findsOneWidget);
+    expect(find.byKey(const Key('leave-hero')), findsOneWidget); // (3.155.0) the card he chose: the balance in gold, "+ Apply", the strip
     expect([for (final k in ['bal', 'add', 'used']) t.widget<Text>(find.byKey(Key('leave-$k'))).data], ['3', '4', '1']);
+    await tapKey('leave-t-how');
     expect(find.textContaining('4 leaves are added every month'), findsOneWidget, reason: 'said from the site\'s policy');
+    await tapKey('leave-t-req');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_leave.png'));
     await tapKey('leave-new');
     expect(find.textContaining('14-10-2026'), findsNWidgets(2), reason: 'from and to: today');
-    expect(find.textContaining('balance 3 → 2 after approval'), findsOneWidget);
+    expect([for (final k in ['la-now', 'la-after']) t.widget<Text>(find.byKey(Key(k))).data], ['3', '2'], reason: '(3.155.0) his balance now → after approval, at the top');
     await t.tap(find.byKey(const Key('leave-part-first')));
     await settle(t, 300);
-    expect(find.textContaining('balance 3 → 2.5 after approval'), findsOneWidget);
+    expect([for (final k in ['la-now', 'la-after']) t.widget<Text>(find.byKey(Key(k))).data], ['3', '2.5']);
     await t.tap(find.byKey(const Key('leave-send')));
     await net(t);
     expect(find.textContaining('at least 3 letters'), findsOneWidget, reason: 'the server\'s refusal is shown in the form');
@@ -8814,7 +8816,7 @@ void main() {
     // (3.147.0) a touch opens the request: where it stands, its history; "Delete this leave" while it waits
     await tapKey('lv-open-1');
     expect(find.byKey(const Key('lvd-page')), findsOneWidget);
-    expect(find.text('Waits for the HR office'), findsOneWidget, reason: 'a server of before: the level says it');
+    expect([for (final k in ['lvd-state', 'lvd-waits']) t.widget<Text>(find.byKey(Key(k))).data], ['PENDING APPROVAL', 'With the HR office'], reason: 'a server of before: the level says it');
     expect(find.byKey(const Key('lvd-change')), findsNothing, reason: 'a server of before: no change of days');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_leave_detail.png'));
