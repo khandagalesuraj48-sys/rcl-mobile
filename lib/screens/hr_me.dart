@@ -21,7 +21,9 @@ import '../core/api.dart' show ApiError;
 import '../core/attend.dart' show AttendKit;
 import '../core/attend_pdf.dart' show payslipPdf;
 import '../core/attend_remind.dart';
+import '../core/hr_cache.dart';
 import '../core/update.dart';
+import '../ui/brand.dart' show ProductMark, ProductName;
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
@@ -85,120 +87,217 @@ class HrMeTab extends StatelessWidget {
     final s = SessionScope.of(context), e = (mine?['employee'] as Map?) ?? (day?['employee'] as Map?) ?? const {};
     final name = '${e['name'] ?? s.name}', role = '${e['designation'] ?? ''}'.isNotEmpty ? '${e['designation']}' : (_cat['${e['category'] ?? ''}'] ?? '');
     final pct = (mine?['complete'] as Map?)?['pct'], miss = ((mine?['docs'] as Map?)?['missing'] as List? ?? const []).length;
-    final team = mine?['team'] is num && (mine!['team'] as num) > 0, boss = '${e['manager'] ?? ''}';
+    final team = mine?['team'] is num && (mine!['team'] as num) > 0, boss = '${e['manager'] ?? ''}', code = '${e['code'] ?? ''}';
+    final pend = (mine?['policies'] as Map?)?['pending'], pol = pend is num && pend > 0 ? pend.toInt() : 0;
     final lang = switch (LangScope.of(context).code) { 'mr' => 'मराठी', 'hi' => 'हिन्दी', _ => 'English' };
     void open(Widget page) => Navigator.of(context).push(hrRoute<void>(page));
-    return Column(children: [
-      // (3.114.0) who he is – a card of the look on the page's soft glow (the green sky is gone)
-      Container(
-        width: double.infinity,
-        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [sk.bgTop, sk.bg])),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-            // (3.153.0, asked 20-11-2026: "me war ek stylish card asel") his identity card: navy and gold in both modes
-            child: Container(
+    final goldInk = sk.dark ? const Color(0xFFF2CC62) : const Color(0xFFA9741A);
+
+    // one line of the card: "Code   E00012"
+    Widget fact(String en, String mr, String v, String key) => Padding(
+          padding: const EdgeInsets.only(top: 3),
+          child: Row(children: [
+            SizedBox(width: 78, child: Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.faint, fontWeight: FontWeight.w600))),
+            Expanded(child: m.Text(v, key: Key(key), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: sk.ink))),
+          ]),
+        );
+
+    // (3.154.0 – "me card 2 he perfect aahe") MY RECORD: one card, a gold-ringed round sign for each; a red count where
+    // something waits for him
+    Widget round(String key, IconData icon, Color c, String en, String mr, {int count = 0, required VoidCallback onTap}) => Expanded(
+          child: GestureDetector(
+            key: Key(key),
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Bounce(
+              to: .94,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Stack(clipBehavior: Clip.none, children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: sk.dark ? const Color(0xFF1A2140) : const Color(0xFFF8F9FC), border: Border.all(color: const Color(0xFFDDAD40).withValues(alpha: .65), width: 1.3)),
+                    child: Icon(icon, size: 25, color: sk.dark ? Color.lerp(c, Colors.white, .3) : c),
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: -3,
+                      top: -3,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 20),
+                        height: 20,
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B), borderRadius: BorderRadius.circular(10), border: Border.all(color: sk.card, width: 1.5)),
+                        child: m.Text('$count', key: Key('$key-n'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white, height: 1)),
+                      ),
+                    ),
+                ]),
+                const SizedBox(height: 8),
+                Text(en, mr: mr, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.ink, height: 1.2)),
+              ]),
+            ),
+          ),
+        );
+
+    // APP: a pill for each, two in a row (one left over: the whole row)
+    final pills = <Widget>[
+      _pill(key: const Key('me-lang'), icon: Icons.translate_rounded, en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
+      if (!inErp) _pill(key: const Key('me-account'), icon: Icons.mail_outline_rounded, en: 'E-mail & password', mr: 'E-mail व password', onTap: () => open(const AccountScreen())),
+      // (20-11-2026) the app's terms / location notice and the Privacy Policy – always reachable; "Allow" again from here
+      _pill(key: const Key('me-privacy'), icon: Icons.verified_user_outlined, en: 'Privacy', mr: 'Privacy', onTap: () => showConsent(context)),
+      // (the look's name goes with them: a pill that keeps its own state is drawn again when the look changes)
+      _RemindRow(look: sk.name),
+      if (!inErp && s.sites.length > 1) _pill(key: const Key('me-site'), icon: Icons.swap_horiz_rounded, en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
+      if (!inErp) _UpdateRow(look: sk.name),
+    ];
+    return Container(
+      decoration: BoxDecoration(gradient: sk.pageFill),
+      child: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: reload,
+          child: ListView(key: const Key('me-page'), padding: EdgeInsets.fromLTRB(16, 14, 16, 24 + MediaQuery.paddingOf(context).bottom), children: [
+            // (3.154.0, his choice of 21-11-2026 – "M1 ID card"; "login page chi ui ashi me madhe nko, ekde purn wegle asawi") WHO HE
+            // IS, as his identity card: the gold foil strip with the product's name and its lion, his photo (a touch sets it), his
+            // name and designation, his code, his site, the person he reports to, and how complete his record is
+            Container(
               key: const Key('me-card'),
               clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF0B1733), Color(0xFF1B2F66), Color(0xFF24408A)], stops: <double>[0, .6, 1]),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: const Color(0x80E6B94E)),
-                boxShadow: const [BoxShadow(color: Color(0x590B1733), blurRadius: 30, offset: Offset(0, 14))],
-              ),
+              decoration: BoxDecoration(color: sk.card, borderRadius: BorderRadius.circular(26), border: Border.all(color: sk.dark ? const Color(0x66E6B94E) : (sk.cardLine ?? sk.line)), boxShadow: [BoxShadow(color: sk.dark ? const Color(0x66000000) : const Color(0x1F141E3C), blurRadius: 26, offset: const Offset(0, 12))]),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(height: 4, decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFC9960A), Color(0xFFF7DE8E), Color(0xFFC9960A)]))),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 14, 16),
+                Container(
+                  height: 46,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 10, 0),
+                  decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFC9960A), Color(0xFFF7DE8E), Color(0xFFE6B94E), Color(0xFFB8860B)], stops: <double>[0, .42, .7, 1])),
                   child: Row(children: [
-                    // (3.109.0) his own photo – a touch sets it
-                    GestureDetector(
-                      key: const Key('me-face'),
-                      behavior: HitTestBehavior.opaque,
-                      onTap: onPhoto,
-                      child: Stack(clipBehavior: Clip.none, children: [
-                        hrFace(name, '${mine?['photo'] ?? ''}', size: 66, radius: 33, bg: const Color(0xFF14224A), border: const Color(0xFFDDAD40), ink: const Color(0xFFF3D889), letters: 22),
-                        Positioned(right: -4, bottom: -4, child: Container(width: 24, height: 24, alignment: Alignment.center, decoration: BoxDecoration(gradient: Sk.goldFill, shape: BoxShape.circle, border: Border.all(color: const Color(0xFF14224A), width: 2)), child: const Icon(Icons.photo_camera_rounded, size: 12, color: Sk.goldInk))),
+                    Expanded(child: ProductName(upper: true, suffix: '  ·  EMPLOYEE', style: const TextStyle(fontFamily: 'Montserrat', fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 2.2, color: Color(0xFF3A2A00)))),
+                    const ProductMark(size: 30, radius: 9),
+                  ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      // (3.109.0) his own photo – a touch sets it
+                      GestureDetector(
+                        key: const Key('me-face'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onPhoto,
+                        child: Stack(clipBehavior: Clip.none, children: [
+                          hrFace(name, '${mine?['photo'] ?? ''}', size: 92, radius: 20, bg: const Color(0xFF14224A), border: const Color(0xFFDDAD40), ink: const Color(0xFFF3D889), letters: 30),
+                          Positioned(right: -6, bottom: -6, child: Container(width: 28, height: 28, alignment: Alignment.center, decoration: BoxDecoration(gradient: Sk.goldFill, shape: BoxShape.circle, border: Border.all(color: sk.card, width: 2.5)), child: const Icon(Icons.photo_camera_outlined, size: 14, color: Sk.goldInk))),
+                        ]),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                          m.Text(name, key: const Key('me-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink, height: 1.15)),
+                          if (role.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2, bottom: 4), child: m.Text(role, key: const Key('me-role'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: goldInk))),
+                          if (code.isNotEmpty) fact('Code', 'Code', code, 'me-code'),
+                          fact('Site', 'Site', hrSite(s)?.name ?? s.siteName, 'me-site-name'), // (3.141.0) his HR site
+                          if (boss.isNotEmpty) fact('Reports to', 'Reporting', boss, 'me-boss'),
+                        ]),
+                      ),
+                    ]),
+                    if (pct is num) ...[
+                      const SizedBox(height: 18),
+                      Row(children: [
+                        Expanded(child: Text('Profile complete', mr: 'Profile पूर्ण', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.muted))),
+                        m.Text('${pct.round()}%', key: const Key('me-pct'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 12.5, fontWeight: FontWeight.w800, color: sk.muted)),
                       ]),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                        m.Text(name, key: const Key('me-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: Colors.white)),
-                        const SizedBox(height: 2),
-                        m.Text([if ('${e['code'] ?? ''}'.isNotEmpty) '${e['code']}', if (role.isNotEmpty) role].join(' · '), key: const Key('me-role'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFF3D889))),
-                        m.Text(hrSite(s)?.name ?? s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Color(0xFFA9B6D6))), // (3.141.0) his HR site
-                        if (boss.isNotEmpty) m.Text('${_t('Reports to', 'Reporting')} $boss', key: const Key('me-boss'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Color(0xFFA9B6D6))),
-                      ]),
-                    ),
-                    if (pct is num)
-                      Column(mainAxisSize: MainAxisSize.min, children: [
-                        Container(width: 50, height: 50, alignment: Alignment.center, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFDDAD40), width: 5)), child: m.Text('${pct.round()}%', key: const Key('me-pct'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white))),
-                        const SizedBox(height: 3),
-                        const Text('Profile', mr: 'Profile', style: TextStyle(fontSize: 11, color: Color(0xFFA9B6D6))),
-                      ]),
+                      const SizedBox(height: 7),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Stack(children: [
+                          Container(height: 7, color: sk.hair),
+                          FractionallySizedBox(widthFactor: (pct / 100).clamp(0.0, 1.0).toDouble(), child: Container(height: 7, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFC9960A), Color(0xFFF7DE8E)]), borderRadius: BorderRadius.circular(4)))),
+                        ]),
+                      ),
+                    ],
                   ]),
                 ),
               ]),
             ),
-          ),
-        ),
-      ),
-      Expanded(
-        child: RefreshIndicator(
-          onRefresh: reload,
-          child: ListView(key: const Key('me-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
-            hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
-              _li(key: const Key('me-details'), sign: 'i', c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'My details', mr: 'माझी माहिती', sub: _t('Photo, personal, job, bank, phone', 'Photo, वैयक्तिक, नोकरी, bank, phone'), onTap: () => open(MyDetailsScreen(mine: mine, day: day, onPhoto: onPhoto))),
-              _li(key: const Key('me-docs'), sign: 'D', c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'My documents', mr: 'माझी कागदपत्रे', sub: mine == null ? _t('Upload', 'Upload') : miss > 0 ? _t('Upload – $miss still missing', 'Upload – अजून $miss बाकी') : _t('All expected papers are there', 'अपेक्षित सर्व कागदपत्रे आहेत'), onTap: onDocs),
-              // (3.135.0, rcl-hr step 15) the company's policies: he reads and accepts the version in force himself
-              () {
-                final pend = (mine?['policies'] as Map?)?['pending'];
-                return _li(key: const Key('me-policies'), sign: '', icon: Icons.verified_user_outlined, c: const Color(0xFF0B5FA5), soft: const Color(0xFFE3EEFB), en: 'Company policies', mr: 'Company policies',
-                    sub: pend is num && pend > 0 ? _t('$pend to read and accept', '$pend वाचून स्वीकारायच्या आहेत') : _t('Read the policies you accepted', 'स्वीकारलेल्या policies वाचा'),
-                    ink: pend is num && pend > 0 ? const Color(0xFFC22A1B) : null,
-                    last: !team,
-                    onTap: () async {
-                      await Navigator.of(context).push(hrRoute<void>(CompanyPoliciesScreen(ask: ask)));
-                      await reload();
-                    });
-              }(),
-              // (3.139.0, rcl-hr Phase 6) a reporting manager's dashboard – only when people report to him
-              if (team)
-                _li(key: const Key('me-team'), sign: '', icon: Icons.groups_outlined, c: const Color(0xFF1F5FBF), soft: const Color(0xFFE6EEFB), en: 'My team', mr: 'माझी टीम',
-                    sub: _t('${mine!['team']} people report to you', '${mine!['team']} लोक तुम्हाला report करतात'), last: true, onTap: () => open(MyTeamScreen(ask: ask))),
-            ]),
-            const SizedBox(height: 12),
-            hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
-              _li(key: const Key('me-lang'), sign: 'A', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
-              if (!inErp) _li(key: const Key('me-account'), sign: '@', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'E-mail and password', mr: 'E-mail आणि password', sub: s.mailVerified ? _t('Verified ✓', 'Verify झाला ✓') : s.mailKnown ? _t('Not verified yet', 'अजून verify नाही') : s.email, onTap: () => open(const AccountScreen())),
-              // (20-11-2026) the app's terms / location notice and the Privacy Policy – always reachable; "Allow" again from here
-              _li(key: const Key('me-privacy'), sign: '', icon: Icons.verified_user_outlined, c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Privacy & permissions', mr: 'Privacy व परवानग्या', sub: _t('How the app uses your location and data', 'app तुमची location व माहिती कशी वापरते'), onTap: () => showConsent(context)),
-              // (the look's name goes with them: a row that keeps its own state is drawn again when the look changes)
-              _RemindRow(look: sk.name, last: inErp),
-              if (!inErp) _UpdateRow(look: sk.name),
-              if (!inErp && s.sites.length > 1) _li(key: const Key('me-site'), sign: 'S', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
-              if (!inErp) _li(
-                  key: const Key('me-out'),
-                  sign: '',
-                  icon: Icons.power_settings_new_rounded,
-                  c: const Color(0xFFC22A1B),
-                  soft: const Color(0xFFFFE6E3),
-                  en: 'Sign out',
-                  mr: 'Sign out',
-                  ink: const Color(0xFFC22A1B),
-                  arrow: false,
-                  last: true,
-                  onTap: () async {
-                    if (await _askSignOut(context)) await s.signOut();
-                  }),
-            ]),
+            _head('My record', 'माझी नोंद'),
+            Container(
+              padding: const EdgeInsets.fromLTRB(6, 18, 6, 16),
+              decoration: sk.box(radius: 26),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                round('me-details', Icons.info_outline_rounded, const Color(0xFF1F5FBF), 'My details', 'माझी माहिती', onTap: () => open(MyDetailsScreen(mine: mine, day: day, onPhoto: onPhoto))),
+                round('me-docs', Icons.description_outlined, const Color(0xFF0F7A45), 'My documents', 'माझी कागदपत्रे', count: miss, onTap: onDocs),
+                // (3.135.0, rcl-hr step 15) the company's policies: he reads and accepts the version in force himself
+                round('me-policies', Icons.verified_user_outlined, const Color(0xFF7B3FD0), 'Company policies', 'Company policies', count: pol, onTap: () async {
+                  await Navigator.of(context).push(hrRoute<void>(CompanyPoliciesScreen(ask: ask)));
+                  await reload();
+                }),
+                // (3.139.0, rcl-hr Phase 6) a reporting manager's dashboard – only when people report to him
+                if (team) round('me-team', Icons.groups_outlined, const Color(0xFFA9741A), 'My team', 'माझी टीम', onTap: () => open(MyTeamScreen(ask: ask))),
+              ]),
+            ),
+            _head('App', 'App'),
+            for (var i = 0; i < pills.length; i += 2)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: i + 1 < pills.length ? Row(children: [Expanded(child: pills[i]), const SizedBox(width: 10), Expanded(child: pills[i + 1])]) : pills[i],
+              ),
+            if (!inErp) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                key: const Key('me-out'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () async {
+                  if (await _askSignOut(context)) await s.signOut();
+                },
+                child: Container(
+                  height: 56,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: sk.dark ? const Color(0xFF2A1A28) : const Color(0xFFFBE4E1), borderRadius: BorderRadius.circular(22)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.logout_rounded, size: 20, color: sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B)),
+                    const SizedBox(width: 10),
+                    Text('Sign out', mr: 'Sign out', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B))),
+                  ]),
+                ),
+              ),
+            ],
           ]),
         ),
       ),
-    ]);
+    );
   }
+}
+
+/// The name of a part of Me ("My record", "App").
+Widget _head(String en, String mr) => Padding(padding: const EdgeInsets.fromLTRB(4, 22, 4, 10), child: Text(en, mr: mr, style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.muted)));
+
+/// A pill of "App": its sign in a round tile, its name, a small word of where it stands.
+Widget _pill({required Key key, required IconData icon, required String en, required String mr, String sub = '', Color? tone, VoidCallback? onTap}) {
+  final c = tone ?? (sk.dark ? const Color(0xFFF2CC62) : const Color(0xFFA9741A));
+  return GestureDetector(
+    key: key,
+    behavior: HitTestBehavior.opaque,
+    onTap: onTap,
+    child: Bounce(
+      to: .96,
+      child: Container(
+        height: 58,
+        padding: const EdgeInsets.fromLTRB(10, 0, 14, 0),
+        decoration: sk.box(radius: 29),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(width: 38, height: 38, alignment: Alignment.center, decoration: BoxDecoration(color: sk.blank, shape: BoxShape.circle), child: Icon(icon, size: 19, color: c)),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(en, mr: mr, maxLines: sub.isEmpty ? 2 : 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: sk.ink, height: 1.15)),
+              if (sub.isNotEmpty) m.Text(sub, key: Key('${(key as ValueKey<String>).value}-st'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: sk.muted, height: 1.2)),
+            ]),
+          ),
+        ]),
+      ),
+    ),
+  );
 }
 
 Future<bool> _askSignOut(BuildContext context) => ask(context, 'Sign out?', _t('You will be signed out of the app.', 'App मधून sign out होईल.'), yes: 'Sign out', danger: true);
@@ -301,9 +400,21 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
     _load();
   }
 
+  /// (3.154.0) what was read the last time is shown at once; the server's answer takes its place (core/hr_cache.dart)
   Future<void> _load() async {
+    if (data == null) {
+      final k = await HrCache.read('myDocs');
+      if (!mounted) return;
+      if (k != null && data == null) {
+        setState(() {
+          data = k;
+          loading = false;
+        });
+      }
+    }
     try {
       final j = await widget.ask({'action': 'myDocs'});
+      HrCache.put('myDocs', j);
       if (!mounted) return;
       setState(() {
         data = j;
@@ -369,10 +480,123 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
     }
   }
 
+  static IconData _sign(String key) {
+    final k = key.toLowerCase();
+    if (k.contains('photo')) return Icons.photo_camera_outlined;
+    if (k.contains('aadhaar') || k.contains('pan') || k.contains('voter') || k.contains('passport')) return Icons.badge_outlined;
+    if (k.contains('bank') || k.contains('cheque')) return Icons.account_balance_outlined;
+    if (k.contains('edu')) return Icons.school_outlined;
+    if (k.contains('driv') || k.contains('licen')) return Icons.directions_car_outlined;
+    if (k.contains('salary') || k.contains('slip')) return Icons.payments_outlined;
+    if (k.contains('exp') || k.contains('reliev')) return Icons.work_outline_rounded;
+    if (k.contains('medic') || k.contains('insur')) return Icons.favorite_border_rounded;
+    return Icons.description_outlined;
+  }
+
+  /// (3.154.0, his choice of 21-11-2026: "d3 use kr") THE PAPERS IN GROUPS: on top how many are there; then what is needed from
+  /// him, what the HR office is checking, what it has verified, and what he can also attach. Everything the page did stays: Upload,
+  /// Add, Attach again (a rejected one, with the HR office's reason), Open, the date.
   @override
   Widget build(BuildContext context) {
     final kinds = [for (final k in (data?['kinds'] as List? ?? const []).whereType<Map>()) k], docs = [for (final d in (data?['docs'] as List? ?? const []).whereType<Map>()) d];
     final missing = {for (final x in (data?['docsMissing'] as List? ?? const [])) '$x'};
+    final need = <Map>[], check = <Map>[], good = <Map>[], also = <Map>[];
+    List<Map> of(Map k) => docs.where((d) => d['kind'] == k['key']).toList();
+    // (3.135.0, rcl-hr step 15) the HR office's check of the newest one: verified, being checked, or rejected (with why)
+    String st(Map k) => of(k).isEmpty ? '' : '${of(k).first['status'] ?? ''}';
+    for (final k in kinds) {
+      final have = of(k).isNotEmpty, s = st(k);
+      (s == 'rejected' || (!have && missing.contains('${k['name']}')) ? need : !have ? also : s == 'verified' ? good : check).add(k);
+    }
+    final total = kinds.length, there = total - kinds.where((k) => of(k).isEmpty).length;
+    final gold = sk.dark ? const Color(0xFFF2CC62) : const Color(0xFFA9741A), red = sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B);
+
+    Widget row(Map k, bool last) {
+      final have = of(k), s = st(k), newest = have.isEmpty ? null : have.first, note = '${newest?['verify_note'] ?? ''}', again = s == 'rejected';
+      return Container(
+        key: Key('doc-${k['key']}'),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: sk.hair))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Container(width: 40, height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(13)), child: Icon(_sign('${k['key']}'), size: 20, color: gold)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              m.Text(tr('${k['name']}'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink, height: 1.25)),
+              if (again) Padding(padding: const EdgeInsets.only(top: 4), child: Align(alignment: Alignment.centerLeft, child: stateChip('Rejected', 'x', key: Key('doc-st-${k['key']}')))),
+              if (again && note.isNotEmpty)
+                Padding(padding: const EdgeInsets.only(top: 3), child: m.Text('${_t('HR office says', 'HR office म्हणते')}: $note', key: Key('doc-why-${k['key']}'), style: TextStyle(fontSize: 12.5, color: red, height: 1.3))),
+              for (final d in have)
+                GestureDetector(
+                  key: Key('doc-open-${d['id']}'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _open(d),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: m.Text.rich(
+                      TextSpan(children: [
+                        TextSpan(text: [if ('${d['number'] ?? ''}'.isNotEmpty) '${d['number']}', '${_t('Attached', 'जोडले')} ${dayName('${d['created_at'] ?? ''}'.length >= 10 ? '${d['created_at']}'.substring(0, 10) : '')}'.trim()].join(' · ')),
+                        const TextSpan(text: '  •  '),
+                        TextSpan(text: _t('Open', 'उघडा'), style: TextStyle(fontWeight: FontWeight.w700, color: sk.link)),
+                      ]),
+                      style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.3),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+          const SizedBox(width: 10),
+          busy == '${k['key']}'
+              ? const Padding(padding: EdgeInsets.symmetric(horizontal: 22), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5)))
+              : GestureDetector(
+                  key: Key('doc-add-${k['key']}'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _add(k, replaces: again ? '${newest?['id'] ?? ''}' : ''),
+                  child: Bounce(
+                    to: .94,
+                    child: Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(horizontal: 13),
+                      // (a paper not there yet, or one to attach again: the gold button; one more of a paper that is there: the quiet one)
+                      decoration: have.isEmpty || again ? BoxDecoration(gradient: Sk.goldFill, borderRadius: BorderRadius.circular(19)) : BoxDecoration(color: sk.dark ? const Color(0xFF1E2A52) : const Color(0xFFE9F0FD), borderRadius: BorderRadius.circular(19)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(have.isEmpty || again ? Icons.file_upload_outlined : Icons.add_rounded, size: 16, color: have.isEmpty || again ? Sk.goldInk : (sk.dark ? const Color(0xFF9DB8FF) : const Color(0xFF1F5FBF))),
+                        const SizedBox(width: 5),
+                        Text(have.isEmpty ? 'Upload' : again ? 'Attach again' : 'Add', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: have.isEmpty || again ? Sk.goldInk : (sk.dark ? const Color(0xFF9DB8FF) : const Color(0xFF1F5FBF)))),
+                      ]),
+                    ),
+                  ),
+                ),
+        ]),
+      );
+    }
+
+    List<Widget> group(String key, Color dot, String en, String mr, List<Map> rows) => rows.isEmpty
+        ? const []
+        : [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 20, 4, 10),
+              child: Row(children: [
+                Container(width: 9, height: 9, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+                const SizedBox(width: 9),
+                Text(en, mr: mr, style: TextStyle(fontFamily: 'Montserrat', fontSize: 14.5, fontWeight: FontWeight.w800, color: sk.ink)),
+                const SizedBox(width: 8),
+                m.Text('${rows.length}', key: Key('docs-$key-n'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.faint)),
+              ]),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+              decoration: sk.box(radius: 22),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [for (final (i, k) in rows.indexed) row(k, i == rows.length - 1)]),
+            ),
+          ];
+
+    Widget legend(Color c, String text) => Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 7, height: 7, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          m.Text(text, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white, height: 1.2)),
+        ]);
+
     return Scaffold(
       appBar: hrHead(context, sky: kMeSky, title: 'My documents', mr: 'माझी कागदपत्रे', height: 100, below: [
         Text('Attach a clear photo or a PDF of each paper. Only the HR office removes one.', mr: 'प्रत्येक कागदाचा स्पष्ट photo किंवा PDF जोडा. काढणे फक्त HR office करते.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
@@ -383,56 +607,53 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
               onRefresh: _load,
               child: ListView(key: const Key('docs-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
                 if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('docs-err')),
-                if (data != null)
-                  hrCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), [
-                    for (final (i, k) in kinds.indexed)
-                      () {
-                        final have = docs.where((d) => d['kind'] == k['key']).toList(), need = missing.contains('${k['name']}');
-                        // (3.135.0, rcl-hr step 15) the HR office's check of the newest one: verified, being checked, or rejected (with why)
-                        final last = have.isEmpty ? null : have.first, st = '${last?['status'] ?? ''}', note = '${last?['verify_note'] ?? ''}';
-                        return Container(
-                          key: Key('doc-${k['key']}'),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(border: i == kinds.length - 1 ? null : const Border(bottom: BorderSide(color: Color(0xFFF3F5FA)))),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                            Row(children: [
-                              Expanded(child: m.Text(tr('${k['name']}'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: sk.ink, height: 1.25))),
-                              if (st == 'rejected')
-                                stateChip('Rejected', 'x', key: Key('doc-st-${k['key']}'))
-                              else if (st == 'verified')
-                                stateChip('Verified', 'a', key: Key('doc-st-${k['key']}'))
-                              else if (st == 'submitted' || st == 'under_verification')
-                                stateChip('Being checked', '', key: Key('doc-st-${k['key']}'))
-                              else if (have.isNotEmpty)
-                                stateChip('Attached', 'a')
-                              else if (need)
-                                stateChip('Missing', 'x'),
-                              const SizedBox(width: 6),
-                              busy == '${k['key']}'
-                                  ? const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5)))
-                                  : stateChip(have.isEmpty ? 'Upload' : st == 'rejected' ? 'Attach again' : 'Add', 'w', key: Key('doc-add-${k['key']}'), onTap: () => _add(k, replaces: st == 'rejected' ? '${last?['id'] ?? ''}' : '')),
-                            ]),
-                            if (st == 'rejected' && note.isNotEmpty)
-                              Padding(padding: const EdgeInsets.only(top: 4), child: m.Text('${_t('HR office says', 'HR office म्हणते')}: $note', key: Key('doc-why-${k['key']}'), style: const TextStyle(fontSize: 12.5, color: Color(0xFFC22A1B), height: 1.3))),
-                            for (final d in have)
-                              GestureDetector(
-                                key: Key('doc-open-${d['id']}'),
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () => _open(d),
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Row(children: [
-                                    Icon('${d['mime']}' == 'application/pdf' ? Icons.picture_as_pdf_rounded : Icons.image_rounded, size: 17, color: sk.faint),
-                                    const SizedBox(width: 6),
-                                    Expanded(child: m.Text([if ('${d['number'] ?? ''}'.isNotEmpty) '${d['number']}', dayName('${d['created_at'] ?? ''}'.length >= 10 ? '${d['created_at']}'.substring(0, 10) : '')].where((x) => x.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted))),
-                                    Text('Open', mr: 'उघडा', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: sk.link)),
-                                  ]),
-                                ),
-                              ),
+                if (data != null && total > 0)
+                  // how many are there: navy and gold in both modes
+                  Container(
+                    key: const Key('docs-sum'),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF0B1733), Color(0xFF1B2F66), Color(0xFF24408A)], stops: <double>[0, .6, 1]),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0x80E6B94E)),
+                      boxShadow: const [BoxShadow(color: Color(0x400B1733), blurRadius: 24, offset: Offset(0, 12))],
+                    ),
+                    child: Row(children: [
+                      SizedBox(
+                        width: 70,
+                        height: 70,
+                        child: Stack(alignment: Alignment.center, children: [
+                          SizedBox(width: 70, height: 70, child: CircularProgressIndicator(value: there / total, strokeWidth: 7, strokeCap: StrokeCap.round, backgroundColor: const Color(0x33FFFFFF), color: const Color(0xFFF2CC62))),
+                          m.Text('$there/$total', key: const Key('docs-ring'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                        ]),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                          m.Text(_t('$there of $total attached', '$total पैकी $there जोडले'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                          const SizedBox(height: 2),
+                          m.Text(
+                              need.isEmpty
+                                  ? _t('Nothing is needed from you now', 'आत्ता तुमच्याकडून काही हवे नाही')
+                                  : need.length == 1
+                                      ? _t('1 paper is still needed from you', 'तुमच्याकडून अजून 1 कागद हवा आहे')
+                                      : _t('${need.length} papers are still needed from you', 'तुमच्याकडून अजून ${need.length} कागद हवे आहेत'),
+                              style: const TextStyle(fontSize: 12.5, color: Color(0xFFC9D3EE), height: 1.3)),
+                          const SizedBox(height: 9),
+                          Wrap(spacing: 12, runSpacing: 5, children: [
+                            if (need.isNotEmpty) legend(const Color(0xFFFF7A70), _t('${need.length} needed', '${need.length} हवे')),
+                            if (check.isNotEmpty) legend(const Color(0xFFF2CC62), _t('${check.length} being checked', '${check.length} तपासणीत')),
+                            if (good.isNotEmpty) legend(const Color(0xFF58D68D), _t('${good.length} verified', '${good.length} verified')),
+                            if (also.isNotEmpty) legend(const Color(0xFF9AA6C8), _t('${also.length} not attached', '${also.length} जोडले नाहीत')),
                           ]),
-                        );
-                      }(),
-                  ]),
+                        ]),
+                      ),
+                    ]),
+                  ),
+                ...group('need', red, 'Needed from you', 'तुमच्याकडून हवे', need),
+                ...group('check', const Color(0xFFDDAD40), 'Being checked by HR', 'HR तपासत आहे', check),
+                ...group('ok', sk.dark ? const Color(0xFF58D68D) : const Color(0xFF0F7A45), 'Verified', 'Verified', good),
+                ...group('also', sk.faint, 'You can also attach', 'हेही जोडू शकता', also),
               ]),
             ),
     );
@@ -1292,28 +1513,25 @@ class _UpdateRowState extends State<_UpdateRow> {
   }
 
   @override
-  Widget build(BuildContext context) => _li(
+  Widget build(BuildContext context) => _pill(
         key: const Key('me-update'),
-        sign: '',
-        icon: Icons.system_update_rounded,
-        c: found != null ? const Color(0xFF0F7A45) : sk.accent,
-        soft: found != null ? const Color(0xFFE3F7EC) : const Color(0xFFEEF1F7),
+        icon: Icons.file_download_outlined,
+        tone: found != null ? (sk.dark ? const Color(0xFF58D68D) : const Color(0xFF0F7A45)) : null,
         en: found != null ? 'Update the app' : 'Check for update',
         mr: found != null ? 'App update करा' : 'Update तपासा',
         sub: checking
             ? _t('Checking…', 'तपासत आहे…')
             : found != null
-                ? _t('New version ${found!.version} – tap to update', 'नवीन version ${found!.version} – update साठी दाबा')
-                : (version.isEmpty ? 'Sketchline' : 'Sketchline · v$version'),
+                ? _t('New version ${found!.version}', 'नवीन version ${found!.version}')
+                : (version.isEmpty ? '' : 'v$version'),
         onTap: _check,
       );
 }
 
 /// (3.113.0) the IN / OUT reminders: on (as they come) or off – his own choice, kept on this phone.
 class _RemindRow extends StatefulWidget {
-  const _RemindRow({required this.look, this.last = false});
+  const _RemindRow({required this.look});
   final String look;
-  final bool last;
   @override
   State<_RemindRow> createState() => _RemindRowState();
 }
@@ -1338,17 +1556,13 @@ class _RemindRowState extends State<_RemindRow> {
   }
 
   @override
-  Widget build(BuildContext context) => _li(
+  Widget build(BuildContext context) => _pill(
         key: const Key('me-remind'),
-        sign: '',
-        icon: off ? Icons.notifications_off_rounded : Icons.notifications_active_rounded,
-        c: off ? C.slate : const Color(0xFF0F7A45),
-        soft: off ? C.slateSoft : const Color(0xFFE3F7EC),
-        en: 'Attendance reminders',
-        mr: 'हजेरीची आठवण',
-        sub: off ? _t('Off – tap to switch on', 'बंद – चालू करायला दाबा') : _t('On – half an hour before IN and OUT', 'चालू – IN आणि OUT च्या अर्धा तास आधी'),
-        arrow: false,
-        last: widget.last,
+        icon: off ? Icons.notifications_off_outlined : Icons.notifications_none_rounded,
+        tone: off ? sk.faint : null,
+        en: 'Reminders',
+        mr: 'आठवण',
+        sub: off ? _t('Off', 'बंद') : _t('On', 'चालू'),
         onTap: _flip,
       );
 }

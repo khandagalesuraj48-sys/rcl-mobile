@@ -49,14 +49,14 @@ class ProductMark extends StatelessWidget {
 
 /// The product's name (or, [line]: the line under it) as text – written again when the Portal's "Branding" changes it.
 class ProductName extends StatelessWidget {
-  const ProductName({super.key, this.style, this.line = false, this.prefix = '', this.suffix = ''});
+  const ProductName({super.key, this.style, this.line = false, this.upper = false, this.prefix = '', this.suffix = ''});
   final TextStyle? style;
-  final bool line;
+  final bool line, upper;
   final String prefix, suffix;
   @override
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: ProductBrand.i,
-        builder: (_, __) => Text('$prefix${line ? Product.line : Product.name}$suffix', maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+        builder: (_, __) => Text(upper ? '$prefix${line ? Product.line : Product.name}$suffix'.toUpperCase() : '$prefix${line ? Product.line : Product.name}$suffix', maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
       );
 }
 

@@ -9,7 +9,12 @@
  * and the password, Remember me (the email kept on this phone), Forgot password?, Sign in; "Build • Manage • Move Forward".
  * (3.104.0, his rules of 12-11-2026) TWO WAYS IN: under "Sign in" the button "Login with Email OTP" – only when the Portal has
  * it switched on. It turns the card: the e-mail, "Send code", then the 6-digit code that came to his e-mail and "Sign in";
- * "Send again" after the 60 seconds the Portal keeps between two codes; "Continue with Password" turns it back. */
+ * "Send again" after the 60 seconds the Portal keeps between two codes; "Continue with Password" turns it back.
+ * (3.154.0, his choice of 21-11-2026: "login p1 choose krel mi ekdam perfect aahe"; "aplela to jcb lawaycha nahiye") THE CREST: the
+ * navy with its fine gold survey lines, the language pill, the lion in its round gold ring, the product's name and its line, the
+ * gold wave; under it "Sign in" with its gold line, the boxes (each with its name above it), Remember me, Forgot password?, the
+ * gold "Sign in", "or", "Login with Email OTP", "Build • Manage • Move Forward", the version. No photo. Light when the phone is
+ * light, dark when it is dark. Everything the sign-in did stays exactly as it was. */
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -20,6 +25,7 @@ import 'package:flutter/services.dart';
 import '../core/api.dart' show ApiError;
 import '../core/update.dart';
 import '../ui/brand.dart';
+import '../ui/crest.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
 import '../ui/t.dart';
@@ -219,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         ),
       );
 
-  /// (3.31.0) English / मराठी / हिंदी – the app in it from here
+  /// (3.31.0) English / मराठी / हिंदी – the app in it from here: a glass pill on the navy
   Widget _lang() {
     final code = LangScope.of(context).code;
     const names = {'': 'English', 'en': 'English', 'mr': 'मराठी', 'hi': 'हिंदी'};
@@ -233,17 +239,21 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         PopupMenuItem(value: 'hi', child: m.Text('हिंदी')),
       ],
       child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 7, 6, 7),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: .78), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white)),
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: .14), borderRadius: BorderRadius.circular(22), border: Border.all(color: Colors.white.withValues(alpha: .34))),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.language_rounded, size: 17, color: C.greenDark),
-          const SizedBox(width: 6),
-          m.Text(names[code] ?? 'English', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.ink)),
-          const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: C.ink),
+          const Icon(Icons.language_rounded, size: 17, color: Colors.white),
+          const SizedBox(width: 7),
+          m.Text(names[code] ?? 'English', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white)),
+          const SizedBox(width: 2),
+          const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Colors.white),
         ]),
       ),
     );
   }
+
+  /// The page's own colours: light or dark, as the phone is.
+  _Look _l = const _Look(false);
 
   @override
   Widget build(BuildContext context) {
@@ -260,86 +270,104 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       _lastErr = '';
     }
     final mq = MediaQuery.of(context);
-    final photoH = (mq.size.height * .42).clamp(280.0, 440.0);
+    final l = _l = _Look(mq.platformBrightness == Brightness.dark);
+    final headH = (mq.size.height * .44).clamp(330.0, 440.0) + mq.padding.top, lion = (headH - mq.padding.top) * .36;
+    final lionTop = mq.padding.top + 50.0;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
-      child: Scaffold(
-        backgroundColor: C.bg,
-        body: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: mq.size.height),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              // ---------- his site's photo, the logo, the language, RCL ERP ----------
-              SizedBox(
-                height: photoH,
-                child: Stack(fit: StackFit.expand, children: [
-                  Image.asset('assets/brand/site_login.jpg', fit: BoxFit.cover, alignment: const Alignment(-.1, .2), filterQuality: FilterQuality.medium, errorBuilder: (_, __, ___) => const ColoredBox(color: C.greenDark)),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x66FFFFFF), Color(0x00FFFFFF), Color(0x00000000), Color(0xB3141A12)], stops: [0, .3, .55, 1]),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(Sp.edge, mq.padding.top + 12, Sp.edge, 46),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        // (3.99.0, asked 11-11-2026: "rachana name perfect nahiye … kuthe konawar overlap nako") the name on a full white
-                        // plate (the photo no longer shows through it); on a narrow phone or with big letters it grows smaller – it
-                        // never runs under the language button
-                        Expanded(
-                          child: Align(alignment: Alignment.topLeft, child: Arrive(
-                            anim: _open,
-                            at: 0,
-                            scale: true,
-                            child: Container(
-                              key: const Key('login-logo'),
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 18, offset: const Offset(0, 6))]),
-                              child: const FittedBox(fit: BoxFit.scaleDown, child: ProductMark(size: 44, radius: 12)), // (3.124.0) the product's lion – the client is known only after the sign-in
-                            ),
-                          )),
-                        ),
-                        const SizedBox(width: 12),
-                        _lang(),
+      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent), // (the navy is at the top in both)
+      child: Theme(
+        // (the boxes, the cursor and what is typed follow the page – dark on a dark phone)
+        data: Theme.of(context).copyWith(
+          textSelectionTheme: TextSelectionThemeData(cursorColor: l.gold, selectionColor: kCrestGold.withValues(alpha: .35), selectionHandleColor: kCrestGold),
+          inputDecorationTheme: const InputDecorationTheme(),
+        ),
+        child: Scaffold(
+          backgroundColor: l.page,
+          body: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: mq.size.height),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                // ---------- the crest: the navy with its survey lines, the language, the lion, the name, the gold wave ----------
+                SizedBox(
+                  height: headH,
+                  child: Stack(fit: StackFit.expand, children: [
+                    DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: l.head, stops: const [0, .5, 1]))),
+                    RepaintBoundary(child: CustomPaint(painter: CrestLines(eddy: Offset(mq.size.width / 2, lionTop + lion / 2), ring: lion, color: kCrestGold.withValues(alpha: .3), depth: 1))),
+                    CustomPaint(painter: CrestWave(top: headH - 64, rise: 44, fill: l.page, broad: true)),
+                    Positioned(top: mq.padding.top + 10, right: Sp.edge, child: _lang()),
+                    Positioned(
+                      top: lionTop,
+                      left: 16,
+                      right: 16,
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Arrive(anim: _open, at: 0, scale: true, child: CrestLion(key: const Key('login-logo'), size: lion, dark: true)), // (3.124.0) the product's lion – the client is known only after the sign-in
+                        const SizedBox(height: 14),
+                        Arrive(anim: _open, at: .12, child: const ProductName(style: TextStyle(fontFamily: 'Montserrat', fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, height: 1.05, shadows: [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
+                        const SizedBox(height: 6),
+                        Arrive(anim: _open, at: .18, child: const FittedBox(fit: BoxFit.scaleDown, child: ProductName(line: true, upper: true, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, color: kCrestGold, fontWeight: FontWeight.w800, letterSpacing: 3.6)))), // (a long line grows smaller – never cut)
                       ]),
-                      const Spacer(),
-                      Arrive(anim: _open, at: .12, child: const ProductName(style: TextStyle(fontFamily: 'Rubik', fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .3, shadows: [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
-                      Arrive(anim: _open, at: .18, child: const ProductName(line: true, style: TextStyle(fontSize: 15, color: Color(0xF2FFFFFF), fontWeight: FontWeight.w500, shadows: [Shadow(color: Color(0x66000000), blurRadius: 10)]))),
-                    ]),
-                  ),
-                ]),
-              ),
-              // ---------- the sheet ----------
-              Transform.translate(
-                offset: const Offset(0, -30),
-                child: Arrive(
+                    ),
+                  ]),
+                ),
+                // ---------- the sheet ----------
+                Arrive(
                   anim: _open,
                   at: .28,
-                  rise: 60,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(20, 26, 20, 14),
-                    decoration: BoxDecoration(
-                      color: C.bg,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 24, offset: const Offset(0, -6))],
-                    ),
+                  rise: 40,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       widget.setPassword ? _pwCard(err) : (_otp ? _otpCard(err) : _card(err)),
-                      const SizedBox(height: 18),
-                      if (widget.setPassword)
-                        Text('One password for the Portal and every module – the same on the web.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
-                      SizedBox(height: 70, child: CustomPaint(painter: _Skyline(), child: const Center(child: Text('Build  •  Manage  •  Move Forward', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.muted, letterSpacing: .4))))),
-                      if (_version.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text('Version $_version', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: C.faint))),
+                      const SizedBox(height: 22),
+                      if (widget.setPassword) ...[
+                        Text('One password for the Portal and every module – the same on the web.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: l.muted, height: 1.35)),
+                        const SizedBox(height: 14),
+                      ],
+                      Text('Build  •  Manage  •  Move Forward', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: l.faint, letterSpacing: .6)),
+                      if (_version.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Version $_version', textAlign: TextAlign.center, style: TextStyle(fontSize: 11.5, color: l.faint))),
+                      SizedBox(height: mq.padding.bottom),
                     ]),
                   ),
                 ),
-              ),
-            ]),
+              ]),
+            ),
           ),
         ),
       ),
     );
   }
+
+  /// The title of a card with its gold line.
+  Widget _title(String en, {Key? key}) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        Text(en, key: key, style: TextStyle(fontFamily: 'Montserrat', fontSize: 28, fontWeight: FontWeight.w800, color: _l.ink, height: 1.1)),
+        const SizedBox(height: 8),
+        Container(width: 44, height: 4, decoration: BoxDecoration(gradient: kCrestGoldFill, borderRadius: BorderRadius.circular(2))),
+      ]);
+
+  /// The small name above a box.
+  Widget _lab(String en) => Padding(padding: const EdgeInsets.fromLTRB(4, 14, 4, 7), child: Text(en, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _l.muted)));
+
+  /// A box of the page: round, of the page's own card colour, its sign in front.
+  InputDecoration _dec(String hint, IconData icon, {Widget? suffix}) {
+    final l = _l;
+    OutlineInputBorder edge(Color c, [double w = 1]) => OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: c, width: w));
+    return InputDecoration(
+      hintText: tr(hint),
+      hintStyle: TextStyle(color: l.faint, fontWeight: FontWeight.w400),
+      filled: true,
+      fillColor: l.card,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+      prefixIcon: Icon(icon, color: l.muted),
+      prefixIconColor: l.muted,
+      suffixIcon: suffix,
+      suffixIconColor: l.faint,
+      border: edge(l.line),
+      enabledBorder: edge(l.line),
+      focusedBorder: edge(kCrestGold, 1.6),
+    );
+  }
+
+  TextStyle get _typed => TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _l.ink);
 
   Widget _errBox(String err) => AnimatedSize(
         duration: const Duration(milliseconds: 220),
@@ -349,239 +377,250 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             : Container(
                 margin: const EdgeInsets.only(top: 14),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(color: C.redSoft, borderRadius: BorderRadius.circular(16)),
+                decoration: BoxDecoration(color: _l.dark ? const Color(0x33E5484D) : C.redSoft, borderRadius: BorderRadius.circular(16)),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Icon(Icons.error_outline_rounded, size: 20, color: C.red),
+                  Icon(Icons.error_outline_rounded, size: 20, color: _l.bad),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(err, style: const TextStyle(color: C.red, fontSize: 14, fontWeight: FontWeight.w500, height: 1.35))),
+                  Expanded(child: Text(err, style: TextStyle(color: _l.bad, fontSize: 14, fontWeight: FontWeight.w500, height: 1.35))),
                 ]),
               ),
       );
 
-  Widget _pwBox(TextEditingController c, String label, IconData icon, {TextInputAction next = TextInputAction.next, VoidCallback? go}) => Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: TextField(
+  Widget _pwBox(TextEditingController c, String label, IconData icon, {TextInputAction next = TextInputAction.next, VoidCallback? go}) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        _lab(label),
+        TextField(
           controller: c,
           obscureText: !_show,
           autocorrect: false,
           enableSuggestions: false,
           textInputAction: next,
+          style: _typed,
           onChanged: (_) {
             if (_localErr.isNotEmpty) setState(() => _localErr = '');
           },
           onSubmitted: (_) => go == null ? FocusScope.of(context).nextFocus() : go(),
-          decoration: InputDecoration(labelText: tr(label), prefixIcon: Icon(icon)),
+          decoration: _dec(label, icon),
         ),
+      ]);
+
+  Widget _shaken(Widget child) => AnimatedBuilder(
+        animation: _shake,
+        builder: (_, ch) => Transform.translate(offset: Offset(math.sin(_shake.value * math.pi * 6) * 12 * (1 - _shake.value), 0), child: ch),
+        child: child,
+      );
+
+  Widget _link(String en, {required Key key, required VoidCallback? onTap}) => TextButton(
+        key: key,
+        onPressed: onTap,
+        style: TextButton.styleFrom(foregroundColor: _l.gold, disabledForegroundColor: _l.faint, padding: const EdgeInsets.symmetric(horizontal: 6)),
+        child: Text(en, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
       );
 
   /// (15-10-2026) the first sign-in with a given password: his own password, here in the app
-  Widget _pwCard(String err) => AnimatedBuilder(
-        animation: _shake,
-        builder: (_, ch) => Transform.translate(offset: Offset(math.sin(_shake.value * math.pi * 6) * 12 * (1 - _shake.value), 0), child: ch),
-        child: Container(
-          padding: EdgeInsets.zero, // (3.31.0) in the sheet itself
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('Set your own password', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: C.ink)),
-            const MrLine('तुमचा स्वतःचा password बनवा', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 16, fontWeight: FontWeight.w600, color: C.ink)),
-            const SizedBox(height: 6),
-            const Text('Type the password you were given, then your new password twice.', style: TextStyle(fontSize: 14, color: C.muted)),
-            const MrLine('दिलेला password टाका, मग तुमचा नवीन password दोन वेळा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: C.muted)),
-            const SizedBox(height: 6),
-            _pwBox(_given, tr('Given password'), Icons.key_rounded),
-            _pwBox(_new, tr('New password'), Icons.lock_outline_rounded),
-            _pwBox(_again, tr('New password again'), Icons.lock_reset_rounded, next: TextInputAction.go, go: _setOwn),
-            Row(children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(bi('At least 8 characters, letters and numbers.', 'किमान 8 अक्षरे – अक्षरे आणि अंक दोन्ही.', '\n'), style: TextStyle(fontSize: 12.5, color: C.muted, height: 1.35)),
-                ),
-              ),
-              IconButton(tooltip: tr(_show ? 'Hide passwords' : 'Show passwords'), icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show)),
-            ]),
-            _errBox(err),
-            const SizedBox(height: 18),
-            _SignInButton(busy: _busy, onTap: _setOwn, label: 'Save and open'),
-            const SizedBox(height: 6),
-            TextButton(onPressed: _busy ? null : () => SessionScope.read(context).leaveSetPassword(), child: const Text('Back to sign in')),
-          ]),
-        ),
-      );
-
-  Widget _card(String err) => AnimatedBuilder(
-        animation: _shake,
-        builder: (_, ch) => Transform.translate(offset: Offset(math.sin(_shake.value * math.pi * 6) * 12 * (1 - _shake.value), 0), child: ch),
-        child: AutofillGroup(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('Welcome Back', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: C.ink)),
-            const SizedBox(height: 2),
-            const ProductName(prefix: 'Sign in to continue to ', style: TextStyle(fontSize: 14, color: C.muted)),
-            const MrLine('Portal चाच email किंवा mobile number, आणि password वापरा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _mail,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email, AutofillHints.username],
-              textInputAction: TextInputAction.next,
-              autocorrect: false,
-              onSubmitted: (_) => _pwFocus.requestFocus(),
-              decoration: InputDecoration(labelText: tr('Email or mobile number'), prefixIcon: const Icon(Icons.person_outline_rounded)),      // (3.119.0, the Portal's step 12) a mobile number signs in too – with the password
+  Widget _pwCard(String err) => _shaken(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _title('Set your own password'),
+        const SizedBox(height: 8),
+        MrLine('तुमचा स्वतःचा password बनवा', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 16, fontWeight: FontWeight.w600, color: _l.ink)),
+        const SizedBox(height: 4),
+        Text('Type the password you were given, then your new password twice.', style: TextStyle(fontSize: 14, color: _l.muted)),
+        MrLine('दिलेला password टाका, मग तुमचा नवीन password दोन वेळा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: _l.muted)),
+        _pwBox(_given, 'Given password', Icons.key_rounded),
+        _pwBox(_new, 'New password', Icons.lock_outline_rounded),
+        _pwBox(_again, 'New password again', Icons.lock_reset_rounded, next: TextInputAction.go, go: _setOwn),
+        Row(children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(bi('At least 8 characters, letters and numbers.', 'किमान 8 अक्षरे – अक्षरे आणि अंक दोन्ही.', '\n'), style: TextStyle(fontSize: 12.5, color: _l.muted, height: 1.35)),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _pw,
-              focusNode: _pwFocus,
-              obscureText: !_show,
-              autofillHints: const [AutofillHints.password],
-              textInputAction: TextInputAction.go,
-              onSubmitted: (_) => _go(),
-              decoration: InputDecoration(
-                labelText: tr('Password'),
-                prefixIcon: const Icon(Icons.lock_outline_rounded),
-                suffixIcon: IconButton(tooltip: tr(_show ? 'Hide password' : 'Show password'), icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show)),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(children: [
-              SizedBox(
-                width: 34,
-                height: 40,
-                child: Checkbox(key: const Key('login-remember'), value: _remember, activeColor: C.green, onChanged: (v) => setState(() => _remember = v ?? false)),
-              ),
-              GestureDetector(onTap: () => setState(() => _remember = !_remember), child: const Text('Remember me', style: TextStyle(fontSize: 13.5, color: C.ink))),
-              const Spacer(),
-              TextButton(
-                key: const Key('login-forgot'),
-                onPressed: _forgot,
-                style: TextButton.styleFrom(foregroundColor: C.goldInk, padding: const EdgeInsets.symmetric(horizontal: 4)),
-                child: const Text('Forgot password?', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.goldInk)),
-              ),
-            ]),
-            _errBox(err),
-            const SizedBox(height: 14),
-            _SignInButton(busy: _busy, onTap: _go),
-            // (3.104.0) the second way in – only when the Portal has it switched on
-            if (_otpOn) ...[
-              const SizedBox(height: 10),
-              OutlinedButton(
-                key: const Key('login-otp'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), foregroundColor: C.greenDark, side: const BorderSide(color: C.green), shape: const StadiumBorder()),
-                onPressed: _busy ? null : () => _way(true),
-                child: const Text('Login with Email OTP', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ]),
-        ),
-      );
+          ),
+          IconButton(tooltip: tr(_show ? 'Hide passwords' : 'Show passwords'), color: _l.muted, icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show)),
+        ]),
+        _errBox(err),
+        const SizedBox(height: 18),
+        _SignInButton(busy: _busy, onTap: _setOwn, label: 'Save and open'),
+        const SizedBox(height: 6),
+        _link('Back to sign in', key: const Key('login-back'), onTap: _busy ? null : () => SessionScope.read(context).leaveSetPassword()),
+      ]));
 
-  /// (3.104.0) the code by e-mail: the e-mail and "Send code"; then the code and "Sign in"
-  Widget _otpCard(String err) => AnimatedBuilder(
-        animation: _shake,
-        builder: (_, ch) => Transform.translate(offset: Offset(math.sin(_shake.value * math.pi * 6) * 12 * (1 - _shake.value), 0), child: ch),
+  Widget _card(String err) => _shaken(AutofillGroup(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Login with Email OTP', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: C.ink)),
+          _title('Sign in', key: const Key('login-title')),
+          const SizedBox(height: 10),
+          Text('Welcome back – sign in to continue', style: TextStyle(fontSize: 15, color: _l.muted)),
+          MrLine('Portal चाच email किंवा mobile number, आणि password वापरा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: _l.muted)),
           const SizedBox(height: 4),
-          const Text('A 6-digit code comes to your registered e-mail. It is valid for 10 minutes and works once.', style: TextStyle(fontSize: 14, color: C.muted, height: 1.35)),
-          const MrLine('तुमच्या नोंदलेल्या email वर 6 अंकी code येईल – 10 मिनिटांसाठी, एकदाच.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: C.muted)),
-          const SizedBox(height: 16),
+          _lab('Email or mobile number'), // (3.119.0, the Portal's step 12) a mobile number signs in too – with the password
           TextField(
-            key: const Key('login-otp-mail'),
             controller: _mail,
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email, AutofillHints.username],
-            textInputAction: TextInputAction.done,
+            textInputAction: TextInputAction.next,
             autocorrect: false,
-            onChanged: (_) {
-              if (_sent) _way(true); // another e-mail: from the first step again
-            },
-            onSubmitted: (_) {
-              if (!_sent) _otpAsk();
-            },
-            decoration: InputDecoration(labelText: tr('Email address'), prefixIcon: const Icon(Icons.mail_outline_rounded)),
+            style: _typed,
+            onSubmitted: (_) => _pwFocus.requestFocus(),
+            decoration: _dec('name@company.com', Icons.person_outline_rounded),
           ),
-          if (_sent) ...[
-            const SizedBox(height: 10),
-            const Text('If this e-mail is registered and verified, a code is on its way to it.', style: TextStyle(fontSize: 13, color: C.muted, height: 1.35)),
-            const SizedBox(height: 10),
-            TextField(
-              key: const Key('login-otp-code'),
-              controller: _code,
-              keyboardType: TextInputType.number,
-              autofillHints: const [AutofillHints.oneTimeCode],
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
-              textInputAction: TextInputAction.go,
-              onChanged: (_) {
-                if (_localErr.isNotEmpty) setState(() => _localErr = '');
-              },
-              onSubmitted: (_) => _otpGo(),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 4),
-              decoration: InputDecoration(labelText: tr('6-digit code'), prefixIcon: const Icon(Icons.pin_outlined)),
+          _lab('Password'),
+          TextField(
+            controller: _pw,
+            focusNode: _pwFocus,
+            obscureText: !_show,
+            autofillHints: const [AutofillHints.password],
+            textInputAction: TextInputAction.go,
+            style: _typed,
+            onSubmitted: (_) => _go(),
+            decoration: _dec('Enter your password', Icons.lock_outline_rounded,
+                suffix: IconButton(tooltip: tr(_show ? 'Hide password' : 'Show password'), icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show))),
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            // (3.31.0) Remember me: the email of the last sign-in kept on this phone
+            Semantics(
+              checked: _remember,
+              child: GestureDetector(
+                key: const Key('login-remember'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _remember = !_remember),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        gradient: _remember ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [kCrestGoldPale, kCrestGold]) : null,
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(color: _remember ? kCrestGold : _l.faint, width: 1.5),
+                      ),
+                      child: _remember ? const Icon(Icons.check_rounded, size: 16, color: Color(0xFF2A1D00)) : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Text('Remember me', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _l.ink)),
+                  ]),
+                ),
+              ),
+            ),
+            const Spacer(),
+            _link('Forgot password?', key: const Key('login-forgot'), onTap: _forgot),
+          ]),
+          _errBox(err),
+          const SizedBox(height: 16),
+          _SignInButton(busy: _busy, onTap: _go),
+          // (3.104.0) the second way in – only when the Portal has it switched on
+          if (_otpOn) ...[
+            const SizedBox(height: 16),
+            Row(children: [
+              Expanded(child: Container(height: 1, color: _l.line)),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('or', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _l.faint))),
+              Expanded(child: Container(height: 1, color: _l.line)),
+            ]),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              key: const Key('login-otp'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(54), foregroundColor: _l.ink, side: BorderSide(color: _l.dark ? kCrestGold.withValues(alpha: .7) : _l.ink, width: 1.3), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22))),
+              onPressed: _busy ? null : () => _way(true),
+              icon: const Icon(Icons.mail_outline_rounded, size: 20),
+              label: const Text('Login with Email OTP', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
             ),
           ],
-          _errBox(err),
-          const SizedBox(height: 14),
-          _SignInButton(busy: _busy, onTap: _sent ? _otpGo : _otpAsk, label: _sent ? 'Sign in' : 'Send code'),
-          if (_sent)
-            TextButton(
-              key: const Key('login-otp-again'),
-              onPressed: _busy || _wait > 0 ? null : _otpAsk,
-              child: Text(_wait > 0 ? 'Send again ($_wait s)' : 'Send again'),
-            ),
-          TextButton(key: const Key('login-otp-back'), onPressed: _busy ? null : () => _way(false), child: const Text('Continue with Password')),
         ]),
-      );
+      ));
+
+  /// (3.104.0) the code by e-mail: the e-mail and "Send code"; then the code and "Sign in"
+  Widget _otpCard(String err) => _shaken(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _title('Login with Email OTP'),
+        const SizedBox(height: 10),
+        Text('A 6-digit code comes to your registered e-mail. It is valid for 10 minutes and works once.', style: TextStyle(fontSize: 14, color: _l.muted, height: 1.35)),
+        MrLine('तुमच्या नोंदलेल्या email वर 6 अंकी code येईल – 10 मिनिटांसाठी, एकदाच.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: _l.muted)),
+        const SizedBox(height: 2),
+        _lab('Email address'),
+        TextField(
+          key: const Key('login-otp-mail'),
+          controller: _mail,
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email, AutofillHints.username],
+          textInputAction: TextInputAction.done,
+          autocorrect: false,
+          style: _typed,
+          onChanged: (_) {
+            if (_sent) _way(true); // another e-mail: from the first step again
+          },
+          onSubmitted: (_) {
+            if (!_sent) _otpAsk();
+          },
+          decoration: _dec('name@company.com', Icons.mail_outline_rounded),
+        ),
+        if (_sent) ...[
+          const SizedBox(height: 10),
+          Text('If this e-mail is registered and verified, a code is on its way to it.', style: TextStyle(fontSize: 13, color: _l.muted, height: 1.35)),
+          _lab('6-digit code'),
+          TextField(
+            key: const Key('login-otp-code'),
+            controller: _code,
+            keyboardType: TextInputType.number,
+            autofillHints: const [AutofillHints.oneTimeCode],
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+            textInputAction: TextInputAction.go,
+            onChanged: (_) {
+              if (_localErr.isNotEmpty) setState(() => _localErr = '');
+            },
+            onSubmitted: (_) => _otpGo(),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 4, color: _l.ink),
+            decoration: _dec('', Icons.pin_outlined),
+          ),
+        ],
+        _errBox(err),
+        const SizedBox(height: 16),
+        _SignInButton(busy: _busy, onTap: _sent ? _otpGo : _otpAsk, label: _sent ? 'Sign in' : 'Send code'),
+        if (_sent) _link(_wait > 0 ? 'Send again ($_wait s)' : 'Send again', key: const Key('login-otp-again'), onTap: _busy || _wait > 0 ? null : _otpAsk),
+        _link('Continue with Password', key: const Key('login-otp-back'), onTap: _busy ? null : () => _way(false)),
+      ]));
 }
 
-/// (3.31.0) a faint line of a city and a crane under "Build • Manage • Move Forward"
-class _Skyline extends CustomPainter {
-  @override
-  void paint(Canvas c, Size s) {
-    final p = Paint()..color = C.gold.withValues(alpha: .16);
-    final base = s.height;
-    final r = math.Random(7);
-    var x = 0.0;
-    while (x < s.width) {
-      final w = 10 + r.nextDouble() * 18, h = 10 + r.nextDouble() * 34;
-      if (x < s.width * .3 || x > s.width * .7) c.drawRect(Rect.fromLTWH(x, base - h, w - 2, h), p);
-      x += w;
-    }
-    final line = Paint()
-      ..color = C.gold.withValues(alpha: .22)
-      ..strokeWidth = 1.6;
-    final cx = s.width * .88;
-    c.drawLine(Offset(cx, base), Offset(cx, base - 54), line);
-    c.drawLine(Offset(cx - 30, base - 50), Offset(cx + 14, base - 50), line);
-    c.drawLine(Offset(cx - 26, base - 50), Offset(cx - 26, base - 34), line);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter o) => false;
+/// The colours of the sign-in: light or dark, as the phone is (the navy at the top is in both).
+class _Look {
+  const _Look(this.dark);
+  final bool dark;
+  Color get page => dark ? const Color(0xFF0B1024) : const Color(0xFFFAFAFC);
+  Color get card => dark ? const Color(0xFF151B33) : Colors.white;
+  Color get line => dark ? const Color(0xFF2B3454) : const Color(0xFFE1E5EF);
+  Color get ink => dark ? const Color(0xFFF4F6FC) : const Color(0xFF0F1830);
+  Color get muted => dark ? const Color(0xFFA7B0CA) : const Color(0xFF59647E);
+  Color get faint => dark ? const Color(0xFF727B9A) : const Color(0xFF98A1B8);
+  Color get gold => dark ? kCrestGold : const Color(0xFFA9741A);
+  Color get bad => dark ? const Color(0xFFFF9A92) : C.red;
+  List<Color> get head => dark ? const [Color(0xFF080B1C), Color(0xFF161B36), Color(0xFF1D2F74)] : const [Color(0xFF0E1638), Color(0xFF1A2C68), Color(0xFF21398A)];
 }
 
-/// The big green button; while signing in it shows a turning ring.
+/// The big gold button; while signing in it shows a turning ring.
 class _SignInButton extends StatelessWidget {
   const _SignInButton({required this.busy, required this.onTap, this.label = 'Sign in'});
   final bool busy;
   final VoidCallback onTap;
   final String label;
+  static const _ink = Color(0xFF2A1D00);
   @override
   Widget build(BuildContext context) => DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(40),
-          gradient: const LinearGradient(colors: [C.green, C.greenBright]),
-          boxShadow: [BoxShadow(color: C.green.withValues(alpha: .35), blurRadius: 16, offset: const Offset(0, 8))],
+          borderRadius: BorderRadius.circular(22),
+          // (the shine: a pale streak across the gold)
+          gradient: const LinearGradient(begin: Alignment(-1, -.6), end: Alignment(1, .6), colors: [Color(0xFFF3D477), Color(0xFFE9C45A), Color(0xFFF9E7AE), Color(0xFFE2B548), Color(0xFFBE8A14)], stops: [0, .18, .26, .5, 1]),
+          boxShadow: [BoxShadow(color: kCrestGoldDeep.withValues(alpha: .35), blurRadius: 18, offset: const Offset(0, 9))],
         ),
         child: FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: Colors.transparent, disabledBackgroundColor: Colors.transparent, shadowColor: Colors.transparent),
+          key: const Key('login-go'),
+          style: FilledButton.styleFrom(backgroundColor: Colors.transparent, disabledBackgroundColor: Colors.transparent, shadowColor: Colors.transparent, foregroundColor: _ink, minimumSize: const Size.fromHeight(58), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22))),
           onPressed: busy ? null : onTap,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: busy
-                ? const SizedBox(key: ValueKey('busy'), width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+                ? const SizedBox(key: ValueKey('busy'), width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: _ink))
                 : Row(key: const ValueKey('go'), mainAxisSize: MainAxisSize.min, children: [
-                    Text(label, style: const TextStyle(color: Colors.white)),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                    Text(label, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 18, fontWeight: FontWeight.w800, color: _ink)),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.arrow_forward_rounded, color: _ink),
                   ]),
           ),
         ),

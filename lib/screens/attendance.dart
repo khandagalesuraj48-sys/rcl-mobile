@@ -20,6 +20,7 @@ import '../core/app_consent.dart';
 import '../core/attend.dart';
 import '../core/attend_pdf.dart';
 import '../core/attend_remind.dart';
+import '../core/hr_cache.dart';
 import '../core/session.dart';
 import '../ui/attend_look.dart';
 import '../ui/done_pop.dart';
@@ -1020,27 +1021,43 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     _load();
   }
 
+  /// The server's answer for a month, put on the page.
+  void _take(Map<String, dynamic> j) {
+    // (rcl-hr step 5) every day of the month with what it counts as; before it: only the days with a punch
+    final all = [for (final x in (j['all'] as List? ?? const []).whereType<Map>()) x];
+    today = '${j['today'] ?? indiaDay(AttendKit.kit.now())}';
+    every = all.isNotEmpty ? all : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
+    rules = [for (final x in (j['rules'] as List? ?? const [])) '$x'];
+    days = all.isNotEmpty ? [for (final d in all) if ('${d['code'] ?? ''}'.isNotEmpty || (d['punches'] is num && (d['punches'] as num) > 0)) d] : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
+    total = (j['total'] as Map?) ?? const {};
+    regDays = j['reg_days'] is num ? (j['reg_days'] as num).toInt() : 0;
+    loading = false;
+  }
+
+  /// (3.154.0, asked 21-11-2026: "attendance tab nehmi server kadhun data ghetoy … cache data dakhwel … new lagech disel") the
+  /// month as it was read the last time is shown at once; the server is asked in the same moment and its answer takes its place.
   Future<void> _load() async {
+    final asked = month, key = 'myMonth:$asked', kept = HrCache.now(key);
     setState(() {
-      loading = true;
       err = '';
+      if (kept != null) {
+        _take(kept);
+      } else {
+        loading = true;
+      }
     });
-    try {
-      final j = await widget.ask({'action': 'myMonth', 'month': month});
+    if (kept == null) {
+      final k = await HrCache.read(key);
       if (!mounted) return;
-      setState(() {
-        // (rcl-hr step 5) every day of the month with what it counts as; before it: only the days with a punch
-        final all = [for (final x in (j['all'] as List? ?? const []).whereType<Map>()) x];
-        today = '${j['today'] ?? indiaDay(AttendKit.kit.now())}';
-        every = all.isNotEmpty ? all : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
-        rules = [for (final x in (j['rules'] as List? ?? const [])) '$x'];
-        days = all.isNotEmpty ? [for (final d in all) if ('${d['code'] ?? ''}'.isNotEmpty || (d['punches'] is num && (d['punches'] as num) > 0)) d] : [for (final x in (j['days'] as List? ?? const []).whereType<Map>()) x];
-        total = (j['total'] as Map?) ?? const {};
-        regDays = j['reg_days'] is num ? (j['reg_days'] as num).toInt() : 0;
-        loading = false;
-      });
+      if (k != null && loading && month == asked) setState(() => _take(k));
+    }
+    try {
+      final j = await widget.ask({'action': 'myMonth', 'month': asked});
+      HrCache.put(key, j);
+      if (!mounted || month != asked) return; // (he went on to another month meanwhile)
+      setState(() => _take(j));
     } catch (e) {
-      if (mounted) {
+      if (mounted && month == asked) {
         setState(() {
           loading = false;
           err = errText(e);
@@ -1199,7 +1216,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
                     key: const Key('att-m-work'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: sk.onHeadSoft)),
             ],
           ]),
-      body: ListView(key: const Key('att-month-page'), padding: const EdgeInsets.fromLTRB(12, 14, 12, 40), children: [
+      body: ListView(key: const Key('att-month-page'), padding: EdgeInsets.fromLTRB(12, 14, 12, 40 + MediaQuery.paddingOf(context).bottom), children: [ // (3.154.0: its end stands clear of the bar that floats over the page)
         if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
         if (err.isNotEmpty) InfoLine(err, bad: true, help: false),
         if (!loading && err.isEmpty) ...[

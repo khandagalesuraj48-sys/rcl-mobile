@@ -246,4 +246,29 @@ void main() {
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$file'));
     }, tags: ['golden']);
   }
+
+  // (3.154.0) the Crest follows the phone: dark when the phone is dark – the name in gold; light: the name in navy
+  testWidgets('picture: 00_splash_dark.png – the phone in dark mode', (t) async {
+    _screen(t, 393, 852);
+    t.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
+    await t.pumpWidget(_alone(.38));
+    await _pics(t);
+    await t.pump(const Duration(milliseconds: 600));
+    expect(find.byType(ShaderMask), findsOneWidget, reason: 'dark: the name in gold');
+    expect(find.text('Build  •  Manage  •  Move Forward'), findsOneWidget);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/00_splash_dark.png'));
+  }, tags: ['golden']);
+
+  testWidgets('(3.154.0) the Crest: light on a light phone – no photo, no film; the lion in its ring, the name, the line, the bar', (t) async {
+    _screen(t, 393, 852);
+    await t.pumpWidget(_alone(.38));
+    await t.pump(const Duration(milliseconds: 600));
+    expect(find.byType(ShaderMask), findsNothing, reason: 'light: the name in navy');
+    expect(find.byKey(const Key('splash-line')), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget, reason: 'only the lion is a picture');
+    final logo = t.getRect(find.byKey(const Key('splash-logo')));
+    expect((logo.center.dx - 393 / 2).abs(), lessThan(1), reason: 'the lion stands in the middle');
+    expect(logo.width, closeTo(logo.height, .01));
+  });
 }

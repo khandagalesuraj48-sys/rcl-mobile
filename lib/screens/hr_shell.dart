@@ -20,6 +20,7 @@
  * Nothing of what may be done changes – only how it looks. */
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
@@ -27,6 +28,7 @@ import 'package:flutter/material.dart' as m show Text;
 import '../core/app_consent.dart';
 import '../core/attend.dart';
 import '../core/attend_remind.dart';
+import '../core/hr_cache.dart';
 import '../core/hr_track.dart';
 import '../core/session.dart';
 import '../core/update.dart' show checkUpdate, offerUpdate, updateOfferAgain;
@@ -262,11 +264,38 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     }
   }
 
+  /// The five parts of Home under his day, put on the page (an answer of the server, or what was kept of it).
+  void _parts(List<Map<String, dynamic>?> got) {
+    month = got[0] ?? month;
+    leave = got[1] ?? leave;
+    if (got[2] != null) regs = [for (final x in (got[2]!['rows'] as List? ?? const []).whereType<Map>()) x];
+    mine = got[3] ?? mine;
+    if (got[4] != null) teamWait = (got[4]!['rows'] as List? ?? const []).length;
+  }
+
+  static const _kept = ['myMonth', 'myLeave', 'myRegs', 'myHr', 'teamRegs'];
+
   Future<void> _load() async {
     final s = SessionScope.read(context);
+    // (3.154.0, asked 21-11-2026: "cache data dakhwel … new lagech disel") the first time: what was read the last time is shown
+    // at once – his day only when it is TODAY's (never yesterday's IN / OUT as today's) – while the server is asked
+    HrCache.who = '${s.email}|${hrSite(s)?.code ?? ''}';
+    if (day == null) {
+      final now = indiaDay(AttendKit.kit.now());
+      final k = await HrCache.read('myAttend'), parts = [await HrCache.read('myMonth:${now.substring(0, 7)}'), for (final a in _kept.skip(1)) await HrCache.read(a)];
+      if (!mounted) return;
+      if (day == null && k != null && '${k['day'] ?? ''}' == now) {
+        setState(() {
+          day = k;
+          loading = false;
+          _parts(parts);
+        });
+      }
+    }
     try {
       final info = await AttendKit.kit.info();
       final d = await _hr({'action': 'myAttend', 'device_id': info['id']});
+      HrCache.put('myAttend', d);
       await AttendStore('${s.email}|${hrSite(s)?.code ?? ''}').keep(d, await AttendKit.kit.elapsed());
       unawaited(AttendRemind.set(d)); // (3.113.0) the IN / OUT reminders, from his shift and where his day stands
       if (!mounted) return;
@@ -290,12 +319,17 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     }
     final today = '${day?['day'] ?? indiaDay(AttendKit.kit.now())}';
     final got = await Future.wait([_quiet({'action': 'myMonth', 'month': today.substring(0, 7)}), _quiet({'action': 'myLeave'}), _quiet({'action': 'myRegs'}), _quiet({'action': 'myHr'}), _quiet({'action': 'teamRegs'})]);
+    // (what the server said is kept for the next opening; a part it could not say stays as it was shown)
+    if (got[0] != null) HrCache.put('myMonth:${today.substring(0, 7)}', got[0]!);
+    for (var i = 1; i < _kept.length; i++) {
+      if (got[i] != null) HrCache.put(_kept[i], got[i]!);
+    }
     if (!mounted) return;
     setState(() {
       month = got[0];
       leave = got[1];
       regs = [for (final x in (got[2]?['rows'] as List? ?? const []).whereType<Map>()) x];
-      mine = got[3];
+      mine = got[3] ?? mine; // (his name, photo and papers do not blink away when one reading fails)
       teamWait = (got[4]?['rows'] as List? ?? const []).length;
     });
   }
@@ -390,8 +424,13 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     LangScope.of(context); // the words here follow the language chosen in Me
     return Scaffold(
       backgroundColor: sk.bg,
+      // (3.154.0, asked 21-11-2026: "pill shape tr aahech but tyache bajun square box zalay tr tas nay zal pahije") the page goes on
+      // UNDER the bar – only the pill itself is there, nothing square round it; every page's list ends clear of it
+      extendBody: true,
       bottomNavigationBar: _nav(),
-      body: TabSlide(
+      body: Builder(builder: (context) {
+        final under = MediaQuery.paddingOf(context).bottom; // (the bar's own height: a list's last line stands above it)
+        return TabSlide(
         index: tab, // (3.122.0) the page of the tab chosen slides in from that tab's side
         child: switch (tab) {
         // (3.116.0, "ek feture ekach thikani asaw") Attendance = the month; today and marking are Home's
@@ -402,11 +441,13 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
             decoration: BoxDecoration(gradient: sk.pageFill),
             child: SafeArea(
               bottom: false,
-              child: RefreshIndicator(
+              // (3.154.0, asked 21-11-2026: "home screen khali scroll krtana warche te name notification bell as nigun jatey te jau
+              // naye") his name and the bell STAY at the top; the page moves under them
+              child: Column(children: [
+              Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 10), child: _top(s)),
+              Expanded(child: RefreshIndicator(
                 onRefresh: _load,
-                child: ListView(key: const Key('hr-home'), padding: const EdgeInsets.fromLTRB(16, 10, 16, 24), children: [
-                  _top(s),
-                  const SizedBox(height: 14),
+                child: ListView(key: const Key('hr-home'), padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + under), children: [
                   if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('hh-err')),
                   if (loading) Padding(padding: const EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: sk.accent))),
                   if (day != null) ...[
@@ -423,11 +464,13 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                     ..._forYou(),
                   ],
                 ]),
-              ),
+              )),
+              ]),
             ),
           ),
       },
-      ),
+      );
+      }),
     );
   }
 
@@ -528,8 +571,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     Widget stat(String key, String v, String en, String mr, {int flex = 10}) => Expanded(
           flex: flex,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
-            decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(16)),
+            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 5),
+            decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(14)),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               FittedBox(fit: BoxFit.scaleDown, child: m.Text(v.isEmpty ? '– –:– –' : v, key: Key(key), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: v.isEmpty ? sk.faint : sk.ink))),
               const SizedBox(height: 3),
@@ -539,7 +582,10 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         );
     return Container(
       key: const Key('hh-hero'),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      // (3.154.0, asked 21-11-2026: "sign out cha section … motha card zalay as feel yetey, tyachi size height madhe kami kr … check in
+      // check out total work te sagle rahu de fkt thoda small banaw") the same card, lower: a smaller dial (the same on every
+      // phone – it never grows past 256), less air round it; everything in it stays
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: sk.box(radius: 28),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
@@ -547,18 +593,18 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           const SizedBox(width: 8),
           _placeChip(),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: 2),
         LayoutBuilder(
           builder: (_, box) => GestureDetector(
             key: const Key('hh-slide'),
             behavior: HitTestBehavior.opaque,
             onTap: go,
             onLongPress: go,
-            child: Bounce(to: .96, child: HomeDial(size: math.min(310.0, box.maxWidth), now: at(india.hour * 60 + india.minute), start: a, end: b0, dim: sky == Sky.grey || sky == Sky.dusk, clock: _nowMs, big: big, under: under)),
+            child: Bounce(to: .96, child: HomeDial(size: math.min(256.0, box.maxWidth), now: at(india.hour * 60 + india.minute), start: a, end: b0, dim: sky == Sky.grey || sky == Sky.dusk, clock: _nowMs, big: big, under: under)),
           ),
         ),
         if (a != null && b0 != null) m.Text('${shift['name'] ?? ''}', key: const Key('hh-shift'), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sk.faint)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Row(children: [stat('hh-in', tin, 'Check in', 'Check in'), const SizedBox(width: 8), stat('hh-out', tout, 'Check out', 'Check out'), const SizedBox(width: 8), stat('hh-hours', hours, 'Total working hours', 'एकूण कामाचे तास', flex: 13)]),
       ]),
     );
@@ -806,73 +852,70 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     ];
   }
 
-  // ---- THE BAR (3.153.0 – his choice of 20-11-2026: "s2 gheu ok soft gold ani ha jasa aahe tasa same banaw … tab bar pn approved"):
-  //      a soft, raised bar; the page that is open sits in a pressed-in well with a gold edge and a gold sign, and the well glides
-  //      to the page chosen. Home · Attendance · Leave · Me – the marking button of the middle is gone (one thing in one place:
-  //      SIGN IN / SIGN OUT is the dial's).
+  // ---- THE BAR (3.153.0 – his choice of 20-11-2026: "s2 gheu ok soft gold … tab bar pn approved"): the page that is open sits
+  //      in a well with a gold edge and a gold sign, and the well glides to the page chosen. Home · Attendance · Leave · Me –
+  //      the marking button of the middle is gone (one thing in one place: SIGN IN / SIGN OUT is the dial's).
+  //      (3.154.0, asked 21-11-2026: "pill shape ch – transparency ajun wadhaw premium feel hoil – size thodi kami kar") ONLY
+  //      the pill: glass – the page shows through it, softened – a little smaller, nothing square round it.
   Widget _nav() {
     final dark = sk.dark;
-    final surface = dark ? const Color(0xFF161D36) : const Color(0xFFF8F9FB), stage = dark ? const Color(0xFF0B1024) : const Color(0xFFECEFF4);
-    final wellBg = dark ? const Color(0xFF0E142A) : const Color(0xFFEEF1F6), shade = dark ? const Color(0x99000000) : const Color(0x38606C8C);
-    final gold = dark ? const Color(0xFFF2CC62) : const Color(0xFFC9960A), mute = dark ? const Color(0xFF66709A) : const Color(0xFFA3ABBD);
+    final glass = dark ? const Color(0x8C141A33) : const Color(0x99FFFFFF);
+    final wellBg = dark ? const Color(0x730A0F22) : const Color(0x80E9EDF5);
+    final gold = dark ? const Color(0xFFF2CC62) : const Color(0xFFC9960A), mute = dark ? const Color(0xFF8D96B8) : const Color(0xFF7E879D);
     Widget item(String key, IconData icon, String en, String mr, bool on, VoidCallback onTap) => Expanded(
           child: GestureDetector(
             key: Key(key),
             behavior: HitTestBehavior.opaque,
             onTap: onTap,
             child: Bounce(to: .9, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              AnimatedScale(scale: on ? 1.08 : 1, duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack, child: Icon(icon, size: 23, color: on ? gold : mute)),
-              const SizedBox(height: 4),
-              FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 11, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? sk.ink : mute))),
+              AnimatedScale(scale: on ? 1.08 : 1, duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack, child: Icon(icon, size: 21, color: on ? gold : mute)),
+              const SizedBox(height: 3),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 10.5, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? sk.ink : mute))),
             ])),
           ),
         );
+    const r = BorderRadius.all(Radius.circular(31));
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+        padding: const EdgeInsets.fromLTRB(26, 4, 26, 10),
         child: Container(
           key: const Key('hr-nav'),
-          height: 74,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(37),
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [surface, surface, stage], stops: const <double>[0, .45, 1]),
-            border: Border.all(color: dark ? const Color(0x29788CD2) : Colors.white, width: 1.2),
-            boxShadow: [
-              BoxShadow(color: dark ? const Color(0x1F788CD2) : const Color(0xF2FFFFFF), blurRadius: 11, offset: const Offset(0, -5)),
-              BoxShadow(color: dark ? const Color(0x99000000) : const Color(0x42606C8C), blurRadius: 13, spreadRadius: -3, offset: const Offset(0, 10)),
-              BoxShadow(color: dark ? const Color(0x59000000) : const Color(0x1F606C8C), blurRadius: 34, spreadRadius: -10, offset: const Offset(0, 20)),
-            ],
-          ),
-          child: Stack(children: [
-            // the well of the page that is open: it glides to the page chosen
-            AnimatedAlign(
-              alignment: Alignment(-1 + 2 * tab / 3, 0),
-              duration: const Duration(milliseconds: 380),
-              curve: Curves.easeOutCubic,
-              child: FractionallySizedBox(
-                widthFactor: .25,
-                heightFactor: 1,
-                child: Container(
-                  key: const Key('nav-well'),
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(31),
-                    // (pressed in: the shade falls in from its top edge)
-                    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(shade, wellBg), wellBg, wellBg], stops: const <double>[0, .32, 1]),
-                    border: Border.all(color: const Color(0xFFDDAD40).withValues(alpha: .6), width: 1.2),
+          height: 62,
+          decoration: BoxDecoration(borderRadius: r, boxShadow: [BoxShadow(color: dark ? const Color(0x66000000) : const Color(0x29404C70), blurRadius: 22, spreadRadius: -6, offset: const Offset(0, 10))]),
+          child: ClipRRect(
+            borderRadius: r,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(borderRadius: r, color: glass, border: Border.all(color: dark ? const Color(0x38A9B8F0) : const Color(0xCCFFFFFF), width: 1.2)),
+                child: Stack(children: [
+                  // the well of the page that is open: it glides to the page chosen
+                  AnimatedAlign(
+                    alignment: Alignment(-1 + 2 * tab / 3, 0),
+                    duration: const Duration(milliseconds: 380),
+                    curve: Curves.easeOutCubic,
+                    child: FractionallySizedBox(
+                      widthFactor: .25,
+                      heightFactor: 1,
+                      child: Container(
+                        key: const Key('nav-well'),
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(26), color: wellBg, border: Border.all(color: const Color(0xFFDDAD40).withValues(alpha: .7), width: 1.2)),
+                      ),
+                    ),
                   ),
-                ),
+                  Row(children: [
+                    item('nav-home', Icons.home_outlined, 'Home', 'Home', tab == 0, () => _go(0)),
+                    item('nav-att', Icons.event_available_outlined, 'Attendance', 'हजेरी', tab == 1, () => _go(1)),
+                    item('nav-leave', Icons.description_outlined, 'Leave', 'रजा', tab == 2, () => _go(2)),
+                    item('nav-me', Icons.person_outline_rounded, 'Me', 'मी', tab == 3, () => _go(3)),
+                  ]),
+                ]),
               ),
             ),
-            Row(children: [
-              item('nav-home', Icons.home_outlined, 'Home', 'Home', tab == 0, () => _go(0)),
-              item('nav-att', Icons.event_available_outlined, 'Attendance', 'हजेरी', tab == 1, () => _go(1)),
-              item('nav-leave', Icons.description_outlined, 'Leave', 'रजा', tab == 2, () => _go(2)),
-              item('nav-me', Icons.person_outline_rounded, 'Me', 'मी', tab == 3, () => _go(3)),
-            ]),
-          ]),
+          ),
         ),
       ),
     );
