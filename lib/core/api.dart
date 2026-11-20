@@ -559,6 +559,10 @@ class Api {
 
   // ---------------- HR (3.103.0) ----------------
   String _hrCookie = '', _hrKey = '';
+  // (20-11-2026) ONE sign-in at a time: the documents gate and Home ask HR in the same moment when the app opens – the second one
+  // waits for the first one's sign-in instead of making its own (two tickets of the Portal for one opening).
+  Future<void>? _hrOpening;
+  String _hrOpeningKey = '';
 
   /// (3.103.0, rcl-hr) HR's sign-in on [siteCode] – as Purchase's: a ticket of the Portal for [module] ('hr' – the HR office's
   /// people; 'hrme' – "My HR", an employee for himself), POST <hr>/api/sso { ticket } → its cookie rcl_hr.
@@ -577,7 +581,16 @@ class Api {
   /// [path] (3.111.0): 'hr' – HR's actions; 'face' – the face for attendance (its own endpoint of the same server, the same sign-in).
   Future<Map<String, dynamic>> hr(String siteCode, String hrUrl, String module, Map<String, dynamic> body, {String path = 'hr'}) async {
     for (var tryNo = 1;; tryNo++) {
-      if (_hrCookie.isEmpty || _hrKey != '$siteCode|$hrUrl|$module') await hrOpen(siteCode, hrUrl, module);
+      final key = '$siteCode|$hrUrl|$module';
+      if (_hrCookie.isEmpty || _hrKey != key) {
+        if (_hrOpening == null || _hrOpeningKey != key) {
+          _hrOpeningKey = key;
+          _hrOpening = hrOpen(siteCode, hrUrl, module).whenComplete(() {
+            if (_hrOpeningKey == key) _hrOpening = null;
+          });
+        }
+        await _hrOpening;
+      }
       final r = await _send(() => _c.post(Uri.parse('$hrUrl/api/$path'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _hrCookie}, body: jsonEncode(body)));
       final j = _json(r, 'HR');
       if (r.statusCode == 401 && j['code'] == 'session' && tryNo == 1) {

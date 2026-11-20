@@ -8548,9 +8548,11 @@ void main() {
       await settle(t, 300);
     }
 
-    // (what was asked of HR – without the quiet look for his team's requests after every reading)
-    List<String> acts() => [for (final x in srv.hrSent) if (x['action'] != 'teamRegs' && x['action'] != 'teamLeaves') '${x['fn'] ?? x['action']}'];
+    // (what was asked of HR – without the quiet look for his team's requests after every reading, and – 20-11-2026 – without the
+    // documents gate's one check when the app opens: its own test is "(3.151.0) documents gate")
+    List<String> acts() => [for (final x in srv.hrSent) if (x['action'] != 'teamRegs' && x['action'] != 'teamLeaves' && x['action'] != 'myGate') '${x['fn'] ?? x['action']}'];
     await openHr();
+    expect(srv.hrSent.where((x) => x['action'] == 'myGate').length, 1, reason: 'the documents gate asks once, when the app opens');
     expect(acts(), ['sso', 'myAttend']);
     expect(srv.calls.where((c) => c.startsWith('portal:go:hr:')).length, 1, reason: 'a ticket of the Portal for the module hr');
     expect(srv.hrSent.lastWhere((x) => x['action'] == 'myAttend')['device_id'], 'and-test-phone-1');
