@@ -1,3 +1,3 @@
-Attendance – your location is shared with HR only while you are on duty: from your IN to your OUT, every 5 minutes, also when the app is closed. After OUT nothing is sent. You are told once; Home shows "Location shared with HR". HR keeps it 30 days, then it is deleted.
-हजेरी – तुमचे location फक्त duty वर असताना HR सोबत share होते: तुमच्या IN पासून OUT पर्यंत, दर 5 मिनिटांनी, app बंद असतानाही. OUT नंतर काहीही जात नाही. एकदा सांगितले जाते; Home वर "Location HR सोबत share होत आहे" दिसते. HR ते 30 दिवस ठेवते, नंतर delete होते.
-हाज़िरी – आपकी location सिर्फ़ duty पर होते समय HR के साथ share होती है: आपके IN से OUT तक, हर 5 मिनट में, app बंद होने पर भी। OUT के बाद कुछ नहीं जाता। एक बार बताया जाता है; Home पर "Location HR के साथ share हो रही है" दिखता है। HR इसे 30 दिन रखता है, फिर delete हो जाती है।
+Attendance now works more reliably while you are on duty.
+तुम्ही duty वर असताना हजेरी आता अधिक नीट चालते.
+आप duty पर होते समय हाज़िरी अब और भरोसेमंद चलती है।

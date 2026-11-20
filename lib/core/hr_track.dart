@@ -5,8 +5,11 @@
  *     thrown away there too.
  *   – A point every 5 minutes; they wait on the phone (also with no network – a file of the app) and go in one call about every 5
  *     minutes (trackSend; each with its own number – sent twice, kept once).
- *   – Android: a foreground service with its own notification ("On duty – location shared with HR") keeps the place coming while the
- *     app is in the background; an iPhone: the app's "location" background mode (iOS shows its blue bar).
+ *   – NOTHING is shown inside the app (his decision of 20-11-2026: "user la samjle nahi pahije ki tyachi location track keli jatey …
+ *     app madhe he samjnarach nahi … fkt ho hr and super admin la web warun disel") – no box, no card. But the PHONE ITSELF shows an
+ *     indicator that the system does not let an app hide: Android a foreground-service notification (its words are plain "Attendance",
+ *     no mention of HR or sharing) keeps the place coming while the app is in the background; an iPhone the "location" background mode
+ *     (iOS shows its blue bar). This is why option 1 was chosen knowing the phone's own mark stays.
  *   – A driver with a vehicle (the Smart Log Book's GPS – vl_gps.dart – running): no second GPS; its places are used (the phone
  *     gives ONE stream of places to the whole app – ours lets go before the vehicle's starts, VlGps.before), and – as the vehicle's
  *     GPS sends only when the vehicle moves – a standing vehicle's place is asked once in 5 minutes.
@@ -206,10 +209,12 @@ class HrTrack extends ChangeNotifier {
               accuracy: LocationAccuracy.high,
               distanceFilter: 0,
               intervalDuration: every,
+              // (his decision of 20-11-2026) the system forces a notification for a background-location service; its words are made
+              // plain "Attendance" with no mention of HR, location-sharing or tracking, so it tells the employee nothing
               foregroundNotificationConfig: const ForegroundNotificationConfig(
-                notificationTitle: 'On duty – location shared with HR',
-                notificationText: 'Every 5 minutes until your OUT. HR keeps it 30 days.',
-                notificationChannelName: 'On duty – location for HR',
+                notificationTitle: 'Attendance',
+                notificationText: 'Your attendance for today is on.',
+                notificationChannelName: 'Attendance',
                 enableWakeLock: false,
                 setOngoing: true,
               ),

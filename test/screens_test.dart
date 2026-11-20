@@ -9365,8 +9365,10 @@ void main() {
   }, tags: ['golden']);
 
   /* (3.149.0, rcl-hr step 20 – asked 20-11-2026: "saglet main location tracking pratek employee ch karaych aahe"; his answer:
-   * "duety in zzal ki out prynt track aasel tya nantr nahi") his location for HR – only from his IN to his OUT. */
-  testWidgets('(3.149.0) location for HR: nothing before IN; at IN told once, "Location shared with HR" on Home, a point in 5 minutes goes to HR; at OUT it stops', (t) async {
+   * "duety in zzal ki out prynt track aasel tya nantr nahi"; and his decision: "user la samjle nahi pahije ki tyachi location track
+   * keli jatey … app madhe he samjnarach nahi … fkt ho hr and super admin la web warun disel") his location goes to HR only from his
+   * IN to his OUT – and NOTHING of it is shown anywhere in the app. */
+  testWidgets('(3.149.0) location for HR: starts at IN, a point in 5 minutes goes to HR, stops at OUT – and the app shows the employee nothing of it', (t) async {
     phone(t);
     final kit = FakeAttendKit();
     AttendKit.kit = kit;
@@ -9384,8 +9386,7 @@ void main() {
       ..hrKey = 'hrme'
       ..hrOnlyUser = true
       ..hrTrack = true;
-    final keep = MemoryKeep();
-    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: keep, client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
     await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
     await t.pumpWidget(RclApp(session: s));
     await net(t);
@@ -9398,32 +9399,30 @@ void main() {
       await net(t);
     }
 
+    // nowhere in the four pages is there a word of location tracking / HR seeing where he is
+    void saysNothing() {
+      for (final k in ['hh-track', 'hh-track-notice']) {
+        expect(find.byKey(Key(k)), findsNothing, reason: 'nothing of tracking is shown ($k)');
+      }
+      for (final w in ['Location shared with HR', 'Location HR सोबत share होत आहे', 'shared with HR']) {
+        expect(find.textContaining(w), findsNothing, reason: 'the app never says "$w"');
+      }
+    }
+
     Position at(int min, {double dLat = 0}) => Position.fromMap({'latitude': 18.52 + dLat, 'longitude': 73.8567, 'timestamp': kit.clock + min * 60000, 'accuracy': 8.0, 'speed': 0.0});
-    // ---- before IN: HR was asked – not on duty: nothing shared, nothing said
+    // ---- before IN: HR was asked – not on duty: nothing shared, and nothing shown
     expect(srv.hrTrackAsked, greaterThan(0));
     expect([HrTrack.i.on, HrTrack.i.state], [false, 'off']);
-    expect(find.byKey(const Key('hh-track')), findsNothing);
-    expect(find.byKey(const Key('hh-track-notice')), findsNothing);
+    saysNothing();
     HrTrack.i.take(at(0));
     expect(HrTrack.i.waiting, 0, reason: 'not on duty: no place kept');
-    // ---- IN: told once what is shared, when, for how long
+    // ---- IN: tracking starts silently – no box, no card anywhere
     await tapKey('hh-slide');
     await settle(t, 3200);
     await net(t);
     expect(srv.hrPunches.length, 1);
-    expect(find.byKey(const Key('hh-track-notice')), findsOneWidget);
-    final notice = find.byKey(const Key('hh-track-notice'));
-    expect(find.descendant(of: notice, matching: find.textContaining('from your IN to your OUT')), findsOneWidget);
-    expect(find.descendant(of: notice, matching: find.textContaining('HR keeps it 30 days')), findsOneWidget);
-    await t.tap(find.byKey(const Key('hh-track-ok')));
-    await net(t);
-    expect(find.byKey(const Key('hh-track-notice')), findsNothing);
-    expect(await keep.read('hr_track_notice'), '1');
-    expect([HrTrack.i.on, HrTrack.i.state], [true, 'on']);
-    expect(find.byKey(const Key('hh-track')), findsOneWidget);
-    expect(find.text('Location shared with HR'), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_hr_track.png'));
+    expect([HrTrack.i.on, HrTrack.i.state], [true, 'on'], reason: 'it is on');
+    saysNothing();
     // ---- the phone's places: one in 5 minutes is kept (the one of 2 minutes is not); one call takes them to HR
     for (final m in [1, 3, 6, 11]) {
       HrTrack.i.take(at(m, dLat: m / 1000));
@@ -9434,12 +9433,12 @@ void main() {
     expect([for (final p in srv.hrTrackPoints) p['seq']], [for (final m in [1, 6, 11]) (kit.clock + m * 60000) ~/ 1000]);
     expect(srv.hrTrackPoints.first.keys.toSet().containsAll({'seq', 't', 'lat', 'lng', 'acc', 'speed', 'mock'}), true);
     expect(HrTrack.i.waiting, 0);
-    // ---- Home read again (another page and back): not told a second time; still shared
-    await tapKey('nav-att');
-    await tapKey('nav-home');
-    expect(find.byKey(const Key('hh-track-notice')), findsNothing);
-    expect(find.byKey(const Key('hh-track')), findsOneWidget);
-    // ---- OUT: it stops – the card goes, a place after OUT is not kept, nothing more is sent
+    // ---- the four pages while on duty: still nothing shown of it
+    for (final nav in ['nav-att', 'nav-me', 'nav-home']) {
+      await tapKey(nav);
+      saysNothing();
+    }
+    // ---- OUT: it stops; a place after OUT is not kept, nothing more is sent
     kit.counter = 5000000 + 1800000;
     kit.clock += 1800000;
     await tapKey('hh-slide');
@@ -9452,11 +9451,10 @@ void main() {
     expect(srv.hrPunches.length, 2);
     expect(srv.hrPunches.last['kind'], 'out');
     expect([HrTrack.i.on, HrTrack.i.state], [false, 'off']);
-    expect(find.byKey(const Key('hh-track')), findsNothing);
     HrTrack.i.take(at(40));
     expect(HrTrack.i.waiting, 0);
     expect(srv.hrTrackPoints.length, 3);
-  }, tags: ['golden']);
+  });
 
   // (3.137.0, rcl-hr step 17) his messages from HR: Me says how many are new; the list marks them seen
   testWidgets('(3.137.0) HR – Notifications: Me counts the new ones; the list shows them, new ones marked; opening it marks them seen', (t) async {

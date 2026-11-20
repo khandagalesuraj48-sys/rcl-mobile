@@ -2206,12 +2206,5 @@
 "{0} Log Book entries moved to {1} – the diesel stays with {2}.": "{0} Log Book entries {1} पर गईं – diesel {2} के पास ही रहा।",
 "Change the machinery number by itself: save or undo the other changes first, then pick the right machinery.": "Machinery number अकेला बदलें: पहले बाकी बदलाव save करें या हटाएँ, फिर सही machinery चुनें।",
 "Move entries to another machinery": "entries दूसरी machinery पर ले जाएँ",
-"Tap the entries to tick them": "entries पर दबाकर चुनें",
-"Location shared with HR": "Location HR के साथ share हो रही है",
-"While you are on duty – from your IN to your OUT – this phone sends your location to HR every 5 minutes, also when the app is closed. After OUT nothing is sent. HR keeps it 30 days, then it is deleted.": "आप duty पर हों तब – IN से OUT तक – यह phone हर 5 मिनट में आपकी location HR को भेजता है, app बंद होने पर भी। OUT के बाद कुछ नहीं जाता। HR इसे 30 दिन रखता है, फिर delete हो जाती है।",
-"OK, understood": "ठीक है, समझ गया",
-"Location not shared – switch it on": "Location share नहीं हो रही – चालू करें",
-"Allow the location for this app in the phone's settings – HR asks for it while you are on duty.": "Phone की settings में इस app को location दें – duty पर होते समय HR को यह चाहिए।",
-"The location (GPS) of the phone is off – switch it on.": "Phone की location (GPS) बंद है – चालू करें।",
-"Only from your IN to your OUT – every 5 minutes. HR sees where you are and your route of the day. Kept 30 days, then deleted.": "सिर्फ़ आपके IN से OUT तक – हर 5 मिनट में। आप कहाँ हैं और दिन का रास्ता HR को दिखता है। 30 दिन रखी जाती है, फिर delete।"
+"Tap the entries to tick them": "entries पर दबाकर चुनें"
 }
