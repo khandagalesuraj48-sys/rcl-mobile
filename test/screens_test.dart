@@ -122,8 +122,9 @@ Future<void> attPage(WidgetTester t) async {
   await net(t);
 }
 
-Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))..clock = () => DateTime(2026, 10, 14, 10, 30) // (a Day-shift time: the screens are the same every run)
-  ..api.keep.write('ai_consent_ok', '1'); // (20-11-2026) the assistant's one-time "Allow" (before a typed question goes to the AI service) is given already
+Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))
+  ..api.keep.write('ai_consent_ok', '1') // (20-11-2026) the assistant's one-time "Allow" (before a typed question goes to the AI service) is given already
+  ..clock = () => DateTime(2026, 10, 14, 10, 30); // (a Day-shift time: the screens are the same every run)
 
 Future<Session> ready(WidgetTester t, FakeServer srv) async {
   final s = make(srv);
