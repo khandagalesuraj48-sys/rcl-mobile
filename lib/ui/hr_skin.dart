@@ -202,6 +202,8 @@ class HrSkin extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> enter() async {
     _users++;
     _watch();
+    // (said a moment later: this is called while the page is being built)
+    await Future<void>.value();
     if (on) notifyListeners();
   }
 
