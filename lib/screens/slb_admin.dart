@@ -7,14 +7,18 @@
  *   Vehicle Allocation (Entries → Log Book; access "Vehicle Allocation"): who has which vehicle now, its opening and GPS, the free
  *     vehicles and drivers, what needs a look; Give / Release (with why – its closing is marked "missing", never made up) / Resolve
  *     (vlBoard every 30 seconds while it is seen; vlAssign, vlRelease, vlResolve).
- *   Live Tracking (Entries → Log Book; access "Live Tracking"): every vehicle on duty on the map (OpenStreetMap – flutter_map, no key),
- *     live / GPS off / not seen; the route of a day (vlLive every 20 seconds while it is seen; vlRoute). */
+ *   Live Tracking (Entries → Log Book; access "Live Tracking"): every vehicle on duty on the map – live / GPS off / not seen; the route
+ *     of a day (vlLive every 20 seconds while it is seen; vlRoute). The map is Google (google_maps_flutter) when the key is set at build
+ *     (--dart-define=GMAPS=true, the GitHub secret MAPS_API_KEY); without it, OpenStreetMap (flutter_map, no key) exactly as before. */
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gmf;
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -666,6 +670,11 @@ class SlbMap {
   static bool tiles = true;
 }
 
+/// (20-11-2026, "jithe jithe map ahe … google mapch disayla haway") GOOGLE map when built with --dart-define=GMAPS=true (the key is in
+/// the native manifest / plist, from a GitHub secret); else the OpenStreetMap map as before. The tests and a build without the key use
+/// OpenStreetMap, so nothing breaks; the Google map is verified on a real phone.
+const bool _useGoogle = bool.fromEnvironment('GMAPS');
+
 class LiveTrackingScreen extends StatefulWidget {
   const LiveTrackingScreen({super.key});
   @override
@@ -679,6 +688,8 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   Timer? _again;
   int _seq = 0;
   final mc = MapController();
+  gmf.GoogleMapController? _gmc;      // the Google map's controller (when --dart-define=GMAPS=true)
+  final _icons = <String, gmf.BitmapDescriptor>{};      // a vehicle pin drawn once as an image, by number + state
 
   @override
   void initState() {
@@ -727,6 +738,26 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     if (!ready) return;
     final pts = route != null ? [for (final p in (route!['points'] as List? ?? const [])) if (p is List && p.length > 1) LatLng((asNum(p[0]) ?? 0).toDouble(), (asNum(p[1]) ?? 0).toDouble())] : (fit ? [for (final v in _placed) _ll(_map(v['gps']))] : <LatLng>[]);
     if (pts.isEmpty) return;
+    if (_useGoogle) {
+      final c = _gmc;
+      if (c == null) return;
+      try {
+        if (pts.length == 1) {
+          c.animateCamera(gmf.CameraUpdate.newLatLngZoom(gmf.LatLng(pts.first.latitude, pts.first.longitude), 15));
+        } else {
+          var s = pts.first.latitude, n = pts.first.latitude, w = pts.first.longitude, e = pts.first.longitude;
+          for (final p in pts) {
+            if (p.latitude < s) s = p.latitude;
+            if (p.latitude > n) n = p.latitude;
+            if (p.longitude < w) w = p.longitude;
+            if (p.longitude > e) e = p.longitude;
+          }
+          c.animateCamera(gmf.CameraUpdate.newLatLngBounds(gmf.LatLngBounds(southwest: gmf.LatLng(s, w), northeast: gmf.LatLng(n, e)), 44));
+        }
+        if (route == null) fit = false;
+      } catch (_) {/* not drawn yet */}
+      return;
+    }
     try {
       if (pts.length == 1) {
         mc.move(pts.first, 15);
@@ -743,7 +774,11 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     final g = _map(v['gps']);
     if (g['lat'] == null || route != null || !ready) return;
     try {
-      mc.move(_ll(g), 15);
+      if (_useGoogle) {
+        _gmc?.animateCamera(gmf.CameraUpdate.newLatLngZoom(gmf.LatLng((asNum(g['lat']) ?? 0).toDouble(), (asNum(g['lng']) ?? 0).toDouble()), 15));
+      } else {
+        mc.move(_ll(g), 15);
+      }
     } catch (_) {}
   }
 
@@ -800,10 +835,81 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     ]);
   }
 
+  // the vehicle pin drawn once as a PNG (the number + tone colour, like _pin), for the Google map
+  gmf.BitmapDescriptor? _icon(Map<String, dynamic> v) {
+    final key = '${v['no']}|${v['state']}', cached = _icons[key];
+    if (cached != null) return cached;
+    _renderIcon(key, '${v['no']}', _tone('${v['state']}').$1);
+    return null;
+  }
+
+  Future<void> _renderIcon(String key, String no, Color c) async {
+    if (_icons.containsKey(key)) return;
+    _icons[key] = gmf.BitmapDescriptor.defaultMarker;      // a placeholder so it is drawn only once
+    try {
+      final png = await _pinPng(no, c);
+      if (mounted) setState(() => _icons[key] = gmf.BitmapDescriptor.fromBytes(png));
+    } catch (_) {/* keep the default pin */}
+  }
+
+  Future<Uint8List> _pinPng(String no, Color c) async {
+    const sc = 3.0;
+    final tp = TextPainter(text: TextSpan(text: no, style: TextStyle(fontSize: 11.5 * sc, fontWeight: FontWeight.w800, color: Colors.white)), textDirection: TextDirection.ltr)..layout();
+    final padH = 8 * sc, padV = 3 * sc, bw = tp.width + padH * 2, bh = tp.height + padV * 2, dotR = 5 * sc, w = bw, h = bh + 2 * sc + dotR * 2;
+    final rec = ui.PictureRecorder(), fill = Paint()..color = c, stroke = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2 * sc;
+    final canvas = Canvas(rec);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, bw, bh), Radius.circular(10 * sc)), fill);
+    tp.paint(canvas, Offset(padH, padV));
+    final cx = w / 2, cy = bh + 2 * sc + dotR;
+    canvas.drawCircle(Offset(cx, cy), dotR, fill);
+    canvas.drawCircle(Offset(cx, cy), dotR, stroke);
+    final img = await rec.endRecording().toImage(w.ceil(), h.ceil());
+    final bd = await img.toByteData(format: ui.ImageByteFormat.png);
+    return bd!.buffer.asUint8List();
+  }
+
+  // the Google map (built with --dart-define=GMAPS=true) – the same vehicles, route and GPS-off points
+  Widget _googleMap(List<LatLng> ll, List<Map<String, dynamic>> off) {
+    gmf.LatLng g(LatLng p) => gmf.LatLng(p.latitude, p.longitude);
+    gmf.LatLng gm(Map<String, dynamic> m) => gmf.LatLng((asNum(m['lat']) ?? 0).toDouble(), (asNum(m['lng']) ?? 0).toDouble());
+    final markers = <gmf.Marker>{}, polylines = <gmf.Polyline>{}, circles = <gmf.Circle>{};
+    if (ll.length > 1) polylines.add(gmf.Polyline(polylineId: const gmf.PolylineId('route'), points: [for (final p in ll) g(p)], color: const Color(0xFF6D28D9), width: 4));
+    if (ll.isNotEmpty) {
+      for (var i = 0; i < off.length; i++) circles.add(gmf.Circle(circleId: gmf.CircleId('off$i'), center: gm(off[i]), radius: 18, fillColor: const Color(0x66F59E0B), strokeColor: const Color(0xFFB45309), strokeWidth: 2));
+      circles.add(gmf.Circle(circleId: const gmf.CircleId('start'), center: g(ll.first), radius: 20, fillColor: const Color(0xCC15803D), strokeColor: Colors.white, strokeWidth: 2));
+      circles.add(gmf.Circle(circleId: const gmf.CircleId('end'), center: g(ll.last), radius: 20, fillColor: const Color(0xCCB91C1C), strokeColor: Colors.white, strokeWidth: 2));
+    }
+    if (route == null) {
+      for (final v in _placed) {
+        markers.add(gmf.Marker(markerId: gmf.MarkerId('${v['no']}'), position: gm(_map(v['gps'])), icon: _icon(v) ?? gmf.BitmapDescriptor.defaultMarker, anchor: const Offset(0.5, 1.0), onTap: () => _focus(v)));
+      }
+    }
+    return gmf.GoogleMap(
+      key: const Key('vt-map'),
+      initialCameraPosition: const gmf.CameraPosition(target: gmf.LatLng(19.0, 75.5), zoom: 7),
+      markers: markers,
+      polylines: polylines,
+      circles: circles,
+      myLocationButtonEnabled: false,
+      zoomControlsEnabled: true,
+      mapToolbarEnabled: false,
+      compassEnabled: false,
+      onMapCreated: (c) {
+        _gmc = c;
+        ready = true;
+        _fit();
+      },
+    );
+  }
+
   Widget _mapView() {
     final r = route;
     final ll = r == null ? <LatLng>[] : [for (final p in (r['points'] as List? ?? const [])) if (p is List && p.length > 1) LatLng((asNum(p[0]) ?? 0).toDouble(), (asNum(p[1]) ?? 0).toDouble())];
     final off = r == null ? const <Map<String, dynamic>>[] : _maps(r['off']).where((o) => o['lat'] != null && o['lng'] != null).toList();
+    if (_useGoogle) return ClipRRect(borderRadius: BorderRadius.circular(20), child: _googleMap(ll, off));
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Stack(children: [
