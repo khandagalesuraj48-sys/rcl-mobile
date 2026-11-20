@@ -144,6 +144,8 @@ void main() {
       }
     })));
     await settle(t, 1500);
+    await t.ensureVisible(find.byKey(const Key('lv-open-8'))); // (the second card: further down the page)
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('lv-open-8')));
     await settle(t, 900);
     await t.scrollUntilVisible(find.text('An approved leave is deleted by the HR office.'), 150, scrollable: find.descendant(of: find.byKey(const Key('lvd-page')), matching: find.byType(Scrollable)).first);
