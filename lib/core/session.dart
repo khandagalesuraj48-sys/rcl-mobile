@@ -14,6 +14,7 @@ import 'api.dart';
 import 'rtc.dart';
 import 'format.dart';
 import 'fuel.dart';
+import 'hr_cache.dart';
 import 'hr_track.dart';
 import 'lang.dart';
 import 'sitewords.dart';
@@ -1556,6 +1557,7 @@ class Session extends ChangeNotifier {
       await api.keep.write(kStamp, null);
     } catch (_) {/* signing out never waits for it */}
     api.stamp = '';
+    HrCache.clear(); // (3.154.0) what the HR pages kept in memory
     await api.signOut();
     site = null;
     machines = [];

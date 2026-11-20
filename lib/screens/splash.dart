@@ -1,33 +1,46 @@
-/* (3.37.0, asked 25-10-2026: the approved "RCL ERP Premium Splash Screen") The app's first screen – while the sign-in kept on this
- * phone is checked and a site is opened (Gate: Stage.starting / Stage.opening). Dark navy, the photo of the PQC road (the finished
- * concrete on the left, the paving on the right), the Rachana mark on its white tile, "RCL ERP" (RCL red, ERP white), its red line,
- * INTEGRATED CONSTRUCTION MANAGEMENT, and at the bottom "Preparing your workspace..." with the bar. The bar is the REAL state of the
- * opening (Session.boot – the kept sign-in read, the sites from the Portal, the site's ticket, the site's lists), never a made-up
- * figure. The logo, the words and the bar are drawn here (sharp on every screen); only the road is a picture. Sizes follow the
- * width of the approved design (852 × 1846) – [s] below – so a small phone, a large one and a tablet look the same;
- * the top and the bottom keep clear of the status bar and the navigation bar. Nothing here signs in, opens or saves. */
+/* THE APP'S FIRST SCREEN – while the sign-in kept on this phone is checked and a site is opened (Gate: Stage.starting /
+ * Stage.opening). (3.154.0, his choice of 21-11-2026 – the picture he sent back: "mala watat video nko lawayla … ha mi photo dilay
+ * … he lau") THE CREST: the lion in its round gold ring on the fine gold lines of a survey sheet, the product's name, its gold
+ * line, the line under it, "Build · Manage · Move Forward", the gold wave, and at the bottom "Preparing your workspace..." with
+ * the gold bar and the version. No photo, no film, no red. LIGHT when the phone is light, DARK when it is dark.
+ * The bar is the REAL state of the opening (Session.boot – the kept sign-in read, the sites from the Portal, the site's ticket,
+ * the site's lists), never a made-up figure. Everything but the lion is drawn here (sharp on every screen). Sizes follow the
+ * width of the design (852 × 1846) – [s] below – so a small phone, a large one and a tablet look the same; the top and the bottom
+ * keep clear of the status bar and the navigation bar. Nothing here signs in, opens or saves. */
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
 import '../core/product_brand.dart';
+import '../core/update.dart' show appVersion;
 import '../ui/brand.dart' show Product;
+import '../ui/crest.dart';
 import '../ui/t.dart';
 
-/// The colours of the approved design.
+/// The colours of the design.
 class SplashC {
-  static const navy = Color(0xFF022646); // the sky at the top
-  static const navyDeep = Color(0xFF06111C); // the band at the bottom
-  static const red = Color(0xFFD91818); // the line under the title
-  static const redTop = Color(0xFFE21B24), redBottom = Color(0xFFB5080F); // "RCL"
-  static const barFrom = Color(0xFFD90A16), barTo = Color(0xFFF25750); // the bar
-  static const track = Color(0xFF515861);
+  static const navy = Color(0xFF0A0E22); // the top of the dark scene
+  static const navyMid = Color(0xFF161B36), navyDeep = Color(0xFF16225A); // its middle and its bottom
+  static const band = Color(0xFF0F1638); // under the wave
+  static const ink = Color(0xFF14224F); // the name on the light scene
+  static const cream = Color(0xFFFBF3DE), pearl = Color(0xFFEFF1FA), bandLight = Color(0xFFDFE2EC);
+  static const track = Color(0xFF2B3354), trackLight = Color(0xFFC6CAD3);
 }
 
-/// The photo of the road (852 × 990) and where its sun and its bottom worker are – they are put where the design has them.
-const kSplashRoad = 'assets/splash/pqc_road.webp';
-const _roadAspect = 852 / 990, _sunAt = .126, _sunOnScreen = .363;
+/// The scene's own colours: dark or light.
+class _Tone {
+  const _Tone(this.dark);
+  final bool dark;
+  List<Color> get sky => dark ? const [SplashC.navy, SplashC.navyMid, SplashC.navyDeep] : const [SplashC.cream, Color(0xFFF4EDDD), SplashC.pearl];
+  Color get band => dark ? SplashC.band : SplashC.bandLight;
+  Color get lines => kCrestGold.withValues(alpha: dark ? .3 : .42);
+  Color get name => dark ? Colors.white : SplashC.ink;
+  Color get soft => dark ? const Color(0xFFB9C0D9) : const Color(0xFF5A6382);
+  Color get faint => dark ? const Color(0xFF5E6788) : const Color(0xFFA9AFC2);
+  Color get label => dark ? Colors.white : const Color(0xFF0F1830);
+  Color get track => dark ? SplashC.track : SplashC.trackLight;
+}
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key, required this.progress});
@@ -36,54 +49,61 @@ class SplashScreen extends StatelessWidget {
   final double progress;
 
   @override
-  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light, // (as the opening screen before: light icons on the dark screen)
-        child: Scaffold(
-          backgroundColor: SplashC.navy,
-          body: SplashScene(bottom: (s) => _Progress(s: s, value: progress)),
-        ),
-      );
+  Widget build(BuildContext context) {
+    // (3.154.0) light when the phone is light, dark when it is dark
+    final dark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark).copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        backgroundColor: dark ? SplashC.navy : SplashC.cream,
+        body: SplashScene(dark: dark, bottom: (s) => _Progress(s: s, value: progress, tone: _Tone(dark))),
+      ),
+    );
+  }
 }
 
-/// (3.39.0, asked 25-10-2026: "old screen purn pn remove kr … sagle hoyla pahije but new screen war") The scene of the approved
-/// design – the navy, the PQC road, the red tile, the band; the mark, RCL ERP and its words at the top – with [bottom] at the bottom:
-/// the opening's bar (SplashScreen), the app lock (screens/lock.dart), "No connection" (main.dart Waiting). [room] = the height
-/// [bottom] needs (0: the bar, placed as the design has it); on a screen too short for both (a phone held across) the words at
-/// the top give way and [bottom] scrolls – it is never cut, its button (at its foot) always on the screen. [side]: its margin left and right (of the design's width).
+/// The scene of the design – the survey lines, the lion in its ring, the name and its words at the top, the gold wave – with
+/// [bottom] at the bottom: the opening's bar (SplashScreen), "No connection" (main.dart Waiting). [room] = the height [bottom]
+/// needs (0: the bar, placed as the design has it; more: a card – the lion and the name are then smaller, at the top); on a
+/// screen too short for both (a phone held across) the words at the top give way and [bottom] scrolls – it is never cut, its
+/// button (at its foot) always on the screen. [side]: its margin left and right (of the design's width). [dark]: a card's
+/// scene is always the dark one (its card is dark glass).
 class SplashScene extends StatelessWidget {
-  const SplashScene({super.key, required this.bottom, this.room = 0, this.side = .12});
+  const SplashScene({super.key, required this.bottom, this.room = 0, this.side = .12, this.dark = true});
   final Widget Function(double s) bottom;
   final double room, side;
+  final bool dark;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
-        final mq = MediaQuery.of(context);
+        final mq = MediaQuery.of(context), tone = _Tone(dark);
         final w = box.maxWidth, h = box.maxHeight, pad = mq.padding;
         // the width the design is drawn for: the phone's width; on a wide screen (a tablet held across) the design's
         // own shape (852 × 1846) at this height – never smaller than 300 so a phone held across still reads
         final s = math.min(w, math.max(h * 852 / 1846, math.min(w, 300.0)));
-        // the road: the whole width of the photo (as the design – its finished road on the left, the paver and the worker on the
-        // right), its sun at 36 % of the height; a short wide screen: at least half the height
-        final rh = math.max(w * 1.02 / _roadAspect, h * .5), rw = rh * _roadAspect, rt = h * _sunOnScreen - rh * _sunAt;
-        final logoTop = math.max(h * .099, pad.top + s * .03);
         final bar = room <= 0, below = bar ? math.max(s * .149, pad.bottom + 16) : math.max(s * .06, pad.bottom + 16);
-        final brandEnd = logoTop + s * .40, brand = bar || h - below - room >= brandEnd + 8;
+        // the bar: the lion large, a fifth of the way down; a card: the lion small at the top (as the screen before)
+        const words = .33; // the name, its line, the line under it and "Build · Manage · Move Forward" (of s)
+        var logoTop = bar ? math.max(h * .17, pad.top + s * .03) : math.max(h * .099, pad.top + s * .03);
+        var lion = s * (bar ? .36 : .2);
+        final barTop = h - below - s * .15;
+        if (bar && logoTop + lion + s * words > barTop - 8) {
+          // a short screen: from the top, the lion as large as there is room for
+          logoTop = pad.top + s * .03;
+          lion = (barTop - 8 - logoTop - s * words).clamp(s * .12, s * .36);
+        }
+        final brandEnd = logoTop + (bar ? lion + s * words : s * .42), brand = bar || h - below - room >= brandEnd + 8;
         final rest = h - below - (brand ? brandEnd + 8 : pad.top + 12);
-        final x = (w - s) / 2;
+        final x = (w - s) / 2, eddy = Offset(w / 2, logoTop + lion / 2);
         return Stack(fit: StackFit.expand, children: [
           // (3.39.0, asked 25-10-2026: "app opening slow zal aahe") the still part of the screen is drawn ONCE and kept: the bar that
-          // moves (and the photo while it comes in) are their own layers – nothing else is drawn again on every frame
+          // moves is its own layer – nothing else is drawn again on every frame
           RepaintBoundary(
             child: Stack(fit: StackFit.expand, children: [
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [SplashC.navy, Color(0xFF0B2643), SplashC.navyDeep], stops: [0, .45, 1]),
-                ),
-              ),
-              Positioned.fill(child: CustomPaint(painter: _Glow(Offset(w * .1, rt + rh * _sunAt), s))),
-              Positioned(left: (w - rw) / 2, top: rt, width: rw, height: rh, child: const RepaintBoundary(child: _Road())),
-              Positioned.fill(child: CustomPaint(painter: _Decor(s))),
-              if (brand) Positioned(top: logoTop, left: 0, right: 0, child: _Brand(s: s)),
+              DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: tone.sky, stops: const [0, .42, 1]))),
+              Positioned.fill(child: CustomPaint(painter: CrestLines(eddy: eddy, ring: brand ? lion : s * .3, color: tone.lines))),
+              if (bar) Positioned.fill(child: CustomPaint(painter: CrestWave(top: h - below - s * .36, rise: s * .13, fill: tone.band))),
+              if (brand) Positioned(top: logoTop, left: 0, right: 0, child: _Brand(s: s, lion: lion, tone: tone, full: bar)),
             ]),
           ),
           if (bar)
@@ -95,11 +115,12 @@ class SplashScene extends StatelessWidget {
               bottom: below,
               child: ConstrainedBox(constraints: BoxConstraints(maxHeight: math.max(0.0, rest)), child: SingleChildScrollView(reverse: true, child: bottom(s))), // (its button stays on the screen)
             ),
+          if (bar) Positioned(left: 0, right: 0, bottom: math.max(pad.bottom + 4, below - s * .1), child: _Version(s: s, color: tone.faint)),
         ]);
       });
 }
 
-/// (3.39.0) The dark glass card at the bottom of the scene (the app lock, "No connection") – it reads over the photo.
+/// (3.39.0) The dark glass card at the bottom of the scene ("No connection").
 class SplashPanel extends StatelessWidget {
   const SplashPanel({super.key, required this.children});
   final List<Widget> children;
@@ -107,16 +128,16 @@ class SplashPanel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
         decoration: BoxDecoration(
-          color: const Color(0xD906111C),
+          color: const Color(0xE60B1024),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0x24FFFFFF)),
+          border: Border.all(color: const Color(0x4DE6B94E)),
           boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 8))],
         ),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
       );
 }
 
-/// (3.39.0) The red button of the scene (as the design's bar).
+/// (3.39.0) The button of the scene – (3.154.0) gold, as the design's bar.
 class SplashButton extends StatelessWidget {
   const SplashButton({super.key, required this.label, required this.icon, required this.onPressed});
   final Widget label;
@@ -125,10 +146,10 @@ class SplashButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FilledButton.icon(
         style: FilledButton.styleFrom(
-          backgroundColor: SplashC.barFrom,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: const Color(0x66D90A16),
-          disabledForegroundColor: const Color(0xB3FFFFFF),
+          backgroundColor: kCrestGold,
+          foregroundColor: const Color(0xFF2A1D00),
+          disabledBackgroundColor: const Color(0x66E6B94E),
+          disabledForegroundColor: const Color(0xB32A1D00),
           minimumSize: const Size.fromHeight(54),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           textStyle: const TextStyle(fontFamily: 'Rubik', fontFamilyFallback: ['NotoDeva'], fontSize: 17, fontWeight: FontWeight.w800), // (the app's own letters)
@@ -139,7 +160,7 @@ class SplashButton extends StatelessWidget {
       );
 }
 
-/// (3.39.0) The navy of the design behind a screen of its own (Which site): the sky above, the deep band below, the sunset's light.
+/// (3.39.0) The navy of the design behind a screen of its own (Which site), with the survey lines at its top.
 class SplashBackdrop extends StatelessWidget {
   const SplashBackdrop({super.key, required this.child});
   final Widget child;
@@ -149,123 +170,114 @@ class SplashBackdrop extends StatelessWidget {
         return Stack(fit: StackFit.expand, children: [
           const DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [SplashC.navy, Color(0xFF0B2643), SplashC.navyDeep], stops: [0, .45, 1]),
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [SplashC.navy, SplashC.navyMid, SplashC.navyDeep], stops: [0, .42, 1]),
             ),
           ),
-          Positioned.fill(child: CustomPaint(painter: _Glow(Offset(w * .1, h * .62), s))),
+          Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: CrestLines(eddy: Offset(w * .82, h * .1), ring: s * .3, color: kCrestGold.withValues(alpha: .2), depth: .4)))),
           child,
         ]);
       });
 }
 
-/// The photo – its top and its bottom fade out (see-through there, so the navy and the sunset's light behind it go on into the photo
-/// without a line). (3.39.0, asked 25-10-2026: "app opening slow zal aahe") the fade is in the picture itself (its own alpha) – no
-/// mask to work out on every frame. It comes in softly when it is read (the screen never waits for it).
-class _Road extends StatelessWidget {
-  const _Road();
-  @override
-  Widget build(BuildContext context) => Image.asset(
-        kSplashRoad,
-        key: const Key('splash-road'),
-        fit: BoxFit.fill,
-        filterQuality: FilterQuality.medium,
-        gaplessPlayback: true,
-        excludeFromSemantics: true,
-        frameBuilder: (context, child, frame, sync) => sync
-            ? child
-            : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 260), curve: Curves.easeOut, child: child),
-      );
-}
-
-/// The sunset's warm light over the navy above the photo's own sky – so the sky goes from the navy into the photo without a line.
-class _Glow extends CustomPainter {
-  _Glow(this.sun, this.s);
-  final Offset sun;
-  final double s;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final r = s * .85;
-    canvas.save();
-    canvas.translate(sun.dx, sun.dy);
-    canvas.scale(1.7, 1);
-    canvas.drawCircle(
-        Offset.zero,
-        r,
-        Paint()
-          ..shader = const RadialGradient(colors: [Color(0x8CC9784A), Color(0x26704A55), Color(0x00022646)], stops: [0, .45, 1])
-              .createShader(Rect.fromCircle(center: Offset.zero, radius: r)));
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_Glow o) => o.sun != sun || o.s != s;
-}
-
-/// The mark on its white tile, "RCL ERP", the red line and the words under it.
+/// The lion in its ring, the name, the gold line and the words under it.
 class _Brand extends StatelessWidget {
-  const _Brand({required this.s});
-  final double s;
+  const _Brand({required this.s, required this.lion, required this.tone, required this.full});
+  final double s, lion;
+  final _Tone tone;
+
+  /// the opening screen: everything; a card's scene: no "Build · Manage · Move Forward"
+  final bool full;
   @override
   Widget build(BuildContext context) {
-    final tile = s * .218, title = s * .095; // (3.125.0) the name is one word ("SKETCHLINE"): one line
+    final title = s * (full ? .105 : .095); // (3.125.0) the name is one word ("SKETCHLINE"): one line
     // (3.124.0) the name and the logo are the Portal's ("Branding"): written again when its answer comes while this screen is up
     return ListenableBuilder(listenable: ProductBrand.i, builder: (context, _) => MediaQuery.withNoTextScaling( // (the design's sizes: "Size of the text" in Settings is for the app's screens)
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          key: const Key('splash-logo'),
-          width: tile,
-          height: tile,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Colors.black, // (3.124.0) the Sketchline lion on its own black
-            borderRadius: BorderRadius.circular(tile * .19),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .35), blurRadius: tile * .16, offset: Offset(0, tile * .05))],
-          ),
-          child: ProductBrand.i.logo == null
-              ? Image.asset(Product.logo, fit: BoxFit.cover, filterQuality: FilterQuality.medium, semanticLabel: Product.name)
-              : Image.memory(ProductBrand.i.logo!, fit: BoxFit.cover, filterQuality: FilterQuality.medium, gaplessPlayback: true, semanticLabel: Product.name),
-        ),
-        SizedBox(height: s * .014),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(key: const Key('splash-title'), mainAxisSize: MainAxisSize.min, children: [
-            ShaderMask(
-              blendMode: BlendMode.srcIn,
-              shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Product.gold, Product.goldDeep]).createShader(r), // (3.124.0, his choice A: the name in the logo's gold, then white)
-              child: Text(Product.first.toUpperCase(), style: _title(title, Colors.white)),
-            ),
-            if (Product.second.isNotEmpty) Text(' ${Product.second.toUpperCase()}', style: _title(title, Colors.white)), // (3.125.0) a second word only when the Portal's Branding has one
-          ]),
-        ),
-        SizedBox(height: s * .008),
-        Container(width: s * .082, height: math.max(2.0, s * .0042), decoration: BoxDecoration(color: Product.gold, borderRadius: BorderRadius.circular(2))),
-        SizedBox(height: s * .02),
+        CrestLion(key: const Key('splash-logo'), size: lion, dark: tone.dark),
+        SizedBox(height: s * (full ? .05 : .03)),
         SizedBox(
-          width: s * .66,
+          width: s * .74,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(key: const Key('splash-title'), mainAxisSize: MainAxisSize.min, children: [
+              // (his picture: the name in gold on the dark scene, in navy on the light one)
+              if (tone.dark)
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [kCrestGoldPale, Product.gold, Product.goldDeep]).createShader(r),
+                  child: Text(Product.first.toUpperCase(), style: _title(title, Colors.white)),
+                )
+              else
+                Text(Product.first.toUpperCase(), style: _title(title, tone.name)),
+              if (Product.second.isNotEmpty) Text(' ${Product.second.toUpperCase()}', style: _title(title, tone.name)), // (3.125.0) a second word only when the Portal's Branding has one
+            ]),
+          ),
+        ),
+        SizedBox(height: s * .026),
+        Container(width: s * .13, height: math.max(2.0, s * .0055), decoration: BoxDecoration(gradient: kCrestGoldFill, borderRadius: BorderRadius.circular(2))),
+        SizedBox(height: s * .03),
+        SizedBox(
+          width: s * .7,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(Product.line.toUpperCase(),
                 key: const Key('splash-sub'),
                 maxLines: 1,
-                style: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w400, fontSize: s * .02, height: 1, letterSpacing: s * .02 * .3, color: const Color(0xF2F8F8F8))),
+                style: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w800, fontSize: s * .026, height: 1, letterSpacing: s * .026 * .32, color: tone.name)),
           ),
         ),
+        if (full) ...[
+          SizedBox(height: s * .05),
+          SizedBox(
+            width: s * .7,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('Build  •  Manage  •  Move Forward', key: const Key('splash-line'), maxLines: 1, style: TextStyle(fontFamily: 'Rubik', fontWeight: FontWeight.w600, fontSize: s * .03, height: 1, letterSpacing: s * .002, color: tone.soft)),
+            ),
+          ),
+        ],
       ]),
     ));
   }
 
-  static TextStyle _title(double size, Color c) => TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w800, fontSize: size, height: 1, letterSpacing: -size * .005, color: c);
+  static TextStyle _title(double size, Color c) => TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w800, fontSize: size, height: 1, letterSpacing: size * .04, color: c);
+}
+
+/// "Version 3.154.0" under the bar (nothing until it is read).
+class _Version extends StatefulWidget {
+  const _Version({required this.s, required this.color});
+  final double s;
+  final Color color;
+  @override
+  State<_Version> createState() => _VersionState();
+}
+
+class _VersionState extends State<_Version> {
+  String v = '';
+  @override
+  void initState() {
+    super.initState();
+    appVersion().then((x) {
+      if (mounted && x.isNotEmpty) setState(() => v = x);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => v.isEmpty
+      ? const SizedBox.shrink()
+      : MediaQuery.withNoTextScaling(child: Text('Version ${v.split(' ').first}', key: const Key('splash-version'), textAlign: TextAlign.center, maxLines: 1, style: TextStyle(fontFamily: 'Rubik', fontSize: (widget.s * .026).clamp(10.0, 14.0), color: widget.color)));
 }
 
 /// "Preparing your workspace..." with how far the opening is, and the bar – moving smoothly to each real step.
 class _Progress extends StatelessWidget {
-  const _Progress({required this.s, required this.value});
+  const _Progress({required this.s, required this.value, required this.tone});
   final double s, value;
+  final _Tone tone;
   @override
   Widget build(BuildContext context) {
     final still = MediaQuery.of(context).disableAnimations;
-    final fs = (s * .0285).clamp(11.0, 16.0);
-    final style = TextStyle(fontFamily: 'Rubik', fontFamilyFallback: const ['NotoDeva'], fontSize: fs, height: 1.2, color: const Color(0xEBFFFFFF), fontWeight: FontWeight.w400);
+    final fs = (s * .0305).clamp(11.0, 17.0);
+    final style = TextStyle(fontFamily: 'Rubik', fontFamilyFallback: const ['NotoDeva'], fontSize: fs, height: 1.2, color: tone.label, fontWeight: FontWeight.w600);
     return MediaQuery.withNoTextScaling(
       child: TweenAnimationBuilder<double>(
         tween: Tween(end: value.clamp(0.0, 1.0)),
@@ -275,10 +287,10 @@ class _Progress extends StatelessWidget {
           Row(children: [
             Expanded(child: Text('Preparing your workspace...', mr: 'तुमचे workspace तयार होत आहे...', key: const Key('splash-label'), maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
             const SizedBox(width: 12),
-            Text('${(v * 100).round()}%', key: const Key('splash-pct'), style: style.copyWith(color: Colors.white)),
+            Text('${(v * 100).round()}%', key: const Key('splash-pct'), style: style.copyWith(fontWeight: FontWeight.w700)),
           ]),
           SizedBox(height: s * .024),
-          SizedBox(height: math.max(5.0, s * .0153), child: CustomPaint(painter: _Bar(v))),
+          SizedBox(height: math.max(5.0, s * .0153), child: CustomPaint(painter: _Bar(v, tone.track))),
         ]),
       ),
     );
@@ -286,105 +298,18 @@ class _Progress extends StatelessWidget {
 }
 
 class _Bar extends CustomPainter {
-  _Bar(this.v);
+  _Bar(this.v, this.track);
   final double v;
+  final Color track;
   @override
   void paint(Canvas canvas, Size size) {
     final r = Radius.circular(size.height / 2);
-    canvas.drawRRect(RRect.fromRectAndRadius(Offset.zero & size, r), Paint()..color = SplashC.track);
+    canvas.drawRRect(RRect.fromRectAndRadius(Offset.zero & size, r), Paint()..color = track);
     if (v <= 0) return;
     final fill = Rect.fromLTWH(0, 0, math.max(size.height, size.width * v), size.height);
-    canvas.drawRRect(RRect.fromRectAndRadius(fill, r),
-        Paint()..shader = const LinearGradient(colors: [SplashC.barFrom, SplashC.barTo]).createShader(fill));
+    canvas.drawRRect(RRect.fromRectAndRadius(fill, r), Paint()..shader = kCrestGoldFill.createShader(fill));
   }
 
   @override
-  bool shouldRepaint(_Bar o) => o.v != v;
-}
-
-/// The red tile at the top left with its fine outline, and at the bottom the dark band with its light line and the red streaks.
-class _Decor extends CustomPainter {
-  _Decor(this.s);
-  final double s;
-
-  /// A rounded square turned 45° – its right corner at [right], its middle at the height [cy], [half] from the middle to that
-  /// corner. Drawn turned: [paint]'s shader runs in the square's own frame (left → right = the screen's top left → bottom right).
-  void _diamond(Canvas canvas, double right, double cy, double half, double radius, Paint paint) {
-    final d = half + radius * (math.sqrt2 - 1), side = d * math.sqrt2;
-    canvas.save();
-    canvas.translate(right - half, cy);
-    canvas.rotate(math.pi / 4);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: side, height: side), Radius.circular(radius)), paint);
-    canvas.restore();
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-    // the top left: the red tile – dark inside, bright along its right and lower edges – and its fine outline fading away
-    final redSide = (s * .30 + s * .047 * (math.sqrt2 - 1)) * math.sqrt2;
-    _diamond(canvas, s * .178, s * .209, s * .30, s * .047,
-        Paint()..shader = const LinearGradient(colors: [Color(0xFF3C1630), Color(0xFF8E1927), Color(0xFFD3262C)], stops: [.15, .6, 1]).createShader(Rect.fromCenter(center: Offset.zero, width: redSide, height: redSide)));
-    final lineSide = (s * .345 + s * .07 * (math.sqrt2 - 1)) * math.sqrt2;
-    _diamond(canvas, s * .226, s * .225, s * .345, s * .07,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = math.max(1.0, s * .0022)
-          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x80FFFFFF), Color(0x66FFFFFF), Color(0x00FFFFFF)], stops: [0, .35, .85])
-              .createShader(Rect.fromCenter(center: Offset.zero, width: lineSide, height: lineSide)));
-
-    // the bottom: the road darkens, then the band under its curved edge
-    canvas.drawRect(
-        Rect.fromLTWH(0, h - s * .62, w, s * .62),
-        Paint()
-          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x0006111C), Color(0x9906111C)])
-              .createShader(Rect.fromLTWH(0, h - s * .62, w, s * .62)));
-    final a = Offset(0, h - s * .418), c = Offset(w * .235, h - s * .195), b = Offset(w, h - s * .171);
-    final edge = Path()
-      ..moveTo(a.dx, a.dy)
-      ..quadraticBezierTo(c.dx, c.dy, b.dx, b.dy);
-    final band = Path.from(edge)
-      ..lineTo(w, h)
-      ..lineTo(0, h)
-      ..close();
-    canvas.drawPath(
-        band,
-        Paint()
-          ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xA606111C), Color(0xF206111C), SplashC.navyDeep], stops: [0, .45, 1])
-              .createShader(Rect.fromLTWH(0, a.dy, w, h - a.dy)));
-    canvas.drawPath(
-        edge,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = math.max(1.0, s * .0018)
-          ..shader = const LinearGradient(colors: [Color(0x80FFFFFF), Color(0x4DFFFFFF), Color(0x1AFFFFFF)]).createShader(Rect.fromLTWH(0, 0, w, h)));
-
-    // the red streaks at the bottom left (a glow under a fine line)
-    void streak(Offset from, Offset ctrl, Offset to, double width, double alpha) {
-      final p = Path()
-        ..moveTo(from.dx, from.dy)
-        ..quadraticBezierTo(ctrl.dx, ctrl.dy, to.dx, to.dy);
-      final area = Rect.fromPoints(from, to);
-      final fade = LinearGradient(colors: [const Color(0xFFFF2A2A).withValues(alpha: alpha * .7), const Color(0xFFFF2A2A).withValues(alpha: alpha), const Color(0x00FF2A2A)], stops: const [0, .35, 1]);
-      canvas.drawPath(
-          p,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = width * 4
-            ..maskFilter = MaskFilter.blur(BlurStyle.normal, width * 3)
-            ..shader = fade.createShader(area));
-      canvas.drawPath(
-          p,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = width
-            ..shader = fade.createShader(area));
-    }
-
-    streak(Offset(0, h - s * .353), Offset(w * .13, h - s * .30), Offset(w * .32, h - s * .24), math.max(1.2, s * .0035), 1);
-    streak(Offset(0, h - s * .148), Offset(w * .2, h - s * .085), Offset(w * .46, h + s * .004), math.max(1.0, s * .0025), .6);
-  }
-
-  @override
-  bool shouldRepaint(_Decor o) => o.s != s;
+  bool shouldRepaint(_Bar o) => o.v != v || o.track != track;
 }

@@ -27,6 +27,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
+import '../core/hr_cache.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
@@ -72,9 +73,21 @@ class _LeaveScreenState extends State<LeaveScreen> {
     _load();
   }
 
+  /// (3.154.0) what was read the last time is shown at once; the server's answer takes its place (core/hr_cache.dart)
   Future<void> _load() async {
+    if (me == null) {
+      final k = await HrCache.read('myLeave');
+      if (!mounted) return;
+      if (k != null && me == null) {
+        setState(() {
+          me = k;
+          loading = false;
+        });
+      }
+    }
     try {
       final j = await widget.ask({'action': 'myLeave'});
+      HrCache.put('myLeave', j);
       if (!mounted) return;
       setState(() {
         me = j;
@@ -150,7 +163,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
           ? const SkeletonList(tiles: 0, rows: 4)
           : RefreshIndicator(
               onRefresh: _load,
-              child: ListView(key: const Key('leave-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
+              child: ListView(key: const Key('leave-page'), padding: EdgeInsets.fromLTRB(16, 14, 16, 40 + MediaQuery.paddingOf(context).bottom), children: [ // (3.154.0: its end stands clear of the bar that floats over the page)
                 if (me != null) hrButton('+ Apply for leave', '+ रजेसाठी अर्ज', key: const Key('leave-new'), onTap: _new),
                 if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('leave-err')),
                 if (me != null) ...[

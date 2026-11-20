@@ -91,7 +91,7 @@ void main() {
     expect('ProductMark('.allMatches(home).length, 0, reason: '(3.127.0) "home screen la only client name and logo"');
     expect('ClientMark('.allMatches(home).length, 2, reason: 'the client: the top of Home and its bar when scrolled');
     expect('ProductBlock('.allMatches(home).length, 1, reason: 'the ≡ menu: the lion, the name, its line');
-    expect(login, contains('ProductMark(size: 44'));
+    expect(login, contains('CrestLion('), reason: '(3.154.0) the lion in its gold ring');
     expect(splash, contains('Product.first.toUpperCase()'));
     expect(File('android/app/build.gradle.kts').existsSync() ? File('android/app/build.gradle.kts').readAsStringSync() : File('android/app/build.gradle').readAsStringSync(), contains('in.rachana.rcl'));
   });

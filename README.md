@@ -15,6 +15,39 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.154.0 (21-11-2026 – the screens he chose from the pictures: the opening "ha mi photo dilay … he lau", the sign-in "login
+p1 choose krel mi ekdam perfect aahe", Me "me card 2 he perfect aahe", My documents "d3 use kr"; and three things he asked for with
+them) THE CREST, THE NEW SIGN-IN, ME AND MY DOCUMENTS; HOME'S HEADER STAYS; THE BAR IS A GLASS PILL; THE HR PAGES KEEP WHAT THEY READ.**
+* **The crest** (`ui/crest.dart`): the lion in a round gold ring with its glow, the fine gold lines of a survey sheet, the gold wave –
+  drawn by the app; only the lion is a picture.
+* **The opening screen** (`screens/splash.dart`): the crest, the product's name (gold on dark, navy on light), its gold line, the
+  line under it (the Portal's Branding), "Build • Manage • Move Forward", the gold wave, "Preparing your workspace…" with the REAL
+  progress in a gold bar, the version. **No photo, no film, no red.** Light when the phone is light, dark when it is dark. "No
+  connection" stays on the dark scene (smaller lion, its card, a gold button). The photos `pqc_road.webp` and `site_login.jpg` are
+  no longer in the app.
+* **The sign-in** (`screens/login.dart`): the navy crest with the language pill, the lion, the name; "Sign in" with its gold line,
+  each box with its name above it, Remember me (gold tick), Forgot password?, the gold **Sign in**, "or", **Login with Email OTP**
+  (only when the Portal has it on), the version. Light / dark with the phone. Everything it did is unchanged (password, a code by
+  e-mail, the first own password, Remember me, the three languages).
+* **Me** (`screens/hr_me.dart`): his **identity card** – the gold foil strip with the product's name and lion, his photo (a touch
+  sets it), name, designation, Code / Site / Reports to, "Profile complete" with a gold bar; **My record** – one card with a
+  gold-ringed round sign each for My details, My documents (red count: papers missing), Company policies (red count: to read and
+  accept), My team (only a reporting manager); **App** – pills two in a row: Language, E-mail & password, Privacy, Reminders (On /
+  Off), Change site (more than one site), Check for update; the Sign out bar. The same rows as before – nothing added, nothing taken away.
+* **My documents**: on top "3 of 10 attached" with a gold ring and what is still needed; then the groups **Needed from you** (missing,
+  or rejected – with the HR office's reason and "Attach again"), **Being checked by HR**, **Verified**, **You can also attach**. Each
+  paper: its sign, its name, "Attached 20 Nov • Open", and **Upload** (gold) or **+ Add**. The server's actions are unchanged.
+* **Home** (`screens/hr_shell.dart`): his name and the bell **stay at the top** while the page moves under them.
+* **The bar**: only the pill – the page goes on under it (`extendBody`), nothing square round it; glass (the page shows through,
+  softened), a little smaller (62 high). Every page's list ends clear of it.
+* **The HR pages keep what they read** (`core/hr_cache.dart`, asked 21-11-2026: "cache data banwayla hawa … new lagech disel … old
+  data disu deu nko"): Home, Attendance (each month), Leave and My documents show AT ONCE what they read the last time and ask the
+  server in the same moment; the server's answer always takes its place and is kept for the next time. Per person and site; only
+  reads (a punch, a request, a paper go to the server as before); today's IN / OUT is shown from what is kept only when it is of
+  today; signed out: forgotten from memory. Before: the Attendance and Leave tabs showed an empty page and asked the server every
+  time they were touched.
+* **Not verified here:** a real phone (the glass of the bar – its blur – is drawn only on a phone; the pictures show it plain), iPhone.
+
 **Version 3.153.0 (20-11-2026 – the Home he approved from the pictures: "ok he design approved aahe", the bar: "s2 gheu ok soft gold
 … tab bar pn approved", and what he added with them) THE ATTENDANCE APP'S NEW HOME, BAR AND ME.**
 * **Home** (`screens/hr_shell.dart`): who he is – employee code, designation, reporting manager (rcl-hr `myHr` → `employee.manager`,

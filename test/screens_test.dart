@@ -182,6 +182,21 @@ Future<void> tapK(WidgetTester t, String key) async {
 
 /// (3.99.0) Brings [f] onto the screen where a finger can reach it: Home's small bar now stays at the top while the page is
 /// scrolled, so a thing brought to the very top would be under it – the page is then pulled down a little.
+/// (3.154.0) The bar of "My HR" floats OVER the page: what is to be tapped is moved up clear of it first.
+Future<void> clearOfBar(WidgetTester t, Finder f) async {
+  final bar = find.byKey(const Key('hr-nav')).hitTestable();
+  if (bar.evaluate().isEmpty || f.evaluate().isEmpty) return;
+  if (find.descendant(of: find.byKey(const Key('hr-nav')), matching: f).evaluate().isNotEmpty) return; // (one of the bar's own)
+  final over = t.getRect(f.first).bottom - t.getRect(bar.first).top + 8;
+  if (over <= 0) return;
+  final list = find.ancestor(of: f.first, matching: find.byType(Scrollable));
+  if (list.evaluate().isEmpty) return;
+  await t.drag(list.first, Offset(0, -over), warnIfMissed: false);
+  for (var i = 0; i < 4; i++) {
+    await t.pump(const Duration(milliseconds: 100));
+  }
+}
+
 Future<void> seen(WidgetTester t, Finder f) async {
   await t.ensureVisible(f);
   await t.pump();
@@ -235,20 +250,46 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await settle(t);
     await pics(t);
-    expect(find.text('Welcome Back'), findsOneWidget);
+    expect(find.byKey(const Key('login-title')), findsOneWidget); // (3.154.0) the sign-in he chose: the crest, "Sign in"
     expect(find.image(const AssetImage('assets/brand/sketchline_lion.png')), findsOneWidget); // (3.124.0) before the sign-in: the product's lion (the client is not known yet)
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_sign_in.png'));
     await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
     await t.enterText(find.byType(TextField).at(1), 'wrong');
-    await t.tap(find.text('Sign in'));
+    await t.tap(find.byKey(const Key('login-go')));
     await net(t);
     expect(find.text('Email or password is wrong.'), findsOneWidget);
     await t.enterText(find.byType(TextField).at(1), 'Nashik#Road848!');
-    await t.tap(find.text('Sign in'));
+    await t.tap(find.byKey(const Key('login-go')));
     await net(t);
     expect(s.stage, Stage.pickSite);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/2_sites.png'));
+  }, tags: ['golden']);
+
+  // (3.154.0) the sign-in he chose (the crest) follows the phone: dark when the phone is dark
+  testWidgets('(3.154.0) Sign-in on a dark phone: the same page in dark; Remember me and the eye work', (t) async {
+    phone(t);
+    t.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
+    final s = make(FakeServer());
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await settle(t);
+    await pics(t);
+    expect(find.byKey(const Key('login-title')), findsOneWidget);
+    expect(find.byKey(const Key('login-logo')), findsOneWidget);
+    expect(t.widget<Scaffold>(find.byType(Scaffold).first).backgroundColor, const Color(0xFF0B1024));
+    expect(t.widget<TextField>(find.byType(TextField).at(1)).obscureText, true);
+    await t.tap(find.byTooltip('Show password'));
+    await t.pump();
+    expect(t.widget<TextField>(find.byType(TextField).at(1)).obscureText, false);
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget, reason: 'Remember me is on as it comes');
+    await t.tap(find.byKey(const Key('login-remember')));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(find.byIcon(Icons.check_rounded), findsNothing);
+    await t.tap(find.byKey(const Key('login-remember')));
+    await t.pump(const Duration(milliseconds: 300));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_sign_in_dark.png'));
   }, tags: ['golden']);
 
   testWidgets('Home: stock, each place, machines working, today\'s Log Book, modules he may open, today\'s activity', (t) async {
@@ -1245,7 +1286,7 @@ void main() {
     await settle(t);
     await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
     await t.enterText(find.byType(TextField).at(1), 'Nashik#Road848!');
-    await t.tap(find.text('Sign in'));
+    await t.tap(find.byKey(const Key('login-go')));
     await net(t);
     expect(s.stage, Stage.setPassword);
     expect(find.text('Set your own password'), findsOneWidget);
@@ -1280,8 +1321,8 @@ void main() {
     await t.runAsync(s.start);
     await t.pumpWidget(RclApp(session: s));
     await t.pump(const Duration(milliseconds: 400));
-    expect(find.text('Sign in'), findsOneWidget);
-    final op = t.widget<Opacity>(find.ancestor(of: find.text('Integrated Construction Management'), matching: find.byType(Opacity)).first);
+    expect(find.byKey(const Key('login-go')), findsOneWidget);
+    final op = t.widget<Opacity>(find.ancestor(of: find.text('INTEGRATED CONSTRUCTION MANAGEMENT'), matching: find.byType(Opacity)).first);
     expect(op.opacity, 1);
   });
 
@@ -8576,6 +8617,7 @@ void main() {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
       await t.ensureVisible(find.byKey(Key(key)));
       await settle(t, 300);
+      await clearOfBar(t, find.byKey(Key(key)));
       await t.tap(find.byKey(Key(key)));
       await net(t);
     }
@@ -9014,6 +9056,7 @@ void main() {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
       await t.ensureVisible(find.byKey(Key(key)));
       await settle(t, 300);
+      await clearOfBar(t, find.byKey(Key(key)));
       await t.tap(find.byKey(Key(key)));
       await net(t);
     }
@@ -9044,6 +9087,11 @@ void main() {
     expect(find.descendant(of: find.byKey(const Key('hh-w-2026-10-13')), matching: find.text('P')), findsOneWidget);
     await t.scrollUntilVisible(find.byKey(const Key('hh-n-day-2026-10-12')), 200, scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('12 Oct has no punch'), findsOneWidget);
+    // (3.154.0, asked 21-11-2026) scrolled down: his name and the bell stay at the top
+    expect(find.byKey(const Key('hh-name')).hitTestable(), findsOneWidget);
+    expect(find.byKey(const Key('hh-bell')).hitTestable(), findsOneWidget);
+    expect(t.getRect(find.byKey(const Key('hr-nav'))).height, 62, reason: 'the bar: only the pill, a little smaller');
+    expect(t.widget<Scaffold>(find.ancestor(of: find.byKey(const Key('hr-nav')), matching: find.byType(Scaffold)).first).extendBody, true, reason: 'the page goes on under the pill – nothing square round it');
     expect(find.byKey(const Key('hh-dot')), findsNothing, reason: '(3.153.0) the bell is lit only by a notification not seen yet');
     expect(find.text('Driving licence'), findsOneWidget);
     expect(find.textContaining('runs out in 10 days'), findsOneWidget);
@@ -9089,10 +9137,10 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_leave.png'));
     await tapKey('nav-me');
     expect(find.byKey(const Key('me-page')), findsOneWidget);
-    expect(t.widget<Text>(find.byKey(const Key('me-role'))).data, 'E00012 · Site Engineer');
+    // (3.154.0) his identity card: designation, code, site, the person he reports to
+    expect([for (final k in ['me-role', 'me-code', 'me-boss']) t.widget<Text>(find.byKey(Key(k))).data], ['Site Engineer', 'E00012', 'Amit Patil']);
     expect(t.widget<Text>(find.byKey(const Key('me-pct'))).data, '64%');
-    expect(find.textContaining('4 still missing'), findsOneWidget);
-    expect(t.widget<Text>(find.byKey(const Key('me-boss'))).data, 'Reports to Amit Patil');
+    expect(t.widget<Text>(find.byKey(const Key('me-docs-n'))).data, '4', reason: 'the red count on My documents: four papers missing');
     // (3.153.0) My photo, My phone, Notifications, My work locations, Salary slips and Look are not rows of Me any more
     for (final k in ['me-photo', 'me-phone', 'me-notices', 'me-places', 'me-slips', 'me-look']) {
       expect(find.byKey(Key(k)), findsNothing, reason: k);
@@ -9111,7 +9159,8 @@ void main() {
     // ---- my documents: he attaches his PAN card himself – a photo from the gallery; sent to its place, then listed
     await tapKey('me-docs');
     expect(find.byKey(const Key('docs-page')), findsOneWidget);
-    expect(find.text('Missing'), findsNWidgets(4));
+    // (3.154.0) the papers in groups: four are needed from him
+    expect(t.widget<Text>(find.byKey(const Key('docs-need-n'))).data, '4');
     await tapKey('doc-add-pan');
     await t.tap(find.byKey(const Key('doc-gallery')));
     await net(t);
@@ -9119,15 +9168,15 @@ void main() {
     expect(srv.hrDocFiles.values.toList(), ['image/jpeg']);
     final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([da['kind'], da['path'], da.containsKey('id')], ['pan', 'emp12/f1.jpg', false], reason: 'no employee id is sent – the server knows who he is');
-    expect(find.text('Being checked'), findsOneWidget, reason: '(3.135.0, rcl-hr step 15) the HR office checks it now');
-    expect(find.text('Missing'), findsNWidgets(3));
+    expect(t.widget<Text>(find.byKey(const Key('docs-check-n'))).data, '1', reason: '(3.135.0, rcl-hr step 15) the HR office checks it now');
+    expect(t.widget<Text>(find.byKey(const Key('docs-need-n'))).data, '3');
     expect(find.byKey(const Key('doc-open-doc1')), findsOneWidget);
     await settle(t, 4000);      // (the message goes)
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_docs.png'));
     await t.pageBack();
     await net(t);
-    expect(find.textContaining('3 still missing'), findsOneWidget, reason: 'Me is read again');
+    expect(t.widget<Text>(find.byKey(const Key('me-docs-n'))).data, '3', reason: 'Me is read again');
     // ---- salary slips (Home's tile – not a row of Me any more): nothing made up before payroll
     await tapKey('nav-home');
     await tapKey('hh-slip');
@@ -9225,11 +9274,11 @@ void main() {
     expect(find.text('Language'), findsOneWidget);
     // ---- (3.113.0) the attendance reminders: on as they come; a press switches them off (kept on the phone) and on again
     await tapKey('me-remind');
-    expect(find.textContaining('Off – tap to switch on'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('me-remind-st'))).data, 'Off');
     expect(await AttendRemind.isOff(), true);
     await settle(t, 4000);
     await tapKey('me-remind');
-    expect(find.textContaining('On – half an hour before IN and OUT'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('me-remind-st'))).data, 'On');
     expect(await AttendRemind.isOff(), false);
     await settle(t, 4000);
     // ---- (3.112.0) the app's update is here too: checked on a press – nothing newer: said
@@ -9335,12 +9384,13 @@ void main() {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
       await t.ensureVisible(find.byKey(Key(key)));
       await settle(t, 300);
+      await clearOfBar(t, find.byKey(Key(key)));
       await t.tap(find.byKey(Key(key)));
       await net(t);
     }
 
     await tapKey('nav-me');
-    expect(find.text('1 to read and accept'), findsOneWidget, reason: 'one mandatory policy is not accepted yet');
+    expect(t.widget<Text>(find.byKey(const Key('me-policies-n'))).data, '1', reason: 'one mandatory policy is not accepted yet');
     await tapKey('me-policies');
     expect(find.byKey(const Key('pol-page')), findsOneWidget);
     expect(find.text('Version 2 · read and accept'), findsOneWidget);
@@ -9363,7 +9413,7 @@ void main() {
     expect(find.text('Version 2 · accepted 14 Oct'), findsOneWidget);
     await t.pageBack();
     await net(t);
-    expect(find.text('Read the policies you accepted'), findsOneWidget, reason: 'Me is read again');
+    expect(find.byKey(const Key('me-policies-n')), findsNothing, reason: 'Me is read again: nothing waits');
     // ---- the rejected paper: why, and "Attach again" – the new one takes its place
     await tapKey('me-docs');
     expect(find.byKey(const Key('doc-st-aadhaar')), findsOneWidget);
@@ -9376,7 +9426,7 @@ void main() {
     await net(t);
     final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([da['kind'], da['replaces']], ['aadhaar', 'd9'], reason: 'in place of the rejected one');
-    expect(find.text('Being checked'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('doc-aadhaar')), matching: find.text('Add')), findsOneWidget, reason: 'being checked now: one more can be added');
     expect(find.text('Rejected'), findsNothing);
   }, tags: ['golden']);
 
@@ -9412,6 +9462,7 @@ void main() {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
       await t.ensureVisible(find.byKey(Key(key)));
       await settle(t, 300);
+      await clearOfBar(t, find.byKey(Key(key)));
       await t.tap(find.byKey(Key(key)));
       await net(t);
     }
@@ -9471,6 +9522,7 @@ void main() {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
       await t.ensureVisible(find.byKey(Key(key)));
       await settle(t, 300);
+      await clearOfBar(t, find.byKey(Key(key)));
       await t.tap(find.byKey(Key(key)));
       await net(t);
     }
@@ -9645,6 +9697,7 @@ void main() {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
       await t.ensureVisible(find.byKey(Key(key)));
       await settle(t, 300);
+      await clearOfBar(t, find.byKey(Key(key)));
       await t.tap(find.byKey(Key(key)));
       await net(t);
     }
@@ -9686,6 +9739,7 @@ void main() {
       if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
       await t.ensureVisible(find.byKey(Key(key)));
       await settle(t, 300);
+      await clearOfBar(t, find.byKey(Key(key)));
       await t.tap(find.byKey(Key(key)));
       await net(t);
     }
@@ -9768,7 +9822,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     expect(find.byKey(const Key('login-otp')), findsOneWidget);
-    expect(find.text('Sign in'), findsOneWidget, reason: 'the password way stays the first one');
+    expect(find.byKey(const Key('login-go')), findsOneWidget, reason: 'the password way stays the first one');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1c_two_ways_in.png'));
     await t.enterText(find.byType(TextField).at(0), 'sujit.own@rcl.test');
@@ -9784,7 +9838,7 @@ void main() {
     // the password way works as ever
     await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
     await t.enterText(find.byType(TextField).at(1), 'Nashik#Road848!');
-    await t.tap(find.text('Sign in'));
+    await t.tap(find.byKey(const Key('login-go')));
     await net(t);
     expect(s.stage, Stage.pickSite);
     expect(srv.calls, isNot(contains('portal:otpSend')));
@@ -9811,15 +9865,15 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1d_code_by_email.png'));
     // too short, then wrong
     await t.enterText(find.byKey(const Key('login-otp-code')), '12');
-    await seen(t, find.text('Sign in'));
-    await t.tap(find.text('Sign in'));
+    await seen(t, find.byKey(const Key('login-go')));
+    await t.tap(find.byKey(const Key('login-go')));
     await settle(t, 600);
     expect(find.textContaining('Type the 6-digit code'), findsOneWidget);
     expect(srv.calls, isNot(contains('portal:otpLogin')), reason: 'not sent to the Portal');
     await t.enterText(find.byKey(const Key('login-otp-code')), '111111');
     await settle(t, 300);
-    await seen(t, find.text('Sign in'));
-    await t.tap(find.text('Sign in'));
+    await seen(t, find.byKey(const Key('login-go')));
+    await t.tap(find.byKey(const Key('login-go')));
     await net(t);
     expect(find.textContaining('The code is wrong or has expired.'), findsOneWidget);
     expect(s.stage, Stage.signedOut);
@@ -9834,8 +9888,8 @@ void main() {
     // the right code: the same sign-in as with the password
     await t.enterText(find.byKey(const Key('login-otp-code')), '482913');
     await settle(t, 300);
-    await seen(t, find.text('Sign in'));
-    await t.tap(find.text('Sign in'));
+    await seen(t, find.byKey(const Key('login-go')));
+    await t.tap(find.byKey(const Key('login-go')));
     await net(t);
     expect(s.stage, Stage.pickSite);
     expect(s.email, 'sujit@rcl.test', reason: 'his account – the user ID every module knows');

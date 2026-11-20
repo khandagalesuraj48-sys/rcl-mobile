@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:rcl_mobile/core/api.dart' show MemoryKeep;
 import 'package:rcl_mobile/core/attend.dart';
+import 'package:rcl_mobile/core/hr_cache.dart';
 
 import 'fake_attend.dart';
 
@@ -67,6 +68,37 @@ void main() {
     final keep = MemoryKeep(), k1 = await attendKey(keep), k2 = await attendKey(keep);
     expect([k1.length, k1 == k2, keep.data[kAttendKey] == k1], [43, true, true], reason: 'made once, kept in the safe, the same after');
     expect(await attendKey(MemoryKeep()) == k1, false, reason: 'another phone: another key');
+  });
+
+  // (3.154.0, asked 21-11-2026: "hr app madhe pn cache data banwayla hawa … new update ala tr new lagech disel … old data disu deu nko")
+  test('what the HR pages read is kept: shown at once the next time, the server\'s answer always takes its place; per person; gone from memory at sign-out', () async {
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    HrCache.who = 'a@rcl.test|S1';
+    expect(HrCache.now('myMonth:2026-10'), isNull);
+    expect(await HrCache.read('myMonth:2026-10'), isNull, reason: 'nothing kept yet');
+    HrCache.put('myMonth:2026-10', {'today': '2026-10-14', 'total': {'paid': 9}});
+    expect(HrCache.now('myMonth:2026-10')!['total'], {'paid': 9}, reason: 'at once, from memory');
+    await Future<void>.delayed(Duration.zero);
+    expect(kit.files.keys.where((k) => k.startsWith('hrc_')).length, 1, reason: 'and on the phone');
+    // the server says something new: that is what is kept from now on
+    HrCache.put('myMonth:2026-10', {'today': '2026-10-14', 'total': {'paid': 10}});
+    expect((await HrCache.read('myMonth:2026-10'))!['total'], {'paid': 10});
+    await Future<void>.delayed(Duration.zero);
+    // another person on this phone: nothing of the first
+    HrCache.who = 'b@rcl.test|S1';
+    expect(HrCache.now('myMonth:2026-10'), isNull);
+    expect(await HrCache.read('myMonth:2026-10'), isNull);
+    // the first again (the app opened anew): read from the phone
+    HrCache.who = 'a@rcl.test|S1';
+    expect(HrCache.now('myMonth:2026-10'), isNull, reason: 'memory was cleared');
+    expect((await HrCache.read('myMonth:2026-10'))!['total'], {'paid': 10});
+    // signed out: nothing in memory, nothing shown without a person
+    HrCache.clear();
+    expect(HrCache.now('myMonth:2026-10'), isNull);
+    expect(await HrCache.read('myMonth:2026-10'), isNull);
+    HrCache.put('x', {'a': 1});
+    expect(HrCache.now('x'), isNull, reason: 'nobody signed in: nothing is kept');
   });
 
   test('kept on the phone: written with its photo, read in the order taken, gone when sent; one person\'s are not another\'s', () async {
