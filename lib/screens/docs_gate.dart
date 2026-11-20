@@ -301,8 +301,6 @@ class _DocGateScreenState extends State<DocGateScreen> {
     final key = '${d['key']}', state = '${d['state']}', files = [for (final f in (d['files'] as List? ?? const []).whereType<Map>()) f];
     final ic = _ic[key] ?? (Icons.description_rounded, const Color(0xFF6B7280), const Color(0xFFEEF0F3));
     final working = busy == key;
-    final done = state == 'uploaded' || state == 'na';
-    final hint = _hint[key] ?? '';
     return Container(
       key: Key('dg-card-$key'),
       margin: const EdgeInsets.only(bottom: 11),
