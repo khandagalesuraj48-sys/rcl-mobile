@@ -368,8 +368,9 @@ class _DocGateScreenState extends State<DocGateScreen> {
 
   Widget _naTag() => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), decoration: BoxDecoration(color: const Color(0xFFEEF0F3), borderRadius: BorderRadius.circular(999)), child: const m.Text('N / A', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF7E8798))));
 
+  // same key as the first-upload button (the two never show together – pending shows Upload, uploaded shows Add-more), so "add another file" is reachable by one key
   Widget _addMore(Map d) => InkWell(
-        key: Key('dg-more-${d['key']}'),
+        key: Key('dg-add-${d['key']}'),
         onTap: () => _add(d),
         borderRadius: BorderRadius.circular(10),
         child: Container(width: 54, height: 54, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFCBB4AF), width: 1.6, style: BorderStyle.solid)), child: const Icon(Icons.add_rounded, color: _acc)),
