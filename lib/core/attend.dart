@@ -293,6 +293,18 @@ class AttendKit {
     return _info = {'id': id, 'model': model, 'os': os};
   }
 
+  /// (3.153.0, asked 20-11-2026: "pdf … direct phone madhe download hoil … notification madhe … to ghu shakel") A file of the app
+  /// put in the phone's DOWNLOADS with a notification that opens it ([text]: its second line). Android 10 and newer; false
+  /// anywhere else (iPhone, an older Android, a test) – the caller hands the file to the share sheet as before.
+  Future<bool> saveDownload(Uint8List bytes, String name, String mime, String text) async {
+    if (!Platform.isAndroid) return false;
+    try {
+      return await _ch.invokeMethod<bool>('saveDownload', {'name': name, 'mime': mime, 'bytes': bytes, 'text': text}) == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// (3.136.0, rcl-hr step 16) THE PHONE'S OWN PROOF – Google Play Integrity, asked only when the HR server says so (myAttend's
   /// `integrity.project`): a token bound to this punch ([hash] = "rcl-punch|<punch number>"); the HR server asks Google what it
   /// says. Not Android, Google not reachable, anything wrong: '' – the punch goes as before (the server decides what that means).

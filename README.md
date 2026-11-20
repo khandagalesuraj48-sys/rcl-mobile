@@ -15,6 +15,29 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.153.0 (20-11-2026 – the Home he approved from the pictures: "ok he design approved aahe", the bar: "s2 gheu ok soft gold
+… tab bar pn approved", and what he added with them) THE ATTENDANCE APP'S NEW HOME, BAR AND ME.**
+* **Home** (`screens/hr_shell.dart`): who he is – employee code, designation, reporting manager (rcl-hr `myHr` → `employee.manager`,
+  "–" until that server change is live); **the dial** (`ui/home_dial.dart`) – a line for every half hour of the shift with the time at
+  every hour, gold up to "now", the disc with a **live clock of the server's time** (myAttend's `now`, kept going by the phone),
+  SIGN IN / SIGN OUT; **Check in · Check out · Total working hours**; **My work locations** (`screens/hr_places.dart`) – a small map
+  that never moves (a touch opens the big map; ✕ goes back where he was), each place green "You are here" / red "2.4 km away" with
+  **Directions** (Google Maps); **This week** – day, date, the letter and the word; the four tiles and "For you" as before.
+* **Sign out is asked first** ("kahi lokanche chukun sign out hot"): "Do you really want to sign out?" – No, stay on duty / Yes, sign
+  out. Sign in goes straight on as before (one press: the place, the selfie, the punch; the message closes by itself).
+* **The bar** – "Soft gold": a soft raised bar, the open page in a pressed-in well with a gold edge that glides to the page chosen.
+  Home · Attendance · Leave · Me; the marking button of the middle is gone (the dial marks).
+* **The bell** opens his notifications only (`MyNoticesScreen`); its red dot = one not seen yet. Requests stay on their own tile.
+* **His photo** no longer blinks: the HR server gives a new ten-minute link at every reading – the first link of a picture is kept
+  while the app runs (`hrFace`), and the picture fills the whole circle.
+* **Me**: his identity card (navy and gold); **My details** now holds his photo (set / change) and his phone; rows taken away – My
+  photo, My phone, Notifications (the bell), My work locations (Home), Salary slips (Home's tile), Look.
+* **The look follows the phone** (`ui/hr_skin.dart`): dark mode → Midnight Gold, light → Pearl, at once on every HR page; nobody
+  chooses it in the app. (The ERP's own screens – green and cream – have no dark look yet: a piece of work of its own.)
+* **Attendance PDF**: on Android 10 and newer it is put straight into the phone's **Downloads** with a notification that opens it
+  (`MainActivity` "saveDownload"); an older Android and iPhone hand it to the share sheet as before.
+* Not verified here: a real phone (the Google map, the notification, the dark mode switch) – the build draws the screens and runs the tests.
+
 **Version 3.152.0 (20-11-2026, his decision: "app open krel user terms and condition pop up yeil … allow decline … decline kel tr
 attendance mark nahi krta yet … kuthun pn deta yaw … user ne allow kel ki te data store aswa"; the Portal's step 14) THE APP'S TERMS /
 LOCATION NOTICE.** Once, when the app opens (`screens/consent_gate.dart`, `core/app_consent.dart`): what the app uses – location for

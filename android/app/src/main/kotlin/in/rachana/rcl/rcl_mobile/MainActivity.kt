@@ -1,10 +1,17 @@
 package `in`.rachana.rcl.rcl_mobile
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.ContentValues
 import android.content.Intent
 import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.MediaStore
 import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -71,6 +78,44 @@ class MainActivity : FlutterFragmentActivity() {
                         "os" to ("Android " + Build.VERSION.RELEASE)))
                     "devOptions" -> result.success(Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0)
                     "elapsed" -> result.success(SystemClock.elapsedRealtime())
+                    /* (3.153.0, asked 20-11-2026: "attendance pdf download … direct phone madhe download hoil, user la warti disel notification")
+                     * saveDownload {name, mime, bytes, text} – the file is put in the phone's Downloads (Android 10 and newer: no
+                     * permission is needed for the app's own file) and a notification says so; a touch on it opens the file.
+                     * false: an older Android – the app hands the file to the share sheet as before. */
+                    "saveDownload" -> {
+                        val name = call.argument<String>("name") ?: "file.pdf"
+                        val mime = call.argument<String>("mime") ?: "application/pdf"
+                        val text = call.argument<String>("text") ?: "Downloaded"
+                        val bytes = call.argument<ByteArray>("bytes")
+                        if (bytes == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                            result.success(false)
+                        } else {
+                            val values = ContentValues()
+                            values.put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                            values.put(MediaStore.MediaColumns.MIME_TYPE, mime)
+                            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                            values.put(MediaStore.MediaColumns.IS_PENDING, 1)
+                            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                            if (uri == null) {
+                                result.success(false)
+                            } else {
+                                contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+                                val done = ContentValues()
+                                done.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                                contentResolver.update(uri, done, null, null)
+                                try {
+                                    val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                                    nm.createNotificationChannel(NotificationChannel("rcl_downloads", "Downloads", NotificationManager.IMPORTANCE_HIGH))
+                                    val open = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    val tap = PendingIntent.getActivity(this, name.hashCode(), open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                                    val note = Notification.Builder(this, "rcl_downloads").setSmallIcon(android.R.drawable.stat_sys_download_done)
+                                        .setContentTitle(name).setContentText(text).setContentIntent(tap).setAutoCancel(true).build()
+                                    nm.notify(name.hashCode(), note)
+                                } catch (e: Exception) { /* notifications not allowed: the file is in Downloads all the same */ }
+                                result.success(true)
+                            }
+                        }
+                    }
                     // (3.136.0, rcl-hr step 16) the phone's own proof (Google Play Integrity, the standard request): a token bound
                     // to this punch; any fault gives "" – the punch goes as before and the HR server decides
                     "integrity" -> {
