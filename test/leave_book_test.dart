@@ -45,6 +45,9 @@ void main() {
     expect(find.byKey(const Key('leave-mine')), findsOneWidget);
     expect(find.byKey(const Key('leave-ledger')), findsNothing);
     expect(find.byKey(const Key('lv-files-7')), findsNothing);
+    expect(find.byKey(const Key('leave-t-led')), findsNothing, reason: '(3.155.0) no leave policy of the Rule Book: no Ledger part');
+    await t.tap(find.byKey(const Key('leave-t-how')));
+    await settle(t, 400);
     expect(find.textContaining('4 leaves are added every month'), findsOneWidget);
     expect(sent, ['myLeave']);
   });
@@ -69,14 +72,19 @@ void main() {
     })));
     await settle(t, 1500);
     expect(t.widget<Text>(find.byKey(const Key('leave-bal'))).data, '3.5', reason: 'the one balance: paid 2 + comp-off 1.5');
-    await t.scrollUntilVisible(find.byKey(const Key('leave-ledger')), 200, scrollable: find.descendant(of: find.byKey(const Key('leave-page')), matching: find.byType(Scrollable)).first);
-    expect(find.textContaining('Paid leave 2 · Comp-off 1.5'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('leave-two'))).data, 'Paid leave 2 · Comp-off 1.5', reason: '(3.155.0) on the card, under the balance');
+    await t.tap(find.byKey(const Key('leave-t-led')));
+    await settle(t, 400);
+    expect(find.byKey(const Key('leave-ledger')), findsOneWidget);
     expect(find.text('Worked on a day off (04-10-2026)'), findsOneWidget);
     expect(find.text('+1.5'), findsOneWidget);
     expect(find.text('-1'), findsOneWidget);
+    await t.tap(find.byKey(const Key('leave-t-how')));
+    await settle(t, 400);
     expect(find.textContaining('one balance'), findsWidgets, reason: 'said in words too');
     // the papers of the request
-    await t.scrollUntilVisible(find.byKey(const Key('lv-files-7')), -200, scrollable: find.descendant(of: find.byKey(const Key('leave-page')), matching: find.byType(Scrollable)).first);
+    await t.tap(find.byKey(const Key('leave-t-req')));
+    await settle(t, 400);
     expect(find.descendant(of: find.byKey(const Key('lv-files-7')), matching: find.textContaining('Papers 1')), findsOneWidget);
     await t.tap(find.byKey(const Key('lv-files-7')));
     await settle(t, 900);

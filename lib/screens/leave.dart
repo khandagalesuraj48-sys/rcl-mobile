@@ -28,6 +28,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/api.dart' show ApiError;
 import '../core/attend.dart';
 import '../core/hr_cache.dart';
+import '../ui/crest.dart' show CrestLines;
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
@@ -40,6 +41,7 @@ import '../ui/widgets.dart';
 import 'attach_box.dart' show pickAttFiles;
 import 'attend_reqs.dart';
 import 'hr_me.dart' show docReady;
+import 'hr_shell.dart' show initials;
 
 String _t(String en, String mr) => Lang.i.pair(en, mr);
 String _dmy(String ymd) => ymd.length >= 10 ? '${ymd.substring(8, 10)}-${ymd.substring(5, 7)}-${ymd.substring(0, 4)}' : ymd;
@@ -142,63 +144,130 @@ class _LeaveScreenState extends State<LeaveScreen> {
   Widget build(BuildContext context) {
     final month = (me?['month'] as Map?) ?? const {}, reqs = [for (final x in (me?['requests'] as List? ?? const []).whereType<Map>()) x];
     final today = '${me?['today'] ?? indiaDay(AttendKit.kit.now())}';
-    final ledger = [for (final x in (me?['ledger'] as List? ?? const []).whereType<Map>()) x];
-    Widget box(String key, Object? v, String en, String mr) => Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 5),
-            padding: const EdgeInsets.fromLTRB(12, 9, 8, 10),
-            decoration: BoxDecoration(color: sk.headGlass, borderRadius: BorderRadius.circular(16), border: Border.all(color: sk.headGlassLine), boxShadow: sk.classic ? null : sk.shadow),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              // (3.122.0) the number counts up to its value
-              me == null ? m.Text('–', key: Key('leave-$key'), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 24, fontWeight: FontWeight.w800, color: sk.onHead, height: 1.15)) : CountUp(value: _num(v), ms: 500, textKey: Key('leave-$key'), text: (x) => _n(x), style: TextStyle(fontFamily: 'Montserrat', fontSize: 24, fontWeight: FontWeight.w800, color: sk.onHead, height: 1.15)),
-              Text(en, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: sk.onHeadSoft)),
-            ]),
+    final ledger = [for (final x in (me?['ledger'] as List? ?? const []).whereType<Map>()) x], book = me?['book'] == true;
+    final part = !book && tabIn == 1 ? 0 : tabIn;
+    // one number of the card's strip: it counts up to its value
+    Widget stat(String key, Object? v, String en, String mr) => Expanded(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            me == null ? m.Text('–', key: Key('leave-$key'), style: _heroNum) : CountUp(value: _num(v), ms: 500, textKey: Key('leave-$key'), text: (x) => _n(x), style: _heroNum),
+            const SizedBox(height: 2),
+            FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFC9D3EE)))),
+          ]),
+        );
+    Widget bar() => Container(width: 1, height: 30, color: const Color(0x33FFFFFF));
+    Widget tab(int i, String key, String en, String mr, {int? n}) => Expanded(
+          child: GestureDetector(
+            key: Key('leave-t-$key'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => tabIn = i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: part == i ? sk.blank : Colors.transparent, borderRadius: BorderRadius.circular(99), border: Border.all(color: part == i ? const Color(0xFFDDAD40).withValues(alpha: .75) : Colors.transparent, width: 1.2)),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: part == i ? sk.ink : sk.faint)),
+                  if (n != null && n > 0) Padding(padding: const EdgeInsets.only(left: 5), child: m.Text('$n', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sk.link))),
+                ]),
+              ),
+            ),
           ),
         );
     return Scaffold(
-      appBar: hrHead(context, sky: kLeaveSky, title: 'Leave', mr: 'रजा', pill: headPill(monthName(today)), height: 150, back: !widget.embedded, below: [
-        Padding(padding: const EdgeInsets.only(top: 8), child: Row(children: [box('bal', me?['balance'], 'Balance', 'शिल्लक'), box('add', month['credit'], 'This month', 'हा महिना'), box('used', month['used'], 'Used', 'वापरली')])),
-      ]),
+      appBar: hrHead(context, sky: kLeaveSky, title: 'Leave', mr: 'रजा', pill: headPill(monthName(today)), height: 64, back: !widget.embedded),
       body: loading
           ? const SkeletonList(tiles: 0, rows: 4)
           : RefreshIndicator(
               onRefresh: _load,
-              child: ListView(key: const Key('leave-page'), padding: EdgeInsets.fromLTRB(16, 14, 16, 40 + MediaQuery.paddingOf(context).bottom), children: [ // (3.154.0: its end stands clear of the bar that floats over the page)
-                if (me != null) hrButton('+ Apply for leave', '+ रजेसाठी अर्ज', key: const Key('leave-new'), onTap: _new),
-                if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('leave-err')),
-                if (me != null) ...[
-                  const SizedBox(height: 12),
-                  Rise(order: 0, child: hrCard(key: const Key('leave-mine'), [
-                    hrTitle('My requests', 'माझ्या विनंत्या'),
-                    if (reqs.isEmpty) Padding(padding: EdgeInsets.only(bottom: 6), child: Text('No request yet.', mr: 'अजून विनंती नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint))),
-                    for (final (i, q) in reqs.indexed)
-                      () {
-                        final s = leaveChip(q);
-                        // (3.147.0) a touch opens the request: where it stands and who it waits for, its history, change, delete
-                        return GestureDetector(
-                          key: Key('lv-open-${q['id']}'),
+              child: ListView(key: const Key('leave-page'), padding: EdgeInsets.fromLTRB(16, 6, 16, 40 + MediaQuery.paddingOf(context).bottom), children: [ // (3.154.0: its end stands clear of the bar that floats over the page)
+                // (3.155.0, his choice of 21-11-2026 – "b ok ahe he fix") THE CARD: his balance large in gold, "+ Apply" on it, and
+                // in one strip what was added this month, what was used, how many requests
+                leaveHero(
+                  key: const Key('leave-hero'),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                          const Text('Leave balance', mr: 'रजा शिल्लक', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFC9D3EE))),
+                          Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+                            ShaderMask(
+                              blendMode: BlendMode.srcIn,
+                              shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFBEBB5), Color(0xFFE6B94E), Color(0xFFB8860B)], stops: <double>[0, .6, 1]).createShader(r),
+                              child: me == null ? m.Text('–', key: const Key('leave-bal'), style: _heroBig) : CountUp(value: _num(me?['balance']), ms: 500, textKey: const Key('leave-bal'), text: (x) => _n(x), style: _heroBig),
+                            ),
+                            const SizedBox(width: 7),
+                            const Text('days', mr: 'दिवस', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFFC9D3EE))),
+                          ]),
+                          if (book) m.Text(_t('Paid leave ${_n(me?['paid'])} · Comp-off ${_n(me?['comp'])}', 'Paid रजा ${_n(me?['paid'])} · Comp-off ${_n(me?['comp'])}'), key: const Key('leave-two'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFFF3D889))),
+                        ]),
+                      ),
+                      if (me != null)
+                        GestureDetector(
+                          key: const Key('leave-new'),
                           behavior: HitTestBehavior.opaque,
-                          onTap: () => _open(q),
-                          child: reqRow(
-                              key: Key('lv-${q['id']}'),
-                              main: leaveDays(q),
-                              small: leaveSmall(q),
-                              chips: [
-                                // (3.121.0) the papers of the request – only when the server keeps them (step 13)
-                                if (q['files'] is num && '${q['status']}' != 'cancelled') stateChip((q['files'] as num) > 0 ? _t('Papers ${_n(q['files'])}', 'कागद ${_n(q['files'])}') : _t('+ Paper', '+ कागद'), 'w', key: Key('lv-files-${q['id']}'), onTap: () => _papers(q)),
-                                stateChip(s.$1, s.$2, key: Key('lv-state-${q['id']}'), onTap: () => _open(q)),
-                              ],
-                              last: i == reqs.length - 1),
-                        );
-                      }(),
-                    if (reqs.isNotEmpty) Padding(padding: EdgeInsets.only(top: 6), child: Text('Touch a request: where it stands, its history, change its days or delete it.', mr: 'विनंतीला touch करा: ती कुठे आहे, तिचा इतिहास, दिवस बदला किंवा Delete करा.', style: TextStyle(fontSize: 12, color: sk.faint))),
-                  ])),
-                  if (me?['book'] == true) ...[
-                    const SizedBox(height: 12),
-                    Rise(order: 1, child: hrCard(key: const Key('leave-ledger'), [
+                          onTap: _new,
+                          child: Bounce(
+                            to: .94,
+                            child: Container(
+                              height: 42,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              decoration: BoxDecoration(gradient: Sk.goldFill, borderRadius: BorderRadius.circular(21), boxShadow: const [BoxShadow(color: Color(0x59000000), blurRadius: 14, offset: Offset(0, 7))]),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.add_rounded, size: 19, color: Sk.goldInk),
+                                const SizedBox(width: 4),
+                                Text('Apply', mr: 'अर्ज', style: const TextStyle(fontFamily: 'Montserrat', fontSize: 14, fontWeight: FontWeight.w800, color: Sk.goldInk)),
+                              ]),
+                            ),
+                          ),
+                        ),
+                    ]),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 6),
+                      decoration: BoxDecoration(color: const Color(0x17FFFFFF), borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0x29FFFFFF))),
+                      child: Row(children: [
+                        stat('add', month['credit'], 'Added this month', 'या महिन्यात जमा'),
+                        bar(),
+                        stat('used', month['used'], 'Used', 'वापरली'),
+                        bar(),
+                        stat('n', reqs.length, 'Requests', 'विनंत्या'),
+                      ]),
+                    ),
+                  ]),
+                ),
+                if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: InfoLine(err, bad: true, help: false, key: const Key('leave-err'))),
+                if (me != null) ...[
+                  // the parts of the page: his requests, the ledger (a person with a leave policy), how it is counted
+                  Container(
+                    margin: const EdgeInsets.only(top: 16, bottom: 12),
+                    padding: const EdgeInsets.all(5),
+                    decoration: sk.box(radius: 99),
+                    child: Row(children: [
+                      tab(0, 'req', 'Requests', 'विनंत्या', n: reqs.length),
+                      if (book) tab(1, 'led', 'Ledger', 'हिशोब'),
+                      tab(2, 'how', 'Rules', 'नियम'),
+                    ]),
+                  ),
+                  if (part == 0)
+                    Column(key: const Key('leave-mine'), mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      if (reqs.isEmpty) hrCard([Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text('No request yet.', mr: 'अजून विनंती नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint)))]),
+                      for (final (i, q) in reqs.indexed)
+                        // (3.147.0) a touch opens the request: where it stands and who it waits for, its history, change, delete
+                        Rise(
+                          order: i < 4 ? i : 4,
+                          child: GestureDetector(
+                            key: Key('lv-open-${q['id']}'),
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _open(q),
+                            child: leaveCard(q, key: Key('lv-${q['id']}'), onPapers: () => _papers(q)),
+                          ),
+                        ),
+                    ]),
+                  if (part == 1)
+                    hrCard(key: const Key('leave-ledger'), [
                       hrTitle('My leave ledger', 'माझ्या रजेचा हिशोब'),
-                      m.Text(_t('Paid leave ${_n(me?['paid'])} · Comp-off ${_n(me?['comp'])} – one balance of ${_n(me?['balance'])}', 'Paid रजा ${_n(me?['paid'])} · Comp-off ${_n(me?['comp'])} – मिळून balance ${_n(me?['balance'])}'), key: const Key('leave-two'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sk.muted, height: 1.4)),
-                      const SizedBox(height: 4),
                       if (ledger.isEmpty) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Nothing added or used yet.', mr: 'अजून काही जमा किंवा वापर नाही.', style: TextStyle(fontSize: 13.5, color: sk.faint))),
                       for (final (i, l) in ledger.indexed)
                         reqRow(
@@ -207,18 +276,34 @@ class _LeaveScreenState extends State<LeaveScreen> {
                             small: '${_dmy('${l['day'] ?? ''}')} · ${'${l['bucket']}' == 'comp' ? 'Comp-off' : _t('Paid leave', 'Paid रजा')}',
                             chips: [stateChip('${_num(l['days']) > 0 ? '+' : ''}${_n(l['days'])}', _num(l['days']) > 0 ? 'a' : 'x')],
                             last: i == ledger.length - 1),
-                    ])),
-                  ],
-                  const SizedBox(height: 12),
-                  Rise(order: 2, child: hrCard(key: const Key('leave-how'), [
-                    hrTitle('How it is counted', 'कशी मोजली जाते'),
-                    m.Text(_how(me?['policy'] as Map?), style: TextStyle(fontSize: 13, color: sk.muted, height: 1.5)),
-                  ])),
+                    ]),
+                  if (part == 2)
+                    Container(
+                      key: const Key('leave-how'),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: const Color(0xFFDDAD40).withValues(alpha: .08), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFDDAD40).withValues(alpha: .55))),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Icon(Icons.info_outline_rounded, size: 19, color: sk.link),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                            Text('How it is counted', mr: 'कशी मोजली जाते', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink)),
+                            const SizedBox(height: 3),
+                            m.Text(_how(me?['policy'] as Map?), style: TextStyle(fontSize: 13, color: sk.muted, height: 1.5)),
+                          ]),
+                        ),
+                      ]),
+                    ),
                 ],
               ]),
             ),
     );
   }
+
+  /// the part of the page that is open: 0 his requests, 1 the ledger, 2 how it is counted
+  int tabIn = 0;
+  static const _heroNum = TextStyle(fontFamily: 'Montserrat', fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFFF7DE8E), height: 1.15);
+  static const _heroBig = TextStyle(fontFamily: 'Montserrat', fontSize: 46, fontWeight: FontWeight.w800, color: Colors.white, height: 1.1);
 }
 
 /// APPLY FOR LEAVE – the form. Gives the server's answer (his leave, read again) when it was sent.
@@ -322,8 +407,8 @@ class _LeaveAskScreenState extends State<LeaveAskScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(vertical: 12),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: part == v ? sk.accent : sk.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: part == v ? sk.accent : sk.line)),
-              child: FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: part == v ? sk.onAccent : sk.ink))),
+              decoration: BoxDecoration(color: part == v ? sk.blank : sk.card, borderRadius: BorderRadius.circular(99), border: Border.all(color: part == v ? const Color(0xFFDDAD40) : sk.line, width: part == v ? 1.4 : 1)),
+              child: FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: part == v ? sk.ink : sk.faint))),
             ),
           ),
         );
@@ -333,6 +418,28 @@ class _LeaveAskScreenState extends State<LeaveAskScreen> {
         key: const Key('leave-ask-page'),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          // (3.155.0) his balance now and what it is after approval, at the top – it follows the days he chooses
+          leaveHero(
+            key: const Key('leave-after'),
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+            child: Row(children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                const Text('Balance now', mr: 'आत्ताची शिल्लक', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFC9D3EE))),
+                m.Text(_n(have), key: const Key('la-now'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15)),
+              ]),
+              Expanded(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.arrow_forward_rounded, size: 20, color: Color(0xFFF2CC62)),
+                  m.Text('− ${_n(days)} ${_t(days == 1 || days == .5 ? 'day' : 'days', 'दिवस')}', key: const Key('la-days'), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFF3D889))),
+                ]),
+              ),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
+                const Text('After approval', mr: 'मंजुरीनंतर', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFC9D3EE))),
+                m.Text(_n(have - days), key: const Key('la-after'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xFFF2CC62), height: 1.15)),
+              ]),
+            ]),
+          ),
+          const SizedBox(height: 16),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(child: hrField('From', 'पासून', day('leave-from', from, true))),
             const SizedBox(width: 10),
@@ -345,8 +452,8 @@ class _LeaveAskScreenState extends State<LeaveAskScreen> {
           const SizedBox(height: 12),
           hrNote(
               key: const Key('leave-note'),
-              '${_t('${_n(days)} ${days == 1 || days == .5 ? 'day' : 'days'}', '${_n(days)} दिवस')} · ${_t('balance ${_n(have)} → ${_n(have - days)} after approval', 'मंजुरीनंतर balance ${_n(have)} → ${_n(have - days)}')}'
-              '${to != from ? '\n${_t('A weekly off or a holiday inside is not counted.', 'मधली साप्ताहिक सुट्टी किंवा holiday मोजली जात नाही.')}' : ''}'),
+              '${_t('${_n(days)} ${days == 1 || days == .5 ? 'day' : 'days'}', '${_n(days)} दिवस')}'
+              '${to != from ? ' · ${_t('a weekly off or a holiday inside is not counted.', 'मधली साप्ताहिक सुट्टी किंवा holiday मोजली जात नाही.')}' : ''}'),
           // (3.147.0) the paper – needed with every leave
           if (widget.paper) ...[
             const SizedBox(height: 14),
@@ -620,6 +727,215 @@ String leaveSmall(Map q) {
   }
 }
 
+/// The navy card with gold survey lines (the Leave page's balance, the form's "now → after", a request's head).
+Widget leaveHero({Key? key, required Widget child, Color edge = const Color(0x8CE6B94E), EdgeInsets padding = const EdgeInsets.fromLTRB(18, 16, 16, 16)}) => Container(
+      key: key,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF070D24), Color(0xFF16286A), Color(0xFF24408A)], stops: <double>[0, .62, 1]),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: edge),
+        boxShadow: const [BoxShadow(color: Color(0x520B1733), blurRadius: 30, offset: Offset(0, 16))],
+      ),
+      child: LayoutBuilder(
+        builder: (_, box) => CustomPaint(
+          painter: CrestLines(eddy: Offset(box.maxWidth * .84, 44), ring: 92, color: const Color(0x47E6B94E), depth: 1),
+          child: Padding(padding: padding, child: child),
+        ),
+      ),
+    );
+
+/// (3.155.0, asked 21-11-2026: "leave status he samjaw ki verification madhe aahe konakade aahe tyach name, approval sathi pending
+/// konakade tyach name") WHERE A REQUEST STANDS, as a road: Sent → Verification → Approval, each with its person, and in words –
+/// "In verification · with Ravi Patil", "Pending approval · with Amit Patil", "Approved · by …", "Rejected · by … – why". All of
+/// it is what the HR server says (waits: the step and its people; history: who verified, approved, refused – and when). A leave
+/// with no verification step has the road Sent → Approval. The person of a step that is still to come is not known: not written.
+class LeaveRoad {
+  LeaveRoad(this.steps, this.title, this.sub, this.tone, this.holder);
+
+  /// each step: its name, its person ('' = not known yet), its state – done / now / bad / todo –, its time or what it waits for
+  final List<({String name, String who, String state, String when})> steps;
+
+  /// in words: "In verification" and "with Ravi Patil"; the tone – w (waits), a (approved), x (rejected), s (deleted)
+  final String title, sub, tone;
+
+  /// the person it is with now, or who decided it ('' = nobody to name)
+  final String holder;
+
+  /// how far it is, 0 to 1
+  double get far {
+    final at = steps.lastIndexWhere((x) => x.state != 'todo');
+    if (steps.every((x) => x.state == 'done')) return 1;
+    // (the step it stands at is not done yet: a little before its dot)
+    return ((at - (steps[at].state == 'done' ? 0 : .25)) / (steps.length - 1)).clamp(.06, .95).toDouble();
+  }
+}
+
+LeaveRoad leaveRoad(Map q) {
+  final st = '${q['status']}', w = q['waits'] is Map ? q['waits'] as Map : null;
+  final asked = _lastOf(q, 'asked'), ver = _lastOf(q, 'verified');
+  String names(Map? x) => [
+        for (final y in (x?['who'] as List? ?? const []).whereType<Map>())
+          '${y['role']}' == 'person'
+              ? '${y['name'] ?? ''}'
+              : '${y['name'] ?? ''}'.isNotEmpty
+                  ? '${y['name']} (${_role('${y['role']}')})'
+                  : _role('${y['role']}')
+      ].where((n) => n.isNotEmpty).join(' / ');
+  final sent = (name: _t('Sent', 'पाठवली'), who: _t('You', 'तुम्ही'), state: 'done', when: _when(q['asked_at'] ?? asked?['at']));
+  ({String name, String who, String state, String when}) step(String kind, String who, String state, String when) => (name: kind == 'v' ? _t('Verification', 'Verification') : _t('Approval', 'मंजुरी'), who: who, state: state, when: when);
+  final verDone = ver == null ? null : step('v', '${ver['by'] ?? ''}', 'done', '${_t('Verified', 'Verify केली')} · ${_when(ver['at'])}');
+  switch (st) {
+    case 'pending':
+      final stage = w != null ? '${w['stage']}' : (q['level'] == 1 ? 'verify' : 'approve');
+      final who = w != null ? names(w) : (q['level'] == 1 ? _t('the reporting person', 'Reporting person') : _t('the HR office', 'HR office'));
+      final sub = _t('with $who', '$who कडे');
+      if (stage == 'verify') {
+        return LeaveRoad([sent, step('v', who, 'now', _t('Waiting', 'प्रलंबित')), step('a', '', 'todo', _t('After verification', 'Verification नंतर'))], _t('In verification', 'Verification मध्ये'), sub, 'w', who);
+      }
+      return LeaveRoad([sent, if (verDone != null) verDone, step('a', who, 'now', _t('Waiting', 'प्रलंबित'))], _t('Pending approval', 'मंजुरीसाठी प्रलंबित'), sub, 'w', who);
+    case 'approved':
+      final a = _lastOf(q, 'approved'), by = a == null ? _t('HR office', 'HR office') : '${a['by'] ?? ''}';
+      return LeaveRoad([sent, if (verDone != null) verDone, step('a', by, 'done', '${_t('Approved', 'मंजूर')}${a == null ? '' : ' · ${_when(a['at'])}'}')], _t('Approved', 'मंजूर'), _t('by $by', '$by यांनी'), 'a', by);
+    case 'refused':
+      final r = _lastOf(q, 'refused'), by = '${r?['by'] ?? ''}', why = '${q['note'] ?? ''}';
+      // refused where it stood: at the verification when nobody had verified it and it waited there, else at the approval
+      final atVerify = ver == null && q['level'] == 1;
+      final bad = step(atVerify ? 'v' : 'a', by, 'bad', '${_t('Rejected', 'नाकारली')}${r == null ? '' : ' · ${_when(r['at'])}'}');
+      return LeaveRoad([sent, if (verDone != null) verDone, bad, if (atVerify) step('a', '', 'todo', '')], _t('Rejected', 'नाकारली'), [if (by.isNotEmpty) _t('by $by', '$by यांनी'), if (why.isNotEmpty) '“$why”'].join(' – '), 'x', by);
+    default:
+      return LeaveRoad([sent, if (verDone != null) verDone, step('a', '', 'todo', '')], _t('Deleted', 'Delete केली'), leaveSmall(q), 's', '');
+  }
+}
+
+const _roadGold = Color(0xFFDDAD40), _roadRed = Color(0xFFE5484D);
+
+/// The road in a row: a dot for each step, joined by a line – gold as far as it has come, red where it was rejected.
+Widget leaveTrack(LeaveRoad road) {
+  final n = road.steps.length;
+  Color line(String state) => state == 'bad' ? _roadRed : state == 'todo' ? sk.hair : _roadGold;
+  return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    for (final (i, x) in road.steps.indexed)
+      Expanded(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            height: 30,
+            child: Row(children: [
+              Expanded(child: Container(height: 3, color: i == 0 ? Colors.transparent : line(x.state))),
+              Container(
+                width: x.state == 'now' ? 26 : 22,
+                height: x.state == 'now' ? 26 : 22,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: x.state == 'done' ? Sk.goldFill : null,
+                  color: x.state == 'bad' ? _roadRed : x.state == 'done' ? null : sk.card,
+                  border: Border.all(color: x.state == 'todo' ? (sk.cardLine ?? sk.line) : x.state == 'bad' ? _roadRed : _roadGold, width: 2),
+                  boxShadow: x.state == 'now' ? [BoxShadow(color: _roadGold.withValues(alpha: .28), spreadRadius: 4)] : null,
+                ),
+                child: x.state == 'done'
+                    ? const Icon(Icons.check_rounded, size: 13, color: Sk.goldInk)
+                    : x.state == 'bad'
+                        ? const Icon(Icons.close_rounded, size: 13, color: Colors.white)
+                        : x.state == 'now'
+                            ? Container(width: 9, height: 9, decoration: const BoxDecoration(color: _roadGold, shape: BoxShape.circle))
+                            : null,
+              ),
+              Expanded(child: Container(height: 3, color: i == n - 1 ? Colors.transparent : line(road.steps[i + 1].state))),
+            ]),
+          ),
+          const SizedBox(height: 4),
+          m.Text(x.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: x.state == 'now' ? sk.link : x.state == 'bad' ? (sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B)) : x.state == 'todo' ? sk.faint : sk.ink)),
+          if (x.who.isNotEmpty)
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: m.Text(x.who, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, height: 1.2, fontWeight: x.state == 'now' || x.state == 'bad' ? FontWeight.w600 : FontWeight.w400, color: x.state == 'now' || x.state == 'bad' ? sk.ink : sk.muted))),
+        ]),
+      ),
+  ]);
+}
+
+/// The first letters of the person a request is with (a role: its first letters).
+Widget _roadFace(String who, {double size = 34}) => Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(shape: BoxShape.circle, gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF24408A), Color(0xFF0B1733)]), border: Border.all(color: _roadGold, width: 1.5)),
+      child: who.isEmpty ? Icon(Icons.person_outline_rounded, size: size * .5, color: const Color(0xFFF3D889)) : m.Text(initials(who.split('(').first.split('/').first), style: TextStyle(fontFamily: 'Montserrat', fontSize: size * .35, fontWeight: FontWeight.w800, color: const Color(0xFFF3D889))),
+    );
+
+(Color, Color, Color) _roadTone(String tone) => switch (tone) {
+      'a' => (sk.dark ? const Color(0xFF58D68D) : const Color(0xFF0F7A45), const Color(0xFF0F7A45).withValues(alpha: sk.dark ? .16 : .1), const Color(0xFF0F7A45).withValues(alpha: .35)),
+      'x' => (sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B), const Color(0xFFC22A1B).withValues(alpha: sk.dark ? .16 : .09), const Color(0xFFC22A1B).withValues(alpha: .35)),
+      's' => (sk.muted, sk.blank, sk.cardLine ?? sk.line),
+      _ => (sk.link, _roadGold.withValues(alpha: .13), _roadGold.withValues(alpha: .45)),
+    };
+
+/// One request on the Leave page: its days, its reason, its papers, the road, and in words who it is with.
+Widget leaveCard(Map q, {Key? key, VoidCallback? onPapers}) {
+  final road = leaveRoad(q), tone = _roadTone(road.tone), from = '${q['from'] ?? ''}', d = DateTime.tryParse('${from}T00:00:00Z');
+  const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  return Container(
+    key: key,
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(14),
+    decoration: sk.box(radius: 24),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Row(children: [
+        Container(
+          width: 46,
+          height: 50,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(14), border: Border.all(color: _roadGold.withValues(alpha: .45))),
+          child: d == null
+              ? Icon(Icons.event_rounded, size: 20, color: sk.link)
+              : Column(mainAxisSize: MainAxisSize.min, children: [
+                  m.Text(d.day.toString().padLeft(2, '0'), style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: sk.ink, height: 1)),
+                  const SizedBox(height: 2),
+                  m.Text(mon[d.month - 1], style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: .5, color: sk.link, height: 1)),
+                ]),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            m.Text(leaveDays(q), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 14, fontWeight: FontWeight.w800, color: sk.ink)),
+            if ('${q['reason'] ?? ''}'.isNotEmpty) m.Text('${q['reason']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted)),
+          ]),
+        ),
+        // (3.121.0) the papers of the request – only when the server keeps them (step 13)
+        if (q['files'] is num && '${q['status']}' != 'cancelled')
+          GestureDetector(
+            key: Key('lv-files-${q['id']}'),
+            behavior: HitTestBehavior.opaque,
+            onTap: onPapers,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.attach_file_rounded, size: 15, color: sk.muted),
+                m.Text((q['files'] as num) > 0 ? _t('Papers ${_n(q['files'])}', 'कागद ${_n(q['files'])}') : _t('+ Paper', '+ कागद'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sk.muted)),
+              ]),
+            ),
+          ),
+        Icon(Icons.chevron_right_rounded, size: 20, color: sk.blankInk),
+      ]),
+      Padding(padding: const EdgeInsets.fromLTRB(0, 12, 0, 10), child: leaveTrack(road)),
+      Container(
+        key: Key('lv-state-${q['id']}'),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(color: tone.$2, borderRadius: BorderRadius.circular(16), border: Border.all(color: tone.$3)),
+        child: Row(children: [
+          _roadFace(road.holder),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              m.Text(road.title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: tone.$1)),
+              if (road.sub.isNotEmpty) m.Text(road.sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.25)),
+            ]),
+          ),
+        ]),
+      ),
+    ]),
+  );
+}
+
 String _when(Object? at) {
   final d = DateTime.tryParse('${at ?? ''}');
   if (d == null) return '';
@@ -711,29 +1027,89 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final st = leaveChip(q), hist = [for (final x in (q['history'] as List? ?? const []).whereType<Map>()) x];
+    final hist = [for (final x in (q['history'] as List? ?? const []).whereType<Map>()) x], road = leaveRoad(q), tone = _roadTone(road.tone);
+    final bad = road.tone == 'x';
     return Scaffold(
       appBar: hrHead(context, sky: kLeaveSky, title: 'My leave', mr: 'माझी रजा', pill: headPill(leaveDays(q)), height: 96),
       body: ListView(key: const Key('lvd-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
-        hrCard(key: const Key('lvd-stand'), [
-          hrTitle('Where it stands', 'सध्याची स्थिती'),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            stateChip(st.$1, st.$2),
-            const SizedBox(width: 10),
-            Expanded(child: m.Text(leaveSmall(q), key: const Key('lvd-waits'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: sk.ink, height: 1.35))),
+        // (3.155.0) WHO IT IS WITH NOW – his name large –, and how far it has come
+        leaveHero(
+          key: const Key('lvd-stand'),
+          edge: bad ? const Color(0xB3E5484D) : const Color(0x8CE6B94E),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [
+              Container(decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: _roadGold.withValues(alpha: .2), spreadRadius: 5)]), child: _roadFace(road.holder, size: 54)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  m.Text(road.title.toUpperCase(), key: const Key('lvd-state'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: bad ? const Color(0xFFFF9A92) : const Color(0xFFF3D889))),
+                  const SizedBox(height: 2),
+                  m.Text(road.sub.isEmpty ? road.title : '${road.sub[0].toUpperCase()}${road.sub.substring(1)}', key: const Key('lvd-waits'), maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Montserrat', fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white, height: 1.25)),
+                  if ('${q['reason'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: m.Text('${_t('Reason', 'कारण')}: ${q['reason']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Color(0xFFC9D3EE), height: 1.3))),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Stack(children: [
+                Container(height: 7, color: const Color(0x24FFFFFF)),
+                FractionallySizedBox(widthFactor: road.far, child: Container(height: 7, decoration: BoxDecoration(gradient: LinearGradient(colors: [const Color(0xFFC9960A), bad ? _roadRed : const Color(0xFFF7DE8E)]), borderRadius: BorderRadius.circular(4)))),
+              ]),
+            ),
+            const SizedBox(height: 6),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [for (final x in road.steps) m.Text(x.name, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFFC9D3EE)))]),
           ]),
-          if ('${q['reason'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8, bottom: 2), child: m.Text('${_t('Reason', 'कारण')}: ${q['reason']}', style: TextStyle(fontSize: 13, color: sk.muted, height: 1.35))),
+        ),
+        const SizedBox(height: 14),
+        // the road, step by step: the person of each step and its time
+        hrCard(key: const Key('lvd-road'), [
+          hrTitle('Where it stands', 'सध्याची स्थिती'),
+          for (final (i, x) in road.steps.indexed)
+            IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Column(children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(shape: BoxShape.circle, gradient: x.state == 'done' ? Sk.goldFill : null, color: x.state == 'bad' ? _roadRed : x.state == 'done' ? null : sk.card, border: Border.all(color: x.state == 'todo' ? (sk.cardLine ?? sk.line) : x.state == 'bad' ? _roadRed : _roadGold, width: 2)),
+                    child: Icon(x.state == 'done' ? Icons.check_rounded : x.state == 'bad' ? Icons.close_rounded : x.state == 'now' ? Icons.schedule_rounded : Icons.more_horiz_rounded, size: 14, color: x.state == 'done' ? Sk.goldInk : x.state == 'bad' ? Colors.white : x.state == 'now' ? sk.link : sk.faint),
+                  ),
+                  if (i < road.steps.length - 1) Expanded(child: Container(width: 2, margin: const EdgeInsets.symmetric(vertical: 2), color: x.state == 'done' ? _roadGold.withValues(alpha: .6) : sk.hair)),
+                ]),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 3, bottom: i < road.steps.length - 1 ? 16 : 2),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      m.Text(x.name, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13.5, fontWeight: FontWeight.w800, color: x.state == 'todo' ? sk.faint : x.state == 'bad' ? tone.$1 : sk.ink)),
+                      if (i > 0 && x.who.isNotEmpty)
+                        Container(
+                          key: Key('lvd-who-$i'),
+                          margin: const EdgeInsets.only(top: 7, bottom: 5),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(color: x.state == 'now' ? _roadGold.withValues(alpha: .1) : x.state == 'bad' ? _roadRed.withValues(alpha: .08) : sk.blank, borderRadius: BorderRadius.circular(14), border: x.state == 'now' ? Border.all(color: _roadGold.withValues(alpha: .5)) : x.state == 'bad' ? Border.all(color: _roadRed.withValues(alpha: .35)) : null),
+                          child: Row(children: [_roadFace(x.who, size: 32), const SizedBox(width: 10), Expanded(child: m.Text(x.who, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: sk.ink, height: 1.25)))]),
+                        ),
+                      if (x.when.isNotEmpty) m.Text(i == 0 ? '${x.when} · ${_t('by you', 'तुम्ही')}' : x.when, style: TextStyle(fontSize: 12, height: 1.3, fontWeight: x.state == 'now' || x.state == 'bad' ? FontWeight.w600 : FontWeight.w400, color: x.state == 'now' ? sk.link : x.state == 'bad' ? tone.$1 : sk.muted)),
+                      if (x.state == 'bad' && '${q['note'] ?? ''}'.isNotEmpty) m.Text('“${q['note']}”', style: TextStyle(fontSize: 12.5, height: 1.3, color: tone.$1)),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
         ]),
         if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('lvd-err')),
         const SizedBox(height: 12),
         if (_can['change'] == true) ...[hrButton('Change days', 'दिवस बदला', key: const Key('lvd-change'), onTap: busy ? null : _change), const SizedBox(height: 10)],
         if (_can['delete'] == true)
-          OutlinedButton.icon(
+          FilledButton.icon(
             key: const Key('lvd-delete'),
             onPressed: busy ? null : _delete,
-            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), side: const BorderSide(color: C.red)),
-            icon: const Icon(Icons.delete_outline_rounded, color: C.red),
-            label: const Text('Delete this leave', mr: 'ही रजा Delete करा', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.red)),
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52), elevation: 0, backgroundColor: sk.dark ? const Color(0xFF2A1A28) : const Color(0xFFFBE4E1), foregroundColor: sk.dark ? const Color(0xFFFF7A70) : C.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19))),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Delete this leave', mr: 'ही रजा Delete करा', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           ),
         if ('${q['status']}' == 'approved' && _can['delete'] != true) Padding(padding: const EdgeInsets.only(top: 4), child: Text('An approved leave is deleted by the HR office.', mr: 'मंजूर रजा HR office Delete करते.', style: TextStyle(fontSize: 12.5, color: sk.faint))),
         if (q['files'] is num && '${q['status']}' != 'cancelled') ...[
