@@ -25,6 +25,8 @@
         android:label="Sketchline"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- (20-11-2026) Google Maps for the app (Live Tracking); the key is injected at build from the GitHub secret MAPS_API_KEY (empty = the OpenStreetMap map, no Google) -->
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

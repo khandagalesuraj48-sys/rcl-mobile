@@ -31,6 +31,7 @@ jobs:
       SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
       SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}   # (20-11-2026) the Google Maps key; empty = the OpenStreetMap map
     steps:
       - uses: actions/checkout@v5
       - name: What this version is – the web's beta commits, the app built or not, its number
@@ -103,15 +104,17 @@ jobs:
       - name: Signed Android app
         if: env.APP == '1'
         run: |
-          flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform android-arm,android-arm64 --split-debug-info=build/symbols
+          GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"   # (20-11-2026) Google map only when the key is set, else OpenStreetMap
+          flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform android-arm,android-arm64 --split-debug-info=build/symbols $GM
           cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.apk"
       - name: One file per processor (a phone's update downloads only its own)
         if: env.APP == '1'
         run: |
           set -e
+          GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"
           for a in arm64-v8a:android-arm64 armeabi-v7a:android-arm; do
             abi=${a%%:*}; tp=${a##*:}
-            RCL_ABIS=$abi flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform $tp --split-debug-info=build/symbols
+            RCL_ABIS=$abi flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform $tp --split-debug-info=build/symbols $GM
             cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.$abi.apk"
             other=$(unzip -l "rcl-erp-$VER-$BN.$abi.apk" | awk '{print $4}' | grep '^lib/' | cut -d/ -f2 | sort -u | grep -vx "$abi" || true)
             [ -z "$other" ] || { echo "::error::rcl-erp-$VER-$BN.$abi.apk also has the parts of: $other"; exit 1; }

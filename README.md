@@ -1822,3 +1822,7 @@ Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-
   People install the first time from the release page; later updates come inside the app.
 * **Needs two GitHub secrets:** `PORTAL_SUPABASE_URL` and `PORTAL_SUPABASE_KEY` (for the signing key only). They are never
   in a file and never in chat.
+* **Google Maps (20-11-2026):** Live Tracking shows a Google map when the GitHub secret `MAPS_API_KEY` is set (the same key as the
+  web's `GOOGLE_MAPS_KEY`); the build puts it in the Android manifest and the iPhone's `Info.plist`, and adds
+  `--dart-define=GMAPS=true`. Without the secret the map stays OpenStreetMap (flutter_map, no key) – nothing changes. The key is
+  never in a file and never in chat; the map SDKs are free on Android and iPhone.
