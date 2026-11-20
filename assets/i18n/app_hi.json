@@ -2241,5 +2241,20 @@
 "Rules": "नियम",
 "Apply": "आवेदन",
 "Balance now": "अभी शेष",
-"After approval": "मंज़ूरी के बाद"
+"After approval": "मंज़ूरी के बाद",
+"Regularization": "Regularization",
+"Regularize": "Regularize",
+"Regularize a day": "दिन Regularize करें",
+"Late days": "देर के दिन",
+"Average in": "औसत IN",
+"Worked": "काम किया",
+"Day list": "दिनों की सूची",
+"Calendar": "Calendar",
+"Total hours": "कुल घंटे",
+"Week off": "साप्ताहिक अवकाश",
+"To approve": "मंज़ूरी के लिए",
+"Reject": "अस्वीकार",
+"Asked": "माँगा",
+"What you asked": "आपने क्या माँगा",
+"New": "नया"
 }

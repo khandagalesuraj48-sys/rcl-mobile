@@ -15,6 +15,24 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.156.0 (21-11-2026 – the pictures he approved: Attendance "ok he attendance che design approved ahe", Regularization "approved …
+he ask to set he name nay thewaych, ethe regularization as") THE NEW ATTENDANCE PAGE AND "REGULARIZATION".**
+* **Attendance** (`screens/attendance.dart`, the month): the navy card – a gold ring of how much of the month he was there, his days
+  for pay "of N working days so far", Present · Half day · Absent · Leave; three tiles **Late days · Average in · Worked** (counted
+  in the app from the days the server gives – nothing new is asked of it); **Calendar / Day list** (the list has a filter: All,
+  Present, Absent, Half day, Leave, Late); the calendar's days are round, in the colour of what they count as, today in a gold
+  ring, a dot on a late day; **a day opened**: its date, its shift, "Late N min" or what it counts as, Check in · Check out ·
+  Total hours, the place it was marked at, Signed in / Signed out, why it counts so – and **Regularize** for a day gone.
+* **Regularization** (`screens/attend_reqs.dart`; it was "Requests"): the navy card with **+ New** and Waiting · Approved ·
+  Rejected; the parts **My requests** and – for a person others report to – **To approve** (their requests and their leave:
+  Reject / Approve); every request a card with its road (Sent → Verification by the reporting person, when the HR office's setting
+  asks for it → Approval by the HR office) and in words who it is with; **a request opened** (new page): who it is with, each
+  step with its time, what he asked. The form is "Regularize a day". "Ask to set right" is said "Regularize" everywhere (the day's
+  card, Home's note and tile, the marking page).
+* **No server change, no SQL.** The reporting person's name is the one of his own record ("My HR"); the HR office is said "the HR
+  office" (the server gives the decider's e-mail, not a name). A request cannot be taken back – the server has no such action.
+* **Not verified here:** a real phone, iPhone; a request with a verification step with real data.
+
 **Version 3.155.0 (21-11-2026 – the Leave pages he chose from the pictures: the page "yes first wali ok aahe perfect", its card "b ok ahe
 he fix", the inner pages "ok aahet he sagle"; asked with them: "leave status he samjaw ki verification madhe aahe konakade aahe tyach
 name, approval sathi pending konakade tyach name") THE NEW LEAVE PAGE, ITS FORM AND A REQUEST'S PAGE – WITH THE ROAD OF EVERY LEAVE.**
