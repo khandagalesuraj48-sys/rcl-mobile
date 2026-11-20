@@ -82,10 +82,12 @@ class _DocGateScreenState extends State<DocGateScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _load(first: true);
   }
 
-  Future<void> _load() async {
+  // [first] – the screen's very first load: if his papers are already done (he did them on the web), the gate closes at once. A later
+  // load (after an upload / "Not available") never closes by itself – the gate waits for his Submit, even when the last paper is done.
+  Future<void> _load({bool first = false}) async {
     try {
       final r = await widget.ask({'action': 'myGate'});
       if (!mounted) return;
@@ -94,7 +96,7 @@ class _DocGateScreenState extends State<DocGateScreen> {
         loading = false;
         err = '';
       });
-      if (r['required'] != true) widget.onDone(); // done elsewhere already
+      if (first && r['required'] != true) widget.onDone(); // done elsewhere already
     } catch (e) {
       if (mounted) setState(() {
         loading = false;
