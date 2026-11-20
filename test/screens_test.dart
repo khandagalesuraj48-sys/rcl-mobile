@@ -9459,6 +9459,91 @@ void main() {
     expect(srv.hrTrackPoints.length, 3);
   });
 
+  /* (3.151.0, rcl-hr documents gate – his decision of 20-11-2026: "jy user ni documents upload keleli nastil tyana compulsory aahe …
+   * app open krel direct document upload screen yeil … adhar pan bank driving lience eduction … ek ek ki mg submit … sobat anek … edit
+   * delet"; all compulsory, PAN / Licence / Education may be "Not available", Aadhaar & Bank never) the whole app waits on the gate
+   * until he submits. */
+  testWidgets('(3.151.0) documents gate: before Home the five papers; Aadhaar & Bank must be uploaded, PAN / Licence / Education may be "Not available"; many files; Submit opens the app', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    final jpg = Uint8List.fromList(img.encodeJpg(img.Image(width: 32, height: 24))), pdf = Uint8List.fromList(utf8.encode('%PDF-1.4\n%%EOF\n'));
+    final p0 = pickAttFiles;
+    addTearDown(() {
+      pickAttFiles = p0;
+      AttendKit.kit = AttendKit();
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..hrGate = true;
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    // the gate blocks the whole app – Home is not shown
+    expect(find.byKey(const Key('dg-submit')), findsOneWidget);
+    expect(find.byKey(const Key('hr-home')), findsNothing, reason: 'the whole app waits on the gate');
+    for (final k in ['aadhaar', 'pan', 'bank_passbook', 'licence', 'education']) {
+      expect(find.byKey(Key('dg-card-$k')), findsOneWidget);
+    }
+    // Aadhaar & Bank can never be "Not available"; the other three can
+    expect(find.byKey(const Key('dg-na-aadhaar')), findsNothing);
+    expect(find.byKey(const Key('dg-na-bank_passbook')), findsNothing);
+    expect(find.byKey(const Key('dg-na-pan')), findsOneWidget);
+    expect(t.widget<FilledButton>(find.byKey(const Key('dg-submit'))).onPressed, isNull, reason: 'Submit is off until every one is done');
+
+    Future<void> scrollTo(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 220, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 250);
+    }
+
+    Future<void> upload(String key, Uint8List bytes, String name, String pick) async {
+      await scrollTo('dg-add-$key');
+      await t.tap(find.byKey(Key('dg-add-$key')));
+      await settle(t, 350);
+      pickAttFiles = (how, room) async => [(name: name, bytes: bytes)];
+      await t.tap(find.byKey(Key(pick)));
+      await net(t);
+      await net(t);
+    }
+
+    // Aadhaar with TWO files (many per paper), then Bank
+    await upload('aadhaar', jpg, 'aadhaar-front.jpg', 'dg-gallery');
+    await upload('aadhaar', jpg, 'aadhaar-back.jpg', 'dg-gallery');
+    expect(find.descendant(of: find.byKey(const Key('dg-card-aadhaar')), matching: find.textContaining('2 file')), findsOneWidget, reason: 'many files kept');
+    await upload('bank_passbook', pdf, 'bank.pdf', 'dg-pdf');
+    expect(t.widget<FilledButton>(find.byKey(const Key('dg-submit'))).onPressed, isNull, reason: 'PAN / Licence / Education still to do');
+
+    // mark the three "Not available"
+    Future<void> na(String key) async {
+      await scrollTo('dg-na-$key');
+      await t.tap(find.byKey(Key('dg-na-$key')));
+      await settle(t, 350);
+      await t.tap(find.byKey(const Key('dg-na-ok')));
+      await net(t);
+      await net(t);
+    }
+
+    await na('pan');
+    await na('licence');
+    await na('education');
+    // every one done – Submit is on
+    await scrollTo('dg-submit');
+    expect(t.widget<FilledButton>(find.byKey(const Key('dg-submit'))).onPressed, isNotNull);
+    await t.tap(find.byKey(const Key('dg-submit')));
+    await net(t);
+    await net(t);
+    // the app opens: Home shows, the gate is gone
+    expect(find.byKey(const Key('dg-submit')), findsNothing);
+    expect(find.byKey(const Key('hr-home')), findsOneWidget, reason: 'submitted – the app opens');
+    // what reached HR: the two papers and the three "Not available"
+    expect(srv.hrDocs.map((d) => '${d['kind']}').toSet(), {'aadhaar', 'bank_passbook'});
+    expect(srv.hrDocNa.keys.toSet(), {'pan', 'licence', 'education'});
+  });
+
   // (3.137.0, rcl-hr step 17) his messages from HR: Me says how many are new; the list marks them seen
   testWidgets('(3.137.0) HR – Notifications: Me counts the new ones; the list shows them, new ones marked; opening it marks them seen', (t) async {
     phone(t);
@@ -9790,7 +9875,7 @@ void main() {
     expect(find.byKey(const Key('att-strip')), findsOneWidget, reason: 'he has HR on this site');
     expect(find.text('Mark IN'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('home-scan')), matching: find.text('Scan')), findsOneWidget, reason: '(3.121.0) the tile stands beside Scan');
-    expect(srv.hrSent, isEmpty, reason: 'Home asks nothing of the HR server – the strip shows what this phone kept');
+    expect([for (final x in srv.hrSent) '${x['fn'] ?? x['action']}'], ['sso', 'myGate'], reason: '(20-11-2026) only the documents-gate check; the strip itself shows what this phone kept');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_in.png'));
     // (3.115.0) a tap (or the sun slid across) opens THE ATTENDANCE APP ITSELF over the ERP – the same Home with the dial, the

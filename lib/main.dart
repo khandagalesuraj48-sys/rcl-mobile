@@ -24,6 +24,7 @@ import 'core/rtc_kit.dart';
 import 'core/scan_link.dart';
 import 'core/session.dart';
 import 'core/update.dart' show updateContext, updateWatch, updateAway, updateBack;
+import 'screens/docs_gate.dart';
 import 'screens/call.dart';
 import 'screens/lock.dart';
 import 'screens/login.dart';
@@ -306,7 +307,8 @@ class Gate extends StatelessWidget {
         Stage.setPassword => const LoginScreen(key: ValueKey('setpw'), setPassword: true),
         Stage.pickSite => const SitePickScreen(key: ValueKey('site')),
         // (3.108.0) HR only at this site: the app's own pages for attendance
-        Stage.ready => s.hrOnly ? HrShell(key: ValueKey('hr-${s.site?.code}')) : Shell(key: ValueKey('app-${s.site?.code}')),
+        // (20-11-2026) the documents gate: before Home, an employee whose required papers are not done uploads them (DocsGateHost)
+        Stage.ready => DocsGateHost(key: ValueKey('gate-${s.site?.code}'), child: s.hrOnly ? HrShell(key: ValueKey('hr-${s.site?.code}')) : Shell(key: ValueKey('app-${s.site?.code}'))),
         Stage.waiting => const Waiting(key: ValueKey('wait')),
       },
     );

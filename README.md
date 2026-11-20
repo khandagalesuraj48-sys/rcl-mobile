@@ -15,6 +15,23 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.151.0 (20-11-2026, his decision: "jy user ni documents upload keleli nastil tyana compulsory aahe document upload krne … app
+open krel direct document upload screen yeil … adhar card pan card bank details driving lience ani eduction … ek ek ki mg submit hoil …
+upload zalel asel tr ti screen nahi yenar … sobat anek documents … edit delet"; all compulsory, PAN / Licence / Education may be "Not
+available", Aadhaar & Bank never):** the **documents gate** – before anything else, a new employee uploads his FIVE papers; the whole app
+waits until he submits (`lib/screens/docs_gate.dart`; the server is rcl-hr `act_docgate` – `myGate` / `myDocNa` / `myDocDelete`).
+* `DocsGateHost` wraps the Home at `Stage.ready` (main.dart): it asks `myGate`; if the required papers are not done it shows `DocGateScreen`
+  over the whole app (no Home, no bar). A person who is not an employee, or a site with no HR, never waits; HR unreachable does not lock
+  the app.
+* The screen (the approved mockup): the five cards – **Aadhaar, PAN, Bank, Driving licence, Education**. Aadhaar & Bank **must be
+  uploaded** (no N/A); PAN / Licence / Education have **"I don't have this"** (→ `myDocNa`). Each card: **many files** (Camera / Photos –
+  several at once / PDF), a green ✓ when done, each file opens / is removed (`myDocDelete`); progress "X of 5 done"; **Submit** turns on when
+  every one is uploaded or N/A, and opens the app. A "Sign out" is there so nobody is stuck. The files go to his own "My documents".
+* Nothing of this is in the app in Marathi by itself (3.150.0 – English by default); मराठी / हिंदी chosen in settings shows it in that language.
+* Tests: `test/screens_test.dart` (the gate blocks Home; Aadhaar/Bank have no N/A, PAN does; two files on Aadhaar; Submit off until done;
+  N/A the three; Submit opens the app; the two papers and three N/A reach HR); `test/fake_server.dart` (`myGate` / `myDocNa` / `myDocDelete`).
+  The existing strip test now expects the one `myGate` check at Home.
+
 **Version 3.150.0 (20-11-2026, his decision: "app language default english asel sagli kde user setting mdhun change kru shakel english
 mdhe marathi mix as ny disnar"):** the app is **English by default** – no Marathi second line / "English · मराठी" mix anywhere. मराठी /
 हिंदी are chosen in **Me → My settings → App language**, and then the whole app (titles, buttons, messages, the assistant's own lines,
