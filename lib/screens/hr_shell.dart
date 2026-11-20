@@ -571,8 +571,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     Widget stat(String key, String v, String en, String mr, {int flex = 10}) => Expanded(
           flex: flex,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
-            decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(16)),
+            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 5),
+            decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(14)),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               FittedBox(fit: BoxFit.scaleDown, child: m.Text(v.isEmpty ? '– –:– –' : v, key: Key(key), maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800, color: v.isEmpty ? sk.faint : sk.ink))),
               const SizedBox(height: 3),
@@ -582,7 +582,10 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         );
     return Container(
       key: const Key('hh-hero'),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      // (3.154.0, asked 21-11-2026: "sign out cha section … motha card zalay as feel yetey, tyachi size height madhe kami kr … check in
+      // check out total work te sagle rahu de fkt thoda small banaw") the same card, lower: a smaller dial (the same on every
+      // phone – it never grows past 256), less air round it; everything in it stays
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: sk.box(radius: 28),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
@@ -590,18 +593,18 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           const SizedBox(width: 8),
           _placeChip(),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: 2),
         LayoutBuilder(
           builder: (_, box) => GestureDetector(
             key: const Key('hh-slide'),
             behavior: HitTestBehavior.opaque,
             onTap: go,
             onLongPress: go,
-            child: Bounce(to: .96, child: HomeDial(size: math.min(310.0, box.maxWidth), now: at(india.hour * 60 + india.minute), start: a, end: b0, dim: sky == Sky.grey || sky == Sky.dusk, clock: _nowMs, big: big, under: under)),
+            child: Bounce(to: .96, child: HomeDial(size: math.min(256.0, box.maxWidth), now: at(india.hour * 60 + india.minute), start: a, end: b0, dim: sky == Sky.grey || sky == Sky.dusk, clock: _nowMs, big: big, under: under)),
           ),
         ),
         if (a != null && b0 != null) m.Text('${shift['name'] ?? ''}', key: const Key('hh-shift'), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sk.faint)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Row(children: [stat('hh-in', tin, 'Check in', 'Check in'), const SizedBox(width: 8), stat('hh-out', tout, 'Check out', 'Check out'), const SizedBox(width: 8), stat('hh-hours', hours, 'Total working hours', 'एकूण कामाचे तास', flex: 13)]),
       ]),
     );

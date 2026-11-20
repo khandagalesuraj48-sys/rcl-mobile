@@ -37,7 +37,9 @@ them) THE CREST, THE NEW SIGN-IN, ME AND MY DOCUMENTS; HOME'S HEADER STAYS; THE 
 * **My documents**: on top "3 of 10 attached" with a gold ring and what is still needed; then the groups **Needed from you** (missing,
   or rejected – with the HR office's reason and "Attach again"), **Being checked by HR**, **Verified**, **You can also attach**. Each
   paper: its sign, its name, "Attached 20 Nov • Open", and **Upload** (gold) or **+ Add**. The server's actions are unchanged.
-* **Home** (`screens/hr_shell.dart`): his name and the bell **stay at the top** while the page moves under them.
+* **Home** (`screens/hr_shell.dart`): his name and the bell **stay at the top** while the page moves under them. The card of the dial
+  (SIGN IN / SIGN OUT, Check in · Check out · Total working hours) is **lower**: a smaller dial (never past 256 wide, the same on
+  every phone), less air round it – everything in it stays.
 * **The bar**: only the pill – the page goes on under it (`extendBody`), nothing square round it; glass (the page shows through,
   softened), a little smaller (62 high). Every page's list ends clear of it.
 * **The HR pages keep what they read** (`core/hr_cache.dart`, asked 21-11-2026: "cache data banwayla hawa … new lagech disel … old
