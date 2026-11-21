@@ -1,3 +1,3 @@
-Home: the round button is green when you have to sign in and red when you have to sign out – clear at a glance.
-Home: sign in करायचं असेल तेव्हा गोल बटण हिरवं आणि sign out करायचं असेल तेव्हा लाल – एका नजरेत समजतं.
-Home: sign in करना हो तब गोल बटन हरा और sign out करना हो तब लाल – एक नज़र में साफ़.
+Home: the round button is green when you have to sign in and red when you have to sign out. Me: the gold strip with the name and logo at the top of your card is removed.
+Home: sign in करायचं असेल तेव्हा गोल बटण हिरवं आणि sign out करायचं असेल तेव्हा लाल. Me: कार्डच्या वरची नाव आणि logo ची सोनेरी पट्टी काढली.
+Home: sign in करना हो तब गोल बटन हरा और sign out करना हो तब लाल. Me: कार्ड के ऊपर की नाम और logo वाली सुनहरी पट्टी हटाई.
