@@ -704,7 +704,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
 
     return Scaffold(
       appBar: hrHead(context, sky: kMeSky, title: 'My documents', mr: 'माझी कागदपत्रे', height: 100, below: [
-        Text('Attach a clear photo or a PDF of each paper. On a paper, ⋯ lets you edit, change or delete it.', mr: 'प्रत्येक कागदाचा स्पष्ट photo किंवा PDF जोडा. कागदावरच्या ⋯ ने तो edit, change किंवा delete करता येतो.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
+        Text('Attach a clear photo or a PDF of each paper. The three dots on a paper let you edit, change or delete it.', mr: 'प्रत्येक कागदाचा स्पष्ट photo किंवा PDF जोडा. कागदावरच्या तीन टिंबांनी तो edit, change किंवा delete करता येतो.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
       ]),
       body: loading
           ? const SkeletonList(tiles: 0, rows: 5)
