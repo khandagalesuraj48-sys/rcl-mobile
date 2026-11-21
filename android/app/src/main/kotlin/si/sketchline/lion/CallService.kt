@@ -1,4 +1,4 @@
-package `in`.rachana.rcl.rcl_mobile
+package si.sketchline.lion
 
 import android.app.Notification
 import android.app.NotificationChannel

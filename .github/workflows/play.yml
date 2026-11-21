@@ -1,0 +1,92 @@
+# PLAY – the file for the Google Play Store (3.165.0, asked 21-11-2026: "apan play store war developer account banwalell aahe …
+# first app deychi aahe"). Started by hand: Actions → play → Run workflow (the branch whose code goes to the store – main or beta).
+# It makes ONE signed bundle (.aab) of the Play Store's app:
+#   – the package si.sketchline.lion, the name LION (android/app/src/play/AndroidManifest.xml, RCL_STORE=play);
+#   – no update of its own: Google Play updates it (lib/core/play_update.dart, --dart-define=PLAY=true);
+#   – signed with the key of the app (the private bucket app-keys – never made here, never in a file): for Google it is the
+#     UPLOAD key;
+#   – its number (version code) is 100000 + this workflow's run number: always higher than the one before, as Play asks.
+# The bundle is kept with the run for 14 days (Artifacts → play-bundle): he downloads it and puts it in the Play Console himself.
+# Nothing is sent to Google from here and no release of this repository is made – the phones of today are not touched.
+# The same GitHub secrets as beta.yml / release.yml.
+name: play
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: play
+  cancel-in-progress: false
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
+      SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      RCL_STORE: play
+    steps:
+      - uses: actions/checkout@v5
+      - name: The version and its number
+        run: |
+          set -e
+          VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          BN=$(( 100000 + GITHUB_RUN_NUMBER ))
+          { echo "VER=$VER"; echo "BN=$BN"; } >> "$GITHUB_ENV"
+          echo "::notice::Play Store: LION $VER ($BN) of $GITHUB_REF_NAME"
+      - name: The two settings
+        run: |
+          if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "::error::Add PORTAL_SUPABASE_URL and PORTAL_SUPABASE_KEY in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          SB_URL="${SB_URL%/}"; echo "SB_URL=$SB_URL" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Signing key (the app's own – kept only in the private bucket app-keys; never made here)
+        run: |
+          set -e
+          cd android
+          get() { curl -sS --max-time 60 -o "$2" -w "%{http_code}" "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY"; }
+          [ "$(get upload-keystore.jks upload-keystore.jks)" = "200" ] && [ "$(get key.properties key.properties)" = "200" ] || { echo "::error::The signing key is not in the bucket app-keys – run release.yml once first."; exit 1; }
+          echo "::add-mask::$(grep '^storePassword=' key.properties | cut -d= -f2-)"
+      - name: Firebase settings – the file must know the Play Store's package
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GSJ" ]; then echo "::error::Add GOOGLE_SERVICES_JSON in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          printf '%s' "$GSJ" > android/app/google-services.json
+          python3 - <<'PY'
+          import json, sys
+          j = json.load(open('android/app/google-services.json'))
+          names = [c.get('client_info', {}).get('android_client_info', {}).get('package_name', '') for c in j.get('client', [])]
+          if 'si.sketchline.lion' not in names:
+              print('::error::Firebase does not know the app si.sketchline.lion yet. Firebase → Project settings → Add app → Android → package si.sketchline.lion → download google-services.json → put the whole file in the GitHub secret GOOGLE_SERVICES_JSON (it keeps the app of today too). It has: %s' % names); sys.exit(1)
+          PY
+      - run: flutter pub get
+      - name: Tests (a bundle only when they pass)
+        run: flutter test --exclude-tags golden
+      - name: Room for the Android build (swap, free disk)
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules/@angular "$AGENT_TOOLSDIRECTORY/CodeQL" || true
+          sudo fallocate -l 8G /rcl-swap && sudo chmod 600 /rcl-swap && sudo mkswap /rcl-swap >/dev/null && sudo swapon /rcl-swap || true
+      - name: Signed bundle for the Play Store
+        run: |
+          set -e
+          GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"
+          flutter build appbundle --release --build-name="$VER" --build-number="$BN" --dart-define=PLAY=true $GM
+          cp build/app/outputs/bundle/release/app-release.aab "lion-$VER-$BN.aab"
+          # never the debug key: the bundle's signer must be the app's own key
+          OWNER=$(keytool -printcert -jarfile "lion-$VER-$BN.aab" | grep -m1 '^Owner:' || true)
+          echo "::notice::signed by: $OWNER"
+          case "$OWNER" in *"Android Debug"*|"") echo "::error::the bundle is not signed with the app's key"; exit 1;; esac
+          echo "::notice::lion-$VER-$BN.aab – $(( $(stat -c %s lion-$VER-$BN.aab) / 1048576 )) MB"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: play-bundle
+          path: lion-*.aab
+          retention-days: 14

@@ -29,6 +29,6 @@ void main() {
     expect(File('android/gradle.properties').readAsStringSync(), contains('dev.steenbakker.mobile_scanner.useUnbundled=true'));
     expect(File('android/app/src/main/AndroidManifest.xml').readAsStringSync(), contains('android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="ocr,face,barcode"'));
     expect(app, contains('play-services-mlkit-barcode-scanning'));
-    expect(File('android/app/src/main/kotlin/in/rachana/rcl/rcl_mobile/MainActivity.kt').readAsStringSync(), contains('MlReady.ask(applicationContext)'));
+    expect(File('android/app/src/main/kotlin/si/sketchline/lion/MainActivity.kt').readAsStringSync(), contains('MlReady.ask(applicationContext)'));
   });
 }

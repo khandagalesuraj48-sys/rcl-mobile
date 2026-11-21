@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.165.0 (21-11-2026 – asked: "play store war developer account banwalell aahe … first app deychi aahe"; "si.sketchline.lion
+he tu kr"; "in app updet sadh updet he tr lawaych aahech"):** THE PLAY STORE'S APP – a second way to build the same code
+(`RCL_STORE=play`, `--dart-define=PLAY=true`; Actions → **play** makes the signed `.aab`, he puts it in the Play Console): the package
+`si.sketchline.lion`, named LION, without the "install a file" permission and without the app's own file update – Google Play updates
+it (`lib/core/play_update.dart`: Google's sheet once in an opening, the download while he works, put in at the next start or from Me →
+"Install now"); Me has "Auto update" (the two taps in the Play Store – no app can switch that setting) and Share app sends the Play
+Store's page. The code's own name (namespace, Kotlin classes, the iPhone bundle) is `si.sketchline.lion` everywhere; only the app given by its
+file keeps the id it was installed with (`in.rachana.rcl.rcl_mobile` – with another id no phone of today could take its update). The build checks the Play app's package, name
+and permission. Not seen: a real phone, the Play Console (an in-app update works only for an app installed from Google Play).
+
 **Version 3.164.0 (21-11-2026 – his decision after the security scan: "offline punch not allow"):** with no network a punch is not
 kept on the phone any more – "No network: attendance is marked only with the network on"; he marks again when the network is back.
 (A punch kept by an app of before still goes when the network is back, while the server takes it – rcl-hr `HR_OFFLINE_PUNCH`.)

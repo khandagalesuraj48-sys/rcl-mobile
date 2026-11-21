@@ -23,6 +23,7 @@ import 'core/push_fcm.dart';
 import 'core/rtc_kit.dart';
 import 'core/scan_link.dart';
 import 'core/session.dart';
+import 'core/play_update.dart' show playWatch;
 import 'core/update.dart' show updateContext, updateWatch, updateAway, updateBack, tellAppTag;
 import 'screens/consent_gate.dart';
 import 'screens/docs_gate.dart';
@@ -149,6 +150,7 @@ void main() {
       onResume: () {
         updateWatch(opened: true);
         updateBack();
+        playWatch(); // (3.165.0) the Play Store's app: Google's own update, offered once in an opening
       },
       onPause: updateAway); // (it stays with the app's binding)
   // (3.41.0, asked 25-10-2026: "google scanner mobile scanner madhun jari scan kel adhi app kade jaw") a "Scan with Mobile" QR code
@@ -160,7 +162,10 @@ void main() {
     }).catchError((Object _) {});
     links.uriLinkStream.listen((u) => ScanLink.i.take('$u'), onError: (Object _) {});
   }
-  WidgetsBinding.instance.addPostFrameCallback((_) => updateWatch(opened: true));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    updateWatch(opened: true);
+    playWatch(start: true); // (3.165.0) the Play Store's app: an update downloaded before is put in now, at the start
+  });
 }
 
 

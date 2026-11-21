@@ -7,12 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../config.dart' show kMainUrl;
+import 'play_update.dart' show onPlay, kPlayPage;
 
 /// The app's own page – the latest version, always.
 const kAppPage = '$kMainUrl/app';
 
 /// What is sent – the link and one line in each language.
-String appShareText() => 'Sketchline app – $kAppPage\n\n'
+/// (3.165.0) the Play Store's app shares its own page in the Play Store.
+String appShareText() => 'Sketchline app – ${onPlay() ? kPlayPage : kAppPage}\n\n'
     'नवीन version download करा, install करा आणि Admin ने दिलेला email व password टाकून sign in करा.\n'
     'Download the latest version, install it and sign in with the email and password the Admin gave you.\n'
     'नया version download करें, install करें और Admin का दिया email और password डालकर sign in करें.';
