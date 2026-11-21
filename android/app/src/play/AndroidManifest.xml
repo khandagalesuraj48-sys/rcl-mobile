@@ -1,9 +1,9 @@
 <!-- (3.165.0, asked 21-11-2026) THE PLAY STORE'S APP – laid over the main manifest only when the build is made with RCL_STORE=play
-     (android/app/build.gradle.kts): the name under the icon is LION; the app's own "download a file and install it" update is not
+     (android/app/build.gradle.kts): the name under the icon is "Sketchline Lion" (his correction of 21-11-2026: "application name Sketchline Lion he thewaych ahe"); the app's own "download a file and install it" update is not
      in it (Google Play's rule: an app of the store is updated by the store only) – its permission and its parts are taken out. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/>
-    <application android:label="LION" tools:replace="android:label">
+    <application android:label="Sketchline Lion" tools:replace="android:label">
         <provider android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
             android:authorities="${applicationId}.ota_update_provider"
             tools:node="remove"/>

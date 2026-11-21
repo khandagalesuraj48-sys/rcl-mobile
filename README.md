@@ -134,7 +134,7 @@ as before. Not seen: a real phone, a real WhatsApp message.
 **Version 3.165.0 (21-11-2026 – asked: "play store war developer account banwalell aahe … first app deychi aahe"; "si.sketchline.lion
 he tu kr"; "in app updet sadh updet he tr lawaych aahech"):** THE PLAY STORE'S APP – a second way to build the same code
 (`RCL_STORE=play`, `--dart-define=PLAY=true`; Actions → **play** makes the signed `.aab`, he puts it in the Play Console): the package
-`si.sketchline.lion`, named LION, without the "install a file" permission and without the app's own file update – Google Play updates
+`si.sketchline.lion`, named Sketchline Lion (his correction of the same day), without the "install a file" permission and without the app's own file update – Google Play updates
 it (`lib/core/play_update.dart`: Google's sheet once in an opening, the download while he works, put in at the next start or from Me →
 "Install now"); Me has "Auto update" (the two taps in the Play Store – no app can switch that setting) and Share app sends the Play
 Store's page. The code's own name (namespace, Kotlin classes, the iPhone bundle) is `si.sketchline.lion` everywhere; only the app given by its

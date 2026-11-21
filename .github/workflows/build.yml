@@ -176,7 +176,7 @@ jobs:
           [ "$(abis all.apk)" = "arm64-v8a armeabi-v7a" ] || { echo "::error::the file for every phone has: $(abis all.apk)"; exit 1; }
           [ "$(abis a64.apk)" = "arm64-v8a" ] || { echo "::error::the 64-bit file has: $(abis a64.apk)"; exit 1; }
       # (3.165.0, asked 21-11-2026) THE PLAY STORE'S APP is checked too (the last step – it changes nothing of the files above): built
-      # with RCL_STORE=play and PLAY=true, it must be the package si.sketchline.lion, named LION, WITHOUT the permission to install
+      # with RCL_STORE=play and PLAY=true, it must be the package si.sketchline.lion, named Sketchline Lion, WITHOUT the permission to install
       # a file (Google Play's rule). Until Firebase knows the new package this check builds it without Firebase (said in a warning).
       - name: The Play Store's app (check only) – its package, its name, no "install a file" permission
         run: |
@@ -193,9 +193,9 @@ jobs:
           B=$("${AS}aapt2" dump badging build/app/outputs/flutter-apk/app-release.apk)
           echo "$B" | grep -E "^package:|^application-label:|uses-permission: name='android.permission.REQUEST_INSTALL_PACKAGES'" || true
           echo "$B" | grep -q "^package: name='si.sketchline.lion'" || { echo "::error::the Play Store's app is not the package si.sketchline.lion"; exit 1; }
-          echo "$B" | grep -q "^application-label:'LION'" || { echo "::error::the Play Store's app is not named LION"; exit 1; }
+          echo "$B" | grep -q "^application-label:'Sketchline Lion'" || { echo "::error::the Play Store's app is not named Sketchline Lion"; exit 1; }
           if echo "$B" | grep -q "REQUEST_INSTALL_PACKAGES"; then echo "::error::the Play Store's app still asks to install files (REQUEST_INSTALL_PACKAGES)"; exit 1; fi
-          echo "::notice::The Play Store's app: si.sketchline.lion · LION · no install permission · $(( $(stat -c %s build/app/outputs/flutter-apk/app-release.apk) / 1048576 )) MB (64-bit)"
+          echo "::notice::The Play Store's app: si.sketchline.lion · Sketchline Lion · no install permission · $(( $(stat -c %s build/app/outputs/flutter-apk/app-release.apk) / 1048576 )) MB (64-bit)"
 
   # (3.19.0) THE WINDOWS APP: built on Windows, the Visual C++ files put next to it, its setup made (windows/installer.iss)
   windows:
