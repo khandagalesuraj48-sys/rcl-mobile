@@ -36,6 +36,7 @@ import '../web/files.dart' show handOver;
 import 'attend_reqs.dart';
 import 'consent_gate.dart' show showConsent;
 import 'face_screens.dart';
+import 'hr_office.dart' show OutsideProof, OutsideReasonScreen, sendOutsideProof;
 import 'hr_shell.dart';
 import 'leave.dart';
 
@@ -255,7 +256,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
 
   /// One kept punch to the server: its photo first (unless it is there already), then the punch. [live] = just taken, the network
   /// was there. Throws ApiError – code 'net' = not sent (it stays kept), anything else = the server's answer.
-  Future<Map<String, dynamic>> _send(KeptPunch p, {required bool live}) async {
+  Future<Map<String, dynamic>> _send(KeptPunch p, {required bool live, Map<String, dynamic>? outside}) async {
     final s = SessionScope.read(context);
     final u = await _hr({'action': 'selfieUrl', 'client_id': p.cid});
     if (u['there'] != true) {
@@ -269,7 +270,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     // (3.136.0, rcl-hr step 16) the phone's own proof for this very punch – only when the HR server asks for it
     final pj = me?['integrity'] is Map ? (me!['integrity'] as Map)['project'] : null;
     final proof = pj is num && pj > 0 ? await AttendKit.kit.integrity(pj.toInt(), 'rcl-punch|${p.cid}') : '';
-    return _hr(p.body(live: live, key: await attendKey(s.api.keep), proof: proof).cast<String, dynamic>()); // (3.134.0) with the phone's own key
+    return _hr({...p.body(live: live, key: await attendKey(s.api.keep), proof: proof).cast<String, dynamic>(), if (outside != null) 'outside': outside}); // (3.134.0) with the phone's own key; (3.160.0) from outside: the reason and the proof
   }
 
   Future<void> _sendKept(List<KeptPunch> list) async {
@@ -293,11 +294,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   /// IN (and its OUT, or it was closed by itself) – the server takes no punch any more today.
   bool get _dayDone => kept.isEmpty && '${me?['next'] ?? ''}' == 'done';
 
+  /// (3.160.0) he is outside his work place: the button "from here – with reason" is shown
+  bool outsideOffer = false;
+
   /// the time today was closed by itself because OUT was not marked ('' = it was not)
   String get _closed => '${me?['closed'] ?? ''}';
 
   /// Where am I – a fresh reading against his places. Throws AttendProblem.
-  Future<PlaceHit> _where([String kind = '']) async {
+  Future<PlaceHit> _where([String kind = '', bool outsideOk = false]) async {
     if (await AttendKit.kit.devOptions()) {
       if (mounted) setState(() => dev = true);
       throw AttendProblem('Developer Options are ON in this phone: switch them off (Settings › Developer options) to mark attendance.', 'या phone मध्ये Developer Options चालू आहेत: हजेरीसाठी ते बंद करा (Settings › Developer options).', 'devoptions');
@@ -316,7 +320,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final h = nearestPlace(usable, f.lat, f.lng)!;
     fix = f;
     if (mounted) setState(() => hit = h);
-    if (!h.inside) {
+    if (!h.inside && !outsideOk) {
       final any = usable.length < places.length ? nearestPlace(places, f.lat, f.lng) : null;
       if (any != null && any.inside) {
         final where = usable.take(3).map((p) => p.name).join(', ');
@@ -392,7 +396,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     });
   }
 
-  Future<void> _punch() async {
+  /// (3.160.0, rcl-hr step 21) OUTSIDE a work place: the reason (spoken or typed), his voice and a photo of the camera first – then
+  /// the same punch goes with them and WAITS for his steps (it counts only when the last step approved it).
+  Future<void> _punchOutside() async {
+    final h = hit;
+    if (busy || me == null || h == null) return;
+    final proof = await Navigator.of(context).push<OutsideProof>(hrRoute(OutsideReasonScreen(kind: _next, place: h.place.name, distance: h.distance)));
+    if (proof == null || !mounted) return;
+    await _punch(proof: proof);
+  }
+
+  Future<void> _punch({OutsideProof? proof}) async {
     if (busy || me == null) return;
     final kind = _next;
     if (_onLeave != null) return; // (3.147.0) a day of his leave: the card says what to do
@@ -405,9 +419,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
       busy = true;
       err = '';
       done = '';
+      outsideOffer = false;
     });
     try {
-      final h = await _where(kind), f = fix!;
+      final h = await _where(kind, proof != null), f = fix!;
       if (!mounted) return;
       // (3.111.0) the face is needed: registered first (once); then the living face – straight, a blink – gives the proof photo
       final Uint8List? raw;
@@ -441,6 +456,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         os: info['os'] ?? '',
       );
       await store!.add(p, jpg); // on the phone first – whatever the network does
+      if (proof != null) {
+        // from outside: it needs the network now (the proof goes first); nothing of it stays on the phone
+        try {
+          final extra = await sendOutsideProof(_hr, s0.api.hrFile, proof), r = await _send(p, live: true, outside: extra);
+          await store!.patch({'punches': r['punches'], 'next': r['next'], 'phone': 'this'});
+          if (!mounted) return;
+          setState(() {
+            me = {...?me, 'punches': r['punches'], 'next': r['next'], 'phone': 'this'};
+            offline = false;
+            done = _t('${kind == 'in' ? 'IN' : 'OUT'} from outside is sent – pending. ${r['waits'] ?? ''}', 'बाहेरून ${kind == 'in' ? 'IN' : 'OUT'} पाठवले – Pending. ${r['waits'] ?? ''}');
+          });
+        } finally {
+          await store!.remove(p.cid);
+        }
+        return;
+      }
       var okTime = '';
       try {
         final r = await _send(p, live: true);
@@ -475,7 +506,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         if (mounted) Navigator.of(context).pop();
       }
     } on AttendProblem catch (e) {
-      if (mounted) setState(() => err = _t(e.en, e.mr));
+      if (mounted) {
+        setState(() {
+          err = _t(e.en, e.mr);
+          outsideOffer = e.code == 'outside' && hit != null; // (3.160.0) outside his work place: he may punch from here with a reason
+        });
+      }
     } on ApiError catch (e) {
       // (3.147.0) the server: today is a day of his leave – the card with "Change leave days" instead of the message
       if (mounted) {
@@ -571,6 +607,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                 ],
                 if (done.isNotEmpty) InfoLine(done, icon: Icons.check_circle_rounded, key: const Key('att-done')),
                 if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('att-err')),
+                if (outsideOffer && !busy)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: FilledButton.icon(
+                      key: const Key('att-outside'),
+                      onPressed: _punchOutside,
+                      icon: const Icon(Icons.near_me_outlined),
+                      label: Text(_next == 'out' ? 'Punch out from here – with reason' : 'Punch in from here – with reason', mr: _next == 'out' ? 'इथून Punch out – कारणासह' : 'इथून Punch in – कारणासह'),
+                    ),
+                  ),
                 for (final r in refused) InfoLine(_t('A punch kept on the phone was not taken: $r', 'Phone मध्ये ठेवलेली हजेरी घेतली गेली नाही: $r'), bad: true, help: false),
                 if (me != null) ...[
                   // ---- kept on the phone

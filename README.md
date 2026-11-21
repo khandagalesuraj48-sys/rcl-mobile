@@ -15,6 +15,20 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.160.0 (21-11-2026 – rcl-hr step 21 in the app; the pictures he approved, "adhi web banel nantr app"):**
+* `lib/screens/hr_office.dart` – the app's own screens, the same server actions as the web: **Our team** (`teamAll` – every site's people, the
+  birthday with the age, never the year), **Approvals** (`flowList` / `flowOpen` / `flowDecide` – Waiting · Approved · Rejected; a punch
+  from outside with how far, the reason, the voice, the photos; a reject asks for the reason), **Release phone** (`devList` / `devRelease`,
+  with the reason) and **Transfers** (`transferSetup` / `transferList` / `transferSend` / `transferOpen` / `transferAccept` /
+  `transferReject`). Me → "Company": Our team and Approvals for everybody, Transfers and Release phone for who has HR's office.
+* **A punch from outside a work place** (`attendance.dart`): outside, the message has the button "Punch in / out from here – with
+  reason" → the reason spoken (the phone writes it; his voice is kept where the phone gives the microphone to both) or typed, and a
+  photo TAKEN BY THE CAMERA with time and place written on it (`photo.dart` cameraShot – no gallery) → the proof is sent
+  (`proofUrl`), then the same punch with `outside` – it is "pending" until his steps approved it. It needs the network (nothing of it
+  is kept on the phone).
+* Not in this version: Add employee with verification in the app (it is on the web: HR › Employees › New employees); a new employee's
+  full form in Approvals (the app says where it is on the web).
+
 **Version 3.159.0 (21-11-2026 – two things he asked):**
 * **PUNCH IN / PUNCH OUT** ("attendance mark kartana sign in and sign out diste … tyache jagi punch in and punch out as banaw"): Home's
   round button, the question before OUT ("Do you really want to punch out?" – "Yes, punch out") and the day's lines ("Punched in /
