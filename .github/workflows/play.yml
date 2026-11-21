@@ -1,7 +1,7 @@
 # PLAY – the file for the Google Play Store (3.165.0, asked 21-11-2026: "apan play store war developer account banwalell aahe …
 # first app deychi aahe"). Started by hand: Actions → play → Run workflow (the branch whose code goes to the store – main or beta).
 # It makes ONE signed bundle (.aab) of the Play Store's app:
-#   – the package si.sketchline.lion, the name LION (android/app/src/play/AndroidManifest.xml, RCL_STORE=play);
+#   – the package si.sketchline.lion, the name Sketchline Lion (android/app/src/play/AndroidManifest.xml, RCL_STORE=play);
 #   – no update of its own: Google Play updates it (lib/core/play_update.dart, --dart-define=PLAY=true);
 #   – signed with the Play Store's own UPLOAD key, in the name of Sketchline Industries (made once here, kept only in the
 #     private bucket app-keys – never in a file); Google makes and keeps the app's real signing key;
@@ -38,7 +38,7 @@ jobs:
           VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           BN=$(( 100000 + GITHUB_RUN_NUMBER ))
           { echo "VER=$VER"; echo "BN=$BN"; } >> "$GITHUB_ENV"
-          echo "::notice::Play Store: LION $VER ($BN) of $GITHUB_REF_NAME"
+          echo "::notice::Play Store: Sketchline Lion $VER ($BN) of $GITHUB_REF_NAME"
       - name: The two settings
         run: |
           if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "::error::Add PORTAL_SUPABASE_URL and PORTAL_SUPABASE_KEY in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi

@@ -109,7 +109,7 @@ void main() {
     expect(Directory('android/app/src/main/kotlin/in').existsSync(), false, reason: 'no class under the old name');
     expect(File('android/app/src/main/kotlin/si/sketchline/lion/MainActivity.kt').readAsStringSync(), contains('package si.sketchline.lion'));
     expect(o, contains('<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/>'));
-    expect(o, contains('android:label="LION" tools:replace="android:label"'));
+    expect(o, contains('android:label="Sketchline Lion" tools:replace="android:label"'), reason: 'his correction of 21-11-2026: the application\'s name is Sketchline Lion');
     expect(o, contains('sk.fourq.otaupdate.OtaUpdateFileProvider'));
     // the app of today keeps its permission and its name
     final m = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
