@@ -1,3 +1,3 @@
-Home no longer shows a red "server did not answer" line while your day is on the screen – it tries again by itself. Home reads once at a time, so a slow network does not pile up.
-Home वर तुमचा दिवस दिसत असताना "सर्व्हरने उत्तर दिले नाही" ही लाल ओळ आता येत नाही – app स्वतः पुन्हा प्रयत्न करते. Home एका वेळी एकदाच वाचते, त्यामुळे slow network वर अडकत नाही.
-Home पर आपका दिन दिखते समय "server ने जवाब नहीं दिया" की लाल पंक्ति अब नहीं आती – app खुद फिर कोशिश करता है. Home एक समय में एक ही बार पढ़ता है, इसलिए slow network पर नहीं अटकता.
+Home: the round button is green when you have to sign in and red when you have to sign out. Me: the gold strip with the name and logo at the top of your card is removed.
+Home: sign in करायचं असेल तेव्हा गोल बटण हिरवं आणि sign out करायचं असेल तेव्हा लाल. Me: कार्डच्या वरची नाव आणि logo ची सोनेरी पट्टी काढली.
+Home: sign in करना हो तब गोल बटन हरा और sign out करना हो तब लाल. Me: कार्ड के ऊपर की नाम और logo वाली सुनहरी पट्टी हटाई.

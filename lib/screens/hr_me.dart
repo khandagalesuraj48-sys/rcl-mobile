@@ -23,7 +23,6 @@ import '../core/attend_pdf.dart' show payslipPdf;
 import '../core/attend_remind.dart';
 import '../core/hr_cache.dart';
 import '../core/update.dart';
-import '../ui/brand.dart' show ProductMark, ProductName;
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
@@ -160,22 +159,14 @@ class HrMeTab extends StatelessWidget {
           onRefresh: reload,
           child: ListView(key: const Key('me-page'), padding: EdgeInsets.fromLTRB(16, 14, 16, 24 + MediaQuery.paddingOf(context).bottom), children: [
             // (3.154.0, his choice of 21-11-2026 – "M1 ID card"; "login page chi ui ashi me madhe nko, ekde purn wegle asawi") WHO HE
-            // IS, as his identity card: the gold foil strip with the product's name and its lion, his photo (a touch sets it), his
-            // name and designation, his code, his site, the person he reports to, and how complete his record is
+            // IS, as his identity card: his photo (a touch sets it), his name and designation, his code, his site, the person he
+            // reports to, and how complete his record is. (3.158.0, asked 21-11-2026 with his picture: "warti te sketchline and lion
+            // logo nko aahe te remove kr") the gold strip with the product's name and its lion is gone
             Container(
               key: const Key('me-card'),
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(color: sk.card, borderRadius: BorderRadius.circular(26), border: Border.all(color: sk.dark ? const Color(0x66E6B94E) : (sk.cardLine ?? sk.line)), boxShadow: [BoxShadow(color: sk.dark ? const Color(0x66000000) : const Color(0x1F141E3C), blurRadius: 26, offset: const Offset(0, 12))]),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  height: 46,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 10, 0),
-                  decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFC9960A), Color(0xFFF7DE8E), Color(0xFFE6B94E), Color(0xFFB8860B)], stops: <double>[0, .42, .7, 1])),
-                  child: Row(children: [
-                    Expanded(child: ProductName(upper: true, suffix: '  ·  EMPLOYEE', style: const TextStyle(fontFamily: 'Montserrat', fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 2.2, color: Color(0xFF3A2A00)))),
-                    const ProductMark(size: 30, radius: 9),
-                  ]),
-                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [

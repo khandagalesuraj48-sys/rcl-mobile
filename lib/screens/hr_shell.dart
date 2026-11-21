@@ -647,7 +647,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
             behavior: HitTestBehavior.opaque,
             onTap: go,
             onLongPress: go,
-            child: Bounce(to: .96, child: HomeDial(size: math.min(256.0, box.maxWidth), now: at(india.hour * 60 + india.minute), start: a, end: b0, dim: sky == Sky.grey || sky == Sky.dusk, clock: _nowMs, big: big, under: under)),
+            child: Bounce(to: .96, child: HomeDial(size: math.min(256.0, box.maxWidth), now: at(india.hour * 60 + india.minute), start: a, end: b0, dim: sky == Sky.grey || sky == Sky.dusk, clock: _nowMs, big: big, under: under, tone: sky == Sky.day ? 'out' : sky == Sky.dusk || sky == Sky.grey ? null : 'in')),
           ),
         ),
         if (a != null && b0 != null) m.Text('${shift['name'] ?? ''}', key: const Key('hh-shift'), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sk.faint)),
