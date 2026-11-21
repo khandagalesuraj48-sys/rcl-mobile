@@ -55,6 +55,11 @@ class MemoryKeep implements Keep {
   Future<void> write(String key, String? value) async => value == null ? data.remove(key) : data[key] = value;
 }
 
+/// (3.164.0, asked 21-11-2026: "konta user konte version use krtoy te Portal madhe show kr") which app this is – its version, build and
+/// phone kind (e.g. "3.164.0+246 android") – sent to the Portal with every request so the Super Admin sees who uses which version.
+/// Set once at the start (core/update.dart `tellAppTag`); empty until then and in the tests = nothing is sent.
+String apiAppTag = '';
+
 class Api {
   Api({required this.portalUrl, required this.keep, http.Client? client, this.timeout = const Duration(seconds: 40)}) : _c = client ?? http.Client();
 
@@ -141,6 +146,7 @@ class Api {
   Map<String, String> get _portalHeaders => {
         'Content-Type': 'application/json',
         'X-RCL': '1', // the Portal takes changes only with this header (a page of another site cannot send it)
+        if (apiAppTag.isNotEmpty) 'X-App': apiAppTag,
         if (_cookie != null) 'Cookie': _cookie!,
       };
 

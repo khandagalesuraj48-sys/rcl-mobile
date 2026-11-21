@@ -75,6 +75,16 @@ final mustUpdate = ValueNotifier<AppUpdate?>(null);
 /// Is this stable release (its JSON) a compulsory one? (not a draft, not a beta, not marked "optional")
 bool _compulsory(Map j, Map meta) => j['draft'] != true && j['prerelease'] != true && meta['optional'] != true;
 
+/// (3.164.0) the app's own tag for the Portal (api.dart `apiAppTag`) – read once at the start; a fault leaves it empty.
+Future<void> tellAppTag() async {
+  try {
+    final p = await PackageInfo.fromPlatform();
+    apiAppTag = '${p.version}+${p.buildNumber} ${Platform.isIOS ? 'ios' : Platform.isAndroid ? 'android' : Platform.operatingSystem}';
+  } catch (_) {
+    // (the tests, or a phone that does not say): nothing is sent
+  }
+}
+
 Future<String> appVersion() async {
   try {
     final p = await PackageInfo.fromPlatform();

@@ -23,7 +23,7 @@ import 'core/push_fcm.dart';
 import 'core/rtc_kit.dart';
 import 'core/scan_link.dart';
 import 'core/session.dart';
-import 'core/update.dart' show updateContext, updateWatch, updateAway, updateBack;
+import 'core/update.dart' show updateContext, updateWatch, updateAway, updateBack, tellAppTag;
 import 'screens/consent_gate.dart';
 import 'screens/docs_gate.dart';
 import 'screens/call.dart';
@@ -91,6 +91,7 @@ void pushActionInBackground(NotificationResponse r) {
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   Alerts.onBackgroundTap = pushActionInBackground; // (3.42.0)
+  tellAppTag(); // (3.164.0) which version this is – the Portal shows it beside the user
   // (3.124.0) the product's name and logo as the Portal's "Branding" keeps them: what was kept on the phone at once, then asked again
   // (nothing waits for it – the opening goes on; the built-in ones show until then)
   () async {
