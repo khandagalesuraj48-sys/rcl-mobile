@@ -15,6 +15,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.163.0 (21-11-2026 – asked with his picture of "My attendance" outside the place: "ethe pn google map yeyla hawa"):** the drawing
+with the ring and the dashed line is now the map (`PlacesMap`, still – Google's where the key is set, as on Home): his nearest work place
+with its ring and where he stands; the line under it still says how far.
+
 **Version 3.162.0 (21-11-2026 – asked with his two pictures of "Add employee": "ethe kay upload karaych ahe te samajw … camera photo pdf
 he name pratek phone war perfect disaw … monthly salary … login page ajun pn scroll krtey … site ani reporting person he page nit banaw …
 send kel ki kona kade jatey te samajw"):** step 1 lists the papers to attach (ticked when attached) and its three sources have the picture
