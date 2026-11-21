@@ -776,7 +776,7 @@ class _ReleasePhoneScreenState extends State<ReleasePhoneScreen> {
                               m.Text(['${d['code'] ?? ''}', '${d['model'] ?? ''}', _t('since ${_dmy(d['bound_at'])}', '${_dmy(d['bound_at'])} पासून')].where((x) => x.isNotEmpty).join(' · '), style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
                             ]),
                           ),
-                          OutlinedButton(key: Key('phone-release-${d['id']}'), onPressed: () => _release(d), child: const Text('Release', mr: 'Release')),
+                          OutlinedButton(key: Key('phone-release-${d['id']}'), onPressed: () => _release(d), style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 14)), child: const Text('Release', mr: 'Release')),      // (the app's buttons are as wide as their place: in a row it has its own size)
                         ]),
                       ),
                   ]),
