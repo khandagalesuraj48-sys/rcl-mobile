@@ -8626,11 +8626,6 @@ void main() {
       await net(t);
     }
 
-    // (a long page builds only what is near the view: scrolled down to it first)
-    Future<void> shown(Finder f) async {
-      if (f.evaluate().isEmpty) await t.scrollUntilVisible(f, 250, scrollable: find.byType(Scrollable).first);
-      await settle(t, 300);
-    }
 
     // (what was asked of HR – without the quiet look for his team's requests after every reading, and – 20-11-2026 – without the
     // documents gate's one check when the app opens: its own test is "(3.151.0) documents gate")
@@ -8683,44 +8678,27 @@ void main() {
     expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty, reason: 'sent: nothing stays on the phone');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_in.png'));
-    // ---- no network: OUT is kept on the phone as taken (place, clocks, photo) – and shown
+    // ---- (3.164.0, his decision of 21-11-2026) no network: NOTHING is kept on the phone any more – it says so; OUT is marked when the
+    // network is back, as any punch (the phone's own key goes with every punch – the same key, never in the phone's files)
     srv.hrNet = false;
     kit.counter = 5000000 + 600000;
     kit.clock += 600000;
     await tapKey('att-punch');
-    expect(find.textContaining('your OUT of 10:40 is kept on the phone'), findsOneWidget);
-    await shown(find.byKey(const Key('att-kept-out')));
-    expect(find.byKey(const Key('att-kept-out')), findsOneWidget);
-    expect(kit.files.keys.where((k) => k.contains('_q_')).length, 2, reason: 'the punch and its photo');
+    expect(find.textContaining('attendance is marked only with the network on'), findsOneWidget);
+    expect(find.byKey(const Key('att-kept-out')), findsNothing);
+    expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty, reason: 'nothing of the punch is kept');
     expect(srv.hrPunches.length, 1);
     await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_kept.png'));
-    // (the app closed and opened again with no network: what was read last, and what is kept)
-    await t.pageBack();
-    await net(t);
-    await openHr();
-    expect(find.byKey(const Key('att-offline')), findsOneWidget);
-    await shown(find.byKey(const Key('att-kept-out')));
-    expect(find.byKey(const Key('att-kept-out')), findsOneWidget);
-    // ---- the network is back: the SAME punch goes – its own number, its own place and moment, the phone's counters
-    kit.lat = 19.9;      // (he has gone home meanwhile: the punch is not made again from where he is now)
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_att_nonet.png'));
     srv.hrNet = true;
-    await tapKey('att-send');
+    await tapKey('att-punch');
     final pout = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
-    expect([pout['kind'], pout['offline'], pout['lat'], pout['elapsed'], pout['anchor_elapsed'], pout['anchor_server'], pout['at_device']],
-        ['out', true, 18.52, 5600000, 5000000, DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch, DateTime.utc(2026, 10, 14, 5, 10).toIso8601String()]);
-    // (3.134.0, rcl-hr step 14) the server's seal of that time goes back with it; the phone's own key goes with every punch – the
-    // same key each time, made once and kept in the phone's safe (never in the punch's file on the phone)
-    expect(pout['anchor_sig'], 'seal-of-the-server-time-0000000a');
+    expect([pout['kind'], pout['offline'] == true], ['out', false]);
     final keys = {for (final x in srv.hrSent.where((x) => x['action'] == 'punch')) '${(x['device'] as Map)['key']}'};
     expect(keys.length, 1, reason: 'one key for this phone');
     expect(keys.first.length, 43, reason: '32 random bytes');
     expect(kit.files.values.whereType<String>().any((v) => v.contains(keys.first)), isFalse, reason: 'the key is not in the phone\'s files');
     expect(srv.hrPunches.length, 2);
-    expect(find.byKey(const Key('att-kept-out')), findsNothing);
-    expect(kit.files.keys.where((k) => k.contains('_q_')), isEmpty);
-    await shown(find.textContaining('Sent later'));
-    expect(find.textContaining('Sent later'), findsOneWidget);
     kit.lat = 18.52;
     // ---- my month: each day with what it counts as, the month's count; a day gone is asked to be set right
     await tapKey('att-month');

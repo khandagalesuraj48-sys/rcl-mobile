@@ -15,6 +15,10 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.164.0 (21-11-2026 – his decision after the security scan: "offline punch not allow"):** with no network a punch is not
+kept on the phone any more – "No network: attendance is marked only with the network on"; he marks again when the network is back.
+(A punch kept by an app of before still goes when the network is back, while the server takes it – rcl-hr `HR_OFFLINE_PUNCH`.)
+
 **Version 3.163.0 (21-11-2026 – asked with his picture of "My attendance" outside the place: "ethe pn google map yeyla hawa"):** the drawing
 with the ring and the dashed line is now the map (`PlacesMap`, still – Google's where the key is set, as on Home): his nearest work place
 with its ring and where he stands; the line under it still says how far.

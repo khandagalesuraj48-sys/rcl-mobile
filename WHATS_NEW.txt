@@ -1,3 +1,3 @@
-My attendance: outside your work place the Google map shows the place and where you stand.
-माझी हजेरी: work place च्या बाहेर असताना Google map वर ठिकाण आणि तुम्ही कुठे आहात ते दिसते.
-मेरी हाज़िरी: work place के बाहर होने पर Google map पर जगह और आप कहाँ हैं वह दिखता है।
+Attendance is marked only with the network on – a punch is no longer kept on the phone without network.
+हजेरी फक्त network चालू असताना लागते – network नसताना punch आता phone मध्ये ठेवला जात नाही.
+हाज़िरी सिर्फ़ network चालू होने पर लगती है – network न होने पर punch अब phone में नहीं रखा जाता।
