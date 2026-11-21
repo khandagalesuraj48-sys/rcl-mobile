@@ -8626,11 +8626,6 @@ void main() {
       await net(t);
     }
 
-    // (a long page builds only what is near the view: scrolled down to it first)
-    Future<void> shown(Finder f) async {
-      if (f.evaluate().isEmpty) await t.scrollUntilVisible(f, 250, scrollable: find.byType(Scrollable).first);
-      await settle(t, 300);
-    }
 
     // (what was asked of HR – without the quiet look for his team's requests after every reading, and – 20-11-2026 – without the
     // documents gate's one check when the app opens: its own test is "(3.151.0) documents gate")
