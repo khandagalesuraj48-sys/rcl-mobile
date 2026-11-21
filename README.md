@@ -15,6 +15,19 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.161.0 (21-11-2026 – four things he asked: "Add employee app madhun … login page scroll nahi zal pahije … 2 ni thikani sign out … HR madhech update check"):**
+* **Add employee from the app** (`lib/screens/hr_more.dart` – rcl-hr `act_newemp`): Me › Company › New employees – "Added by me" (draft /
+  waiting for whom / rejected and why / approved with his code and sign-in) and the four steps: 1 Papers (camera / photos / PDF, up to
+  ten; AI reads a photo and fills what is empty – marked "AI") · 2 Details · 3 Work (all / selected places, reporting persons) · 4 Send
+  (e-mail, WhatsApp, who it goes to). "Save draft" at every step. His sign-in after the approval is given on the web (the Portal's).
+* **The sign-in page fits the screen** (`login.dart`): the crest takes what the sheet leaves (the sheet is measured) – it scrolls only
+  while the keyboard is open or on a phone too small for both.
+* **Sign out of HR** (a person with the ERP and HR – Me in HR): HR's sign-in ends on its server (`api.hrEnd` → rcl-hr `api/logout`), the
+  phone remembers it (`kHrOut`), the ERP stays. HR opens again only through `HrSignIn`: his password – or a code to his e-mail when the
+  Portal's switch is on – taken by the Portal (`auth` login / otpLogin). The main sign-out (the ERP's) is as before and forgets it.
+  One login: the same password as for the app – there is no separate HR password.
+* **Check for update** is in HR's Me for everybody (before: only for a person with HR alone).
+
 **Version 3.160.0 (21-11-2026 – rcl-hr step 21 in the app; the pictures he approved, "adhi web banel nantr app"):**
 * `lib/screens/hr_office.dart` – the app's own screens, the same server actions as the web: **Our team** (`teamAll` – every site's people, the
   birthday with the age, never the year), **Approvals** (`flowList` / `flowOpen` / `flowDecide` – Waiting · Approved · Rejected; a punch

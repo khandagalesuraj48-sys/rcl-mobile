@@ -260,6 +260,9 @@ class FakeServer {
 
   /// (3.160.0, rcl-hr step 21) the things on their steps (a punch from outside, a new employee)
   List<Map<String, dynamic>> hrFlows = [];
+
+  /// (3.161.0) the new employees he added (drafts, waiting, approved)
+  List<Map<String, dynamic>> hrNewEmps = [];
   int hrNoticeSeen = 0;
   /// (3.149.0, rcl-hr step 20) location tracking: [hrTrack] false (as by itself) = an HR server of before (no step 20); switched off for him today;
   /// the points his phone sent (trackSend) and how often it asked (myTrack)
@@ -454,6 +457,24 @@ class FakeServer {
         return _j({'ok': true, 'ready': true, 'may': true, 'site': 'S1', 'sites': [{'code': 'HO', 'name': 'HEAD OFFICE'}, {'code': 'T2', 'name': 'T2'}], 'coming': 1});
       case 'transferList':
         return _j({'ok': true, 'ready': true, 'dir': b['dir'], 'may': true, 'rows': b['dir'] == 'in' ? [{'id': 't1', 'employee': {'id': 'p9', 'code': 'E00090', 'name': 'Prakash Kale', 'designation': 'Operator', 'site': 'T2'}, 'from_site': 'T2', 'to_site': 'S1', 'mode': 'permanent', 'leaves_at': '2026-10-13T14:30:00.000Z', 'from_day': '2026-10-13', 'to_day': null, 'reason': 'Paver work', 'status': 'sent', 'travel': true, 'reject_reason': ''}] : []});
+      // (3.161.0, rcl-hr act_newemp) a new employee sent for verification
+      case 'neSetup':
+        return _j({'ok': true, 'ready': true, 'site': 'S1', 'may': true, 'ai': false, 'designations': [{'id': 'des1', 'name': 'Supervisor'}], 'departments': [{'id': 'dep1', 'name': 'Execution'}], 'places': [{'id': 'pl1', 'name': 'Km 42 camp office'}],
+          'kinds': [{'key': 'aadhaar', 'name': 'Aadhaar card'}, {'key': 'pan', 'name': 'PAN card'}, {'key': 'other', 'name': 'Other'}], 'goes_to': [{'stage': 'verify', 'name': 'Sanjay More'}, {'stage': 'approve', 'name': 'Deepak Patil'}]});
+      case 'neList':
+        return _j({'ok': true, 'ready': true, 'tab': 'mine', 'rows': hrNewEmps});
+      case 'neOpen':
+        final nd = hrNewEmps.firstWhere((d) => d['id'] == b['id']);
+        return _j({'ok': true, 'ready': true, 'draft': {...nd, 'body': {'form': {'name': nd['name'], 'category': 'staff', 'dob': '1996-06-14', 'mobile': '9600000021'}, 'work': {'places_mode': 'all', 'place_ids': [], 'reporting': []}, 'docs': []}, 'reporting': []}});
+      case 'neDraft':
+        if ('${b['id'] ?? ''}'.isEmpty) hrNewEmps.insert(0, {'id': 'n9', 'site': 'S1', 'status': 'draft', 'name': '${(b['form'] as Map?)?['name'] ?? ''}', 'updated_at': '2026-10-14T05:00:00.000Z', 'waits': '', 'note': '', 'result': null});
+        return _j({'ok': true, 'ready': true, 'draft': {'id': '${b['id'] ?? ''}'.isEmpty ? 'n9' : b['id'], 'status': 'draft'}});
+      case 'neSend':
+        final ns = hrNewEmps.firstWhere((d) => d['id'] == b['id']);
+        ns['status'] = 'pending';
+        ns['sent_at'] = '2026-10-14T05:00:00.000Z';
+        ns['waits'] = 'Verify: Sanjay More';
+        return _j({'ok': true, 'ready': true, 'draft': ns});
       case 'proofUrl':
         return _j({'ok': true, 'path': 'emp/2026-10-14/${b['kind'] == 'voice' ? 'v' : 'p'}000000000000000000.${b['kind'] == 'voice' ? 'm4a' : 'jpg'}', 'url': 'https://photos.test/hr-proofs/${b['kind']}'});
       case 'myNotices':

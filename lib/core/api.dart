@@ -605,6 +605,17 @@ class Api {
   }
 
   /// (3.103.0) The proof photo of a punch, sent straight to its place ([url] – a link of HR's server for this ONE file).
+  /// (3.161.0) "Sign out of HR": this HR sign-in ends on HR's server (its api/logout) and on the phone; the ERP's stays.
+  Future<void> hrEnd(String hrUrl) async {
+    final cookie = _hrCookie;
+    _hrCookie = '';
+    _hrKey = '';
+    if (cookie.isEmpty) return;
+    try {
+      await _send(() => _c.post(Uri.parse('$hrUrl/api/logout'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': cookie}, body: '{}'));
+    } catch (_) {/* it ends by itself */}
+  }
+
   Future<void> hrPhoto(String url, List<int> jpg) async {
     final r = await _send(() => _c.put(Uri.parse(url), headers: {'Content-Type': 'image/jpeg', 'x-upsert': 'false'}, body: jpg));
     if (r.statusCode >= 400) throw ApiError('The photo could not be sent (${r.statusCode}) – try again.', status: r.statusCode, code: 'photo');

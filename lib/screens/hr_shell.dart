@@ -45,6 +45,7 @@ import '../ui/widgets.dart';
 import 'attend_reqs.dart';
 import 'attendance.dart';
 import 'hr_me.dart';
+import 'hr_more.dart' show HrSignIn, kHrOut;
 import 'hr_places.dart';
 import 'leave.dart';
 
@@ -105,6 +106,9 @@ String _span(String a, String b) {
 }
 
 class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
+  /// (3.161.0) he signed out of HR on this phone – [HrSignIn] is shown instead of the pages
+  bool _hrOut = false;
+
   int tab = 0; // 0 Home · 1 Attendance · 2 Leave · 3 Me
   int gen = 0; // (the Attendance and Leave pages of the bar are read again after a punch)
   Map<String, dynamic>? day, month, leave, mine; // myAttend, myMonth, myLeave, myHr
@@ -129,6 +133,12 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     // (3.114.0) the attendance app has its own look – the one he chose on this phone
     HrSkin.i.addListener(_skin);
     unawaited(widget.inErp ? HrSkin.i.load() : HrSkin.i.enter());
+    // (3.161.0) he signed out of HR (Me › Sign out of HR): the pages open again only after his password / a code
+    if (widget.inErp) {
+      SessionScope.read(context).api.keep.read(kHrOut).then((v) {
+        if (mounted && v == '1') setState(() => _hrOut = true);
+      }).catchError((_) {});
+    }
     // (3.122.0) the attendance app by itself asks for the newest version too – (3.145.0) offered: "Update to …?" (Update / Close)
     // once in every opening, never a screen that stops the work (core/update.dart offerUpdate)
     if (!widget.inErp) {
@@ -465,6 +475,17 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     LangScope.of(context); // the words here follow the language chosen in Me
+    // (3.161.0) signed out of HR: nothing of HR is shown until he signs in to it again
+    if (_hrOut) {
+      return Scaffold(
+        backgroundColor: sk.bg,
+        appBar: hrHead(context, sky: kMeSky, title: 'HR', mr: 'HR', height: 64),
+        body: HrSignIn(onDone: () {
+          setState(() => _hrOut = false);
+          unawaited(_load());
+        }),
+      );
+    }
     return Scaffold(
       backgroundColor: sk.bg,
       // (3.154.0, asked 21-11-2026: "pill shape tr aahech but tyache bajun square box zalay tr tas nay zal pahije") the page goes on
