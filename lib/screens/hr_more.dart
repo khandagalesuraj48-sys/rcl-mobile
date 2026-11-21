@@ -31,6 +31,9 @@ String _dmy(Object? d) {
 
 String _two(int n) => n.toString().padLeft(2, '0');
 
+/// A card whose rows can be pressed (ListTile, check boxes): the rows get their own Material inside the card's box.
+Widget _tapCard(List<Widget> children, {Key? key}) => hrCard(key: key, [Material(type: MaterialType.transparency, child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: children))]);
+
 /// What the phone keeps while he is signed out of HR ('1').
 const kHrOut = 'hr_signed_out';
 
@@ -607,7 +610,7 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
             ),
         ]),
         const SizedBox(height: 12),
-        hrCard(key: Key('nef-step$step'), _stepBody()),
+        _tapCard(key: Key('nef-step$step'), _stepBody()),
         if (err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: InfoLine(err, bad: true, help: false, key: const Key('nef-err'))),
         const SizedBox(height: 14),
         Row(children: [
