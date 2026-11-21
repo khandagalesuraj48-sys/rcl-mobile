@@ -18,6 +18,7 @@ import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, atten
 import 'package:rcl_mobile/screens/face_screens.dart' show FaceKit, FaceCamScreen;
 import 'package:rcl_mobile/core/app_share.dart';
 import 'package:rcl_mobile/ui/goo_toast.dart' show gooClear;
+import 'package:rcl_mobile/ui/home_dial.dart' show HomeDial;
 import 'package:rcl_mobile/ui/t.dart' show LangScope;
 import 'package:rcl_mobile/core/applock.dart';
 import 'package:rcl_mobile/core/lang.dart';
@@ -9110,6 +9111,7 @@ void main() {
     // (3.153.0) the dial he approved: the server's live clock, SIGN IN, "Tap to mark"; his code, designation and manager above it
     expect(find.text('Tap to mark'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('SIGN IN')), findsOneWidget);
+    expect(t.widget<HomeDial>(find.byType(HomeDial)).tone, 'in', reason: '(3.158.0) he has to sign in: the green disc');
     expect(t.widget<Text>(find.byKey(const Key('hh-clock'))).data, '10:30:00', reason: 'the clock of the server (India)');
     expect([for (final k in ['hh-code', 'hh-desig', 'hh-boss']) t.widget<Text>(find.byKey(Key(k))).data], ['E00012', 'Site Engineer', 'Amit Patil']);
     expect(find.byKey(const Key('nav-mark')), findsNothing, reason: 'one thing in one place: the dial marks');
@@ -9148,6 +9150,7 @@ void main() {
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
     expect(t.widget<Text>(find.byKey(const Key('hh-in'))).data, '10:30');
     expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('SIGN OUT')), findsOneWidget, reason: 'OUT is next');
+    expect(t.widget<HomeDial>(find.byType(HomeDial)).tone, 'out', reason: '(3.158.0) on duty – a touch signs him out: the red disc');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_duty.png'));
     // ---- (3.114.0) the bar floats on all four pages: Attendance and Leave are pages of the bar (no way back, no second

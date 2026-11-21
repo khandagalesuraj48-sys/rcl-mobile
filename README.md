@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.158.0 (21-11-2026 – his picture of Home: "app madhe sign in kel ke red yeil sign out sathi ani sign in kraych asel tr green")
+THE DIAL'S DISC SAYS WHAT A TOUCH DOES BY ITS COLOUR.** Home's round button (`ui/home_dial.dart`, `tone`) is GREEN when he has to sign
+in and RED when he is on duty and a touch signs him out; its words are white on it. Today done / absent / cannot be marked: the plain
+disc, as before. Light and dark. Nothing else of the card changes; no server change.
+
 **Version 3.157.0 (21-11-2026 – his picture of Home under "The server did not answer in time": "ha error server kadhun ka aala check
 kr, as sarkhe hote, he nahi aale pahije") HOME STAYS QUIET WHEN ONLY THE NETWORK IS SLOW.**
 * **What it was:** the line is the APP's own – no answer within its 40 seconds (the HR server itself may take 30 at most) – not an

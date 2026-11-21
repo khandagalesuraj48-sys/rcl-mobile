@@ -15,7 +15,7 @@ import 'hr_skin.dart';
 const _gold = Color(0xFFDDAD40);
 
 class HomeDial extends StatelessWidget {
-  const HomeDial({super.key, required this.size, required this.now, required this.start, required this.end, required this.clock, required this.big, required this.under, this.dim = false});
+  const HomeDial({super.key, required this.size, required this.now, required this.start, required this.end, required this.clock, required this.big, required this.under, this.dim = false, this.tone});
 
   /// the side of the square it is drawn in (the hours stand round the ring)
   final double size;
@@ -35,9 +35,15 @@ class HomeDial extends StatelessWidget {
   /// it cannot be marked / today is done: no gold on the ring
   final bool dim;
 
+  /// (3.158.0, asked 21-11-2026: "sign in kel ke red yeil sign out sathi ani sign in kraych asel tr green") what a touch of the disc
+  /// does: 'in' – he signs in: a GREEN disc; 'out' – he signs out: a RED disc; null – nothing to mark: the plain disc
+  final String? tone;
+
   @override
   Widget build(BuildContext context) {
     final s = sk, k = size / 310, disc = 136 * k;
+    final List<Color>? fill = tone == 'in' ? const [Color(0xFF45DE8F), Color(0xFF1FB36B), Color(0xFF128A4E)] : tone == 'out' ? const [Color(0xFFFF7A6E), Color(0xFFE5392F), Color(0xFFB9221C)] : null;
+    final on = fill != null; // a coloured disc: its words are white
     return SizedBox(
       width: size,
       height: size * .89,
@@ -51,9 +57,9 @@ class HomeDial extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(center: const Alignment(-.3, -.45), radius: .95, colors: s.dark ? const [Color(0xFF2C3A75), Color(0xFF1A2350), Color(0xFF101737)] : const [Colors.white, Color(0xFFEEF0FB), Color(0xFFD6DAF3)], stops: const <double>[0, .5, 1]),
-              border: s.dark ? Border.all(color: _gold.withValues(alpha: .6), width: 1.5) : null,
-              boxShadow: [BoxShadow(color: s.dark ? const Color(0x8C000000) : const Color(0x2E3C468C), blurRadius: 30 * k, offset: Offset(0, 16 * k))],
+              gradient: RadialGradient(center: const Alignment(-.3, -.45), radius: .95, colors: fill ?? (s.dark ? const [Color(0xFF2C3A75), Color(0xFF1A2350), Color(0xFF101737)] : const [Colors.white, Color(0xFFEEF0FB), Color(0xFFD6DAF3)]), stops: const <double>[0, .5, 1]),
+              border: on ? Border.all(color: Colors.white.withValues(alpha: .55), width: 2 * k) : s.dark ? Border.all(color: _gold.withValues(alpha: .6), width: 1.5) : null,
+              boxShadow: [BoxShadow(color: on ? fill[1].withValues(alpha: .42) : s.dark ? const Color(0x8C000000) : const Color(0x2E3C468C), blurRadius: 30 * k, offset: Offset(0, 16 * k))],
             ),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: disc * .09),
@@ -62,16 +68,16 @@ class HomeDial extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Container(width: 6, height: 6, decoration: BoxDecoration(color: const Color(0xFF2FD07F), shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF2FD07F).withValues(alpha: .3), spreadRadius: 3)])),
+                      Container(width: 6, height: 6, decoration: BoxDecoration(color: on ? Colors.white : const Color(0xFF2FD07F), shape: BoxShape.circle, boxShadow: [BoxShadow(color: (on ? Colors.white : const Color(0xFF2FD07F)).withValues(alpha: .3), spreadRadius: 3)])),
                       const SizedBox(width: 6),
-                      _Clock(ms: clock!, style: TextStyle(fontFamily: 'Montserrat', fontSize: 15 * k, fontWeight: FontWeight.w800, letterSpacing: .5, color: s.link, height: 1.1, fontFeatures: const [FontFeature.tabularFigures()])),
+                      _Clock(ms: clock!, style: TextStyle(fontFamily: 'Montserrat', fontSize: 15 * k, fontWeight: FontWeight.w800, letterSpacing: .5, color: on ? Colors.white : s.link, height: 1.1, fontFeatures: const [FontFeature.tabularFigures()])),
                     ]),
                   ),
                 SizedBox(height: 4 * k),
-                FittedBox(fit: BoxFit.scaleDown, child: Text(big, maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19 * k, fontWeight: FontWeight.w800, letterSpacing: .3, color: dim ? s.faint : s.ink, height: 1.15))),
+                FittedBox(fit: BoxFit.scaleDown, child: Text(big, maxLines: 1, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19 * k, fontWeight: FontWeight.w800, letterSpacing: .3, color: on ? Colors.white : dim ? s.faint : s.ink, height: 1.15))),
                 if (under.isNotEmpty) ...[
                   SizedBox(height: 3 * k),
-                  FittedBox(fit: BoxFit.scaleDown, child: Text(under, maxLines: 1, style: TextStyle(fontSize: 10.5 * k, fontWeight: FontWeight.w600, color: s.muted, height: 1.2))),
+                  FittedBox(fit: BoxFit.scaleDown, child: Text(under, maxLines: 1, style: TextStyle(fontSize: 10.5 * k, fontWeight: FontWeight.w600, color: on ? Colors.white.withValues(alpha: .92) : s.muted, height: 1.2))),
                 ],
               ]),
             ),
