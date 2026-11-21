@@ -12,6 +12,10 @@
 name: play
 on:
   workflow_dispatch:
+  # (21-11-2026, his word: "mala play store warun deych ahe lawkarat lawkar" – without giving this version to everybody first) the
+  # button above shows in Actions only once this file is on main; until then a push to the branch "play" makes the bundle too.
+  push:
+    branches: [play]
 permissions:
   contents: read
 concurrency:
