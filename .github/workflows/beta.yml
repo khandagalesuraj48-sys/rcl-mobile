@@ -162,6 +162,13 @@ jobs:
           gh release create "v$VER-$BN" "${FILES[@]}" --title "RCL ERP $VER ($BN)" --notes-file notes.md --target "$GITHUB_SHA" --prerelease
           if [ "$APP" = "1" ]; then gh release upload "v$VER-$BN" "$A64"; gh release upload "v$VER-$BN" "$A32"; fi
           echo "::notice::Beta $VER ($BN) – https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VER-$BN"
+      # (asked 21-11-2026: "old link warun click kel tewa old application yet … nehmi latest apk ch download hoil") the pages of the
+      # releases older than the newest stable one say, once, where the latest always is (the app's own page) – nothing is deleted
+      - name: Old releases say where the latest is
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: timeout 900 bash tool/mark_old_releases.sh
       - name: Tell the testers' phones (needs the GitHub secret FCM_SERVICE_ACCOUNT_JSON)
         if: env.APP == '1'
         env:
