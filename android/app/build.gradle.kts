@@ -13,6 +13,11 @@ plugins {
 // secret GOOGLE_SERVICES_JSON – never in git, the repository is public). Without them the app is built as before.
 if (file("google-services.json").exists()) apply(plugin = "com.google.gms.google-services")
 
+// (3.165.0, asked 21-11-2026: "si.sketchline.lion he tu kr") THE PLAY STORE'S APP is built with RCL_STORE=play: its own package
+// (a new app for Android – the app given by its file keeps in.rachana.rcl.rcl_mobile and its updates), the name LION and no
+// "install a file" permission (src/play/AndroidManifest.xml). The code's namespace is the same for both.
+val playStore = System.getenv("RCL_STORE") == "play"
+
 android {
     namespace = "in.rachana.rcl.rcl_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -26,7 +31,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "in.rachana.rcl.rcl_mobile"
+        applicationId = if (playStore) "si.sketchline.lion" else "in.rachana.rcl.rcl_mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = maxOf(24, flutter.minSdkVersion)      // (3.27.0) the app lock (local_auth) needs Android 7 or newer
@@ -51,6 +56,8 @@ android {
             excludes += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64").filter { it !in keepAbis }.map { "**/$it/**" }
         }
     }
+
+    if (playStore) sourceSets.getByName("release").manifest.srcFile("src/play/AndroidManifest.xml")
 
     signingConfigs {
         create("release") {

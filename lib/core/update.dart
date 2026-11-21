@@ -45,6 +45,7 @@ import '../config.dart';
 import 'api.dart';
 import 'apk_patch.dart';
 import 'device.dart';
+import 'play_update.dart';
 import '../ui/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/t.dart';
@@ -165,6 +166,7 @@ AppUpdate? newestOf(List<dynamic> list, int currentBuild, {bool computer = false
 /// [beta]: (02-11-2026) a tester (Session.tester) – a beta version too.
 Future<AppUpdate?> checkUpdate(Api api, {bool beta = false}) async {
   if (Platform.isIOS) return null; // (the App Store / TestFlight – later)
+  if (onPlay()) return null; // (3.165.0) the Play Store's app: its update is Google Play's (core/play_update.dart), never a file of ours
   try {
     final info = await PackageInfo.fromPlatform();
     final r = await http.get(Uri.parse(beta ? kReleasesListApi : kReleasesApi), headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
@@ -424,7 +426,7 @@ final _patchBad = <int>{};
 BuildContext? Function() updateContext = () => null;
 
 /// (a test) this phone's updates go through the Download Manager (Android – not a computer)
-bool Function() bgUpdates = () => Platform.isAndroid && !onComputer;
+bool Function() bgUpdates = () => Platform.isAndroid && !onComputer && !onPlay(); // (3.165.0) not in the Play Store's app
 
 /// The background update now (the progress box listens to it); null = none.
 final bgUpdateNow = ValueNotifier<BgUpdate?>(null);

@@ -7,7 +7,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 
+import '../core/play_update.dart' show onPlay;
 import '../core/update.dart';
+import 'play_rows.dart';
 import '../ui/ask_bot.dart';
 import '../ui/brand.dart' show Product;
 import 'home.dart' show openHelp;
@@ -43,6 +45,12 @@ class _MeTabState extends State<MeTab> {
   Future<void> _check() async {
     final s = SessionScope.read(context);
     setState(() => checking = true);
+    if (onPlay()) {
+      // (3.165.0) the Play Store's app: Google Play is asked, never a file of ours
+      await playCheckNow(context);
+      if (mounted) setState(() => checking = false);
+      return;
+    }
     final u = await checkUpdate(s.api, beta: s.tester);
     if (!mounted) return;
     setState(() => checking = false);
@@ -209,6 +217,8 @@ class _MeTabState extends State<MeTab> {
                   child: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : const Text('Check Update'),
                 ),
               ),
+              // (3.165.0) the Play Store's app: how its auto-update is switched on (the Play Store's own setting)
+              if (onPlay()) _row(key: const Key('me-auto'), pic: 'mobile_phone', en: 'Auto update', mr: 'Auto update', sub: 'Switch it on once in the Play Store', color: C.blueSoft, onTap: () => playAutoHelp(context)),
               // (3.104.0) his e-mail at the Portal: "Verify my e-mail" – he types his own, a code goes to it; afterwards the e-mail he signs in with
               if (s.mailCanVerify)
                 _row(key: const Key('me-verify'), pic: 'inbox_tray', en: 'Verify my e-mail', mr: 'माझा email verify करा', sub: 'Then you can also sign in with a code by e-mail', color: C.goldSoft, onTap: () => openVerifyEmail(context)),

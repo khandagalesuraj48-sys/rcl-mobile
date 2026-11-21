@@ -22,7 +22,9 @@ import '../core/attend.dart' show AttendKit;
 import '../core/attend_pdf.dart' show payslipPdf;
 import '../core/attend_remind.dart';
 import '../core/hr_cache.dart';
+import '../core/play_update.dart' show onPlay;
 import '../core/update.dart';
+import 'play_rows.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
@@ -162,6 +164,7 @@ class HrMeTab extends StatelessWidget {
       _RemindRow(look: sk.name),
       if (!inErp && s.sites.length > 1) _pill(key: const Key('me-site'), icon: Icons.swap_horiz_rounded, en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
       _UpdateRow(look: sk.name), // (3.161.0, asked: "HR madhech update check ch te pn button de") also for a person who has the ERP too
+      if (onPlay()) _pill(key: const Key('me-auto'), icon: Icons.autorenew_rounded, en: 'Auto update', mr: 'Auto update', sub: _t('Switch it on once in the Play Store', 'Play Store मध्ये एकदा चालू करा'), onTap: () => playAutoHelp(context)), // (3.165.0)
     ];
     return Container(
       decoration: BoxDecoration(gradient: sk.pageFill),
@@ -1649,6 +1652,12 @@ class _UpdateRowState extends State<_UpdateRow> {
     if (checking) return;
     final s = SessionScope.read(context);
     setState(() => checking = true);
+    if (onPlay()) {
+      // (3.165.0) the Play Store's app: Google Play is asked, never a file of ours
+      await playCheckNow(context);
+      if (mounted) setState(() => checking = false);
+      return;
+    }
     final u = await checkUpdate(s.api, beta: s.tester);
     if (!mounted) return;
     setState(() {
