@@ -257,6 +257,9 @@ class FakeServer {
   final hrNotices = <Map<String, dynamic>>[];
   // (3.139.0, rcl-hr Phase 6) the people who report to him – "My team"
   List<Map<String, dynamic>> hrTeamPeople = [];
+
+  /// (3.160.0, rcl-hr step 21) the things on their steps (a punch from outside, a new employee)
+  List<Map<String, dynamic>> hrFlows = [];
   int hrNoticeSeen = 0;
   /// (3.149.0, rcl-hr step 20) location tracking: [hrTrack] false (as by itself) = an HR server of before (no step 20); switched off for him today;
   /// the points his phone sent (trackSend) and how often it asked (myTrack)
@@ -281,6 +284,9 @@ class FakeServer {
   num hrLeaveBal = 3;
   /// (3.108.0) a person with HR only: the Portal lists no Mechanical for him – only "My HR" at S1; the papers he attached
   bool hrOnlyUser = false;
+
+  /// (3.160.0) with [hrOnlyUser]: his one module is HR's office ('hr') – not "My HR"
+  bool hrOnlyOffice = false;
 
   /// (3.141.0) an ERP user who also has "My HR" at Head Office – and nothing else there (his attendance as an HO employee)
   bool hoMyHr = false;
@@ -419,6 +425,37 @@ class FakeServer {
           counts['${p['now']}'] = (counts['${p['now']}'] ?? 0) + 1;
         }
         return _j({'ok': true, 'team': hrTeamPeople.length, 'today': '2026-10-14', 'people': hrTeamPeople, 'counts': counts, 'waiting': {'attendance': 1, 'leave': 1}, 'papers_missing': hrTeamPeople.where((p) => (p['papers_missing'] as int? ?? 0) > 0).length});
+      // (3.160.0, rcl-hr step 21) Our team, Approvals, Release phone, Transfers, the proof of a punch from outside
+      case 'teamAll':
+        return _j({'ok': true, 'today': '2026-10-14', 'total': 412, 'sites': [{'code': 'S1', 'count': 180}, {'code': 'HO', 'count': 32}],
+          'birthdays': [{'id': 'b1', 'name': 'Anil Kadam', 'site': 'S1', 'designation': 'Surveyor', 'in': 0, 'day': '14 Oct', 'today': true, 'photo': ''}, {'id': 'b2', 'name': 'Sunita Pawar', 'site': 'HO', 'designation': 'Accounts', 'in': 3, 'day': '17 Oct', 'today': false, 'photo': ''}],
+          'people': [{'id': 'p1', 'name': 'Rahul Jadhav', 'category': 'staff', 'designation': 'Site Engineer', 'department': 'Execution', 'site': 'S1', 'mobile': '9800000010', 'email': 'rahul.j@rcl.test', 'birthday': '2 Feb', 'age': 30, 'photo': ''},
+            {'id': 'p2', 'name': 'Meena Shinde', 'category': 'staff', 'designation': 'Store Keeper', 'department': 'Store', 'site': 'HO', 'mobile': '9700000044', 'email': 'meena.s@rcl.test', 'birthday': '', 'age': null, 'photo': ''}],
+          'more': false, 'offset': 0});
+      case 'flowList':
+        return _j({'ok': true, 'ready': true, 'tab': b['tab'], 'rows': b['tab'] == 'waiting' ? hrFlows.where((f) => f['status'] == 'pending').toList() : hrFlows.where((f) => f['status'] == b['tab']).toList()});
+      case 'flowOpen':
+        final ff = hrFlows.where((f) => f['id'] == b['id']).toList();
+        if (ff.isEmpty) return _j({'error': 'This was not found.', 'code': 'notfound'}, 404);
+        return _j({'ok': true, 'ready': true, 'flow': {...ff.first, 'photo_list': [], 'voice_url': 'https://photos.test/hr-proofs/voice', 'lat': 17.0412, 'lng': 74.2651,
+          'near': [{'name': 'Km 42 camp office', 'distance_m': 2400, 'distance': '2.4 km'}, {'name': 'Batching plant', 'distance_m': 5100, 'distance': '5.1 km'}], 'selfie_url': ''}});
+      case 'flowDecide':
+        if (b['ok'] != true && '${b['note'] ?? ''}'.length < 3) return _j({'error': 'Why it is rejected: write the reason.', 'code': 'note'}, 400);
+        final fd = hrFlows.firstWhere((f) => f['id'] == b['id']);
+        fd['status'] = b['ok'] == true ? 'approved' : 'rejected';
+        fd['note'] = '${b['note'] ?? ''}';
+        return _j({'ok': true, 'ready': true, 'flow': fd});
+      case 'devList':
+        return _j({'ok': true, 'devices': [{'id': 'd1', 'employee_id': 'p1', 'code': 'E00031', 'name': 'Rahul Jadhav', 'model': 'Samsung A15', 'os': 'Android 15', 'active': true, 'bound_at': '2026-10-02T04:00:00.000Z', 'mark': 'abc123'}], 'tries': []});
+      case 'devRelease':
+        if ('${b['reason'] ?? ''}'.length < 3) return _j({'error': 'Reason: write why this phone is released.', 'code': 'reason'}, 400);
+        return _j({'ok': true});
+      case 'transferSetup':
+        return _j({'ok': true, 'ready': true, 'may': true, 'site': 'S1', 'sites': [{'code': 'HO', 'name': 'HEAD OFFICE'}, {'code': 'T2', 'name': 'T2'}], 'coming': 1});
+      case 'transferList':
+        return _j({'ok': true, 'ready': true, 'dir': b['dir'], 'may': true, 'rows': b['dir'] == 'in' ? [{'id': 't1', 'employee': {'id': 'p9', 'code': 'E00090', 'name': 'Prakash Kale', 'designation': 'Operator', 'site': 'T2'}, 'from_site': 'T2', 'to_site': 'S1', 'mode': 'permanent', 'leaves_at': '2026-10-13T14:30:00.000Z', 'from_day': '2026-10-13', 'to_day': null, 'reason': 'Paver work', 'status': 'sent', 'travel': true, 'reject_reason': ''}] : []});
+      case 'proofUrl':
+        return _j({'ok': true, 'path': 'emp/2026-10-14/${b['kind'] == 'voice' ? 'v' : 'p'}000000000000000000.${b['kind'] == 'voice' ? 'm4a' : 'jpg'}', 'url': 'https://photos.test/hr-proofs/${b['kind']}'});
       case 'myNotices':
         return _j({'ok': true, 'ready': true, 'rows': hrNotices, 'unread': hrNotices.where((n) => n['seen_at'] == null).length});
       case 'myNoticeSeen':
@@ -1582,7 +1619,7 @@ class FakeServer {
         if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
         if (hrOnlyUser) {
           return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, 'items': [
-            {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'hrme', 'moduleName': 'My HR', 'url': 'https://erp.test/hr'},
+            {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': hrOnlyOffice ? 'hr' : 'hrme', 'moduleName': hrOnlyOffice ? 'RCL HR' : 'My HR', 'url': 'https://erp.test/hr'},
           ]});
         }
         return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, 'items': [

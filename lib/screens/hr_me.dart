@@ -35,8 +35,9 @@ import '../ui/widgets.dart';
 import 'attach_box.dart' show pickAttFiles;
 import 'consent_gate.dart' show showConsent;
 import 'attend_reqs.dart' show HrAsk;
-import 'attendance.dart' show attendPdfLogo, attendPdfOut, hrSite;
+import 'attendance.dart' show attendPdfLogo, attendPdfOut, hrModule, hrSite;
 import 'email_verify.dart';
+import 'hr_office.dart';
 import 'hr_shell.dart' show initials;
 
 String _t(String en, String mr) => Lang.i.pair(en, mr);
@@ -140,6 +141,15 @@ class HrMeTab extends StatelessWidget {
           ),
         );
 
+    // (3.160.0, rcl-hr step 21) COMPANY: Our team and Approvals for everybody; Transfers and Release phone for who has HR's office
+    // (the server refuses what he may not do, with its own words)
+    final office = hrModule(s)?.key == 'hr';
+    final work = <Widget>[
+      _pill(key: const Key('me-ourteam'), icon: Icons.groups_2_outlined, en: 'Our team', mr: 'आपली टीम', onTap: () => open(OurTeamScreen(ask: ask))),
+      _pill(key: const Key('me-approvals'), icon: Icons.fact_check_outlined, en: 'Approvals', mr: 'Approvals', onTap: () => open(ApprovalsScreen(ask: ask))),
+      if (office) _pill(key: const Key('me-transfers'), icon: Icons.swap_horiz_rounded, en: 'Transfers', mr: 'Transfers', onTap: () => open(TransfersScreen(ask: ask))),
+      if (office) _pill(key: const Key('me-phones'), icon: Icons.phonelink_erase_outlined, en: 'Release phone', mr: 'Phone release', onTap: () => open(ReleasePhoneScreen(ask: ask))),
+    ];
     // APP: a pill for each, two in a row (one left over: the whole row)
     final pills = <Widget>[
       _pill(key: const Key('me-lang'), icon: Icons.translate_rounded, en: 'Language', mr: 'भाषा', sub: lang, onTap: () => open(const LanguageScreen())),
@@ -227,6 +237,12 @@ class HrMeTab extends StatelessWidget {
                 if (team) round('me-team', Icons.groups_outlined, const Color(0xFFA9741A), 'My team', 'माझी टीम', onTap: () => open(MyTeamScreen(ask: ask))),
               ]),
             ),
+            _head('Company', 'कंपनी'),
+            for (var i = 0; i < work.length; i += 2)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: i + 1 < work.length ? Row(children: [Expanded(child: work[i]), const SizedBox(width: 10), Expanded(child: work[i + 1])]) : work[i],
+              ),
             _head('App', 'App'),
             for (var i = 0; i < pills.length; i += 2)
               Padding(

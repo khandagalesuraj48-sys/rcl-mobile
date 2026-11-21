@@ -9827,6 +9827,97 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_my_team.png'));
   }, tags: ['golden']);
 
+  testWidgets('(3.160.0, rcl-hr step 21) HR – Our team for everybody; Approvals: Waiting, a punch from outside opened, a reject asks for the reason; the office: Release phone with the reason, Transfers', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    addTearDown(() => AttendKit.kit = AttendKit());
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hr'
+      ..hrOnlyUser = true
+      ..hrOnlyOffice = true;
+    srv.hrFlows = [
+      {'id': 'f1', 'kind': 'outside_punch', 'what': 'Punch from outside', 'site': 'S1', 'day': '2026-10-14', 'status': 'pending', 'asked_by': 'rahul.j@rcl.test', 'name': 'Rahul Jadhav', 'code': 'E00031', 'punch': 'out', 'at': '2026-10-14T13:12:00.000Z',
+        'reason': 'Material truck broke down at Km 61, I stayed with it till the crane came.', 'place': 'Km 42 camp office', 'distance_m': 2400, 'distance': '2.4 km', 'photos': 2, 'voice': true, 'step': 0, 'of': 2, 'waits': 'Verify: Sujit Mule', 'stage': 'verify',
+        'chain': [{'stage': 'verify', 'name': 'Sujit Mule', 'done': false, 'here': true}, {'stage': 'approve', 'name': 'Deepak Patil', 'done': false, 'here': false}], 'steps': [], 'note': '', 'can': true},
+    ];
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    Future<void> tapKey(String key) async {
+      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.byKey(Key(key)));
+      await settle(t, 300);
+      await clearOfBar(t, find.byKey(Key(key)));
+      await t.tap(find.byKey(Key(key)));
+      await net(t);
+    }
+
+    // OUR TEAM – every site's people, the birthday with the age (never a year)
+    await tapKey('nav-me');
+    await tapKey('me-ourteam');
+    expect(find.byKey(const Key('ourteam-page')), findsOneWidget);
+    expect(find.text('Rahul Jadhav'), findsOneWidget);
+    expect(find.text('9800000010'), findsOneWidget);
+    expect(find.text('Birthday 2 Feb · 30 years'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget, reason: 'the birthday of today');
+    expect(find.text('All sites · 412'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_our_team.png'));
+    await t.pageBack();
+    await net(t);
+
+    // APPROVALS – Waiting; the punch from outside with how far and the reason; a reject asks for the reason
+    await tapKey('me-approvals');
+    expect(find.byKey(const Key('appr-page')), findsOneWidget);
+    expect(find.text('Rahul Jadhav'), findsOneWidget);
+    expect(find.text('Step 1 of 2'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_approvals.png'));
+    await tapKey('appr-f1');
+    expect(find.byKey(const Key('appr-open')), findsOneWidget);
+    expect(find.text('Nearest work place: Km 42 camp office – 2.4 km away'), findsOneWidget);
+    expect(find.textContaining('Material truck broke down'), findsOneWidget);
+    expect(find.byKey(const Key('appr-voice')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_approval_open.png'));
+    await tapKey('appr-no');
+    await t.tap(find.byKey(const Key('reason-yes')));
+    await net(t);
+    expect(srv.hrSent.where((x) => x['action'] == 'flowDecide'), isEmpty, reason: 'no reason: nothing is sent');
+    await tapKey('appr-no');
+    await t.enterText(find.byKey(const Key('reason-box')), 'Not a genuine reason');
+    await t.tap(find.byKey(const Key('reason-yes')));
+    await net(t);
+    final dec = srv.hrSent.where((x) => x['action'] == 'flowDecide').toList();
+    expect([dec.length, dec.first['id'], dec.first['ok'], dec.first['note']], [1, 'f1', false, 'Not a genuine reason']);
+    expect(find.byKey(const Key('appr-none')), findsOneWidget, reason: 'back on Waiting: nothing waits any more');
+    await t.pageBack();
+    await net(t);
+
+    // THE OFFICE: Release phone (with the reason), Transfers (who is coming)
+    await tapKey('me-phones');
+    expect(find.byKey(const Key('phones-page')), findsOneWidget);
+    expect(find.textContaining('Samsung A15'), findsOneWidget);
+    await tapKey('phone-release-d1');
+    await t.enterText(find.byKey(const Key('reason-box')), 'Old phone broken');
+    await t.tap(find.byKey(const Key('reason-yes')));
+    await net(t);
+    final rel = srv.hrSent.where((x) => x['action'] == 'devRelease').toList();
+    expect([rel.length, rel.first['id'], rel.first['reason']], [1, 'd1', 'Old phone broken']);
+    await t.pageBack();
+    await net(t);
+    await tapKey('me-transfers');
+    expect(find.byKey(const Key('tr-page')), findsOneWidget);
+    expect(find.text('Prakash Kale'), findsOneWidget);
+    expect(find.text('On his way – may punch at any site'), findsOneWidget);
+    expect(find.byKey(const Key('tr-new')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_transfers.png'));
+  }, tags: ['golden']);
+
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {
     phone(t);
     final srv = FakeServer()..hrSite = true;
