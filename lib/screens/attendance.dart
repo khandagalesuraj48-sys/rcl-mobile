@@ -37,6 +37,7 @@ import 'attend_reqs.dart';
 import 'consent_gate.dart' show showConsent;
 import 'face_screens.dart';
 import 'hr_office.dart' show OutsideProof, OutsideReasonScreen, sendOutsideProof;
+import 'hr_places.dart' show PlacesMap;
 import 'hr_shell.dart';
 import 'leave.dart';
 
@@ -587,7 +588,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                   const SizedBox(height: 4),
                   // ---- where I am and whose phone this is (3.107.0): two small chips. The place's chip is the "check" too – a tap
                   // looks where he stands; outside his place the drawing shows how far he is.
-                  if (hit != null && !hit!.inside) ...[PlaceRadar(inside: false, distance: hit!.distance, name: hit!.place.name), const SizedBox(height: 10)],
+                  // (3.163.0, asked 21-11-2026 with his picture: "ethe pn google map yeyla hawa") the drawing is now THE MAP – Google's where
+                  // the key is set (as Home's and the big map's): his work place with its ring and where he stands. It stays still here;
+                  // the line under it still says how far he is.
+                  if (hit != null && !hit!.inside) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: SizedBox(key: const Key('att-map'), height: 190, child: IgnorePointer(child: PlacesMap(places: [hit!.place], fix: fix, live: false))),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     _chip(
                       key: const Key('att-where'),

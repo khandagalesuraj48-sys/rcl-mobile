@@ -1,3 +1,3 @@
-Add employee: which papers to attach, clear Camera / Photos / PDF buttons, a proposed monthly salary, a clearer Work step, and to whom it goes when sent. The sign-in page does not scroll. Smart Log Book: "Meter changed" when closing the shift.
-Employee जोडा: कोणते कागद जोडायचे ते दिसते, Camera / Photos / PDF बटणं स्पष्ट, महिन्याचा पगार (प्रस्ताव), Work पायरी स्पष्ट, आणि पाठवल्यावर कोणाकडे जातो ते दिसते. Sign-in पान scroll होत नाही. Smart Log Book: shift बंद करताना "Meter बदलला".
-Employee जोड़ें: कौन से कागज़ जोड़ने हैं वह दिखता है, Camera / Photos / PDF बटन साफ़, महीने का वेतन (प्रस्ताव), Work चरण साफ़, और भेजने पर किसके पास जाता है वह दिखता है। Sign-in पेज scroll नहीं होता। Smart Log Book: shift बंद करते समय "Meter बदला"।
+My attendance: outside your work place the Google map shows the place and where you stand.
+माझी हजेरी: work place च्या बाहेर असताना Google map वर ठिकाण आणि तुम्ही कुठे आहात ते दिसते.
+मेरी हाज़िरी: work place के बाहर होने पर Google map पर जगह और आप कहाँ हैं वह दिखता है।
