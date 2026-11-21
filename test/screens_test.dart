@@ -9834,7 +9834,8 @@ void main() {
     final srv = FakeServer()
       ..hrSite = true
       ..hrKey = 'hr'
-      ..hrOnlyUser = true;
+      ..hrOnlyUser = true
+      ..hrOnlyOffice = true;
     srv.hrFlows = [
       {'id': 'f1', 'kind': 'outside_punch', 'what': 'Punch from outside', 'site': 'S1', 'day': '2026-10-14', 'status': 'pending', 'asked_by': 'rahul.j@rcl.test', 'name': 'Rahul Jadhav', 'code': 'E00031', 'punch': 'out', 'at': '2026-10-14T13:12:00.000Z',
         'reason': 'Material truck broke down at Km 61, I stayed with it till the crane came.', 'place': 'Km 42 camp office', 'distance_m': 2400, 'distance': '2.4 km', 'photos': 2, 'voice': true, 'step': 0, 'of': 2, 'waits': 'Verify: Sujit Mule', 'stage': 'verify',

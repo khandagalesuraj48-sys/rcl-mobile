@@ -285,6 +285,9 @@ class FakeServer {
   /// (3.108.0) a person with HR only: the Portal lists no Mechanical for him – only "My HR" at S1; the papers he attached
   bool hrOnlyUser = false;
 
+  /// (3.160.0) with [hrOnlyUser]: his one module is HR's office ('hr') – not "My HR"
+  bool hrOnlyOffice = false;
+
   /// (3.141.0) an ERP user who also has "My HR" at Head Office – and nothing else there (his attendance as an HO employee)
   bool hoMyHr = false;
 
@@ -1616,7 +1619,7 @@ class FakeServer {
         if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
         if (hrOnlyUser) {
           return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, 'items': [
-            {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'hrme', 'moduleName': 'My HR', 'url': 'https://erp.test/hr'},
+            {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': hrOnlyOffice ? 'hr' : 'hrme', 'moduleName': hrOnlyOffice ? 'RCL HR' : 'My HR', 'url': 'https://erp.test/hr'},
           ]});
         }
         return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, 'items': [
