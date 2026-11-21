@@ -561,7 +561,7 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
             for (final k in kinds.entries)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: docs.any((d) => '${d['kind']}' == k.key) ? const Color(0xFFE3F5EA) : sk.box, borderRadius: BorderRadius.circular(999)),
+                decoration: BoxDecoration(color: docs.any((d) => '${d['kind']}' == k.key) ? const Color(0xFFE3F5EA) : sk.blank, borderRadius: BorderRadius.circular(999)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(docs.any((d) => '${d['kind']}' == k.key) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 15, color: docs.any((d) => '${d['kind']}' == k.key) ? const Color(0xFF126B39) : sk.muted),
                   const SizedBox(width: 5),
@@ -633,7 +633,7 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
               key: Key('nef-rep-$i'),
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-              decoration: BoxDecoration(color: sk.box, borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(color: sk.blank, borderRadius: BorderRadius.circular(14)),
               child: Row(children: [
                 CircleAvatar(radius: 13, backgroundColor: const Color(0xFF14213D), child: m.Text('${i + 1}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white))),
                 const SizedBox(width: 10),
