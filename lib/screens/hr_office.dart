@@ -45,6 +45,9 @@ String _hm(Object? iso) {
   return '${two(i.hour)}:${two(i.minute)}';
 }
 
+/// A card whose rows can be pressed (ListTile, check boxes): the rows get their own Material inside the card's box.
+Widget _tapCard(List<Widget> children, {Key? key}) => hrCard(key: key, [Material(type: MaterialType.transparency, child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: children))]);
+
 const _cats = {'staff': 'Staff', 'operator': 'Operator', 'driver': 'Driver', 'labour': 'Labour'};
 
 Widget _face(Map p, {double size = 48}) {
@@ -988,7 +991,7 @@ class _TransferSendScreenState extends State<TransferSendScreen> {
     return Scaffold(
       appBar: hrHead(context, sky: kMeSky, title: 'Transfer employee', mr: 'Employee transfer', height: 64),
       body: ListView(key: const Key('trs-page'), padding: const EdgeInsets.fromLTRB(16, 14, 16, 40), children: [
-        hrCard([
+        _tapCard([
           ListTile(
             key: const Key('trs-who'),
             contentPadding: EdgeInsets.zero,
@@ -1003,7 +1006,7 @@ class _TransferSendScreenState extends State<TransferSendScreen> {
           ),
         ]),
         const SizedBox(height: 10),
-        hrCard([
+        _tapCard([
           DropdownButtonFormField<String>(
             key: const Key('trs-to'),
             initialValue: to.isEmpty ? null : to,
@@ -1140,7 +1143,7 @@ class _TransferOpenScreenState extends State<TransferOpenScreen> {
               ]),
               if (accept) ...[
                 const SizedBox(height: 10),
-                hrCard(key: const Key('tro-accept'), [
+                _tapCard(key: const Key('tro-accept'), [
                   ListTile(
                     key: const Key('tro-start'),
                     contentPadding: EdgeInsets.zero,

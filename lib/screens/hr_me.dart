@@ -37,6 +37,7 @@ import 'consent_gate.dart' show showConsent;
 import 'attend_reqs.dart' show HrAsk;
 import 'attendance.dart' show attendPdfLogo, attendPdfOut, hrModule, hrSite;
 import 'email_verify.dart';
+import 'hr_more.dart';
 import 'hr_office.dart';
 import 'hr_shell.dart' show initials;
 
@@ -148,6 +149,7 @@ class HrMeTab extends StatelessWidget {
       _pill(key: const Key('me-ourteam'), icon: Icons.groups_2_outlined, en: 'Our team', mr: 'आपली टीम', onTap: () => open(OurTeamScreen(ask: ask))),
       _pill(key: const Key('me-approvals'), icon: Icons.fact_check_outlined, en: 'Approvals', mr: 'Approvals', onTap: () => open(ApprovalsScreen(ask: ask))),
       if (office) _pill(key: const Key('me-transfers'), icon: Icons.swap_horiz_rounded, en: 'Transfers', mr: 'Transfers', onTap: () => open(TransfersScreen(ask: ask))),
+      if (office) _pill(key: const Key('me-newemp'), icon: Icons.person_add_alt_1_outlined, en: 'New employees', mr: 'नवीन employees', onTap: () => open(NewEmployeesScreen(ask: ask))),
       if (office) _pill(key: const Key('me-phones'), icon: Icons.phonelink_erase_outlined, en: 'Release phone', mr: 'Phone release', onTap: () => open(ReleasePhoneScreen(ask: ask))),
     ];
     // APP: a pill for each, two in a row (one left over: the whole row)
@@ -159,7 +161,7 @@ class HrMeTab extends StatelessWidget {
       // (the look's name goes with them: a pill that keeps its own state is drawn again when the look changes)
       _RemindRow(look: sk.name),
       if (!inErp && s.sites.length > 1) _pill(key: const Key('me-site'), icon: Icons.swap_horiz_rounded, en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
-      if (!inErp) _UpdateRow(look: sk.name),
+      _UpdateRow(look: sk.name), // (3.161.0, asked: "HR madhech update check ch te pn button de") also for a person who has the ERP too
     ];
     return Container(
       decoration: BoxDecoration(gradient: sk.pageFill),
@@ -249,6 +251,33 @@ class HrMeTab extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: i + 1 < pills.length ? Row(children: [Expanded(child: pills[i]), const SizedBox(width: 10), Expanded(child: pills[i + 1])]) : pills[i],
               ),
+            // (3.161.0, asked: "hr madhun sign out mhanje hr only") a person with the ERP and HR: HR's own sign-out – the HR sign-in ends,
+            // the ERP stays; HR opens again only with his password or a code (hr_more.dart HrSignIn)
+            if (inErp) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                key: const Key('me-hr-out'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () async {
+                  if (!await _askHrOut(context)) return;
+                  final mod = hrModule(s);
+                  if (mod != null) await s.api.hrEnd(mod.url);
+                  await s.api.keep.write(kHrOut, '1');
+                  HrCache.clear();
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+                child: Container(
+                  height: 56,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: sk.dark ? const Color(0xFF2A1A28) : const Color(0xFFFBE4E1), borderRadius: BorderRadius.circular(22)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.logout_rounded, size: 20, color: sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B)),
+                    const SizedBox(width: 10),
+                    Text('Sign out of HR', mr: 'HR मधून sign out', style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w800, color: sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B))),
+                  ]),
+                ),
+              ),
+            ],
             if (!inErp) ...[
               const SizedBox(height: 6),
               GestureDetector(
@@ -306,6 +335,8 @@ Widget _pill({required Key key, required IconData icon, required String en, requ
     ),
   );
 }
+
+Future<bool> _askHrOut(BuildContext context) => ask(context, 'Sign out of HR?', _t('Only HR is closed – the ERP stays open. To open HR again you give your password or a code.', 'फक्त HR बंद होईल – ERP चालू राहील. HR परत उघडायला password किंवा code द्यावा लागेल.'), yes: 'Sign out of HR', danger: true);
 
 Future<bool> _askSignOut(BuildContext context) => ask(context, 'Sign out?', _t('You will be signed out of the app.', 'App मधून sign out होईल.'), yes: 'Sign out', danger: true);
 

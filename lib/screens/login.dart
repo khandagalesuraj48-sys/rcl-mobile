@@ -41,6 +41,10 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+  /// (3.161.0) the sheet under the crest and its height as drawn – the crest takes the rest of the screen
+  final _sheetKey = GlobalKey();
+  double _sheetH = 0;
+
   final _mail = TextEditingController(), _pw = TextEditingController();
   final _given = TextEditingController(), _new = TextEditingController(), _again = TextEditingController();
   String _localErr = '';
@@ -271,8 +275,15 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     }
     final mq = MediaQuery.of(context);
     final l = _l = _Look(mq.platformBrightness == Brightness.dark);
-    final headH = (mq.size.height * .44).clamp(330.0, 440.0) + mq.padding.top, lion = (headH - mq.padding.top) * .36;
-    final lionTop = mq.padding.top + 50.0;
+    /* (3.161.0, asked 21-11-2026: "app che login page scroll nahi zal pahije – ata te scroll hotey") THE PAGE FITS THE SCREEN: the crest
+     * takes what the sheet leaves (the sheet is measured after it is drawn), so the page is exactly as high as the screen and does not
+     * scroll. It scrolls only while the keyboard is open, or on a phone too small for the sheet and the smallest crest together. */
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final h = _sheetKey.currentContext?.size?.height;
+      if (h != null && (h - _sheetH).abs() > 1 && mounted) setState(() => _sheetH = h);
+    });
+    final headH = (_sheetH > 0 ? (mq.size.height - _sheetH).clamp(280.0 + mq.padding.top, 440.0 + mq.padding.top) : (mq.size.height * .44).clamp(330.0, 440.0) + mq.padding.top).toDouble(), lion = (headH - mq.padding.top) * .36;
+    final lionTop = mq.padding.top + ((headH - mq.padding.top) * .115).clamp(24.0, 50.0);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent), // (the navy is at the top in both)
       child: Theme(
@@ -311,6 +322,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 ),
                 // ---------- the sheet ----------
                 Arrive(
+                  key: _sheetKey,
                   anim: _open,
                   at: .28,
                   rise: 40,

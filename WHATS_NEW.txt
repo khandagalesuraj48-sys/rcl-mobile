@@ -1,3 +1,3 @@
-New in HR: Our team (everybody of the company, every site, with birthdays), Approvals (what waits for you), and outside your work place you can punch with a reason and a camera photo – it waits for approval. HR office: Transfers and Release phone.
-HR मध्ये नवीन: Our team (कंपनीतले सगळे, सगळ्या site चे, वाढदिवसांसह), Approvals (तुमच्याकडे काय थांबलंय), आणि work place च्या बाहेरून कारण आणि camera चा photo देऊन punch करता येतो – तो approval साठी थांबतो. HR office: Transfers आणि Phone release.
-HR में नया: Our team (कंपनी के सभी लोग, हर site के, जन्मदिन के साथ), Approvals (आपके पास क्या रुका है), और work place के बाहर से कारण और camera की photo देकर punch कर सकते हैं – वह approval के लिए रुकता है। HR office: Transfers और Phone release।
+HR office: add an employee from the app – papers first (AI reads them), four steps, save a draft, send for verification. HR has its own "Sign out of HR" and "Check for update". The sign-in page fits the screen.
+HR office: app मधून employee जोडा – आधी कागद (AI वाचतो), चार पायऱ्या, draft save, verification ला पाठवा. HR मध्ये स्वतःचे "HR मधून sign out" आणि "Update तपासा". Sign-in पान screen मध्ये बसते.
+HR office: app से employee जोड़ें – पहले कागज़ (AI पढ़ता है), चार चरण, draft save, verification को भेजें। HR में अपना "HR से sign out" और "Update जाँचें"। Sign-in पेज screen में आता है।

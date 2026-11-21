@@ -9916,6 +9916,41 @@ void main() {
     expect(find.byKey(const Key('tr-new')), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_transfers.png'));
+    await t.pageBack();
+    await net(t);
+
+    // (3.161.0) NEW EMPLOYEES – added by me: waiting for whom, approved with his code; the four steps; "Send for verification"
+    srv.hrNewEmps = [
+      {'id': 'n1', 'site': 'S1', 'status': 'pending', 'name': 'Vijay Nikam', 'sent_at': '2026-10-13T07:10:00.000Z', 'waits': 'Verify: Sanjay More', 'note': '', 'result': null},
+      {'id': 'n2', 'site': 'S1', 'status': 'approved', 'name': 'Kiran Desai', 'decided_at': '2026-10-12T07:10:00.000Z', 'waits': '', 'note': '', 'result': {'employee_id': 'e2', 'code': 'RCL-0412', 'name': 'Kiran Desai', 'signin': 'made', 'signin_email': 'kiran.desai@rcl.test', 'mailed': true}},
+      {'id': 'n3', 'site': 'S1', 'status': 'rejected', 'name': 'Suresh Gaikwad', 'waits': '', 'note': 'PAN photo not clear', 'result': null},
+    ];
+    await tapKey('me-newemp');
+    expect(find.byKey(const Key('ne-page')), findsOneWidget);
+    expect(find.text('Goes to: Verify – Sanjay More › Approve – Deepak Patil'), findsOneWidget);
+    expect(find.text('RCL-0412'), findsOneWidget);
+    expect(find.text('His sign-in is made and the e-mail sent to him.'), findsOneWidget);
+    expect(find.text('Rejected: PAN photo not clear'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_new_employees.png'));
+    await tapKey('ne-go-n3');
+    expect(find.byKey(const Key('nef-page')), findsOneWidget);
+    expect(find.byKey(const Key('nef-step1')), findsOneWidget);
+    await tapKey('nef-next');
+    expect(find.byKey(const Key('nef-step2')), findsOneWidget);
+    expect(find.text('Suresh Gaikwad'), findsOneWidget, reason: 'the draft\'s name is in the form');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_hr_new_employee_form.png'));
+    await tapKey('nef-next');
+    expect(find.byKey(const Key('nef-step3')), findsOneWidget);
+    await tapKey('nef-next');
+    expect(find.byKey(const Key('nef-step4')), findsOneWidget);
+    await t.enterText(find.byKey(const Key('nef-email')), 'suresh.g@rcl.test');
+    await tapKey('nef-next');
+    final draft = srv.hrSent.where((x) => x['action'] == 'neDraft').toList(), sent = srv.hrSent.where((x) => x['action'] == 'neSend').toList();
+    expect([draft.last['id'], (draft.last['form'] as Map)['name'], (draft.last['form'] as Map)['email'], sent.length, sent.first['id']], ['n3', 'Suresh Gaikwad', 'suresh.g@rcl.test', 1, 'n3'], reason: 'saved, then sent');
+    expect(find.byKey(const Key('ne-page')), findsOneWidget, reason: 'back on "Added by me"');
+    expect(find.byKey(const Key('me-hr-out')), findsNothing, reason: 'a person with HR only: the app\'s own sign-out, no "Sign out of HR"');
   }, tags: ['golden']);
 
   testWidgets('(3.108.0) a person with Mechanical keeps the app exactly as it was – HR only is for a person nobody gave Mechanical', (t) async {

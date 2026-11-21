@@ -1554,6 +1554,7 @@ class Session extends ChangeNotifier {
     offline = false;
     try {
       await api.keep.write(kSnap, null); // (3.85.0) what was kept for opening with no network
+      await api.keep.write('hr_signed_out', null); // (3.161.0) the main sign-out: "signed out of HR" (hr_more.dart kHrOut) is forgotten with it
       await api.keep.write(kStamp, null);
     } catch (_) {/* signing out never waits for it */}
     api.stamp = '';
