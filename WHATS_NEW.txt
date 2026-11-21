@@ -1,3 +1,3 @@
-HR office: add an employee from the app – papers first (AI reads them), four steps, save a draft, send for verification. HR has its own "Sign out of HR" and "Check for update". The sign-in page fits the screen.
-HR office: app मधून employee जोडा – आधी कागद (AI वाचतो), चार पायऱ्या, draft save, verification ला पाठवा. HR मध्ये स्वतःचे "HR मधून sign out" आणि "Update तपासा". Sign-in पान screen मध्ये बसते.
-HR office: app से employee जोड़ें – पहले कागज़ (AI पढ़ता है), चार चरण, draft save, verification को भेजें। HR में अपना "HR से sign out" और "Update जाँचें"। Sign-in पेज screen में आता है।
+Add employee: which papers to attach, clear Camera / Photos / PDF buttons, a proposed monthly salary, a clearer Work step, and to whom it goes when sent. The sign-in page does not scroll.
+Employee जोडा: कोणते कागद जोडायचे ते दिसते, Camera / Photos / PDF बटणं स्पष्ट, महिन्याचा पगार (प्रस्ताव), Work पायरी स्पष्ट, आणि पाठवल्यावर कोणाकडे जातो ते दिसते. Sign-in पान scroll होत नाही.
+Employee जोड़ें: कौन से कागज़ जोड़ने हैं वह दिखता है, Camera / Photos / PDF बटन साफ़, महीने का वेतन (प्रस्ताव), Work चरण साफ़, और भेजने पर किसके पास जाता है वह दिखता है। Sign-in पेज scroll नहीं होता।

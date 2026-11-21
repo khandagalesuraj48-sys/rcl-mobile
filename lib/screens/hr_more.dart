@@ -285,7 +285,7 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
   int step = 1;
   String id = '', err = '', said = '';
   bool busy = false, selected = false;
-  final c = <String, TextEditingController>{for (final k in ['name', 'mobile', 'address', 'email', 'whatsapp']) k: TextEditingController()};
+  final c = <String, TextEditingController>{for (final k in ['name', 'mobile', 'address', 'email', 'whatsapp', 'salary']) k: TextEditingController()};
   String category = '', gender = '', dob = '', joined = '', designation = '', department = '';
   final docs = <Map<String, dynamic>>[], ai = <String>{}, places = <String>{};
   final rep = <Map>[];
@@ -332,6 +332,7 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
         'designation_id': designation,
         'whatsapp': c['whatsapp']!.text.trim(),
         'address': c['address']!.text.trim(),
+        'salary': c['salary']!.text.trim(),
       };
   Map<String, dynamic> get _body => {
         'id': id,
@@ -431,7 +432,24 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
     try {
       final r = await widget.ask({'action': 'neSend', 'id': id});
       if (!mounted) return;
-      toast(context, _t('Sent – ${(r['draft'] as Map?)?['waits'] ?? ''}', 'पाठवले – ${(r['draft'] as Map?)?['waits'] ?? ''}'));
+      final waits = '${(r['draft'] as Map?)?['waits'] ?? ''}';
+      // (21-11-2026, asked: "send to verification kel ki kona kade jatey te samajw") to whom it went, step by step
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dc) => AlertDialog(
+          key: const Key('nef-sent'),
+          title: const Text('Sent for verification', mr: 'Verification ला पाठवले'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (waits.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10), child: m.Text(_t('Now: $waits', 'आता: $waits'), style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: sk.ink))),
+            ..._goesTo(),
+            const SizedBox(height: 10),
+            Text('You see where it stands in "Added by me". If it is rejected, the reason comes there – put it right and send again.', mr: 'तो कुठे आहे ते "मी जोडलेले" मध्ये दिसते. Reject झाला तर कारण तिथे येते – दुरुस्त करून पुन्हा पाठवा.', style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
+          ]),
+          actions: [TextButton(key: const Key('nef-sent-ok'), onPressed: () => Navigator.of(dc).pop(), child: const Text('OK', mr: 'ठीक'))],
+        ),
+      );
+      if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
@@ -454,6 +472,63 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
         joined = v;
       }
     });
+  }
+
+  /// a source of a paper: the picture above its name – the name never breaks, on any phone
+  Widget _src(String key, IconData icon, String en, String mr, String kind) => Expanded(
+        child: OutlinedButton(
+          key: Key(key),
+          onPressed: busy ? null : () => _paper(kind),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 66), padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 22), const SizedBox(height: 5), FittedBox(fit: BoxFit.scaleDown, child: Text(en, mr: mr, maxLines: 1, softWrap: false))]),
+        ),
+      );
+  Widget _sec(String en, String mr, String subEn, String subMr) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(en, mr: mr, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: sk.ink)),
+          const SizedBox(height: 2),
+          Text(subEn, mr: subMr, style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
+        ]),
+      );
+  Widget _choice(String key, bool on, String title, String sub, VoidCallback tap) => InkWell(
+        key: Key(key),
+        onTap: tap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(color: on ? const Color(0xFFE8EEFB) : null, border: Border.all(color: on ? const Color(0xFF1F5FD0) : sk.line, width: on ? 1.6 : 1), borderRadius: BorderRadius.circular(14)),
+          child: Row(children: [
+            Icon(on ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded, size: 20, color: on ? const Color(0xFF1F5FD0) : sk.muted),
+            const SizedBox(width: 10),
+            Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              m.Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink)),
+              m.Text(sub, style: TextStyle(fontSize: 12, color: sk.muted)),
+            ])),
+          ]),
+        ),
+      );
+
+  /// to whom it goes, step by step, and what happens after the last one
+  List<Widget> _goesTo() {
+    final g = (widget.setup['goes_to'] as List? ?? const []).whereType<Map>().toList();
+    Widget row(String n, String title, String sub, Color c) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            CircleAvatar(radius: 13, backgroundColor: c, child: m.Text(n, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white))),
+            const SizedBox(width: 10),
+            Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              m.Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink)),
+              m.Text(sub, style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.3)),
+            ])),
+          ]),
+        );
+    return [
+      for (final (i, x) in g.indexed) row('${i + 1}', '${x['name']}', x['stage'] == 'verify' ? _t('Verifies – checks the papers and the form', 'Verify करतो – कागद आणि form तपासतो') : _t('Approves', 'Approve करतो'), x['stage'] == 'verify' ? const Color(0xFFD98A00) : const Color(0xFF1E8E4E)),
+      row('${g.length + 1}', _t('Employee is made', 'Employee बनतो'), _t('After the last approval: his employee code, and his sign-in goes to his e-mail.', 'शेवटच्या approval नंतर: त्याचा employee code, आणि sign-in त्याच्या e-mail वर जातो.'), const Color(0xFF14213D)),
+    ];
   }
 
   Widget _txt(String k, String en, String mr, {TextInputType? type, int max = 80}) => Padding(
@@ -479,6 +554,23 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
         return [
           Text(widget.setup['ai'] == true ? 'Take the photos of his papers. AI reads them and fills the form – check it on the next step.' : 'Attach his papers. (AI is not switched on for you: fill the form by hand.)',
               mr: widget.setup['ai'] == true ? 'त्याच्या कागदांचे photo काढा. AI ते वाचून form भरतो – पुढच्या पायरीवर तपासा.' : 'त्याचे कागद जोडा. (तुमच्यासाठी AI चालू नाही: form हाताने भरा.)', style: TextStyle(fontSize: 13, color: sk.muted, height: 1.4)),
+          const SizedBox(height: 12),
+          Text('Papers to attach', mr: 'जोडायचे कागद', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.muted)),
+          const SizedBox(height: 6),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final k in kinds.entries)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: docs.any((d) => '${d['kind']}' == k.key) ? const Color(0xFFE3F5EA) : sk.box, borderRadius: BorderRadius.circular(999)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(docs.any((d) => '${d['kind']}' == k.key) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 15, color: docs.any((d) => '${d['kind']}' == k.key) ? const Color(0xFF126B39) : sk.muted),
+                  const SizedBox(width: 5),
+                  Flexible(child: m.Text(k.value, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: sk.ink))),
+                ]),
+              ),
+          ]),
+          const SizedBox(height: 6),
+          Text('One photo for each paper – clear, the whole paper inside the picture. Up to 12. A paper you do not have now can be attached later from his page.', mr: 'प्रत्येक कागदाचा एक photo – स्पष्ट, पूर्ण कागद चित्रात. जास्तीत जास्त 12. आत्ता नसलेला कागद नंतर त्याच्या पानावरून जोडता येतो.', style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
           const SizedBox(height: 10),
           if (docs.isEmpty) Text('No paper attached yet.', mr: 'अजून कागद जोडलेला नाही.', style: TextStyle(fontSize: 13, color: sk.muted)),
           for (final (i, d) in docs.indexed)
@@ -494,11 +586,11 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
           const SizedBox(height: 8),
           if (said.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: m.Text(said, key: const Key('nef-said'), style: TextStyle(fontSize: 12.5, color: sk.muted))),
           Row(children: [
-            Expanded(child: OutlinedButton.icon(key: const Key('nef-camera'), onPressed: busy ? null : () => _paper('camera'), icon: const Icon(Icons.photo_camera_outlined, size: 18), label: const Text('Camera', mr: 'Camera'))),
+            _src('nef-camera', Icons.photo_camera_outlined, 'Camera', 'Camera', 'camera'),
             const SizedBox(width: 8),
-            Expanded(child: OutlinedButton.icon(key: const Key('nef-gallery'), onPressed: busy ? null : () => _paper('gallery'), icon: const Icon(Icons.photo_library_outlined, size: 18), label: const Text('Photos', mr: 'Photos'))),
+            _src('nef-gallery', Icons.photo_library_outlined, 'Photos', 'Photos', 'gallery'),
             const SizedBox(width: 8),
-            Expanded(child: OutlinedButton.icon(key: const Key('nef-pdf'), onPressed: busy ? null : () => _paper('pdf'), icon: const Icon(Icons.picture_as_pdf_outlined, size: 18), label: const Text('PDF', mr: 'PDF'))),
+            _src('nef-pdf', Icons.picture_as_pdf_outlined, 'PDF', 'PDF', 'pdf'),
           ]),
         ];
       case 2:
@@ -512,38 +604,56 @@ class _NewEmployeeFormScreenState extends State<NewEmployeeFormScreen> {
           _pick('nef-designation', 'Designation', 'Designation', designation, [for (final x in (widget.setup['designations'] as List? ?? const []).whereType<Map>()) ('${x['id']}', '${x['name']}')], (v) => designation = v),
           _pick('nef-department', 'Department', 'Department', department, [for (final x in (widget.setup['departments'] as List? ?? const []).whereType<Map>()) ('${x['id']}', '${x['name']}')], (v) => department = v),
           _txt('address', 'Address', 'पत्ता', max: 300),
+          _txt('salary', 'Monthly salary (₹) – proposed', 'महिन्याचा पगार (₹) – प्रस्ताव', type: TextInputType.number, max: 9),
+          Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('A proposal only: after he is approved it waits for the HO HR / Super Admin, as every salary does. Leave it empty when it is not decided.', mr: 'फक्त प्रस्ताव: तो approve झाल्यावर पगार HO HR / Super Admin च्या approval ला जातो. ठरला नसेल तर रिकामा ठेवा.', style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35))),
           if (ai.isNotEmpty) Text('Fields marked AI were read from his papers – a suggestion only: look at the paper and check.', mr: 'AI लिहिलेली माहिती कागदावरून वाचलेली आहे – फक्त सूचना: कागद बघून तपासा.', style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
         ];
       case 3:
+        final all = (widget.setup['places'] as List? ?? const []).whereType<Map>().toList();
         return [
-          m.Text(_t('Site: ${widget.setup['site'] ?? ''}', 'Site: ${widget.setup['site'] ?? ''}'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink)),
-          const SizedBox(height: 10),
-          Text('Where may he punch?', mr: 'तो कुठे punch करू शकतो?', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.muted)),
-          const SizedBox(height: 6),
-          Wrap(spacing: 8, children: [
-            stateChip(_t('All places of the site', 'Site ची सगळी ठिकाणं'), selected ? '' : 'w', key: const Key('nef-all'), onTap: () => setState(() => selected = false)),
-            stateChip(_t('Selected places', 'निवडलेली ठिकाणं'), selected ? 'w' : '', key: const Key('nef-sel'), onTap: () => setState(() => selected = true)),
+          Row(children: [
+            Icon(Icons.apartment_rounded, size: 20, color: sk.ink),
+            const SizedBox(width: 8),
+            Expanded(child: m.Text('${widget.setup['site_name'] ?? widget.setup['site'] ?? ''}', key: const Key('nef-site'), style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: sk.ink))),
           ]),
-          if (selected)
-            for (final x in (widget.setup['places'] as List? ?? const []).whereType<Map>())
-              CheckboxListTile(key: Key('nef-place-${x['id']}'), dense: true, contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading, value: places.contains('${x['id']}'), title: m.Text('${x['name']}'), onChanged: (v) => setState(() => v == true ? places.add('${x['id']}') : places.remove('${x['id']}'))),
+          Padding(padding: const EdgeInsets.only(top: 2, left: 28), child: Text('He joins this site. For another site, open that site first.', mr: 'तो या site वर येतो. दुसऱ्या site साठी आधी ती site उघडा.', style: TextStyle(fontSize: 12.5, color: sk.muted))),
+          const SizedBox(height: 14),
+          _sec('Where may he punch?', 'तो कुठे punch करू शकतो?', 'IN / OUT counts only inside a work place.', 'IN / OUT फक्त work place च्या आत धरला जातो.'),
+          _choice('nef-all', !selected, _t('All places of the site', 'Site ची सगळी ठिकाणं'), _t('${all.length} now – and every place added later', 'आत्ता ${all.length} – आणि नंतर जोडलेली प्रत्येक'), () => setState(() => selected = false)),
           const SizedBox(height: 8),
-          Text('Reporting persons (one or many)', mr: 'Reporting persons (एक किंवा अनेक)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.muted)),
-          const SizedBox(height: 6),
-          Wrap(spacing: 6, runSpacing: 6, children: [
-            for (final (i, r) in rep.indexed) stateChip('${i + 1}. ${r['name']}  ×', '', key: Key('nef-rep-$i'), onTap: () => setState(() => rep.removeAt(i))),
-            if (rep.length < 5) stateChip(_t('+ Add', '+ जोडा'), 'w', key: const Key('nef-rep-add'), onTap: _addRep),
-          ]),
+          _choice('nef-sel', selected, _t('Selected places only', 'फक्त निवडलेली ठिकाणं'), _t(selected ? '${places.length} ticked' : 'Tick the places below', selected ? '${places.length} निवडली' : 'खाली ठिकाणं निवडा'), () => setState(() => selected = true)),
+          if (selected && all.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('No work place is made on this site yet.', mr: 'या site वर अजून work place बनवलेली नाही.', style: TextStyle(fontSize: 12.5, color: sk.muted))),
+          if (selected)
+            for (final x in all)
+              CheckboxListTile(key: Key('nef-place-${x['id']}'), dense: true, contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading, value: places.contains('${x['id']}'), title: m.Text('${x['name']}'), onChanged: (v) => setState(() => v == true ? places.add('${x['id']}') : places.remove('${x['id']}'))),
+          const SizedBox(height: 16),
+          _sec('Reporting persons', 'Reporting persons', 'The first one is his main reporting person. Up to 5 – or none now.', 'पहिला त्याचा मुख्य reporting person. जास्तीत जास्त 5 – किंवा आत्ता कोणी नाही.'),
+          for (final (i, r) in rep.indexed)
+            Container(
+              key: Key('nef-rep-$i'),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+              decoration: BoxDecoration(color: sk.box, borderRadius: BorderRadius.circular(14)),
+              child: Row(children: [
+                CircleAvatar(radius: 13, backgroundColor: const Color(0xFF14213D), child: m.Text('${i + 1}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white))),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  m.Text('${r['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sk.ink)),
+                  m.Text(i == 0 ? _t('Main · ${r['code'] ?? ''}', 'मुख्य · ${r['code'] ?? ''}') : '${r['code'] ?? ''}', style: TextStyle(fontSize: 12, color: sk.muted)),
+                ])),
+                IconButton(key: Key('nef-rep-x-$i'), icon: const Icon(Icons.close_rounded, size: 20), onPressed: () => setState(() => rep.removeAt(i))),
+              ]),
+            ),
+          if (rep.length < 5)
+            SizedBox(width: double.infinity, child: OutlinedButton.icon(key: const Key('nef-rep-add'), onPressed: _addRep, icon: const Icon(Icons.person_add_alt_1_outlined, size: 18), label: Text(rep.isEmpty ? 'Add a reporting person' : 'Add another', mr: rep.isEmpty ? 'Reporting person जोडा' : 'आणखी एक जोडा'))),
         ];
       default:
         return [
           _txt('email', 'E-mail (his sign-in)', 'E-mail (त्याचा sign-in)', type: TextInputType.emailAddress, max: 120),
           _txt('whatsapp', 'WhatsApp number', 'WhatsApp number', type: TextInputType.phone, max: 10),
-          Text('Goes to', mr: 'कोणाकडे जाईल', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: sk.muted)),
-          for (final (i, g) in (widget.setup['goes_to'] as List? ?? const []).whereType<Map>().indexed)
-            Padding(padding: const EdgeInsets.only(top: 6), child: Row(children: [stateChip('Step ${i + 1}', g['stage'] == 'verify' ? 'w' : 'a'), const SizedBox(width: 8), Expanded(child: m.Text('${g['stage'] == 'verify' ? 'Verifies' : 'Approves'} – ${g['name']}', style: TextStyle(fontSize: 13, color: sk.ink)))])),
-          const SizedBox(height: 10),
-          Text('After the last approval his employee code and his sign-in are made, and the e-mail with his sign-in goes to him.', mr: 'शेवटच्या approval नंतर त्याचा employee code आणि sign-in बनतो, आणि sign-in चा mail त्याला जातो.', style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.35)),
+          _sec('When you press Send, it goes to', 'Send दाबल्यावर हा कोणाकडे जाईल', 'One after the other, in this order. Each one gets it only when the one before has passed it.', 'एकामागून एक, याच क्रमाने. आधीच्याने पुढे पाठवल्यावरच पुढच्याला मिळतो.'),
+          ..._goesTo(),
         ];
     }
   }

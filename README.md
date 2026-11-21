@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.162.0 (21-11-2026 – asked with his two pictures of "Add employee": "ethe kay upload karaych ahe te samajw … camera photo pdf
+he name pratek phone war perfect disaw … monthly salary … login page ajun pn scroll krtey … site ani reporting person he page nit banaw …
+send kel ki kona kade jatey te samajw"):** step 1 lists the papers to attach (ticked when attached) and its three sources have the picture
+above the name (never broken); step 2 has the month's salary he proposes (it waits for the HO HR after the approval – rcl-hr); step 3 shows
+the site by its name, the places as two clear choices and the reporting persons as a numbered list; step 4 and the sheet after "Send" say
+to whom it goes, step by step. The sign-in page: the crest grows as small as 200 and the page cannot be moved while it fits.
+
 **Version 3.161.0 (21-11-2026 – four things he asked: "Add employee app madhun … login page scroll nahi zal pahije … 2 ni thikani sign out … HR madhech update check"):**
 * **Add employee from the app** (`lib/screens/hr_more.dart` – rcl-hr `act_newemp`): Me › Company › New employees – "Added by me" (draft /
   waiting for whom / rejected and why / approved with his code and sign-in) and the four steps: 1 Papers (camera / photos / PDF, up to
