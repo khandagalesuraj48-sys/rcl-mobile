@@ -25,6 +25,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 
+import '../core/api.dart' show ApiError;
 import '../core/app_consent.dart';
 import '../core/attend.dart';
 import '../core/attend_remind.dart';
@@ -168,6 +169,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     AttendWhere.i.clear();
     gps?.cancel();
     minute?.cancel();
+    _later?.cancel();
     super.dispose();
   }
 
@@ -275,7 +277,33 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
 
   static const _kept = ['myMonth', 'myLeave', 'myRegs', 'myHr', 'teamRegs'];
 
-  Future<void> _load() async {
+  /// (3.157.0, asked 21-11-2026 with his picture of Home under "The server did not answer in time": "as sarkhe hote, he nahi aale
+  /// pahije") ONE reading at a time: Home is read when it opens, when the app comes back, after every page and every tab – on a
+  /// slow network these piled up, each waiting its own 40 seconds. A reading asked for while one is on its way waits for that
+  /// one and is then done once more (so what was just changed is read).
+  Future<void>? _reading;
+  bool _again = false;
+  int _tries = 0;
+  bool _byHand = false;
+  Timer? _later;
+  Future<void> _load() {
+    if (_reading != null) {
+      _again = true;
+      return _reading!;
+    }
+    return _reading = () async {
+      try {
+        do {
+          _again = false;
+          await _loadNow();
+        } while (_again && mounted);
+      } finally {
+        _reading = null;
+      }
+    }();
+  }
+
+  Future<void> _loadNow() async {
     final s = SessionScope.read(context);
     // (3.154.0, asked 21-11-2026: "cache data dakhwel … new lagech disel") the first time: what was read the last time is shown
     // at once – his day only when it is TODAY's (never yesterday's IN / OUT as today's) – while the server is asked
@@ -306,15 +334,29 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         loading = false;
         err = '';
       });
+      _tries = 0;
+      _byHand = false;
       // (3.149.0, rcl-hr step 20) his place shared with HR while on duty (IN → OUT) – HR's server says when; after every IN / OUT
       // and whenever Home is opened. Nothing is shown in the app (his decision of 20-11-2026): the start is silent.
       if (AppConsent.ok(s)) unawaited(HrTrack.i.sync((b) => hrAsk(s, b)));      // (20-11-2026) only with the app's location notice allowed
     } catch (e) {
       if (!mounted) return;
+      // (3.157.0) his day is on the page (what was read before) and only the network did not answer: nothing red is shown – it
+      // is tried again by itself, quietly, a few times; pulling the page down reads at once. Anything else the server says
+      // (and a page with nothing to show) is said as before.
+      final net = e is ApiError && e.code == 'net' && day != null && !_byHand;
+      _byHand = false;
       setState(() {
         loading = false;
-        err = e is StateError ? 'You have no HR on this site – the Super Admin gives it in the Portal.' : errText(e);
+        err = net ? '' : e is StateError ? 'You have no HR on this site – the Super Admin gives it in the Portal.' : errText(e);
       });
+      if (net && _tries < 3) {
+        _tries++;
+        _later?.cancel();
+        _later = Timer(const Duration(seconds: 8), () {
+          if (mounted) _load();
+        });
+      }
       return;
     }
     final today = '${day?['day'] ?? indiaDay(AttendKit.kit.now())}';
@@ -326,11 +368,12 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     }
     if (!mounted) return;
     setState(() {
-      month = got[0];
-      leave = got[1];
-      regs = [for (final x in (got[2]?['rows'] as List? ?? const []).whereType<Map>()) x];
-      mine = got[3] ?? mine; // (his name, photo and papers do not blink away when one reading fails)
-      teamWait = (got[4]?['rows'] as List? ?? const []).length;
+      // (a part that could not be read stays as it was shown – nothing blinks away)
+      month = got[0] ?? month;
+      leave = got[1] ?? leave;
+      if (got[2] != null) regs = [for (final x in (got[2]!['rows'] as List? ?? const []).whereType<Map>()) x];
+      mine = got[3] ?? mine;
+      if (got[4] != null) teamWait = (got[4]!['rows'] as List? ?? const []).length;
     });
   }
 
@@ -446,7 +489,11 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
               child: Column(children: [
               Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 10), child: _top(s)),
               Expanded(child: RefreshIndicator(
-                onRefresh: _load,
+                // (pulled down by hand: what the network says is told)
+                onRefresh: () {
+                  _byHand = true;
+                  return _load();
+                },
                 child: ListView(key: const Key('hr-home'), padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + under), children: [
                   if (err.isNotEmpty) InfoLine(err, bad: true, help: false, key: const Key('hh-err')),
                   if (loading) Padding(padding: const EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: sk.accent))),
