@@ -282,6 +282,13 @@ jobs:
           for p in out/*.patch; do if [ -f "$p" ]; then gh release upload "v$VER-$BN" "$p"; fi; done
           gh release view "v$VER-$BN" --json assets --jq '.assets[] | .name' | sed 's/^/::notice::in the release: /'
           echo "::notice::Released $VER ($BN) – $WHAT – https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VER-$BN"
+      # (asked 21-11-2026: "old link warun click kel tewa old application yet … nehmi latest apk ch download hoil") the pages of the
+      # releases older than the newest stable one say, once, where the latest always is (the app's own page) – nothing is deleted
+      - name: Old releases say where the latest is
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: timeout 900 bash tool/mark_old_releases.sh
       # (3.42.0) every phone with the app is told at once: "RCL ERP <version> is ready" (Firebase, the topic rcl-app-update)
       - name: Tell every phone (needs the GitHub secret FCM_SERVICE_ACCOUNT_JSON)
         env:
