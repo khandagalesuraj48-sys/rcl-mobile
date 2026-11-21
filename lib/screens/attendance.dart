@@ -492,14 +492,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
           await store!.remove(p.cid); // the server said no: nothing is kept of it
           rethrow;
         }
-        final k = await store!.kept();
-        if (!mounted) return;
-        setState(() {
-          kept = k;
-          offline = true;
-          done = _t('No network: your ${kind == 'in' ? 'IN' : 'OUT'} of ${indiaTime(p.atDevice)} is kept on the phone and is sent by itself when the network is back.',
-              'Network नाही: ${indiaTime(p.atDevice)} चे ${kind == 'in' ? 'IN' : 'OUT'} phone मध्ये ठेवले आहे – network आल्यावर आपोआप जाईल.');
-        });
+        // (3.164.0, his decision of 21-11-2026 after the security scan: "offline punch not allow") NO NETWORK = NO PUNCH: nothing is kept
+        // on the phone any more (its own clock and place cannot be trusted as the server's). He marks again when the network is back.
+        await store!.remove(p.cid);
+        if (mounted) setState(() => offline = true);
+        throw AttendProblem('No network: attendance is marked only with the network on. Switch on mobile data or Wi-Fi and mark again.', 'Network नाही: हजेरी फक्त network चालू असताना लागते. Mobile data किंवा Wi-Fi चालू करून पुन्हा mark करा.', 'net');
       }
       // (3.105.0) from Home's strip: the punch the server took is said big, once – then Home again (its strip has turned)
       if (okTime.isNotEmpty && widget.quick && mounted) {
@@ -572,7 +569,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
               onRefresh: () => _load(quiet: true),
               child: ListView(key: const Key('att-page'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
                 if (me != null) ...[
-                  if (offline) InfoLine(_t('No network – shown as read last. A punch taken now is kept on the phone and sent later.', 'Network नाही – शेवटचे वाचलेले दाखवले आहे. आता लावलेली हजेरी phone मध्ये राहील आणि नंतर जाईल.'), icon: Icons.cloud_off_rounded, bad: true, help: false, key: const Key('att-offline')),
+                  if (offline) InfoLine(_t('No network – shown as read last. Attendance is marked only with the network on.', 'Network नाही – शेवटचे वाचलेले दाखवले आहे. हजेरी फक्त network चालू असताना लागते.'), icon: Icons.cloud_off_rounded, bad: true, help: false, key: const Key('att-offline')),
                   // ---- what stops a punch on this phone
                   if (!may) InfoLine(_t('Your employee record is not complete (date of birth, e-mail, mobile) – ask the HR office.', 'तुमची employee माहिती अपूर्ण आहे (जन्मतारीख, e-mail, mobile) – HR office ला सांगा.'), bad: true, help: false, key: const Key('att-incomplete')),
                   if (dev) InfoLine(_t('Developer Options are ON in this phone. Switch them off (Settings › Developer options), then come back – attendance cannot be marked until then.', 'या phone मध्ये Developer Options चालू आहेत. ते बंद करा (Settings › Developer options) आणि परत या – तोपर्यंत हजेरी लावता येणार नाही.'), bad: true, help: false, key: const Key('att-dev')),
