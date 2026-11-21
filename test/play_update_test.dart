@@ -105,7 +105,9 @@ void main() {
     expect(g, contains('System.getenv("RCL_STORE") == "play"'));
     expect(g, contains('applicationId = if (playStore) "si.sketchline.lion" else "in.rachana.rcl.rcl_mobile"'));
     expect(g, contains('if (playStore) sourceSets.getByName("release").manifest.srcFile("src/play/AndroidManifest.xml")'));
-    expect(g, contains('namespace = "in.rachana.rcl.rcl_mobile"'), reason: 'the code\'s namespace is the same for both');
+    expect(g, contains('namespace = "si.sketchline.lion"'), reason: 'the code\'s own name is the new one for both');
+    expect(Directory('android/app/src/main/kotlin/in').existsSync(), false, reason: 'no class under the old name');
+    expect(File('android/app/src/main/kotlin/si/sketchline/lion/MainActivity.kt').readAsStringSync(), contains('package si.sketchline.lion'));
     expect(o, contains('<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/>'));
     expect(o, contains('android:label="LION" tools:replace="android:label"'));
     expect(o, contains('sk.fourq.otaupdate.OtaUpdateFileProvider'));

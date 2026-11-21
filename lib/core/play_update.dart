@@ -9,7 +9,7 @@
  *  · the downloaded update is put in when the app is STARTED the next time (never in the middle of his work – an entry half
  *    typed is not lost), or at once from Me ("Install now").
  *
- * The app that is given by its file (the package in.rachana.rcl.rcl_mobile) is not changed by any of this: [onPlay] is false. */
+ * The app that is given by its file (the id it was installed with) is not changed by any of this: [onPlay] is false. */
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';

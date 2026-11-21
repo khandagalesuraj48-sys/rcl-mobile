@@ -1,4 +1,4 @@
-package `in`.rachana.rcl.rcl_mobile
+package si.sketchline.lion
 
 import android.content.Context
 import com.google.android.gms.common.api.OptionalModuleApi

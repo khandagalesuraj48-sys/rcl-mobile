@@ -183,7 +183,7 @@ class PlacesMap extends StatelessWidget {
         interactionOptions: InteractionOptions(flags: live ? InteractiveFlag.all & ~InteractiveFlag.rotate : InteractiveFlag.none),
       ),
       children: [
-        if (placesMapTiles) TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'in.rachana.rcl.rcl_mobile', maxZoom: 19),
+        if (placesMapTiles) TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'si.sketchline.lion', maxZoom: 19),
         PolygonLayer(polygons: [
           for (final p in places)
             if (p.shape == 'polygon' && p.points.length > 2) Polygon(points: [for (final q in p.points) LatLng(q[0], q[1])], color: hue(p).withValues(alpha: .14), borderColor: hue(p), borderStrokeWidth: 2),

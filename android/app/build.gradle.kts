@@ -14,12 +14,13 @@ plugins {
 if (file("google-services.json").exists()) apply(plugin = "com.google.gms.google-services")
 
 // (3.165.0, asked 21-11-2026: "si.sketchline.lion he tu kr") THE PLAY STORE'S APP is built with RCL_STORE=play: its own package
-// (a new app for Android – the app given by its file keeps in.rachana.rcl.rcl_mobile and its updates), the name LION and no
-// "install a file" permission (src/play/AndroidManifest.xml). The code's namespace is the same for both.
+// (a new app for Android), the name LION and no "install a file" permission (src/play/AndroidManifest.xml). The app given by its
+// file keeps the id it was installed with (below) – with another id no phone of today could take its update. The code's own
+// name (namespace, the Kotlin classes) is si.sketchline.lion for both (his word of 21-11-2026: the old name is not to be seen).
 val playStore = System.getenv("RCL_STORE") == "play"
 
 android {
-    namespace = "in.rachana.rcl.rcl_mobile"
+    namespace = "si.sketchline.lion"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

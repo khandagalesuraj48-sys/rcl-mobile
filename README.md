@@ -21,7 +21,8 @@ he tu kr"; "in app updet sadh updet he tr lawaych aahech"):** THE PLAY STORE'S A
 `si.sketchline.lion`, named LION, without the "install a file" permission and without the app's own file update – Google Play updates
 it (`lib/core/play_update.dart`: Google's sheet once in an opening, the download while he works, put in at the next start or from Me →
 "Install now"); Me has "Auto update" (the two taps in the Play Store – no app can switch that setting) and Share app sends the Play
-Store's page. The app given by its file (`in.rachana.rcl.rcl_mobile`) is not changed. The build checks the Play app's package, name
+Store's page. The code's own name (namespace, Kotlin classes, the iPhone bundle) is `si.sketchline.lion` everywhere; only the app given by its
+file keeps the id it was installed with (`in.rachana.rcl.rcl_mobile` – with another id no phone of today could take its update). The build checks the Play app's package, name
 and permission. Not seen: a real phone, the Play Console (an in-app update works only for an app installed from Google Play).
 
 **Version 3.164.0 (21-11-2026 – his decision after the security scan: "offline punch not allow"):** with no network a punch is not
