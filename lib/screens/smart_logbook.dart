@@ -918,6 +918,11 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
   Map<String, dynamic>? pre;
   String err = '', aiText = '';
   bool busy = false, listening = false, writing = false;
+  /// (3.162.0, asked 21-11-2026: "diesel sathi meter change option dilay, ata log book entry madhe pn de – smart log book ani normal
+  /// log book madhe pn") THE VEHICLE GOT A NEW METER: ticked, the Start of this shift is the opening he read today on the new meter (not
+  /// the old meter's last Close) and the entry is saved as the Log Book's own "new meter" (meter: new, with its reason) – the same
+  /// checks on the server as the normal Log Book's tick.
+  bool newMeter = false;
   /// (his answer "दोन्ही एकत्र") the voice recorded while the phone listened – sent with the closing (core/vl_voice.dart)
   Uint8List? voice;
   final String opId = 'VC-${DateTime.now().microsecondsSinceEpoch}-${math.Random().nextInt(1 << 30)}';
@@ -959,6 +964,7 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
   num? _start(bool hours) {
     final op = widget.opening;
     final first = op != null && '${op['date'] ?? ''}' == shiftDate && shift != 'Night';
+    if (newMeter) return asNum(op?[hours ? 'hr' : 'km']);
     final v = (op != null && first) ? asNum(op[hours ? 'hr' : 'km']) : null;
     return v ?? asNum(pre?[hours ? 'openingHr' : 'openingKm']) ?? asNum(op?[hours ? 'hr' : 'km']);
   }
@@ -1048,6 +1054,10 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
       setState(() => err = bi('The photo is still being read – wait a moment.', 'फोटो वाचला जात आहे – थांबा.'));
       return;
     }
+    if (newMeter && ((rd.wantKm && _start(false) == null) || (rd.wantHr && _start(true) == null))) {
+      setState(() => err = bi('Meter changed: the opening reading of the new meter is not there – ask your supervisor to make the entry in the Log Book.', 'Meter बदलला: नवीन meter चे सुरुवातीचे reading नाही – supervisor ला Log Book मध्ये entry करायला सांगा.'));
+      return;
+    }
     if (_bad && !await ask(context, 'Less than the start?', bi('The closing reading is less than the start of this shift (${_read({'km': _start(false), 'hr': _start(true)})}). Save it anyway?', 'Closing reading सुरुवातीपेक्षा कमी आहे. तरी save करायचे?'), yes: 'Save anyway')) return;
     if (!mounted) return;
     setState(() {
@@ -1064,6 +1074,7 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
       'work': (work.text.trim().isNotEmpty ? work.text.trim() : text.text.trim()),
       'remark': text.text.trim(),
       'driver': widget.myName,
+      if (newMeter) ...{'meter': 'new', 'meterNote': 'Meter changed'},
       if (rd.photo != null && '${rd.photo!['sha']}'.isNotEmpty) 'attachments': [{'sha': rd.photo!['sha']}],
     };
     var logRow = '', kept = false;
@@ -1143,6 +1154,24 @@ class _CloseShiftScreenState extends State<CloseShiftScreen> {
       appBar: slbBar(context, tr('Close the shift'), 'Closing · ${m.id} · ${tr(shift)}'),
       body: ListView(key: const Key('close-list'), padding: const EdgeInsets.fromLTRB(Sp.edge, 16, Sp.edge, 28), children: [
         _ReadingView(rd: rd, label: 'Closing', mr: 'बंद रीडिंग', note: wk.isEmpty ? '' : '${bi('Work', 'काम')} $wk${_bad ? '' : ' ✓'}'),
+        if (rd.any)
+          Material(
+            type: MaterialType.transparency,
+            child: CheckboxListTile(
+              key: const Key('vl-close-mch'),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: newMeter,
+              onChanged: busy ? null : (v) => setState(() => newMeter = v == true),
+              title: Text(bi('Meter changed', 'Meter बदलला'), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+              subtitle: Text(
+                  newMeter
+                      ? bi('Start of this shift = the opening you read today on the new meter (${_read({'km': _start(false), 'hr': _start(true)})}). The old meter is not checked.', 'या shift ची सुरुवात = आज नवीन meter वर घेतलेले opening (${_read({'km': _start(false), 'hr': _start(true)})}). जुना meter तपासला जात नाही.')
+                      : bi('Tick when the vehicle got a new meter and the reading is lower than before.', 'गाडीला नवीन meter बसला असेल आणि reading आधीपेक्षा कमी असेल तर tick करा.'),
+                  style: const TextStyle(fontSize: 12.5, height: 1.3)),
+            ),
+          ),
         Text(bi("Tell today's work", 'आजचे काम सांगा'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         Row(children: [

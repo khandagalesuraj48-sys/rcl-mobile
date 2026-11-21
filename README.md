@@ -22,6 +22,10 @@ above the name (never broken); step 2 has the month's salary he proposes (it wai
 the site by its name, the places as two clear choices and the reporting persons as a numbered list; step 4 and the sheet after "Send" say
 to whom it goes, step by step. The sign-in page: the crest grows as small as 200 and the page cannot be moved while it fits.
 
+Also in 3.162.0 (asked 21-11-2026: "diesel sathi meter change option dilay, ata log book entry madhe pn de – smart log book ani normal
+log book madhe pn"): the **Smart Log Book's closing** has the tick "Meter changed" – the Start is the opening read today on the new meter and
+the entry is saved as the Log Book's own "new meter" (`meter: new`; the normal Log Book has that tick already – web and app). No server change.
+
 **Version 3.161.0 (21-11-2026 – four things he asked: "Add employee app madhun … login page scroll nahi zal pahije … 2 ni thikani sign out … HR madhech update check"):**
 * **Add employee from the app** (`lib/screens/hr_more.dart` – rcl-hr `act_newemp`): Me › Company › New employees – "Added by me" (draft /
   waiting for whom / rejected and why / approved with his code and sign-in) and the four steps: 1 Papers (camera / photos / PDF, up to
