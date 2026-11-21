@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.159.0 (21-11-2026 – two things he asked):**
+* **PUNCH IN / PUNCH OUT** ("attendance mark kartana sign in and sign out diste … tyache jagi punch in and punch out as banaw"): Home's
+  round button, the question before OUT ("Do you really want to punch out?" – "Yes, punch out") and the day's lines ("Punched in /
+  Punched out"). Signing in to the app itself keeps its word.
+* **My documents – attached = there** (his decision, with rcl-hr: "document upload hot aahet te verification and approval sathi jatat –
+  as nko … edit delete change as option astil"; "employee pn swata update kru shakel"): no "Being checked by HR" / "Verified" – a paper
+  is in "Attached". Every attached paper has **⋯**: Open · Edit its number and dates (`myDocEdit`) · Change (a new file in its place) ·
+  Delete (asks first; it leaves his list). A paper rejected before still says why and asks to be attached again.
+
 **Version 3.158.0 (21-11-2026 – his picture of Home: "app madhe sign in kel ke red yeil sign out sathi ani sign in kraych asel tr green")
 THE DIAL'S DISC SAYS WHAT A TOUCH DOES BY ITS COLOUR.** Home's round button (`ui/home_dial.dart`, `tone`) is GREEN when he has to sign
 in and RED when he is on duty and a touch signs him out; its words are white on it. Today done / absent / cannot be marked: the plain

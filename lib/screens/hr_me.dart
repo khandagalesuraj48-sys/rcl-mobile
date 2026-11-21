@@ -463,6 +463,104 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
     }
   }
 
+  /// (3.159.0) his own paper: what he can do with it
+  Future<void> _more(Map kind, Map d) async {
+    if (busy.isNotEmpty) return;
+    final what = await showModalBottomSheet<String>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 6), child: Align(alignment: Alignment.centerLeft, child: m.Text(tr('${kind['name']}'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800)))),
+          ListTile(key: const Key('doc-m-open'), leading: const Icon(Icons.open_in_new_rounded), title: const Text('Open', mr: 'उघडा'), onTap: () => Navigator.pop(c, 'open')),
+          ListTile(key: const Key('doc-m-edit'), leading: const Icon(Icons.edit_outlined), title: const Text('Edit its number and dates', mr: 'नंबर आणि तारखा बदला'), onTap: () => Navigator.pop(c, 'edit')),
+          ListTile(key: const Key('doc-m-change'), leading: const Icon(Icons.swap_horiz_rounded), title: const Text('Change – attach a new file in its place', mr: 'Change – त्याच्या जागी नवीन file जोडा'), onTap: () => Navigator.pop(c, 'change')),
+          ListTile(key: const Key('doc-m-delete'), leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFC22A1B)), title: const Text('Delete', mr: 'Delete करा'), onTap: () => Navigator.pop(c, 'delete')),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (what == null || !mounted) return;
+    if (what == 'open') return _open(d);
+    if (what == 'edit') return _edit(kind, d);
+    if (what == 'change') return _add(kind, replaces: '${d['id'] ?? ''}');
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Delete this document?', mr: 'हे कागदपत्र delete करायचं?'),
+        content: const Text('It leaves your list. You can attach a new one any time.', mr: 'ते तुमच्या यादीतून जाईल. नवीन कधीही जोडता येईल.'),
+        actions: [
+          TextButton(key: const Key('doc-del-no'), onPressed: () => Navigator.pop(c, false), child: const Text('No', mr: 'नाही')),
+          TextButton(key: const Key('doc-del-yes'), onPressed: () => Navigator.pop(c, true), child: const Text('Yes, delete', mr: 'हो, delete करा')),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    await _do({'action': 'myDocDelete', 'doc': d['id']}, _t('Document deleted', 'कागदपत्र delete झाले'));
+  }
+
+  /// one change of his own paper: sent, the list read again, said; what the server refuses is shown on the page
+  Future<void> _do(Map<String, dynamic> body, String said) async {
+    setState(() => err = '');
+    try {
+      await widget.ask(body);
+      await _load();
+      if (mounted) donePop(context, said);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    }
+  }
+
+  static String _ymd(Object? v) => '${v ?? ''}'.length >= 10 ? '${v ?? ''}'.substring(0, 10) : '';
+
+  /// (3.159.0) EDIT his own paper: its number, the day it was issued and – a paper that runs out – up to when it is valid
+  Future<void> _edit(Map kind, Map d) async {
+    final number = TextEditingController(text: '${d['number'] ?? ''}');
+    var iss = _ymd(d['issued_on']), exp = _ymd(d['expires_on']);
+    final expires = kind['expires'] == true;
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => StatefulBuilder(
+        builder: (c, set) {
+          Future<void> pick(bool forExp) async {
+            final now = DateTime.now(), last = forExp ? DateTime(now.year + 40) : now;
+            var at = DateTime.tryParse(forExp ? exp : iss) ?? now;
+            if (at.isAfter(last)) at = last;
+            final got = await showDatePicker(context: c, initialDate: at, firstDate: DateTime(1950), lastDate: last);
+            if (got == null) return;
+            final v = '${got.year.toString().padLeft(4, '0')}-${got.month.toString().padLeft(2, '0')}-${got.day.toString().padLeft(2, '0')}';
+            set(() {
+              if (forExp) {
+                exp = v;
+              } else {
+                iss = v;
+              }
+            });
+          }
+
+          Widget date(String key, String en, String mr, String v, bool forExp) => ListTile(key: Key(key), contentPadding: EdgeInsets.zero, leading: const Icon(Icons.event_outlined), title: Text(en, mr: mr), subtitle: m.Text(v.isEmpty ? '–' : dayName(v)), onTap: () => pick(forExp));
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.viewInsetsOf(c).bottom),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                m.Text(tr('${kind['name']}'), style: const TextStyle(fontFamily: 'Montserrat', fontSize: 16, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
+                TextField(key: const Key('doc-ed-number'), controller: number, maxLength: 40, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(labelText: _t('Its number (if any)', 'त्याचा नंबर (असल्यास)'), border: const OutlineInputBorder())),
+                date('doc-ed-iss', 'Issued on', 'दिल्याची तारीख', iss, false),
+                if (expires) date('doc-ed-exp', 'Valid up to', 'कधीपर्यंत वैध', exp, true),
+                const SizedBox(height: 8),
+                FilledButton(key: const Key('doc-ed-save'), onPressed: () => Navigator.pop(c, true), child: const Text('Save', mr: 'Save करा')),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+    final typed = number.text.trim();
+    if (ok != true || !mounted) return;
+    await _do({'action': 'myDocEdit', 'doc': d['id'], 'number': typed, 'issued_on': iss, 'expires_on': exp}, _t('Saved', 'Save झाले'));
+  }
+
   Future<void> _open(Map d) async {
     try {
       final j = await widget.ask({'action': 'myDocLink', 'doc': d['id']});
@@ -486,19 +584,23 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
   }
 
   /// (3.154.0, his choice of 21-11-2026: "d3 use kr") THE PAPERS IN GROUPS: on top how many are there; then what is needed from
-  /// him, what the HR office is checking, what it has verified, and what he can also attach. Everything the page did stays: Upload,
-  /// Add, Attach again (a rejected one, with the HR office's reason), Open, the date.
+  /// him, what is attached, and what he can also attach. Upload, Add, Attach again (a paper rejected before, with the HR office's
+  /// reason), Open, the date.
+  /// (3.159.0, his decision of 21-11-2026: "document upload hot aahet te verification and approval sathi jatat – as nko … edit delete
+  /// change as option astil"; "employee pn swata update kru shakel") A PAPER IS THERE WHEN IT IS ATTACHED – nothing is "being
+  /// checked" or "verified". Every attached paper has "⋯": Open · Edit (its number and dates) · Change (a new file in its place) ·
+  /// Delete (it leaves his list; he attaches a new one when he wants).
   @override
   Widget build(BuildContext context) {
     final kinds = [for (final k in (data?['kinds'] as List? ?? const []).whereType<Map>()) k], docs = [for (final d in (data?['docs'] as List? ?? const []).whereType<Map>()) d];
     final missing = {for (final x in (data?['docsMissing'] as List? ?? const [])) '$x'};
-    final need = <Map>[], check = <Map>[], good = <Map>[], also = <Map>[];
+    final need = <Map>[], good = <Map>[], also = <Map>[];
     List<Map> of(Map k) => docs.where((d) => d['kind'] == k['key']).toList();
-    // (3.135.0, rcl-hr step 15) the HR office's check of the newest one: verified, being checked, or rejected (with why)
+    // the newest one of a kind: rejected before (with why – to attach again), else it is there
     String st(Map k) => of(k).isEmpty ? '' : '${of(k).first['status'] ?? ''}';
     for (final k in kinds) {
       final have = of(k).isNotEmpty, s = st(k);
-      (s == 'rejected' || (!have && missing.contains('${k['name']}')) ? need : !have ? also : s == 'verified' ? good : check).add(k);
+      (s == 'rejected' || (!have && missing.contains('${k['name']}')) ? need : !have ? also : good).add(k);
     }
     final total = kinds.length, there = total - kinds.where((k) => of(k).isEmpty).length;
     final gold = sk.dark ? const Color(0xFFF2CC62) : const Color(0xFFA9741A), red = sk.dark ? const Color(0xFFFF7A70) : const Color(0xFFC22A1B);
@@ -519,22 +621,33 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
               if (again && note.isNotEmpty)
                 Padding(padding: const EdgeInsets.only(top: 3), child: m.Text('${_t('HR office says', 'HR office म्हणते')}: $note', key: Key('doc-why-${k['key']}'), style: TextStyle(fontSize: 12.5, color: red, height: 1.3))),
               for (final d in have)
-                GestureDetector(
-                  key: Key('doc-open-${d['id']}'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => _open(d),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: m.Text.rich(
-                      TextSpan(children: [
-                        TextSpan(text: [if ('${d['number'] ?? ''}'.isNotEmpty) '${d['number']}', '${_t('Attached', 'जोडले')} ${dayName('${d['created_at'] ?? ''}'.length >= 10 ? '${d['created_at']}'.substring(0, 10) : '')}'.trim()].join(' · ')),
-                        const TextSpan(text: '  •  '),
-                        TextSpan(text: _t('Open', 'उघडा'), style: TextStyle(fontWeight: FontWeight.w700, color: sk.link)),
-                      ]),
-                      style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.3),
+                Row(children: [
+                  Expanded(
+                    child: GestureDetector(
+                      key: Key('doc-open-${d['id']}'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _open(d),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: m.Text.rich(
+                          TextSpan(children: [
+                            TextSpan(text: [if ('${d['number'] ?? ''}'.isNotEmpty) '${d['number']}', '${_t('Attached', 'जोडले')} ${dayName('${d['created_at'] ?? ''}'.length >= 10 ? '${d['created_at']}'.substring(0, 10) : '')}'.trim()].join(' · ')),
+                            const TextSpan(text: '  •  '),
+                            TextSpan(text: _t('Open', 'उघडा'), style: TextStyle(fontWeight: FontWeight.w700, color: sk.link)),
+                          ]),
+                          style: TextStyle(fontSize: 12.5, color: sk.muted, height: 1.3),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  // (3.159.0) his own paper: Open · Edit · Change · Delete
+                  GestureDetector(
+                    key: Key('doc-more-${d['id']}'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _more(k, d),
+                    child: Padding(padding: const EdgeInsets.fromLTRB(10, 4, 2, 0), child: Icon(Icons.more_horiz_rounded, size: 20, color: sk.muted)),
+                  ),
+                ]),
             ]),
           ),
           const SizedBox(width: 10),
@@ -591,7 +704,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
 
     return Scaffold(
       appBar: hrHead(context, sky: kMeSky, title: 'My documents', mr: 'माझी कागदपत्रे', height: 100, below: [
-        Text('Attach a clear photo or a PDF of each paper. Only the HR office removes one.', mr: 'प्रत्येक कागदाचा स्पष्ट photo किंवा PDF जोडा. काढणे फक्त HR office करते.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
+        Text('Attach a clear photo or a PDF of each paper. On a paper, ⋯ lets you edit, change or delete it.', mr: 'प्रत्येक कागदाचा स्पष्ट photo किंवा PDF जोडा. कागदावरच्या ⋯ ने तो edit, change किंवा delete करता येतो.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
       ]),
       body: loading
           ? const SkeletonList(tiles: 0, rows: 5)
@@ -634,8 +747,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                           const SizedBox(height: 9),
                           Wrap(spacing: 12, runSpacing: 5, children: [
                             if (need.isNotEmpty) legend(const Color(0xFFFF7A70), _t('${need.length} needed', '${need.length} हवे')),
-                            if (check.isNotEmpty) legend(const Color(0xFFF2CC62), _t('${check.length} being checked', '${check.length} तपासणीत')),
-                            if (good.isNotEmpty) legend(const Color(0xFF58D68D), _t('${good.length} verified', '${good.length} verified')),
+                            if (good.isNotEmpty) legend(const Color(0xFF58D68D), _t('${good.length} attached', '${good.length} जोडले')),
                             if (also.isNotEmpty) legend(const Color(0xFF9AA6C8), _t('${also.length} not attached', '${also.length} जोडले नाहीत')),
                           ]),
                         ]),
@@ -643,8 +755,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                     ]),
                   ),
                 ...group('need', red, 'Needed from you', 'तुमच्याकडून हवे', need),
-                ...group('check', const Color(0xFFDDAD40), 'Being checked by HR', 'HR तपासत आहे', check),
-                ...group('ok', sk.dark ? const Color(0xFF58D68D) : const Color(0xFF0F7A45), 'Verified', 'Verified', good),
+                ...group('ok', sk.dark ? const Color(0xFF58D68D) : const Color(0xFF0F7A45), 'Attached', 'जोडलेले', good),
                 ...group('also', sk.faint, 'You can also attach', 'हेही जोडू शकता', also),
               ]),
             ),

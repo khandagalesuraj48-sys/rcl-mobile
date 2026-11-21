@@ -442,13 +442,13 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 60, height: 60, alignment: Alignment.center, decoration: BoxDecoration(color: redSoft, borderRadius: BorderRadius.circular(20)), child: Icon(Icons.logout_rounded, size: 28, color: red)),
             const SizedBox(height: 14),
-            Text('Do you really want to sign out?', mr: 'खरंच sign out करायचं आहे का?', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
+            Text('Do you really want to punch out?', mr: 'खरंच punch out करायचं आहे का?', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
             const SizedBox(height: 8),
             m.Text([if (worked.isNotEmpty) _t('You have worked $worked.', 'तुम्ही $worked काम केलं आहे.'), if (end.isNotEmpty) _t('Your shift ends at $end.', 'तुमची shift $end ला संपते.')].join(' '), key: const Key('so-text'), textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, height: 1.45, color: sk.muted)),
             const SizedBox(height: 18),
             SizedBox(width: double.infinity, height: 54, child: FilledButton(key: const Key('so-no'), style: FilledButton.styleFrom(backgroundColor: sk.accent, foregroundColor: sk.onAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(false), child: Text('No, stay on duty', mr: 'नाही, कामावर आहे', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: sk.onAccent)))),
             const SizedBox(height: 10),
-            SizedBox(width: double.infinity, height: 54, child: OutlinedButton(key: const Key('so-yes'), style: OutlinedButton.styleFrom(foregroundColor: red, side: BorderSide(color: red, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(true), child: Text('Yes, sign out', mr: 'हो, sign out करा', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: red)))),
+            SizedBox(width: double.infinity, height: 54, child: OutlinedButton(key: const Key('so-yes'), style: OutlinedButton.styleFrom(foregroundColor: red, side: BorderSide(color: red, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(true), child: Text('Yes, punch out', mr: 'हो, punch out करा', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: red)))),
           ]),
         ),
       ),
@@ -605,12 +605,12 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     final since = sky == Sky.day ? sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(nowMs)) : '';
     final closed = '${day?['closed'] ?? ''}'.isNotEmpty;
     final (String state, String big, String under) = switch (sky) {
-      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), 'SIGN OUT', _t('Tap to mark', 'दाबा')),
+      Sky.day => (_t('On duty since $lastIn', '$lastIn पासून कामावर'), 'PUNCH OUT', _t('Tap to mark', 'दाबा')), // (3.159.0, asked 21-11-2026: "sign in and sign out diste – tyache jagi punch in and punch out as banaw")
       Sky.dusk => closed
           ? (_t('Closed by itself – absent', 'आपोआप बंद – गैरहजर'), _t('ABSENT', 'गैरहजर'), _t('Regularize the day', 'Regularize करा'))
           : (_t('Today is done', 'आजची हजेरी पूर्ण'), _t('DONE', 'पूर्ण'), _t('See your month', 'महिना पहा')),
       Sky.grey => (_t('Cannot be marked', 'लावता येत नाही'), '–', _t('Open Attendance', 'Attendance उघडा')),
-      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), 'SIGN IN', _t('Tap to mark', 'दाबा')),
+      _ => (_t('Not marked yet', 'अजून लावलेली नाही'), 'PUNCH IN', _t('Tap to mark', 'दाबा')),
     };
     final hours = sky == Sky.day ? since : _span(tin, tout);
     // the day done or stopped: the Attendance page says it all; else the marking page

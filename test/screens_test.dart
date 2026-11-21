@@ -9110,7 +9110,7 @@ void main() {
     expect([HrSkin.i.on, HrSkin.i.look], [true, 'pearl']);
     // (3.153.0) the dial he approved: the server's live clock, SIGN IN, "Tap to mark"; his code, designation and manager above it
     expect(find.text('Tap to mark'), findsOneWidget);
-    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('SIGN IN')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('PUNCH IN')), findsOneWidget, reason: '(3.159.0) the dial says PUNCH IN / PUNCH OUT');
     expect(t.widget<HomeDial>(find.byType(HomeDial)).tone, 'in', reason: '(3.158.0) he has to sign in: the green disc');
     expect(t.widget<Text>(find.byKey(const Key('hh-clock'))).data, '10:30:00', reason: 'the clock of the server (India)');
     expect([for (final k in ['hh-code', 'hh-desig', 'hh-boss']) t.widget<Text>(find.byKey(Key(k))).data], ['E00012', 'Site Engineer', 'Amit Patil']);
@@ -9149,7 +9149,7 @@ void main() {
     expect(srv.hrPunches.length, 1);
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
     expect(t.widget<Text>(find.byKey(const Key('hh-in'))).data, '10:30');
-    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('SIGN OUT')), findsOneWidget, reason: 'OUT is next');
+    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('PUNCH OUT')), findsOneWidget, reason: 'OUT is next');
     expect(t.widget<HomeDial>(find.byType(HomeDial)).tone, 'out', reason: '(3.158.0) on duty – a touch signs him out: the red disc');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_duty.png'));
@@ -9213,249 +9213,37 @@ void main() {
     expect(srv.hrDocFiles.values.toList(), ['image/jpeg']);
     final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([da['kind'], da['path'], da.containsKey('id')], ['pan', 'emp12/f1.jpg', false], reason: 'no employee id is sent – the server knows who he is');
-    expect(t.widget<Text>(find.byKey(const Key('docs-check-n'))).data, '1', reason: '(3.135.0, rcl-hr step 15) the HR office checks it now');
+    expect(find.byKey(const Key('docs-check-n')), findsNothing, reason: '(3.159.0, his decision of 21-11-2026) attached = there: nothing is "being checked"');
+    expect(t.widget<Text>(find.byKey(const Key('docs-ok-n'))).data, '1');
+    expect(find.text('Attached'), findsOneWidget);
     expect(t.widget<Text>(find.byKey(const Key('docs-need-n'))).data, '3');
     expect(find.byKey(const Key('doc-open-doc1')), findsOneWidget);
     await settle(t, 4000);      // (the message goes)
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_docs.png'));
-    await t.pageBack();
-    await net(t);
-    expect(t.widget<Text>(find.byKey(const Key('me-docs-n'))).data, '3', reason: 'Me is read again');
-    // ---- salary slips (Home's tile – not a row of Me any more): nothing made up before payroll
-    await tapKey('nav-home');
-    await tapKey('hh-slip');
-    expect(find.textContaining('No salary slip yet'), findsOneWidget);
-    await t.pageBack();
-    await net(t);
-    // (3.112.0, rcl-hr step 12) a locked month: what was earned, what was deducted, the net pay – as the server gave it
-    srv.hrSlips = [
-      {'month': '2026-10', 'net': 127400, 'pay_type': 'monthly', 'rate': 131000, 'month_days': 31, 'pay_days': 29, 'extra_days': 2, 'gross': 131500, 'total_deductions': 4100,
-        'earnings': [{'label': 'Earned pay', 'amount': 122548.39}, {'label': 'Extra days', 'amount': 8451.61}, {'label': 'arrear', 'amount': 500}],
-        'deductions': [{'label': 'PF', 'amount': 1800}, {'label': 'Profession Tax', 'amount': 200}, {'label': 'Advance', 'amount': 2000}, {'label': 'Other deduction', 'amount': 100}],
-        // (3.138.0, rcl-hr step 18) his salary structure's parts and the company's share
-        'components': [{'label': 'Basic', 'amount': 61274.2}, {'label': 'HRA', 'amount': 24509.68}, {'label': 'Special', 'amount': 36764.51}], 'employer': [{'label': 'PF (EPF)', 'amount': 550}, {'label': 'Pension (EPS)', 'amount': 1250}], 'ctc': 133300},
-      {'month': '2026-09', 'net': 496, 'pay_type': 'daily', 'rate': 500, 'month_days': 30, 'pay_days': 1, 'extra_days': 0, 'gross': 500, 'total_deductions': 4, 'earnings': [{'label': 'Earned pay', 'amount': 500}], 'deductions': [{'label': 'ESIC', 'amount': 4}]},
-    ];
-    await tapKey('hh-slip');
-    expect(find.textContaining('No salary slip yet'), findsNothing);
-    expect(find.text('Oct 2026'), findsOneWidget);
-    expect(t.widget<Text>(find.byKey(const Key('slip-net-0'))).data, '₹ 1,27,400');
-    expect(find.text('₹ 1,22,548.39'), findsOneWidget);
-    expect(find.text('₹ 1,31,000 a month · 29 days paid · 2 extra'), findsOneWidget);
-    expect(find.text('Profession Tax'), findsOneWidget);
-    expect(find.text('Parts of the earned pay'), findsOneWidget, reason: '(3.138.0) only the slip that has them');
-    expect(find.text('₹ 61,274.20'), findsOneWidget);
-    expect(find.text('Pension (EPS)'), findsOneWidget);
-    expect(find.text('₹ 1,33,300'), findsOneWidget);
-    // (3.119.0) "Download PDF": this month's slip as a PDF – his name and code as the server says them, handed to the phone
-    Uint8List? slipPdf;
-    var slipName = '';
-    final slipOutWas = attendPdfOut, slipLogoWas = attendPdfLogo;
-    attendPdfOut = (b, n) async {
-      slipPdf = b;
-      slipName = n;
-    };
-    attendPdfLogo = (_) async => null;
-    addTearDown(() {
-      attendPdfOut = slipOutWas;
-      attendPdfLogo = slipLogoWas;
-    });
-    await t.ensureVisible(find.byKey(const Key('slip-pdf-0')));
-    await t.pump();
-    await t.tap(find.byKey(const Key('slip-pdf-0')));
-    await net(t);
-    expect(slipName, 'Salary_slip_RCL012_2026-10.pdf');
-    expect(String.fromCharCodes(slipPdf!.sublist(0, 5)), '%PDF-');
-    expect(String.fromCharCodes(slipPdf!).contains('(Salary Slip for the Month October-2026)'), true);
-    await t.scrollUntilVisible(find.byKey(const Key('slip-net-1')), 250, scrollable: find.byType(Scrollable).first);
-    expect(t.widget<Text>(find.byKey(const Key('slip-net-1'))).data, '₹ 496');
-    expect(find.text('₹ 500 a day · 1 days paid'), findsOneWidget);
+    // (3.159.0) his own paper: ⋯ → Edit (its number), Delete (it leaves his list – asked of him again)
+    await tapKey('doc-more-doc1');
+    expect(find.byKey(const Key('doc-m-open')), findsOneWidget);
+    expect(find.byKey(const Key('doc-m-change')), findsOneWidget);
     await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_hr_slips.png'));
-    await t.pageBack();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_docs_more.png'));
+    await t.tap(find.byKey(const Key('doc-m-edit')));
+    await settle(t, 800);
+    await t.enterText(find.byKey(const Key('doc-ed-number')), 'abcde1234f');
+    await t.tap(find.byKey(const Key('doc-ed-save')));
     await net(t);
-    // ---- (3.153.0) my phone is in My details now
-    await tapKey('nav-me');
-    await tapKey('me-details');
-    await t.scrollUntilVisible(find.byKey(const Key('phone-model')), 250, scrollable: find.byType(Scrollable).first);
-    expect(t.widget<Text>(find.byKey(const Key('phone-model'))).data, 'Test Phone');
-    expect(find.textContaining('Registered for attendance'), findsOneWidget);
-    await t.pageBack();
-    await net(t);
-    // ---- (3.109.0) my photo: he sets his own profile picture – kept as his paper "Photo"; Me is read again and shows it
-    expect(find.byKey(const Key('face-pic')), findsNothing, reason: 'no photo yet: his letters');
-    await tapKey('me-details'); // (3.153.0) My photo is on top of My details
-    await tapKey('me-photo');
-    await t.tap(find.byKey(const Key('photo-gallery')));
-    await net(t);
-    expect(asked.last, 'gallery:1');
-    final ph = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
-    expect([ph['kind'], ph.containsKey('id')], ['photo', false]);
-    expect(srv.hrDocs.where((d) => d['kind'] == 'photo').length, 1);
-    expect(find.byKey(const Key('det-page')), findsNothing, reason: 'a new photo: back on Me');
-    expect(find.byKey(const Key('face-pic')), findsOneWidget, reason: 'his photo is asked for on Me');
-    await settle(t, 4000);      // (the message goes)
-    // ---- the language: the whole app in one – kept on this phone (he has no settings at Mechanical)
-    await tapKey('me-lang');
-    expect(find.byKey(const Key('lang-page')), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_lang.png'));
-    await t.tap(find.byKey(const Key('lang-mr')));
-    await settle(t, 300);
-    await t.tap(find.byKey(const Key('lang-save')));
-    await net(t);
-    expect(Lang.i.code, 'mr');
-    expect(find.byKey(const Key('lang-page')), findsNothing);
-    expect(find.text('भाषा'), findsOneWidget);
-    expect(find.text('माझी कागदपत्रे'), findsOneWidget);
-    expect(srv.calls.where((c) => c.startsWith('mech:')), isEmpty, reason: 'still nothing of Mechanical');
-    await tapKey('me-lang');
-    await t.tap(find.byKey(const Key('lang-en')));
-    await settle(t, 300);
-    await t.tap(find.byKey(const Key('lang-save')));
-    await net(t);
-    expect(Lang.i.code, 'en');
-    expect(find.text('Language'), findsOneWidget);
-    // ---- (3.113.0) the attendance reminders: on as they come; a press switches them off (kept on the phone) and on again
-    await tapKey('me-remind');
-    expect(t.widget<Text>(find.byKey(const Key('me-remind-st'))).data, 'Off');
-    expect(await AttendRemind.isOff(), true);
+    final de = srv.hrSent.lastWhere((x) => x['action'] == 'myDocEdit');
+    expect([de['doc'], de['number']], ['doc1', 'abcde1234f']);
+    expect(find.textContaining('ABCDE1234F'), findsOneWidget, reason: 'the list is read again: his PAN number');
     await settle(t, 4000);
-    await tapKey('me-remind');
-    expect(t.widget<Text>(find.byKey(const Key('me-remind-st'))).data, 'On');
-    expect(await AttendRemind.isOff(), false);
-    await settle(t, 4000);
-    // ---- (3.112.0) the app's update is here too: checked on a press – nothing newer: said
-    await tapKey('me-update');
-    expect(find.text('Check for update'), findsOneWidget);
-    expect(find.textContaining('You have the newest version'), findsWidgets);
-    await settle(t, 4000);
-    // ---- e-mail and password: his user ID, change password
-    await tapKey('me-account');
-    expect(find.byKey(const Key('acc-pw')), findsOneWidget);
-    expect(find.text('sujit@rcl.test'), findsOneWidget);
-    await t.pageBack();
-    await net(t);
-    await tapKey('nav-home');
-    expect(find.byKey(const Key('hr-home')), findsOneWidget);
-    // ---- (3.153.0) THE LOOK FOLLOWS THE PHONE: its dark mode → "Midnight Gold" on every page at once; light again → "Pearl".
-    // Nobody chooses it in the app (Me → Look is gone).
-    await tapKey('nav-me');
-    t.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-    addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
-    await net(t);
-    expect(HrSkin.i.look, 'gold');
-    expect(Theme.of(t.element(find.byKey(const Key('me-page')))).brightness, Brightness.dark);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_me.png'));
-    await tapKey('nav-home');
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_home.png'));
-    await tapKey('hh-month'); // ("My month" of Home: the Attendance page of the bar)
-    expect(find.byKey(const Key('att-month-page')), findsOneWidget);
-    expect(find.byKey(const Key('hr-nav')), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_attendance.png'));
-    await tapKey('nav-leave');
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_leave.png'));
-    await tapKey('nav-home');
-    // ---- (3.153.0) the big map of his work locations: a touch on Home's small map opens it; ✕ goes back to Home
-    await tapKey('hh-map-open');
-    expect(find.byKey(const Key('pm-page')), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_gold_places_map.png'));
-    await t.tap(find.byKey(const Key('pm-close')));
-    await net(t);
-    expect(find.byKey(const Key('hr-home')), findsOneWidget);
-    t.platformDispatcher.platformBrightnessTestValue = Brightness.light;
-    await net(t);
-    expect(HrSkin.i.look, 'pearl');
-    expect(Theme.of(t.element(find.byKey(const Key('hr-home')))).brightness, Brightness.light);
-    await tapKey('hh-map-open');
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_places_map.png'));
-    await t.tap(find.byKey(const Key('pm-close')));
-    await net(t);
-    // ---- (3.153.0) OUT: the dial asks first ("kahi lokanche chukun sign out hot") – "No" keeps him on duty, "Yes, sign out" marks
-    await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
-    await tapKey('hh-slide');
-    expect(find.byKey(const Key('so-ask')), findsOneWidget);
-    expect(find.byKey(const Key('att-ok-page')), findsNothing);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_sign_out_ask.png'));
-    await t.tap(find.byKey(const Key('so-no')));
-    await net(t);
-    expect(srv.hrPunches.length, 1, reason: 'still on duty');
-    await tapKey('hh-slide');
-    await t.tap(find.byKey(const Key('so-yes')));
-    await net(t); // (one wait only: the message of a punch goes by itself after three seconds)
-    expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
-    expect(srv.hrPunches.length, 2);
-    await t.tap(find.byKey(const Key('att-ok')));
-    await net(t);
-    expect(find.byKey(const Key('hr-home')), findsOneWidget, reason: 'where he was');
-  }, tags: ['golden']);
-
-  // (3.135.0, rcl-hr step 15) the company's policies: he reads the version in force and accepts it himself; a paper the HR office
-  // rejected says why and is attached again in its place
-  testWidgets('(3.135.0) HR – Company policies: the ones still to accept are counted on Me; read, tick, accept; a rejected paper says why and is attached again in its place', (t) async {
-    phone(t);
-    final kit = FakeAttendKit();
-    AttendKit.kit = kit;
-    final jpg = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
-    final pickWas = pickAttFiles;
-    pickAttFiles = (how, room) async => [(name: 'aadhaar.jpg', bytes: jpg)];
-    addTearDown(() {
-      AttendKit.kit = AttendKit();
-      pickAttFiles = pickWas;
-    });
-    final srv = FakeServer()
-      ..hrSite = true
-      ..hrKey = 'hrme'
-      ..hrOnlyUser = true;
-    srv.hrPolicies.addAll([
-      {'policy': 1, 'title': 'Code of conduct', 'category': 'Conduct', 'mandatory': true, 'version': 2, 'version_id': 7, 'effective_from': '2026-10-01', 'body': 'Be on time.\nWear the helmet and the safety shoes on the site.\nNo phone near a running machine.', 'has_file': true, 'accepted_at': null, 'via': ''},
-      {'policy': 2, 'title': 'Use of the company phone', 'category': 'IT', 'mandatory': false, 'version': 1, 'version_id': 8, 'effective_from': '2026-09-01', 'body': 'For work only.', 'has_file': false, 'accepted_at': '2026-10-02T05:00:00.000Z', 'via': 'app'},
-    ]);
-    srv.hrDocs.add({'id': 'd9', 'kind': 'aadhaar', 'title': '', 'number': '', 'expires_on': null, 'mime': 'image/jpeg', 'created_at': '2026-10-10T05:00:00.000Z', 'status': 'rejected', 'verify_note': 'The photo of the card is not readable'});
-    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
-    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
-    await t.pumpWidget(RclApp(session: s));
-    await net(t);
-    await net(t);
-    Future<void> tapKey(String key) async {
-      if (find.byKey(Key(key)).evaluate().isEmpty) await t.scrollUntilVisible(find.byKey(Key(key)), 250, scrollable: find.byType(Scrollable).first);
-      await t.ensureVisible(find.byKey(Key(key)));
-      await settle(t, 300);
-      await clearOfBar(t, find.byKey(Key(key)));
-      await t.tap(find.byKey(Key(key)));
-      await net(t);
-    }
-
-    await tapKey('nav-me');
-    expect(t.widget<Text>(find.byKey(const Key('me-policies-n'))).data, '1', reason: 'one mandatory policy is not accepted yet');
-    await tapKey('me-policies');
-    expect(find.byKey(const Key('pol-page')), findsOneWidget);
-    expect(find.text('Version 2 · read and accept'), findsOneWidget);
-    expect(find.text('Version 1 · accepted 2 Oct'), findsOneWidget);
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_policies.png'));
-    await tapKey('pol-1');
-    expect(find.byKey(const Key('pol-body')), findsOneWidget);
-    expect(find.byKey(const Key('pol-pdf')), findsOneWidget);
-    expect(t.widget<FilledButton>(find.byKey(const Key('pol-accept'))).onPressed, isNull, reason: 'nothing is accepted before the tick');
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_policy_read.png'));
-    await tapKey('pol-tick');
-    await tapKey('pol-accept');
-    await settle(t, 2500);
-    await net(t);
-    expect(srv.hrPolicyAccepts.length, 1);
-    expect([srv.hrPolicyAccepts.first['version'], srv.hrPolicyAccepts.first['read'], srv.hrPolicyAccepts.first['via']], [7, true, 'app']);
-    expect(find.byKey(const Key('pol-page')), findsOneWidget, reason: 'back on the list');
-    expect(find.text('Version 2 · accepted 14 Oct'), findsOneWidget);
+    await tapKey('doc-more-doc1');
+    await t.tap(find.byKey(const Key('doc-m-delete')));
+    await settle(t, 800);
+    expect(find.text('Delete this document?'), findsOneWidget, reason: 'Delete asks first');
+    await t.tap(find.byKey(const Key('doc-del-no')));
+    await settle(t, 800);
+    expect(srv.hrSent.any((x) => x['action'] == 'myDocDelete'), false, reason: '"No": nothing is sent');
+    expect(find.byKey(const Key('doc-open-doc1')), findsOneWidget);
     await t.pageBack();
     await net(t);
     expect(find.byKey(const Key('me-policies-n')), findsNothing, reason: 'Me is read again: nothing waits');
@@ -9471,7 +9259,7 @@ void main() {
     await net(t);
     final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([da['kind'], da['replaces']], ['aadhaar', 'd9'], reason: 'in place of the rejected one');
-    expect(find.descendant(of: find.byKey(const Key('doc-aadhaar')), matching: find.text('Add')), findsOneWidget, reason: 'being checked now: one more can be added');
+    expect(find.descendant(of: find.byKey(const Key('doc-aadhaar')), matching: find.text('Add')), findsOneWidget, reason: 'attached now: one more can be added');
     expect(find.text('Rejected'), findsNothing);
   }, tags: ['golden']);
 
