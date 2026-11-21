@@ -455,9 +455,15 @@ class FakeServer {
         if (!hrDocFiles.containsKey('${b['path']}')) return _j({'error': 'The file did not arrive – attach it again.', 'code': 'path'}, 400);
         // (rcl-hr step 15) a new paper in place of a rejected one: the old one leaves his list (the server keeps it, "replaced")
         if ('${b['replaces'] ?? ''}'.isNotEmpty) hrDocs.removeWhere((d) => d['id'] == b['replaces']);
-        hrDocs.insert(0, {'id': 'doc${hrDocs.length + 1}', 'kind': b['kind'], 'title': '', 'number': '', 'expires_on': null, 'mime': hrDocFiles['${b['path']}'], 'created_at': '2026-10-14T05:00:00.000Z', 'status': 'submitted', 'verify_note': '', 'replaced': b['replaces'] ?? ''});
+        hrDocs.insert(0, {'id': 'doc${hrDocs.length + 1}', 'kind': b['kind'], 'title': '', 'number': '', 'expires_on': null, 'mime': hrDocFiles['${b['path']}'], 'created_at': '2026-10-14T05:00:00.000Z', 'status': 'verified', 'verify_note': '', 'replaced': b['replaces'] ?? ''}); // (rcl-hr of 21-11-2026) attached = there: nothing waits to be verified
         hrDocNa.remove('${b['kind']}'); // (rcl-hr) a paper attached: its "Not available" goes
         return _j({'ok': true, 'id': hrDocs.first['id']});
+      // (rcl-hr of 21-11-2026) his own paper's number and dates
+      case 'myDocEdit':
+        final dd = hrDocs.where((d) => d['id'] == b['doc']).toList();
+        if (dd.isEmpty) return _j({'error': 'This paper was not found.', 'code': 'notfound'}, 404);
+        dd.first['number'] = '${b['number'] ?? ''}'.toUpperCase();
+        return _j({'ok': true, 'changed': ['number']});
       case 'myDocLink':
         return _j({'ok': true, 'url': 'https://photos.test/hr-docs/open'});
       // (20-11-2026, rcl-hr act_docgate) the documents gate: the five papers before anything else

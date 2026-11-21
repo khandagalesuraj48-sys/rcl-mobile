@@ -1337,7 +1337,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
               ),
             ],
             const SizedBox(height: 12),
-            for (final (i, x) in [if (oin.isNotEmpty) (_t('Signed in', 'Sign in केले'), oin), if (oout.isNotEmpty) (_t('Signed out', 'Sign out केले'), '$oout${open['next_day'] == true ? ' (+1)' : ''}')].indexed)
+            for (final (i, x) in [if (oin.isNotEmpty) (_t('Punched in', 'Punch in केले'), oin), if (oout.isNotEmpty) (_t('Punched out', 'Punch out केले'), '$oout${open['next_day'] == true ? ' (+1)' : ''}')].indexed)
               Padding(
                 padding: EdgeInsets.only(left: 4, top: i == 0 ? 0 : 9),
                 child: Row(children: [

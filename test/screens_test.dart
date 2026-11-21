@@ -9110,7 +9110,7 @@ void main() {
     expect([HrSkin.i.on, HrSkin.i.look], [true, 'pearl']);
     // (3.153.0) the dial he approved: the server's live clock, SIGN IN, "Tap to mark"; his code, designation and manager above it
     expect(find.text('Tap to mark'), findsOneWidget);
-    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('SIGN IN')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('PUNCH IN')), findsOneWidget, reason: '(3.159.0) the dial says PUNCH IN / PUNCH OUT');
     expect(t.widget<HomeDial>(find.byType(HomeDial)).tone, 'in', reason: '(3.158.0) he has to sign in: the green disc');
     expect(t.widget<Text>(find.byKey(const Key('hh-clock'))).data, '10:30:00', reason: 'the clock of the server (India)');
     expect([for (final k in ['hh-code', 'hh-desig', 'hh-boss']) t.widget<Text>(find.byKey(Key(k))).data], ['E00012', 'Site Engineer', 'Amit Patil']);
@@ -9149,7 +9149,7 @@ void main() {
     expect(srv.hrPunches.length, 1);
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
     expect(t.widget<Text>(find.byKey(const Key('hh-in'))).data, '10:30');
-    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('SIGN OUT')), findsOneWidget, reason: 'OUT is next');
+    expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('PUNCH OUT')), findsOneWidget, reason: 'OUT is next');
     expect(t.widget<HomeDial>(find.byType(HomeDial)).tone, 'out', reason: '(3.158.0) on duty – a touch signs him out: the red disc');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home_duty.png'));
@@ -9213,12 +9213,37 @@ void main() {
     expect(srv.hrDocFiles.values.toList(), ['image/jpeg']);
     final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([da['kind'], da['path'], da.containsKey('id')], ['pan', 'emp12/f1.jpg', false], reason: 'no employee id is sent – the server knows who he is');
-    expect(t.widget<Text>(find.byKey(const Key('docs-check-n'))).data, '1', reason: '(3.135.0, rcl-hr step 15) the HR office checks it now');
+    expect(find.byKey(const Key('docs-check-n')), findsNothing, reason: '(3.159.0, his decision of 21-11-2026) attached = there: nothing is "being checked"');
+    expect(t.widget<Text>(find.byKey(const Key('docs-ok-n'))).data, '1');
+    expect(find.text('Attached'), findsOneWidget);
     expect(t.widget<Text>(find.byKey(const Key('docs-need-n'))).data, '3');
     expect(find.byKey(const Key('doc-open-doc1')), findsOneWidget);
     await settle(t, 4000);      // (the message goes)
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_docs.png'));
+    // (3.159.0) his own paper: ⋯ → Open · Edit · Change · Delete; Edit sends its number; Delete asks first
+    await tapKey('doc-more-doc1');
+    expect(find.byKey(const Key('doc-m-open')), findsOneWidget);
+    expect(find.byKey(const Key('doc-m-change')), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_docs_more.png'));
+    await t.tap(find.byKey(const Key('doc-m-edit')));
+    await settle(t, 800);
+    await t.enterText(find.byKey(const Key('doc-ed-number')), 'abcde1234f');
+    await t.tap(find.byKey(const Key('doc-ed-save')));
+    await net(t);
+    final de = srv.hrSent.lastWhere((x) => x['action'] == 'myDocEdit');
+    expect([de['doc'], de['number']], ['doc1', 'abcde1234f']);
+    expect(find.textContaining('ABCDE1234F'), findsOneWidget, reason: 'the list is read again: his PAN number');
+    await settle(t, 4000);
+    await tapKey('doc-more-doc1');
+    await t.tap(find.byKey(const Key('doc-m-delete')));
+    await settle(t, 800);
+    expect(find.text('Delete this document?'), findsOneWidget, reason: 'Delete asks first');
+    await t.tap(find.byKey(const Key('doc-del-no')));
+    await settle(t, 800);
+    expect(srv.hrSent.any((x) => x['action'] == 'myDocDelete'), false, reason: '"No": nothing is sent');
+    expect(find.byKey(const Key('doc-open-doc1')), findsOneWidget);
     await t.pageBack();
     await net(t);
     expect(t.widget<Text>(find.byKey(const Key('me-docs-n'))).data, '3', reason: 'Me is read again');
@@ -9471,7 +9496,7 @@ void main() {
     await net(t);
     final da = srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd');
     expect([da['kind'], da['replaces']], ['aadhaar', 'd9'], reason: 'in place of the rejected one');
-    expect(find.descendant(of: find.byKey(const Key('doc-aadhaar')), matching: find.text('Add')), findsOneWidget, reason: 'being checked now: one more can be added');
+    expect(find.descendant(of: find.byKey(const Key('doc-aadhaar')), matching: find.text('Add')), findsOneWidget, reason: 'attached now: one more can be added');
     expect(find.text('Rejected'), findsNothing);
   }, tags: ['golden']);
 
