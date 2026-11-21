@@ -282,8 +282,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       final h = _sheetKey.currentContext?.size?.height;
       if (h != null && (h - _sheetH).abs() > 1 && mounted) setState(() => _sheetH = h);
     });
-    final headH = (_sheetH > 0 ? (mq.size.height - _sheetH).clamp(280.0 + mq.padding.top, 440.0 + mq.padding.top) : (mq.size.height * .44).clamp(330.0, 440.0) + mq.padding.top).toDouble(), lion = (headH - mq.padding.top) * .36;
-    final lionTop = mq.padding.top + ((headH - mq.padding.top) * .115).clamp(24.0, 50.0);
+    final headH = (_sheetH > 0 ? (mq.size.height - _sheetH).clamp(200.0 + mq.padding.top, 440.0 + mq.padding.top) : (mq.size.height * .44).clamp(330.0, 440.0) + mq.padding.top).toDouble(), small = headH - mq.padding.top < 270, lion = (headH - mq.padding.top) * (small ? .30 : .36);
+    final lionTop = mq.padding.top + ((headH - mq.padding.top) * .115).clamp(small ? 18.0 : 24.0, 50.0);
+    /* (3.162.0, asked 21-11-2026: "login page ajun pn scroll krtey … thode pn scroll nahi zal pahije") the crest may now grow as small as
+     * 200 (the lion and the name grow smaller with it), so the sheet with "Login with Email OTP" fits a shorter phone too; and while
+     * the page fits and no keyboard is open it cannot be moved at all. */
+    final fits = _sheetH > 0 && mq.viewInsets.bottom == 0 && headH + _sheetH <= mq.size.height + 1;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent), // (the navy is at the top in both)
       child: Theme(
@@ -295,6 +299,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         child: Scaffold(
           backgroundColor: l.page,
           body: SingleChildScrollView(
+            physics: fits ? const NeverScrollableScrollPhysics() : null,
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: mq.size.height),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -312,8 +317,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       right: 16,
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
                         Arrive(anim: _open, at: 0, scale: true, child: CrestLion(key: const Key('login-logo'), size: lion, dark: true)), // (3.124.0) the product's lion – the client is known only after the sign-in
-                        const SizedBox(height: 14),
-                        Arrive(anim: _open, at: .12, child: const ProductName(style: TextStyle(fontFamily: 'Montserrat', fontSize: 34, fontWeight: FontWeight.w800, color: Colors.white, height: 1.05, shadows: [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
+                        SizedBox(height: small ? 8 : 14),
+                        Arrive(anim: _open, at: .12, child: ProductName(style: TextStyle(fontFamily: 'Montserrat', fontSize: small ? 25 : 34, fontWeight: FontWeight.w800, color: Colors.white, height: 1.05, shadows: const [Shadow(color: Color(0x66000000), blurRadius: 12)]))),
                         const SizedBox(height: 6),
                         Arrive(anim: _open, at: .18, child: const FittedBox(fit: BoxFit.scaleDown, child: ProductName(line: true, upper: true, style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, color: kCrestGold, fontWeight: FontWeight.w800, letterSpacing: 3.6)))), // (a long line grows smaller – never cut)
                       ]),
@@ -330,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       widget.setPassword ? _pwCard(err) : (_otp ? _otpCard(err) : _card(err)),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 16),
                       if (widget.setPassword) ...[
                         Text('One password for the Portal and every module – the same on the web.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: l.muted, height: 1.35)),
                         const SizedBox(height: 14),
