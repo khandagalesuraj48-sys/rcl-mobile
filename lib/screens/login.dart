@@ -14,10 +14,17 @@
  * navy with its fine gold survey lines, the language pill, the lion in its round gold ring, the product's name and its line, the
  * gold wave; under it "Sign in" with its gold line, the boxes (each with its name above it), Remember me, Forgot password?, the
  * gold "Sign in", "or", "Login with Email OTP", "Build • Manage • Move Forward", the version. No photo. Light when the phone is
- * light, dark when it is dark. Everything the sign-in did stays exactly as it was. */
+ * light, dark when it is dark. Everything the sign-in did stays exactly as it was.
+ * (3.166.0, the Portal's "Login with WhatsApp OTP" of 22-11-2026 and his design A; asked: "otp takla auto verify sign in button
+ * dabayla lagu naye … web and app doni sathi") THE CODE BY WHATSAPP: when the Portal has it switched on the sheet OPENS on it – the
+ * mobile number, "Send code on WhatsApp", then the six boxes. No button: the sixth digit checks the code by itself (the boxes run
+ * into one bar with a light passing, then it fills green and a ✓ – straight in); a wrong code shakes red and the boxes empty from
+ * the right. "Copy code" in WhatsApp and back to the app: the code fills by itself (Android), or "Paste code". "Use email and
+ * password" is always one tap away and leads to the password card (its "Login with Email OTP" stays). Switched off: as before. */
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 import 'package:flutter/services.dart';
@@ -25,6 +32,7 @@ import 'package:flutter/services.dart';
 import '../core/api.dart' show ApiError;
 import '../core/update.dart';
 import '../ui/brand.dart';
+import '../ui/code_boxes.dart';
 import '../ui/crest.dart';
 import '../ui/scope.dart';
 import '../ui/theme.dart';
@@ -40,7 +48,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   /// (3.161.0) the sheet under the crest and its height as drawn – the crest takes the rest of the screen
   final _sheetKey = GlobalKey();
   double _sheetH = 0;
@@ -57,6 +65,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   bool _otpOn = false, _otp = false, _sent = false;
   int _wait = 0;
   Timer? _tick;
+  // (3.166.0) the third way in: a code by WhatsApp – the sheet opens on it when the Portal has it switched on
+  final _mob = TextEditingController(), _waCode = TextEditingController();
+  final _waFocus = FocusNode();
+  bool _waOn = false, _wa = false, _waSent = false, _clearing = false;
+  CodeState _cs = CodeState.idle;
+  String _waTo = '', _waSay = '', _pasted = '';
+  Timer? _auto;
   late final AnimationController _open = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
   late final AnimationController _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
 
@@ -74,10 +89,203 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       setState(() => _mail.text = m);
     });
     // (3.104.0) is "Login with Email OTP" switched on at the Portal? (no answer: the password sign-in as before)
+    // (3.166.0) and "Login with WhatsApp OTP": switched on, the sheet opens on it – unless he has started on another card
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || widget.setPassword) return;
-      final on = await SessionScope.read(context).otpOffered();
-      if (mounted && on) setState(() => _otpOn = true);
+      final w = await SessionScope.read(context).signInWays();
+      if (!mounted) return;
+      setState(() {
+        _otpOn = w.otp;
+        _waOn = w.wa;
+        if (w.wa && !_otp && !_busy && _pw.text.isEmpty) _wa = true;
+      });
+    });
+    _waCode.addListener(_waTyped);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// (3.166.0) Back from WhatsApp (where he tapped "Copy code"): the code copied fills the boxes by itself – Android only (an iPhone
+  /// asks "Allow Paste?" for every look at the clipboard: there "Paste code").
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _paste(auto: true);
+  }
+
+  /// The 10 digits of an Indian mobile number typed in any usual way (+91…, 0…, spaces) – null when it is not one.
+  static String? waMobile(String v) {
+    var t = v.replaceAll(RegExp(r'[\s\-().]'), '');
+    if (RegExp(r'^\+?91[6-9]\d{9}$').hasMatch(t)) {
+      t = t.substring(t.length - 10);
+    } else if (RegExp(r'^0[6-9]\d{9}$').hasMatch(t)) {
+      t = t.substring(1);
+    }
+    return RegExp(r'^[6-9]\d{9}$').hasMatch(t) ? t : null;
+  }
+
+  /// "Send code on WhatsApp" / "Send again": the Portal's answer is the same for everybody – the card goes on to the six boxes.
+  Future<void> _waAsk() async {
+    if (_busy) return;
+    final mob = waMobile(_waSent ? _waTo : _mob.text);
+    if (mob == null) {
+      setState(() => _localErr = bi('Enter your 10-digit mobile number.', 'तुमचा 10 अंकी मोबाइल नंबर टाका.', '\n'));
+      _shake.forward(from: 0);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    SessionScope.read(context).error = '';
+    setState(() {
+      _busy = true;
+      _localErr = '';
+    });
+    try {
+      final w = await SessionScope.read(context).waSend(mob);
+      if (!mounted) return;
+      _auto?.cancel();
+      setState(() {
+        _waSent = true;
+        _waTo = mob;
+        _cs = CodeState.idle;
+        _waSay = '';
+        _waCode.clear();
+      });
+      _count(w);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _waSent) _waFocus.requestFocus();
+      });
+    } on ApiError catch (e) {
+      if (mounted) setState(() => _localErr = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// A digit typed, pasted or filled: the sixth checks the code by itself (no button). A new digit after a wrong code: red goes.
+  void _waTyped() {
+    if (!mounted) return;
+    final t = _waCode.text;
+    setState(() {
+      if (_cs == CodeState.bad && t.isNotEmpty && !_clearing) {
+        _cs = CodeState.idle;
+        _waSay = '';
+      }
+    });
+    if (t.length == 6 && _cs == CodeState.idle && !_busy && _waSent && !_clearing) {
+      _auto?.cancel();
+      _auto = Timer(const Duration(milliseconds: 160), _waGo);
+    }
+  }
+
+  /// The six digits are checked by the Portal: right – the bar fills green, ✓, straight in; wrong – it shakes red and empties.
+  Future<void> _waGo() async {
+    final code = _waCode.text;
+    if (_busy || !_waSent || code.length != 6 || _cs != CodeState.idle) return;
+    final still = MediaQuery.of(context).disableAnimations, s = SessionScope.read(context), sw = Stopwatch()..start();
+    s.error = '';
+    setState(() {
+      _busy = true;
+      _cs = CodeState.checking;
+      _localErr = '';
+      _waSay = '';
+    });
+    Future<void> hold(int ms) async {
+      final left = still ? 0 : ms - sw.elapsedMilliseconds;
+      if (left > 0) await Future<void>.delayed(Duration(milliseconds: left));
+    }
+
+    bool must;
+    try {
+      must = await s.waCheck(_waTo, code);
+    } on ApiError catch (e) {
+      await hold(650);
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _cs = CodeState.bad;
+        _waSay = e.toString();
+        _busy = false;
+        _clearing = true;
+      });
+      if (!still) _shake.forward(from: 0);
+      // the boxes empty from the right, one by one – then he types again
+      if (!still) await Future<void>.delayed(const Duration(milliseconds: 520));
+      while (mounted && _waCode.text.isNotEmpty) {
+        final t = _waCode.text.substring(0, _waCode.text.length - 1);
+        _waCode.value = TextEditingValue(text: t, selection: TextSelection.collapsed(offset: t.length));
+        if (!still) await Future<void>.delayed(const Duration(milliseconds: 70));
+      }
+      if (!mounted) return;
+      setState(() => _clearing = false);
+      _waFocus.requestFocus();
+      return;
+    }
+    await hold(650);
+    if (!mounted) return;
+    _tick?.cancel();
+    HapticFeedback.lightImpact();
+    setState(() => _cs = CodeState.ok);
+    await Future<void>.delayed(Duration(milliseconds: still ? 250 : 1050));
+    if (!mounted) return;
+    await s.waFinish(must);
+    if (!mounted) return;
+    setState(() {
+      // (still here: his own password is asked first, or the sites could not be read – the message is on the card)
+      _busy = false;
+      _cs = CodeState.idle;
+      _waSent = false;
+      _wait = 0;
+      _waCode.clear();
+    });
+  }
+
+  /// "Paste code" – or, by itself, back from WhatsApp: a code copied there goes into the six boxes (and checks itself).
+  Future<void> _paste({bool auto = false}) async {
+    if (!_wa || !_waSent || _busy || _clearing || _cs == CodeState.checking || _cs == CodeState.ok) return;
+    if (auto && (_waCode.text.isNotEmpty || defaultTargetPlatform != TargetPlatform.android)) return;
+    var t = '';
+    try {
+      t = (await Clipboard.getData(Clipboard.kTextPlain))?.text ?? '';
+    } catch (_) {/* nothing on the clipboard to read */}
+    if (!mounted) return;
+    // by itself only a copied code (WhatsApp's "Copy code" copies just the six digits) – and never the same one twice
+    final d = auto ? (RegExp(r'^\s*(\d{6})\s*$').firstMatch(t)?.group(1) ?? '') : (RegExp(r'(?<!\d)\d{6}(?!\d)').firstMatch(t)?.group(0) ?? '');
+    if (d.isEmpty || (auto && d == _pasted)) {
+      if (!auto) _waFocus.requestFocus();
+      return;
+    }
+    _pasted = d;
+    _waCode.value = TextEditingValue(text: d, selection: const TextSelection.collapsed(offset: 6));
+  }
+
+  /// Between WhatsApp and the password card (a mobile number typed as the user ID is carried over).
+  void _waWay(bool on) {
+    _tick?.cancel();
+    _auto?.cancel();
+    SessionScope.read(context).error = '';
+    setState(() {
+      _wa = on;
+      _otp = false;
+      _waSent = false;
+      _wait = 0;
+      _localErr = '';
+      _cs = CodeState.idle;
+      _waSay = '';
+      _waCode.clear();
+      if (on && _mob.text.isEmpty && waMobile(_mail.text) != null) _mob.text = waMobile(_mail.text)!;
+    });
+  }
+
+  /// "Change": back to the number.
+  void _waBack() {
+    _tick?.cancel();
+    _auto?.cancel();
+    SessionScope.read(context).error = '';
+    setState(() {
+      _waSent = false;
+      _wait = 0;
+      _localErr = '';
+      _cs = CodeState.idle;
+      _waSay = '';
+      _waCode.clear();
     });
   }
 
@@ -171,7 +379,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tick?.cancel();
+    _auto?.cancel();
+    _waCode.removeListener(_waTyped);
+    _mob.dispose();
+    _waCode.dispose();
+    _waFocus.dispose();
     _code.dispose();
     _open.dispose();
     _shake.dispose();
@@ -334,7 +548,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      widget.setPassword ? _pwCard(err) : (_otp ? _otpCard(err) : _card(err)),
+                      widget.setPassword ? _pwCard(err) : (_wa ? _waCard(err) : (_otp ? _otpCard(err) : _card(err))),
                       const SizedBox(height: 16),
                       if (widget.setPassword) ...[
                         Text('One password for the Portal and every module – the same on the web.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: l.muted, height: 1.35)),
@@ -526,7 +740,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           const SizedBox(height: 16),
           _SignInButton(busy: _busy, onTap: _go),
           // (3.104.0) the second way in – only when the Portal has it switched on
-          if (_otpOn) ...[
+          // (3.166.0) and the code by WhatsApp beside it (both on: the two side by side, so the page still fits the screen)
+          if (_otpOn || _waOn) ...[
             const SizedBox(height: 16),
             Row(children: [
               Expanded(child: Container(height: 1, color: _l.line)),
@@ -534,16 +749,154 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               Expanded(child: Container(height: 1, color: _l.line)),
             ]),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              key: const Key('login-otp'),
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(54), foregroundColor: _l.ink, side: BorderSide(color: _l.dark ? kCrestGold.withValues(alpha: .7) : _l.ink, width: 1.3), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22))),
-              onPressed: _busy ? null : () => _way(true),
-              icon: const Icon(Icons.mail_outline_rounded, size: 20),
-              label: const Text('Login with Email OTP', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-            ),
+            if (_otpOn && _waOn)
+              Row(children: [
+                Expanded(child: _wayBtn(const Key('login-wa'), 'WhatsApp OTP', null, () => _waWay(true))),
+                const SizedBox(width: 10),
+                Expanded(child: _wayBtn(const Key('login-otp'), 'Email OTP', Icons.mail_outline_rounded, () => _way(true))),
+              ])
+            else if (_waOn)
+              _wayBtn(const Key('login-wa'), 'Login with WhatsApp OTP', null, () => _waWay(true))
+            else
+              _wayBtn(const Key('login-otp'), 'Login with Email OTP', Icons.mail_outline_rounded, () => _way(true)),
           ],
         ]),
       ));
+
+  /// (3.166.0) A way in under "Sign in": the code by e-mail, the code by WhatsApp ([icon] null = WhatsApp's own sign).
+  Widget _wayBtn(Key key, String label, IconData? icon, VoidCallback go) => OutlinedButton.icon(
+        key: key,
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(54), padding: const EdgeInsets.symmetric(horizontal: 10), foregroundColor: _l.ink, side: BorderSide(color: _l.dark ? kCrestGold.withValues(alpha: .7) : _l.ink, width: 1.3), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22))),
+        onPressed: _busy ? null : go,
+        icon: icon == null ? const _WaMark(size: 20) : Icon(icon, size: 20),
+        label: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
+      );
+
+  /// (3.166.0) The code by WhatsApp: the number and "Send code on WhatsApp"; then the six boxes – no button, the sixth digit checks.
+  Widget _waCard(String err) => _shaken(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _waSent ? _waTwo(err) : _waOne(err)));
+
+  List<Widget> _waOne(String err) => [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(5, 4, 11, 4),
+            decoration: BoxDecoration(color: _l.dark ? const Color(0x2617A35A) : const Color(0xFFE3F5EA), borderRadius: BorderRadius.circular(20)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const _WaMark(size: 20, filled: true),
+              const SizedBox(width: 7),
+              Text('Code on WhatsApp', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _l.dark ? const Color(0xFF5FD892) : CodeLook.good)),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _title('Sign in', key: const Key('login-wa-title')),
+        const SizedBox(height: 10),
+        Text('Enter your mobile number. We send a 6-digit code on WhatsApp.', style: TextStyle(fontSize: 14.5, color: _l.muted, height: 1.35)),
+        MrLine('तुमचा मोबाइल नंबर टाका – WhatsApp वर 6 अंकी code येईल.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: _l.muted)),
+        _lab('Mobile number'),
+        TextField(
+          key: const Key('login-wa-mobile'),
+          controller: _mob,
+          keyboardType: TextInputType.phone,
+          autofillHints: const [AutofillHints.telephoneNumberNational],
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(12)],
+          textInputAction: TextInputAction.go,
+          autocorrect: false,
+          style: _typed.copyWith(letterSpacing: 1),
+          onChanged: (_) {
+            if (_localErr.isNotEmpty) setState(() => _localErr = '');
+          },
+          onSubmitted: (_) => _waAsk(),
+          decoration: _dec('10-digit number', Icons.phone_iphone_rounded).copyWith(
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 14, right: 10),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.phone_iphone_rounded, color: _l.muted),
+                const SizedBox(width: 8),
+                m.Text('+91', style: _typed.copyWith(color: _l.muted)),
+                const SizedBox(width: 10),
+                Container(width: 1, height: 22, color: _l.line),
+              ]),
+            ),
+          ),
+        ),
+        _errBox(err),
+        const SizedBox(height: 16),
+        _SignInButton(busy: _busy, onTap: _waAsk, label: 'Send code on WhatsApp'),
+        const SizedBox(height: 4),
+        _waAlt(),
+      ];
+
+  List<Widget> _waTwo(String err) {
+    final n = _waCode.text.length, still = MediaQuery.of(context).disableAnimations;
+    final say = switch (_cs) {
+      CodeState.checking => ('Verifying…', _l.muted),
+      CodeState.ok => ('Verified – signing you in', _l.dark ? const Color(0xFF5FD892) : CodeLook.good),
+      CodeState.bad => (_waSay, _l.bad),
+      CodeState.idle => ('You are signed in as soon as the 6th digit is in.', _l.muted),
+    };
+    return [
+      _title('Enter the code', key: const Key('login-wa-title2')),
+      const SizedBox(height: 10),
+      Text('Open WhatsApp – the code comes from Sketchline Industries. Tap "Copy code" there and come back.', style: TextStyle(fontSize: 14, color: _l.muted, height: 1.35)),
+      MrLine('WhatsApp उघडा – Sketchline Industries कडून code येईल. तिथे "Copy code" दाबा आणि इथे परत या.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13, color: _l.muted)),
+      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        decoration: BoxDecoration(color: _l.dark ? const Color(0x1F17A35A) : const Color(0xFFEEF8F1), borderRadius: BorderRadius.circular(14), border: Border.all(color: _l.dark ? const Color(0x4017A35A) : const Color(0xFFCDEBD7))),
+        child: Row(children: [
+          Icon(Icons.check_circle_rounded, size: 18, color: _l.dark ? const Color(0xFF5FD892) : CodeLook.good),
+          const SizedBox(width: 8),
+          Text('Sent to', style: TextStyle(fontSize: 13.5, color: _l.muted)),
+          const SizedBox(width: 6),
+          Expanded(child: m.Text('+91 ${_waTo.substring(0, 5)} ${_waTo.substring(5)}', key: const Key('login-wa-to'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _l.ink, letterSpacing: .3))),
+          _link('Change', key: const Key('login-wa-change'), onTap: _busy && _cs != CodeState.bad ? null : _waBack),
+        ]),
+      ),
+      _lab('6-digit code'),
+      CodeBoxes(
+        controller: _waCode,
+        focusNode: _waFocus,
+        state: _cs,
+        fieldKey: const Key('login-wa-code'),
+        look: CodeLook(card: _l.card, line: _l.line, ink: _l.ink, focus: kCrestGold, bad: _l.bad, badSoft: _l.dark ? const Color(0x33E5484D) : C.redSoft),
+      ),
+      const SizedBox(height: 10),
+      CodeTrack(count: n, bad: _cs == CodeState.bad, line: _l.line),
+      const SizedBox(height: 10),
+      AnimatedSwitcher(
+        duration: still ? Duration.zero : const Duration(milliseconds: 200),
+        child: Row(key: ValueKey('${_cs.name}:${say.$1}'), crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (_cs == CodeState.checking) ...[
+            SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: _l.gold)),
+            const SizedBox(width: 8),
+          ],
+          if (_cs == CodeState.ok) ...[
+            Icon(Icons.verified_rounded, size: 17, color: say.$2),
+            const SizedBox(width: 6),
+          ],
+          Expanded(child: Text(say.$1, key: const Key('login-wa-state'), style: TextStyle(fontSize: 13.5, fontWeight: _cs == CodeState.idle ? FontWeight.w500 : FontWeight.w700, color: say.$2, height: 1.35))),
+        ]),
+      ),
+      _errBox(err),
+      const SizedBox(height: 6),
+      Row(children: [
+        if (_wait > 0)
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12), child: Text('Send again in ${_wait ~/ 60}:${(_wait % 60).toString().padLeft(2, '0')}', key: const Key('login-wa-wait'), style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: _l.faint)))
+        else
+          _link('Send again', key: const Key('login-wa-again'), onTap: _busy ? null : _waAsk),
+        const Spacer(),
+        _link('Paste code', key: const Key('login-wa-paste'), onTap: _busy ? null : () => _paste()),
+      ]),
+      _waAlt(),
+    ];
+  }
+
+  /// "No WhatsApp code? Use email and password" – always one tap away.
+  Widget _waAlt() => Wrap(alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text('No WhatsApp code?', style: TextStyle(fontSize: 13.5, color: _l.muted)),
+        _link('Use email and password', key: const Key('login-wa-pw'), onTap: _busy && _cs != CodeState.bad ? null : () => _waWay(false)),
+      ]);
 
   /// (3.104.0) the code by e-mail: the e-mail and "Send code"; then the code and "Sign in"
   Widget _otpCard(String err) => _shaken(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -594,6 +947,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         if (_sent) _link(_wait > 0 ? 'Send again ($_wait s)' : 'Send again', key: const Key('login-otp-again'), onTap: _busy || _wait > 0 ? null : _otpAsk),
         _link('Continue with Password', key: const Key('login-otp-back'), onTap: _busy ? null : () => _way(false)),
       ]));
+}
+
+/// (3.166.0) WhatsApp's sign on the sign-in: a green speech bubble ([filled]: white on a green circle, for the chip).
+class _WaMark extends StatelessWidget {
+  const _WaMark({this.size = 20, this.filled = false});
+  final double size;
+  final bool filled;
+  @override
+  Widget build(BuildContext context) => filled
+      ? Container(width: size, height: size, decoration: const BoxDecoration(color: Color(0xFF25D366), shape: BoxShape.circle), child: Icon(Icons.chat_bubble_rounded, size: size * .56, color: Colors.white))
+      : Icon(Icons.chat_rounded, size: size, color: const Color(0xFF1FAF55));
 }
 
 /// The colours of the sign-in: light or dark, as the phone is (the navy at the top is in both).
