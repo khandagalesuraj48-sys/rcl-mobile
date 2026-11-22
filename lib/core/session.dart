@@ -711,11 +711,43 @@ class Session extends ChangeNotifier {
   String get mailLogin => mailVerified ? '${mail?['login'] ?? email}' : '';
 
   /// Is "Login with Email OTP" switched on at the Portal? (asked by the sign-in screen; no answer = no)
-  Future<bool> otpOffered() async {
+  Future<bool> otpOffered() async => (await signInWays()).otp;
+
+  /// (3.166.0) The ways in the Portal has switched on beside the password: the code by e-mail ([otp]) and the code by WhatsApp
+  /// ([wa]). No answer = neither (the password sign-in as before).
+  Future<({bool otp, bool wa})> signInWays() async {
     try {
-      return (await api.auth({'action': 'options'}))['otp'] == true;
+      final r = await api.auth({'action': 'options'});
+      return (otp: r['otp'] == true, wa: r['wa'] == true);
     } catch (_) {
-      return false;
+      return (otp: false, wa: false);
+    }
+  }
+
+  /* (3.166.0, the Portal's "Login with WhatsApp OTP" of 22-11-2026 – his words: "web and app doni sathi … otp takla auto verify sign
+   * in button dabayla lagu naye") A CODE BY WHATSAPP: the Portal sends the code ONLY to a mobile number that is on an active user
+   * (never the Super Admin) – the same code rules as the e-mail code (10 minutes, once, 5 wrong tries, 60 seconds between two). The
+   * app only asks; the answer to "send" is the same whoever asks. */
+
+  /// "Send code on WhatsApp" / "Send again" → the seconds until another may be asked.
+  Future<int> waSend(String mobile) async => _secs((await api.auth({'action': 'waSend', 'mobile': mobile.trim()}))['wait']);
+
+  /// The six digits typed (checked by themselves – no button): right → true when he must set his own password first; wrong →
+  /// [ApiError] for the card to show itself (the card shakes and clears; nothing else changes).
+  Future<bool> waCheck(String mobile, String code) async {
+    error = '';
+    final r = await api.auth({'action': 'waLogin', 'mobile': mobile.trim(), 'code': code.trim()});
+    return r['mustChange'] == true;
+  }
+
+  /// After "Verified ✓": the same sign-in as with the password (his own password first if [mustChange]).
+  Future<void> waFinish(bool mustChange) async {
+    if (mustChange) return _go(Stage.setPassword);
+    freshSignIn?.call(); // the code typed just now: the app lock does not ask again
+    try {
+      await _afterSignIn();
+    } on ApiError catch (e) {
+      _go(Stage.signedOut, e.toString());
     }
   }
 

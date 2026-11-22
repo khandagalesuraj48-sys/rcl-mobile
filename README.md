@@ -15,6 +15,17 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.166.0 (22-11-2026 – the Portal's "Login with WhatsApp OTP", asked: "otp fill hotana nantr te verification hotana mast ui
+animation … otp takla auto verify sign in button dabayla lagu naye … app and web doni sathi"; the pictures and the video he approved):**
+when the Portal has the WhatsApp code switched on (`options.wa`) the sign-in OPENS on it – "Code on WhatsApp", the mobile number (+91),
+"Send code on WhatsApp"; then "Sent to +91 … · Change" and six boxes (`lib/ui/code_boxes.dart`): each digit pops in, the sixth checks
+the code by itself (no button) – the boxes run into one bar with a light passing, it fills green and a ✓, straight in; a wrong code
+shakes red and the boxes empty from the right. Back from WhatsApp after "Copy code" the code fills by itself (Android – an iPhone asks
+"Allow Paste?" for every look, there "Paste code"); "Send again in 0:59"; "No WhatsApp code? Use email and password" leads to the
+password card, whose ways under "Sign in" are now "WhatsApp OTP" and "Email OTP" side by side. The Portal's `waSend` / `waLogin` – the
+same code rules and sign-in as the e-mail code (`Session.waSend`, `waCheck`, `waFinish`). Switched off at the Portal: the sign-in exactly
+as before. Not seen: a real phone, a real WhatsApp message.
+
 **Version 3.165.0 (21-11-2026 – asked: "play store war developer account banwalell aahe … first app deychi aahe"; "si.sketchline.lion
 he tu kr"; "in app updet sadh updet he tr lawaych aahech"):** THE PLAY STORE'S APP – a second way to build the same code
 (`RCL_STORE=play`, `--dart-define=PLAY=true`; Actions → **play** makes the signed `.aab`, he puts it in the Play Console): the package

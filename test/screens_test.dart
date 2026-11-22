@@ -10083,6 +10083,139 @@ void main() {
     expect(srv.calls, isNot(contains('portal:login')));
   }, tags: ['golden']);
 
+  /* (3.166.0) THE CODE BY WHATSAPP (the Portal's "Login with WhatsApp OTP" of 22-11-2026; his design A and the motion he approved):
+   * the sheet opens on it; the sixth digit checks the code by itself – no button; a wrong code shakes red and the boxes empty;
+   * "Copy code" in WhatsApp and back: it fills by itself; "Use email and password" is one tap away. */
+  testWidgets('(3.166.0) WhatsApp switched on: the sign-in opens on it – the number, "Send code on WhatsApp", the six boxes; "Use email and password" and back', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..waOn = true
+      ..otpOn = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('login-wa-mobile')), findsOneWidget, reason: 'the sheet opens on WhatsApp');
+    expect(find.byKey(const Key('login-wa-pw')), findsOneWidget, reason: '"Use email and password" one tap away');
+    expect(find.text('Send code on WhatsApp'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1e_whatsapp_number.png'));
+    // a number that is not one: said here, nothing sent
+    await t.enterText(find.byKey(const Key('login-wa-mobile')), '12345');
+    await tapK(t, 'login-go');
+    await settle(t, 600);
+    expect(find.textContaining('Enter your 10-digit mobile number.'), findsOneWidget);
+    expect(srv.calls, isNot(contains('portal:waSend')));
+    // "+91 98765 43210" as people type it: the 10 digits go
+    await t.enterText(find.byKey(const Key('login-wa-mobile')), '+91 98765 43210');
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(srv.waTo, ['9876543210']);
+    expect(find.byKey(const Key('login-wa-code')), findsOneWidget, reason: 'the six boxes');
+    expect(find.text('+91 98765 43210'), findsOneWidget, reason: 'sent to – with "Change"');
+    expect(find.byKey(const Key('login-go')), findsNothing, reason: 'no button: the sixth digit checks the code by itself');
+    expect(find.byKey(const Key('login-wa-wait')), findsOneWidget, reason: 'the 60 seconds before another code');
+    expect(find.text('You are signed in as soon as the 6th digit is in.'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('login-wa-code')), '482');
+    await settle(t, 600);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1f_whatsapp_code.png'));
+    expect(srv.calls, isNot(contains('portal:waLogin')), reason: 'three digits: nothing checked yet');
+    // "Change": back to the number
+    await tapK(t, 'login-wa-change');
+    await settle(t, 600);
+    expect(find.byKey(const Key('login-wa-mobile')), findsOneWidget);
+    // "Use email and password": the password card – its two ways under "Sign in" side by side
+    await tapK(t, 'login-wa-pw');
+    await settle(t, 600);
+    expect(find.byType(TextField), findsNWidgets(2), reason: 'the e-mail and the password');
+    expect(find.byKey(const Key('login-wa')), findsOneWidget);
+    expect(find.byKey(const Key('login-otp')), findsOneWidget, reason: '"Login with Email OTP" stays');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1g_password_with_whatsapp.png'));
+    await tapK(t, 'login-wa');
+    await settle(t, 600);
+    expect(find.byKey(const Key('login-wa-mobile')), findsOneWidget, reason: 'back to WhatsApp');
+    // the password way works as ever
+    await tapK(t, 'login-wa-pw');
+    await settle(t, 600);
+    await t.enterText(find.byType(TextField).at(0), 'sujit@rcl.test');
+    await t.enterText(find.byType(TextField).at(1), 'Nashik#Road848!');
+    await t.tap(find.byKey(const Key('login-go')));
+    await net(t);
+    expect(s.stage, Stage.pickSite);
+    expect(srv.calls, isNot(contains('portal:waLogin')));
+  }, tags: ['golden']);
+
+  testWidgets('(3.166.0) WhatsApp code: a wrong code shakes red and the boxes empty; the right one signs in by itself – no button', (t) async {
+    phone(t);
+    final srv = FakeServer()..waOn = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('login-otp')), findsNothing, reason: 'the e-mail code switched off');
+    await t.enterText(find.byKey(const Key('login-wa-mobile')), '9876543210');
+    await tapK(t, 'login-go');
+    await net(t);
+    // wrong: checked by itself at the sixth digit, said in red, the boxes empty, still on the code
+    await t.enterText(find.byKey(const Key('login-wa-code')), '111111');
+    await net(t, 2400);
+    expect(srv.calls.where((c) => c == 'portal:waLogin').length, 1, reason: 'checked once, by itself');
+    expect(find.text('The code is wrong or has expired.'), findsOneWidget);
+    expect(t.widget<TextField>(find.byKey(const Key('login-wa-code'))).controller!.text, '', reason: 'the boxes emptied');
+    expect(s.stage, Stage.signedOut);
+    expect(find.byKey(const Key('login-wa-code')), findsOneWidget, reason: 'still on the code');
+    // right: checked by itself – Verified ✓ – straight in
+    await t.enterText(find.byKey(const Key('login-wa-code')), '482913');
+    await settle(t, 300);
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
+    await settle(t, 1300);
+    expect(find.byKey(const Key('code-ok')), findsOneWidget, reason: 'the bar green and its ✓');
+    expect(find.text('Verified – signing you in'), findsOneWidget);
+    await net(t, 1800);
+    expect(s.stage, Stage.pickSite);
+    expect(s.email, 'sujit@rcl.test', reason: 'his account – the user ID every module knows');
+    expect(srv.calls, containsAllInOrder(['portal:options', 'portal:waSend', 'portal:waLogin', 'portal:waLogin', 'portal:me']));
+    expect(srv.calls, isNot(contains('portal:login')));
+  });
+
+  testWidgets('(3.166.0) WhatsApp code: back from WhatsApp the copied code fills the boxes and signs in by itself; "Paste code" too', (t) async {
+    phone(t);
+    var clip = '';
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (c) async {
+      if (c.method == 'Clipboard.getData') return {'text': clip};
+      return null;
+    });
+    addTearDown(() => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    final srv = FakeServer()..waOn = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.enterText(find.byKey(const Key('login-wa-mobile')), '9876543210');
+    await tapK(t, 'login-go');
+    await net(t);
+    // "Paste code" with something else on the clipboard: nothing is filled
+    clip = 'hello';
+    await tapK(t, 'login-wa-paste');
+    await net(t);
+    expect(t.widget<TextField>(find.byKey(const Key('login-wa-code'))).controller!.text, '');
+    // to WhatsApp, "Copy code", back: it fills and checks by itself
+    clip = '482913';
+    for (final st in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
+      t.binding.handleAppLifecycleStateChanged(st);
+    }
+    await settle(t, 300);
+    for (final st in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+      t.binding.handleAppLifecycleStateChanged(st);
+    }
+    await net(t, 2400);
+    await net(t, 1200);
+    expect(srv.calls, contains('portal:waLogin'));
+    expect(s.stage, Stage.pickSite);
+  });
+
   testWidgets('(3.104.0) e-mail not verified: the strip on Home, "Verify my e-mail" on Me – his own e-mail, the code, verified; then no strip', (t) async {
     phone(t);
     final srv = FakeServer()..mailInfo = {'verified': false, 'canVerify': true, 'remind': true};
