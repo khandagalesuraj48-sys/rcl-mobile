@@ -46,6 +46,7 @@ import 'package:rcl_mobile/core/car_photos.dart';
 import 'package:rcl_mobile/core/veh_alerts.dart';
 import 'package:rcl_mobile/screens/car_detail.dart' show CarPhotoPick;
 import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
+import 'package:rcl_mobile/screens/wa_connect.dart' show waOpen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/theme.dart' show C;
 import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin, HrLook, hrRoute;
@@ -10214,6 +10215,117 @@ void main() {
     await net(t, 1200);
     expect(srv.calls, contains('portal:waLogin'));
     expect(s.stage, Stage.pickSite);
+  });
+
+  /* (3.167.0) THE WHATSAPP ASSISTANT – the Portal's step 15: "Connect WhatsApp" (a code sent from his own WhatsApp verifies it for 10
+   * days) on Me and in "My HR"; the console's "WhatsApp" (who is verified now, "End"). */
+  testWidgets('(3.167.0) Connect WhatsApp: only when the Portal has it on; the code, "Open WhatsApp" with it typed; verified by itself', (t) async {
+    phone(t);
+    final off = FakeServer();
+    off.prefs['brief'] = false;
+    final s0 = await ready(t, off);
+    await t.pumpWidget(RclApp(session: s0));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    expect(find.byKey(const Key('me-wa')), findsNothing, reason: 'switched off at the Portal: nothing is shown');
+    final srv = FakeServer()..waBot = true;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    await tapK(t, 'me-wa');
+    await net(t);
+    expect(find.byKey(const Key('wa-not')), findsOneWidget);
+    expect(find.textContaining('Verify once in 10 days'), findsOneWidget);
+    expect(find.textContaining('never given there'), findsOneWidget, reason: 'personal, KYC and bank details are never given on WhatsApp');
+    final opened = <Uri>[];
+    waOpen = (u) async {
+      opened.add(u);
+      return true;
+    };
+    addTearDown(() => waOpen = (u) async => false);
+    await tapK(t, 'wa-get');
+    await net(t);
+    expect(find.text('404171'), findsOneWidget);
+    expect(find.textContaining('Send this code from your WhatsApp (98••••••10) to +91 90000 00001'), findsOneWidget);
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/2w_connect_whatsapp.png'));
+    await tapK(t, 'wa-open');
+    await settle(t, 300);
+    expect(opened.map((u) => '$u'), ['https://wa.me/919000000001?text=LINK%20404171'], reason: 'WhatsApp opens with "LINK 404171" typed to the assistant');
+    // he presses Send in WhatsApp: the Portal verifies it – this screen sees it by itself
+    srv.waLinked = true;
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await settle(t, 4300);
+    await net(t);
+    expect(find.byKey(const Key('wa-linked')), findsOneWidget);
+    expect(find.textContaining('Verified on WhatsApp until 24-10-2026'), findsOneWidget);
+    expect(find.byKey(const Key('wa-code')), findsNothing);
+    await tapK(t, 'wa-end');
+    await net(t);
+    expect(find.byKey(const Key('wa-not')), findsOneWidget, reason: 'disconnected');
+  }, tags: ['golden']);
+
+  testWidgets('(3.167.0) Connect WhatsApp: no mobile on his sign-in – said so, no code', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..waBot = true
+      ..waHasMobile = false;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    await tapK(t, 'me-wa');
+    await net(t);
+    expect(find.byKey(const Key('wa-nomobile')), findsOneWidget);
+    expect(find.byKey(const Key('wa-get')), findsNothing);
+    expect(find.byKey(const Key('wa-mob')), findsNothing, reason: 'only the Super Admin puts his own number here');
+  });
+
+  testWidgets('(3.167.0) the Super Admin: the console\'s "WhatsApp" lists who is verified and ends one; his own number on Connect WhatsApp', (t) async {
+    phone(t);
+    final sa = FakeServer()
+      ..superAdmin = true
+      ..waBot = true
+      ..waHasMobile = false;
+    sa.prefs['brief'] = false;
+    final s = await ready(t, sa);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.tap(find.byKey(const Key('tab-me')));
+    await net(t);
+    await tapK(t, 'me-super');
+    await net(t);
+    sa.waRows.add({'id': 7, 'email': 'ravi@rcl.test', 'name': 'Ravi Patil', 'mobile': '97••••••12', 'since': '2026-10-14T05:00:00Z', 'until': '2026-10-24T05:00:00Z', 'seen': '2026-10-14T06:00:00Z'});
+    await tapK(t, 'sa-t-wa');
+    await net(t);
+    expect(find.byKey(const Key('sa-wa-7')), findsOneWidget);
+    expect(find.textContaining('ravi@rcl.test · 97••••••12'), findsOneWidget);
+    await tapK(t, 'sa-wa-end-7');
+    await net(t);
+    expect(find.byKey(const Key('sa-wa-7')), findsNothing);
+    expect(sa.calls, containsAllInOrder(['admin:waSessions', 'admin:waEnd', 'admin:waSessions']));
+    expect(find.textContaining('Nobody is verified on WhatsApp now.'), findsOneWidget);
+    // his own WhatsApp: the number first (Users & Access does not change his account), then the code
+    await t.pageBack();
+    await net(t);
+    await tapK(t, 'me-wa');
+    await net(t);
+    expect(find.textContaining('Verify once in a day'), findsOneWidget, reason: 'the Super Admin: one day');
+    await t.enterText(find.byKey(const Key('wa-mob')), '12');
+    await tapK(t, 'wa-mob-save');
+    await net(t);
+    expect(find.byKey(const Key('wa-err')), findsOneWidget);
+    await t.enterText(find.byKey(const Key('wa-mob')), '+91 98765 43210');
+    await tapK(t, 'wa-mob-save');
+    await net(t);
+    expect(find.byKey(const Key('wa-get')), findsOneWidget);
+    expect(sa.portalAdminSent.where((x) => x['action'] == 'waMyMobile').last['mobile'], '+91 98765 43210');
   });
 
   testWidgets('(3.104.0) e-mail not verified: the strip on Home, "Verify my e-mail" on Me – his own e-mail, the code, verified; then no strip', (t) async {
