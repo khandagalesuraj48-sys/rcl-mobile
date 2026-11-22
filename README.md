@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.167.0 (22-11-2026 – the Portal's step 15, the WhatsApp AI assistant; his decisions: "whats app pahilenda app and web 2 ni
+sathi asel otp sign in pn chalu asel … user verify zala ki chalu zal … whats app war persoal details kyc bank details sensitive data janr
+nahi"):** Me (and "My HR" → E-mail and password) has **Connect WhatsApp** when the Portal has the assistant switched on (`me.waBot`):
+verified or not and until when; "Get my code" – a 6-digit code (10 minutes, once); "Open WhatsApp" opens WhatsApp with "LINK 123456"
+typed to the assistant's number, he presses Send from his own WhatsApp (the number on his sign-in); the screen sees "Verified" by itself
+(it asks every 4 seconds); "Disconnect". No mobile on his sign-in: said so; the Super Admin puts his own number there. The console has a
+"WhatsApp" tab: who is verified now, "End". The Portal keeps and checks everything (`lib/screens/wa_connect.dart`; Session `waState`,
+`waCode`, `waUnlink`, `waMyMobile`). Switched off at the Portal: nothing is shown. Not seen: a real phone, a real WhatsApp.
+
 **Version 3.166.0 (22-11-2026 – the Portal's "Login with WhatsApp OTP", asked: "otp fill hotana nantr te verification hotana mast ui
 animation … otp takla auto verify sign in button dabayla lagu naye … app and web doni sathi"; the pictures and the video he approved):**
 when the Portal has the WhatsApp code switched on (`options.wa`) the sign-in OPENS on it – "Code on WhatsApp", the mobile number (+91),

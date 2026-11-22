@@ -692,7 +692,26 @@ class Session extends ChangeNotifier {
     consentNeed = ((me['consent'] as Map?)?['need'] ?? '').toString(); // (20-11-2026) the app's terms / location notice, if still to accept
     startItem = (me['start'] ?? '').toString();
     mail = (me['email'] as Map?)?.cast<String, dynamic>(); // (3.104.0) his e-mail at the Portal: verified or not
+    waBot = me['waBot'] == true; // (3.167.0) the Portal's WhatsApp assistant is switched on: "Connect WhatsApp" is shown
   }
+
+  /* (3.167.0, the Portal's step 15 – his decisions of 22-11-2026: "whats app pahilenda app and web 2 ni sathi asel … user verify zala ki
+   * chalu zal … whats app war persoal details kyc bank details sensitive data janr nahi") THE WHATSAPP ASSISTANT: he gets a 6-digit code
+   * here and sends it from HIS OWN WhatsApp (the number on his sign-in) to the assistant – that verifies it for 10 days (the Super
+   * Admin: 1 day). The Portal keeps and checks everything; the app only asks. */
+  bool waBot = false;
+
+  /// Verified or not, until when, from which number (hidden), the assistant's number; whether a mobile number is on his sign-in.
+  Future<Map<String, dynamic>> waState() async => api.auth({'action': 'waState'});
+
+  /// "Get my code": { code, minutes, number, from, link } – the link opens WhatsApp with "LINK 123456" typed.
+  Future<Map<String, dynamic>> waCode() async => api.auth({'action': 'waCode'});
+
+  /// "Disconnect": his WhatsApp session ends now.
+  Future<void> waUnlink() async => api.auth({'action': 'waUnlink'});
+
+  /// The Super Admin's own mobile number (Users & Access does not change his account).
+  Future<void> waMyMobile(String mobile) async => api.admin({'action': 'waMyMobile', 'mobile': mobile.trim()});
 
   /* (3.104.0, the Portal's steps 10 / 11 – his rules of 12-11-2026) TWO WAYS TO SIGN IN: the password, as before – or a code sent
    * to his e-mail. And "verify my e-mail": he types his OWN address, the code goes there; typed right, that e-mail is the one he

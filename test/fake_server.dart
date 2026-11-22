@@ -15,6 +15,10 @@ class FakeServer {
   bool otpOn = false;
   // (3.166.0) the Portal's "Login with WhatsApp OTP": switched on or not, the one mobile number on a user here, where codes went
   bool waOn = false;
+  // (3.167.0) the Portal's WhatsApp assistant: switched on, his mobile on the sign-in, verified until, the codes given, the sessions
+  bool waBot = false, waHasMobile = true, waLinked = false;
+  int waCodes = 0;
+  final waRows = <Map<String, dynamic>>[];
   String waNumber = '9876543210';
   final waTo = <String>[];
   String otpMail = 'sujit.own@rcl.test', otpCode = '482913', verifyTo = '';
@@ -1400,6 +1404,17 @@ class FakeServer {
     void log(String what, String target, [Object? detail]) => saAudit.insert(0, {'at': '2026-10-17T10:00:00Z', 'actor': 'sujit@rcl.test', 'action': what, 'target': target, 'detail': detail});
     final email = '${x['email'] ?? ''}'.trim().toLowerCase(), site = '${x['site'] ?? ''}'.toUpperCase();
     switch (a) {
+      // (3.167.0) the WhatsApp assistant's sessions
+      case 'waSessions':
+        return _j({'on': waBot, 'rows': waRows});
+      case 'waEnd':
+        waRows.removeWhere((y) => y['id'] == x['id']);
+        log('WhatsApp session ended', '');
+        return _j({'ok': true});
+      case 'waMyMobile':
+        if (!RegExp(r'^\+?(91)?\s*[6-9][0-9\s]{9,11}$').hasMatch('${x['mobile']}'.trim())) return _j({'error': 'Enter your 10-digit mobile number.', 'code': 'mobile'}, 400);
+        waHasMobile = true;
+        return _j({'ok': true});
       case 'overview':
         {
           // (3.71.0) each site with its workflow's Head Office choices (the Portal's step 6)
@@ -1643,11 +1658,11 @@ class FakeServer {
         // (as the Portal: still on a given password – no module until his own is set)
         if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
         if (hrOnlyUser) {
-          return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, 'items': [
+          return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, if (waBot) 'waBot': true, 'items': [
             {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': hrOnlyOffice ? 'hr' : 'hrme', 'moduleName': hrOnlyOffice ? 'RCL HR' : 'My HR', 'url': 'https://erp.test/hr'},
           ]});
         }
-        return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, 'items': [
+        return _j({'signedIn': true, 'start': start, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': superAdmin, if (tester) 'tester': true}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, if (waBot) 'waBot': true, 'items': [
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'mechanical', 'moduleName': 'Mechanical', 'url': 'https://erp.test', 'pages': mechDriver ? {'driver': 'Yes'} : null},
           {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'store', 'moduleName': 'Store', 'url': 'https://erp.test/store'},
           if (engSite) {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': 'engineering', 'moduleName': 'Engineering', 'url': 'https://erp.test/engineering'},      // (3.59.0)
@@ -1683,6 +1698,23 @@ class FakeServer {
       }
       // (3.104.0) the Portal's steps 10 / 11: a code by e-mail, "verify my e-mail", the reminder
       if (b['action'] == 'options') return _j({'otp': otpOn, 'wa': waOn});
+      if (b['action'] == 'waState') {
+        if (!portalSignedIn) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+        if (!waBot) return _j({'on': false});
+        return _j({'on': true, 'hasMobile': waHasMobile, 'number': '+91 90000 00001', 'days': superAdmin ? 1 : 10, 'linked': waLinked,
+          if (waLinked) ...{'until': '2026-10-24T10:00:00Z', 'until_dmy': '24-10-2026', 'mobile': '98••••••10'}});
+      }
+      if (b['action'] == 'waCode') {
+        if (!portalSignedIn) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+        if (!waBot) return _j({'error': 'The WhatsApp assistant is not switched on.', 'code': 'off'}, 403);
+        if (!waHasMobile) return _j({'error': 'Your mobile number is not on your sign-in yet – ask HR or the Super Admin to add it. Then connect WhatsApp from that number.', 'code': 'nomobile'}, 400);
+        waCodes++;
+        return _j({'code': '40417$waCodes', 'minutes': 10, 'number': '+91 90000 00001', 'from': '98••••••10', 'link': 'https://wa.me/919000000001?text=LINK%2040417$waCodes'});
+      }
+      if (b['action'] == 'waUnlink') {
+        waLinked = false;
+        return _j({'ok': true});
+      }
       if (b['action'] == 'waSend') {
         if (!waOn) return _j({'error': 'Sign-in with a WhatsApp code is not switched on.', 'code': 'off'}, 403);
         final mob = '${b['mobile'] ?? ''}';

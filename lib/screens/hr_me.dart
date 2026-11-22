@@ -39,6 +39,7 @@ import 'consent_gate.dart' show showConsent;
 import 'attend_reqs.dart' show HrAsk;
 import 'attendance.dart' show attendPdfLogo, attendPdfOut, hrModule, hrSite;
 import 'email_verify.dart';
+import 'wa_connect.dart';
 import 'hr_more.dart';
 import 'hr_office.dart';
 import 'hr_shell.dart' show initials;
@@ -1533,6 +1534,8 @@ class _AccountScreenState extends State<AccountScreen> {
               await openVerifyEmail(context);
               if (mounted) setState(() {});
             }),
+          // (3.167.0) the Portal's WhatsApp assistant – "My HR" people ask about their own attendance there
+          if (s.waBot) _li(key: const Key('acc-wa'), sign: 'W', c: const Color(0xFF0F7A45), soft: const Color(0xFFE3F7EC), en: 'Connect WhatsApp', mr: 'WhatsApp जोडा', sub: _t('Ask about your ERP on WhatsApp', 'WhatsApp वर ERP बद्दल विचारा'), onTap: () => openWaConnect(context)),
           _li(key: const Key('acc-pw'), sign: 'P', c: sk.accent, soft: const Color(0xFFEEF1F7), en: 'Change password', mr: 'Password बदला', sub: _t('One password for everything', 'सगळ्यासाठी एकच password'), last: true, onTap: _password),
         ]),
       ]),

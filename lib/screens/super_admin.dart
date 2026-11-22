@@ -127,6 +127,24 @@ class SuperAdminState extends State<SuperAdminScreen> {
     }
   }
 
+  /* (3.167.0, the Portal's step 15) THE WHATSAPP ASSISTANT – the web console's "WhatsApp": who is verified on WhatsApp now (the number
+   * hidden but its ends), since, until, the last message – "End" makes that person verify again. His own WhatsApp: Me → Connect
+   * WhatsApp. */
+  Map<String, dynamic>? wa;
+  String waErr = '';
+  Future<void> loadWa() async {
+    setState(() {
+      wa = null;
+      waErr = '';
+    });
+    try {
+      final r = await api.admin({'action': 'waSessions'});
+      if (mounted) setState(() => wa = r);
+    } catch (e) {
+      if (mounted && !portalSignInEnded(context, e)) setState(() => waErr = portalMsg(e));
+    }
+  }
+
   bool auditBusy = false;
   Future<void> loadAudit() async {
     if (auditBusy) return;
@@ -170,7 +188,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6,
+      length: 7,
       child: Scaffold(
         appBar: AppBar(
           title: const TwoLang('Super Admin', 'सुपर ॲडमिन', size: 20, weight: FontWeight.w700),
@@ -181,6 +199,7 @@ class SuperAdminState extends State<SuperAdminScreen> {
             labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
             onTap: (i) {
               if (i == 5 && audit == null) loadAudit();
+              if (i == 6 && wa == null) loadWa();
             },
             tabs: [
               Tab(key: const Key('sa-t-users'), text: tr('Users & Access')),
@@ -189,12 +208,13 @@ class SuperAdminState extends State<SuperAdminScreen> {
               Tab(key: const Key('sa-t-companies'), text: tr('Companies')),
               Tab(key: const Key('sa-t-modules'), text: tr('Modules')),
               Tab(key: const Key('sa-t-audit'), text: tr('Activity')),
+              Tab(key: const Key('sa-t-wa'), text: tr('WhatsApp')), // (3.167.0)
             ],
           ),
         ),
         body: d == null
             ? (err.isEmpty ? const Center(child: CircularProgressIndicator()) : ListView(padding: const EdgeInsets.all(16), children: [InfoLine(err, bad: true)]))
-            : TabBarView(children: [_users(), _sites(), _workflow(), _companies(), _modules(), _audit()]),
+            : TabBarView(children: [_users(), _sites(), _workflow(), _companies(), _modules(), _audit(), _wa()]),
       ),
     );
   }
@@ -510,6 +530,53 @@ class SuperAdminState extends State<SuperAdminScreen> {
 
   Future<void> _module(Map<String, dynamic>? m) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SaModuleScreen(console: this, module: m)));
+
+  /* ---------------- (3.167.0) WhatsApp ---------------- */
+  Widget _wa() {
+    final r = wa, rows = SaData._l(r?['rows']);
+    return RefreshIndicator(
+      onRefresh: loadWa,
+      child: ListView(key: const Key('sa-wa'), padding: const EdgeInsets.fromLTRB(16, 12, 16, 30), children: [
+        _note('People ask about the ERP on WhatsApp after they verify their number (10 days; you: 1 day). Personal, KYC and bank details are never given there. Your own WhatsApp: Me → Connect WhatsApp.'),
+        if (waErr.isNotEmpty) InfoLine(waErr, bad: true),
+        if (r == null && waErr.isEmpty)
+          Builder(builder: (_) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && wa == null && waErr.isEmpty) loadWa();
+            });
+            return const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator()));
+          }),
+        if (r != null) _note(r['nostep'] == true ? 'Run sql/portal_step15_whatsapp_assistant.sql once in the Portal\'s Supabase first.' : '${r['on'] == true ? 'Switched on (Vercel WA_ASSISTANT).' : 'Switched off – set WA_ASSISTANT=on in Vercel (Portal) to start.'} ${rows.length} verified now.'),
+        if (r != null && rows.isEmpty) _note('Nobody is verified on WhatsApp now.'),
+        for (final x in rows)
+          _card(
+            key: Key('sa-wa-${x['id']}'),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  mt.Text('${x['name']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  mt.Text('${x['email']} · ${x['mobile']}', style: const TextStyle(fontSize: 13, color: C.muted)),
+                  mt.Text('${tr('Until')} ${whenText('${x['until'] ?? ''}')}${'${x['seen'] ?? ''}'.isNotEmpty ? ' · ${tr('last message')} ${whenText('${x['seen']}')}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+                ]),
+              ),
+              TextButton(
+                key: Key('sa-wa-end-${x['id']}'),
+                onPressed: () async {
+                  try {
+                    await api.admin({'action': 'waEnd', 'id': x['id']});
+                    say(tr('Ended – that person verifies again.'));
+                  } catch (e) {
+                    failed(e);
+                  }
+                  await loadWa();
+                },
+                child: const Text('End'),
+              ),
+            ]),
+          ),
+      ]),
+    );
+  }
 
   /* ---------------- Activity ---------------- */
   Widget _audit() {
