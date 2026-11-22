@@ -13,6 +13,10 @@ class FakeServer {
   bool portalSignedIn = false, superAdmin = false, mustChange = false;
   // (3.104.0) the Portal's code by e-mail: switched on?, the e-mail a code goes to, the code, where codes went, his e-mail's state in "me"
   bool otpOn = false;
+  // (3.166.0) the Portal's "Login with WhatsApp OTP": switched on or not, the one mobile number on a user here, where codes went
+  bool waOn = false;
+  String waNumber = '9876543210';
+  final waTo = <String>[];
   String otpMail = 'sujit.own@rcl.test', otpCode = '482913', verifyTo = '';
   final codesTo = <String>[];
   Map<String, dynamic>? mailInfo;
@@ -1678,7 +1682,20 @@ class FakeServer {
         return _j({'ok': true}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});      // (a fresh sign-in)
       }
       // (3.104.0) the Portal's steps 10 / 11: a code by e-mail, "verify my e-mail", the reminder
-      if (b['action'] == 'options') return _j({'otp': otpOn});
+      if (b['action'] == 'options') return _j({'otp': otpOn, 'wa': waOn});
+      if (b['action'] == 'waSend') {
+        if (!waOn) return _j({'error': 'Sign-in with a WhatsApp code is not switched on.', 'code': 'off'}, 403);
+        final mob = '${b['mobile'] ?? ''}';
+        if (!RegExp(r'^[6-9]\d{9}$').hasMatch(mob)) return _j({'error': 'Enter your 10-digit mobile number.', 'code': 'mobile'}, 400);
+        if (mob == waNumber) waTo.add(mob);      // (a code only to a number on an active user – the answer is the same)
+        return _j({'ok': true, 'wait': 60, 'minutes': 10});
+      }
+      if (b['action'] == 'waLogin') {
+        if (!waOn) return _j({'error': 'Sign-in with a WhatsApp code is not switched on.', 'code': 'off'}, 403);
+        if (b['mobile'] != waNumber || b['code'] != otpCode) return _j({'error': 'The code is wrong or has expired.', 'code': 'code'}, 401);
+        portalSignedIn = true;
+        return _j({'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': false}, 'mustChange': false}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});
+      }
       if (b['action'] == 'otpSend') {
         if (!otpOn) return _j({'error': 'Sign-in with a code is not switched on.', 'code': 'off'}, 403);
         if (b['email'] == otpMail) codesTo.add('${b['email']}');      // (a code only to a verified user's e-mail – the answer is the same)
