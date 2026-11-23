@@ -34,6 +34,10 @@ int attMaxOf(Map<String, dynamic> rules) {
   return n < 1 || n > 20 ? 10 : n;
 }
 
+/// (3.168.0) a photo is made this small by the phone itself before the app reads it (its long side, in points) and this JPEG quality
+const double kPickSide = 2000;
+const int kPickQuality = 90;
+
 /// The files the person picks: the camera (one photo), the gallery (several) or the phone's files (PDFs) – a test sets its own.
 Future<List<({String name, Uint8List bytes})>> Function(String how, int room) pickAttFiles = _pickFiles;
 
@@ -52,14 +56,20 @@ Future<List<({String name, Uint8List bytes})>> _pickFiles(String how, int room) 
   }
   final picker = ImagePicker();
   final List<XFile> xs;
+  // (3.168.0, asked 23-11-2026: "employee document upload krtana app madhun photo te add krtana app restart hote") the phone makes
+  // the picture smaller (at most kPickSide on its long side) BEFORE the app reads it: a 12–50 MP photo read whole by the app took
+  // hundreds of MB and the phone closed the app. Every paper / attachment is sent at most 2000 on its long side anyway (docReady).
   if (camera) {
-    final x = await AppLock.whileOutside(() => picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear));
+    final x = await AppLock.whileOutside(() => picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear,
+        maxWidth: kPickSide, maxHeight: kPickSide, imageQuality: kPickQuality));
     xs = [if (x != null) x];
   } else if (room == 1) {
-    final x = await AppLock.whileOutside(() => picker.pickImage(source: ImageSource.gallery));
+    final x = await AppLock.whileOutside(() => picker.pickImage(source: ImageSource.gallery,
+        maxWidth: kPickSide, maxHeight: kPickSide, imageQuality: kPickQuality));
     xs = [if (x != null) x];
   } else {
-    xs = await AppLock.whileOutside(() => picker.pickMultiImage(limit: room));
+    xs = await AppLock.whileOutside(() => picker.pickMultiImage(limit: room,
+        maxWidth: kPickSide, maxHeight: kPickSide, imageQuality: kPickQuality));
   }
   return [for (final x in xs.take(room)) (name: x.name, bytes: await x.readAsBytes())];
 }

@@ -15,6 +15,13 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.168.0 (23-11-2026 – asked: "urgent fix kr employee document upload krtana app madhun photo te add krtana app restart hote"):**
+a photo of the camera or the gallery (papers, a leave's note, an entry's attachments – every `pickAttFiles`) is made smaller BY THE PHONE
+(`maxWidth` / `maxHeight` 2000, JPEG 90 – `lib/screens/attach_box.dart`) before the app reads it: a 12–50 MP photo read whole took hundreds
+of MB and the phone closed the app. And when a phone short of memory closes the app while its camera is open, the photo is not lost: the
+app says beforehand what it is for, and My documents / the documents gate offer it when they open again ("Your photo is here – Attach?";
+`lib/core/lost_photo.dart`, image_picker's `retrieveLostData`). Nothing is sent by itself.
+
 **Version 3.167.0 (23-11-2026 – FALCON, the site mess, joined to HR; his words: "falcon la erp madhe nahi hr madhe jodaych karan erp main aahe erp
 madhe hr aahe ani falcon hr madhe asel … erp sathi pn jas apan attendance sathi keley te ethe pn ek asel"; pictures N6 and N7 approved: "ho
 banaw"):** the HR Home has a **Mess** card under Leave · Regularization · Documents · Salary slip; the ERP Home a **Mess** strip under the site and

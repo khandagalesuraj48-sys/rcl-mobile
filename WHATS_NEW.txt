@@ -1,3 +1,6 @@
+Documents: adding a photo from the camera or the gallery no longer closes the app – the phone makes the photo smaller first. If the phone still closes the app while the camera is open, the photo is kept: open Documents again and press "Attach".
+कागदपत्रे: camera किंवा gallery मधून photo जोडताना app आता बंद होत नाही – phone आधी photo लहान करतो. Camera उघडा असताना phone ने app बंद केलेच, तरी photo ठेवला जातो: Documents पुन्हा उघडा आणि "जोडा" दाबा.
+दस्तावेज़: camera या gallery से photo जोड़ते समय app अब बंद नहीं होता – phone पहले photo छोटा करता है। Camera खुला रहते phone ने app बंद कर भी दिया, तो photo रखा जाता है: Documents फिर से खोलिए और "Attach" दबाइए।
 Mess on Home: the mess of your site, the meal now and how far you are – one tap opens FALCON, signed in through HR (no code again).
 Home वर मेस: तुमच्या site ची मेस, आत्ताचे जेवण आणि तुम्ही किती दूर आहात – एक tap ने FALCON उघडते, HR च्या sign-in ने (पुन्हा code नाही).
 Home पर मेस: आपकी site की मेस, अभी का खाना और आप कितनी दूर हैं – एक tap से FALCON खुलता है, HR के sign-in से (फिर से code नहीं)।

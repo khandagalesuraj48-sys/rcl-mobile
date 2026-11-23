@@ -17,6 +17,7 @@ import 'core/applock.dart';
 import 'core/device.dart';
 import 'core/lang.dart' show Lang, bi;
 import 'core/lock_gate.dart';
+import 'core/lost_photo.dart';
 import 'core/product_brand.dart';
 import 'core/push.dart' show PushTap;
 import 'core/push_fcm.dart';
@@ -114,6 +115,9 @@ void main() {
   if (Platform.isAndroid) Session.callKit = () => WebrtcKit(); // (3.26.0) calls with the web – the Android phone first
   Session.moduleCounts = true; // (3.97.0) Home: what waits in his other modules
   final keep = SecureKeep();
+  // (3.168.0) a photo the phone kept when it closed the app while the camera was open (core/lost_photo.dart)
+  LostPhoto.keep = keep;
+  LostPhoto.check();
   final session = Session(Api(portalUrl: kPortalUrl, keep: keep)
         ..askApproval = askApprovalBox
         ..askReason = askReasonBox

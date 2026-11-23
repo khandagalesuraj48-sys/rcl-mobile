@@ -5,9 +5,13 @@
  *   A new employee uploads his FIVE papers before the app lets him in; the whole app waits until he submits. The server decides what
  *   is required (rcl-hr act_docgate: myGate / myDocNa / myDocDelete); the files are his own "My documents". Nothing of this is on the
  *   HR office's pages. Shown only to an employee whose required papers are not done – a non-employee / a site without HR never waits. */
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 import 'package:url_launcher/url_launcher.dart';
+
+import '../core/lost_photo.dart';
 
 import '../ui/done_pop.dart' show donePop;
 import '../ui/hr_skin.dart';
@@ -82,7 +86,40 @@ class _DocGateScreenState extends State<DocGateScreen> {
   @override
   void initState() {
     super.initState();
-    _load(first: true);
+    _load(first: true).then((_) => _lost());
+  }
+
+  /// (3.168.0) the phone closed the app while its camera was open for a paper: the photo it kept is offered here (core/lost_photo.dart)
+  Future<void> _lost() async {
+    final g = await LostPhoto.take('hrdoc:');
+    if (g == null || !mounted) return;
+    final parts = g.what.split(':'), key = parts.length > 1 ? parts[1] : '';
+    final doc = _docs.where((d) => '${d['key']}' == key).firstOrNull;
+    if (doc == null) return;
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('Your photo is here', mr: 'तुमचा photo आहे', style: TextStyle(fontFamily: 'Montserrat', fontSize: 18, fontWeight: FontWeight.w800, color: sk.ink)),
+        content: Text('The phone closed the app while the camera was open. The photo you took for ${doc['name']} was kept – attach it?',
+            mr: 'Camera उघडा असताना phone ने app बंद केले. ${doc['name']} साठी काढलेला photo ठेवला आहे – जोडायचा का?', style: TextStyle(fontSize: 14, height: 1.4, color: sk.muted)),
+        actions: [
+          TextButton(key: const Key('dg-lost-no'), onPressed: () => Navigator.pop(c, false), child: const Text('No', mr: 'नको')),
+          FilledButton(key: const Key('dg-lost-yes'), onPressed: () => Navigator.pop(c, true), child: const Text('Attach', mr: 'जोडा')),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    setState(() {
+      busy = key;
+      err = '';
+    });
+    try {
+      await _send(key, [(name: g.name, bytes: g.bytes)]);
+    } catch (e) {
+      if (mounted) setState(() => err = errText(e));
+    } finally {
+      if (mounted) setState(() => busy = '');
+    }
   }
 
   // [first] – the screen's very first load: if his papers are already done (he did them on the web), the gate closes at once. A later
@@ -132,28 +169,35 @@ class _DocGateScreenState extends State<DocGateScreen> {
       err = '';
     });
     try {
+      if (how != 'pdf') await LostPhoto.expect('hrdoc:$key:');
       final got = await pickAttFiles(how, 10);
+      await LostPhoto.done();
       if (got.isEmpty) {
         if (mounted) setState(() => busy = '');
         return;
       }
-      var n = 0;
-      for (final g in got) {
-        final f = docReady(g.name, g.bytes);
-        if (f == null) continue;
-        final u = await widget.ask({'action': 'myDocUploadUrl', 'kind': key, 'type': f.$2, 'bytes': f.$1.length});
-        if (!mounted) return;
-        await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
-        await widget.ask({'action': 'myDocAdd', 'kind': key, 'path': u['path'], 'bytes': f.$1.length});
-        n++;
-      }
-      await _load();
-      if (mounted && n > 0) donePop(context, _done == _docs.length ? _t('All documents are in — press Submit', 'सगळी कागदपत्रे झाली — Submit दाबा') : _t('Added', 'जोडले'));
+      await _send(key, got);
     } catch (e) {
       if (mounted) setState(() => err = errText(e));
     } finally {
       if (mounted) setState(() => busy = '');
     }
+  }
+
+  /// The files → ready (docReady) → HR's storage → his papers; then the list again.
+  Future<void> _send(String key, List<({String name, Uint8List bytes})> got) async {
+    var n = 0;
+    for (final g in got) {
+      final f = docReady(g.name, g.bytes);
+      if (f == null) continue;
+      final u = await widget.ask({'action': 'myDocUploadUrl', 'kind': key, 'type': f.$2, 'bytes': f.$1.length});
+      if (!mounted) return;
+      await SessionScope.read(context).api.hrFile('${u['url']}', f.$1, f.$2);
+      await widget.ask({'action': 'myDocAdd', 'kind': key, 'path': u['path'], 'bytes': f.$1.length});
+      n++;
+    }
+    await _load();
+    if (mounted && n > 0) donePop(context, _done == _docs.length ? _t('All documents are in — press Submit', 'सगळी कागदपत्रे झाली — Submit दाबा') : _t('Added', 'जोडले'));
   }
 
   Future<void> _na(Map doc) async {
