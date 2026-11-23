@@ -14,6 +14,7 @@ import 'package:flutter/material.dart' as m show Text;
 import '../core/attend.dart';
 import '../core/falcon_link.dart';
 import '../screens/attendance.dart' show hrModule, hrSite;
+import '../screens/falcon_inside.dart';
 import '../screens/hr_shell.dart' show hrAsk;
 import 'hr_skin.dart';
 import 'scope.dart';
@@ -90,7 +91,8 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
     if (opening) return;
     setState(() => opening = true);
     final s = SessionScope.read(context);
-    final err = await FalconMess.open((b) => hrAsk(s, b));
+    // (3.171.0) the FALCON app when it is on the phone; else FALCON inside this app (screens/falcon_inside.dart); else its web
+    final err = await FalconMess.open((b) => hrAsk(s, b), inside: (pass) => openFalconInside(context, pass));
     if (!mounted) return;
     setState(() => opening = false);
     if (err.isNotEmpty) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: m.Text(err)));

@@ -57,7 +57,10 @@ class FalconMess {
   }
 
   /// Opens FALCON signed in as him. Returns '' when opened, else the words of the problem (shown by the caller).
-  static Future<String> open(HrAsk ask, {Future<bool> Function(Uri u)? launch}) async {
+  /// (3.171.0, his word of 23-11-2026: "app nasel tr ji app aahe tyatch open hoyla haw … falcon seprate pn chalayla pahije ani erp hr
+  /// madeh pn") [inside]: FALCON's own screens inside THIS app when the FALCON app is not on the phone (true = opened); the web
+  /// stays only for a phone where that cannot be (an app built without FALCON's settings, an iPhone).
+  static Future<String> open(HrAsk ask, {Future<bool> Function(Uri u)? launch, Future<bool> Function(String pass)? inside}) async {
     Map<String, dynamic> r;
     try {
       r = await ask({'action': 'falconPass'});
@@ -69,7 +72,12 @@ class FalconMess {
     if (!RegExp(r'^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$').hasMatch(pass)) return 'FALCON could not be opened – try again.';
     try {
       if (await _ch.invokeMethod<bool>('open', {'pass': pass}) == true) return '';
-    } catch (_) {/* not Android / not there: the web */}
+    } catch (_) {/* not Android / not there: inside this app, else the web */}
+    if (inside != null) {
+      try {
+        if (await inside(pass)) return '';
+      } catch (_) {/* FALCON could not start here: the web */}
+    }
     if (!RegExp(r'^https://[A-Za-z0-9.-]+(:\d+)?$').hasMatch(web)) return 'FALCON is not on this phone.';
     final u = Uri.parse('$web/#hrpass=${Uri.encodeComponent(pass)}');
     final ok = await (launch ?? launchHook ?? (x) => launchUrl(x, mode: LaunchMode.externalApplication))(u);

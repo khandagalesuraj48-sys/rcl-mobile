@@ -15,6 +15,15 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.171.0 (23-11-2026 – his words: "app nasel tr ji app aahe tyatch open hoyla haw"; "jas ki bgh erp app madhe apan mark in button
+diley te dable ki hr pn tya madhech open hot"; "falcon seprate pn chalayla pahije ani erp hr madeh pn chalayla pahije"):** the Mess card / strip
+opens the FALCON app when it is on the phone (as before); when it is NOT, FALCON's own screens open INSIDE this app as one of its pages
+(`lib/screens/falcon_inside.dart`) – the FALCON app's own code (package `falcon` from FALCONAPK, pinned by commit in `pubspec.yaml`;
+its `lib/embed.dart`), signed in with HR's pass (no second sign-in), FALCON's database rules and server; "Back to RCL app" on FALCON's
+home and the phone's back return. The FALCON app keeps working on its own. Android, in a build that carries FALCON's settings: GitHub →
+this repository → Variables `FALCON_SUPABASE_URL`, `FALCON_SUPABASE_KEY` (the publishable key – a secret key stops the build),
+`FALCON_SERVER` (`tool/falcon_defines.sh`); without them, an iPhone, or a fault: FALCON's web as before.
+
 **Version 3.170.0 (23-11-2026 – the Super Admin saw nothing of the Mess: "kahich disat nahi yellow pn nahi" → "ho kr"):** while HR is
 asked for the Mess card the Super Admin sees "Mess (FALCON) – Super Admin: asking HR …" at once (never an empty space; an answer
 without words is said too); on HR Home he sees the card – or why there is none – even without a day of his own (he is nobody of the

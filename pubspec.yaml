@@ -1,7 +1,7 @@
 name: rcl_mobile
 description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.170.0+1
+version: 3.171.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -46,6 +46,12 @@ dependencies:
   latlong2: ^0.9.1 # (3.132.0) the places on that map
   google_maps_flutter: ^2.9.0 # (20-11-2026) "jithe jithe map ahe … google mapch disayla haway" – Google map when the key is set (--dart-define=GMAPS=true); the map SDKs are free on Android/iPhone
   record: ^6.0.0 # (3.132.0, Mechanical update-263) the voice of a Smart Log Book closing, recorded while the phone listens (Android)
+  # (3.171.0, his word of 23-11-2026: "falcon seprate pn chalayla pahije … ani erp hr madeh pn") FALCON's own screens inside this app
+  # when the FALCON app is not on the phone – the FALCON app's code itself (one code for both; lib/embed.dart there), pinned
+  falcon:
+    git:
+      url: https://github.com/khandagalesuraj48-sys/FALCONAPK.git
+      ref: 70c12cd2b247ab73591ffaf821a19d7e8ba650cb
 
 dev_dependencies:
   flutter_test:

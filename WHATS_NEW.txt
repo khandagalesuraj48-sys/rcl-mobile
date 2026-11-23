@@ -1,3 +1,3 @@
-Mess (FALCON): the Super Admin sees on Home whether FALCON answers – the Mess card, or why it is not there.
-Mess (FALCON): Super Admin ला Home वर FALCON चं उत्तर दिसतं – Mess card, किंवा ते का नाही याचं कारण.
-Mess (FALCON): Super Admin को Home पर FALCON का जवाब दिखता है – Mess card, या वह क्यों नहीं है इसका कारण।
+Mess (FALCON): opens inside this app when the FALCON app is not on the phone – like Mark IN opens HR; "Back to RCL app" returns.
+Mess (FALCON): फोनवर FALCON app नसेल तर Mess याच app मध्ये उघडतं – Mark IN ने HR उघडतं तसं; "Back to RCL app" ने परत.
+Mess (FALCON): फ़ोन पर FALCON app न हो तो Mess इसी app में खुलता है – Mark IN से HR जैसे; "Back to RCL app" से वापस।

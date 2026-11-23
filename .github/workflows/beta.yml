@@ -32,6 +32,9 @@ jobs:
       SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}   # (20-11-2026) the Google Maps key; empty = the OpenStreetMap map
+      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL }}   # (3.171.0) FALCON inside the app (tool/falcon_defines.sh)
+      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY }}
+      FALCON_SERVER: ${{ vars.FALCON_SERVER }}
     steps:
       - uses: actions/checkout@v5
       - name: What this version is – the web's beta commits, the app built or not, its number
@@ -105,6 +108,7 @@ jobs:
         if: env.APP == '1'
         run: |
           GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"   # (20-11-2026) Google map only when the key is set, else OpenStreetMap
+          FD=$(bash tool/falcon_defines.sh) || exit 1; GM="$GM $FD"   # (3.171.0) FALCON inside the app
           flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform android-arm,android-arm64 --split-debug-info=build/symbols $GM
           cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.apk"
       - name: One file per processor (a phone's update downloads only its own)
@@ -112,6 +116,7 @@ jobs:
         run: |
           set -e
           GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"
+          FD=$(bash tool/falcon_defines.sh) || exit 1; GM="$GM $FD"   # (3.171.0) FALCON inside the app
           for a in arm64-v8a:android-arm64 armeabi-v7a:android-arm; do
             abi=${a%%:*}; tp=${a##*:}
             RCL_ABIS=$abi flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform $tp --split-debug-info=build/symbols $GM
