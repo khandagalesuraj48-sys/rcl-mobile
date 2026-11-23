@@ -1,7 +1,9 @@
 // (23-11-2026, pictures N6 / N7) FALCON from HR: which mess, how far, at it or not, and how FALCON is opened.
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/falcon_link.dart';
+import 'package:rcl_mobile/core/session.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +29,17 @@ void main() {
     expect(messNow({'messes': []}), isNull);
     expect(distText(40), '40 m');
     expect(distText(12500), '13 km');
+  });
+  // (3.169.0) no card: why – shown to the Super Admin only (lib/ui/mess_card.dart)
+  test('no card: why is kept – no mess at the site, or HR\'s own words when FALCON is not connected', () async {
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep()));
+    expect(await FalconMess.card(s, (b) async => {'site': 'VTR', 'messes': []}, fresh: true), isNull);
+    expect(FalconMess.why, contains('no mess of VTR'));
+    expect(await FalconMess.card(s, (b) async => throw Exception('FALCON is not connected to HR yet (FALCON_URL and FALCON_HR_SECRET in Vercel).'), fresh: true), isNull);
+    expect(FalconMess.why, 'FALCON is not connected to HR yet (FALCON_URL and FALCON_HR_SECRET in Vercel).');
+    expect(await FalconMess.card(s, (b) async => card, fresh: true), isNotNull);
+    expect(FalconMess.why, '', reason: 'the card is there');
+    FalconMess.forget();
   });
   test('opening: HR\'s pass → FALCON\'s own app; not there → FALCON\'s web with the pass; a wrong answer is never opened', () async {
     const ch = MethodChannel('rcl/falcon');

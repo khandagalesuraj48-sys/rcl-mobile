@@ -344,7 +344,10 @@ class _LeaveAskScreenState extends State<LeaveAskScreen> {
   }
 
   Future<void> _pick(bool isFrom) async {
-    final t = DateTime.parse('${widget.today}T00:00:00'), first = isFrom ? t : DateTime.parse('${from}T00:00:00');
+    // (3.169.0, asked 23-11-2026: "emplyee back dated leave pn apply krta yawa ok ata krta yet nahi") From may be any day of THIS
+    // month – the HR server takes a leave from the 1st of the month on while the month is open (rcl-hr act_leave ask, 21-11-2026);
+    // a day of a month before is set right with a request, as before.
+    final t = DateTime.parse('${widget.today}T00:00:00'), first = isFrom ? DateTime(t.year, t.month, 1) : DateTime.parse('${from}T00:00:00');
     final d = await showDatePicker(context: context, initialDate: DateTime.parse('${isFrom ? from : to}T00:00:00'), firstDate: first, lastDate: t.add(const Duration(days: 366)));
     if (d == null || !mounted) return;
     final ymd = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

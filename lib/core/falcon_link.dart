@@ -26,6 +26,10 @@ class FalconMess {
   /// (tests) how the web is opened when FALCON's app is not there – the phone's browser otherwise
   static Future<bool> Function(Uri u)? launchHook;
 
+  /// (3.169.0, asked 23-11-2026: "ajun mala ERP and HR madhe FALCON connect disat nahiye") why there is no card – HR's words (not
+  /// connected, FALCON did not answer …) or "no mess at this site yet"; '' when the card is there. Shown to the Super Admin only.
+  static String why = '';
+
   /// The Mess card of his site, or null (not connected, no mess, no answer) – asked again after 5 minutes.
   static Future<Map<String, dynamic>?> card(Session s, HrAsk ask, {bool fresh = false}) async {
     final who = s.email, now = DateTime.now().millisecondsSinceEpoch;
@@ -34,8 +38,11 @@ class FalconMess {
       final r = await ask({'action': 'falconCard'});
       final list = (r['messes'] as List? ?? const []).whereType<Map>().toList();
       _card = list.isEmpty ? null : r;
-    } catch (_) {
+      why = list.isEmpty ? 'FALCON is connected – no mess of ${r['site'] ?? 'this site'} is in FALCON yet (FALCON web → Mess and contractors).' : '';
+    } catch (e) {
       _card = null;
+      final m = '$e'.replaceFirst(RegExp(r'^[A-Za-z]*(Exception|Error): ?'), '');
+      why = m.isEmpty || m == 'none' ? '' : m;
     }
     _who = who;
     _at = now;
@@ -44,6 +51,7 @@ class FalconMess {
 
   static void forget() {
     _card = null;
+    why = '';
     _who = '';
     _at = 0;
   }

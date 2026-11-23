@@ -25,7 +25,7 @@ const _saffron = Color(0xFFC2560E), _saffronSoft = Color(0xFFFFF4E6), _saffronLi
 
 mixin _MessData<T extends StatefulWidget> on State<T> {
   Map<String, dynamic>? card;
-  String who = '';
+  String who = '', why = '';
   bool opening = false;
 
   @override
@@ -41,7 +41,35 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
   Future<void> load({bool fresh = false}) async {
     final s = SessionScope.read(context);
     final c = await FalconMess.card(s, (b) => hrAsk(s, b), fresh: fresh);
-    if (mounted) setState(() => card = c);
+    if (mounted) {
+      setState(() {
+        card = c;
+        why = c == null ? FalconMess.why : '';
+      });
+    }
+  }
+
+  /// (3.169.0) no card: the Super Admin is told why (FALCON not connected / no mess at the site) – nobody else sees anything
+  Widget nothing(BuildContext context, String key) {
+    if (why.isEmpty || !SessionScope.of(context).superAdmin) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: GestureDetector(
+        key: Key(key),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => load(fresh: true),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(color: _saffronSoft, borderRadius: BorderRadius.circular(14), border: Border.all(color: _saffronLine)),
+          child: Row(children: [
+            const Icon(Icons.restaurant_rounded, size: 18, color: _saffron),
+            const SizedBox(width: 10),
+            Expanded(child: m.Text('Mess (FALCON) – Super Admin: $why', style: const TextStyle(fontSize: 12.5, color: C.ink))),
+            const Icon(Icons.refresh_rounded, size: 18, color: _saffron),
+          ]),
+        ),
+      ),
+    );
   }
 
   MessNow? get now {
@@ -90,7 +118,7 @@ class _MessCardState extends State<MessCard> with _MessData<MessCard> {
   @override
   Widget build(BuildContext context) {
     final x = who.isEmpty ? null : now;
-    if (x == null) return const SizedBox.shrink();
+    if (x == null) return who.isEmpty ? const SizedBox.shrink() : nothing(context, 'hh-mess-why');
     final s = sk;
     final (Color c, Color soft) = s.tint(_saffron, _saffronSoft);
     return Padding(
@@ -170,7 +198,7 @@ class _MessStripState extends State<MessStrip> with _MessData<MessStrip> {
   @override
   Widget build(BuildContext context) {
     final x = who.isEmpty ? null : now;
-    if (x == null) return const SizedBox.shrink();
+    if (x == null) return who.isEmpty ? const SizedBox.shrink() : nothing(context, 'home-mess-why');
     final sub = [if (x.metres != null) x.at ? '${x.name} · ${distText(x.metres!)}' : '${x.name} · ${distText(x.metres!)} ${tr('away')}' else x.name, if (x.now) '${tr('till')} ${x.to}'].join(' · ');
     final title = x.meal.isEmpty ? '${tr('Mess')} · ${tr('closed for today')}' : '${tr('Mess')} · ${tr(mealWord(x.meal).toLowerCase())} ${x.now ? tr('now') : '${tr('from')} ${x.from}'}';
     return Padding(

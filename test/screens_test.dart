@@ -11689,6 +11689,38 @@ void main() {
     expect(srv.falconPasses, 1);
     expect(opened.toString(), startsWith('https://falcon.test/#hrpass=v1.'));
   }, tags: ['golden']);
+
+  // (3.169.0, asked 23-11-2026: "ajun mala ERP and HR madhe FALCON connect disat nahiye") no card: the Super Admin sees why; others nothing
+  testWidgets('(3.169.0) ERP Home: FALCON not connected – the Super Admin is told why (HR\'s words); a person who is not sees nothing', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    FalconMess.forget();
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      FalconMess.forget();
+    });
+    for (final sup in [true, false]) {
+      FalconMess.forget();
+      final srv = FakeServer()
+        ..hrSite = true
+        ..superAdmin = sup
+        ..hrFalcon = null;
+      srv.prefs['brief'] = false;
+      final s = await ready(t, srv);
+      await t.pumpWidget(RclApp(session: s));
+      await net(t);
+      await net(t);
+      expect(find.byKey(const Key('home-mess')), findsNothing, reason: 'no card');
+      if (sup) {
+        expect(find.byKey(const Key('home-mess-why')), findsOneWidget);
+        expect(find.textContaining('FALCON is not connected to HR yet'), findsOneWidget);
+      } else {
+        expect(find.byKey(const Key('home-mess-why')), findsNothing, reason: 'only the Super Admin is told');
+      }
+      await t.pumpWidget(const SizedBox());
+      await net(t);
+    }
+  });
 }
 
 /// The face screens without a camera: what he would have shown.
