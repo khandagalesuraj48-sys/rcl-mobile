@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show ComputeCallback;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/core/lost_photo.dart';
 import 'package:rcl_mobile/core/app_consent.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
@@ -9478,6 +9479,17 @@ void main() {
     expect([da['kind'], da['replaces']], ['aadhaar', 'd9'], reason: 'in place of the rejected one');
     expect(find.descendant(of: find.byKey(const Key('doc-aadhaar')), matching: find.text('Add')), findsOneWidget, reason: 'attached now: one more can be added');
     expect(find.text('Rejected'), findsNothing);
+    // (3.168.0) the phone closed the app while its camera was open for the PAN card: the photo it kept is offered when Documents opens
+    LostPhoto.put('hrdoc:pan:', 'kept.jpg', Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48))));
+    await t.pageBack();
+    await net(t);
+    await tapKey('me-docs');
+    await net(t);
+    expect(find.text('Your photo is here'), findsOneWidget);
+    await t.tap(find.byKey(const Key('lost-yes')));
+    await net(t);
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd')['kind'], 'pan', reason: 'the kept photo is attached to the paper it was taken for');
+    expect(await LostPhoto.take('hrdoc:'), isNull, reason: 'offered once');
   }, tags: ['golden']);
 
   // (3.136.0, rcl-hr step 16) the phone's proof is asked only when the HR server asks for it – bound to the punch; the seven-day
