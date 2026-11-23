@@ -534,6 +534,9 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                     const Rise(order: 4, child: MessCard()),
                     ..._forYou(),
                   ],
+                  // (3.170.0, asked 23-11-2026 – the Super Admin saw nothing: he has no day of his own here, no employee record) the Super
+                  // Admin sees the Mess card – or why there is none – on HR Home too, to check FALCON's link
+                  if (day == null && !loading && s.superAdmin) const MessCard(key: Key('hh-mess-super')),
                 ]),
               )),
               ]),

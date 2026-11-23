@@ -1,4 +1,5 @@
 /* A pretend Portal + Mechanical for the tests (no network): it answers like the real ones, from data kept here. */
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -277,6 +278,10 @@ class FakeServer {
   bool hrTrack = false, hrTrackOffToday = false;
   /// (23-11-2026, pictures N6 / N7) FALCON's Mess card as HR gives it (`falconCard`); null – FALCON not connected (no card at all)
   Map<String, dynamic>? hrFalcon;
+  /// (3.170.0) HR's answer to the Mess card waits for this (HR slow) – null: at once
+  Completer<void>? hrFalconHold;
+  /// (3.170.0) the sign-in is nobody of HR's Employee Master (the Super Admin): his day is refused
+  bool hrNoEmployee = false;
   int falconPasses = 0;
   final hrTrackPoints = <Map<String, dynamic>>[];
   int hrTrackAsked = 0;
@@ -355,6 +360,7 @@ class FakeServer {
     }
     switch ('${b['action']}') {
       case 'myAttend':
+        if (hrNoEmployee) return _j({'error': 'You are not in the Employee Master of this site.', 'code': 'noemployee'}, 403);
         return _j({'ok': true, ..._hrDay('${b['device_id']}'), 'leave': hrLeaveToday});
       case 'myTrack':
         hrTrackAsked++;
@@ -1951,6 +1957,7 @@ class FakeServer {
       }
       hrSent.add({'cookie': r.headers['Cookie'], ...b});
       if (!'${r.headers['Cookie']}'.startsWith('rcl_hr=S1.hr')) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      if (b['action'] == 'falconCard' && hrFalconHold != null) await hrFalconHold!.future;
       return _hrAct(b);
     }
     // (3.72.0) Purchase of the site: its sign-in (a ticket of the Portal) – who, his role, every site where he has Purchase
