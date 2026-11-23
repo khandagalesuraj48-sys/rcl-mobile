@@ -38,6 +38,7 @@ import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/home_dial.dart';
 import '../ui/hr_skin.dart';
+import '../ui/mess_card.dart';
 import '../ui/motion.dart';
 import '../ui/scope.dart';
 import '../ui/t.dart';
@@ -529,6 +530,8 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                     Rise(order: 2, child: _week()),
                     const SizedBox(height: 14),
                     Rise(order: 3, child: _tiles()),
+                    // (23-11-2026, picture N6) FALCON's Mess – nothing when FALCON is not connected or has no mess for his site
+                    const Rise(order: 4, child: MessCard()),
                     ..._forYou(),
                   ],
                 ]),

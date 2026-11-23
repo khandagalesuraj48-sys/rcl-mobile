@@ -275,6 +275,9 @@ class FakeServer {
   /// (3.149.0, rcl-hr step 20) location tracking: [hrTrack] false (as by itself) = an HR server of before (no step 20); switched off for him today;
   /// the points his phone sent (trackSend) and how often it asked (myTrack)
   bool hrTrack = false, hrTrackOffToday = false;
+  /// (23-11-2026, pictures N6 / N7) FALCON's Mess card as HR gives it (`falconCard`); null – FALCON not connected (no card at all)
+  Map<String, dynamic>? hrFalcon;
+  int falconPasses = 0;
   final hrTrackPoints = <Map<String, dynamic>>[];
   int hrTrackAsked = 0;
   bool hrFace = false, hrFaceIn = false, hrFaceOk = true;
@@ -344,6 +347,12 @@ class FakeServer {
         if (hrShift != null) 'shift': hrShift,
       };
   http.Response _hrAct(Map<String, dynamic> b) {
+    // (23-11-2026) FALCON from HR: the Mess card and the pass
+    if (b['action'] == 'falconCard') return hrFalcon == null ? _j({'error': 'FALCON is not connected to HR yet (FALCON_URL and FALCON_HR_SECRET in Vercel).', 'code': 'falconoff'}, 503) : _j({'ok': true, ...hrFalcon!});
+    if (b['action'] == 'falconPass') {
+      falconPasses++;
+      return _j({'ok': true, 'pass': 'v1.eyJjIjoiRTAwMDEyIn0.${'A' * 43}', 'web': 'https://falcon.test', 'seconds': 120});
+    }
     switch ('${b['action']}') {
       case 'myAttend':
         return _j({'ok': true, ..._hrDay('${b['device_id']}'), 'leave': hrLeaveToday});

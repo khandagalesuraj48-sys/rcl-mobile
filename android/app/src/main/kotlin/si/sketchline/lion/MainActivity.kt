@@ -139,6 +139,22 @@ class MainActivity : FlutterFragmentActivity() {
                 result.error("attend", e.message ?: e.toString(), null)
             }
         }
+        /* (23-11-2026, his decision: "falcon … hr madhe jodaych"; pictures N6, N7 – lib/core/falcon_link.dart, channel "rcl/falcon")
+         *   open {pass} – FALCON's own app (only the package si.sketchline.falcon – no other app can take the pass) with HR's pass: falcon://app/hr?p=…;
+         *   false – FALCON is not on this phone (the app then opens FALCON's web). */
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "rcl/falcon").setMethodCallHandler { call, result ->
+            if (call.method != "open") { result.notImplemented(); return@setMethodCallHandler }
+            val pass = call.argument<String>("pass") ?: ""
+            if (!Regex("^v1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$").matches(pass)) { result.success(false); return@setMethodCallHandler }
+            try {
+                val i = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("falcon://app/hr?p=" + pass)).setPackage("si.sketchline.falcon")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(i)
+                result.success(true)
+            } catch (e: Exception) {
+                result.success(false)
+            }
+        }
         // (3.31.4) the update in the background – Android's Download Manager (UpdateKit.kt)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "rcl/update").setMethodCallHandler { call, result ->
             try {
