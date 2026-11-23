@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # (3.171.0) FALCON inside this app – the build's settings for it (GitHub → rcl-mobile → Settings → Secrets and variables → Actions →
-# Variables, the same values as in FALCONAPK): FALCON_SUPABASE_URL, FALCON_SUPABASE_KEY (the PUBLISHABLE key – public by design),
+# Variables – or Secrets, either is read – the same values as in FALCONAPK): FALCON_SUPABASE_URL, FALCON_SUPABASE_KEY (the PUBLISHABLE key – public by design),
 # FALCON_SERVER. Prints the --dart-define flags, or nothing when they are not set (the Mess card then opens FALCON's web, as before).
 # A SECRET key stops the build – it must never be inside an app.
 set -euo pipefail
