@@ -27,6 +27,8 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
   Map<String, dynamic>? card;
   String who = '', why = '';
   bool opening = false;
+  /// (3.170.0) HR is being asked for the card – the Super Admin sees "asking HR …" meanwhile
+  bool asking = false;
 
   @override
   void didChangeDependencies() {
@@ -40,32 +42,39 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
 
   Future<void> load({bool fresh = false}) async {
     final s = SessionScope.read(context);
+    if (mounted) setState(() => asking = true);
     final c = await FalconMess.card(s, (b) => hrAsk(s, b), fresh: fresh);
     if (mounted) {
       setState(() {
+        asking = false;
         card = c;
         why = c == null ? FalconMess.why : '';
       });
     }
   }
 
-  /// (3.169.0) no card: the Super Admin is told why (FALCON not connected / no mess at the site) – nobody else sees anything
+  /// (3.169.0) no card: the Super Admin is told why (FALCON not connected / no mess at the site) – nobody else sees anything.
+  /// (3.170.0, asked 23-11-2026: "kahich disat nahi yellow pn nahi" → "ho kr") while HR is asked he sees "asking HR …" at once, and an
+  /// answer without words is said too – never an empty space for him.
   Widget nothing(BuildContext context, String key) {
-    if (why.isEmpty || !SessionScope.of(context).superAdmin) return const SizedBox.shrink();
+    if (!SessionScope.of(context).superAdmin) return const SizedBox.shrink();
+    final said = asking ? 'asking HR …' : why.isNotEmpty ? why : 'HR gave no card and said nothing – tap to ask again.';
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: GestureDetector(
         key: Key(key),
         behavior: HitTestBehavior.opaque,
-        onTap: () => load(fresh: true),
+        onTap: asking ? null : () => load(fresh: true),
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
           decoration: BoxDecoration(color: _saffronSoft, borderRadius: BorderRadius.circular(14), border: Border.all(color: _saffronLine)),
           child: Row(children: [
             const Icon(Icons.restaurant_rounded, size: 18, color: _saffron),
             const SizedBox(width: 10),
-            Expanded(child: m.Text('Mess (FALCON) – Super Admin: $why', style: const TextStyle(fontSize: 12.5, color: C.ink))),
-            const Icon(Icons.refresh_rounded, size: 18, color: _saffron),
+            Expanded(child: m.Text('Mess (FALCON) – Super Admin: $said', style: const TextStyle(fontSize: 12.5, color: C.ink))),
+            asking
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _saffron))
+                : const Icon(Icons.refresh_rounded, size: 18, color: _saffron),
           ]),
         ),
       ),

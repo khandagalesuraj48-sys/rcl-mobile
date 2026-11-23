@@ -15,6 +15,11 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.170.0 (23-11-2026 – the Super Admin saw nothing of the Mess: "kahich disat nahi yellow pn nahi" → "ho kr"):** while HR is
+asked for the Mess card the Super Admin sees "Mess (FALCON) – Super Admin: asking HR …" at once (never an empty space; an answer
+without words is said too); on HR Home he sees the card – or why there is none – even without a day of his own (he is nobody of the
+Employee Master). Everybody else: as before (`lib/ui/mess_card.dart`, `lib/screens/hr_shell.dart`).
+
 **Version 3.169.0 (23-11-2026 – asked: "emplyee back dated leave pn apply krta yawa ok ata krta yet nahi"; "ajun mala ERP and HR madhe FALCON
 connect disat nahiye"):** the leave form's From may be any day of THIS month (the HR server takes a leave from the 1st of the month while the
 month is open – rcl-hr act_leave of 21-11-2026; the calendar began at today). The Mess card: when it is not there, the Super Admin sees why –

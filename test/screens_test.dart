@@ -11721,7 +11721,80 @@ void main() {
       await net(t);
     }
   });
+
+  testWidgets('(3.170.0) the Super Admin: "asking HR …" at once while HR answers, then the card; HR Home without a day of his own shows it too', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    FalconMess.forget();
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      FalconMess.forget();
+    });
+    // the ERP Home: HR is slow – he is told it is being asked, never an empty space
+    final hold = Completer<void>();
+    final srv = FakeServer()
+      ..hrSite = true
+      ..superAdmin = true
+      ..hrFalcon = CARD
+      ..hrFalconHold = hold;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('home-mess-why')), findsOneWidget);
+    expect(find.textContaining('asking HR'), findsOneWidget);
+    hold.complete();
+    await net(t);
+    await net(t);
+    expect(find.byKey(const Key('home-mess')), findsOneWidget, reason: 'HR answered: the card');
+    expect(find.textContaining('asking HR'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+    await net(t);
+
+    // HR Home: he is nobody of the Employee Master (no day) – the card is still shown to him
+    FalconMess.forget();
+    final srv2 = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..superAdmin = true
+      ..hrNoEmployee = true
+      ..hrFalcon = CARD;
+    final s2 = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv2.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s2.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    s2.superAdmin = true; // (the full app learns it from the ERP's own sign-in – this HR-only sign-in is made the Super Admin's here)
+    await t.pumpWidget(RclApp(session: s2));
+    await net(t);
+    await net(t);
+    expect(find.textContaining('Employee Master'), findsWidgets, reason: 'his day is refused, as before');
+    await t.scrollUntilVisible(find.byKey(const Key('hh-mess')), 250, scrollable: find.byType(Scrollable).first);
+    expect(find.byKey(const Key('hh-mess-super')), findsOneWidget);
+    expect(find.byKey(const Key('hh-mess')), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await net(t);
+
+    // a person who is not the Super Admin and has no day: nothing of the Mess, as before
+    FalconMess.forget();
+    final srv3 = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..hrNoEmployee = true
+      ..hrFalcon = CARD;
+    final s3 = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv3.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s3.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s3));
+    await net(t);
+    await net(t);
+    expect(find.byKey(const Key('hh-mess')), findsNothing);
+    expect(find.byKey(const Key('hh-mess-super')), findsNothing);
+    await t.pumpWidget(const SizedBox());
+    await net(t);
+  });
 }
+
+// (3.170.0) a Mess card as HR gives it (made-up)
+const Map<String, dynamic> CARD = {'site': 'S1', 'now': '2026-10-14T05:00:00Z', 'messes': [{'name': 'VTR Camp Mess', 'lat': 18.5203, 'lng': 73.8567, 'radius_m': 100, 'meal': {'meal': 'lunch', 'from': '12:00', 'to': '14:30', 'now': true}, 'dishes': ['Dal tadka, Rice']}]};
 
 /// The face screens without a camera: what he would have shown.
 class _FakeFace extends FaceKit {
