@@ -25,9 +25,9 @@ jobs:
       SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
       SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
       MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
-      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL }}   # (3.171.0) FALCON inside the app (tool/falcon_defines.sh)
-      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY }}
-      FALCON_SERVER: ${{ vars.FALCON_SERVER }}
+      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL || secrets.FALCON_SUPABASE_URL }}   # (3.171.0) FALCON inside the app (tool/falcon_defines.sh)
+      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY || secrets.FALCON_SUPABASE_KEY }}
+      FALCON_SERVER: ${{ vars.FALCON_SERVER || secrets.FALCON_SERVER }}
       RCL_STORE: play
     steps:
       - uses: actions/checkout@v5
