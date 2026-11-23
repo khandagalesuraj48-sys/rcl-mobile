@@ -109,6 +109,8 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- (23-11-2026) FALCON, the site mess: opened with HR's pass (MainActivity, channel "rcl/falcon") -->
+        <package android:name="si.sketchline.falcon"/>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

@@ -19,6 +19,7 @@ import '../core/session.dart';
 import '../core/update.dart';
 import '../ui/advert.dart';
 import '../ui/attend_strip.dart';
+import '../ui/mess_card.dart';
 import '../ui/brand.dart' show ClientMark, ProductBlock;
 import '../ui/motion.dart';
 import '../ui/mail_strip.dart';
@@ -742,6 +743,9 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                         ],
                       ]),
                     ),
+                    // (23-11-2026, picture N7, his word: "erp sathi pn jas apan attendance sathi keley te ethe pn ek asel") FALCON's Mess under
+                    // the site and Mark IN – only for a person who has HR here and only when FALCON has a mess for his site
+                    const MessStrip(),
                   ]),
                 ),
               ]),

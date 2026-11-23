@@ -15,6 +15,14 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.167.0 (23-11-2026 – FALCON, the site mess, joined to HR; his words: "falcon la erp madhe nahi hr madhe jodaych karan erp main aahe erp
+madhe hr aahe ani falcon hr madhe asel … erp sathi pn jas apan attendance sathi keley te ethe pn ek asel"; pictures N6 and N7 approved: "ho
+banaw"):** the HR Home has a **Mess** card under Leave · Regularization · Documents · Salary slip; the ERP Home a **Mess** strip under the site and
+Mark IN (`lib/ui/mess_card.dart`). Both show the nearest mess of his site (rcl-hr `falconCard` – FALCON's answer), how far he is / "you are at
+the mess" (the attendance's own reading of the phone's place – nothing sent), the meal now and today's dishes; nothing at all when FALCON is not
+connected. A tap: rcl-hr `falconPass` (2 minutes, once) → FALCON's own app (`falcon://app/hr?p=…`, only the package `si.sketchline.falcon` –
+MainActivity channel `rcl/falcon`), or FALCON's web when the app is not on the phone; he is signed in to FALCON through HR (`lib/core/falcon_link.dart`).
+
 **Version 3.166.0 (22-11-2026 – the Portal's "Login with WhatsApp OTP", asked: "otp fill hotana nantr te verification hotana mast ui
 animation … otp takla auto verify sign in button dabayla lagu naye … app and web doni sathi"; the pictures and the video he approved):**
 when the Portal has the WhatsApp code switched on (`options.wa`) the sign-in OPENS on it – "Code on WhatsApp", the mobile number (+91),
