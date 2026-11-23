@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show ComputeCallback;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/screens/falcon_inside.dart';
 import 'package:rcl_mobile/core/lost_photo.dart';
 import 'package:rcl_mobile/core/app_consent.dart';
 import 'package:rcl_mobile/core/api.dart';
@@ -11689,6 +11690,47 @@ void main() {
     expect(srv.falconPasses, 1);
     expect(opened.toString(), startsWith('https://falcon.test/#hrpass=v1.'));
   }, tags: ['golden']);
+
+  // (3.171.0, his word of 23-11-2026: "app nasel tr ji app aahe tyatch open hoyla haw") no FALCON app on the phone: FALCON's own screens
+  // open INSIDE this app (like Mark IN opens HR) – never the web; the phone's back on FALCON's first page returns to Home
+  testWidgets('(3.171.0) ERP Home: the Mess strip opens FALCON inside this app when the FALCON app is not there; back returns', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    Uri? opened;
+    FalconMess.forget();
+    FalconMess.launchHook = (u) async {
+      opened = u;
+      return true;
+    };
+    falconInsideOnForTest = true;
+    falconStartForTest = () async {};
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      FalconMess.launchHook = null;
+      FalconMess.forget();
+      falconInsideOnForTest = null;
+      falconStartForTest = null;
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrFalcon = CARD;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    await t.tap(find.byKey(const Key('home-mess')));
+    await net(t);
+    await net(t);
+    expect(srv.falconPasses, 1);
+    expect(opened, isNull, reason: 'not the web');
+    expect(find.byKey(const Key('falcon-inside')), findsOneWidget, reason: 'FALCON\'s screens, a page of this app');
+    expect(find.descendant(of: find.byKey(const Key('falcon-inside')), matching: find.byType(MaterialApp)), findsOneWidget, reason: 'FALCON\'s own screens and look');
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('falcon-inside')), findsNothing, reason: 'the phone\'s back on FALCON\'s first page: back to Home');
+    expect(find.byKey(const Key('home-mess')), findsOneWidget);
+  });
 
   // (3.169.0, asked 23-11-2026: "ajun mala ERP and HR madhe FALCON connect disat nahiye") no card: the Super Admin sees why; others nothing
   testWidgets('(3.169.0) ERP Home: FALCON not connected – the Super Admin is told why (HR\'s words); a person who is not sees nothing', (t) async {

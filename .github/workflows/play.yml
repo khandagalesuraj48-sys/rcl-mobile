@@ -25,6 +25,9 @@ jobs:
       SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
       SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
       MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL }}   # (3.171.0) FALCON inside the app (tool/falcon_defines.sh)
+      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY }}
+      FALCON_SERVER: ${{ vars.FALCON_SERVER }}
       RCL_STORE: play
     steps:
       - uses: actions/checkout@v5
@@ -78,6 +81,7 @@ jobs:
         run: |
           set -e
           GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"
+          FD=$(bash tool/falcon_defines.sh) || exit 1; GM="$GM $FD"   # (3.171.0) FALCON inside the app
           flutter build appbundle --release --build-name="$VER" --build-number="$BN" --dart-define=PLAY=true $GM
           cp build/app/outputs/bundle/release/app-release.aab "lion-$VER-$BN.aab"
           # never the debug key: the bundle's signer must be the app's own key
