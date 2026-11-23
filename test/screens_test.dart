@@ -9,9 +9,11 @@ import 'package:flutter/foundation.dart' show ComputeCallback;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/core/lost_photo.dart';
 import 'package:rcl_mobile/core/app_consent.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/attend.dart' show AttendKit;
+import 'package:rcl_mobile/core/falcon_link.dart' show FalconMess;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
 import 'package:rcl_mobile/screens/app_lock.dart';
 import 'package:rcl_mobile/screens/attendance.dart' show AttendanceScreen, attendPdfLogo, attendPdfOut, attendSelfieForTest, hrSite, hrModule;
@@ -8630,7 +8632,8 @@ void main() {
 
     // (what was asked of HR – without the quiet look for his team's requests after every reading, and – 20-11-2026 – without the
     // documents gate's one check when the app opens: its own test is "(3.151.0) documents gate")
-    List<String> acts() => [for (final x in srv.hrSent) if (x['action'] != 'teamRegs' && x['action'] != 'teamLeaves' && x['action'] != 'myGate') '${x['fn'] ?? x['action']}'];
+    // ((23-11-2026) the Mess card's own question – falconCard – is not one of the attendance's)
+    List<String> acts() => [for (final x in srv.hrSent) if (x['action'] != 'teamRegs' && x['action'] != 'teamLeaves' && x['action'] != 'myGate' && x['action'] != 'falconCard') '${x['fn'] ?? x['action']}'];
     await openHr();
     expect(srv.hrSent.where((x) => x['action'] == 'myGate').length, 1, reason: 'the documents gate asks once, when the app opens');
     expect(acts(), ['sso', 'myAttend']);
@@ -9477,6 +9480,17 @@ void main() {
     expect([da['kind'], da['replaces']], ['aadhaar', 'd9'], reason: 'in place of the rejected one');
     expect(find.descendant(of: find.byKey(const Key('doc-aadhaar')), matching: find.text('Add')), findsOneWidget, reason: 'attached now: one more can be added');
     expect(find.text('Rejected'), findsNothing);
+    // (3.168.0) the phone closed the app while its camera was open for the PAN card: the photo it kept is offered when Documents opens
+    LostPhoto.put('hrdoc:pan:', 'kept.jpg', Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48))));
+    await t.pageBack();
+    await net(t);
+    await tapKey('me-docs');
+    await net(t);
+    expect(find.text('Your photo is here'), findsOneWidget);
+    await t.tap(find.byKey(const Key('lost-yes')));
+    await net(t);
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'myDocAdd')['kind'], 'pan', reason: 'the kept photo is attached to the paper it was taken for');
+    expect(await LostPhoto.take('hrdoc:'), isNull, reason: 'offered once');
   }, tags: ['golden']);
 
   // (3.136.0, rcl-hr step 16) the phone's proof is asked only when the HR server asks for it – bound to the punch; the seven-day
@@ -10441,7 +10455,10 @@ void main() {
     expect(find.byKey(const Key('att-strip')), findsOneWidget, reason: 'he has HR on this site');
     expect(find.text('Mark IN'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('home-scan')), matching: find.text('Scan')), findsOneWidget, reason: '(3.121.0) the tile stands beside Scan');
-    expect([for (final x in srv.hrSent) '${x['fn'] ?? x['action']}'], ['sso', 'myGate'], reason: '(20-11-2026) only the documents-gate check; the strip itself shows what this phone kept');
+    expect([for (final x in srv.hrSent) '${x['fn'] ?? x['action']}'].where((a) => a != 'falconCard'), ['sso', 'myGate'], reason: '(20-11-2026) only the documents-gate check; the strip itself shows what this phone kept');
+    // (23-11-2026, picture N7) FALCON's Mess strip is asked for once – FALCON not connected here: no strip at all
+    expect(srv.hrSent.where((x) => x['action'] == 'falconCard').length, 1);
+    expect(find.byKey(const Key('home-mess')), findsNothing);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_in.png'));
     // (3.115.0) a tap (or the sun slid across) opens THE ATTENDANCE APP ITSELF over the ERP – the same Home with the dial, the
@@ -11595,6 +11612,83 @@ void main() {
     expect([((srv.moves.last['rows'] as List).single as Map)['key'], ((srv.moves.last['rows'] as List).single as Map)['no']], ['A|2026-10-14|Day', 'MH-25-AJ-2169']);
     expect(find.byKey(const Key('lf-machine')), findsNothing, reason: 'moved: the Change screen is closed');
   });
+
+  /* (23-11-2026, his decision: "falcon la erp madhe nahi hr madhe jodaych … erp sathi pn jas apan attendance sathi keley te ethe pn ek
+   * asel"; pictures N6 and N7 approved: "ho banaw") FALCON's Mess on the HR Home and on the ERP Home; a tap opens FALCON with HR's pass. */
+  testWidgets('(23-11-2026, picture N6) HR Home: the Mess card – the nearest mess, "you are at the mess", the meal now; a tap opens FALCON with HR\'s pass', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    Uri? opened;
+    FalconMess.forget();
+    FalconMess.launchHook = (u) async {
+      opened = u;
+      return true;
+    };
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      FalconMess.launchHook = null;
+      FalconMess.forget();
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..hrShift = {'name': 'General', 'start': '08:30', 'end': '17:30'}
+      ..hrFalcon = {'site': 'S1', 'now': '2026-10-14T05:00:00Z', 'messes': [{'name': 'VTR Camp Mess', 'lat': 18.5203, 'lng': 73.8567, 'radius_m': 100, 'meal': {'meal': 'lunch', 'from': '12:00', 'to': '14:30', 'order_by': '11:30', 'now': true, 'parcel_open': false}, 'dishes': ['Dal tadka', 'Rice']}]};
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    await t.scrollUntilVisible(find.byKey(const Key('hh-mess')), 250, scrollable: find.byType(Scrollable).first);
+    await settle(t, 300);
+    expect(t.widget<Text>(find.byKey(const Key('hh-mess-place'))).data, 'VTR Camp Mess · 33 m · you are at the mess');
+    expect(t.widget<Text>(find.byKey(const Key('hh-mess-meal'))).data, 'Lunch now · till 14:30');
+    expect(find.text('Dal tadka, Rice'), findsOneWidget);
+    await clearOfBar(t, find.byKey(const Key('hh-mess')));
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_mess_card.png'));
+    await t.tap(find.byKey(const Key('hh-mess')));
+    await net(t);
+    expect(srv.falconPasses, 1);
+    expect(opened.toString(), startsWith('https://falcon.test/#hrpass=v1.'), reason: 'FALCON\'s app is not on the test phone: its web, with the pass');
+  }, tags: ['golden']);
+
+  testWidgets('(23-11-2026, picture N7) ERP Home: the Mess strip under the site and Mark IN – the meal now, how far; a tap opens FALCON', (t) async {
+    phone(t);
+    final kit = FakeAttendKit();
+    AttendKit.kit = kit;
+    Uri? opened;
+    FalconMess.forget();
+    FalconMess.launchHook = (u) async {
+      opened = u;
+      return true;
+    };
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      FalconMess.launchHook = null;
+      FalconMess.forget();
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrFalcon = {'site': 'S1', 'now': '2026-10-14T05:00:00Z', 'messes': [{'name': 'VTR Camp Mess', 'lat': 18.5203, 'lng': 73.8567, 'radius_m': 100, 'meal': {'meal': 'lunch', 'from': '12:00', 'to': '14:30', 'order_by': '11:30', 'now': true, 'parcel_open': false}, 'dishes': ['Dal tadka', 'Rice']}]};
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    expect(find.byKey(const Key('att-strip')), findsOneWidget);
+    expect(find.byKey(const Key('home-mess')), findsOneWidget, reason: 'under the site and Mark IN');
+    expect(t.widget<Text>(find.byKey(const Key('home-mess-title'))).data, 'Mess · lunch now');
+    expect(t.widget<Text>(find.byKey(const Key('home-mess-sub'))).data, 'VTR Camp Mess · 33 m · till 14:30');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_mess_strip.png'));
+    await t.tap(find.byKey(const Key('home-mess')));
+    await net(t);
+    expect(srv.falconPasses, 1);
+    expect(opened.toString(), startsWith('https://falcon.test/#hrpass=v1.'));
+  }, tags: ['golden']);
 }
 
 /// The face screens without a camera: what he would have shown.
