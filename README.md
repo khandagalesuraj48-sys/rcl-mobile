@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**Version 3.169.0 (23-11-2026 – asked: "emplyee back dated leave pn apply krta yawa ok ata krta yet nahi"; "ajun mala ERP and HR madhe FALCON
+connect disat nahiye"):** the leave form's From may be any day of THIS month (the HR server takes a leave from the 1st of the month while the
+month is open – rcl-hr act_leave of 21-11-2026; the calendar began at today). The Mess card: when it is not there, the Super Admin sees why –
+HR's own words ("FALCON is not connected to HR yet …", "FALCON did not answer") or "no mess of VTR is in FALCON yet" (`FalconMess.why`,
+`lib/ui/mess_card.dart`); nobody else sees anything, as before.
+
 **Version 3.168.0 (23-11-2026 – asked: "urgent fix kr employee document upload krtana app madhun photo te add krtana app restart hote"):**
 a photo of the camera or the gallery (papers, a leave's note, an entry's attachments – every `pickAttFiles`) is made smaller BY THE PHONE
 (`maxWidth` / `maxHeight` 2000, JPEG 90 – `lib/screens/attach_box.dart`) before the app reads it: a 12–50 MP photo read whole took hundreds
