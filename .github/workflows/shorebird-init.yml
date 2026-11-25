@@ -30,6 +30,10 @@ jobs:
           cache: true
       - name: Packages (writes android/local.properties for Gradle)
         run: flutter pub get
+      # (first run, 25-11-2026: "Could not find android/gradlew") gradlew is not kept in the repository (android/.gitignore) – Flutter
+      # writes it with the other Gradle files; nothing is built here.
+      - name: Gradle files only (no build)
+        run: flutter build apk --config-only
       - uses: shorebirdtech/setup-shorebird@v1
         with:
           cache: true
