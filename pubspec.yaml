@@ -49,10 +49,11 @@ dependencies:
   # (3.171.0, his word of 23-11-2026: "falcon seprate pn chalayla pahije … ani erp hr madeh pn") FALCON's own screens inside this app
   # when the FALCON app is not on the phone – the FALCON app's code itself (one code for both; lib/embed.dart there), pinned
   # (3.171.0 patch 1, 25-11-2026) FALCON's place comes fast too (its lib/core/geo.dart) – Dart only, no picture or plugin changed
+  # (3.171.0 patch 2, 25-11-2026) its place exact, Parcel only outside the mess, Google's map, the warm start (its lib/embed.dart) – Dart only
   falcon:
     git:
       url: https://github.com/khandagalesuraj48-sys/FALCONAPK.git
-      ref: f9ea6dcb6a75e81c5e0909818f79bf13b0ff152f
+      ref: 473918dc771201ae23f1701232e46ce375f1ece3
 
 dev_dependencies:
   flutter_test:

@@ -56,11 +56,32 @@ class FalconMess {
     _at = 0;
   }
 
+  /// HR's pass for FALCON (2 minutes, once) – null when HR gives none. (3.171.0 patch 2) also for FALCON's warm start.
+  static Future<({String pass, String web})?> pass(HrAsk ask) async {
+    try {
+      final r = await ask({'action': 'falconPass'});
+      final p = '${r['pass'] ?? ''}';
+      return passShape.hasMatch(p) ? (pass: p, web: '${r['web'] ?? ''}') : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static final passShape = RegExp(r'^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$');
+
   /// Opens FALCON signed in as him. Returns '' when opened, else the words of the problem (shown by the caller).
   /// (3.171.0, his word of 23-11-2026: "app nasel tr ji app aahe tyatch open hoyla haw … falcon seprate pn chalayla pahije ani erp hr
-  /// madeh pn") [inside]: FALCON's own screens inside THIS app when the FALCON app is not on the phone (true = opened); the web
-  /// stays only for a phone where that cannot be (an app built without FALCON's settings, an iPhone).
-  static Future<String> open(HrAsk ask, {Future<bool> Function(Uri u)? launch, Future<bool> Function(String pass)? inside}) async {
+  /// madeh pn") [inside]: FALCON's own screens inside THIS app (true = opened); the web stays only for a phone where that cannot be.
+  /// (3.171.0 patch 2, his choice of 25-11-2026: "always inside the ERP / HR app") FALCON opens INSIDE this app first – also when the
+  /// FALCON app is on the phone (no opening screen of another app, one back returns here); the FALCON app only where FALCON cannot run
+  /// inside (an iPhone, a build without FALCON's settings), else the web. [ready]: FALCON was made ready behind this app (its warm
+  /// start) – it opens straight on its home, without asking HR for a pass.
+  static Future<String> open(HrAsk ask, {Future<bool> Function(Uri u)? launch, Future<bool> Function(String pass)? inside, bool Function()? ready}) async {
+    if (inside != null && ready != null && ready()) {
+      try {
+        if (await inside('')) return '';
+      } catch (_) {/* opened with a pass below */}
+    }
     Map<String, dynamic> r;
     try {
       r = await ask({'action': 'falconPass'});
@@ -69,15 +90,15 @@ class FalconMess {
       return m.isEmpty ? 'FALCON could not be opened – try again.' : m;
     }
     final pass = '${r['pass'] ?? ''}', web = '${r['web'] ?? ''}';
-    if (!RegExp(r'^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$').hasMatch(pass)) return 'FALCON could not be opened – try again.';
-    try {
-      if (await _ch.invokeMethod<bool>('open', {'pass': pass}) == true) return '';
-    } catch (_) {/* not Android / not there: inside this app, else the web */}
+    if (!passShape.hasMatch(pass)) return 'FALCON could not be opened – try again.';
     if (inside != null) {
       try {
         if (await inside(pass)) return '';
-      } catch (_) {/* FALCON could not start here: the web */}
+      } catch (_) {/* FALCON could not start here: its app, else the web */}
     }
+    try {
+      if (await _ch.invokeMethod<bool>('open', {'pass': pass}) == true) return '';
+    } catch (_) {/* not Android / not there: the web */}
     if (!RegExp(r'^https://[A-Za-z0-9.-]+(:\d+)?$').hasMatch(web)) return 'FALCON is not on this phone.';
     final u = Uri.parse('$web/#hrpass=${Uri.encodeComponent(pass)}');
     final ok = await (launch ?? launchHook ?? (x) => launchUrl(x, mode: LaunchMode.externalApplication))(u);
@@ -105,9 +126,14 @@ int metresBetween(double aLat, double aLng, double bLat, double bLng) {
 
 String distText(int m) => m < 1000 ? '$m m' : '${(m / 1000).toStringAsFixed(m < 10000 ? 1 : 0)} km';
 
+/// (3.171.0 patch 2, his word of 25-11-2026: "kal pahile mess pasun 20 km lamb hoto but app sangat hote 5 km … ekdm perfect") a reading
+/// is exact within this many metres – a rough one (the mobile towers, no GPS yet) can be kilometres off: it gives no distance (as FALCON)
+const messExact = 100.0;
+
 MessNow? messNow(Map<String, dynamic>? card, {double? lat, double? lng, double acc = 0}) {
   final list = (card?['messes'] as List? ?? const []).whereType<Map>().toList();
   if (list.isEmpty) return null;
+  if (!(acc >= 0 && acc <= messExact)) lat = lng = null; // not exact: the mess without a distance
   double? n(Object? v) => v is num ? v.toDouble() : null;
   Map best = list.first;
   int? bestM;

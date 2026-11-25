@@ -12,16 +12,53 @@ import 'package:falcon/embed.dart' as falcon;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../core/session.dart';
+
 /// (tests) instead of the phone's platform
 bool? falconInsideOnForTest;
 
 /// (tests) instead of starting FALCON's database, settings and clock (its clock keeps a timer)
 Future<void> Function()? falconStartForTest;
 
+/// (tests) instead of FALCON's warm start / "made ready for him"
+Future<bool> Function(String pass, String who)? falconWarmForTest;
+bool Function(String who)? falconReadyForTest;
+
+String _warming = '';
+bool _forgetOn = false;
+
+/// (3.171.0 patch 2, his word of 25-11-2026: "hr aso erp aso app open zalel zale tyache maghe auto falcon pn on hoil jene krun user jewa
+/// hr or erp madhun mess order kade jato tya weli ek screen yete falcon opening chi ti yenar nahi") FALCON made ready BEHIND this app as
+/// it opens (the Mess card is there): HR's pass → FALCON started, signed in as him, his home read. Once a person a run of the app;
+/// nothing is shown; it ends with his sign-out here. [pass]: HR's pass (null – none).
+Future<void> warmFalconInside(String who, Future<String?> Function() pass) async {
+  if (!falconInsideOn || who.isEmpty || _warming == who) return;
+  _warming = who;
+  if (!_forgetOn) {
+    _forgetOn = true;
+    Session.signOutAlso.add(forgetFalconInside);
+  }
+  try {
+    final p = await pass();
+    if (p == null || !await (falconWarmForTest ?? falcon.falconWarm)(p, who)) _warming = '';
+  } catch (_) {
+    _warming = '';
+  }
+}
+
+/// FALCON is ready for him (made ready behind this app): Mess opens straight on its home.
+bool falconReadyFor(String who) => falconInsideOn && (falconReadyForTest ?? falcon.falconWarmFor)(who);
+
+/// He signed out here: FALCON's sign-in on this phone ends too.
+Future<void> forgetFalconInside() async {
+  _warming = '';
+  if (falconInsideOn && falconWarmForTest == null) await falcon.falconForget();
+}
+
 /// May FALCON open inside this app here?
 bool get falconInsideOn => falconInsideOnForTest ?? (!kIsWeb && Platform.isAndroid && falcon.falconReady);
 
-/// Opens FALCON's screens as a page of this app with HR's pass. false = it cannot here (the caller opens the web).
+/// Opens FALCON's screens as a page of this app with HR's pass ('' – made ready: on its home). false = it cannot here.
 Future<bool> openFalconInside(BuildContext context, String pass) async {
   if (!falconInsideOn) return false;
   await (falconStartForTest ?? falcon.falconStart)();

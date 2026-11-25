@@ -15,6 +15,16 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**3.171.0 patch 2 (25-11-2026 – his words: "hr aso erp aso app open zalel zale tyache maghe auto falcon pn on hoil … falcon opening chi
+screen ti yenar nahi"; "final back erp hr madhe jail app band nahi"; "kal pahile mess pasun 20 km lamb hoto but app sangat hote 5 km … ekdm
+perfect"; and his choice: FALCON always inside the ERP / HR app):** the Mess opens FALCON **inside this app first** – also when the FALCON
+app is on the phone (its app only where FALCON cannot run inside); FALCON is **made ready behind this app** when the Mess card is there
+(`warmFalconInside`: HR's pass → FALCON started, signed in, his home read – once a person a run, ended with the sign-out:
+`Session.signOutAlso`), so a tap opens straight on FALCON's home, without a pass and without FALCON's opening screen; one back returns here.
+The Mess card's distance only from an **exact** reading (± 100 m – `messExact`; a rough one from the towers can be kilometres off).
+FALCON's pin moves to its "place exact" commit (the place in about a second, Parcel only outside the mess, no HR cards, "‹ HR" back here
+instead of closing the app, Google's map everywhere). Dart only – the version stays 3.171.0; a Shorebird patch of 3.171.0 (251).
+
 **3.171.0 patch 1 (25-11-2026 – his words: "erp aso attendace app aso ki hr app aso … location fetching la time ghetey location on asla tri
 sudha he khup fast hoyla haw … ha app la user updet kryar nhi"):** the phone's place comes fast – `lib/core/gps_fast.dart`, for attendance
 (`AttendKit.where`) and the ERP's photos (`whereNow`): the phone's own reading of the last 15 s is taken at once; else the first new reading,

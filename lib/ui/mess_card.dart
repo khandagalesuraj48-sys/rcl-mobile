@@ -45,6 +45,8 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
     final s = SessionScope.read(context);
     if (mounted) setState(() => asking = true);
     final c = await FalconMess.card(s, (b) => hrAsk(s, b), fresh: fresh);
+    // (3.171.0 patch 2) the Mess is there: FALCON is made ready behind the app, so it opens at once (no screen of its own)
+    if (c != null) unawaited(warmFalconInside(s.email, () async => (await FalconMess.pass((b) => hrAsk(s, b)))?.pass));
     if (mounted) {
       setState(() {
         asking = false;
@@ -91,8 +93,8 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
     if (opening) return;
     setState(() => opening = true);
     final s = SessionScope.read(context);
-    // (3.171.0) the FALCON app when it is on the phone; else FALCON inside this app (screens/falcon_inside.dart); else its web
-    final err = await FalconMess.open((b) => hrAsk(s, b), inside: (pass) => openFalconInside(context, pass));
+    // (3.171.0 patch 2, his choice of 25-11-2026) FALCON inside this app (made ready behind it: straight on its home); else its app; else its web
+    final err = await FalconMess.open((b) => hrAsk(s, b), inside: (pass) => openFalconInside(context, pass), ready: () => falconReadyFor(s.email));
     if (!mounted) return;
     setState(() => opening = false);
     if (err.isNotEmpty) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: m.Text(err)));
