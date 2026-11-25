@@ -1,0 +1,119 @@
+# PATCH – a fix of the app's Dart code sent to the phones WITHOUT a new app file (25-11-2026, his decision: Shorebird – "new updet
+# server madhun push kru shakel"). Run by hand (Actions → patch → Run workflow), on main for the stable app, on beta for the beta app.
+#   – it builds the app from THIS branch and compares it with the release it patches (Shorebird): only Dart code may differ. A change
+#     of native code, a plugin, a permission, the manifest / Info.plist or an asset is REFUSED – that needs a new app file (release.yml);
+#   – signed with the patch-signing key (the private bucket app-keys, tool/shorebird_keys.sh) – a phone takes no other patch;
+#   – a phone downloads it in the background at an opening, and it is in force at the next opening;
+#   – a patch that went wrong: Shorebird console → the app → the release → the patch → Roll back (the phones go back by themselves).
+# Box "Send the patch" unticked: --dry-run – built and checked, nothing goes out.
+# Needs the release's GitHub secrets + SHOREBIRD_TOKEN. Never in a file, never in chat.
+name: patch
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'The release to patch – <version>+<build>, e.g. 3.171.0+251 (empty: the newest stable release on main, the newest beta on beta)'
+        required: false
+        default: ''
+      publish:
+        description: 'Send the patch (untick: only build and check – nothing goes out)'
+        type: boolean
+        required: false
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  patch:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
+      SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}   # the same settings as the release – the build must be the same but for the Dart code
+      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL || secrets.FALCON_SUPABASE_URL }}
+      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY || secrets.FALCON_SUPABASE_KEY }}
+      FALCON_SERVER: ${{ vars.FALCON_SERVER || secrets.FALCON_SERVER }}
+    steps:
+      - name: The settings
+        run: |
+          if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "::error::Add PORTAL_SUPABASE_URL and PORTAL_SUPABASE_KEY in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          if [ -z "$SHOREBIRD_TOKEN" ]; then echo "::error::Add SHOREBIRD_TOKEN (Shorebird → Settings → Service accounts → lion-github-build → API keys)."; exit 1; fi
+          SB_URL="${SB_URL%/}"; echo "SB_URL=$SB_URL" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v5
+      - name: Which release
+        env:
+          REL_IN: ${{ github.event.inputs.release }}
+        run: |
+          set -e
+          REL="$REL_IN"
+          if [ -z "$REL" ]; then
+            if [ "$GITHUB_REF_NAME" = "beta" ]; then
+              TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" --jq '[.[] | select(.prerelease) | select([.assets[].name | endswith(".apk")] | any)][0].tag_name // ""')
+            else
+              TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+            fi
+            REL=$(printf '%s' "$TAG" | sed -n 's/^v\([0-9][0-9.]*\)-\([0-9][0-9]*\)$/\1+\2/p')
+          fi
+          [[ "$REL" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$ ]] || { echo "::error::\"$REL\" is not a release – give it as <version>+<build>, e.g. 3.171.0+251."; exit 1; }
+          echo "REL=$REL" >> "$GITHUB_ENV"; echo "VER=${REL%%+*}" >> "$GITHUB_ENV"; echo "BN=${REL##*+}" >> "$GITHUB_ENV"
+          echo "::notice::Patching the release $REL with the code of $GITHUB_REF_NAME ($GITHUB_SHA)"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Firebase settings (from the secret GOOGLE_SERVICES_JSON)
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GSJ" ]; then echo "::error::Add GOOGLE_SERVICES_JSON (Firebase → Project settings → the Android app → google-services.json) in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          printf '%s' "$GSJ" > android/app/google-services.json
+          python3 - <<'PY'
+          import json, sys
+          j = json.load(open('android/app/google-services.json'))
+          names = [c.get('client_info', {}).get('android_client_info', {}).get('package_name', '') for c in j.get('client', [])]
+          if 'in.rachana.rcl.rcl_mobile' not in names:
+              print('::error::GOOGLE_SERVICES_JSON is not the file of the app in.rachana.rcl.rcl_mobile (it has: %s)' % names); sys.exit(1)
+          print('::notice::Firebase: project %s' % j.get('project_info', {}).get('project_id', '?'))
+          PY
+      - run: flutter pub get
+      - name: Tests (a patch only when they pass)
+        run: flutter test --exclude-tags golden
+      - name: Room for the Android build (swap, free disk)
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules/@angular "$AGENT_TOOLSDIRECTORY/CodeQL" || true
+          sudo fallocate -l 8G /rcl-swap && sudo chmod 600 /rcl-swap && sudo mkswap /rcl-swap >/dev/null && sudo swapon /rcl-swap || true
+          free -m; df -h / | tail -1
+      - uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+      - name: The patch-signing key (both halves – only in this run)
+        run: bash tool/shorebird_keys.sh "$RUNNER_TEMP/sbkeys" private
+      - name: The patch (Shorebird – only the Dart code may differ from the release)
+        run: |
+          GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"
+          FD=$(bash tool/falcon_defines.sh) || exit 1; GM="$GM $FD"
+          DRY=""; [ "${{ inputs.publish }}" = "true" ] || DRY="--dry-run"
+          shorebird patch android --release-version="$REL" --no-confirm $DRY --build-name="$VER" --build-number="$BN" --split-debug-info=build/symbols \
+            --public-key-path="$RUNNER_TEMP/sbkeys/patch-public.pem" --private-key-path="$RUNNER_TEMP/sbkeys/patch-private.pem" $GM
+          if [ -z "$DRY" ]; then echo "::notice::Patch sent to the release $REL – the phones take it at an opening and use it from the next one."; else echo "::notice::Checked only (not sent): the patch for $REL can be made."; fi
+      - name: The key leaves the machine
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/sbkeys"
+      # the symbol files of this patch, 90 days (the lines of a fault the patched app reports can be read with them)
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: patch-symbols
+          path: build/symbols
+          if-no-files-found: ignore
+          retention-days: 90

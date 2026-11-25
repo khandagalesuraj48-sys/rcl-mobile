@@ -2071,7 +2071,16 @@ the phones as a small **patch**, downloaded in the background at an opening and 
 * **Release not published** (the box unticked): `--dry-run` – built and checked, nothing sent to Shorebird.
 * **What still needs a new app file (store / APK):** native code (Kotlin, Swift), a new plugin with native parts, a new permission,
   `AndroidManifest.xml` / `Info.plist`, pictures and other assets, a new Flutter version.
-* Not yet: the patch run (`shorebird patch`), Play (`play.yml` – after the review in progress is published) and iPhone.
+* **A patch (`patch.yml`, Actions → patch → Run workflow):** on `main` it patches the newest stable release (on `beta` the newest
+  beta), or the release typed as `<version>+<build>` (e.g. `3.171.0+251`). It builds the app from the branch with the release's own
+  settings (build name / number, Google Maps, FALCON, split debug info), runs the tests, and Shorebird compares it with the release:
+  only Dart code may differ – a native / plugin / permission / manifest / asset change is refused (it needs `release.yml`). Signed
+  with the private patch key (read only in that run, removed after it). Box "Send the patch" unticked: `--dry-run`. A phone downloads
+  the patch in the background at an opening and uses it from the next opening. **Beta first:** patch the beta release (run on
+  `beta`), check it on a tester's phone, then the stable one (run on `main`).
+* **A patch that went wrong:** Shorebird console → Sketchline Lion → the release → the patch → **Roll back** – the phones go back to
+  the release by themselves. A phone without internet keeps the version it has; Shorebird being down never stops the app.
+* Not yet: Play (`play.yml` – after the review in progress is published) and iPhone.
 
 ## Release (signed, a GitHub Release)
 `.github/workflows/release.yml` is run by hand on `main` (Actions → release → Run workflow), after the owner says yes.
