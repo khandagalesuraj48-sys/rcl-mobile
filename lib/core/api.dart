@@ -177,13 +177,13 @@ class Api {
     throw ApiError('$who did not answer properly (${r.statusCode}).', status: r.statusCode);
   }
 
-  /// POST <portal>/api/auth { action, … }
+  /// POST <portal>/api/auth { action, … }  (25-11-2026) an error carries the rest of the answer in [ApiError.data] – a code's `left` / `wait`.
   Future<Map<String, dynamic>> auth(Map<String, dynamic> body) async {
     final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/auth'), headers: _portalHeaders, body: jsonEncode(body)));
     await _keepCookie(r);
     final j = _json(r, 'The Portal');
     if (r.statusCode >= 400 || j['error'] != null) {
-      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? (r.statusCode == 401 ? 'signin' : '')).toString());
+      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? (r.statusCode == 401 ? 'signin' : '')).toString(), data: j);
     }
     return j;
   }

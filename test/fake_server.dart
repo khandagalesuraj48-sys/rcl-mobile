@@ -24,6 +24,13 @@ class FakeServer {
   final waTo = <String>[];
   String otpMail = 'sujit.own@rcl.test', otpCode = '482913', verifyTo = '';
   final codesTo = <String>[];
+  /* (25-11-2026, the Portal's rule) for one person (what was typed): 6 codes, then 15 minutes blocked; 6 wrong codes, then 15
+   * minutes blocked; every answer says how many are left. byCode: a sign-in made with a code (his own password without the given
+   * one). resetTo: "Forgot password?" codes asked (reset: true). */
+  final codeAsks = <String, int>{}, codeWrong = <String, int>{};
+  final blocked = <String>{};
+  bool byCode = false;
+  final resetTo = <String>[];
   Map<String, dynamic>? mailInfo;
   int alerts = 0;
   bool tester = false; // (02-11-2026) the Portal's "me": a tester (the beta channel)
@@ -1662,16 +1669,36 @@ class FakeServer {
     if (path.endsWith('/portal/api/auth')) {
       final b = jsonDecode(r.body) as Map;
       calls.add('portal:${b['action']}');
+      // (25-11-2026) the Portal's code limits for one person
+      http.Response? ask(String who) {
+        if (blocked.contains(who)) return _j({'error': 'Too many tries – wait 15 minutes, then ask for a new code.', 'code': 'locked', 'wait': 900}, 429);
+        final n = codeAsks[who] = (codeAsks[who] ?? 0) + 1;
+        if (n > 6) {
+          blocked.add(who);
+          return _j({'error': 'Too many tries – wait 15 minutes, then ask for a new code.', 'code': 'locked', 'wait': 900}, 429);
+        }
+        return null;
+      }
+      int left(String who) => 6 - (codeAsks[who] ?? 0);
+      http.Response wrong(String who, [int status = 401]) {
+        final n = codeWrong[who] = (codeWrong[who] ?? 0) + 1;
+        if (n >= 6) {
+          blocked.add(who);
+          return _j({'error': 'Too many tries – wait 15 minutes, then ask for a new code.', 'code': 'locked', 'wait': 900, 'left': 0}, 429);
+        }
+        return _j({'error': 'The code is wrong or has expired. ${6 - n} ${6 - n == 1 ? 'try' : 'tries'} left – after that you wait 15 minutes.', 'code': 'code', 'left': 6 - n}, status);
+      }
       if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused'}, 403);
       if (b['action'] == 'login') {
         if (b['password'] != 'Nashik#Road848!') return _j({'error': 'Email or password is wrong.', 'code': 'wrong'}, 401);
         portalSignedIn = true;
+        byCode = false;
         return _j({'user': {'email': b['email'], 'name': 'Sujit Mule', 'super': superAdmin}, 'mustChange': mustChange}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});
       }
       if (b['action'] == 'me') {
         if (!portalSignedIn || r.headers['Cookie'] != 'rcl_portal=abc123') return _j({'signedIn': false});
         // (as the Portal: still on a given password – no module until his own is set)
-        if (mustChange) return _j({'signedIn': true, 'mustChange': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
+        if (mustChange) return _j({'signedIn': true, 'mustChange': true, if (byCode) 'byCode': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, 'items': []});
         if (hrOnlyUser) {
           return _j({'signedIn': true, 'start': '', 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule'}, if (mailInfo != null) 'email': mailInfo, if (consentNeed.isNotEmpty) 'consent': {'need': consentNeed}, if (waBot) 'waBot': true, 'items': [
             {'site': 'S1', 'siteName': 'VTR Site – NH 848', 'company': 'RCL', 'module': hrOnlyOffice ? 'hr' : 'hrme', 'moduleName': hrOnlyOffice ? 'RCL HR' : 'My HR', 'url': 'https://erp.test/hr'},
@@ -1702,7 +1729,7 @@ class FakeServer {
       }
       if (b['action'] == 'changePassword') {
         if (!portalSignedIn) return _j({'error': 'Please sign in.', 'code': 'signin'}, 401);
-        if (b['old'] != 'Nashik#Road848!') return _j({'error': 'Current password is wrong.', 'code': 'oldpw'}, 400);
+        if (b['old'] != 'Nashik#Road848!' && !byCode) return _j({'error': 'Current password is wrong.', 'code': 'oldpw'}, 400);      // (a code sign-in: not asked)
         final pw = (b['password'] ?? '').toString();
         if (pw.length < 8 || !RegExp(r'[A-Za-z]').hasMatch(pw) || !RegExp(r'[0-9]').hasMatch(pw)) {
           return _j({'error': 'The password must have at least 8 characters, with letters and numbers.', 'code': 'policy'}, 400);
@@ -1734,35 +1761,63 @@ class FakeServer {
         if (!waOn) return _j({'error': 'Sign-in with a WhatsApp code is not switched on.', 'code': 'off'}, 403);
         final mob = '${b['mobile'] ?? ''}';
         if (!RegExp(r'^[6-9]\d{9}$').hasMatch(mob)) return _j({'error': 'Enter your 10-digit mobile number.', 'code': 'mobile'}, 400);
+        final no = ask('m:$mob');
+        if (no != null) return no;
         if (mob == waNumber) waTo.add(mob);      // (a code only to a number on an active user – the answer is the same)
-        return _j({'ok': true, 'wait': 60, 'minutes': 10});
+        return _j({'ok': true, 'wait': 60, 'minutes': 10, 'left': left('m:$mob')});
       }
       if (b['action'] == 'waLogin') {
         if (!waOn) return _j({'error': 'Sign-in with a WhatsApp code is not switched on.', 'code': 'off'}, 403);
-        if (b['mobile'] != waNumber || b['code'] != otpCode) return _j({'error': 'The code is wrong or has expired.', 'code': 'code'}, 401);
+        if (blocked.contains('m:${b['mobile']}')) return _j({'error': 'Too many tries – wait 15 minutes, then ask for a new code.', 'code': 'locked', 'wait': 900}, 429);
+        if (b['mobile'] != waNumber || b['code'] != otpCode) return wrong('m:${b['mobile']}');
+        codeWrong.remove('m:${b['mobile']}');
         portalSignedIn = true;
-        return _j({'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': false}, 'mustChange': false}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});
+        byCode = true;
+        return _j({'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': false}, 'mustChange': mustChange, 'byCode': true}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});
       }
       if (b['action'] == 'otpSend') {
         if (!otpOn) return _j({'error': 'Sign-in with a code is not switched on.', 'code': 'off'}, 403);
+        final no = ask('e:${b['email']}');
+        if (no != null) return no;
         if (b['email'] == otpMail) codesTo.add('${b['email']}');      // (a code only to a verified user's e-mail – the answer is the same)
-        return _j({'ok': true, 'wait': 60, 'minutes': 10});
+        if (b['reset'] == true) resetTo.add('${b['email']}');
+        return _j({'ok': true, 'wait': 60, 'minutes': 10, 'left': left('e:${b['email']}')});
       }
       if (b['action'] == 'otpLogin') {
-        if (b['email'] != otpMail || b['code'] != otpCode) return _j({'error': 'The code is wrong or has expired.', 'code': 'code'}, 401);
+        if (blocked.contains('e:${b['email']}')) return _j({'error': 'Too many tries – wait 15 minutes, then ask for a new code.', 'code': 'locked', 'wait': 900}, 429);
+        if (b['email'] != otpMail || b['code'] != otpCode) return wrong('e:${b['email']}');
+        codeWrong.remove('e:${b['email']}');
         portalSignedIn = true;
-        return _j({'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': false}, 'mustChange': false}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});
+        byCode = true;
+        return _j({'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': false}, 'mustChange': mustChange, 'byCode': true}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});
+      }
+      // (25-11-2026) "Forgot password?": the code and the new password – the password rules first, then the code
+      if (b['action'] == 'otpReset') {
+        final pw = (b['password'] ?? '').toString();
+        if (pw.length < 8 || !RegExp(r'[A-Za-z]').hasMatch(pw) || !RegExp(r'[0-9]').hasMatch(pw)) {
+          return _j({'error': 'The password must have at least 8 characters, with letters and numbers.', 'code': 'policy'}, 400);
+        }
+        if (blocked.contains('e:${b['email']}')) return _j({'error': 'Too many tries – wait 15 minutes, then ask for a new code.', 'code': 'locked', 'wait': 900}, 429);
+        if (b['email'] != otpMail || b['code'] != otpCode) return wrong('e:${b['email']}');
+        codeWrong.remove('e:${b['email']}');
+        newPassword = pw;
+        mustChange = false;
+        portalSignedIn = true;
+        byCode = false;
+        return _j({'ok': true, 'user': {'email': 'sujit@rcl.test', 'name': 'Sujit Mule', 'super': false}, 'mustChange': false}, 200, {'set-cookie': 'rcl_portal=abc123; Path=/; HttpOnly; Secure; SameSite=Lax'});
       }
       if (b['action'] == 'verifySend') {
         if (!portalSignedIn) return _j({'error': 'Please sign in.', 'code': 'signin'}, 401);
         final to = '${b['email'] ?? ''}'.trim().toLowerCase();
         if (to == 'taken@rcl.test') return _j({'error': 'This e-mail is already another user\'s. Type your own.', 'code': 'taken'}, 409);
+        final no = ask('v:sujit@rcl.test');
+        if (no != null) return no;
         verifyTo = to;
         codesTo.add(to);
-        return _j({'ok': true, 'email': to, 'wait': 60, 'minutes': 10});
+        return _j({'ok': true, 'email': to, 'wait': 60, 'minutes': 10, 'left': left('v:sujit@rcl.test')});
       }
       if (b['action'] == 'verifyCheck') {
-        if (b['code'] != otpCode || verifyTo.isEmpty) return _j({'error': 'The code is wrong or has expired.', 'code': 'code'}, 400);
+        if (b['code'] != otpCode || verifyTo.isEmpty) return wrong('v:sujit@rcl.test', 400);
         mailInfo = {'verified': true, 'canVerify': true, 'remind': true, 'login': verifyTo};
         otpMail = verifyTo;
         return _j({'ok': true, 'verified': true, 'login': verifyTo});

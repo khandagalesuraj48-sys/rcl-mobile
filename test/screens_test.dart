@@ -10108,6 +10108,111 @@ void main() {
     expect(srv.calls, isNot(contains('portal:login')));
   }, tags: ['golden']);
 
+  /* (25-11-2026, his words: "login with otp krtan given password nko aahe new set kru shakel … forgot kru shkel email la otp yeil
+   * forgat krun new set kru shakel … resend 6 time tya nantr 15 minute cha block … remaining kiti sangitle jail"; his answers: 6 codes,
+   * 6 wrong codes, "Forgot password" for everybody but the Super Admin) the Portal counts; the app says what it answered. */
+  testWidgets('(25-11-2026) "Forgot password?" with the e-mail code: the e-mail, "Send code" (how many more codes), a wrong code says the tries left, the right code with the new password twice – in', (t) async {
+    phone(t);
+    final srv = FakeServer()..otpOn = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.enterText(find.byType(TextField).at(0), 'sujit.own@rcl.test');
+    await tapK(t, 'login-forgot');
+    await settle(t, 600);
+    expect(find.byKey(const Key('login-reset-title')), findsOneWidget, reason: 'the forgot card – not the help of before');
+    expect(find.byKey(const Key('forgot-ok')), findsNothing);
+    expect(t.widget<TextField>(find.byKey(const Key('login-reset-mail'))).controller!.text, 'sujit.own@rcl.test', reason: 'the e-mail typed is carried over');
+    expect(find.byKey(const Key('login-reset-code')), findsNothing, reason: 'first "Send code"');
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(srv.resetTo, ['sujit.own@rcl.test'], reason: 'the code of "Forgot password" (its e-mail says so)');
+    expect(find.byKey(const Key('login-reset-code')), findsOneWidget);
+    expect(find.text('5 more codes can be asked for, then you wait 15 minutes.'), findsOneWidget);
+    expect(t.widget<TextButton>(find.byKey(const Key('login-reset-again'))).onPressed, isNull, reason: 'the 60 seconds between two codes');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1h_forgot_password.png'));
+    // the two new passwords not the same: said here, nothing sent
+    await t.enterText(find.byKey(const Key('login-reset-code')), '482913');
+    await t.enterText(find.byType(TextField).at(2), 'Mule#2026x');
+    await t.enterText(find.byType(TextField).at(3), 'Mule#2026y');
+    await seen(t, find.byKey(const Key('login-go')));
+    await tapK(t, 'login-go');
+    await settle(t, 600);
+    expect(find.textContaining('The two new passwords are not the same.'), findsOneWidget);
+    expect(srv.calls, isNot(contains('portal:otpReset')));
+    // a wrong code: the tries left; the code box empties
+    await t.enterText(find.byKey(const Key('login-reset-code')), '111111');
+    await t.enterText(find.byType(TextField).at(3), 'Mule#2026x');
+    await seen(t, find.byKey(const Key('login-go')));
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(find.text('The code is wrong or has expired. 5 tries left – after that you wait 15 minutes.'), findsOneWidget);
+    expect(t.widget<TextField>(find.byKey(const Key('login-reset-code'))).controller!.text, '');
+    expect(s.stage, Stage.signedOut);
+    // the right code: the password set, the app opens
+    await t.enterText(find.byKey(const Key('login-reset-code')), '482913');
+    await seen(t, find.byKey(const Key('login-go')));
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(srv.newPassword, 'Mule#2026x');
+    expect(s.stage, Stage.pickSite);
+    expect(srv.calls, containsAllInOrder(['portal:otpSend', 'portal:otpReset', 'portal:otpReset', 'portal:me']));
+    expect(srv.calls, isNot(contains('portal:login')));
+  }, tags: ['golden']);
+
+  testWidgets('(25-11-2026) the e-mail code switched off: "Forgot password?" says to ask the Super Admin – as before', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await tapK(t, 'login-forgot');
+    await settle(t, 600);
+    expect(find.textContaining('Ask the Super Admin for a one-time password.'), findsOneWidget);
+    expect(find.byKey(const Key('login-reset-title')), findsNothing);
+    await tapK(t, 'forgot-ok');
+    await settle(t, 600);
+  });
+
+  testWidgets('(25-11-2026) signed in with a code on a given password: "Set your own password" asks only the new one, twice', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..otpOn = true
+      ..mustChange = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.enterText(find.byType(TextField).at(0), 'sujit.own@rcl.test');
+    await tapK(t, 'login-otp');
+    await settle(t, 600);
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(find.text('5 more codes can be asked for, then you wait 15 minutes.'), findsOneWidget, reason: 'the e-mail code says it too');
+    await t.enterText(find.byKey(const Key('login-otp-code')), '482913');
+    await seen(t, find.byKey(const Key('login-go')));
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(s.stage, Stage.setPassword);
+    expect(s.byCode, isTrue);
+    expect(find.byKey(const Key('login-pw-bycode')), findsOneWidget);
+    expect(find.text('Given password'), findsNothing, reason: 'the given password is not asked');
+    expect(find.byType(TextField), findsNWidgets(2), reason: 'the new password twice');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1i_own_password_by_code.png'));
+    await t.enterText(find.byType(TextField).at(0), 'Mule#2026x');
+    await t.enterText(find.byType(TextField).at(1), 'Mule#2026x');
+    await seen(t, find.text('Save and open'));
+    await settle(t, 400);
+    await t.tap(find.text('Save and open'));
+    await net(t);
+    expect(srv.newPassword, 'Mule#2026x');
+    expect(s.stage, Stage.pickSite);
+  }, tags: ['golden']);
+
   /* (3.166.0) THE CODE BY WHATSAPP (the Portal's "Login with WhatsApp OTP" of 22-11-2026; his design A and the motion he approved):
    * the sheet opens on it; the sixth digit checks the code by itself – no button; a wrong code shakes red and the boxes empty;
    * "Copy code" in WhatsApp and back: it fills by itself; "Use email and password" is one tap away. */
@@ -10187,7 +10292,7 @@ void main() {
     await t.enterText(find.byKey(const Key('login-wa-code')), '111111');
     await net(t, 2400);
     expect(srv.calls.where((c) => c == 'portal:waLogin').length, 1, reason: 'checked once, by itself');
-    expect(find.text('The code is wrong or has expired.'), findsOneWidget);
+    expect(find.text('The code is wrong or has expired. 5 tries left – after that you wait 15 minutes.'), findsOneWidget, reason: '(25-11-2026) the tries left');
     expect(t.widget<TextField>(find.byKey(const Key('login-wa-code'))).controller!.text, '', reason: 'the boxes emptied');
     expect(s.stage, Stage.signedOut);
     expect(find.byKey(const Key('login-wa-code')), findsOneWidget, reason: 'still on the code');

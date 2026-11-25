@@ -20,7 +20,13 @@
  * mobile number, "Send code on WhatsApp", then the six boxes. No button: the sixth digit checks the code by itself (the boxes run
  * into one bar with a light passing, then it fills green and a ✓ – straight in); a wrong code shakes red and the boxes empty from
  * the right. "Copy code" in WhatsApp and back to the app: the code fills by itself (Android), or "Paste code". "Use email and
- * password" is always one tap away and leads to the password card (its "Login with Email OTP" stays). Switched off: as before. */
+ * password" is always one tap away and leads to the password card (its "Login with Email OTP" stays). Switched off: as before.
+ * (25-11-2026, his words: "login with otp krtan given password nko aahe new set kru shakel … forgot kru shkel email la otp yeil … resend
+ * 6 time tya nantr 15 minute cha block … remaining kiti sangitle jail"; his answers: 6 codes, 6 wrong codes, "Forgot password" for
+ * everybody but the Super Admin) signed in with a code, "Set your own password" asks only the new password twice; "Forgot password?"
+ * (when the e-mail code is switched on) turns the card: the e-mail, "Send code", then the code and the new password twice – the
+ * Portal sets it and the app opens; after every code sent, how many more may be asked for; a wrong code, how many tries are left;
+ * blocked, the minutes to wait (core/code_words.dart – the Portal counts). The e-mail code switched off: the help of before. */
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -30,6 +36,7 @@ import 'package:flutter/material.dart' as m show Text;
 import 'package:flutter/services.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/code_words.dart';
 import '../core/update.dart';
 import '../ui/brand.dart';
 import '../ui/code_boxes.dart';
@@ -63,6 +70,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   // (3.104.0) the second way in: a code by e-mail
   final _code = TextEditingController();
   bool _otpOn = false, _otp = false, _sent = false;
+  // (25-11-2026) "Forgot password?": the e-mail code and the new password (the boxes of "Set your own password" – [_new], [_again])
+  final _rCode = TextEditingController();
+  bool _reset = false, _rSent = false;
   int _wait = 0;
   Timer? _tick;
   // (3.166.0) the third way in: a code by WhatsApp – the sheet opens on it when the Portal has it switched on
@@ -153,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         if (mounted && _waSent) _waFocus.requestFocus();
       });
     } on ApiError catch (e) {
-      if (mounted) setState(() => _localErr = e.toString());
+      if (mounted) setState(() => _localErr = codeError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -201,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       HapticFeedback.mediumImpact();
       setState(() {
         _cs = CodeState.bad;
-        _waSay = e.toString();
+        _waSay = codeError(e); // (25-11-2026) the tries left; blocked: the minutes to wait
         _busy = false;
         _clearing = true;
       });
@@ -312,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       });
       _count(w);
     } on ApiError catch (e) {
-      if (mounted) setState(() => _localErr = e.toString());
+      if (mounted) setState(() => _localErr = codeError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -387,6 +397,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     _waCode.dispose();
     _waFocus.dispose();
     _code.dispose();
+    _rCode.dispose();
     _open.dispose();
     _shake.dispose();
     _mail.dispose();
@@ -415,8 +426,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   /// (15-10-2026) his own password: the given one, the new one twice – checked here first, then by the Portal (its rules)
   Future<void> _setOwn() async {
     if (_busy) return;
-    if (_given.text.isEmpty || _new.text.isEmpty || _again.text.isEmpty) {
-      setState(() => _localErr = bi('Fill all three boxes.', 'तीनही boxes भरा.', '\n'));
+    final byCode = SessionScope.read(context).byCode; // (25-11-2026) signed in with a code: the given password is not asked
+    if ((!byCode && _given.text.isEmpty) || _new.text.isEmpty || _again.text.isEmpty) {
+      setState(() => _localErr = byCode ? bi('Type the new password twice.', 'नवीन password दोन वेळा टाका.', '\n') : bi('Fill all three boxes.', 'तीनही boxes भरा.', '\n'));
       _shake.forward(from: 0);
       return;
     }
@@ -430,11 +442,117 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       _busy = true;
       _localErr = '';
     });
-    await SessionScope.read(context).setOwnPassword(_given.text, _new.text);
+    await SessionScope.read(context).setOwnPassword(byCode ? '' : _given.text, _new.text);
     if (mounted) setState(() => _busy = false);
   }
 
-  Future<void> _forgot() => popDialog<void>(
+  /// (25-11-2026) "Forgot password?": with the e-mail code switched on, the forgot card; else the help of before.
+  Future<void> _forgot() async {
+    if (!_otpOn) return _forgotHelp();
+    _tick?.cancel();
+    SessionScope.read(context).error = '';
+    setState(() {
+      _reset = true;
+      _rSent = false;
+      _otp = false;
+      _wait = 0;
+      _localErr = '';
+      _rCode.clear();
+      _new.clear();
+      _again.clear();
+      if (!_mail.text.contains('@')) _mail.clear(); // (a mobile number typed: the code goes to an e-mail only)
+    });
+  }
+
+  /// Back from the forgot card to the password card (the e-mail typed stays).
+  void _resetBack() {
+    _tick?.cancel();
+    SessionScope.read(context).error = '';
+    setState(() {
+      _reset = false;
+      _rSent = false;
+      _wait = 0;
+      _localErr = '';
+      _rCode.clear();
+    });
+  }
+
+  /// "Send code" / "Send again" of the forgot card: the answer is the same for everybody – the card goes on to the code.
+  Future<void> _resetAsk() async {
+    if (_busy) return;
+    if (!_mail.text.contains('@')) {
+      setState(() => _localErr = bi('Enter your e-mail.', 'तुमचा email टाका.', '\n'));
+      _shake.forward(from: 0);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _busy = true;
+      _localErr = '';
+    });
+    final s = SessionScope.read(context);
+    try {
+      final w = await s.resetSend(_mail.text);
+      if (!mounted) return;
+      setState(() {
+        _rSent = true;
+        _rCode.clear();
+      });
+      _count(w);
+    } on ApiError catch (e) {
+      if (mounted) setState(() => _localErr = codeError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// The code and the new password twice: checked here first, then by the Portal (the code, its password rules).
+  Future<void> _resetGo() async {
+    if (_busy) return;
+    final code = _rCode.text.replaceAll(RegExp(r'\D'), '');
+    String bad = '';
+    if (code.length != 6) {
+      bad = bi('Type the 6-digit code from the e-mail.', 'Email मधला 6 अंकी code टाका.', '\n');
+    } else if (_new.text.isEmpty || _again.text.isEmpty) {
+      bad = bi('Type the new password twice.', 'नवीन password दोन वेळा टाका.', '\n');
+    } else if (_new.text != _again.text) {
+      bad = bi('The two new passwords are not the same.', 'दोन्ही नवीन password सारखे नाहीत.', '\n');
+    }
+    if (bad.isNotEmpty) {
+      setState(() => _localErr = bad);
+      _shake.forward(from: 0);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _busy = true;
+      _localErr = '';
+    });
+    final s = SessionScope.read(context);
+    try {
+      await s.api.keep.write(kRemember, _remember ? _mail.text.trim() : null);
+      await s.resetPassword(_mail.text, code, _new.text);
+      if (!mounted) return;
+      _tick?.cancel();
+      setState(() {
+        _reset = false;
+        _rSent = false;
+        _rCode.clear();
+        _new.clear();
+        _again.clear();
+      });
+    } on ApiError catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _localErr = codeError(e);
+        if (e.code != 'policy') _rCode.clear(); // (a weak password costs no code: the code stays)
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _forgotHelp() => popDialog<void>(
         context: context,
         builder: (c) => AlertDialog(
           title: const Text('Forgot your password?'),
@@ -548,7 +666,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      widget.setPassword ? _pwCard(err) : (_wa ? _waCard(err) : (_otp ? _otpCard(err) : _card(err))),
+                      widget.setPassword ? _pwCard(err) : (_reset ? _resetCard(err) : (_wa ? _waCard(err) : (_otp ? _otpCard(err) : _card(err)))),
                       const SizedBox(height: 16),
                       if (widget.setPassword) ...[
                         Text('One password for the Portal and every module – the same on the web.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: l.muted, height: 1.35)),
@@ -648,14 +766,22 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       );
 
   /// (15-10-2026) the first sign-in with a given password: his own password, here in the app
-  Widget _pwCard(String err) => _shaken(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  Widget _pwCard(String err) {
+    // (25-11-2026, his words: "login with otp krtan given password nko aahe new set kru shakel") signed in with a code: only the new one
+    final byCode = SessionScope.of(context).byCode;
+    return _shaken(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _title('Set your own password'),
         const SizedBox(height: 8),
         MrLine('तुमचा स्वतःचा password बनवा', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 16, fontWeight: FontWeight.w600, color: _l.ink)),
         const SizedBox(height: 4),
-        Text('Type the password you were given, then your new password twice.', style: TextStyle(fontSize: 14, color: _l.muted)),
-        MrLine('दिलेला password टाका, मग तुमचा नवीन password दोन वेळा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: _l.muted)),
-        _pwBox(_given, 'Given password', Icons.key_rounded),
+        if (byCode)
+          Text(bi('You signed in with a code – the password you were given is not needed. Type your new password twice.', 'तुम्ही code ने sign in केले – दिलेला password लागणार नाही. तुमचा नवीन password दोन वेळा टाका.', '\n'),
+              key: const Key('login-pw-bycode'), style: TextStyle(fontSize: 14, color: _l.muted))
+        else ...[
+          Text('Type the password you were given, then your new password twice.', style: TextStyle(fontSize: 14, color: _l.muted)),
+          MrLine('दिलेला password टाका, मग तुमचा नवीन password दोन वेळा.', style: TextStyle(fontFamily: 'NotoDeva', fontSize: 13.5, color: _l.muted)),
+          _pwBox(_given, 'Given password', Icons.key_rounded),
+        ],
         _pwBox(_new, 'New password', Icons.lock_outline_rounded),
         _pwBox(_again, 'New password again', Icons.lock_reset_rounded, next: TextInputAction.go, go: _setOwn),
         Row(children: [
@@ -673,6 +799,83 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         const SizedBox(height: 6),
         _link('Back to sign in', key: const Key('login-back'), onTap: _busy ? null : () => SessionScope.read(context).leaveSetPassword()),
       ]));
+  }
+
+  /// (25-11-2026) how many more codes may be asked for – under a code sent ('' when the Portal did not say)
+  Widget _left({Key key = const Key('login-codes-left')}) {
+    final t = codesLeftLine(SessionScope.of(context).codesLeft);
+    if (t.isEmpty) return const SizedBox.shrink();
+    return Padding(padding: const EdgeInsets.only(top: 6), child: m.Text(t, key: key, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _l.muted, height: 1.35)));
+  }
+
+  /// (25-11-2026) "Forgot password?": the e-mail and "Send code"; then the code, the new password twice and "Set the new password".
+  Widget _resetCard(String err) => _shaken(AutofillGroup(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _title('Forgot password', key: const Key('login-reset-title')),
+          const SizedBox(height: 10),
+          Text(bi('A 6-digit code comes to your registered e-mail. Type it with your new password.', 'तुमच्या नोंदलेल्या email वर 6 अंकी code येईल. तो code आणि तुमचा नवीन password टाका.', '\n'),
+              style: TextStyle(fontSize: 14, color: _l.muted, height: 1.35)),
+          _lab('Email address'),
+          TextField(
+            key: const Key('login-reset-mail'),
+            controller: _mail,
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email, AutofillHints.username],
+            textInputAction: TextInputAction.done,
+            autocorrect: false,
+            style: _typed,
+            onChanged: (_) {
+              if (_rSent || _localErr.isNotEmpty) {
+                _tick?.cancel();
+                setState(() {
+                  _rSent = false; // another e-mail: from the first step again
+                  _wait = 0;
+                  _localErr = '';
+                });
+              }
+            },
+            onSubmitted: (_) {
+              if (!_rSent) _resetAsk();
+            },
+            decoration: _dec('name@company.com', Icons.mail_outline_rounded),
+          ),
+          if (_rSent) ...[
+            const SizedBox(height: 10),
+            Text(bi('If this e-mail is registered, a code is on its way to it.', 'Email नोंदलेला असेल तर code पाठवला आहे.', '\n'), style: TextStyle(fontSize: 13, color: _l.muted, height: 1.35)),
+            _left(),
+            _lab('6-digit code'),
+            TextField(
+              key: const Key('login-reset-code'),
+              controller: _rCode,
+              keyboardType: TextInputType.number,
+              autofillHints: const [AutofillHints.oneTimeCode],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+              textInputAction: TextInputAction.next,
+              onChanged: (_) {
+                if (_localErr.isNotEmpty) setState(() => _localErr = '');
+              },
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 4, color: _l.ink),
+              decoration: _dec('', Icons.pin_outlined),
+            ),
+            _pwBox(_new, 'New password', Icons.lock_outline_rounded),
+            _pwBox(_again, 'New password again', Icons.lock_reset_rounded, next: TextInputAction.go, go: _resetGo),
+            Row(children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(bi('At least 8 characters, letters and numbers.', 'किमान 8 अक्षरे – अक्षरे आणि अंक दोन्ही.', '\n'), style: TextStyle(fontSize: 12.5, color: _l.muted, height: 1.35)),
+                ),
+              ),
+              IconButton(tooltip: tr(_show ? 'Hide passwords' : 'Show passwords'), color: _l.muted, icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show)),
+            ]),
+          ],
+          _errBox(err),
+          const SizedBox(height: 16),
+          _SignInButton(busy: _busy, onTap: _rSent ? _resetGo : _resetAsk, label: _rSent ? 'Set the new password' : 'Send code'),
+          if (_rSent) _link(_wait > 0 ? 'Send again ($_wait s)' : 'Send again', key: const Key('login-reset-again'), onTap: _busy || _wait > 0 ? null : _resetAsk),
+          _link('Back to sign in', key: const Key('login-reset-back'), onTap: _busy ? null : _resetBack),
+        ]),
+      ));
 
   Widget _card(String err) => _shaken(AutofillGroup(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -878,6 +1081,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           Expanded(child: Text(say.$1, key: const Key('login-wa-state'), style: TextStyle(fontSize: 13.5, fontWeight: _cs == CodeState.idle ? FontWeight.w500 : FontWeight.w700, color: say.$2, height: 1.35))),
         ]),
       ),
+      if (_cs == CodeState.idle) _left(), // (25-11-2026) how many more codes
       _errBox(err),
       const SizedBox(height: 6),
       Row(children: [
@@ -925,6 +1129,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         if (_sent) ...[
           const SizedBox(height: 10),
           Text('If this e-mail is registered and verified, a code is on its way to it.', style: TextStyle(fontSize: 13, color: _l.muted, height: 1.35)),
+          _left(), // (25-11-2026) how many more codes
           _lab('6-digit code'),
           TextField(
             key: const Key('login-otp-code'),

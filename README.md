@@ -21,6 +21,18 @@ distance" commit) and the Mess card / strip now say how far **by road** (FALCON'
 only in FALCON's Vercel) once FALCON is ready for him; until then "5.9 km in a straight line" – in English, मराठी and हिंदी
 (`messFar`, `falconRoadMetres`). Dart only – a Shorebird patch of 3.171.0 (251).
 
+**A new password with an e-mail code; the code limits (25-11-2026 – a Shorebird patch of 3.171.0, with the Portal's pull request
+"otp-password"; his words: "login with otp krtan given password nko aahe new set kru shakel … forgot kru shkel email la otp yeil forgat
+krun new set kru shakel … resend 6 time tya nantr 15 minute cha block pratek invalid otp or otp request la remaining kiti sangitle jail";
+his answers: 6 codes in all, 6 wrong codes, "Forgot password" for everybody but the Super Admin):** signed in with a code (e-mail or
+WhatsApp) on a given password, "Set your own password" asks only the new password twice (`Session.byCode` – the Portal's `byCode`, also
+from "me" when the app opens again; after the Portal's 30 minutes the given one is asked again). **"Forgot password?"** with the e-mail
+code switched on turns the card: the e-mail, "Send code", the code and the new password twice, "Set the new password" (`otpReset`) –
+the app opens; switched off, the help of before. After every code sent – sign-in by e-mail or WhatsApp, "Forgot password?", "Verify your
+e-mail", HR's sign-in again – how many more codes may be asked for; a wrong code, how many tries are left; blocked, the minutes to wait
+(`core/code_words.dart`, in English / मराठी / हिंदी; the Portal counts – the app only says what it answered; `ApiError.data` carries its
+`left` / `wait`). Dart only, no asset. Not verified: a real phone, a real e-mail.
+
 **3.171.0 patch 2 (25-11-2026 – his words: "hr aso erp aso app open zalel zale tyache maghe auto falcon pn on hoil … falcon opening chi
 screen ti yenar nahi"; "final back erp hr madhe jail app band nahi"; "kal pahile mess pasun 20 km lamb hoto but app sangat hote 5 km … ekdm
 perfect"; and his choice: FALCON always inside the ERP / HR app):** the Mess opens FALCON **inside this app first** – also when the FALCON
