@@ -27,6 +27,7 @@ import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
+import '../ui/net_chip.dart' show NetPin, SavedLine, afterAnswer;
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
@@ -792,6 +793,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                       Row(children: [
                         IconButton(tooltip: MaterialLocalizations.of(context).backButtonTooltip, onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
                         const Expanded(child: Text('My attendance', mr: 'माझी हजेरी', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white))),
+                        const NetPin(), // (3.171.0 patch 4 – SNI picture 2: hanging on the header's lower edge)
                       ]),
                       Padding(
                         padding: const EdgeInsets.only(left: 16, right: 76, top: 2),
@@ -848,6 +850,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                 Row(children: [
                   if (widget.embedded) const SizedBox(width: 18, height: 48) else Padding(padding: const EdgeInsets.fromLTRB(16, 4, 12, 4), child: hrIconBox(Icons.arrow_back_ios_new_rounded, size: 40, icon: 17, tooltip: MaterialLocalizations.of(context).backButtonTooltip, onTap: () => Navigator.of(context).maybePop())),
                   Expanded(child: Text('My attendance', mr: 'माझी हजेरी', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 21, fontWeight: FontWeight.w800, color: sk.ink))),
+                  const NetPin(), // (3.171.0 patch 4 – SNI picture 2: hanging on the header's lower edge)
                   Padding(padding: const EdgeInsets.only(right: 16), child: hrIconBox(Icons.refresh_rounded, size: 40, icon: 20, tooltip: tr('Refresh'), onTap: busy ? null : () => _load())),
                 ]),
                 Padding(
@@ -1114,6 +1117,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     final asked = month, key = 'myMonth:$asked', kept = HrCache.now(key);
     setState(() {
       err = '';
+      _src = kept != null ? 'saved' : ''; // (3.171.0 patch 4 – SNI picture 5)
       if (kept != null) {
         _take(kept);
       } else {
@@ -1123,23 +1127,35 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     if (kept == null) {
       final k = await HrCache.read(key);
       if (!mounted) return;
-      if (k != null && loading && month == asked) setState(() => _take(k));
+      if (k != null && loading && month == asked) {
+        setState(() {
+          _take(k);
+          _src = 'saved';
+        });
+      }
     }
     try {
       final j = await widget.ask({'action': 'myMonth', 'month': asked});
       HrCache.put(key, j);
       if (!mounted || month != asked) return; // (he went on to another month meanwhile)
-      setState(() => _take(j));
+      setState(() {
+        _take(j);
+        _src = afterAnswer(_src);
+      });
     } catch (e) {
       if (mounted && month == asked) {
         setState(() {
           loading = false;
           // (3.157.0) the month is on the page (what was read before) and only the network did not answer: nothing red
           err = e is ApiError && e.code == 'net' && every.isNotEmpty ? '' : errText(e);
+          if (e is ApiError && e.code == 'net' && every.isNotEmpty) _src = 'stale';
         });
       }
     }
   }
+
+  /// (3.171.0 patch 4 – SNI picture 5) 'saved' / 'live' / 'stale' / '' – the line under the header.
+  String _src = '';
 
   void _move(int by) {
     if (loading) return;
@@ -1494,7 +1510,9 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
               arrow('att-m-next', Icons.chevron_right_rounded, 1),
             ]),
           )),
-      body: ListView(key: const Key('att-month-page'), padding: EdgeInsets.fromLTRB(16, 6, 16, 40 + MediaQuery.paddingOf(context).bottom), children: [ // (3.154.0: its end stands clear of the bar that floats over the page)
+      body: Column(children: [
+        SavedLine(kind: _src, at: HrCache.savedAt('myMonth:$month')), // (3.171.0 patch 4 – SNI picture 5)
+        Expanded(child: ListView(key: const Key('att-month-page'), padding: EdgeInsets.fromLTRB(16, 6, 16, 40 + MediaQuery.paddingOf(context).bottom), children: [ // (3.154.0: its end stands clear of the bar that floats over the page)
         if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
         if (err.isNotEmpty) InfoLine(err, bad: true, help: false),
         if (!loading && err.isEmpty) ...[
@@ -1624,6 +1642,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
             ),
           ],
         ],
+      ])),
       ]),
     );
   }

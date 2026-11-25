@@ -1536,13 +1536,13 @@ class Session extends ChangeNotifier {
 
   Future<void> dropKept(String rid) async {
     for (final x in kept.where((x) => x['rid'] == rid)) {
-      _dropFiles(x);
+      dropKeptFiles(x);
     }
     kept.removeWhere((x) => x['rid'] == rid);
     await _saveKept();
   }
 
-  void _dropFiles(Map<String, dynamic> x) {
+  static void dropKeptFiles(Map<String, dynamic> x) {
     for (final p in (x['local'] as List? ?? const []).whereType<Map>()) {
       try {
         File('${p['file']}').deleteSync();
@@ -1552,7 +1552,7 @@ class Session extends ChangeNotifier {
 
   /// (3.85.0) a kept entry's photos sent first (the server remembers a photo 6 hours: sent again when older than 5): its args with
   /// them; null = no network now (it waits); a refused photo throws its words
-  Future<List<dynamic>?> _keptArgs(Map<String, dynamic> x) async {
+  static Future<List<dynamic>?> _keptArgs(Api api, Map<String, dynamic> x) async {
     final args = [...((x['args'] as List?) ?? const [])];
     final local = (x['local'] as List? ?? const []).whereType<Map>().toList();
     if (local.isEmpty || args.isEmpty || args[0] is! Map) return args;
@@ -1582,6 +1582,35 @@ class Session extends ChangeNotifier {
     return args;
   }
 
+  /// (3.171.0 patch 4) ONE kept entry sent – the same for the app open ([sendKept]) and the app closed ([sendKeptInBackground]):
+  /// ('sent', the server's own words when it was sent for verification), ('refused', '') – the server's words in x['msg'], or
+  /// ('wait', '') – no network now. [background]: with the app closed nothing is decided for him – anything but the server's own
+  /// "not saved" waits for the app to open (it asks him there, as before).
+  static Future<(String, String)> sendOneKept(Api api, Map<String, dynamic> x, {bool background = false}) async {
+    try {
+      final args = await _keptArgs(api, x); // (3.85.0) its photos first
+      if (args == null) return ('wait', ''); // no network now
+      // (3.85.0, Mechanical update-211) the day it was made (the server's stamp); a diesel issue / transfer the stock cannot cover:
+      // kept on the server as stock short – saved by itself when the stock comes (he chose this for entries made with no network)
+      final with0 = <String, dynamic>{if ('${x['made'] ?? ''}'.isNotEmpty) 'made': '${x['made']}', if (Api.shortFns.contains('${x['fn']}')) 'short': true};
+      final r = await api.call('${x['fn']}', args, true, '${x['rid']}', with0);
+      if (r is Map && (r['ok'] == false || (r['errors'] is List && (r['errors'] as List).isNotEmpty))) {
+        final errs = (r['errors'] as List? ?? []).map((e) => e is Map ? '${e['msg'] ?? ''}' : '$e').where((e) => e.isNotEmpty).toList();
+        x['state'] = 'refused';
+        x['msg'] = errs.isEmpty ? '${r['error'] ?? r['warning'] ?? 'Not saved.'}' : errs.join(' | ');
+        return ('refused', '');
+      }
+      return ('sent', '');
+    } on ApiError catch (e) {
+      if (e.noConnection) return ('wait', '');
+      if (e.code == 'sent') return ('sent', e.message);
+      if (background) return ('wait', '');
+      x['state'] = 'refused';
+      x['msg'] = e.toString();
+      return ('refused', '');
+    }
+  }
+
   /// Sends what is kept for the site open (in the order kept); stops at the first "no network".
   Future<void> sendKept({bool again = false}) async {
     if (_sending || stage != Stage.ready) return;
@@ -1591,33 +1620,13 @@ class Session extends ChangeNotifier {
     var sent = 0, told = '';      // (3.85.0) told: the server's own words (kept as stock short / sent for verification)
     try {
       for (final x in mine) {
-        try {
-          final args = await _keptArgs(x); // (3.85.0) its photos first
-          if (args == null) break; // no network now
-          // (3.85.0, Mechanical update-211) the day it was made (the server's stamp); a diesel issue / transfer the stock cannot cover:
-          // kept on the server as stock short – saved by itself when the stock comes (he chose this for entries made with no network)
-          final with0 = <String, dynamic>{if ('${x['made'] ?? ''}'.isNotEmpty) 'made': '${x['made']}', if (Api.shortFns.contains('${x['fn']}')) 'short': true};
-          final r = await api.call('${x['fn']}', args, true, '${x['rid']}', with0);
-          if (r is Map && (r['ok'] == false || (r['errors'] is List && (r['errors'] as List).isNotEmpty))) {
-            final errs = (r['errors'] as List? ?? []).map((e) => e is Map ? '${e['msg'] ?? ''}' : '$e').where((e) => e.isNotEmpty).toList();
-            x['state'] = 'refused';
-            x['msg'] = errs.isEmpty ? '${r['error'] ?? r['warning'] ?? 'Not saved.'}' : errs.join(' | ');
-          } else {
-            _dropFiles(x);
-            kept.removeWhere((y) => y['rid'] == x['rid']);
-            sent++;
-          }
-        } on ApiError catch (e) {
-          if (e.noConnection) break;
-          if (e.code == 'sent') {
-            _dropFiles(x);
-            kept.removeWhere((y) => y['rid'] == x['rid']);
-            sent++;
-            told = e.message;
-            continue;
-          }
-          x['state'] = 'refused';
-          x['msg'] = e.toString();
+        final (what, words) = await sendOneKept(api, x);
+        if (what == 'wait') break; // no network now
+        if (what == 'sent') {
+          dropKeptFiles(x);
+          kept.removeWhere((y) => y['rid'] == x['rid']);
+          sent++;
+          if (words.isNotEmpty) told = words;
         }
       }
     } finally {
@@ -1681,4 +1690,57 @@ class Session extends ChangeNotifier {
     consentNeed = '';
     _go(Stage.signedOut, msg);
   }
+}
+
+/* (3.171.0 patch 4, his words of 25-11-2026: "entry save asel user la stock minus disel ani jas network connect hoil app close keli purn
+ * tri lagech app swata server la data deil"; his pick: "Patch – 15 minutes") WITH THE APP CLOSED: the entries kept on this phone with no
+ * network (Diesel Issue / Inward / Transfer with their photos, Log Book – 3.85.0) are sent by the Android alarm that already runs about
+ * every 15 minutes (main.dart alertsInBackground) – the same sending as with the app open (Session.sendOneKept, the same number: saved
+ * ONCE on the server). Nothing when the app was open in the last 150 s (it sends them itself, at once). Only the site open on this
+ * phone (its Mechanical address and sign-in are kept); another site's entries wait for that site. What the server refuses keeps its
+ * words for "Me → Waiting on this phone"; anything else waits for the app (it asks him there). Gives how many were sent. */
+Future<int> sendKeptInBackground(Api api) async {
+  await api.load();
+  api.mechUrl = await api.keep.read(kMechUrl) ?? '';
+  final site = api.site ?? '';
+  if (api.mechUrl.isEmpty || (api.token ?? '').isEmpty || site.isEmpty) return 0;
+  final at = int.tryParse(await api.keep.read(kLiveAt) ?? '') ?? 0;
+  if (DateTime.now().millisecondsSinceEpoch - at < 150000) return 0;
+  var email = '';
+  try {
+    final j = jsonDecode(await api.keep.read(Session.kSnap) ?? '{}');
+    if (j is Map) email = '${j['email'] ?? ''}';
+  } catch (_) {/* nothing kept: nothing to send */}
+  if (email.isEmpty) return 0;
+  final key = 'kept_${email.toLowerCase()}';
+  Future<List<Map<String, dynamic>>> read() async {
+    try {
+      final j = jsonDecode(await api.keep.read(key) ?? '[]');
+      return j is List ? j.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList() : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  final mine = (await read()).where((x) => x['site'] == site && x['state'] == 'waiting').toList();
+  if (mine.isEmpty) return 0;
+  final sent = <String>{}, done = <Map<String, dynamic>>[];
+  for (final x in mine) {
+    final (what, _) = await Session.sendOneKept(api, x, background: true);
+    done.add(x); // (its photos sent already are remembered with it, also when it waits)
+    if (what == 'wait') break;
+    if (what == 'sent') {
+      Session.dropKeptFiles(x);
+      sent.add('${x['rid']}');
+    }
+  }
+  // the list as it is on the phone NOW (the app may have been opened meanwhile): what was sent leaves it; a refused one gets its words
+  final now = await read();
+  for (final x in done) {
+    final i = now.indexWhere((y) => y['rid'] == x['rid']);
+    if (i >= 0 && !sent.contains('${x['rid']}')) now[i] = x;
+  }
+  now.removeWhere((y) => sent.contains('${y['rid']}'));
+  await api.keep.write(key, now.isEmpty ? null : jsonEncode(now));
+  return sent.length;
 }

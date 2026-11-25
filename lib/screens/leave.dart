@@ -33,6 +33,7 @@ import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
+import '../ui/net_chip.dart' show SavedLine, afterAnswer;
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
@@ -69,6 +70,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
   String err = '';
   bool loading = true, busy = false;
 
+  /// (3.171.0 patch 4 – SNI picture 5) what the page shows: 'saved' (the copy, the server asked), 'live', 'stale' (no answer), ''.
+  String _src = '';
+
   @override
   void initState() {
     super.initState();
@@ -84,6 +88,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
         setState(() {
           me = k;
           loading = false;
+          _src = 'saved';
         });
       }
     }
@@ -95,6 +100,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
         me = j;
         loading = false;
         err = '';
+        _src = afterAnswer(_src);
       });
     } catch (e) {
       if (mounted) {
@@ -102,6 +108,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
           loading = false;
           // (3.157.0) his leave is on the page (what was read before) and only the network did not answer: nothing red
           err = e is ApiError && e.code == 'net' && me != null ? '' : errText(e);
+          if (e is ApiError && e.code == 'net' && me != null) _src = 'stale';
         });
       }
     }
@@ -178,7 +185,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
         );
     return Scaffold(
       appBar: hrHead(context, sky: kLeaveSky, title: 'Leave', mr: 'रजा', pill: headPill(monthName(today)), height: 64, back: !widget.embedded),
-      body: loading
+      body: Column(children: [
+        SavedLine(kind: _src, at: HrCache.savedAt('myLeave')), // (3.171.0 patch 4 – SNI picture 5)
+        Expanded(child: loading
           ? const SkeletonList(tiles: 0, rows: 4)
           : RefreshIndicator(
               onRefresh: _load,
@@ -208,8 +217,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
                         GestureDetector(
                           key: const Key('leave-new'),
                           behavior: HitTestBehavior.opaque,
-                          onTap: _new,
-                          child: Bounce(
+                          // (3.171.0 patch 4 – SNI picture 5) Apply waits for the server's answer: the balance shown must be the live one
+                          onTap: _src == 'saved' || _src == 'stale' ? null : _new,
+                          child: Opacity(opacity: _src == 'saved' || _src == 'stale' ? .45 : 1, child: Bounce(
                             to: .94,
                             child: Container(
                               height: 42,
@@ -221,7 +231,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                                 Text('Apply', mr: 'अर्ज', style: const TextStyle(fontFamily: 'Montserrat', fontSize: 14, fontWeight: FontWeight.w800, color: Sk.goldInk)),
                               ]),
                             ),
-                          ),
+                          )),
                         ),
                     ]),
                     const SizedBox(height: 14),
@@ -297,7 +307,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
                     ),
                 ],
               ]),
-            ),
+            )),
+      ]),
     );
   }
 

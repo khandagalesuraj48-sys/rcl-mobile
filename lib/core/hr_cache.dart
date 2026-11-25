@@ -16,6 +16,12 @@ import 'attend.dart' show AttendKit;
 class HrCache {
   HrCache._();
   static final Map<String, Map<String, dynamic>> _mem = {};
+
+  /// (3.171.0 patch 4 – SNI picture 5) when each kept answer came from the server – "Saved 10:12 AM" on the page.
+  static final Map<String, DateTime> _at = {};
+
+  /// When what is kept for [key] was read from the server (null: not known – kept by an app of before).
+  static DateTime? savedAt(String key) => now(key) == null ? null : _at[key];
   static String _who = '';
   static Object? _kit;
 
@@ -25,6 +31,7 @@ class HrCache {
     _who = v;
     _kit = AttendKit.kit;
     _mem.clear();
+    _at.clear();
   }
 
   static String get who => _who;
@@ -44,7 +51,11 @@ class HrCache {
       if (t == null || t.isEmpty || who != _who) return null;
       final j = jsonDecode(t);
       if (j is! Map) return null;
-      return _mem[key] ??= j.cast<String, dynamic>(); // (an answer of the server that came meanwhile stays)
+      if (_mem[key] != null) return _mem[key]; // (an answer of the server that came meanwhile stays)
+      final m = j.cast<String, dynamic>();
+      final at = DateTime.tryParse('${m.remove('_savedAt') ?? ''}');
+      if (at != null) _at[key] = at.toLocal();
+      return _mem[key] = m;
     } catch (_) {
       return null;
     }
@@ -58,10 +69,12 @@ class HrCache {
       _mem.clear();
     }
     _mem[key] = answer;
+    final at = DateTime.fromMillisecondsSinceEpoch(AttendKit.kit.now());
+    _at[key] = at;
     final f = _file(key);
     () async {
       try {
-        await AttendKit.kit.writeText(f, jsonEncode(answer));
+        await AttendKit.kit.writeText(f, jsonEncode({...answer, '_savedAt': at.toUtc().toIso8601String()}));
       } catch (_) {/* not kept on the phone: memory still has it */}
     }();
   }
@@ -69,6 +82,7 @@ class HrCache {
   /// Signed out: nothing stays in memory.
   static void clear() {
     _mem.clear();
+    _at.clear();
     _who = '';
   }
 }

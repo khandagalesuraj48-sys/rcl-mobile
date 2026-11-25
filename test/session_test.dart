@@ -578,6 +578,47 @@ void main() {
     expect(await keep.read('kept_sujit@rcl.test'), isNull);
   });
 
+  test('(3.171.0 patch 4, his pick of 25-11-2026) WITH THE APP CLOSED: an entry kept on the phone is sent by the background alarm with its OWN number – not while the app is open, not with no network; refused by the server: its words stay for Me', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(keep.data[Session.kSnap], isNotNull);
+    expect(keep.data[kMechUrl], isNotEmpty, reason: 'the site\'s Mechanical address is kept for the alarm');
+    srv.down = true;
+    final d = {'no': 'Sany 210 (No.1)', 'qty': 40, 'hrReading': 4710, 'date': '2026-10-14'};
+    await s.keepEntry('saveDieselIssue', [d], 'rid-bg-1', 'Diesel Issue · 14-10-2026 · Sany 210 (No.1) · 40 L');
+    await s.keepEntry('saveLogRows', [{'rows': [{'no': 'Sany 210 (No.1)'}]}], 'rid-bg-2', 'Log Book · 14-10-2026');
+    Api bg() => Api(portalUrl: 'https://erp.test/portal', keep: keep, client: srv.client); // the alarm's own (a new start, nothing in memory)
+    // the app is open (it asked a moment ago): the alarm leaves it to the app
+    keep.data[kLiveAt] = '${DateTime.now().millisecondsSinceEpoch}';
+    srv.down = false;
+    expect(await sendKeptInBackground(bg()), 0);
+    expect(srv.saved, isEmpty);
+    // the app closed, still no network: they wait
+    keep.data.remove(kLiveAt);
+    srv.down = true;
+    expect(await sendKeptInBackground(bg()), 0);
+    expect(jsonDecode(keep.data['kept_sujit@rcl.test']!), hasLength(2));
+    // the network back: both go, each with its own number, and leave the phone
+    srv.down = false;
+    srv.rids.clear();
+    expect(await sendKeptInBackground(bg()), 2);
+    expect(srv.rids, containsAll(['saveDieselIssue:rid-bg-1', 'saveLogRows:rid-bg-2']));
+    expect(keep.data['kept_sujit@rcl.test'], isNull, reason: 'nothing waits on the phone any more');
+    // one the server refuses: kept with the server's words (Me → Waiting on this phone), never sent again by the alarm
+    srv.flowFor = '';
+    await s.loadKept();
+    await s.keepEntry('saveDieselIssue', [{'no': 'X', 'qty': 1, 'hrReading': 1}], 'rid-bg-3', 'Diesel Issue · X');
+    expect(await sendKeptInBackground(bg()), 0);
+    final left = (jsonDecode(keep.data['kept_sujit@rcl.test']!) as List).single as Map;
+    expect([left['rid'], left['state']], ['rid-bg-3', 'refused']);
+    expect('${left['msg']}', contains('Save anyway'));
+    srv.rids.clear();
+    expect(await sendKeptInBackground(bg()), 0);
+    expect(srv.rids, isEmpty, reason: 'a refused one waits for the person');
+  });
+
   test('(3.85.0, asked 04-11-2026) NO NETWORK when the app opens: the site opened before opens from what this phone kept (its lists, the ERP\'s day by the phone\'s clock); an entry kept here carries the server\'s stamp and its photo; the network back: the server again, the photo then the entry – as stock short when the stock cannot cover it; signing out removes what was kept', () async {
     final dir = Directory.systemTemp.createTempSync('rcl_kept_');
     final was = Session.keptDir;

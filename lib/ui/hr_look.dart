@@ -9,6 +9,7 @@ import 'package:flutter/material.dart' as m show Text;
 
 import 'attend_look.dart';
 import 'hr_skin.dart';
+import 'net_chip.dart' show NetPin;
 import 't.dart';
 import 'theme.dart';
 
@@ -61,6 +62,8 @@ PreferredSizeWidget hrHead(BuildContext context, {required Gradient sky, require
                 else
                   const SizedBox(width: 18, height: 48),
                 Expanded(child: Text(title, mr: mr, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: s.classic ? 19 : 21, fontWeight: FontWeight.w800, color: s.onHead))),
+                // (3.171.0 patch 4 – SNI picture 2) the network's chip hangs on the header's lower edge (it takes nothing from the title)
+                const NetPin(),
                 if (pill != null) Padding(padding: EdgeInsets.only(right: s.classic ? 14 : 16), child: pill),
               ]),
               if (below.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(18, 4, 18, 0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: below)),
