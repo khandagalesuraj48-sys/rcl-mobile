@@ -468,6 +468,9 @@ class Session extends ChangeNotifier {
   static Future<void> Function(Session s)? onReady;
   static Future<void> Function(Session s)? onSignOut;
 
+  /// (3.171.0 patch 2) more that ends with the sign-out (FALCON's sign-in made ready behind this app – screens/falcon_inside.dart)
+  static final List<Future<void> Function()> signOutAlso = [];
+
   /* (3.20.1, asked 18-10-2026: "app madhun pn auto log out nko aahe") The sign-in kept on this phone could not be checked, or the
    * site could not be opened, because there is NO NETWORK or the server did not answer: the person is NOT signed out. Before,
    * he was shown the sign-in (his kept sign-in stayed, but it looked like a log-out). Now the app waits – Stage.waiting: "No
@@ -1592,6 +1595,11 @@ class Session extends ChangeNotifier {
     if (off != null) {
       try {
         await off(this).timeout(const Duration(seconds: 4));
+      } catch (_) {/* signing out never waits for it */}
+    }
+    for (final f in List.of(signOutAlso)) {
+      try {
+        await f().timeout(const Duration(seconds: 4));
       } catch (_) {/* signing out never waits for it */}
     }
     // (3.149.0, rcl-hr step 20) his place for HR stops at sign-out (what waits is sent once more – never waits long)

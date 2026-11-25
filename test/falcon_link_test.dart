@@ -19,8 +19,18 @@ void main() {
     expect([x.name, x.at, x.metres! < 50, x.meal, x.now, x.to], ['Camp Mess', true, true, 'lunch', true, '14:30']);
     final away = messNow(card, lat: 18.55, lng: 73.8567)!;
     expect([away.name, away.at, distText(away.metres!)], ['Camp Mess', false, '3.3 km']);
-    expect(messNow(card, lat: 18.5212, lng: 73.8567, acc: 200)!.at, true, reason: '~100 m + at most 50 m of the phone\'s uncertainty');
-    expect(messNow(card, lat: 18.5222, lng: 73.8567, acc: 200)!.at, false);
+    expect(messNow(card, lat: 18.5212, lng: 73.8567, acc: 80)!.at, true, reason: '~100 m + at most 50 m of the phone\'s uncertainty');
+    expect(messNow(card, lat: 18.5222, lng: 73.8567, acc: 80)!.at, false);
+  });
+  // (3.171.0 patch 2, his word of 25-11-2026: "20 km lamb hoto but app sangat hote 5 km … ekdm perfect") a rough reading (the mobile
+  // towers, no GPS yet – kilometres off) gives no distance and never "at the mess"
+  test('only an exact reading (± 100 m) gives the distance; a rough one: the mess without a distance', () {
+    expect(messExact, 100);
+    final rough = messNow(card, lat: 18.5203, lng: 73.8567, acc: 3000)!;
+    expect([rough.metres, rough.at], [null, false]);
+    final edge = messNow(card, lat: 18.55, lng: 73.8567, acc: 100)!;
+    expect(distText(edge.metres!), '3.3 km');
+    expect(messNow(card, lat: 18.55, lng: 73.8567, acc: 101)!.metres, isNull);
   });
   test('no place of his: the first mess, no distance; no mess / no card: nothing', () {
     final x = messNow(card)!;
@@ -64,5 +74,36 @@ void main() {
     expect(await FalconMess.open((b) async => {'pass': 'nonsense', 'web': 'https://falcon.test'}, launch: launch), 'FALCON could not be opened – try again.');
     expect(web, isNull);
     expect(await FalconMess.open((b) async => throw Exception('Your mobile number is not in your HR record.'), launch: launch), 'Your mobile number is not in your HR record.');
+  });
+  // (3.171.0 patch 2, his choice of 25-11-2026) FALCON inside this app FIRST – also when FALCON's app is on the phone; made ready behind
+  // the app: straight on its home, without asking HR for a pass
+  test('opening: inside this app first (FALCON\'s app only where it cannot run inside); made ready: no pass is asked', () async {
+    const ch = MethodChannel('rcl/falcon');
+    final good = 'v1.eyJjIjoiRTAwMDEyIn0.${'A' * 43}';
+    var appAsked = 0, passes = 0;
+    final inside = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(ch, (c) async {
+      appAsked++;
+      return true;
+    });
+    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(ch, null));
+    Future<Map<String, dynamic>> ask(Map<String, dynamic> b) async {
+      passes++;
+      return {'pass': good, 'web': 'https://falcon.test'};
+    }
+
+    Future<bool> inApp(String p) async {
+      inside.add(p);
+      return true;
+    }
+
+    expect(await FalconMess.open(ask, inside: inApp, ready: () => false), '');
+    expect([inside, passes, appAsked], [[good], 1, 0], reason: 'not ready: HR\'s pass, inside this app – not FALCON\'s app');
+    expect(await FalconMess.open(ask, inside: inApp, ready: () => true), '');
+    expect([inside.last, passes, appAsked], ['', 1, 0], reason: 'made ready: on its home, no pass asked');
+    expect(await FalconMess.open(ask, inside: (p) async => false, ready: () => false), '');
+    expect(appAsked, 1, reason: 'FALCON cannot run inside here: its own app');
+    expect((await FalconMess.pass(ask))?.pass, good);
+    expect(await FalconMess.pass((b) async => {'pass': 'nonsense'}), isNull);
   });
 }

@@ -11713,12 +11713,22 @@ void main() {
     };
     falconInsideOnForTest = true;
     falconStartForTest = () async {};
-    addTearDown(() {
+    // (3.171.0 patch 2) FALCON made ready behind the app as Home opens (its warm start): who it was made ready for
+    final warmed = <String>[];
+    falconWarmForTest = (pass, who) async {
+      warmed.add(who);
+      return true;
+    };
+    falconReadyForTest = warmed.contains;
+    addTearDown(() async {
+      await forgetFalconInside();
       AttendKit.kit = AttendKit();
       FalconMess.launchHook = null;
       FalconMess.forget();
       falconInsideOnForTest = null;
       falconStartForTest = null;
+      falconWarmForTest = null;
+      falconReadyForTest = null;
     });
     final srv = FakeServer()
       ..hrSite = true
@@ -11728,10 +11738,11 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await net(t);
+    expect([warmed.length, srv.falconPasses], [1, 1], reason: '(3.171.0 patch 2) FALCON made ready behind Home, with one pass of HR');
     await t.tap(find.byKey(const Key('home-mess')));
     await net(t);
     await net(t);
-    expect(srv.falconPasses, 1);
+    expect(srv.falconPasses, 1, reason: 'made ready: no new pass – straight on FALCON\'s home');
     expect(opened, isNull, reason: 'not the web');
     expect(find.byKey(const Key('falcon-inside')), findsOneWidget, reason: 'FALCON\'s screens, a page of this app');
     expect(find.descendant(of: find.byKey(const Key('falcon-inside')), matching: find.byType(MaterialApp)), findsOneWidget, reason: 'FALCON\'s own screens and look');
