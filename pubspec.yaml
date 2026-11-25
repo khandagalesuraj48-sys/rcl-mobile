@@ -48,10 +48,11 @@ dependencies:
   record: ^6.0.0 # (3.132.0, Mechanical update-263) the voice of a Smart Log Book closing, recorded while the phone listens (Android)
   # (3.171.0, his word of 23-11-2026: "falcon seprate pn chalayla pahije … ani erp hr madeh pn") FALCON's own screens inside this app
   # when the FALCON app is not on the phone – the FALCON app's code itself (one code for both; lib/embed.dart there), pinned
+  # (3.171.0 patch 1, 25-11-2026) FALCON's place comes fast too (its lib/core/geo.dart) – Dart only, no picture or plugin changed
   falcon:
     git:
       url: https://github.com/khandagalesuraj48-sys/FALCONAPK.git
-      ref: 70c12cd2b247ab73591ffaf821a19d7e8ba650cb
+      ref: f9ea6dcb6a75e81c5e0909818f79bf13b0ff152f
 
 dev_dependencies:
   flutter_test:

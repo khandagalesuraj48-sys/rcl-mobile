@@ -23,8 +23,9 @@ at once too. Attendance: a reading less exact than the site's "exact to … m" i
 within the same 25 s; Home's reading of a moment ago is used only when it is exact enough and inside (else the phone is read once more,
 now); a reading still going on is waited for (no second one beside it); the read-ahead's 20 s count from the reading's own time. A made-up
 location, Developer Options, the work place, the server's checks – as before. The background places (`hr_track.dart`, `vl_gps.dart`) are
-not changed. **Dart only – sent as a Shorebird patch of 3.171.0 (251)** (Actions → patch), no new app file; the version stays 3.171.0.
-FALCON's own app is another repository (not on Shorebird).
+not changed. FALCON inside this app: its pin (`pubspec.yaml`) moves to FALCONAPK's commit with the same fast place (its `lib/core/geo.dart`:
+the reading of the last 15 s at once, then asked every second). **Dart only – sent as a Shorebird patch of 3.171.0 (251)** (Actions →
+patch), no new app file; the version stays 3.171.0. The FALCON app itself (FALCONAPK, not on Shorebird) gets it with its own next update.
 
 **Version 3.171.0 (23-11-2026 – his words: "app nasel tr ji app aahe tyatch open hoyla haw"; "jas ki bgh erp app madhe apan mark in button
 diley te dable ki hr pn tya madhech open hot"; "falcon seprate pn chalayla pahije ani erp hr madeh pn chalayla pahije"):** the Mess card / strip
