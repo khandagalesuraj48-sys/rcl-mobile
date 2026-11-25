@@ -108,9 +108,11 @@ class FalconMess {
 
 /// The mess for him now: the nearest one with a place (else the first), how far, whether he is at it, its meal.
 class MessNow {
-  MessNow(this.name, this.metres, this.at, this.meal, this.from, this.to, this.now, this.dishes);
+  MessNow(this.name, this.metres, this.at, this.meal, this.from, this.to, this.now, this.dishes, {this.messLat, this.messLng, this.myLat, this.myLng});
   final String name;
-  final int? metres; // null – his place or the mess's place is not known
+  final int? metres; // null – his place or the mess's place is not known (the STRAIGHT line – the road: [road])
+  /// (3.171.0 patch 3) the two places, for the distance by road
+  final double? messLat, messLng, myLat, myLng;
   final bool at;
   final String meal, from, to; // meal '' – nothing more today
   final bool now; // the meal is being served now
@@ -152,7 +154,20 @@ MessNow? messNow(Map<String, dynamic>? card, {double? lat, double? lng, double a
   final at = bestM != null && bestM - math.min(acc, 50) <= r;
   final meal = best['meal'] is Map ? best['meal'] as Map : const {};
   return MessNow('${best['name'] ?? 'Mess'}', bestM, at, '${meal['meal'] ?? ''}', '${meal['from'] ?? ''}', '${meal['to'] ?? ''}', meal['now'] == true,
-      [for (final d in (best['dishes'] as List? ?? const [])) '$d']);
+      [for (final d in (best['dishes'] as List? ?? const [])) '$d'],
+      messLat: bestM == null ? null : n(best['lat']), messLng: bestM == null ? null : n(best['lng']), myLat: bestM == null ? null : lat, myLng: bestM == null ? null : lng);
+}
+
+/// (3.171.0 patch 3, his word of 25-11-2026 with FALCON's "5.9 km away" and Google Maps' 12 km: "app ase ase fake imformation denare tr
+/// kahich thik nahi chalnar") how far the mess is: BY ROAD when FALCON has it ([roadMetres]), else the straight line – said as one.
+/// [code]: the app's language ('mr', 'hi', else English).
+String messFar(int straight, int? roadMetres, String code) {
+  if (roadMetres != null) {
+    final d = distText(roadMetres);
+    return code == 'mr' ? 'रस्त्याने $d' : code == 'hi' ? 'सड़क से $d' : '$d by road';
+  }
+  final d = distText(straight);
+  return code == 'mr' ? 'सरळ रेषेत $d' : code == 'hi' ? 'सीधी रेखा में $d' : '$d in a straight line';
 }
 
 String mealWord(String m) => m.isEmpty ? '' : m[0].toUpperCase() + m.substring(1);
