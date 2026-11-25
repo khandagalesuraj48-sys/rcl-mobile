@@ -2053,6 +2053,26 @@ Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-
 * **`tell.yml`**: `version`, `build`, `topic` (`rcl-app-update` or `rcl-app-update-beta`) → `tool/fcm_topic.sh`.
 * Both workflows must be on `main` once (GitHub starts a workflow by hand only when it is on the default branch).
 
+## Updates without the store – Shorebird (25-11-2026)
+His decision: the app's updates without a new store file. The app is Flutter (its own screens – never a web page inside), so the
+web-bundle way (Capacitor) does not apply; **Shorebird** ("code push" for Flutter) is used: a fix of the app's **Dart code** reaches
+the phones as a small **patch**, downloaded in the background at an opening and in force at the next opening.
+* **Account:** Shorebird organization **Sketchline** (Hobby), owner lion@sketchline.si. The app **Sketchline Lion** –
+  `shorebird.yaml` (`app_id`, not a secret). GitHub secret **`SHOREBIRD_TOKEN`** = an API key of the service account
+  `lion-github-build` (role Developer – App manager only to make an app). Never in a file, never in chat.
+* **Releases:** `release.yml` and `beta.yml` build the app WITH Shorebird (`shorebird release android --artifact apk`): the release
+  `<version>+<build>` is kept in Shorebird. A patch reaches only an app released this way – the first such release has to reach
+  everybody once (the APK update; the Play Store and the App Store with their next file).
+* **One file per processor** (3.19.1) is made from Shorebird's file (`tool/abi_apks.sh`: the other processor's folder taken out,
+  signed again, every other entry checked byte for byte) – Shorebird makes one build per version and refuses `--split-per-abi`.
+* **Patch signing:** a key pair made once (`tool/shorebird_keys.sh`), kept only in the private bucket `app-keys`
+  (`shorebird-patch-private.pem` / `shorebird-patch-public.pem`). Every release carries the public key; a phone takes only a patch
+  signed with the private one. Never replaced (an app of before takes only patches signed with its own key).
+* **Release not published** (the box unticked): `--dry-run` – built and checked, nothing sent to Shorebird.
+* **What still needs a new app file (store / APK):** native code (Kotlin, Swift), a new plugin with native parts, a new permission,
+  `AndroidManifest.xml` / `Info.plist`, pictures and other assets, a new Flutter version.
+* Not yet: the patch run (`shorebird patch`), Play (`play.yml` – after the review in progress is published) and iPhone.
+
 ## Release (signed, a GitHub Release)
 `.github/workflows/release.yml` is run by hand on `main` (Actions → release → Run workflow), after the owner says yes.
 * **First time:** it makes the private bucket **app-keys** in the Portal's Supabase and the signing key, kept only there. A
