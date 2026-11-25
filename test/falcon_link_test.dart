@@ -32,6 +32,19 @@ void main() {
     expect(distText(edge.metres!), '3.3 km');
     expect(messNow(card, lat: 18.55, lng: 73.8567, acc: 101)!.metres, isNull);
   });
+  // (3.171.0 patch 3, his word of 25-11-2026: FALCON said 5.9 km, Google Maps 12 km) by road when FALCON has it, else the straight line
+  // said as one – in the app's language
+  test('how far: by road when known, else "in a straight line" – English, मराठी, हिंदी; the two places go with it', () {
+    expect(messFar(5900, 12034, ''), '12 km by road');
+    expect(messFar(5900, null, ''), '5.9 km in a straight line');
+    expect(messFar(5900, 12034, 'mr'), 'रस्त्याने 12 km');
+    expect(messFar(5900, null, 'mr'), 'सरळ रेषेत 5.9 km');
+    expect(messFar(5900, 12034, 'hi'), 'सड़क से 12 km');
+    expect(messFar(5900, null, 'hi'), 'सीधी रेखा में 5.9 km');
+    final x = messNow(card, lat: 18.55, lng: 73.8567, acc: 10)!;
+    expect([x.messLat, x.messLng, x.myLat, x.myLng], [18.5203, 73.8567, 18.55, 73.8567]);
+    expect(messNow(card)!.messLat, isNull, reason: 'no place of his: nothing to measure');
+  });
   test('no place of his: the first mess, no distance; no mess / no card: nothing', () {
     final x = messNow(card)!;
     expect([x.name, x.metres, x.at], ['Far Mess', null, false]);

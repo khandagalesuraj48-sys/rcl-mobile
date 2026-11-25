@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:falcon/core/road.dart' as froad;
 import 'package:falcon/embed.dart' as falcon;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -45,6 +46,15 @@ Future<void> warmFalconInside(String who, Future<String?> Function() pass) async
     _warming = '';
   }
 }
+
+/// (3.171.0 patch 3) the road from his place to the mess, as FALCON knows it (its lib/core/road.dart – FALCON's server, Google's
+/// Routes API) – only once FALCON is ready for him; null: not (yet). [falconRoads] tells when one comes.
+int? falconRoadMetres(String who, double aLat, double aLng, double bLat, double bLng) =>
+    falconRoadForTest != null ? falconRoadForTest!(aLat, aLng, bLat, bLng) : falconReadyFor(who) ? froad.Roads.i.of(aLat, aLng, bLat, bLng)?.metres : null;
+Listenable get falconRoads => froad.Roads.i;
+
+/// (tests) instead of FALCON's road
+int? Function(double aLat, double aLng, double bLat, double bLng)? falconRoadForTest;
 
 /// FALCON is ready for him (made ready behind this app): Mess opens straight on its home.
 bool falconReadyFor(String who) => falconInsideOn && (falconReadyForTest ?? falcon.falconWarmFor)(who);

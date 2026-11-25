@@ -15,6 +15,12 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**3.171.0 patch 3 (25-11-2026 – his word with FALCON's "5.9 km away" and Google Maps' 12 km: "app ase ase fake imformation denare tr
+kahich thik nahi chalnar"):** both points were right – the distance was the straight line. FALCON inside the app (its pin → its "road
+distance" commit) and the Mess card / strip now say how far **by road** (FALCON's server step /api/route – Google's Routes API, the key
+only in FALCON's Vercel) once FALCON is ready for him; until then "5.9 km in a straight line" – in English, मराठी and हिंदी
+(`messFar`, `falconRoadMetres`). Dart only – a Shorebird patch of 3.171.0 (251).
+
 **3.171.0 patch 2 (25-11-2026 – his words: "hr aso erp aso app open zalel zale tyache maghe auto falcon pn on hoil … falcon opening chi
 screen ti yenar nahi"; "final back erp hr madhe jail app band nahi"; "kal pahile mess pasun 20 km lamb hoto but app sangat hote 5 km … ekdm
 perfect"; and his choice: FALCON always inside the ERP / HR app):** the Mess opens FALCON **inside this app first** – also when the FALCON

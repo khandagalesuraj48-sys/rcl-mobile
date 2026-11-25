@@ -100,7 +100,30 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
     if (err.isNotEmpty) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: m.Text(err)));
   }
 
-  String placeLine(MessNow x) => x.metres == null ? x.name : x.at ? '${x.name} · ${distText(x.metres!)} · ${tr('you are at the mess')}' : '${x.name} · ${distText(x.metres!)} ${tr('away')}';
+  String placeLine(MessNow x) => x.metres == null ? x.name : x.at ? '${x.name} · ${distText(x.metres!)} · ${tr('you are at the mess')}' : '${x.name} · ${far(x)}';
+
+  /// (3.171.0 patch 3) how far – by road when FALCON has it, else the straight line said as one
+  String far(MessNow x) {
+    final s = SessionScope.read(context);
+    final road = x.myLat == null || x.messLat == null ? null : falconRoadMetres(s.email, x.myLat!, x.myLng!, x.messLat!, x.messLng!);
+    return messFar(x.metres!, road, Lang.i.code);
+  }
+
+  void _roadCame() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    falconRoads.addListener(_roadCame);
+  }
+
+  @override
+  void dispose() {
+    falconRoads.removeListener(_roadCame);
+    super.dispose();
+  }
   String mealLine(MessNow x) => x.meal.isEmpty ? tr('Closed for today') : x.now ? '${tr(mealWord(x.meal))} ${tr('now')} · ${tr('till')} ${x.to}' : '${tr(mealWord(x.meal))} · ${tr('from')} ${x.from}';
 }
 
@@ -212,7 +235,7 @@ class _MessStripState extends State<MessStrip> with _MessData<MessStrip> {
   Widget build(BuildContext context) {
     final x = who.isEmpty ? null : now;
     if (x == null) return who.isEmpty ? const SizedBox.shrink() : nothing(context, 'home-mess-why');
-    final sub = [if (x.metres != null) x.at ? '${x.name} · ${distText(x.metres!)}' : '${x.name} · ${distText(x.metres!)} ${tr('away')}' else x.name, if (x.now) '${tr('till')} ${x.to}'].join(' · ');
+    final sub = [if (x.metres != null) x.at ? '${x.name} · ${distText(x.metres!)}' : '${x.name} · ${far(x)}' else x.name, if (x.now) '${tr('till')} ${x.to}'].join(' · ');
     final title = x.meal.isEmpty ? '${tr('Mess')} · ${tr('closed for today')}' : '${tr('Mess')} · ${tr(mealWord(x.meal).toLowerCase())} ${x.now ? tr('now') : '${tr('from')} ${x.from}'}';
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 10, 0, 0),
