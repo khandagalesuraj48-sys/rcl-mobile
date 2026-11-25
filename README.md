@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**3.171.0 patch 1 (25-11-2026 – his words: "erp aso attendace app aso ki hr app aso … location fetching la time ghetey location on asla tri
+sudha he khup fast hoyla haw … ha app la user updet kryar nhi"):** the phone's place comes fast – `lib/core/gps_fast.dart`, for attendance
+(`AttendKit.where`) and the ERP's photos (`whereNow`): the phone's own reading of the last 15 s is taken at once; else the first new reading,
+asked every second (the plugin asked once in 5 s when no interval was given); on Android 13+ the phone may give its reading of the last 15 s
+at once too. Attendance: a reading less exact than the site's "exact to … m" is not refused at once – new readings are asked for until one is,
+within the same 25 s; Home's reading of a moment ago is used only when it is exact enough and inside (else the phone is read once more,
+now); a reading still going on is waited for (no second one beside it); the read-ahead's 20 s count from the reading's own time. A made-up
+location, Developer Options, the work place, the server's checks – as before. The background places (`hr_track.dart`, `vl_gps.dart`) are
+not changed. FALCON inside this app: its pin (`pubspec.yaml`) moves to FALCONAPK's commit with the same fast place (its `lib/core/geo.dart`:
+the reading of the last 15 s at once, then asked every second). **Dart only – sent as a Shorebird patch of 3.171.0 (251)** (Actions →
+patch), no new app file; the version stays 3.171.0. The FALCON app itself (FALCONAPK, not on Shorebird) gets it with its own next update.
+
 **Version 3.171.0 (23-11-2026 – his words: "app nasel tr ji app aahe tyatch open hoyla haw"; "jas ki bgh erp app madhe apan mark in button
 diley te dable ki hr pn tya madhech open hot"; "falcon seprate pn chalayla pahije ani erp hr madeh pn chalayla pahije"):** the Mess card / strip
 opens the FALCON app when it is on the phone (as before); when it is NOT, FALCON's own screens open INSIDE this app as one of its pages

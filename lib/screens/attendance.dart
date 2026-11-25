@@ -310,7 +310,26 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final places = _places;
     if (places.isEmpty) throw AttendProblem('No work place is set for you yet – ask the HR office.', 'तुमच्यासाठी अजून work place ठरवलेले नाही – HR office ला सांगा.', 'noplace');
     // (3.117.0) one press from the attendance app: its reading of a moment ago is used while it is young – else read now
-    final f = (widget.auto ? AttendWhere.i.fresh() : null) ?? await AttendKit.kit.where();
+    // (3.171.0 patch 1, "location fetching … khup fast hoyla haw") a reading still going on is waited for – no second one beside it;
+    // a reading of a moment ago that is not exact enough or puts him outside is not the last word: the phone is read once more, now
+    if (widget.auto) {
+      if (AttendWhere.i.busy) await AttendWhere.i.read();
+      final pre = AttendWhere.i.fresh();
+      if (pre != null) {
+        try {
+          return _at(pre, kind, outsideOk, places, show: false);
+        } on AttendProblem catch (e) {
+          if (e.code != 'accuracy' && e.code != 'outside' && e.code != 'inout') rethrow;
+        }
+      }
+    }
+    // (3.171.0 patch 1) a reading less exact than the site asks is not refused at once: the phone is asked again, within its 25 s
+    return _at(await AttendKit.kit.where(want: _maxAcc), kind, outsideOk, places);
+  }
+
+  /// The rules of a punch on one reading [f] (a made-up location, how exact, IN / OUT here, inside his work place). [show] false
+  /// (the reading of a moment ago): a place outside is not shown – the new reading decides it.
+  PlaceHit _at(AttendFix f, String kind, bool outsideOk, List<WorkPlace> places, {bool show = true}) {
     if (f.mocked) throw AttendProblem('This phone gives a made-up location: attendance cannot be marked.', 'हा phone खोटे location देत आहे: हजेरी लावता येणार नाही.', 'mock');
     if (!(f.acc >= 0) || f.acc > _maxAcc) {
       throw AttendProblem('Your location is not exact enough yet (${f.acc.round()} m): stand in the open for a moment and try again.', 'तुमचे location अजून नेमके नाही (${f.acc.round()} m): थोडा वेळ मोकळ्या जागेत उभे राहून पुन्हा करा.', 'accuracy');
@@ -318,10 +337,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     // (3.135.0, rcl-hr step 15) only the places where he may mark THIS (IN or OUT) – the server checks the same
     final usable = kind.isEmpty ? places : places.where((p) => p.may(kind)).toList(), k = kind == 'out' ? 'OUT' : 'IN';
     if (usable.isEmpty) throw AttendProblem('You may not mark $k at any of your work places – ask the HR office.', 'तुमच्या कोणत्याही work place वर $k लावता येत नाही – HR office ला सांगा.', 'inout');
-    final h = nearestPlace(usable, f.lat, f.lng)!;
-    fix = f;
-    if (mounted) setState(() => hit = h);
-    if (!h.inside && !outsideOk) {
+    final h = nearestPlace(usable, f.lat, f.lng)!, out = !h.inside && !outsideOk;
+    if (show || !out) {
+      fix = f;
+      if (mounted) setState(() => hit = h);
+    }
+    if (out) {
       final any = usable.length < places.length ? nearestPlace(places, f.lat, f.lng) : null;
       if (any != null && any.inside) {
         final where = usable.take(3).map((p) => p.name).join(', ');

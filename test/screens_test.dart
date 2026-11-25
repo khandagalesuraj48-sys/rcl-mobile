@@ -13,7 +13,7 @@ import 'package:rcl_mobile/screens/falcon_inside.dart';
 import 'package:rcl_mobile/core/lost_photo.dart';
 import 'package:rcl_mobile/core/app_consent.dart';
 import 'package:rcl_mobile/core/api.dart';
-import 'package:rcl_mobile/core/attend.dart' show AttendKit;
+import 'package:rcl_mobile/core/attend.dart' show AttendKit, AttendWhere;
 import 'package:rcl_mobile/core/falcon_link.dart' show FalconMess;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
 import 'package:rcl_mobile/screens/app_lock.dart';
@@ -9122,6 +9122,13 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home.png'));
     // ---- the slide: My attendance opens to mark – IN; said big, then Home again by itself: on duty
     // (3.116.0) ONE PRESS: the dial reads his place and takes the selfie by itself – no page in between, nothing to slide
+    // (3.171.0 patch 1, "location fetching … khup fast hoyla haw") Home's reading of a moment ago is not exact enough (400 m): the
+    // press does not refuse it – the phone is read once more, now, asked to be exact to the site's 100 m – and IN is marked
+    kit.acc = 400;
+    await AttendWhere.i.read();
+    expect(AttendWhere.i.fresh()?.acc, 400);
+    kit.acc = 12;
+    final readsBefore = kit.wants.length;
     await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
     await tapKey('hh-slide');
     expect(find.byKey(const Key('att-punch')), findsNothing);
@@ -9130,6 +9137,8 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('att-punch')), findsNothing, reason: 'Home again');
     expect(srv.hrPunches.length, 1);
+    expect(kit.wants.skip(readsBefore), contains(100.0), reason: '(3.171.0 patch 1) read once more, exact to the site\'s 100 m');
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'punch')['accuracy_m'], 12, reason: 'the new reading went with the punch, not the 400 m one');
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
     expect(t.widget<Text>(find.byKey(const Key('hh-in'))).data, '10:30');
     expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('PUNCH OUT')), findsOneWidget, reason: 'OUT is next');
