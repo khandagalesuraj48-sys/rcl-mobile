@@ -15,6 +15,27 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**3.171.0 patch 4 – SNI, the network as measured (25-11-2026 – the SNI audit and its five pictures; his approval: "he sagle tu dilel
+screen pn ok aahet asch banaw he kam chalu kr"; his answers: offline only Diesel Issue / Transfer / Inward and the Log Book as before –
+"baki kahich offline nakoy"; "wifi ki mobile data as nko olkhayla"; "user la app updet as nahi disle pahije"; with the app closed: the
+15-minute patch way):** ONE monitor for the app (`core/net.dart`), fed only by the app's own requests – Api's client measures every request
+of our servers (the Portal, Mechanical, HR, Store, Engineering, Purchase – `Api.serverOf`): its time and how it ended. The rules: the last
+10 answers of the last 2 minutes – middle time under 800 ms GOOD, 800 ms or more (or one over 5 s) WEAK, 2 failures UNSTABLE; no answer →
+RECONNECTING while Android's own check (connectivitycheck.gstatic.com/generate_204, once in 10 s at most) is asked: it answers → SERVER
+DOWN, it fails too → OFFLINE; a better state shows after it held 3 s. Idle in front for 30 s: one small request to the Portal
+(`/api/jwks`); in the background nothing. What he sees (`ui/net_chip.dart`): the chip on every page – in the header's row where there is room (Home's
+greeting line, HR Home), on the site's line (Entries, Reports), under his name (Me), and where a header has no room (`withAsk`, `hrHead`,
+My attendance) hanging on its lower edge at the right (`NetPin` – drawn by `NetHost` only while that page is in front) – "240 ms", "Weak · 1.8 s", "Reconnecting", "Server down", "Offline",
+"Checking" before the first answer; a tap: each server measured apart, Android's check, the last change, "Check now"; one line under the
+header (the app's message bar) for slow (a request waiting over 5 s), reconnecting, server down, no internet – × hides it until the state
+changes. HR pages shown from their saved copy (Home, Attendance month, Leave, My documents – `HrCache.savedAt`) say "Saved 10:12 AM ·
+refreshing…", then "Live · just now"; the server not answering: "Saved 10:12 AM · not live"; Leave's Apply waits for the live answer. **With
+the app closed**, the entries kept on the phone with no network go out with the existing Android alarm (about every 15 minutes –
+`sendKeptInBackground`, the same sender as with the app open: `Session.sendOneKept`, the same number, saved once); not while the app is
+open (it sends them at once itself). No Wi-Fi / mobile reading, no new plugin, no asset: Dart only – a Shorebird patch of 3.171.0 (251).
+Not verified: a real phone (the times, the alarm sending with the app closed – Shorebird's patch in the alarm's own engine is to be seen on
+a phone), FALCON (its own app, next).
+
 **3.171.0 patch 3 (25-11-2026 – his word with FALCON's "5.9 km away" and Google Maps' 12 km: "app ase ase fake imformation denare tr
 kahich thik nahi chalnar"):** both points were right – the distance was the straight line. FALCON inside the app (its pin → its "road
 distance" commit) and the Mess card / strip now say how far **by road** (FALCON's server step /api/route – Google's Routes API, the key

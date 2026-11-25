@@ -40,6 +40,7 @@ import '../ui/home_dial.dart';
 import '../ui/hr_skin.dart';
 import '../ui/mess_card.dart';
 import '../ui/motion.dart';
+import '../ui/net_chip.dart' show NetChip, SavedLine, afterAnswer;
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/widgets.dart';
@@ -107,6 +108,8 @@ String _span(String a, String b) {
 }
 
 class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
+  /// (3.171.0 patch 4 – SNI picture 5) Home shown from what the phone read last: 'saved' / 'live' / 'stale' / ''.
+  String _src = '';
   /// (3.161.0) he signed out of HR on this phone – [HrSignIn] is shown instead of the pages
   bool _hrOut = false;
 
@@ -328,6 +331,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           day = k;
           loading = false;
           _parts(parts);
+          _src = 'saved'; // (3.171.0 patch 4 – SNI picture 5)
         });
       }
     }
@@ -344,6 +348,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
         _srvAt = AttendKit.kit.now();
         loading = false;
         err = '';
+        _src = afterAnswer(_src);
       });
       _tries = 0;
       _byHand = false;
@@ -359,6 +364,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       _byHand = false;
       setState(() {
         loading = false;
+        if (e is ApiError && e.code == 'net' && day != null) _src = 'stale'; // (3.171.0 patch 4 – SNI picture 5)
         err = net ? '' : e is StateError ? 'You have no HR on this site – the Super Admin gives it in the Portal.' : errText(e);
       });
       if (net && _tries < 3) {
@@ -510,6 +516,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
               // naye") his name and the bell STAY at the top; the page moves under them
               child: Column(children: [
               Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 10), child: _top(s)),
+              SavedLine(kind: _src, at: HrCache.savedAt('myAttend')), // (3.171.0 patch 4 – SNI picture 5)
               Expanded(child: RefreshIndicator(
                 // (pulled down by hand: what the network says is told)
                 onRefresh: () {
@@ -562,6 +569,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
           m.Text(name, key: const Key('hh-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
         ]),
       ),
+      Padding(padding: const EdgeInsets.only(right: 8), child: NetChip(dark: sk.dark)), // (3.171.0 patch 4 – SNI picture 2)
       hrIconBox(Icons.notifications_none_rounded, key: const Key('hh-bell'), dot: wait, onTap: _notices),
     ]);
   }
