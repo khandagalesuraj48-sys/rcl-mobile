@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/alerts.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/code_words.dart';
+import 'package:rcl_mobile/core/lang.dart' show Lang;
 import 'package:rcl_mobile/core/photo.dart';
 import 'package:rcl_mobile/core/plate.dart';
 import 'package:rcl_mobile/core/format.dart' show parseKey;
@@ -355,6 +357,88 @@ void main() {
     await s2.leaveSetPassword();
     expect(s2.stage, Stage.signedOut);
     expect(srv.calls, contains('portal:logout'));
+  });
+
+  /* (25-11-2026, the Portal's rule – his answers: 6 codes, 6 wrong codes, then 15 minutes; "remaining kiti sangitle jail") */
+  test('(25-11-2026) a code sign-in on a given password: the app opened again still knows it – only the new password; after the 30 minutes the given one is asked again', () async {
+    srv
+      ..otpOn = true
+      ..mustChange = true;
+    final s1 = make();
+    await s1.otpSend('sujit.own@rcl.test');
+    await s1.otpSignIn('sujit.own@rcl.test', '482913');
+    expect(s1.stage, Stage.setPassword);
+    expect(s1.byCode, isTrue);
+    // the app opened again: the Portal's "me" says byCode
+    final s2 = make();
+    await s2.start();
+    expect(s2.stage, Stage.setPassword);
+    expect(s2.byCode, isTrue);
+    // the Portal's 30 minutes over: "Current password is wrong" → the given one is asked again
+    srv.byCode = false;
+    await s2.setOwnPassword('', 'Mule#2026x');
+    expect(s2.stage, Stage.setPassword);
+    expect(s2.byCode, isFalse);
+    expect(s2.error, contains('The 30 minutes after your code are over'));
+    // within them: set without it
+    srv.byCode = true;
+    s2.byCode = true;
+    await s2.setOwnPassword('', 'Mule#2026x');
+    expect(srv.newPassword, 'Mule#2026x');
+    expect(s2.stage, isNot(anyOf(Stage.signedOut, Stage.setPassword)));
+  });
+
+  test('(25-11-2026) a password sign-in is never "by code"', () async {
+    srv.mustChange = true;
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.stage, Stage.setPassword);
+    expect(s.byCode, isFalse);
+  });
+
+  test('(25-11-2026) the codes left after each code; the 7th blocked 15 minutes; 6 wrong codes block – said in the chosen language', () async {
+    srv.waOn = true;
+    final s = make();
+    final left = <int?>[];
+    for (var i = 0; i < 6; i++) {
+      await s.waSend('9876543210');
+      left.add(s.codesLeft);
+    }
+    expect(left, [5, 4, 3, 2, 1, 0]);
+    expect(codesLeftLine(0), contains('This is the last code for now'));
+    Object? err;
+    try {
+      await s.waSend('9876543210');
+    } catch (e) {
+      err = e;
+    }
+    expect(err, isA<ApiError>());
+    expect((err as ApiError).code, 'locked');
+    expect(codeError(err), 'Too many tries – wait 15 minutes, then ask for a new code.');
+    // wrong codes: the tries left, the 6th blocks (another number – its own count)
+    srv.waNumber = '9876500000';
+    final said = <String>[];
+    for (var i = 0; i < 6; i++) {
+      try {
+        await s.waCheck('9876500000', '111111');
+      } catch (e) {
+        said.add(codeError(e));
+      }
+    }
+    expect(said.first, 'The code is wrong or has expired. 5 tries left – after that you wait 15 minutes.');
+    expect(said[4], 'The code is wrong or has expired. 1 try left – after that you wait 15 minutes.');
+    expect(said.last, 'Too many tries – wait 15 minutes, then ask for a new code.');
+    // in Marathi and Hindi when chosen
+    final was = Lang.i.code;
+    addTearDown(() => Lang.i.code = was);
+    Lang.i.code = 'mr';
+    expect(codeError(ApiError('x', code: 'code', data: const {'left': 3})), 'Code चुकीचा आहे किंवा त्याची वेळ संपली. अजून 3 प्रयत्न – त्यानंतर 15 मिनिटे थांबावे लागेल.');
+    expect(codesLeftLine(4), 'आणखी 4 code मागता येतील, नंतर 15 मिनिटे थांबावे लागेल.');
+    Lang.i.code = 'hi';
+    expect(codeError(ApiError('x', code: 'locked', data: const {'wait': 600})), 'बहुत कोशिशें हो गईं – 10 मिनट रुकें, फिर नया code मांगें।');
+    Lang.i.code = was;
+    // an error of anything else: as the Portal said it
+    expect(codeError(ApiError('Enter your 10-digit mobile number.', code: 'mobile')), 'Enter your 10-digit mobile number.');
   });
 
   test('sign out: Mechanical and the Portal, nothing kept on the phone', () async {

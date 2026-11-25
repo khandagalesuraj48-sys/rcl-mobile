@@ -15,6 +15,18 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**A new password with an e-mail code; the code limits (25-11-2026 – a Shorebird patch of 3.171.0, with the Portal's pull request
+"otp-password"; his words: "login with otp krtan given password nko aahe new set kru shakel … forgot kru shkel email la otp yeil forgat
+krun new set kru shakel … resend 6 time tya nantr 15 minute cha block pratek invalid otp or otp request la remaining kiti sangitle jail";
+his answers: 6 codes in all, 6 wrong codes, "Forgot password" for everybody but the Super Admin):** signed in with a code (e-mail or
+WhatsApp) on a given password, "Set your own password" asks only the new password twice (`Session.byCode` – the Portal's `byCode`, also
+from "me" when the app opens again; after the Portal's 30 minutes the given one is asked again). **"Forgot password?"** with the e-mail
+code switched on turns the card: the e-mail, "Send code", the code and the new password twice, "Set the new password" (`otpReset`) –
+the app opens; switched off, the help of before. After every code sent – sign-in by e-mail or WhatsApp, "Forgot password?", "Verify your
+e-mail", HR's sign-in again – how many more codes may be asked for; a wrong code, how many tries are left; blocked, the minutes to wait
+(`core/code_words.dart`, in English / मराठी / हिंदी; the Portal counts – the app only says what it answered; `ApiError.data` carries its
+`left` / `wait`). Dart only, no asset. Not verified: a real phone, a real e-mail.
+
 **3.171.0 patch 3 (25-11-2026 – his word with FALCON's "5.9 km away" and Google Maps' 12 km: "app ase ase fake imformation denare tr
 kahich thik nahi chalnar"):** both points were right – the distance was the straight line. FALCON inside the app (its pin → its "road
 distance" commit) and the Mess card / strip now say how far **by road** (FALCON's server step /api/route – Google's Routes API, the key

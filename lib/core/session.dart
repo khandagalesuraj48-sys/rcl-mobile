@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'alerts.dart';
 import 'api.dart';
+import 'code_words.dart';
 import 'rtc.dart';
 import 'format.dart';
 import 'fuel.dart';
@@ -243,6 +244,13 @@ class Session extends ChangeNotifier {
 
   Stage stage = Stage.starting;
   String error = '';
+
+  /// (25-11-2026, his words: "login with otp krtan given password nko aahe new set kru shakel") signed in with a code (e-mail or
+  /// WhatsApp) just now: "Set your own password" asks only the new one – the Portal takes it without the given one for 30 minutes.
+  bool byCode = false;
+
+  /// (25-11-2026) the Portal's `left` of the last code asked for – the codes he may still ask for, then 15 minutes (null: not said).
+  int? codesLeft;
 
   /// (3.37.0) How far the opening is, 0 – 1 – the start screen's bar (screens/splash.dart). Each value is set when that step is
   /// really done: the sign-in kept on this phone read, the sites from the Portal, the site's sign-in, the site's lists.
@@ -672,6 +680,7 @@ class Session extends ChangeNotifier {
     final me = await (meF ?? api.auth({'action': 'me'}));
     if (me['signedIn'] != true) throw ApiError('Please sign in.', code: 'signin');
     // (15-10-2026) still on the password the Super Admin gave: he sets his own first (here in the app)
+    byCode = me['byCode'] == true; // (25-11-2026) still in his 30 minutes after a code: the given password is not asked
     if (me['mustChange'] == true) throw ApiError('Set your own password first.', code: 'mustchange');
     final u = (me['user'] as Map?)?.cast<String, dynamic>() ?? {};
     // (14-10-2026) the Super Admin opens every module of every site too (the Portal lists them all for him, as Admin)
@@ -748,17 +757,18 @@ class Session extends ChangeNotifier {
 
   /* (3.166.0, the Portal's "Login with WhatsApp OTP" of 22-11-2026 – his words: "web and app doni sathi … otp takla auto verify sign
    * in button dabayla lagu naye") A CODE BY WHATSAPP: the Portal sends the code ONLY to a mobile number that is on an active user
-   * (never the Super Admin) – the same code rules as the e-mail code (10 minutes, once, 5 wrong tries, 60 seconds between two). The
+   * (never the Super Admin) – the same code rules as the e-mail code (10 minutes, once, 60 seconds between two; 25-11-2026: 6 codes / 6 wrong codes, then 15 minutes). The
    * app only asks; the answer to "send" is the same whoever asks. */
 
   /// "Send code on WhatsApp" / "Send again" → the seconds until another may be asked.
-  Future<int> waSend(String mobile) async => _secs((await api.auth({'action': 'waSend', 'mobile': mobile.trim()}))['wait']);
+  Future<int> waSend(String mobile) async => _sent(await api.auth({'action': 'waSend', 'mobile': mobile.trim()}));
 
   /// The six digits typed (checked by themselves – no button): right → true when he must set his own password first; wrong →
   /// [ApiError] for the card to show itself (the card shakes and clears; nothing else changes).
   Future<bool> waCheck(String mobile, String code) async {
     error = '';
     final r = await api.auth({'action': 'waLogin', 'mobile': mobile.trim(), 'code': code.trim()});
+    byCode = r['byCode'] == true;
     return r['mustChange'] == true;
   }
 
@@ -774,24 +784,47 @@ class Session extends ChangeNotifier {
   }
 
   /// "Send code" of the sign-in. → the seconds until another may be asked. The answer is the same whoever asks.
-  Future<int> otpSend(String address) async => _secs((await api.auth({'action': 'otpSend', 'email': address.trim()}))['wait']);
+  Future<int> otpSend(String address) async => _sent(await api.auth({'action': 'otpSend', 'email': address.trim()}));
 
-  /// The code typed: the same sign-in as with the password.
-  Future<void> otpSignIn(String address, String code) async {
+  /* (25-11-2026, his words: "forgot kru shkel email la otp yeil forgat krun new set kru shakel … verification purn verified asel"; his
+   * answer: everybody but the Super Admin) "FORGOT PASSWORD?": a code to his e-mail (the same code and limits as the sign-in; its
+   * e-mail says "Set a new password"), then the code and the new password in one step – the Portal checks the code first, sets the
+   * password (its rules, never the one he has), ends every other sign-in of his and signs him in here. */
+
+  /// "Send code" of "Forgot password?" → the seconds until another may be asked. The answer is the same whoever asks.
+  Future<int> resetSend(String address) async => _sent(await api.auth({'action': 'otpSend', 'email': address.trim(), 'reset': true}));
+
+  /// The code and the new password: right → the app opens as after a sign-in; wrong → [ApiError] for the card (codeError).
+  Future<void> resetPassword(String address, String code, String now) async {
     error = '';
+    await api.auth({'action': 'otpReset', 'email': address.trim(), 'code': code.trim(), 'password': now});
+    byCode = false;
+    freshSignIn?.call(); // the code typed just now: the app lock does not ask again
     try {
-      final r = await api.auth({'action': 'otpLogin', 'email': address.trim(), 'code': code.trim()});
-      if (r['mustChange'] == true) return _go(Stage.setPassword);
-      freshSignIn?.call(); // the code typed just now: the app lock does not ask again
       await _afterSignIn();
     } on ApiError catch (e) {
       _go(Stage.signedOut, e.toString());
     }
   }
 
+  /// The code typed: the same sign-in as with the password.
+  Future<void> otpSignIn(String address, String code) async {
+    error = '';
+    try {
+      final r = await api.auth({'action': 'otpLogin', 'email': address.trim(), 'code': code.trim()});
+      byCode = r['byCode'] == true;
+      if (r['mustChange'] == true) return _go(Stage.setPassword);
+      freshSignIn?.call(); // the code typed just now: the app lock does not ask again
+      await _afterSignIn();
+    } on ApiError catch (e) {
+      _go(Stage.signedOut, codeError(e)); // (25-11-2026) a wrong code: the tries left; blocked: the minutes to wait
+    }
+  }
+
   /// "Verify my e-mail", step 1: a code to [address] (his own). → the seconds until another may be asked; -1 = already verified.
   Future<int> verifySend(String address) async {
     final r = await api.auth({'action': 'verifySend', 'email': address.trim()});
+    codesLeft = r['left'] is num ? (r['left'] as num).toInt() : null;
     if (r['verified'] == true) {
       _verified('${r['login'] ?? address.trim()}');
       return -1;
@@ -826,11 +859,18 @@ class Session extends ChangeNotifier {
 
   static int _secs(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 60;
 
+  /// A code asked for: [codesLeft] kept, → the seconds until another may be asked.
+  int _sent(Map<String, dynamic> r) {
+    codesLeft = r['left'] is num ? (r['left'] as num).toInt() : null;
+    return _secs(r['wait']);
+  }
+
   /// Email + password of the Portal (one password for every module).
   Future<void> signIn(String mail, String password) async {
     error = '';
     try {
       final r = await api.auth({'action': 'login', 'email': mail.trim(), 'password': password});
+      byCode = false;
       // (15-10-2026) a new user, or a one-time password of the Super Admin: he sets his own password here in the app
       if (r['mustChange'] == true) return _go(Stage.setPassword);
       freshSignIn?.call(); // (3.27.0) the password typed just now: the app lock does not ask again
@@ -862,6 +902,12 @@ class Session extends ChangeNotifier {
     try {
       await api.auth({'action': 'changePassword', 'old': given, 'password': now});
     } on ApiError catch (e) {
+      // (25-11-2026) signed in with a code more than 30 minutes ago: the given password is asked again (or a new code)
+      if (byCode && e.code == 'oldpw') {
+        byCode = false;
+        return _go(Stage.setPassword, bi('The 30 minutes after your code are over – type the password you were given, or sign in again with a new code.',
+            'Code नंतरची 30 मिनिटे संपली – दिलेला password टाका, किंवा नवीन code ने पुन्हा sign in करा.', '\n'));
+      }
       if (e.needsSignIn || e.status == 401) {
         await api.forget();
         return _go(Stage.signedOut, 'Please sign in again with the password you were given.');
