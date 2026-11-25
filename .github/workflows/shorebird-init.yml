@@ -1,0 +1,50 @@
+# (25-11-2026, his decision: Shorebird for the app's updates without the store – "ok chal account kadhu") ONCE: adds the app to
+# Shorebird (organization "Sketchline", the Hobby plan) – `shorebird init` makes the app there and writes shorebird.yaml (the app's
+# Shorebird id – not a secret, it is inside every app) and puts it in pubspec.yaml's assets. This run only SHOWS them: nothing is
+# committed, built, signed, released or sent to a phone. The two files then come as a pull request of their own.
+# Key: the repository secret SHOREBIRD_TOKEN (a key of the Shorebird service account "lion-github-build", set by him) – never printed.
+name: Shorebird – add the app (once)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: The key is there
+        run: |
+          if [ -z "$SHOREBIRD_TOKEN" ]; then echo "::error::The repository secret SHOREBIRD_TOKEN is not set (Settings → Secrets and variables → Actions)."; exit 1; fi
+          if [ -f shorebird.yaml ]; then echo "::notice::shorebird.yaml is already in the repository – the app was added before, nothing to do."; cat shorebird.yaml; fi
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Packages (writes android/local.properties for Gradle)
+        run: flutter pub get
+      - uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+      - name: shorebird init
+        run: |
+          if [ -f shorebird.yaml ]; then exit 0; fi
+          shorebird init --force --display-name "Sketchline Lion"
+          echo "----- shorebird.yaml"; cat shorebird.yaml
+          echo "----- what changed"; git --no-pager status --short; git --no-pager diff -- . ':!pubspec.lock' | tee init.diff
+      - name: Keep the result (Artifacts → shorebird-init)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shorebird-init
+          path: |
+            shorebird.yaml
+            init.diff
+          if-no-files-found: ignore
