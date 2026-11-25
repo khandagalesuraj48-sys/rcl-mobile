@@ -38,8 +38,13 @@ class FakeAttendKit extends AttendKit {
   }
   @override
   Future<int?> elapsed() async => counter;
+  /// (3.171.0 patch 1) each reading of the phone: the "exact to … m" asked for (0 – the first reading it gives)
+  final wants = <double>[];
   @override
-  Future<AttendFix> where() async => AttendFix(lat, lng, acc, mocked: mocked);
+  Future<AttendFix> where({double want = 0}) async {
+    wants.add(want);
+    return AttendFix(lat, lng, acc, mocked: mocked);
+  }
   @override
   int now() => clock;
   @override

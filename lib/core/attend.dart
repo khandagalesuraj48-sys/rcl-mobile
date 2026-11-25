@@ -9,7 +9,6 @@
  *     is back, with its own number – sent twice, saved once. The punch is never made again from new readings.
  * The pieces that touch the phone itself (its number, Developer Options, its counter since switch-on, GPS, files) are in AttendKit –
  * a test puts its own in its place. */
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -21,6 +20,7 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
 import 'api.dart' show Keep;
+import 'gps_fast.dart';
 
 const _rad = math.pi / 180, _earth = 6371008.8;
 
@@ -117,9 +117,12 @@ PlaceHit? nearestPlace(List<WorkPlace> places, double lat, double lng) {
 
 /// Where the phone says it is.
 class AttendFix {
-  AttendFix(this.lat, this.lng, this.acc, {this.mocked = false});
+  AttendFix(this.lat, this.lng, this.acc, {this.mocked = false, this.age = 0});
   final double lat, lng, acc;
   final bool mocked;
+
+  /// (3.171.0 patch 1) how old the reading was when the phone gave it, in ms (the phone's own reading of a moment ago: up to 15 s)
+  final int age;
 }
 
 /// (3.117.0, his word of 13-11-2026: "app chalu kel kel lagech app fetch krel user location") WHERE HE IS, READ AHEAD: the
@@ -137,8 +140,11 @@ class AttendWhere extends ChangeNotifier {
   String problem = '';
   bool busy = false;
 
-  Future<void> read() async {
-    if (busy) return;
+  /// (3.171.0 patch 1) a reading going on is shared: who asks meanwhile waits for it – no second reading beside it
+  Future<void>? _run;
+  Future<void> read() => _run ??= _read().whenComplete(() => _run = null);
+
+  Future<void> _read() async {
     busy = true;
     notifyListeners();
     try {
@@ -148,7 +154,7 @@ class AttendWhere extends ChangeNotifier {
       } else {
         final f = await AttendKit.kit.where();
         fix = f;
-        at = AttendKit.kit.now();
+        at = AttendKit.kit.now() - f.age; // (3.171.0 patch 1) the time of the reading itself
         problem = '';
       }
     } on AttendProblem catch (e) {
@@ -337,20 +343,21 @@ class AttendKit {
     }
   }
 
-  /// Where the phone is now – a fresh reading (never the last known one: a punch is for where he stands now).
-  Future<AttendFix> where() async {
+  /// Where the phone is now – a fresh reading (never an old one: a punch is for where he stands now).
+  /// (3.171.0 patch 1, "location fetching … khup fast hoyla haw") fast – gps_fast.dart: the phone's own reading of the last 15 s at
+  /// once, else the first new one (asked every second); [want] > 0 – the site's "exact to … m": new readings until one is, within
+  /// the same 25 s (the most exact one at the end – the caller says "not exact enough" as before).
+  Future<AttendFix> where({double want = 0}) async {
     if (!await Geolocator.isLocationServiceEnabled()) throw AttendProblem('Turn on the location of the phone (GPS), then try again.', 'Phone चे location (GPS) चालू करा, मग पुन्हा करा.', 'gps');
     var p = await Geolocator.checkPermission();
     if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
     if (p == LocationPermission.denied || p == LocationPermission.deniedForever) {
       throw AttendProblem('Allow the location for the app (Settings › Apps › Sketchline › Permissions), then try again.', 'App ला location ची परवानगी द्या (Settings › Apps › Sketchline › Permissions), मग पुन्हा करा.', 'gps');
     }
-    try {
-      final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.best, timeLimit: Duration(seconds: 25)));
-      return AttendFix(pos.latitude, pos.longitude, pos.accuracy, mocked: pos.isMocked);
-    } on TimeoutException {
-      throw AttendProblem('Your location could not be found – stand in the open and try again.', 'तुमचे location मिळाले नाही – मोकळ्या जागेत उभे राहून पुन्हा करा.', 'gps');
-    }
+    const young = Duration(seconds: 15);
+    final pos = await FastGps.gps.fix(accuracy: LocationAccuracy.best, want: want, young: young);
+    if (pos == null) throw AttendProblem('Your location could not be found – stand in the open and try again.', 'तुमचे location मिळाले नाही – मोकळ्या जागेत उभे राहून पुन्हा करा.', 'gps');
+    return AttendFix(pos.latitude, pos.longitude, pos.accuracy, mocked: pos.isMocked, age: FastGps.gps.age(pos, young).inMilliseconds);
   }
 
   /// (3.117.0) Is the phone's location (GPS) switched on? (a phone that cannot say: yes – the reading itself will tell)

@@ -5,7 +5,6 @@
  * the entry takes it when it is saved.
  * (3.19.0) On a computer (Windows): the photo is chosen from a file – as the web does on a computer – and gets the same band;
  * the computer's location (Windows: Settings → Privacy & security → Location) is needed, as for the web. */
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'dart:typed_data';
@@ -20,6 +19,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'device.dart';
 import 'applock.dart';
+import 'gps_fast.dart';
 
 class PhotoKind {
   const PhotoKind(this.key, this.en, this.mr, this.pic);
@@ -73,14 +73,13 @@ Future<Spot> whereNow() async {
         ? 'Allow the location for desktop apps (Windows Settings › Privacy & security › Location), then choose the photo again.'
         : 'Allow the location for Sketchline (Settings › Apps › Sketchline › Permissions), then take the photo again.');
   }
-  try {
-    final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 25)));
-    return Spot(pos.latitude, pos.longitude, pos.accuracy);
-  } on TimeoutException {
-    final last = await Geolocator.getLastKnownPosition();
-    if (last != null) return Spot(last.latitude, last.longitude, last.accuracy);
-    throw PhotoProblem('The location could not be found – go into the open and try again.');
-  }
+  // (3.171.0 patch 1, "location fetching … khup fast hoyla haw") fast – gps_fast.dart: the phone's own reading of the last 15 s at
+  // once, else the first new one (asked every second); none within the 25 s: its last known one, as before
+  final pos = await FastGps.gps.fix(accuracy: LocationAccuracy.high);
+  if (pos != null) return Spot(pos.latitude, pos.longitude, pos.accuracy);
+  final last = await Geolocator.getLastKnownPosition();
+  if (last != null) return Spot(last.latitude, last.longitude, last.accuracy);
+  throw PhotoProblem('The location could not be found – go into the open and try again.');
 }
 
 class TakenPhoto {
