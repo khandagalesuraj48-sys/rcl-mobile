@@ -465,6 +465,10 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
   /// (the demo – straight to a UPI ID) the remark of the UPI payment made from here: HR opens when Sketchline has seen it
   String _upiRef = '';
 
+  /// (the demo) the UPI payment's UPI ID, amount and remark – shown to be paid by hand when no UPI app opens by itself (the tester's
+  /// phone of 27-11-2026: "pay mhanle ki no network mhantey" – the phone opened no app for upi://pay)
+  Map<String, String>? _upi;
+
   @override
   void initState() {
     super.initState();
@@ -528,18 +532,31 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
       final url = '${j['url'] ?? ''}', upi = '${j['upi'] ?? ''}';
       // Razorpay's page (https), or – the demo – his UPI app (upi://pay with the amount and the remark)
       if (!url.startsWith('https://') && !upi.startsWith('upi://pay?')) throw ApiError('No payment page was given – try again.');
+      if (upi.isNotEmpty && mounted) {
+        final q = Uri.parse(upi.replaceFirst('upi://pay?', 'https://upi.pay/?')).queryParameters;
+        setState(() {
+          _upiRef = '${j['ref'] ?? q['tn'] ?? ''}';
+          _upi = {'pa': q['pa'] ?? '', 'am': q['am'] ?? '', 'tn': q['tn'] ?? _upiRef};
+        });
+      }
       _away = true;
-      final ok = await (payLaunch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(Uri.parse(upi.isNotEmpty ? upi : url));
+      bool ok;
+      try {
+        ok = await (payLaunch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(Uri.parse(upi.isNotEmpty ? upi : url));
+      } on PlatformException {
+        ok = false; // (Android: no app on this phone takes the address – url_launcher says "ACTIVITY_NOT_FOUND")
+      }
       if (!ok) {
         _away = false;
         throw ApiError(upi.isNotEmpty
-            ? bi('No UPI app opened – install or open a UPI app (PhonePe, Google Pay, Paytm…) and try again.',
-                'UPI app उघडले नाही – PhonePe, Google Pay, Paytm… उघडून पुन्हा प्रयत्न करा.')
-            : 'The payment page could not be opened – try again.');
+            ? bi(
+                'No UPI app on this phone opened the payment. Pay by hand in your UPI app (PhonePe, Google Pay, Paytm…) – the UPI ID, the amount and the remark are below.',
+                'या phone वर कोणतेही UPI app payment साठी उघडले नाही. तुमच्या UPI app (PhonePe, Google Pay, Paytm…) मधून हाताने भरा – UPI ID, रक्कम आणि remark खाली आहेत.')
+            : bi('The payment page could not be opened – try again.', 'Payment चे पान उघडले नाही – पुन्हा प्रयत्न करा.'));
       }
-      if (upi.isNotEmpty && mounted) setState(() => _upiRef = '${j['ref'] ?? ''}');
     } catch (e) {
-      if (mounted) setState(() => _err = e is ApiError ? e.toString() : bi('No network – connect and try again.', 'नेटवर्क नाही – जोडून पुन्हा प्रयत्न करा.'));
+      final why = e is ApiError ? e.toString() : bi('The payment could not be started – try again.', 'Payment सुरू झाले नाही – पुन्हा प्रयत्न करा.');
+      if (mounted) setState(() => _err = why);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -684,6 +701,32 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
             if ('${p['why'] ?? ''}'.isNotEmpty) ...[
               const SizedBox(height: 12),
               m.Text('${p['why']}', style: const TextStyle(fontSize: 13.5, color: ModC.red)),
+            ],
+            // (the demo) the UPI payment by hand: the UPI ID, the amount, the remark – each copied with one tap
+            if (_upi != null && !_open) ...[
+              const SizedBox(height: 12),
+              _box(Column(key: const Key('pay-upi-hand'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const Text('Pay by UPI', mr: 'UPI ने भरा', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: ModC.navy)),
+                for (final (k, label, v) in [('pa', 'UPI ID', _upi!['pa'] ?? ''), ('am', 'Amount (₹)', _upi!['am'] ?? ''), ('tn', 'Remark', _upi!['tn'] ?? '')])
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(children: [
+                      SizedBox(width: 96, child: Text(label, style: const TextStyle(fontSize: 13.5, color: ModC.muted))),
+                      Expanded(
+                          child:
+                              SelectableText(v, key: Key('pay-upi-$k'), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: ModC.ink))),
+                      IconButton(
+                        key: Key('pay-copy-$k'),
+                        tooltip: tr('Copy'),
+                        icon: const Icon(Icons.copy_rounded, size: 19, color: ModC.navy),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: v));
+                          toast(context, bi('Copied', 'Copy झाले'));
+                        },
+                      ),
+                    ]),
+                  ),
+              ])),
             ],
             if (_upiRef.isNotEmpty && !_open) ...[
               const SizedBox(height: 12),

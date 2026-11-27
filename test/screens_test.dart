@@ -12130,7 +12130,23 @@ void main() {
     expect(opened.single.queryParameters['am'], '47.20');
     expect(opened.single.queryParameters['pa'], 'owner.demo@okbank');
     expect(find.byKey(const Key('pay-upi-wait')), findsOneWidget, reason: 'HR opens when Sketchline sees it – said with its remark');
-    expect(find.textContaining('SKL-7 HR 12/01'), findsOneWidget);
+    expect(find.textContaining('SKL-7 HR 12/01'), findsWidgets);
+    // the UPI ID, the amount and the remark shown too – to pay by hand
+    expect(find.byKey(const Key('pay-upi-hand')), findsOneWidget);
+    expect(t.widget<SelectableText>(find.byKey(const Key('pay-upi-pa'))).data, 'owner.demo@okbank');
+    expect(t.widget<SelectableText>(find.byKey(const Key('pay-upi-am'))).data, '47.20');
+    // (the tester's phone of 27-11-2026: "pay mhanle ki no network mhantey") no app on the phone takes upi://pay – Android's
+    // "ACTIVITY_NOT_FOUND": said so (never "No network"), and the UPI ID, the amount and the remark to pay by hand
+    payLaunch = (u) async => throw PlatformException(code: 'ACTIVITY_NOT_FOUND', message: 'No Activity found to handle intent');
+    await t.tap(find.byKey(const Key('pay-go')));
+    await net(t);
+    expect(find.textContaining('No UPI app on this phone opened the payment'), findsOneWidget);
+    expect(find.textContaining('No network'), findsNothing);
+    expect(find.byKey(const Key('pay-upi-hand')), findsOneWidget);
+    payLaunch = (u) async {
+      opened.add(u);
+      return true;
+    };
     // back from the UPI app: not received yet – still "Pay"
     t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);

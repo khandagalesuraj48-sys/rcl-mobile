@@ -103,6 +103,9 @@ class _ScanLinkLayerState extends State<ScanLinkLayer> {
     if (s.stage != Stage.ready) return; // Which site (no site written in it): he picks his site first
     final nav = widget.nav.currentState;
     if (nav == null) return;
+    // (3.173.0) every link here is Vehicle's (a photo for an entry, approvals, a missed call, the Smart Log Book, a ring): on the site
+    // home, Vehicle is opened under the page – Back from it lands on Vehicle's Home, as before
+    if (s.siteHome && s.modPick == null) s.pickModule('mechanical');
     if (cap) {
       final code = l.code;
       l.done();
