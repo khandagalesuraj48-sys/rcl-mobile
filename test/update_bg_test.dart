@@ -288,4 +288,47 @@ void main() {
     expect(mustUpdate.value, isNull, reason: 'no wall');
     resetBgUpdate();
   });
+
+  /* (27-11-2026, his words: "ekda he new build phone play store la gel ki apan apk purn band krnar aahot"; his answers: it keeps working
+   * until he has the Play Store's app; this last version says so with the Play Store's button) */
+  testWidgets('(3.172.0) the app given by its file: "Sketchline Lion is on Google Play" once in an opening – Open Play Store opens its page, Later works on; the Play Store\'s app / a computer: never', (t) async {
+    resetUpdateOffer();
+    addTearDown(resetUpdateOffer);
+    final opened = <Uri>[];
+    final was = (movePlay, openPlay);
+    addTearDown(() {
+      movePlay = was.$1;
+      openPlay = was.$2;
+    });
+    openPlay = (u) async {
+      opened.add(u);
+      return true;
+    };
+    movePlay = () => true;
+    await t.pumpWidget(MaterialApp(home: Builder(builder: (c) => Scaffold(body: Center(child: TextButton(onPressed: () => offerMove(c), child: const Text('open')))))));
+    await t.tap(find.text('open'));
+    await settle(t);
+    expect(find.text('Sketchline Lion is on Google Play'), findsOneWidget);
+    expect(find.textContaining('This app keeps working until you move.'), findsOneWidget, reason: 'nothing stops');
+    expect(find.textContaining('entries kept on the phone are sent'), findsOneWidget, reason: 'send the kept entries before removing it');
+    await t.tap(find.text('Later'));
+    await settle(t);
+    expect(opened, isEmpty, reason: 'Later: he works on');
+    await t.tap(find.text('open'));
+    await settle(t);
+    expect(find.text('Sketchline Lion is on Google Play'), findsNothing, reason: 'once in an opening');
+    // a new opening: asked again; Open Play Store – the Play Store's page of the app
+    resetUpdateOffer();
+    await t.tap(find.text('open'));
+    await settle(t);
+    await t.tap(find.text('Open Play Store'));
+    await settle(t);
+    expect(opened.single.toString(), 'https://play.google.com/store/apps/details?id=si.sketchline.lion');
+    // the Play Store's app, an iPhone, a computer: never
+    resetUpdateOffer();
+    movePlay = () => false;
+    await t.tap(find.text('open'));
+    await settle(t);
+    expect(find.text('Sketchline Lion is on Google Play'), findsNothing);
+  });
 }

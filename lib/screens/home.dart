@@ -185,6 +185,10 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   /* (3.145.0, asked 19-11-2026: "jewa jewa app open krel to pop up yeil updet cha … close ch option pn de") a newer version: its
    * Update on Home, and "Update to …?" (Update / Close) once in every opening – never a screen that stops the work */
   void _offer(Session s) {
+    if (movePlay()) {
+      offerMove(context); // (27-11-2026) the app given by its file: the Play Store's app instead – no file of ours any more
+      return;
+    }
     checkUpdate(s.api, beta: s.tester).then((u) {
       if (!mounted || u == null) return;
       setState(() => update = u);

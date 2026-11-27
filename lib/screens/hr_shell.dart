@@ -32,7 +32,7 @@ import '../core/attend_remind.dart';
 import '../core/hr_cache.dart';
 import '../core/hr_track.dart';
 import '../core/session.dart';
-import '../core/update.dart' show checkUpdate, offerUpdate, updateOfferAgain;
+import '../core/update.dart' show checkUpdate, offerUpdate, updateOfferAgain, movePlay, offerMove;
 import '../ui/attend_look.dart';
 import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
@@ -148,6 +148,10 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     if (!widget.inErp) {
       void offer() {
         if (!mounted) return;
+        if (movePlay()) {
+          unawaited(offerMove(context)); // (27-11-2026) the app given by its file: the Play Store's app instead
+          return;
+        }
         final s = SessionScope.read(context);
         checkUpdate(s.api, beta: s.tester).then((u) {
           if (mounted) unawaited(offerUpdate(context, u));

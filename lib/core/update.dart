@@ -215,6 +215,31 @@ void resetUpdateOffer() {
   updateOfferAgain = null;
 }
 
+/* (27-11-2026, his words: "ekda he new build phone play store la gel ki apan apk purn band krnar aahot"; his answers: the app given
+ * by its file keeps working until the person has the Play Store's app, and this last version of it says so with the Play Store's
+ * button) MOVE TO THE PLAY STORE – in the app given by its file (Android, not the Play Store's app): at every opening, once, "Sketchline
+ * Lion is on Google Play" – Open Play Store (its page in the Play Store) / Later. Nothing stops: this app keeps working; no file of
+ * ours is offered any more (no APK after this one). The Play Store's app, an iPhone and a computer: never. */
+bool Function() movePlay = () => Platform.isAndroid && !onComputer && !onPlay();
+
+/// The Play Store's page is opened (a test puts its own here).
+Future<bool> Function(Uri u) openPlay = (u) => launchUrl(u, mode: LaunchMode.externalApplication);
+
+/// "Sketchline Lion is on Google Play" – once in an opening (the same "once" as the update's offer); Open Play Store / Later.
+Future<void> offerMove(BuildContext context) async {
+  if (!movePlay() || _offered || !context.mounted) return;
+  _offered = true;
+  final go = await ask(
+      context,
+      bi('Sketchline Lion is on Google Play', 'Sketchline Lion आता Google Play वर', ' · '),
+      bi('Install the new app from the Play Store and sign in with the same e-mail and password – its updates come by themselves. This app keeps working until you move. Before you remove this app, open it once with the network on, so that the entries kept on the phone are sent.',
+          'नवीन app Play Store वरून install करा आणि तोच email व password टाकून sign in करा – त्याचे updates आपोआप येतात. तुम्ही नवीन app घेईपर्यंत हे app चालू राहील. हे app काढण्याआधी एकदा network चालू ठेवून उघडा, म्हणजे phone वर ठेवलेल्या entries पाठवल्या जातील.',
+          '\n\n'),
+      yes: 'Open Play Store',
+      no: 'Later');
+  if (go) await openPlay(Uri.parse(kPlayPage));
+}
+
 /// Offers [u] – once in an opening of the app; nothing while a download of it goes on or is ready ("Install?" comes by itself).
 Future<void> offerUpdate(BuildContext context, AppUpdate? u) async {
   if (u == null || _offered || !context.mounted) return;
