@@ -16,14 +16,16 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'app_kind.dart' show kAppKind;
+
 /// This app was built for Google Play.
 const bool kPlay = bool.fromEnvironment('PLAY');
 
 /// The same, as a function – a test puts its own here.
 bool Function() onPlay = () => kPlay;
 
-/// The Play Store's app.
-const kPlayId = 'si.sketchline.lion';
+/// The Play Store's app – (27-11-2026) LION, or ELEPHANT (HR's own app – core/app_kind.dart).
+const kPlayId = kAppKind == 'elephant' ? 'si.sketchline.elephant' : 'si.sketchline.lion';
 const kPlayPage = 'https://play.google.com/store/apps/details?id=$kPlayId';
 
 /// What Play has for this phone: nothing newer · a newer version · a newer version downloaded, waiting to be put in.

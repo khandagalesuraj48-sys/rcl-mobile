@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'alerts.dart';
 import 'api.dart';
+import 'app_kind.dart';
 import 'code_words.dart';
 import 'rtc.dart';
 import 'format.dart';
@@ -216,7 +217,8 @@ class Session extends ChangeNotifier {
   static const kLang = 'app_lang';
 
   /// (3.108.0) at a site where he has HR only (no Mechanical): the app's own pages for attendance – Home, Attendance, Leave, Me.
-  bool get hrOnly => site != null && site!.module('mechanical') == null;
+  /// (27-11-2026) ELEPHANT – HR's own app: always the attendance app's pages, whatever else he has at the site.
+  bool get hrOnly => site != null && (isElephant || site!.module('mechanical') == null);
 
   /// (3.142.0) at this site he has Mechanical as a driver of the Driver Master (Log Book – Edit only): his Log Book is the Smart Log Book
   bool get mechDriver => site?.module('mechanical')?.driver ?? false;
@@ -524,7 +526,7 @@ class Session extends ChangeNotifier {
     if (j == null || j['site'] != code || j['init'] is! Map || '${j['email'] ?? ''}'.isEmpty || (email.isNotEmpty && email.toLowerCase() != '${j['email']}'.toLowerCase())) return false;
     final list = [for (final x in (j['sites'] as List? ?? const [])) SiteChoice.fromJson(x)].whereType<SiteChoice>().toList();
     final sc = list.where((x) => x.code == code).firstOrNull, mech = sc?.module('mechanical');
-    if (sc == null || mech == null) return false;
+    if (sc == null || mech == null || isElephant) return false; // (27-11-2026) ELEPHANT keeps nothing of Mechanical
     if (site?.code != code) clearMemory();
     sites = list;
     site = sc;
@@ -697,6 +699,11 @@ class Session extends ChangeNotifier {
      * nothing of Mechanical. Before, a person with Mechanical anywhere did not see his HR-only sites at all – so he was given
      * Mechanical there too, and saw its vehicles. (3.108.0) a person with no Mechanical at all: his HR sites, as before. */
     sites = by.values.where((s) => s.module('mechanical') != null || s.module('hr') != null || s.module('hrme') != null).toList();
+    // (27-11-2026) ELEPHANT – HR's own app: only the sites where he has HR; none – his work is in LION
+    if (isElephant) sites = sites.where((s) => s.module('hr') != null || s.module('hrme') != null).toList();
+    if (sites.isEmpty && isElephant) {
+      throw ApiError('This app is for HR – you have no HR at any site yet. Your other work is in Sketchline Lion; ask the Super Admin for HR.', code: 'nosite');
+    }
     if (sites.isEmpty) throw ApiError('You have no site with Mechanical or HR yet – ask the Super Admin.', code: 'nosite');
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();
@@ -945,7 +952,8 @@ class Session extends ChangeNotifier {
     site = s;
     siteName = s.name;
     // (3.108.0) a site with HR only: nothing of Mechanical is asked – its lists, his settings, the notifications are Mechanical's
-    if (s.module('mechanical') == null) {
+    // (27-11-2026) ELEPHANT – HR's own app: the same at every site, also where he has Mechanical (that is LION's)
+    if (isElephant || s.module('mechanical') == null) {
       api.mechUrl = '';
       offline = false;
       await api.keepSite(code);
