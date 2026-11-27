@@ -53,6 +53,40 @@ import 'leave.dart';
 
 String _t(String en, String mr) => Lang.i.pair(en, mr);
 
+/// "Do you really want to sign out?" – No (stays on duty) is the big button; true only on "Yes, sign out". (3.174.0) the same sheet
+/// for HR Home's dial and the site home's attendance card: [punches] today's, [shift] his shift of today, [nowMs] the time now.
+Future<bool> askPunchOut(BuildContext context, {required List<Map> punches, Map shift = const {}, required int nowMs}) async {
+  var lastIn = '';
+  for (final p in punches) {
+    if (p['kind'] == 'in') lastIn = '${p['time'] ?? ''}';
+  }
+  final worked = sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(nowMs)), end = '${shift['end'] ?? ''}';
+  final (Color red, Color redSoft) = sk.tint(const Color(0xFFC22A1B), const Color(0xFFFFE9E5));
+  final yes = await showModalBottomSheet<bool>(
+    context: context,
+    backgroundColor: sk.card,
+    showDragHandle: true,
+    builder: (c) => SafeArea(
+      child: Padding(
+        key: const Key('so-ask'),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 60, height: 60, alignment: Alignment.center, decoration: BoxDecoration(color: redSoft, borderRadius: BorderRadius.circular(20)), child: Icon(Icons.logout_rounded, size: 28, color: red)),
+          const SizedBox(height: 14),
+          Text('Do you really want to punch out?', mr: 'खरंच punch out करायचं आहे का?', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
+          const SizedBox(height: 8),
+          m.Text([if (worked.isNotEmpty) _t('You have worked $worked.', 'तुम्ही $worked काम केलं आहे.'), if (end.isNotEmpty) _t('Your shift ends at $end.', 'तुमची shift $end ला संपते.')].join(' '), key: const Key('so-text'), textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, height: 1.45, color: sk.muted)),
+          const SizedBox(height: 18),
+          SizedBox(width: double.infinity, height: 54, child: FilledButton(key: const Key('so-no'), style: FilledButton.styleFrom(backgroundColor: sk.accent, foregroundColor: sk.onAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(false), child: Text('No, stay on duty', mr: 'नाही, कामावर आहे', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: sk.onAccent)))),
+          const SizedBox(height: 10),
+          SizedBox(width: double.infinity, height: 54, child: OutlinedButton(key: const Key('so-yes'), style: OutlinedButton.styleFrom(foregroundColor: red, side: BorderSide(color: red, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(true), child: Text('Yes, punch out', mr: 'हो, punch out करा', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: red)))),
+        ]),
+      ),
+    ),
+  );
+  return yes == true;
+}
+
 /// His HR sign-in of his HR site (this site, or – 3.141.0 – the site of his own HR: Head Office for an HO employee in VTR's ERP),
 /// for the pages opened from here.
 Future<Map<String, dynamic>> hrCall(BuildContext context, Map<String, dynamic> body) => hrAsk(SessionScope.read(context), body);
@@ -424,7 +458,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
       opening = false;
       return;
     }
-    await Navigator.of(context).push(hrRoute<void>(const AttendanceScreen(quick: true, auto: true)));
+    await Navigator.of(context).push(hrRoute<void>(AttendanceScreen(quick: true, auto: true, want: day == null ? '' : _next)));
     opening = false;
     if (!mounted) return;
     setState(() => gen++);
@@ -443,39 +477,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     return ok;
   }
 
-  /// "Do you really want to sign out?" – No (stays on duty) is the big button; true only on "Yes, sign out".
-  Future<bool> _askOut() async {
-    final shift = day?['shift'] is Map ? day!['shift'] as Map : const {};
-    var lastIn = '';
-    for (final p in _punches) {
-      if (p['kind'] == 'in') lastIn = '${p['time'] ?? ''}';
-    }
-    final worked = sinceText(lastIn, DateTime.fromMillisecondsSinceEpoch(_nowMs())), end = '${shift['end'] ?? ''}';
-    final (Color red, Color redSoft) = sk.tint(const Color(0xFFC22A1B), const Color(0xFFFFE9E5));
-    final yes = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: sk.card,
-      showDragHandle: true,
-      builder: (c) => SafeArea(
-        child: Padding(
-          key: const Key('so-ask'),
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 60, height: 60, alignment: Alignment.center, decoration: BoxDecoration(color: redSoft, borderRadius: BorderRadius.circular(20)), child: Icon(Icons.logout_rounded, size: 28, color: red)),
-            const SizedBox(height: 14),
-            Text('Do you really want to punch out?', mr: 'खरंच punch out करायचं आहे का?', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Montserrat', fontSize: 19, fontWeight: FontWeight.w800, color: sk.ink)),
-            const SizedBox(height: 8),
-            m.Text([if (worked.isNotEmpty) _t('You have worked $worked.', 'तुम्ही $worked काम केलं आहे.'), if (end.isNotEmpty) _t('Your shift ends at $end.', 'तुमची shift $end ला संपते.')].join(' '), key: const Key('so-text'), textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, height: 1.45, color: sk.muted)),
-            const SizedBox(height: 18),
-            SizedBox(width: double.infinity, height: 54, child: FilledButton(key: const Key('so-no'), style: FilledButton.styleFrom(backgroundColor: sk.accent, foregroundColor: sk.onAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(false), child: Text('No, stay on duty', mr: 'नाही, कामावर आहे', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: sk.onAccent)))),
-            const SizedBox(height: 10),
-            SizedBox(width: double.infinity, height: 54, child: OutlinedButton(key: const Key('so-yes'), style: OutlinedButton.styleFrom(foregroundColor: red, side: BorderSide(color: red, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))), onPressed: () => Navigator.of(c).pop(true), child: Text('Yes, punch out', mr: 'हो, punch out करा', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: red)))),
-          ]),
-        ),
-      ),
-    );
-    return yes == true;
-  }
+  Future<bool> _askOut() => askPunchOut(context, punches: _punches, shift: day?['shift'] is Map ? day!['shift'] as Map : const {}, nowMs: _nowMs());
 
   List<Map> get _punches => [for (final x in (day?['punches'] as List? ?? const []).whereType<Map>()) x];
 
@@ -542,12 +544,14 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
                     const SizedBox(height: 14),
                     Rise(order: 3, child: _tiles()),
                     // (23-11-2026, picture N6) FALCON's Mess – nothing when FALCON is not connected or has no mess for his site
-                    const Rise(order: 4, child: MessCard()),
+                    // (3.174.0, his pick of 27-11-2026: "Site home वर") HR opened from the site home: the Mess is there, not here –
+                    // HR's own pages without a site home (an employee's "My HR", ELEPHANT) keep it as before
+                    if (!s.siteHome) const Rise(order: 4, child: MessCard()),
                     ..._forYou(),
                   ],
                   // (3.170.0, asked 23-11-2026 – the Super Admin saw nothing: he has no day of his own here, no employee record) the Super
                   // Admin sees the Mess card – or why there is none – on HR Home too, to check FALCON's link
-                  if (day == null && !loading && s.superAdmin) const MessCard(key: Key('hh-mess-super')),
+                  if (day == null && !loading && s.superAdmin && !s.siteHome) const MessCard(key: Key('hh-mess-super')),
                 ]),
               )),
               ]),

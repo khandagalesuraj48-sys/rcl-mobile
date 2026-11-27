@@ -81,12 +81,16 @@ String _t(String en, String mr) => Lang.i.pair(en, mr);
 String _dmy(String ymd) => ymd.length >= 10 ? '${ymd.substring(8, 10)}-${ymd.substring(5, 7)}-${ymd.substring(0, 4)}' : ymd;
 
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key, this.quick = false, this.embedded = false, this.auto = false});
+  const AttendanceScreen({super.key, this.quick = false, this.embedded = false, this.auto = false, this.want = ''});
 
   /// (3.116.0, his word of 13-11-2026: "in out one click madhe pudhe janar jast click kraychi garaj nahiye") opened to mark at
   /// once: his place is read and the selfie opens by itself – no page to look at, nothing to slide. What stops a punch (outside
   /// his place, another phone, …) is said on this page as before, with the bar to try again.
   final bool auto;
+
+  /// (3.174.0) [auto] from a button that said "Mark IN" / "Mark OUT" ('in' / 'out'): the punch starts by itself only when the server
+  /// says the same – else (an entry made by the HR office meanwhile) this page is shown as it is and he marks it himself. '' – any.
+  final String want;
 
   /// (3.114.0) a tab of the attendance app: no way back in its head and no bar to mark – the tab bar's middle button marks.
   final bool embedded;
@@ -409,7 +413,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
   void _auto() {
     if (!widget.auto || _autoDone || me == null) return;
     _autoDone = true;
-    if (me?['may'] == false || dev || '${me?['phone'] ?? ''}' == 'other' || _places.isEmpty || _dayDone || _onLeave != null) {
+    if (me?['may'] == false || dev || '${me?['phone'] ?? ''}' == 'other' || _places.isEmpty || _dayDone || _onLeave != null || (widget.want.isNotEmpty && _next != widget.want)) {
       setState(() {});
       return;
     }

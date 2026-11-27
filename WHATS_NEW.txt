@@ -1,3 +1,3 @@
-One LION app: type your company code, sign in, then choose Vehicle or HR at your site. HR shows its subscription and Pay (testers only).
-एकच LION app: company code टाका, sign in करा, मग site वर Vehicle किंवा HR निवडा. HR मध्ये subscription आणि Pay (फक्त testers साठी).
-एक ही LION app: company code डालें, sign in करें, फिर site पर Vehicle या HR चुनें। HR में subscription और Pay (केवल testers के लिए)।
+Mark your attendance from the site home in one tap: the selfie camera opens at once. Vehicle now shows only vehicle work; Store, Purchase and Engineering have their own tiles.
+Site home वरून एका tap मध्ये हजेरी: selfie camera लगेच उघडतो. Vehicle मध्ये आता फक्त गाडीचे काम; Store, Purchase आणि Engineering चे स्वतःचे tiles.
+Site home से एक tap में हाज़िरी: selfie camera तुरंत खुलता है। Vehicle में अब सिर्फ़ गाड़ी का काम; Store, Purchase और Engineering के अपने tiles।

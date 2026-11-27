@@ -143,7 +143,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       if (s.canEdit('Log Book')) ('Log Book entry', 'लॉग बुक नोंद', 'notebook', C.purpleSoft, () => Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const LogForm()))),
       if (s.canEdit('Log Book') && tankers) ('Tanker trip', 'टँकर फेरी', 'delivery_truck', C.blueSoft, () => Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => TankerScreen(date: s.today)))),
       if (s.canEdit('Breakdown')) ('Breakdown', 'ब्रेकडाऊन', 'wrench', C.orangeSoft, () => openBreakdown(context)),
-      if (s.hasModule('store')) ('Store', 'स्टोअर', 'package', C.amberSoft, () => openStore(context)),
+      // (3.174.0) where the site home has the Store, Vehicle's + has only vehicle entries
+      if (s.hasModule('store') && !s.siteHome) ('Store', 'स्टोअर', 'package', C.amberSoft, () => openStore(context)),
     ];
     if (items.isEmpty) {
       toast(context, bi('You may not add entries. Ask the Admin for access.', 'तुम्हाला एंट्री करायची परवानगी नाही. Admin ला विचारा.'));

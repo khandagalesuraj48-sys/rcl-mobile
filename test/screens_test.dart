@@ -54,6 +54,7 @@ import 'package:rcl_mobile/screens/wa_connect.dart' show waOpen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/theme.dart' show C;
 import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin, HrLook, hrRoute;
+import 'package:rcl_mobile/ui/scope.dart' show SessionScope;
 import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
 import 'package:rcl_mobile/ui/outputs.dart' show fileSink;
@@ -125,6 +126,12 @@ Future<void> net(WidgetTester t, [int ms = 1200]) async {
 /// (3.115.0) The HR tile of the full app opens the attendance app itself now; a test of the Attendance page opens that page.
 Future<void> attPage(WidgetTester t) async {
   Navigator.of(t.element(find.byType(Scaffold).first)).push(hrRoute<void>(const AttendanceScreen())).ignore();
+  await net(t);
+}
+
+/// (3.174.0) the site home: the Store, Purchase and Engineering open from their tiles there – Vehicle has only vehicle things.
+Future<void> toSiteHome(WidgetTester t) async {
+  SessionScope.read(t.element(find.byType(Scaffold).first)).pickModule(null);
   await net(t);
 }
 
@@ -320,7 +327,7 @@ void main() {
     expect(find.text('Machinery'), findsOneWidget);
     expect(find.text('Billing'), findsNothing, reason: 'no access to Machinery Billing: no tile');
     expect(find.text('Administration'), findsNothing, reason: 'not an Admin');
-    expect(find.text('Store'), findsOneWidget, reason: 'he has the Store on this site');
+    expect(find.text('Store'), findsNothing, reason: '(3.174.0) he has the Store on this site – its tile is on the site home, not in Vehicle');
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/3_home.png'));
     await t.drag(find.byType(ListView).first, const Offset(0, -900));
     await settle(t, 600);
@@ -2593,23 +2600,26 @@ void main() {
     s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    // the search: Purchase's Dashboard (Home not scrolled yet – its search button at the top)
+    // (3.174.0, "vehicle madhe aat gel ki fkt vehicle related asel") Vehicle's search has no Purchase any more – the site home has it
     await t.tap(find.byKey(const Key('home-search')));
     await net(t);
     await t.enterText(find.byKey(const Key('gs-in')), 'purchase');
     await net(t);
-    final hit = find.ancestor(of: find.text('Purchase'), matching: find.byKey(const Key('gs-page-Dashboard')));
-    expect(hit, findsOneWidget, reason: 'Purchase\'s Dashboard in the search');
-    await t.tap(hit);
+    expect(find.ancestor(of: find.text('Purchase'), matching: find.byKey(const Key('gs-page-Dashboard'))), findsNothing, reason: 'not in Vehicle\'s search');
+    await t.pageBack();
+    await net(t);
+    // the site home → Purchase: its own sign-in by a ticket of the Portal
+    await toSiteHome(t);
+    await seen(t, find.text('Purchase'));
+    await settle(t, 400);
+    await t.tap(find.text('Purchase'));
     await net(t);
     expect(find.byKey(const Key('pur-dash')), findsOneWidget);
     expect(srv.calls, contains('portal:go:purchase:S1'));
     expect([for (final x in srv.purSent) x['fn']], ['sso'], reason: 'its own sign-in by a ticket of the Portal');
     await t.pageBack();
     await net(t);
-    await t.pageBack();
-    await net(t);
-    // Home → Purchase
+    // the site home → Purchase again
     await seen(t, find.text('Purchase'));
     await settle(t, 400);
     await t.tap(find.text('Purchase'));
@@ -2647,6 +2657,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
+    await toSiteHome(t); // (3.174.0) the Store opens from its tile on the site home
     await seen(t, find.text('Store'));
     await settle(t, 400);
     await t.tap(find.text('Store'));
@@ -2789,6 +2800,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
+    await toSiteHome(t); // (3.174.0) the Store opens from its tile on the site home
     await seen(t, find.text('Store'));
     await settle(t, 400);
     await t.tap(find.text('Store'));
@@ -4228,6 +4240,7 @@ void main() {
     final files = catchFiles();
     await t.pumpWidget(RclApp(session: s));
     await net(t);
+    await toSiteHome(t); // (3.174.0) the Store opens from its tile on the site home
     await seen(t, find.text('Store'));
     await settle(t, 400);
     await t.tap(find.text('Store'));
@@ -6906,6 +6919,7 @@ void main() {
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
+    await toSiteHome(t); // (3.174.0) the Engineering opens from its tile on the site home
     await seen(t, find.text('Engineering'));
     await settle(t, 400);
     await t.tap(find.text('Engineering'));
@@ -7008,6 +7022,7 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     Future<void> openPurchase() async {
+      await toSiteHome(t); // (3.174.0) the Purchase opens from its tile on the site home
       await seen(t, find.text('Purchase'));
       await settle(t, 400);
       await t.tap(find.text('Purchase'));
@@ -8481,6 +8496,7 @@ void main() {
     }
 
     Future<void> type(String key, String v) => t.enterText(find.descendant(of: find.byKey(Key(key)), matching: find.byType(TextField)), v);
+    await toSiteHome(t); // (3.174.0) the Purchase opens from its tile on the site home
     await seen(t, find.text('Purchase'));
     await settle(t, 400);
     await t.tap(find.text('Purchase'));
@@ -8563,6 +8579,7 @@ void main() {
     }
 
     Future<void> type(String key, String v) => t.enterText(find.descendant(of: find.byKey(Key(key)), matching: find.byType(TextField)), v);
+    await toSiteHome(t); // (3.174.0) the Engineering opens from its tile on the site home
     await seen(t, find.text('Engineering'));
     await settle(t, 400);
     await t.tap(find.text('Engineering'));
@@ -10563,8 +10580,10 @@ void main() {
     expect(find.byKey(const Key('me-verify')), findsOneWidget);
   });
 
-  /* (3.105.0 – approved 12-11-2026: the strip on Home, the attendance page it opens, the "marked" screen) */
-  testWidgets('(3.105.0) attendance from Home: the strip (dawn – "Slide to mark IN") opens the page – sky, place, phone, one button; IN → said big, back on Home by itself, the strip says "On duty"; then OUT → "done"', (t) async {
+  /* (3.174.0 – the approved design "LION – Quick attendance & clean modules", boards 1–5; his words: "konti hi site open keli tri attendace
+   * option asel te dable ki lagech slefi sathi camera open click kel attendace lavli baki terms check krun … hr madhe jaun sagle krt basaych
+   * nahi") the card on the site home – in the place of Vehicle's small tile of 3.105.0 / 3.121.0 */
+  testWidgets('(3.174.0) attendance from the site home: the card (Mark IN) – the selfie at once, the punch with HR\'s checks, said big, back on the site home by itself ("IN marked · 10:30", Mark OUT); OUT asked first; then done → Open HR', (t) async {
     phone(t);
     final kit = FakeAttendKit();
     AttendKit.kit = kit;
@@ -10577,79 +10596,85 @@ void main() {
     final srv = FakeServer()..hrSite = true;
     srv.prefs['brief'] = false;
     final s = await ready(t, srv);
+    s.pickModule(null);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    expect(find.byKey(const Key('att-strip')), findsOneWidget, reason: 'he has HR on this site');
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget, reason: 'the site home');
+    expect(find.byKey(const Key('att-card')), findsOneWidget, reason: 'he has HR');
+    expect(find.text('Not marked yet today'), findsOneWidget);
     expect(find.text('Mark IN'), findsOneWidget);
-    expect(find.descendant(of: find.byKey(const Key('home-scan')), matching: find.text('Scan')), findsOneWidget, reason: '(3.121.0) the tile stands beside Scan');
-    expect([for (final x in srv.hrSent) '${x['fn'] ?? x['action']}'].where((a) => a != 'falconCard'), ['sso', 'myGate'], reason: '(20-11-2026) only the documents-gate check; the strip itself shows what this phone kept');
-    // (23-11-2026, picture N7) FALCON's Mess strip is asked for once – FALCON not connected here: no strip at all
-    expect(srv.hrSent.where((x) => x['action'] == 'falconCard').length, 1);
-    expect(find.byKey(const Key('home-mess')), findsNothing);
+    expect(find.text('Have a safe and productive day'), findsNothing, reason: 'the card in the place of the wish');
+    expect(srv.hrSent.where((x) => x['action'] == 'myAttend'), isEmpty, reason: 'the card shows what this phone kept – nothing asked of HR');
     await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_in.png'));
-    // (3.115.0) a tap (or the sun slid across) opens THE ATTENDANCE APP ITSELF over the ERP – the same Home with the dial, the
-    // same bar – in the look; the rest of the app keeps its own theme
-    await t.tap(find.byKey(const Key('att-strip')));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_card_in.png'));
+    // one press: the place is read, the selfie taken (the camera opens by itself), HR takes the punch – said big, once
+    await t.tap(find.byKey(const Key('att-go')));
     await net(t);
-    expect(find.byKey(const Key('hr-home')), findsOneWidget);
-    expect(find.byKey(const Key('hr-nav')), findsOneWidget);
-    expect(find.byType(HrLook), findsWidgets);
-    expect(HrSkin.i.on, false);
-    expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'Not marked yet');
-    expect(find.byKey(const Key('hh-back')), findsOneWidget, reason: 'the way back to the ERP');
-    await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_erp_home.png'));
-    // Me inside the ERP: what belongs to the whole app is not repeated here
-    await t.tap(find.byKey(const Key('nav-me')));
-    await net(t);
-    expect(find.byKey(const Key('me-look')), findsNothing);
-    expect(find.byKey(const Key('me-out')), findsNothing);
-    expect(find.byKey(const Key('me-account')), findsNothing);
-    await t.tap(find.byKey(const Key('nav-home')));
-    await net(t);
-    // the dial opens the marking page
-    // (3.116.0) one press on the dial: the place is read, the selfie taken, the server takes it – said big, once
-    await t.tap(find.byKey(const Key('hh-slide')));
-    await net(t);
-    expect(find.byKey(const Key('att-punch')), findsNothing);
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     expect(find.text('10:30'), findsOneWidget);
     expect(srv.hrPunches.length, 1);
+    expect(srv.hrPunches.last['kind'], 'in');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_marked.png'));
-    // … and back on the attendance app's Home by itself; the way back: the ERP's Home, its strip has turned
+    // … and back on the site home by itself – the card has turned
     await settle(t, 3200);
     await net(t);
     expect(find.byKey(const Key('att-ok-page')), findsNothing);
-    expect(find.byKey(const Key('att-punch')), findsNothing);
-    expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
-    await t.tap(find.byKey(const Key('hh-back')));
-    await net(t);
-    expect(find.byKey(const Key('hr-home')), findsNothing, reason: 'the ERP again');
+    expect(find.byKey(const Key('att-card')), findsOneWidget);
+    expect(find.text('IN marked'), findsOneWidget);
+    expect(find.text(' · 10:30'), findsOneWidget);
     expect(find.text('Mark OUT'), findsOneWidget);
-    expect(find.text('IN 10:30'), findsOneWidget);
     await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_out.png'));
-    // a tap opens it again: OUT
-    await t.tap(find.byKey(const Key('att-strip')));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_card_out.png'));
+    // OUT is asked first – "No, stay on duty" changes nothing
+    await t.tap(find.byKey(const Key('att-go')));
     await net(t);
-    expect(find.byKey(const Key('hr-home')), findsOneWidget);
-    await t.tap(find.byKey(const Key('hh-slide')));
+    expect(find.byKey(const Key('so-ask')), findsOneWidget);
+    await t.tap(find.byKey(const Key('so-no')));
     await net(t);
-    await t.tap(find.byKey(const Key('so-yes'))); // (3.153.0) OUT is asked first
+    expect(srv.hrPunches.length, 1);
+    await t.tap(find.byKey(const Key('att-go')));
+    await net(t);
+    await t.tap(find.byKey(const Key('so-yes')));
     await net(t); // (one wait only: the message of a punch goes by itself after three seconds)
     expect(find.byKey(const Key('att-ok-page')), findsOneWidget);
     await t.tap(find.byKey(const Key('att-ok')));
     await net(t);
     expect(srv.hrPunches.length, 2);
-    expect(find.byKey(const Key('att-punch')), findsNothing);
-    await t.tap(find.byKey(const Key('hh-back')));
-    await net(t);
-    expect(find.descendant(of: find.byKey(const Key('att-strip')), matching: find.text('Done')), findsOneWidget);
+    expect(srv.hrPunches.last['kind'], 'out');
+    expect(find.text('Attendance done'), findsOneWidget);
+    expect(find.textContaining('IN 10:30'), findsOneWidget);
+    expect(find.byKey(const Key('att-go')), findsNothing, reason: 'nothing more to mark');
     await pics(t);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_strip_done.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9y_att_card_done.png'));
+    // Open HR: HR's own pages, as its tile opens them
+    await t.tap(find.byKey(const Key('att-hr')));
+    await net(t);
+    expect(find.byKey(const Key('hr-home')), findsOneWidget);
   }, tags: ['golden']);
+
+  testWidgets('(3.174.0) the one press goes only the way the button said: the card says IN, HR says OUT (an entry of the HR office) – the page is shown, nothing is punched by itself', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    attendSelfieForTest = (_) async => Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
+    addTearDown(() {
+      attendSelfieForTest = null;
+      AttendKit.kit = AttendKit();
+    });
+    final srv = FakeServer()..hrSite = true;
+    srv.prefs['brief'] = false;
+    srv.hrPunches.add({'id': 'pn1', 'client_id': 'c1', 'kind': 'in', 'at': '2026-10-14T03:00:00.000Z', 'time': '08:30', 'place_id': 'pl1', 'offline': false, 'status': 'ok'});
+    final s = await ready(t, srv);
+    s.pickModule(null);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.text('Mark IN'), findsOneWidget, reason: 'this phone kept nothing of today');
+    await t.tap(find.byKey(const Key('att-go')));
+    await net(t);
+    expect(find.byKey(const Key('att-ok-page')), findsNothing);
+    expect(srv.hrPunches.length, 1, reason: 'no OUT by itself');
+    expect(find.byKey(const Key('att-punch')), findsOneWidget, reason: 'HR\'s page – he marks OUT himself');
+  });
 
   testWidgets('(3.110.0) the site\'s rule "once a day": after the day\'s IN and OUT the bar is off and says so; a day closed by itself (OUT forgotten) is said with its time', (t) async {
     phone(t);
@@ -10684,14 +10709,19 @@ void main() {
     expect(t.widget<FilledButton>(find.byKey(const Key('att-punch'))).onPressed, null);
   });
 
-  testWidgets('(3.105.0) no HR on the site: no strip on Home', (t) async {
+  testWidgets('(3.105.0 → 3.174.0) no HR: no attendance card on the site home (the wish there), no attendance in Vehicle', (t) async {
     phone(t);
     final srv = FakeServer();
     srv.prefs['brief'] = false;
     final s = await ready(t, srv);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
-    expect(find.byKey(const Key('att-strip')), findsNothing);
+    expect(find.byKey(const Key('att-card')), findsNothing);
+    s.pickModule(null);
+    await net(t);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget);
+    expect(find.byKey(const Key('att-card')), findsNothing);
+    expect(find.text('Have a safe and productive day'), findsOneWidget);
   });
 
   /* (3.106.0 – asked 12-11-2026: "All" first among the dates; the photos small, each beside the box it fills) */
@@ -11802,15 +11832,18 @@ void main() {
       ..hrFalcon = {'site': 'S1', 'now': '2026-10-14T05:00:00Z', 'messes': [{'name': 'VTR Camp Mess', 'lat': 18.5203, 'lng': 73.8567, 'radius_m': 100, 'meal': {'meal': 'lunch', 'from': '12:00', 'to': '14:30', 'order_by': '11:30', 'now': true, 'parcel_open': false}, 'dishes': ['Dal tadka', 'Rice']}]};
     srv.prefs['brief'] = false;
     final s = await ready(t, srv);
+    s.pickModule(null); // (3.174.0, his pick: "Site home वर") the Mess is on the site home, not in Vehicle
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await net(t);
-    expect(find.byKey(const Key('att-strip')), findsOneWidget);
-    expect(find.byKey(const Key('home-mess')), findsOneWidget, reason: 'under the site and Mark IN');
+    expect(find.byKey(const Key('att-card')), findsOneWidget);
+    expect(find.byKey(const Key('home-mess')), findsOneWidget, reason: '(3.174.0) on the site home, under his modules');
     expect(t.widget<Text>(find.byKey(const Key('home-mess-title'))).data, 'Mess · lunch now');
     expect(t.widget<Text>(find.byKey(const Key('home-mess-sub'))).data, 'VTR Camp Mess · 33 m · till 14:30');
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9z_mess_strip.png'));
+    await seen(t, find.byKey(const Key('home-mess'))); // (3.174.0) under his modules on the site home – a small phone scrolls to it
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('home-mess')));
     await net(t);
     expect(srv.falconPasses, 1);
@@ -11852,10 +11885,13 @@ void main() {
       ..hrFalcon = CARD;
     srv.prefs['brief'] = false;
     final s = await ready(t, srv);
+    s.pickModule(null); // (3.174.0, his pick: "Site home वर") the Mess is on the site home, not in Vehicle
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await net(t);
     expect([warmed.length, srv.falconPasses], [1, 1], reason: '(3.171.0 patch 2) FALCON made ready behind Home, with one pass of HR');
+    await seen(t, find.byKey(const Key('home-mess'))); // (3.174.0) under his modules on the site home – a small phone scrolls to it
+    await settle(t, 300);
     await t.tap(find.byKey(const Key('home-mess')));
     await net(t);
     await net(t);
@@ -11886,6 +11922,7 @@ void main() {
         ..hrFalcon = null;
       srv.prefs['brief'] = false;
       final s = await ready(t, srv);
+      s.pickModule(null); // (3.174.0) the Mess is on the site home, not in Vehicle
       await t.pumpWidget(RclApp(session: s));
       await net(t);
       await net(t);
@@ -11918,6 +11955,7 @@ void main() {
       ..hrFalconHold = hold;
     srv.prefs['brief'] = false;
     final s = await ready(t, srv);
+    s.pickModule(null); // (3.174.0, his pick: "Site home वर") the Mess is on the site home, not in Vehicle
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     expect(find.byKey(const Key('home-mess-why')), findsOneWidget);

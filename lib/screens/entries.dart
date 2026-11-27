@@ -235,7 +235,8 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
       if (s.canSee('Live Tracking')) ('Live Tracking', 'Live Tracking', 'लाइव्ह ट्रॅकिंग', 'Every vehicle on duty on the map; the route of a day', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LiveTrackingScreen()))),
       if (s.canSee('Breakdown')) ('Breakdown', 'Breakdown', 'ब्रेकडाऊन', 'Machinery working / breakdown', C.orangeSoft, 'Machinery', () => openBreakdown(context)),
       if (tankers) ('Tanker Trips', 'Tanker Trips', 'टँकर फेऱ्या', 'Water tanker trips & challans', C.blueSoft, 'Log Book', () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TankerScreen(date: s.today)))),
-      if (s.hasModule('store')) ('Store', 'Store', 'स्टोअर', 'Items inward / outward', C.amberSoft, 'Store', () => openStore(context)),
+      // (3.174.0) where the site home has the Store, Vehicle's Entries have only vehicle entries
+      if (s.hasModule('store') && !s.siteHome) ('Store', 'Store', 'स्टोअर', 'Items inward / outward', C.amberSoft, 'Store', () => openStore(context)),
     ];
     const pics = {'Log Book': 'notebook', 'Smart Log Book': 'pickup_truck', 'Breakdown': 'wrench', 'Tanker Trips': 'delivery_truck', 'Store': 'package', 'Fuel Cards': 'ledger', 'Maintenance': 'wrench', 'Vehicle Booking': 'calendar', 'Vehicle Expenses': 'receipt', 'Vehicle Allocation': 'articulated_lorry', 'Live Tracking': 'round_pushpin'};
     final groups = ['Diesel', 'Machinery', 'Log Book', 'Store'].where((g) => items.any((x) => x.$6 == g)).toList();

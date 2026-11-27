@@ -171,11 +171,13 @@ void main() {
     await t.pumpWidget(RclApp(session: s));
     await net(t);
     await net(t);
-    expect(srv.storeWork.any((x) => x['action'] == 'dash'), isTrue, reason: 'the Store\'s own dashboard call');
+    // (3.174.0, "vehicless war click kel ki fkt vehicle related asel") Vehicle's Home asks nothing of the Store and shows none of it – its
+    // figure is on its tile of the site home
+    expect(srv.storeWork.any((x) => x['action'] == 'dash'), isFalse, reason: 'Vehicle asks nothing of the Store');
     expect(find.byKey(const Key('home-today')), findsOneWidget);
-    expect(find.byKey(const Key('today-store')), findsOneWidget, reason: '1 requirement waits for his approval');
-    expect(find.byKey(const Key('today-below')), findsOneWidget, reason: '1 item below its minimum');
-    expect(find.byKey(const Key('mod-badge-store')), findsOneWidget);
+    expect(find.byKey(const Key('today-store')), findsNothing);
+    expect(find.byKey(const Key('today-below')), findsNothing);
+    expect(find.byKey(const Key('mod-badge-store')), findsNothing);
     expect(find.byKey(const Key('tab-bar-pill')), findsOneWidget);
     expect(find.byKey(const Key('tab-plus')), findsOneWidget);
     // the small bar (3.99.0): not while the site's picture is seen; there the whole time it is scrolled away – down or up; at the top
@@ -190,10 +192,13 @@ void main() {
     await t.drag(find.byType(ListView).first, const Offset(0, 1200));
     await settle(t, 600);
     expect(find.byKey(const Key('home-mini')), findsNothing, reason: 'the site\'s picture is seen');
-    await seen(t, find.byKey(const Key('today-store')));
-    await settle(t, 400);
-    // a row opens its work: the Store
-    await t.tap(find.byKey(const Key('today-store')));
+    // the site home: the Store's tile with what waits there (the Store's own dashboard call); a tap opens the Store
+    s.pickModule(null);
+    await net(t);
+    await net(t);
+    expect(srv.storeWork.any((x) => x['action'] == 'dash'), isTrue, reason: 'the Store\'s own dashboard call');
+    expect(find.byKey(const Key('mods-badge-Store')), findsOneWidget, reason: 'a requirement waits for his approval');
+    await t.tap(find.byKey(const Key('mods-store')));
     await net(t);
     expect(find.text('Item Master'), findsWidgets);
   });

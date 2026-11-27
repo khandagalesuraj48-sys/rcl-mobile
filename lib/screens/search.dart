@@ -114,7 +114,7 @@ class _SearchScreenState extends State<SearchScreen> {
   /// The Store's items, once (its own sign-in); searched here as the Store searches them.
   Future<void> _store(int my) async {
     final site = s.site, st = site?.module('store');
-    if (storeItems != null || storeWait || site == null || st == null) return;
+    if (storeItems != null || storeWait || site == null || st == null || s.siteHome) return; // (3.174.0) not in Vehicle's search where the site home has the Store
     setState(() => storeWait = true);
     try {
       await s.api.storeOpen(site.code, st.url);
@@ -153,11 +153,13 @@ class _SearchScreenState extends State<SearchScreen> {
         }),
       if (s.admin) GsItem('page', 'Read Me', 'Administration', () => _push(const ReadMeScreen())),
       GsItem('page', 'My settings', 'Me', () => _push(const SettingsScreen())),
-      if (s.site?.module('store') != null) ...[
+      // (3.174.0, "vehicle madhe aat gel ki fkt vehicle related asel") Vehicle's search: the Store and Purchase only where there is no
+      // site home to open them from
+      if (s.site?.module('store') != null && !s.siteHome) ...[
         GsItem('page', 'Dashboard', 'Store', () => _push(const StoreScreen())),
         GsItem('page', 'Item Master', 'Store', () => _push(const StoreScreen(items: true))),
       ],
-      if (s.site?.module('purchase') != null) GsItem('page', 'Dashboard', 'Purchase', () => _push(const PurchaseScreen())),      // (3.72.0)
+      if (s.site?.module('purchase') != null && !s.siteHome) GsItem('page', 'Dashboard', 'Purchase', () => _push(const PurchaseScreen())),      // (3.72.0)
     ];
     return out;
   }
