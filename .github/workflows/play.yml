@@ -57,26 +57,19 @@ jobs:
           channel: stable
           cache: true
       # (21-11-2026, his word: "sketchline name haw aahe") THE PLAY STORE'S OWN UPLOAD KEY – in the name of Sketchline Industries. Made
-      # ONCE here (a random secret word nobody sees), kept only in the private bucket app-keys beside the key of the app given by its
-      # file, and never made again while it is there (x-upsert: false – it is never written over). Google keeps the app's real signing
-      # key; this one only signs what is sent to Google, and Google can replace it on request if it is ever lost.
+      # ONCE (21-11-2026, on the branch "play" – a random secret word nobody sees), kept only in the private bucket app-keys beside the
+      # key of the app given by its file. Google keeps the app's real signing key and knows THIS upload key (the bundles of 21 / 22-11);
+      # (27-11-2026) it is never made again here – a bundle signed with another key (the run of 27-11 #6, Rachana's key) is refused.
       - name: Upload key of the Play Store's app (made once; kept only in the private bucket app-keys)
         run: |
           set -e
           cd android
           get() { curl -sS --max-time 60 -o "$2" -w "%{http_code}" "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY"; }
-          put() { curl -sS --max-time 60 -o /tmp/put.json -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY" -H "Content-Type: $3" -H "x-upsert: false" --data-binary "@$2"; }
           if [ "$(get play-upload-keystore.jks play-upload-keystore.jks)" = "200" ] && [ "$(get play-key.properties key.properties)" = "200" ]; then
             echo "the Play Store's upload key is there"
           else
-            rm -f play-upload-keystore.jks key.properties
-            PW=$(openssl rand -hex 24); echo "::add-mask::$PW"
-            keytool -genkeypair -keystore play-upload-keystore.jks -storetype PKCS12 -keyalg RSA -keysize 4096 -validity 36500 -alias lion \
-              -storepass "$PW" -keypass "$PW" -dname "CN=Sketchline Industries, O=Sketchline, C=IN" >/dev/null 2>&1
-            printf "storePassword=%s\nkeyPassword=%s\nkeyAlias=lion\nstoreFile=play-upload-keystore.jks\n" "$PW" "$PW" > key.properties
-            [ "$(put play-upload-keystore.jks play-upload-keystore.jks application/octet-stream)" = "200" ] || { echo "::error::Could not keep the Play upload key: $(head -c 200 /tmp/put.json)"; exit 1; }
-            [ "$(put play-key.properties key.properties text/plain)" = "200" ] || { echo "::error::Could not keep play-key.properties: $(head -c 200 /tmp/put.json)"; exit 1; }
-            echo "::notice::A NEW upload key for the Play Store (Sketchline Industries) was made and kept in the private bucket app-keys."
+            # (27-11-2026) never made again: Google knows THIS upload key (the bundles of 21 / 22-11-2026) – a new one would be refused
+            echo "::error::The Play Store's upload key (play-upload-keystore.jks / play-key.properties) is not in the private bucket app-keys. It is the key Google knows – do not make a new one; ask Google Play (Play Console → Test and release → App integrity → upload key reset) if it is lost."; exit 1
           fi
           echo "::add-mask::$(grep '^storePassword=' key.properties | cut -d= -f2-)"
           [ "$(grep '^storeFile=' key.properties | cut -d= -f2-)" = "play-upload-keystore.jks" ] || { echo "::error::play-key.properties does not name the Play upload key"; exit 1; }
