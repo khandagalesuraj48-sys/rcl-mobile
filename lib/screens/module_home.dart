@@ -13,7 +13,12 @@
  *               Portal; it opens HR only when the Super Admin marked it received). Back in the app it is read again. Nothing of a
  *               card, UPI or bank is seen by the app.
  *   PayGate     HR said "paused" (its answer 402): the PayScreen in place of HR's pages until it is paid. Nothing is deleted.
- *   BackToMods  Back on HR's pages: the site home. */
+ *   BackToMods  Back on HR's pages: the site home.
+ * (3.174.0, 27-11-2026 – the approved design "LION – Quick attendance & clean modules"; his words: "vehicle la as dark madhe ka keley
+ * ani hr dark nahi" → both white; "vehicless war click kel ki fkt vehicle related asel hr store purchase he as kahi nahi disnar"; his
+ * picks: the quick attendance in this beta, the Mess on the site home) the site home also carries: the attendance card (a person with
+ * HR on any of his sites – ui/attend_strip.dart SiteAttendCard) in the place of the wish; the Store, Purchase and Engineering he has
+ * at the site as their own tiles, each with what waits there (the figures Vehicle's Home showed before); FALCON's Mess. */
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
@@ -22,13 +27,20 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/format.dart' show dateKey, parseKey;
 import '../core/session.dart';
+import '../ui/attend_strip.dart' show SiteAttendCard;
 import '../ui/brand.dart' show Arrive;
 import '../ui/crest.dart';
+import '../ui/mess_card.dart' show MessStrip;
 import '../ui/scope.dart';
 import '../ui/t.dart';
+import '../ui/theme.dart' show Tone;
 import '../ui/widgets.dart' show toast;
-import 'attendance.dart' show hrSite, hrModule;
+import 'attendance.dart' show hrSite, hrModule, openAttendance;
+import 'engineering.dart' show openEngineering;
+import 'purchase.dart' show openPurchase;
+import 'store.dart' show openStore;
 
 /// The design's colours (boards 4 – 5b).
 class ModC {
@@ -148,8 +160,68 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
     if (state == AppLifecycleState.resumed && mounted) _read();
   }
 
+  /// (3.97.0 on Vehicle's Home → 3.174.0 here) what waits in his other modules of this site – each module's own figures (the same
+  /// calls as its own screen), on their tiles; never in the way of the site home; at most every 2 minutes.
+  int? _stMine, _purFree, _rfiWait;
+  DateTime? _countsAt;
+  Future<void> _counts() async {
+    if (!Session.moduleCounts || !mounted) return;
+    final s = SessionScope.read(context), site = s.site;
+    if (site == null || s.cardSite || s.today.isEmpty) return;
+    final now = DateTime.now();
+    if (_countsAt != null && now.difference(_countsAt!) < const Duration(minutes: 2)) return;
+    _countsAt = now;
+    int n(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
+    Map mp(Object? v) => v is Map ? v : const {};
+    List ls(Object? v) => v is List ? v : const [];
+    final st = site.module('store'), en = site.module('engineering'), pu = site.module('purchase');
+    await Future.wait([
+      if (st != null)
+        s.api.store(site.code, st.url, {'action': 'dash'}, path: 'work').then((d) {
+          final wf = mp(d['wf']);
+          if (mounted) setState(() => _stMine = n(mp(d['req'])['mine']) + n(wf['po']) + n(wf['grn']) + n(wf['issue']) + n(wf['ret']));
+        }).catchError((_) {}),
+      if (en != null)
+        s.api.eng(site.code, en.url, {'action': 'rfiList', 'from': dateKey(parseKey(s.today).subtract(const Duration(days: 89))), 'to': s.today, 'status': 'Pending'}).then((r) {
+          if (mounted) setState(() => _rfiWait = ls(r['rows']).length);
+        }).catchError((_) {}),
+      if (pu != null)
+        s.api.pur(site.code, pu.url, {'action': 'inbox'}).then((r) {
+          final free = <String>{};
+          for (final x in ls(r['sites'])) {
+            for (final q in ls(mp(x)['reqs'])) {
+              for (final l in ls(mp(q)['lines'])) {
+                if (mp(l)['taken'] == null) free.add('${mp(x)['site']}:${mp(q)['no']}:${mp(l)['line']}');
+              }
+            }
+          }
+          if (mounted) setState(() => _purFree = free.length);
+        }).catchError((_) {}),
+    ]);
+  }
+
+  /// The Store / Purchase / Engineering of this site – its own screens as before; its figure read again when he is back.
+  Future<void> _other(Future<void> Function(BuildContext) open) async {
+    HapticFeedback.selectionClick();
+    await open(context);
+    if (!mounted) return;
+    _countsAt = null;
+    unawaited(_counts());
+  }
+
+  /// His HR pages from the attendance card (attendance done): HR of this site from its tile; HR of his other site as Vehicle opened it.
+  void _hrPages() {
+    final s = SessionScope.read(context);
+    if (s.siteMods.contains('hr')) {
+      _openHr();
+    } else {
+      openAttendance(context);
+    }
+  }
+
   Future<void> _read() async {
     if (!mounted) return;
+    unawaited(_counts());
     final s = SessionScope.read(context);
     if (!s.siteMods.contains('hr')) return; // (no HR at this site: nothing to ask)
     final p = await hrPlanOf(s);
@@ -190,6 +262,13 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
     final hello = now.hour < 12 ? 'Good morning' : (now.hour < 17 ? 'Good afternoon' : 'Good evening');
     final helloMr = now.hour < 12 ? 'शुभ सकाळ' : (now.hour < 17 ? 'शुभ दुपार' : 'शुभ संध्याकाळ');
     final chip = payChip(_hr);
+    final att = hrModule(s) != null; // (3.174.0) his attendance card: HR on any of his sites
+    final others = <Widget>[
+      if (s.hasModule('store')) _SmallTile(key: const Key('mods-store'), icon: Icons.inventory_2_outlined, title: 'Store', mr: 'स्टोअर', tone: Tone.store, badge: _stMine ?? 0, onTap: () => _other(openStore)),
+      if (s.hasModule('purchase')) _SmallTile(key: const Key('mods-purchase'), icon: Icons.move_to_inbox_outlined, title: 'Purchase', mr: 'खरेदी', tone: Tone.purchase, badge: _purFree ?? 0, onTap: () => _other(openPurchase)),
+      if (s.hasModule('engineering'))
+        _SmallTile(key: const Key('mods-engineering'), icon: Icons.engineering_outlined, title: 'Engineering', mr: 'अभियांत्रिकी', tone: Tone.engineering, badge: _rfiWait ?? 0, onTap: () => _other(openEngineering)),
+    ];
     Widget arrive(double at, Widget w) => Arrive(anim: _open, at: at, child: w);
     // (3.173.0) Back on the site home: "Press Back again to leave the app" – as on Vehicle's Home before
     return PopScope(
@@ -209,10 +288,10 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
         child: Scaffold(
           backgroundColor: ModC.page,
           body: ListView(padding: EdgeInsets.zero, children: [
-            // ---------- the navy header: the site, the lion, the day, the greeting, the wish ----------
+            // ---------- the navy header: the site, the lion, the day, the greeting, the wish (or his attendance card) ----------
             Container(
-              decoration: const BoxDecoration(color: ModC.navy, borderRadius: BorderRadius.vertical(bottom: Radius.circular(32))),
-              padding: EdgeInsets.fromLTRB(20, mq.padding.top + 14, 20, 26),
+              decoration: BoxDecoration(color: ModC.navy, borderRadius: att ? null : const BorderRadius.vertical(bottom: Radius.circular(32))),
+              padding: EdgeInsets.fromLTRB(20, mq.padding.top + 14, 20, att ? 18 : 26),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Flexible(
@@ -265,8 +344,9 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
                         mr: '$helloMr${first.isEmpty ? '' : ', $first'}',
                         key: const Key('mods-hello'),
                         style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2))),
-                const SizedBox(height: 18),
-                arrive(
+                if (!att) const SizedBox(height: 18),
+                if (!att)
+                  arrive(
                   .12,
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -284,6 +364,21 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
                 ),
               ]),
             ),
+            // ---------- (3.174.0, board 1) his attendance – over the header's lower edge ----------
+            if (att)
+              Stack(children: [
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 64,
+                  child: DecoratedBox(decoration: BoxDecoration(color: ModC.navy, borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)))),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: arrive(.12, SiteAttendCard(onHr: _hrPages, paused: _hr?['s'] == 'paused', onPay: _pay)),
+                ),
+              ]),
             // ---------- the modules ----------
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
@@ -302,7 +397,6 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
                   rise: 30,
                   child: _Tile(
                     key: const Key('mods-vehicle'),
-                    dark: true,
                     icon: Icons.local_shipping_outlined,
                     title: 'Vehicle',
                     sub: 'Diesel · Log Book · Maintenance · Billing',
@@ -321,7 +415,6 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
                     rise: 30,
                     child: _Tile(
                       key: const Key('mods-hr'),
-                      dark: false,
                       icon: Icons.groups_2_outlined,
                       title: 'HR',
                       sub: 'Attendance · Leave · Papers · Payroll',
@@ -331,6 +424,22 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
                       onTap: _openHr,
                     ),
                   ),
+                // (3.174.0) the Store, Purchase and Engineering he has at this site – their own tiles here, not in Vehicle
+                if (others.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Arrive(
+                    anim: _open,
+                    at: .34,
+                    rise: 30,
+                    child: IntrinsicHeight(
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        for (final (i, o) in others.indexed) ...[if (i > 0) const SizedBox(width: 10), Expanded(child: o)],
+                      ]),
+                    ),
+                  ),
+                ],
+                // (3.174.0, his pick: "Site home वर") FALCON's Mess – only when FALCON has a mess for his site (nothing otherwise)
+                const MessStrip(pad: EdgeInsets.only(top: 14)),
               ]),
             ),
             Padding(
@@ -347,31 +456,21 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
   }
 }
 
+/// (3.174.0, his pick of 27-11-2026: "दोन्ही पांढरे (HR सारखे)") Vehicle's and HR's tiles alike – white, the gold edge, navy words.
 class _Tile extends StatelessWidget {
-  const _Tile(
-      {super.key,
-      required this.dark,
-      required this.icon,
-      required this.title,
-      required this.sub,
-      required this.onTap,
-      this.chip = '',
-      this.chipBad = false,
-      this.onChip});
-  final bool dark, chipBad;
+  const _Tile({super.key, required this.icon, required this.title, required this.sub, required this.onTap, this.chip = '', this.chipBad = false, this.onChip});
+  final bool chipBad;
   final IconData icon;
   final String title, sub, chip;
   final VoidCallback onTap;
   final VoidCallback? onChip;
   @override
   Widget build(BuildContext context) {
-    final fg = dark ? Colors.white : ModC.navy;
     return Semantics(
       button: true,
       child: Material(
-        color: dark ? ModC.navy : Colors.white,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22), side: dark ? BorderSide.none : const BorderSide(color: Color(0xFFE2C76E), width: 1.5)),
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: const BorderSide(color: Color(0xFFE2C76E), width: 1.5)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -382,8 +481,8 @@ class _Tile extends StatelessWidget {
                 Container(
                   width: 54,
                   height: 54,
-                  decoration: BoxDecoration(color: dark ? ModC.gold.withValues(alpha: .18) : ModC.goldSoft, borderRadius: BorderRadius.circular(16)),
-                  child: Icon(icon, size: 30, color: dark ? ModC.goldPale : ModC.goldInk),
+                  decoration: BoxDecoration(color: ModC.goldSoft, borderRadius: BorderRadius.circular(16)),
+                  child: Icon(icon, size: 30, color: ModC.goldInk),
                 ),
                 const SizedBox(width: 12),
                 if (chip.isNotEmpty)
@@ -407,13 +506,64 @@ class _Tile extends StatelessWidget {
                   )
                 else ...[
                   const Spacer(),
-                  Icon(Icons.arrow_forward_rounded, size: 22, color: dark ? ModC.goldPale : ModC.goldInk),
+                  const Icon(Icons.arrow_forward_rounded, size: 22, color: ModC.goldInk),
                 ],
               ]),
               const SizedBox(height: 14),
-              Text(title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: .5, color: fg)),
+              Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: .5, color: ModC.navy)),
               const SizedBox(height: 4),
-              Text(sub, style: TextStyle(fontSize: 14, color: dark ? const Color(0xFFC8CEDB) : const Color(0xFF4B5565))),
+              Text(sub, style: const TextStyle(fontSize: 14, color: Color(0xFF4B5565))),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// (3.174.0) the site home's tile of the Store, Purchase or Engineering – in the module's own colour; [badge] what waits there.
+class _SmallTile extends StatelessWidget {
+  const _SmallTile({super.key, required this.icon, required this.title, required this.mr, required this.tone, required this.badge, required this.onTap});
+  final IconData icon;
+  final String title, mr;
+  final Tone tone;
+  final int badge;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: ModC.line)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(color: tone.soft, borderRadius: BorderRadius.circular(12)),
+                  child: Icon(icon, size: 22, color: tone.b),
+                ),
+                const Spacer(),
+                if (badge > 0)
+                  Container(
+                    key: Key('mods-badge-$title'),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(color: const Color(0xFFE5322D), borderRadius: BorderRadius.circular(30)),
+                    child: m.Text('$badge', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                  ),
+              ]),
+              const SizedBox(height: 10),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(title, mr: mr, maxLines: 1, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: ModC.ink)),
+              ),
             ]),
           ),
         ),

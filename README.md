@@ -49,6 +49,31 @@ app `si.sketchline.elephant` → the new google-services.json into the secret `G
 package; Play Console → Create app. **Next:** its logo (pictures first – the lion is shown until then), its patches in `patch.yml`.
 LION is not changed.
 
+**3.174.0 (beta) – the site home: attendance in one tap; each module only its own things (27-11-2026 – the approved design "LION –
+Quick attendance & clean modules"; his words: "vehicles and Hr … ethe attendance mark krne sathi option de … jyala access asel tya site
+madhe disel 3 site cha asel konti hi site open keli tri attendace option asel te dable ki lagech slefi sathi camera open click kel
+attendace lavli baki terms check krun … vehicless war click kel ki fkt vehicle related asel hr store purchase he as kahi nahi disnar hr
+madhe gelo ki fkt hr related"; then "vehicle la as dark madhe ka keley ani hr dark nahi … vehicle madhe aat gel ki fkt vehicle related
+asel menu madhun pn other disnar nahi"; his picks: both tiles white, the quick attendance in this beta, the Mess on the site home):**
+* **Attendance on the site home** (boards 1–5, `ui/attend_strip.dart` `SiteAttendCard`): a person with HR on ANY of his sites sees the
+  card on the site home of every site – "Not marked yet today" + the shift → **Mark IN**; "IN marked · 09:14", "On duty · 2 h 10 m" →
+  **Mark OUT** (asked "Do you really want to punch out?" first – the same sheet as HR's dial, now `askPunchOut` in `hr_shell.dart`);
+  "Attendance done · IN – OUT" → "Open HR". A tap opens HR's own one-press marking (`AttendanceScreen` quick + auto): his place is read,
+  the selfie camera opens by itself, the punch goes with every check of HR's (work place, his one phone, Developer Options, the
+  network, the face where the site asks, the server's day) and "IN marked" is said big; back on the site home by itself. Nothing of the
+  checks is new or skipped; what stops a punch (outside the work place → try again / with a reason) is said there as before. New: the
+  one press starts only when the server says the same IN / OUT as the button (`want`) – an entry of the HR office made meanwhile shows
+  the page instead (HR's dial too). The card shows what this phone kept (no question to the server); HR's location while on duty goes
+  on as before. HR paused at the site: the button opens Pay.
+* **Vehicle only vehicle**: Vehicle's Home, "View All", ≡, + New entry, Entries and the search no longer have the Store, Purchase,
+  Engineering or HR (nor the Store's items); the small attendance tile and the Mess strip are gone from it; "Today's work" keeps the
+  vehicle rows (the Store / Purchase / RFI rows: their figures are on their tiles of the site home). Where there is no site home
+  (ELEPHANT) nothing changes.
+* **The site home**: Vehicle's tile white like HR's (gold edge); the Store, Purchase and Engineering he has at the site as their own
+  tiles with what waits there (the same calls as before); FALCON's Mess strip under them. HR opened from the site home has no Mess card
+  (it is on the site home); HR without a site home (an employee's "My HR", ELEPHANT) keeps it.
+* Not changed: the server, HR's checks, the selfie / "marked" / outside screens (HR's own, as on HR's dial), the web.
+
 **3.173.0 (beta) – one LION app: the company code, the site home with Vehicle and HR, HR's subscription (27-11-2026 – the approved
 design "LION – Modules & Subscription"; his words: "ekach app asel lion wali tyache madhe tab astil modual che … app login krayche adhi
 company code vichrel nantr logn page yeil … VTR madhe gel ki ek mast greting ani ek unique ui madhe modual distil … Mechanical la name

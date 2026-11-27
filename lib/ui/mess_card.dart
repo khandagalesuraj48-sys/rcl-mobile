@@ -212,7 +212,10 @@ class _MessCardState extends State<MessCard> with _MessData<MessCard> {
 
 /// N7 – the ERP Home's Mess strip (under the site and Mark IN).
 class MessStrip extends StatefulWidget {
-  const MessStrip({super.key});
+  const MessStrip({super.key, this.pad = const EdgeInsets.fromLTRB(10, 10, 0, 0)});
+
+  /// (3.174.0) its place: under the site on Vehicle's Home of before; the site home gives its own
+  final EdgeInsets pad;
   @override
   State<MessStrip> createState() => _MessStripState();
 }
@@ -238,7 +241,7 @@ class _MessStripState extends State<MessStrip> with _MessData<MessStrip> {
     final sub = [if (x.metres != null) x.at ? '${x.name} · ${distText(x.metres!)}' : '${x.name} · ${far(x)}' else x.name, if (x.now) '${tr('till')} ${x.to}'].join(' · ');
     final title = x.meal.isEmpty ? '${tr('Mess')} · ${tr('closed for today')}' : '${tr('Mess')} · ${tr(mealWord(x.meal).toLowerCase())} ${x.now ? tr('now') : '${tr('from')} ${x.from}'}';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 10, 0, 0),
+      padding: widget.pad,
       child: Press(
         key: const Key('home-mess'),
         onTap: openFalcon,

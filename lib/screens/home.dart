@@ -18,7 +18,6 @@ import '../core/push.dart' show pushUpdateTick;
 import '../core/session.dart';
 import '../core/update.dart';
 import '../ui/advert.dart';
-import '../ui/attend_strip.dart';
 import '../ui/mess_card.dart';
 import '../ui/brand.dart' show ClientMark, ProductBlock;
 import '../ui/motion.dart';
@@ -75,6 +74,14 @@ class ModuleTile {
     return perm.isEmpty || s.canSee(perm);
   }
 }
+
+/// (3.174.0, his words of 27-11-2026: "vehicless war click kel ki fkt vehicle related asel hr store purchase he as kahi nahi disnar … menu
+/// madhun pn other disnar nahi") the other modules of the site – opened from the site home (screens/module_home.dart), never from Vehicle.
+const kNotVehicle = {'store', 'purchase', 'engineering', 'hr'};
+
+/// The modules of Vehicle's Home – its tiles, "View All" and ≡ – that he may open: only Vehicle's own where the site home has the
+/// others (a site with Vehicle in LION); all of them otherwise, as before.
+List<ModuleTile> vehicleMods(Session s) => [for (final m in kModules) if (m.visible(s) && !(s.siteHome && kNotVehicle.contains(m.native))) m];
 
 // (3.97.0, his design 2) each module's tile in the module's own colour – the same as the band at the top of its screens
 const kModules = [
@@ -302,7 +309,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   Future<void> _counts({bool force = false}) async {
     if (!Session.moduleCounts || !mounted) return;
     final s = SessionScope.read(context), site = s.site;
-    if (site == null || s.cardSite || s.today.isEmpty) return;
+    // (3.174.0) where the site home has the other modules their figures are on their tiles there – Vehicle's Home asks nothing of them
+    if (site == null || s.cardSite || s.today.isEmpty || s.siteHome) return;
     final now = DateTime.now();
     if (!force && _countsAt != null && now.difference(_countsAt!) < const Duration(minutes: 2)) return;
     _countsAt = now;
@@ -474,7 +482,7 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
     // (3.87.0, asked 08-11-2026 – "Premium Mobile App Redesign", his answer "fakt HO") HO's own Home: no site picture (a clean
     // header), no tiles, no Modules grid (they stay in ≡), no Today's Activity – My Fleet, the cars with their photos
     final ho = s.cardSite;
-    final mods = kModules.where((m) => m.visible(s)).toList();
+    final mods = vehicleMods(s);
     final locs = s.stockByLoc.entries.toList();
     // (3.132.0, Mechanical update-263, his picture "Home – Log Book only") a driver with the Log Book only: his own four figures
     final dieselHere = kKinds.any((k) => s.canSee(k.module)), sess = slb?['session'] is Map ? (slb!['session'] as Map) : null;
@@ -733,8 +741,8 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                             ]),
                           ),
                         ),
-                        // (3.121.0) attendance for a person who has HR on this site: a small tile left of Scan (nothing otherwise)
-                        const AttendStrip(),
+                        // (3.121.0) attendance for a person who has HR on this site: a small tile left of Scan – (3.174.0) now the site
+                        // home's card (ui/attend_strip.dart): Vehicle keeps only vehicle things
                         // (3.14.0) a machinery's QR label: Diesel Issue / Log Book entry / its diesel ledger for it
                         // (3.19.0) the phone's live camera – not on a computer
                         if (!onComputer) ...[
@@ -753,8 +761,9 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                       ]),
                     ),
                     // (23-11-2026, picture N7, his word: "erp sathi pn jas apan attendance sathi keley te ethe pn ek asel") FALCON's Mess under
-                    // the site and Mark IN – only for a person who has HR here and only when FALCON has a mess for his site
-                    const MessStrip(),
+                    // the site and Mark IN – only for a person who has HR here and only when FALCON has a mess for his site.
+                    // (3.174.0, his pick of 27-11-2026: "Site home वर") on the site home where there is one – not in Vehicle
+                    if (!s.siteHome) const MessStrip(),
                   ]),
                 ),
               ]),
