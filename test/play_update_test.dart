@@ -103,7 +103,8 @@ void main() {
   test('the build: the Play package and name only with RCL_STORE=play; no "install a file" permission there; the own update is off', () {
     final g = File('android/app/build.gradle.kts').readAsStringSync(), o = File('android/app/src/play/AndroidManifest.xml').readAsStringSync();
     expect(g, contains('System.getenv("RCL_STORE") == "play"'));
-    expect(g, contains('applicationId = if (playStore) "si.sketchline.lion" else "in.rachana.rcl.rcl_mobile"'));
+    // (27-11-2026) ELEPHANT, HR's own app, put before them – LION's two ids unchanged (session_test.dart has ELEPHANT's)
+    expect(g, contains('else if (playStore) "si.sketchline.lion" else "in.rachana.rcl.rcl_mobile"'));
     expect(g, contains('if (playStore) sourceSets.getByName("release").manifest.srcFile("src/play/AndroidManifest.xml")'));
     expect(g, contains('namespace = "si.sketchline.lion"'), reason: 'the code\'s own name is the new one for both');
     expect(Directory('android/app/src/main/kotlin/in').existsSync(), false, reason: 'no class under the old name');
