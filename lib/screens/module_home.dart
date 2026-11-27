@@ -32,7 +32,12 @@ import 'attendance.dart' show hrSite, hrModule;
 /// The design's colours (boards 4 – 5b).
 class ModC {
   static const navy = Color(0xFF0F1E3D), gold = Color(0xFFC9A227), goldPale = Color(0xFFE9D9A6), goldInk = Color(0xFF8A6A12), goldSoft = Color(0xFFFBF4DF);
-  static const page = Color(0xFFF5F6FA), ink = Color(0xFF111827), muted = Color(0xFF5B6475), line = Color(0xFFE2E6EE), red = Color(0xFFB42318), redSoft = Color(0xFFFDECEA);
+  static const page = Color(0xFFF5F6FA),
+      ink = Color(0xFF111827),
+      muted = Color(0xFF5B6475),
+      line = Color(0xFFE2E6EE),
+      red = Color(0xFFB42318),
+      redSoft = Color(0xFFFDECEA);
 }
 
 /// (tests) how a payment link is opened – the phone's browser / UPI app by itself.
@@ -204,11 +209,18 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
                       child: Container(
                         constraints: const BoxConstraints(minHeight: 44),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: .10), borderRadius: BorderRadius.circular(999), border: Border.all(color: ModC.goldPale.withValues(alpha: .45))),
+                        decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: ModC.goldPale.withValues(alpha: .45))),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           const Icon(Icons.location_on_outlined, size: 17, color: ModC.goldPale),
                           const SizedBox(width: 8),
-                          Flexible(child: m.Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white))),
+                          Flexible(
+                              child: m.Text(s.siteName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white))),
                           if (s.sites.length > 1) ...[const SizedBox(width: 4), const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: ModC.goldPale)],
                         ]),
                       ),
@@ -227,17 +239,26 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
               const SizedBox(height: 18),
               arrive(0, m.Text(modDay(now), style: const TextStyle(fontSize: 14, color: ModC.goldPale))),
               const SizedBox(height: 4),
-              arrive(.06, Text('$hello${first.isEmpty ? '' : ', $first'}', mr: '$helloMr${first.isEmpty ? '' : ', $first'}', key: const Key('mods-hello'), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2))),
+              arrive(
+                  .06,
+                  Text('$hello${first.isEmpty ? '' : ', $first'}',
+                      mr: '$helloMr${first.isEmpty ? '' : ', $first'}',
+                      key: const Key('mods-hello'),
+                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2))),
               const SizedBox(height: 18),
               arrive(
                 .12,
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                  decoration: BoxDecoration(gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [ModC.gold, ModC.goldPale]), borderRadius: BorderRadius.circular(18)),
+                  decoration: BoxDecoration(
+                      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [ModC.gold, ModC.goldPale]),
+                      borderRadius: BorderRadius.circular(18)),
                   child: const Row(children: [
                     Icon(Icons.wb_twilight_rounded, size: 34, color: ModC.navy),
                     SizedBox(width: 14),
-                    Expanded(child: Text('Have a safe and productive day', mr: 'तुमचा दिवस सुरक्षित आणि छान जावो', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ModC.navy))),
+                    Expanded(
+                        child: Text('Have a safe and productive day',
+                            mr: 'तुमचा दिवस सुरक्षित आणि छान जावो', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ModC.navy))),
                   ]),
                 ),
               ),
@@ -291,7 +312,10 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(28, 22, 28, 24 + mq.padding.bottom),
-            child: const Text('Tap a module to open its own dashboard. Changing site brings you back here.', mr: 'module वर tap करा – त्याचा dashboard उघडेल. Site बदलली की पुन्हा इथे याल.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, height: 1.45, color: ModC.muted)),
+            child: const Text('Tap a module to open its own dashboard. Changing site brings you back here.',
+                mr: 'module वर tap करा – त्याचा dashboard उघडेल. Site बदलली की पुन्हा इथे याल.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, height: 1.45, color: ModC.muted)),
           ),
         ]),
       ),
@@ -300,7 +324,16 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
 }
 
 class _Tile extends StatelessWidget {
-  const _Tile({super.key, required this.dark, required this.icon, required this.title, required this.sub, required this.onTap, this.chip = '', this.chipBad = false, this.onChip});
+  const _Tile(
+      {super.key,
+      required this.dark,
+      required this.icon,
+      required this.title,
+      required this.sub,
+      required this.onTap,
+      this.chip = '',
+      this.chipBad = false,
+      this.onChip});
   final bool dark, chipBad;
   final IconData icon;
   final String title, sub, chip;
@@ -313,7 +346,8 @@ class _Tile extends StatelessWidget {
       button: true,
       child: Material(
         color: dark ? ModC.navy : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: dark ? BorderSide.none : const BorderSide(color: Color(0xFFE2C76E), width: 1.5)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22), side: dark ? BorderSide.none : const BorderSide(color: Color(0xFFE2C76E), width: 1.5)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -327,23 +361,30 @@ class _Tile extends StatelessWidget {
                   decoration: BoxDecoration(color: dark ? ModC.gold.withValues(alpha: .18) : ModC.goldSoft, borderRadius: BorderRadius.circular(16)),
                   child: Icon(icon, size: 30, color: dark ? ModC.goldPale : ModC.goldInk),
                 ),
-                const Spacer(),
+                const SizedBox(width: 12),
                 if (chip.isNotEmpty)
-                  Flexible(
-                    flex: 3,
-                    child: GestureDetector(
-                      key: Key('mods-chip-$title'),
-                      onTap: onChip,
-                      child: Container(
-                        constraints: const BoxConstraints(minHeight: 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(color: chipBad ? ModC.redSoft : ModC.goldSoft, borderRadius: BorderRadius.circular(999)),
-                        child: Text(chip, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: chipBad ? ModC.red : ModC.goldInk)),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        key: Key('mods-chip-$title'),
+                        onTap: onChip,
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(color: chipBad ? ModC.redSoft : ModC.goldSoft, borderRadius: BorderRadius.circular(999)),
+                          child: Text(chip,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: chipBad ? ModC.red : ModC.goldInk)),
+                        ),
                       ),
                     ),
                   )
-                else
+                else ...[
+                  const Spacer(),
                   Icon(Icons.arrow_forward_rounded, size: 22, color: dark ? ModC.goldPale : ModC.goldInk),
+                ],
               ]),
               const SizedBox(height: 14),
               Text(title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: .5, color: fg)),
@@ -383,7 +424,13 @@ class PayGate extends StatelessWidget {
     final s = SessionScope.of(context);
     return ValueListenableBuilder<Map<String, dynamic>?>(
       valueListenable: s.hrPaused,
-      builder: (_, p, c) => p == null ? c! : PayScreen(key: const Key('pay-gate'), plan: (p['pay'] as Map?)?.cast<String, dynamic>(), words: p['words'] is List ? [for (final w in p['words'] as List) '$w'] : const [], gate: true),
+      builder: (_, p, c) => p == null
+          ? c!
+          : PayScreen(
+              key: const Key('pay-gate'),
+              plan: (p['pay'] as Map?)?.cast<String, dynamic>(),
+              words: p['words'] is List ? [for (final w in p['words'] as List) '$w'] : const [],
+              gate: true),
       child: child,
     );
   }
@@ -480,7 +527,10 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
       final ok = await (payLaunch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(Uri.parse(upi.isNotEmpty ? upi : url));
       if (!ok) {
         _away = false;
-        throw ApiError(upi.isNotEmpty ? bi('No UPI app opened – install or open a UPI app (PhonePe, Google Pay, Paytm…) and try again.', 'UPI app उघडले नाही – PhonePe, Google Pay, Paytm… उघडून पुन्हा प्रयत्न करा.') : 'The payment page could not be opened – try again.');
+        throw ApiError(upi.isNotEmpty
+            ? bi('No UPI app opened – install or open a UPI app (PhonePe, Google Pay, Paytm…) and try again.',
+                'UPI app उघडले नाही – PhonePe, Google Pay, Paytm… उघडून पुन्हा प्रयत्न करा.')
+            : 'The payment page could not be opened – try again.');
       }
       if (upi.isNotEmpty && mounted) setState(() => _upiRef = '${j['ref'] ?? ''}');
     } catch (e) {
@@ -522,8 +572,12 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
           surfaceTintColor: Colors.transparent,
           foregroundColor: ModC.navy,
           automaticallyImplyLeading: !widget.gate,
-          leading: widget.gate && s.twoMods ? IconButton(key: const Key('pay-mods'), tooltip: tr('Your modules'), icon: const Icon(Icons.arrow_back_rounded), onPressed: () => s.pickModule(null)) : null,
-          title: Text(self ? 'My HR plan' : 'HR subscription', mr: self ? 'माझा HR plan' : 'HR subscription', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: ModC.navy)),
+          leading: widget.gate && s.twoMods
+              ? IconButton(
+                  key: const Key('pay-mods'), tooltip: tr('Your modules'), icon: const Icon(Icons.arrow_back_rounded), onPressed: () => s.pickModule(null))
+              : null,
+          title: Text(self ? 'My HR plan' : 'HR subscription',
+              mr: self ? 'माझा HR plan' : 'HR subscription', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: ModC.navy)),
           actions: [
             if (widget.gate && !s.twoMods && s.sites.length > 1) TextButton(onPressed: s.pickAnotherSite, child: const Text('Change site')),
             if (widget.gate) IconButton(tooltip: tr('Sign out'), icon: const Icon(Icons.logout_rounded), onPressed: () => s.signOut()),
@@ -532,10 +586,15 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
         body: RefreshIndicator(
           onRefresh: () => _read(after: true),
           child: ListView(padding: EdgeInsets.fromLTRB(20, 4, 20, 24 + mq.padding.bottom), children: [
-            if (company.isNotEmpty) Text(self ? company : '$company · ${canPay ? 'company admin' : 'your company pays'}', style: const TextStyle(fontSize: 14, color: ModC.muted)),
+            if (company.isNotEmpty)
+              Text(self ? company : '$company · ${canPay ? 'company admin' : 'your company pays'}', style: const TextStyle(fontSize: 14, color: ModC.muted)),
             const SizedBox(height: 14),
             if (hrWords.isNotEmpty && st == 'paused') ...[
-              _box(m.Text(hrWords, key: const Key('pay-words'), style: const TextStyle(fontSize: 14.5, height: 1.4, color: ModC.red, fontWeight: FontWeight.w600)), color: ModC.redSoft, line: ModC.redSoft),
+              _box(
+                  m.Text(hrWords,
+                      key: const Key('pay-words'), style: const TextStyle(fontSize: 14.5, height: 1.4, color: ModC.red, fontWeight: FontWeight.w600)),
+                  color: ModC.redSoft,
+                  line: ModC.redSoft),
               const SizedBox(height: 12),
             ],
             if (self) ...[
@@ -543,7 +602,8 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
                 _box(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(state.$1, key: const Key('pay-state'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: state.$2)),
                   const SizedBox(height: 6),
-                  Text('${company.isEmpty ? 'Your company' : company} has chosen that each employee pays for his own HR. Pay for $per to keep using it.', style: const TextStyle(fontSize: 14, height: 1.45, color: ModC.muted)),
+                  Text('${company.isEmpty ? 'Your company' : company} has chosen that each employee pays for his own HR. Pay for $per to keep using it.',
+                      style: const TextStyle(fontSize: 14, height: 1.45, color: ModC.muted)),
                 ]))
               else
                 _pill(state.$1, state.$2, state.$3),
@@ -552,13 +612,23 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
                 const Text('HR – one person', mr: 'HR – एक व्यक्ती', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: ModC.navy)),
                 const SizedBox(height: 6),
                 Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  m.Text(total == null ? '–' : rupees(total), key: const Key('pay-total'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: ModC.navy)),
+                  m.Text(total == null ? '–' : rupees(total),
+                      key: const Key('pay-total'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: ModC.navy)),
                   const SizedBox(width: 6),
-                  Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('/ $per', key: const Key('pay-per'), style: const TextStyle(fontSize: 14, color: ModC.muted))),
+                  Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text('/ $per', key: const Key('pay-per'), style: const TextStyle(fontSize: 14, color: ModC.muted))),
                 ]),
-                if (total != null) Text(span.isEmpty ? 'Including all taxes' : 'Including all taxes · $span', key: const Key('pay-taxes'), style: const TextStyle(fontSize: 13, color: ModC.muted)),
+                if (total != null)
+                  Text(span.isEmpty ? 'Including all taxes' : 'Including all taxes · $span',
+                      key: const Key('pay-taxes'), style: const TextStyle(fontSize: 13, color: ModC.muted)),
                 const SizedBox(height: 12),
-                for (final f in const [('Check in and check out', 'Check in आणि check out'), ('Leave and its balance', 'रजा आणि शिल्लक'), ('My papers and salary slips', 'माझी कागदपत्रे आणि पगार पावत्या'), ('Notices from HR', 'HR च्या सूचना')])
+                for (final f in const [
+                  ('Check in and check out', 'Check in आणि check out'),
+                  ('Leave and its balance', 'रजा आणि शिल्लक'),
+                  ('My papers and salary slips', 'माझी कागदपत्रे आणि पगार पावत्या'),
+                  ('Notices from HR', 'HR च्या सूचना')
+                ])
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Row(children: [
@@ -571,8 +641,8 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
             ] else ...[
               _box(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Row(children: [
-                  Flexible(child: _pill(state.$1, state.$2, state.$3, key: const Key('pay-state'))),
-                  const Spacer(),
+                  Expanded(child: _pill(state.$1, state.$2, state.$3, key: const Key('pay-state'))),
+                  const SizedBox(width: 8),
                   Text(per, key: const Key('pay-per'), style: const TextStyle(fontSize: 13, color: ModC.muted)),
                 ]),
                 if (total != null) ...[
@@ -594,12 +664,16 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
                   const Text('Users counted', mr: 'मोजलेले users', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: ModC.navy)),
                   for (final r in (a['bySite'] as List).whereType<Map>()) _line('${r['name'] ?? r['site'] ?? ''}', '${r['n'] ?? 0}'),
                   const SizedBox(height: 8),
-                  const Text('Counted on the bill date: every user with HR access who is active. A user at two sites is counted once.', style: TextStyle(fontSize: 12.5, height: 1.4, color: ModC.muted)),
+                  const Text('Counted on the bill date: every user with HR access who is active. A user at two sites is counted once.',
+                      style: TextStyle(fontSize: 12.5, height: 1.4, color: ModC.muted)),
                 ])),
               ],
               if (!canPay && st != 'ok' && st != 'free') ...[
                 const SizedBox(height: 14),
-                _box(const Text('Your company pays for HR – its HR admin pays. Please tell your admin.', mr: 'HR चे पैसे कंपनी भरते – कंपनीचे HR admin भरतील. कृपया admin ला सांगा.', key: Key('pay-admin'), style: TextStyle(fontSize: 14, height: 1.4, color: ModC.ink))),
+                _box(const Text('Your company pays for HR – its HR admin pays. Please tell your admin.',
+                    mr: 'HR चे पैसे कंपनी भरते – कंपनीचे HR admin भरतील. कृपया admin ला सांगा.',
+                    key: Key('pay-admin'),
+                    style: TextStyle(fontSize: 14, height: 1.4, color: ModC.ink))),
               ],
             ],
             if ('${p['why'] ?? ''}'.isNotEmpty) ...[
@@ -608,17 +682,28 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
             ],
             if (_upiRef.isNotEmpty && !_open) ...[
               const SizedBox(height: 12),
-              _box(Text('Paid by UPI? HR opens as soon as Sketchline sees your payment (remark $_upiRef). Pull down to check again.', mr: 'UPI ने पैसे भरले? Sketchline ला तुमचे पैसे दिसले की HR लगेच चालू होईल (remark $_upiRef). पुन्हा पाहण्यासाठी खाली ओढा.', key: const Key('pay-upi-wait'), style: const TextStyle(fontSize: 14, height: 1.4, color: ModC.ink)), color: ModC.goldSoft, line: ModC.goldSoft),
+              _box(
+                  Text('Paid by UPI? HR opens as soon as Sketchline sees your payment (remark $_upiRef). Pull down to check again.',
+                      mr: 'UPI ने पैसे भरले? Sketchline ला तुमचे पैसे दिसले की HR लगेच चालू होईल (remark $_upiRef). पुन्हा पाहण्यासाठी खाली ओढा.',
+                      key: const Key('pay-upi-wait'),
+                      style: const TextStyle(fontSize: 14, height: 1.4, color: ModC.ink)),
+                  color: ModC.goldSoft,
+                  line: ModC.goldSoft),
             ],
             if (_err.isNotEmpty) ...[
               const SizedBox(height: 12),
-              _box(m.Text(_err, key: const Key('pay-err'), style: const TextStyle(fontSize: 14, color: ModC.red, fontWeight: FontWeight.w500)), color: ModC.redSoft, line: ModC.redSoft),
+              _box(m.Text(_err, key: const Key('pay-err'), style: const TextStyle(fontSize: 14, color: ModC.red, fontWeight: FontWeight.w500)),
+                  color: ModC.redSoft, line: ModC.redSoft),
             ],
             const SizedBox(height: 18),
             if (canPay && total != null && !_open)
               FilledButton(
                 key: const Key('pay-go'),
-                style: FilledButton.styleFrom(backgroundColor: ModC.navy, foregroundColor: Colors.white, minimumSize: const Size.fromHeight(56), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+                style: FilledButton.styleFrom(
+                    backgroundColor: ModC.navy,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(56),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
                 onPressed: _busy ? null : _pay,
                 child: _busy
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white))
@@ -626,9 +711,12 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
               ),
             if (canPay && total != null && !_open) ...[
               const SizedBox(height: 10),
-              const Text('Secure payment – including all taxes', mr: 'सुरक्षित payment – सर्व कर धरून', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: ModC.muted)),
+              const Text('Secure payment – including all taxes',
+                  mr: 'सुरक्षित payment – सर्व कर धरून', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: ModC.muted)),
             ],
-            if (_reading) const Padding(padding: EdgeInsets.only(top: 16), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4)))),
+            if (_reading)
+              const Padding(
+                  padding: EdgeInsets.only(top: 16), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4)))),
           ]),
         ),
       ),
