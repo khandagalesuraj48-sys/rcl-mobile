@@ -2141,7 +2141,14 @@ the phones as a small **patch**, downloaded in the background at an opening and 
   `beta`), check it on a tester's phone, then the stable one (run on `main`).
 * **A patch that went wrong:** Shorebird console → Sketchline Lion → the release → the patch → **Roll back** – the phones go back to
   the release by themselves. A phone without internet keeps the version it has; Shorebird being down never stops the app.
-* Not yet: Play (`play.yml` – after the review in progress is published) and iPhone.
+* **The Play Store's app (27-11-2026, his words: "aaj lagech prt ekda play store war new updet aab file deu jene krun apk and play store
+  same astil nantr apan apk band kru"):** `play.yml` makes the bundle WITH Shorebird (`shorebird release android --artifact aab`,
+  `RCL_STORE=play`, `PLAY=true`, the same patch-signing key): the release `<version>+<100000 + run>`. `patch.yml` → **"Which app"**:
+  **both** (default – the file's app and the Play Store's app, two patches of the same code side by side), **file** or **play**; the
+  Play Store's release is the newest bundle of `play.yml` unless typed in `play_release`; only from `main`. The bundles of before
+  27-11-2026 (3.165 / 3.166) were made without Shorebird – a phone gets patches after it took the Play Store's update to a bundle
+  made this way. A native change still needs a new bundle in the Play Console.
+* Not yet: iPhone.
 
 ## Release (signed, a GitHub Release)
 `.github/workflows/release.yml` is run by hand on `main` (Actions → release → Run workflow), after the owner says yes.
