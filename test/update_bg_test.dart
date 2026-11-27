@@ -296,6 +296,8 @@ void main() {
     addTearDown(resetUpdateOffer);
     final opened = <Uri>[];
     final was = (movePlay, openPlay);
+    // (27-11-2026, later – his word: "play store cha pop up pn band kr") switched off: no phone is asked
+    expect(was.$1(), isFalse, reason: 'the popup is off');
     addTearDown(() {
       movePlay = was.$1;
       openPlay = was.$2;

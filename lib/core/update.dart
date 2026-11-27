@@ -220,7 +220,10 @@ void resetUpdateOffer() {
  * button) MOVE TO THE PLAY STORE – in the app given by its file (Android, not the Play Store's app): at every opening, once, "Sketchline
  * Lion is on Google Play" – Open Play Store (its page in the Play Store) / Later. Nothing stops: this app keeps working; no file of
  * ours is offered any more (no APK after this one). The Play Store's app, an iPhone and a computer: never. */
-bool Function() movePlay = () => Platform.isAndroid && !onComputer && !onPlay();
+// (27-11-2026, later – his words: "apk sathi je updet diley te roll back kr … play store cha pop up pn band kr to nahi disla pahije")
+// SWITCHED OFF: the popup is not shown on any phone; the app given by its file looks for its own update again, as before 3.172.0
+// (3.172.0 itself is a pre-release now – not offered). Kept for a later decision: () => Platform.isAndroid && !onComputer && !onPlay()
+bool Function() movePlay = () => false;
 
 /// The Play Store's page is opened (a test puts its own here).
 Future<bool> Function(Uri u) openPlay = (u) => launchUrl(u, mode: LaunchMode.externalApplication);

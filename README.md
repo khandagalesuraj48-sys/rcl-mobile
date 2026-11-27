@@ -56,6 +56,10 @@ button):** in the app given by its file (Android – not the Play Store's app, a
 it once with the network on before removing it (the entries kept on the phone are sent). No file of ours is offered any more – no APK
 after this one (`core/update.dart` `movePlay` / `offerMove`, Home and HR's opening). With it, Mechanical's `/app` page gives the Play
 Store's app (rclerp update-281). Released as beta → stable as usual, once the Play Store's update (3.171.0 / 100007) is live.
+**Taken back the same day (27-11-2026, his words: "apk sathi je updet diley te roll back kr … play store cha pop up pn band kr to
+nahi disla pahije"):** the GitHub release 3.172.0 (252) is a pre-release (he set it – nothing deleted): a phone of 3.171 is not offered
+it; `movePlay` is off (`() => false`), so no phone shows the popup and the app given by its file looks for its own update again, as
+before; a phone that took 3.172.0 gets it by a patch of 3.172.0+252 (patch.yml, "file"). The Play Store's app is not touched.
 
 **3.171.0 patch 3 (25-11-2026 – his word with FALCON's "5.9 km away" and Google Maps' 12 km: "app ase ase fake imformation denare tr
 kahich thik nahi chalnar"):** both points were right – the distance was the straight line. FALCON inside the app (its pin → its "road
