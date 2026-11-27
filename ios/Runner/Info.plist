@@ -67,6 +67,9 @@
 			</array>
 		</dict>
 	</dict>
+	<!-- (27-11-2026, App Store) the app uses only the system's HTTPS – exempt from export compliance; without this line every TestFlight build waits for a click in App Store Connect -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -2078,7 +2078,7 @@ site's modules as Admin (the Portal lists them all for him); before, the app sen
   * (3.19.1) A phone takes its own processor's APK (`.arm64-v8a.apk` / `.armeabi-v7a.apk`, fingerprint in "apk") – about
     half the size; a release without them: the APK for every phone.
   * Windows (3.19.0): the release's setup (.exe) and its own fingerprint ("win"); the setup closes the app and opens the new one.
-  * iPhone: App Store / TestFlight, later (the Apple Developer account).
+  * iPhone: the App Store / TestFlight (27-11-2026, `appstore.yml` – see "App Store – iPhone"); the app itself downloads nothing on an iPhone.
 
 ## Build
 GitHub Actions (`.github/workflows/build.yml`) runs on every push:
@@ -2148,7 +2148,39 @@ the phones as a small **patch**, downloaded in the background at an opening and 
   Play Store's release is the newest bundle of `play.yml` unless typed in `play_release`; only from `main`. The bundles of before
   27-11-2026 (3.165 / 3.166) were made without Shorebird – a phone gets patches after it took the Play Store's update to a bundle
   made this way. A native change still needs a new bundle in the Play Console.
-* Not yet: iPhone.
+* **The App Store's app (27-11-2026):** `appstore.yml` makes the iPhone app WITH Shorebird (`shorebird release ios`, the same
+  patch-signing key): the release `<version>+<100000 + run>`. `patch.yml` does not know the iPhone yet – an iPhone patch is the next
+  piece of work, after the first app is on TestFlight.
+
+## App Store – iPhone (27-11-2026)
+Asked: "iOS app App Store war update karayche aahe ani install karun ghyayche aahe … GitHub warun tumhi sarv kahi ghyave." No Mac of
+ours: `.github/workflows/appstore.yml` (Actions → **appstore** → Run workflow, on `main` or `beta`) builds, signs and sends the iPhone
+app from GitHub's macOS runner; `ios/fastlane/Fastfile` does the Apple part (lanes `sign` and `upload`).
+* **How Apple is spoken to:** an App Store Connect API **Team key** (role Admin) – GitHub secrets **`ASC_KEY_ID`**, **`ASC_ISSUER_ID`**,
+  **`ASC_KEY_P8`** (the whole text of the `.p8` file, downloadable only once). No Apple ID, password or 2-factor code in a build.
+* **Signing:** the first run makes the **Apple Distribution certificate** with that key and keeps it ONLY in the private bucket
+  **app-keys** (`ios-dist.p12`, beside the Android key – keep a copy offline); every later run takes it from there. The provisioning
+  profile "Sketchline Lion App Store" is renewed every run; `Runner.xcodeproj` is switched to manual signing on the runner only
+  (never committed – the branch keeps automatic signing for a Mac). The team id is read out of the profile – no secret for it.
+* **The app:** `shorebird release ios` with `ExportOptions.plist` (method app-store-connect, `manageAppVersionAndBuildNumber` off – Xcode
+  must not touch the build number, a patch finds its release by it), the Google Maps key in `Info.plist`, the FALCON defines, build
+  number **100000 + run number** (always higher, as Apple asks for one version). Bundle id **`si.sketchline.lion`** (the same as the Play
+  Store's package), name on the phone "Sketchline" (`CFBundleDisplayName`). The tests run first; a failed test = no app.
+  `Info.plist` says `ITSAppUsesNonExemptEncryption = false` (only the system's HTTPS) – else every TestFlight build waits for a click.
+* **Where it goes:** box **"Send to TestFlight"** ticked (default) → App Store Connect → TestFlight; Apple processes it (10–60 min),
+  then it is in the **TestFlight** app (App Store) of every internal tester – the owner adds himself under App Store Connect →
+  Users and Access, and TestFlight on the iPhone installs and updates the app. Unticked → built and checked only (Artifacts →
+  **ios-ipa**, 14 days; `--dry-run` for Shorebird). Nothing here sends the app to the **App Store review** – that is done from App
+  Store Connect (web) when he says so: screenshots, description, the privacy link (sketchline.si), the Demo Reviewer sign-in.
+* **Once, by hand (Apple's side; the key cannot do these):** (1) the Apple Developer Program for Sketchline (developer.apple.com, 99 USD
+  a year, with lion@sketchline.si – an Organization needs a D-U-N-S number, 1–2 weeks; an Individual is a day); (2) the API key (above);
+  (3) run the workflow once – it makes the **App ID** and stops with the words for step 4; (4) App Store Connect → Apps → + → New App:
+  iOS, "Sketchline Lion", bundle ID si.sketchline.lion, SKU lion → run again.
+* **Secrets:** the same as `play.yml` (`PORTAL_SUPABASE_URL`, `PORTAL_SUPABASE_KEY`, `MAPS_API_KEY`, `FALCON_*`, `SHOREBIRD_TOKEN`) plus
+  the three `ASC_*`. Never in a file, never in chat.
+* **Not verified yet:** this file was written without an Apple account – the first run on the real account is its test; what it says
+  on failure is written to be acted on (the step, the words of Apple). Push notifications on the iPhone (APNs key), Universal Links
+  and App Attest still wait for the Apple team (the notes above).
 
 ## Release (signed, a GitHub Release)
 `.github/workflows/release.yml` is run by hand on `main` (Actions → release → Run workflow), after the owner says yes.
