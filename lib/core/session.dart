@@ -209,7 +209,9 @@ bool hasKm(String w) => w == 'KM' || w == 'KM + Hrs';
 bool hasHr(String w) => w == 'Hrs' || w == 'KM + Hrs';
 
 class Session extends ChangeNotifier {
-  Session(this.api, {this.langRead});
+  Session(this.api, {this.langRead}) {
+    api.onHrPaused = (d) => hrPaused.value = d; // (3.173.0) HR's subscription not paid: the "Pay" screen over HR's pages
+  }
   final Api api;
 
   /// (15-10-2026) how the language files are read (the app's files; the tests give their own)
@@ -219,6 +221,74 @@ class Session extends ChangeNotifier {
   /// (3.108.0) at a site where he has HR only (no Mechanical): the app's own pages for attendance – Home, Attendance, Leave, Me.
   /// (27-11-2026) ELEPHANT – HR's own app: always the attendance app's pages, whatever else he has at the site.
   bool get hrOnly => site != null && (isElephant || site!.module('mechanical') == null);
+
+  /* (3.173.0, the approved design "LION – Modules & Subscription", his words of 27-11-2026: "ekach app asel lion wali tyache madhe tab
+   * astil modual che … VTR madhe gel ki ek mast greting ani ek unique ui madhe modual distil … Mechanical la name apan ata VEHICLE
+   * … 18 B LA JRI GELO TITH PN SELCT MODUAL ASEL HR MADHE JAYCHE KI VEHICLE ANI TYA NANTR MG TYA TYA MODUAL CHA DASHBORD") THE SITE
+   * HOME: at a site where he has BOTH Vehicle (Mechanical) and HR (the office's or "My HR"), the site opens on the greeting and the
+   * two modules; the one he taps opens its own pages as before; Back there and another site bring him back to it. One module only:
+   * it opens at once, as before. ELEPHANT (HR's own app) never shows it. */
+  /// The site's modules of the site home, in the design's order: 'mechanical' (Vehicle), 'hr'.
+  List<String> get siteMods => site == null ? const [] : [if (site!.module('mechanical') != null) 'mechanical', if (site!.module('hr') != null || site!.module('hrme') != null) 'hr'];
+
+  /// At this site the module is chosen on the site home.
+  bool get twoMods => !isElephant && siteMods.length > 1;
+
+  /// The module he chose on the site home ('mechanical' / 'hr'); null – the site home itself (a new site: null again).
+  String? modPick;
+
+  /// The site home is on the screen.
+  bool get moduleHome => twoMods && modPick == null;
+
+  /// His start page (Settings) was opened for this opening of the site (screens/shell.dart) – once, not at every return to Vehicle.
+  bool startPageDone = false;
+
+  /// HR's own pages are on the screen (a site with HR only, ELEPHANT, or HR chosen on the site home).
+  bool get showHr => hrOnly || (twoMods && modPick == 'hr');
+
+  void pickModule(String? m) {
+    if (modPick == m) return;
+    modPick = m;
+    notifyListeners();
+  }
+
+  /// (3.173.0, HR's subscription – the Portal's step 16) HR said "paused" (not paid): what it said (`pay`, `words`); the HR pages
+  /// show the "Pay" screen over them (screens/module_home.dart PayGate). Null – HR as always.
+  final hrPaused = ValueNotifier<Map<String, dynamic>?>(null);
+
+  /// (3.173.0, his words: "app login krayche adhi company code vichrel nantr logn page yeil") the company code typed on this phone
+  /// ('' – the sign-in screen asks it first). Kept on the phone; "Change company" forgets it.
+  static const kCompany = 'company_code';
+  String companyCode = '';
+
+  /// Checks [code] at the ERP (api/company): '' – it is a company of this app, kept; otherwise what to tell him.
+  Future<String> setCompany(String code) async {
+    final c = code.trim().toUpperCase();
+    if (!RegExp(r'^[A-Z0-9]{2,20}$').hasMatch(c)) return bi('Type your company code (letters and numbers).', 'तुमचा company code टाका (अक्षरे आणि अंक).');
+    final Map<String, dynamic> j;
+    try {
+      j = await api.company(c);
+    } on ApiError catch (e) {
+      return e.noConnection ? bi('No network – connect and try again.', 'नेटवर्क नाही – जोडून पुन्हा प्रयत्न करा.') : e.toString();
+    }
+    if (j['ok'] != true) return bi('This company code is not known. Check it with your company.', 'हा company code सापडला नाही. तुमच्या कंपनीकडून तपासा.');
+    // each company has its own sign-in (rclerp api/company.js): this app signs in at its own Portal – another company's address is not opened here yet
+    final url = '${j['url'] ?? ''}'.trim(), at = (url.startsWith('/') ? api.mainUrl + url : url).replaceFirst(RegExp(r'/+$'), '');
+    if (at != api.portalUrl.replaceFirst(RegExp(r'/+$'), '')) return bi('This company signs in at its own address – it is not in this app yet.', 'या कंपनीचे sign-in तिच्या स्वतःच्या पत्त्यावर आहे – ते अजून या app मध्ये नाही.');
+    companyCode = '${j['code'] ?? c}';
+    await api.keep.write(kCompany, companyCode);
+    error = '';
+    notifyListeners();
+    return '';
+  }
+
+  /// "Change company": the code is asked again.
+  Future<void> forgetCompany() async {
+    companyCode = '';
+    await api.keep.write(kCompany, null);
+    error = '';
+    notifyListeners();
+  }
 
   /// (3.142.0) at this site he has Mechanical as a driver of the Driver Master (Log Book – Edit only): his Log Book is the Smart Log Book
   bool get mechDriver => site?.module('mechanical')?.driver ?? false;
@@ -648,6 +718,7 @@ class Session extends ChangeNotifier {
     }
     await Lang.i.set(await api.keep.read(kLang) ?? '', read: langRead);
     siteMode.value = await api.keep.read(kSiteMode) == '1';      // (3.97.0)
+    companyCode = await api.keep.read(kCompany) ?? ''; // (3.173.0) the company code typed on this phone
     if (!api.hasPortal) return _go(Stage.signedOut);
     _boot(.15);
     try {
@@ -949,6 +1020,9 @@ class Session extends ChangeNotifier {
   Future<void> chooseSite(String code, {Future<dynamic>? early}) async {
     final s = sites.firstWhere((x) => x.code == code);
     if (site?.code != code) clearMemory(); // (update-155) another site: nothing the screens kept of the one before
+    modPick = null; // (3.173.0) every site opens on its site home (where he has two modules)
+    hrPaused.value = null;
+    startPageDone = false;
     site = s;
     siteName = s.name;
     // (3.108.0) a site with HR only: nothing of Mechanical is asked – its lists, his settings, the notifications are Mechanical's
@@ -1696,6 +1770,8 @@ class Session extends ChangeNotifier {
     superAdmin = false;
     tester = false;
     consentNeed = '';
+    modPick = null;
+    hrPaused.value = null;
     _go(Stage.signedOut, msg);
   }
 }

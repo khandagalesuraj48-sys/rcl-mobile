@@ -47,10 +47,14 @@ import '../ui/t.dart';
 import '../ui/motion.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.setPassword = false});
+  const LoginScreen({super.key, this.setPassword = false, this.askCompany = false});
 
   /// His first sign-in with a given password: the card asks for his own password.
   final bool setPassword;
+
+  /// (3.173.0, the approved design "LION – Modules & Subscription", board 1) no company code on this phone yet: the card asks it
+  /// first ("Only your company's sign-in opens"); the sign-in card comes after it.
+  final bool askCompany;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -397,6 +401,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     _waCode.dispose();
     _waFocus.dispose();
     _code.dispose();
+    _co.dispose();
     _rCode.dispose();
     _open.dispose();
     _shake.dispose();
@@ -561,6 +566,90 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         ),
       );
 
+  // ---------- (3.173.0) the company code (board 1 of the approved design) ----------
+  final _co = TextEditingController();
+  bool _coBusy = false;
+
+  Future<void> _coGo() async {
+    if (_coBusy) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _coBusy = true;
+      _localErr = '';
+    });
+    final why = await SessionScope.read(context).setCompany(_co.text);
+    if (!mounted) return;
+    setState(() {
+      _coBusy = false;
+      _localErr = why;
+    });
+  }
+
+  Widget _coCard(String err) => _shaken(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _title('Company code', key: const Key('co-title')),
+        const SizedBox(height: 10),
+        Text('Type the code your company gave you. Only your company\'s sign-in opens.', style: TextStyle(fontSize: 15, color: _l.muted, height: 1.35)),
+        _lab('Company code'),
+        TextField(
+          key: const Key('co-code'),
+          controller: _co,
+          textCapitalization: TextCapitalization.characters,
+          textInputAction: TextInputAction.go,
+          autocorrect: false,
+          enableSuggestions: false,
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')), LengthLimitingTextInputFormatter(20)],
+          style: _typed.copyWith(letterSpacing: 2),
+          onSubmitted: (_) => _coGo(),
+          decoration: _dec('e.g. RCL', Icons.apartment_rounded),
+        ),
+        _errBox(err),
+        const SizedBox(height: 18),
+        _SignInButton(busy: _coBusy, onTap: _coGo, label: 'Continue', buttonKey: const Key('co-go')),
+        const SizedBox(height: 12),
+        Text('No list of companies is shown – the code is the only way in.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: _l.faint, height: 1.35)),
+      ]));
+
+  /// The company of this sign-in on the navy; a tap: "Change company?" – the code is asked again.
+  Widget _coPill() {
+    final s = SessionScope.of(context);
+    return Semantics(
+      button: true,
+      label: tr('Change company'),
+      child: GestureDetector(
+        key: const Key('co-change'),
+        onTap: () async {
+          final yes = await showDialog<bool>(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: const Text('Change company?'),
+              content: Text('You are signing in to ${s.companyCode}. Type another company code?'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                FilledButton(key: const Key('co-change-yes'), onPressed: () => Navigator.pop(c, true), child: const Text('Change company')),
+              ],
+            ),
+          );
+          if (yes == true && mounted) {
+            setState(() => _localErr = '');
+            await SessionScope.read(context).forgetCompany();
+          }
+        },
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 40),
+          padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: .14), borderRadius: BorderRadius.circular(22), border: Border.all(color: kCrestGold.withValues(alpha: .55))),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.apartment_rounded, size: 17, color: kCrestGold),
+            const SizedBox(width: 7),
+            m.Text(s.companyCode, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 1)),
+            const SizedBox(width: 6),
+            const Text('Change', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: kCrestGold)),
+          ]),
+        ),
+      ),
+    );
+  }
+
   /// (3.31.0) English / मराठी / हिंदी – the app in it from here: a glass pill on the navy
   Widget _lang() {
     final code = LangScope.of(context).code;
@@ -643,6 +732,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     RepaintBoundary(child: CustomPaint(painter: CrestLines(eddy: Offset(mq.size.width / 2, lionTop + lion / 2), ring: lion, color: kCrestGold.withValues(alpha: .3), depth: 1))),
                     CustomPaint(painter: CrestWave(top: headH - 64, rise: 44, fill: l.page, broad: true)),
                     Positioned(top: mq.padding.top + 10, right: Sp.edge, child: _lang()),
+                    // (3.173.0) the company this sign-in is for – a tap asks the code again
+                    if (!widget.askCompany && !widget.setPassword && SessionScope.of(context).companyCode.isNotEmpty) Positioned(top: mq.padding.top + 10, left: Sp.edge, child: _coPill()),
                     Positioned(
                       top: lionTop,
                       left: 16,
@@ -666,7 +757,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      widget.setPassword ? _pwCard(err) : (_reset ? _resetCard(err) : (_wa ? _waCard(err) : (_otp ? _otpCard(err) : _card(err)))),
+                      widget.setPassword ? _pwCard(err) : (widget.askCompany ? _coCard(err) : (_reset ? _resetCard(err) : (_wa ? _waCard(err) : (_otp ? _otpCard(err) : _card(err))))),
                       const SizedBox(height: 16),
                       if (widget.setPassword) ...[
                         Text('One password for the Portal and every module – the same on the web.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: l.muted, height: 1.35)),
@@ -1182,10 +1273,11 @@ class _Look {
 
 /// The big gold button; while signing in it shows a turning ring.
 class _SignInButton extends StatelessWidget {
-  const _SignInButton({required this.busy, required this.onTap, this.label = 'Sign in'});
+  const _SignInButton({required this.busy, required this.onTap, this.label = 'Sign in', this.buttonKey = const Key('login-go')});
   final bool busy;
   final VoidCallback onTap;
   final String label;
+  final Key buttonKey;
   static const _ink = Color(0xFF2A1D00);
   @override
   Widget build(BuildContext context) => DecoratedBox(
@@ -1196,7 +1288,7 @@ class _SignInButton extends StatelessWidget {
           boxShadow: [BoxShadow(color: kCrestGoldDeep.withValues(alpha: .35), blurRadius: 18, offset: const Offset(0, 9))],
         ),
         child: FilledButton(
-          key: const Key('login-go'),
+          key: buttonKey,
           style: FilledButton.styleFrom(backgroundColor: Colors.transparent, disabledBackgroundColor: Colors.transparent, shadowColor: Colors.transparent, foregroundColor: _ink, minimumSize: const Size.fromHeight(58), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22))),
           onPressed: busy ? null : onTap,
           child: AnimatedSwitcher(

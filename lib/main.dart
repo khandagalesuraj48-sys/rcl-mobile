@@ -27,11 +27,13 @@ import 'core/scan_link.dart';
 import 'core/session.dart';
 import 'core/play_update.dart' show playWatch;
 import 'core/update.dart' show updateContext, updateWatch, updateAway, updateBack, tellAppTag;
+import 'core/app_kind.dart' show isElephant;
 import 'screens/consent_gate.dart';
 import 'screens/docs_gate.dart';
 import 'screens/call.dart';
 import 'screens/lock.dart';
 import 'screens/login.dart';
+import 'screens/module_home.dart';
 import 'screens/scan_link_layer.dart';
 import 'screens/hr_shell.dart';
 import 'screens/shell.dart';
@@ -330,12 +332,23 @@ class Gate extends StatelessWidget {
       child: switch (s.stage) {
         // (3.37.0) the start screen – one screen while the kept sign-in is checked and the site is opened: its bar goes on
         Stage.starting || Stage.opening => SplashScreen(key: const ValueKey('opening'), progress: s.boot),
-        Stage.signedOut => const LoginScreen(key: ValueKey('login')),
+        // (3.173.0) the company code first – the sign-in of that company after it (screens/login.dart)
+        Stage.signedOut => LoginScreen(key: const ValueKey('login'), askCompany: !isElephant && s.companyCode.isEmpty),
         Stage.setPassword => const LoginScreen(key: ValueKey('setpw'), setPassword: true),
         Stage.pickSite => const SitePickScreen(key: ValueKey('site')),
         // (3.108.0) HR only at this site: the app's own pages for attendance
         // (20-11-2026) the documents gate: before Home, an employee whose required papers are not done uploads them (DocsGateHost)
-        Stage.ready => ConsentGate(key: ValueKey('consent-${s.site?.code}'), child: DocsGateHost(key: ValueKey('gate-${s.site?.code}'), child: s.hrOnly ? HrShell(key: ValueKey('hr-${s.site?.code}')) : Shell(key: ValueKey('app-${s.site?.code}')))),
+        // (3.173.0, the approved design "LION – Modules & Subscription") Vehicle and HR at the site: the site home first; the module
+        // he taps opens its own pages; Back there brings him back to it (screens/module_home.dart)
+        Stage.ready => ConsentGate(
+            key: ValueKey('consent-${s.site?.code}'),
+            child: s.moduleHome
+                ? ModuleHome(key: ValueKey('mods-${s.site?.code}'))
+                : DocsGateHost(
+                    key: ValueKey('gate-${s.site?.code}'),
+                    child: s.showHr
+                        ? PayGate(child: BackToMods(child: HrShell(key: ValueKey('hr-${s.site?.code}'))))
+                        : Shell(key: ValueKey('app-${s.site?.code}')))),
         Stage.waiting => const Waiting(key: ValueKey('wait')),
       },
     );

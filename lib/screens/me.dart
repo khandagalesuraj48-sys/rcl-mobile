@@ -200,6 +200,17 @@ class _MeTabState extends State<MeTab> {
                 onTap: s.sites.length > 1 ? () => s.pickAnotherSite() : null,
                 trailing: s.sites.length > 1 ? null : const SizedBox.shrink(),
               ),
+              // (3.173.0) Vehicle and HR at this site: back to the site home (the two modules) – also on a phone without a Back key
+              if (s.twoMods)
+                _row(
+                  key: const Key('me-mods'),
+                  pic: 'office_building',
+                  en: 'Your modules',
+                  mr: 'तुमचे modules',
+                  color: C.blueSoft,
+                  sub: bi('Vehicle · HR – choose another module', 'Vehicle · HR – दुसरे module निवडा'),
+                  onTap: () => s.pickModule(null),
+                ),
               // (3.17.0) the Super Admin's console of the whole system (the Portal's "Super Admin"), in the app's own screens
               if (s.superAdmin)
                 _row(

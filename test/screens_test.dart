@@ -34,6 +34,7 @@ import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/core/sitewords.dart';
 import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
+import 'package:rcl_mobile/screens/module_home.dart' show payLaunch;
 import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
 import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/screens/assistant.dart' show AiHistoryScreen, AiMemoryScreen, AssistantScreen, forgetChat, moduleLook;
@@ -129,6 +130,8 @@ Future<void> attPage(WidgetTester t) async {
 
 Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))
   ..api.keep.write('ai_consent_ok', '1') // (20-11-2026) the assistant's one-time "Allow" (before a typed question goes to the AI service) is given already
+  ..api.keep.write(Session.kCompany, 'RCL') // (3.173.0) the company code typed on this phone already (its own tests start without it)
+  ..companyCode = 'RCL'
   ..clock = () => DateTime(2026, 10, 14, 10, 30); // (a Day-shift time: the screens are the same every run)
 
 Future<Session> ready(WidgetTester t, FakeServer srv) async {
@@ -137,6 +140,7 @@ Future<Session> ready(WidgetTester t, FakeServer srv) async {
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
     await s.chooseSite('S1');
   });
+  if (s.twoMods) s.pickModule('mechanical'); // (3.173.0) Vehicle and HR at the site: these tests are in Vehicle (the site home has its own)
   return s;
 }
 
@@ -11957,6 +11961,166 @@ void main() {
     expect(find.byKey(const Key('hh-mess-super')), findsNothing);
     await t.pumpWidget(const SizedBox());
     await net(t);
+  });
+
+  // ---------------- (3.173.0) the approved design "LION – Modules & Subscription" ----------------
+  testWidgets('(3.173.0) the company code first ("company code vichrel nantr login page"): an unknown code, another company\'s address, RCL → the sign-in; "Change" asks again', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await settle(t);
+    expect(find.byKey(const Key('co-title')), findsOneWidget);
+    expect(find.byKey(const Key('login-title')), findsNothing, reason: 'no sign-in before the company');
+    expect(find.textContaining('the code is the only way in'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('co-code')), 'zzz');
+    await t.tap(find.byKey(const Key('co-go')));
+    await net(t);
+    expect(find.textContaining('This company code is not known'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('co-code')), 'MILE');
+    await t.tap(find.byKey(const Key('co-go')));
+    await net(t);
+    expect(find.textContaining('signs in at its own address'), findsOneWidget, reason: 'another company\'s Portal is not opened by this app yet');
+    expect(s.companyCode, '');
+    await t.enterText(find.byKey(const Key('co-code')), 'rcl');
+    await t.tap(find.byKey(const Key('co-go')));
+    await net(t);
+    expect(srv.companyAsked, ['ZZZ', 'MILE', 'RCL'], reason: 'one code, one answer');
+    expect(find.byKey(const Key('login-title')), findsOneWidget);
+    expect(find.byKey(const Key('co-change')), findsOneWidget);
+    expect(find.text('RCL'), findsOneWidget);
+    expect(await s.api.keep.read(Session.kCompany), 'RCL', reason: 'kept on this phone');
+    await t.tap(find.byKey(const Key('co-change')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('co-change-yes')));
+    await net(t);
+    expect(find.byKey(const Key('co-title')), findsOneWidget);
+    expect(await s.api.keep.read(Session.kCompany), isNull);
+  });
+
+  testWidgets('(3.173.0) the site home: greeting, Vehicle and HR; each opens its own pages; Back brings him back; HR "due" → Pay (the company): users, per user and the total WITH the taxes – never GST', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrPay = {
+        's': 'due', 'who': 'company', 'grace': '2026-10-16', 'canPay': true,
+        'amount': {'total': 35400, 'units': 3, 'rateAll': 11800, 'from': '2026-10-14', 'to': '2026-11-13', 'per': '1 month', 'bySite': [{'site': 'S1', 'name': 'VTR Site – NH 848', 'n': 3}]},
+      };
+    final s = make(srv);
+    await t.runAsync(() async {
+      await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+      await s.chooseSite('S1');
+    });
+    expect(s.twoMods, isTrue);
+    expect(s.moduleHome, isTrue);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('mods-hello')), findsOneWidget);
+    expect(find.text('Good morning, Sujit'), findsOneWidget);
+    expect(find.text('Wednesday, 14 October'), findsOneWidget);
+    expect(find.text('Vehicle'), findsOneWidget);
+    expect(find.text('Subscription due'), findsOneWidget, reason: 'HR\'s tile says it');
+    expect(srv.payAsked.where((x) => x['action'] == 'mine' && x['site'] == 'S1'), isNotEmpty);
+    // Vehicle → its own Home; Back → the site home
+    await t.tap(find.byKey(const Key('mods-vehicle')));
+    await net(t);
+    expect(s.modPick, 'mechanical');
+    expect(find.byKey(const Key('mods-vehicle')), findsNothing);
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(s.modPick, isNull);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget);
+    // HR → HR's own pages; Back → the site home
+    await t.tap(find.byKey(const Key('mods-hr')));
+    await net(t);
+    expect(s.modPick, 'hr');
+    expect(s.showHr, isTrue);
+    expect(find.byKey(const Key('mods-hr')), findsNothing);
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('mods-hr')), findsOneWidget);
+    // the chip → Pay (5a): no GST anywhere, only "Including all taxes"
+    final opened = <Uri>[];
+    payLaunch = (u) async {
+      opened.add(u);
+      return true;
+    };
+    addTearDown(() => payLaunch = null);
+    await t.tap(find.byKey(const Key('mods-chip-HR')));
+    await net(t);
+    expect(find.text('HR subscription'), findsOneWidget);
+    expect(find.byKey(const Key('pay-total')), findsOneWidget);
+    expect(find.text('₹354'), findsOneWidget);
+    expect(find.byKey(const Key('pay-taxes')), findsOneWidget);
+    expect(find.text('₹118'), findsOneWidget, reason: 'one user\'s price with the taxes');
+    expect(find.textContaining('GST'), findsNothing, reason: 'his word: "gst … dakhawayche nahi"');
+    expect(find.text('1 month'), findsOneWidget);
+    expect(find.textContaining('Due · 2 days of grace left'), findsOneWidget);
+    await t.tap(find.byKey(const Key('pay-go')));
+    await net(t);
+    expect(opened.single.toString(), 'https://rzp.io/rig/x7');
+    expect(srv.payAsked.last, {'action': 'link', 'site': 'S1', 'module': 'hr'});
+    // Razorpay's page paid: back in the app it is read again – HR opens
+    srv.hrPay = {'s': 'ok', 'who': 'company', 'till': '2026-11-13', 'canPay': true};
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await net(t);
+    expect(find.text('Paid – thank you. HR is open.'), findsOneWidget);
+    await net(t);
+    expect(find.byKey(const Key('mods-hr')), findsOneWidget, reason: 'back on the site home');
+    expect(find.text('Subscription due'), findsNothing);
+  });
+
+  testWidgets('(3.173.0) HR paused, each employee pays (Single, 15 days): "Pay" in place of HR\'s pages; the demo – straight to a UPI ID: his UPI app; HR opens when it was received', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..hrPausedNow = true
+      ..payWay = 'upi'
+      ..hrPay = {'s': 'paused', 'who': 'employee', 'grace': '2026-10-10', 'canPay': true, 'amount': {'total': 4720, 'units': 1, 'rateAll': 4720, 'from': '2026-10-14', 'to': '2026-10-28', 'per': '15 days', 'bySite': []}};
+    final s = make(srv);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    expect(s.hrOnly, isTrue);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    expect(s.hrPaused.value, isNotNull, reason: 'HR said "paused" (402)');
+    expect(find.byKey(const Key('pay-gate')), findsOneWidget);
+    expect(find.text('My HR plan'), findsOneWidget);
+    expect(find.byKey(const Key('pay-words')), findsOneWidget, reason: 'HR\'s own words');
+    expect(find.text('₹47.20'), findsOneWidget);
+    expect(find.text('/ 15 days'), findsOneWidget);
+    expect(find.textContaining('GST'), findsNothing);
+    final opened = <Uri>[];
+    payLaunch = (u) async {
+      opened.add(u);
+      return true;
+    };
+    addTearDown(() => payLaunch = null);
+    await t.tap(find.byKey(const Key('pay-go')));
+    await net(t);
+    expect(opened.single.scheme, 'upi');
+    expect(opened.single.queryParameters['am'], '47.20');
+    expect(opened.single.queryParameters['pa'], 'owner.demo@okbank');
+    expect(find.byKey(const Key('pay-upi-wait')), findsOneWidget, reason: 'HR opens when Sketchline sees it – said with its remark');
+    expect(find.textContaining('SKL-7 HR 12/01'), findsOneWidget);
+    // back from the UPI app: not received yet – still "Pay"
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await net(t);
+    expect(find.byKey(const Key('pay-gate')), findsOneWidget);
+    // the Super Admin pressed "Received" in the Portal: pulled down – HR opens
+    srv
+      ..hrPay = {'s': 'ok', 'who': 'employee', 'till': '2026-10-28', 'canPay': true}
+      ..hrPausedNow = false;
+    await t.fling(find.byType(ListView).first, const Offset(0, 400), 1200);
+    await net(t);
+    await net(t);
+    expect(s.hrPaused.value, isNull);
+    expect(find.byKey(const Key('pay-gate')), findsNothing);
   });
 }
 

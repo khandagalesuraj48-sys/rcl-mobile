@@ -1,3 +1,3 @@
-Sketchline Lion is now on Google Play: install the new app from the Play Store (button at every opening) and sign in with the same e-mail and password – this app keeps working until you move. Also: network status on every screen; sign in with an e-mail code; Forgot password.
-Sketchline Lion आता Google Play वर: नवीन app Play Store वरून install करा (प्रत्येक वेळी उघडताना बटण) आणि तोच email व password टाका – तुम्ही नवीन app घेईपर्यंत हे app चालू राहील. तसेच: प्रत्येक screen वर network ची स्थिती; email code ने sign in; Forgot password.
-Sketchline Lion अब Google Play पर: नया app Play Store से install करें (हर बार खोलने पर बटन) और वही email व password डालें – नया app लेने तक यह app चलता रहेगा। साथ में: हर screen पर network की स्थिति; email code से sign in; Forgot password.
+One LION app: type your company code, sign in, then choose Vehicle or HR at your site. HR shows its subscription and Pay (testers only).
+एकच LION app: company code टाका, sign in करा, मग site वर Vehicle किंवा HR निवडा. HR मध्ये subscription आणि Pay (फक्त testers साठी).
+एक ही LION app: company code डालें, sign in करें, फिर site पर Vehicle या HR चुनें। HR में subscription और Pay (केवल testers के लिए)।

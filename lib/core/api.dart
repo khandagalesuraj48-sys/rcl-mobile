@@ -243,6 +243,34 @@ class Api {
     return j;
   }
 
+  /// (3.173.0, the Portal's step 16 – the approved design "LION – Modules & Subscription") POST <portal>/api/pay { action, … }:
+  /// `mine { site }` – his modules' subscription at the site (ok / trial / due / paused / free, who pays, the amount where he may
+  /// pay); `link { site, module }` – a Razorpay payment link (its address is opened outside the app; Razorpay takes the payment).
+  Future<Map<String, dynamic>> pay(Map<String, dynamic> body) async {
+    final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/pay'), headers: _portalHeaders, body: jsonEncode(body)));
+    final j = _json(r, 'The Portal');
+    if (r.statusCode >= 400 || j['error'] != null) {
+      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? (r.statusCode == 401 ? 'signin' : '')).toString());
+    }
+    return j;
+  }
+
+  /// (3.173.0) The ERP's main address (the Portal's without "/portal").
+  String get mainUrl => portalUrl.replaceFirst(RegExp(r'/portal/?$'), '');
+
+  /// (3.173.0, his words of 27-11-2026: "app login krayche adhi company code vichrel nantr logn page yeil") GET <main>/api/company?code=
+  /// – the company's own sign-in ({ ok, code, url }) or { ok: false }. The list of companies is never given – one code, one answer.
+  Future<Map<String, dynamic>> company(String code) async {
+    final u = Uri.parse('$mainUrl/api/company').replace(queryParameters: {'code': code});
+    final r = await _send(() => _c.get(u));
+    if (r.statusCode >= 400) throw ApiError('The company could not be checked (${r.statusCode}) – try again.', status: r.statusCode, code: 'company');
+    return _json(r, 'The ERP');
+  }
+
+  /// (3.173.0, HR's subscription) HR said "paused" (402): the company's / his HR subscription is not paid – what it said with it
+  /// (`pay`, `words`). The session shows the "Pay" screen (screens/module_home.dart).
+  void Function(Map<String, dynamic> data)? onHrPaused;
+
   /// A ticket of the Portal for [module] on [siteCode] – an answer, no page change (json=1).
   Future<String> ticket(String siteCode, [String module = 'mechanical']) async {
     final u = Uri.parse('$portalUrl/api/go').replace(queryParameters: {'module': module, 'site': siteCode, 'json': '1'});
@@ -646,7 +674,9 @@ class Api {
         continue;
       }
       if (r.statusCode >= 400 || j['error'] != null) {
-        throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString(), data: {...j}..remove('error'));
+        final data = {...j}..remove('error');
+        if (r.statusCode == 402 && j['code'] == 'paused') onHrPaused?.call(data); // (3.173.0) HR's subscription is not paid
+        throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString(), data: data);
       }
       return j;
     }

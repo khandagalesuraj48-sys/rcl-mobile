@@ -34,6 +34,14 @@ class FakeServer {
   Map<String, dynamic>? mailInfo;
   int alerts = 0;
   bool tester = false; // (02-11-2026) the Portal's "me": a tester (the beta channel)
+  /// (3.173.0, the Portal's step 16) HR's subscription at the site as api/pay "mine" says it (null – nothing to pay); how a payment is
+  /// taken ('razorpay' – a link; 'upi' – the demo: the UPI app's address); what api/pay was asked; HR says "paused" (402) while true
+  Map<String, dynamic>? hrPay;
+  String payWay = 'razorpay';
+  final payAsked = <Map<String, dynamic>>[];
+  bool hrPausedNow = false;
+  /// (3.173.0) the company codes the ERP knows (api/company): RCL here; MILE at another Portal
+  final companyAsked = <String>[];
   /// (20-11-2026, the Portal's step 14) the version of the app's terms / location notice he still has to accept ('' = none – as
   /// after his "Allow", or a Portal of before); what his "Allow" sent
   String consentNeed = '';
@@ -1850,6 +1858,28 @@ class FakeServer {
       if (!superAdmin) return _j({'error': 'Only the Super Admin can do this.', 'code': 'forbidden'}, 403);
       return _admin('${x['action']}', x);
     }
+    // (3.173.0, the Portal's step 16) a person's own subscriptions and his payment
+    if (path.endsWith('/portal/api/pay')) {
+      final x = (jsonDecode(r.body) as Map).cast<String, dynamic>();
+      payAsked.add(x);
+      if (r.headers['X-RCL'] != '1') return _j({'error': 'Refused'}, 403);
+      if (!portalSignedIn) return _j({'error': 'Sign in on the Portal first.', 'code': 'signin'}, 401);
+      if (x['action'] == 'mine') return _j({'site': x['site'], 'mods': {if (hrPay != null) 'hr': hrPay}});
+      if (x['action'] == 'link') {
+        if (hrPay?['canPay'] != true) return _j({'error': 'Your company pays for this module – its admin pays. Please tell your admin.', 'code': 'notadmin'}, 403);
+        final total = (hrPay?['amount'] as Map?)?['total'] ?? 0;
+        return _j(payWay == 'upi'
+            ? {'ok': true, 'upi': 'upi://pay?pa=owner.demo%40okbank&pn=Sketchline%20Industries&am=${(total / 100).toStringAsFixed(2)}&cu=INR&tn=SKL-7%20HR%2012%2F01', 'ref': 'SKL-7 HR 12/01', 'id': 7, 'total': total}
+            : {'ok': true, 'url': 'https://rzp.io/rig/x7', 'id': 7, 'total': total});
+      }
+      return _j({'error': 'Unknown action.'}, 404);
+    }
+    // (3.173.0) the company code: one code, one answer – never the list
+    if (path == '/api/company') {
+      final c = r.url.queryParameters['code'] ?? '';
+      companyAsked.add(c);
+      return _j(c == 'RCL' ? {'ok': true, 'code': 'RCL', 'url': '/portal/'} : c == 'MILE' ? {'ok': true, 'code': 'MILE', 'url': 'https://milestone.test/portal/'} : {'ok': false});
+    }
     if (path.endsWith('/portal/api/go')) {
       final q = r.url.queryParameters;
       calls.add('portal:go:${q['module']}:${q['site']}');
@@ -2012,6 +2042,11 @@ class FakeServer {
       }
       hrSent.add({'cookie': r.headers['Cookie'], ...b});
       if (!'${r.headers['Cookie']}'.startsWith('rcl_hr=S1.hr')) return _j({'error': 'SESSION_EXPIRED', 'code': 'session'}, 401);
+      // (3.173.0, rcl-hr lib/paygate.js) HR's subscription not paid: every action refused – its words in three languages
+      if (hrPausedNow) {
+        return _j({'error': 'HR is paused: your company\'s HR subscription is not paid.', 'code': 'paused', 'pay': {'s': 'paused', 'who': hrPay?['who'] ?? 'company'},
+          'words': ['HR is paused: your company\'s HR subscription is not paid.', 'HR थांबले आहे: तुमच्या कंपनीचे HR subscription भरलेले नाही.', 'HR रुका हुआ है।']}, 402);
+      }
       if (b['action'] == 'falconCard' && hrFalconHold != null) await hrFalconHold!.future;
       return _hrAct(b);
     }

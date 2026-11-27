@@ -49,6 +49,33 @@ app `si.sketchline.elephant` → the new google-services.json into the secret `G
 package; Play Console → Create app. **Next:** its logo (pictures first – the lion is shown until then), its patches in `patch.yml`.
 LION is not changed.
 
+**3.173.0 (beta) – one LION app: the company code, the site home with Vehicle and HR, HR's subscription (27-11-2026 – the approved
+design "LION – Modules & Subscription"; his words: "ekach app asel lion wali tyache madhe tab astil modual che … app login krayche adhi
+company code vichrel nantr logn page yeil … VTR madhe gel ki ek mast greting ani ek unique ui madhe modual distil … Mechanical la name
+apan ata VEHICLE … HR MODUAL MADHE PAYMENT LAWAYCHE AAHE"; "HE BETA VERSION WAR JAIL JYANA BETA ACCESS AHE TYANACH DISEL"; later: "montly
+… ki days war … single and bulk … demo sathi upi id … payment page war gst … dakhawayche nahi fkt line including all taxes"):**
+* **The company code first** (board 1): no code on this phone yet – the sign-in screen asks "Company code" (the ERP's `/api/company`:
+  one code, one answer, never the list); the code is kept on the phone and shown on the navy (tap → "Change company?"). A company whose
+  sign-in is at another address is not opened by this app yet ("signs in at its own address") – today only RCL exists. ELEPHANT asks no
+  code. A phone already signed in is not asked until it signs out.
+* **The site home** (board 4, `screens/module_home.dart`): at a site where he has **Vehicle** (Mechanical) and **HR** (the office's or
+  "My HR"), the site opens on the greeting ("Good morning, Sujit", the day, "Have a safe and productive day"), the site (tap → another
+  site) and the two modules; **Vehicle** opens Mechanical's Home as before, **HR** the attendance app's pages. Back on either Home – and
+  Me → "Your modules" (a phone without a Back key) – brings him back; another site opens on its site home again. One module only at a
+  site: it opens at once, as before. His start page (Settings) opens once for an opening of the site, not at every return to Vehicle.
+* **HR's subscription** (boards 5a / 5b, the Portal's step 16): the HR tile says "Subscription due" / "Paused – pay to open" / "Free
+  trial till …" (the Portal's `/api/pay` `mine`; a Portal of before: nothing shown). The **Pay** screen: the company pays (Bulk – the
+  users counted per site, one user's price and the total) or each employee pays (Single – his plan), for **1 month** or the **days**
+  the Portal set; only **"Including all taxes"** – never the GST apart. A person whose company pays and who is not its HR admin is told
+  to tell his admin. **Pay** opens Razorpay's page outside the app, or – the demo, payments straight to a UPI ID – his UPI app with the
+  amount and the remark (`SKL-…`); back in the app (or pulled down) it is read again: paid → "Paid – thank you. HR is open." (HR's
+  sign-in made again, so its new ticket carries the payment). A UPI payment opens HR only after the Super Admin pressed **Received** in
+  the Portal. HR's answer "paused" (402 – rcl-hr `lib/paygate.js`) shows the Pay screen **in place of HR's pages** until it is paid –
+  nothing is deleted. Released on **beta** only (the testers), with the Portal's "Who is asked to pay" on "Only the testers".
+* Not built: "Pay every month by itself" (UPI Autopay – Razorpay's mandates); festival / birthday wishes on the site home (no source of
+  them yet); another company's own Portal address in the app. The app's calls ring while Vehicle is open (as on Vehicle's pages before),
+  not on HR's pages.
+
 **3.172.0 – the last app given by its file (27-11-2026, his words: "ekda he new build phone play store la gel ki apan apk purn band krnar
 aahot"; his answers: it keeps working until the person has the Play Store's app, and this last version says so with the Play Store's
 button):** in the app given by its file (Android – not the Play Store's app, an iPhone or a computer), at every opening, once:
