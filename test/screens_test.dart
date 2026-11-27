@@ -12063,8 +12063,10 @@ void main() {
     expect(srv.payAsked.last, {'action': 'link', 'site': 'S1', 'module': 'hr'});
     // Razorpay's page paid: back in the app it is read again – HR opens
     srv.hrPay = {'s': 'ok', 'who': 'company', 'till': '2026-11-13', 'canPay': true};
-    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    // (away to the payment app and back – Flutter's own order of states)
+    for (final st in const [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused, AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+      t.binding.handleAppLifecycleStateChanged(st);
+    }
     await net(t);
     expect(find.text('Paid – thank you. HR is open.'), findsOneWidget);
     await net(t);
@@ -12097,7 +12099,10 @@ void main() {
   });
 
   testWidgets('(3.173.0) HR paused, each employee pays (Single, 15 days): "Pay" in place of HR\'s pages; the demo – straight to a UPI ID: his UPI app; HR opens when it was received', (t) async {
-    phone(t);
+    // (a tall phone: the Pay screen with its UPI boxes on one screen – a list builds only what is on the screen)
+    t.view.physicalSize = const Size(1080, 4800);
+    t.view.devicePixelRatio = 3;
+    addTearDown(t.view.reset);
     final srv = FakeServer()
       ..hrSite = true
       ..hrKey = 'hrme'
@@ -12148,8 +12153,10 @@ void main() {
       return true;
     };
     // back from the UPI app: not received yet – still "Pay"
-    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    // (away to the payment app and back – Flutter's own order of states)
+    for (final st in const [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused, AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+      t.binding.handleAppLifecycleStateChanged(st);
+    }
     await net(t);
     expect(find.byKey(const Key('pay-gate')), findsOneWidget);
     // the Super Admin pressed "Received" in the Portal: pulled down – HR opens
