@@ -27,7 +27,10 @@ DOWN, it fails too → OFFLINE; a better state shows after it held 3 s. Idle in 
 greeting line, HR Home), on the site's line (Entries, Reports), under his name (Me), and where a header has no room (`withAsk`, `hrHead`,
 My attendance) hanging on its lower edge at the right (`NetPin` – drawn by `NetHost` only while that page is in front) – "240 ms", "Weak · 1.8 s", "Reconnecting", "Server down", "Offline",
 "Checking" before the first answer; a tap: each server measured apart, Android's check, the last change, "Check now"; one line under the
-header (the app's message bar) for slow (a request waiting over 5 s), reconnecting, server down, no internet – × hides it until the state
+header (the app's message bar) for slow (a request waiting over 5 s **and** the phone's internet really slow – 3.174.0, 27-11-2026, his words
+"kharach network problem asel tr as error dakhaw vinakaran nko realtime haw": the moment a request has waited 5 s, Android's check is asked;
+the line only when that check takes 1.5 s or more or fails (`NetMonitor.netSlow`, the result good for 15 s, asked at most once in 10 s); the
+check fast = our server is late, no line), reconnecting, server down, no internet – × hides it until the state
 changes. HR pages shown from their saved copy (Home, Attendance month, Leave, My documents – `HrCache.savedAt`) say "Saved 10:12 AM ·
 refreshing…", then "Live · just now"; the server not answering: "Saved 10:12 AM · not live"; Leave's Apply waits for the live answer. **With
 the app closed**, the entries kept on the phone with no network go out with the existing Android alarm (about every 15 minutes –

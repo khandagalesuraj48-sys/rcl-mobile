@@ -12,7 +12,12 @@
  *     last request found no connection and the check is on its way = RECONNECTING. A change shows after it held 3 s (no flicker);
  *     RECONNECTING, SERVER DOWN and OFFLINE show at once.
  * No Wi-Fi / mobile data reading (his word: everybody is on mobile data) – no new plugin: the whole of it reaches the phones as a
- * Shorebird patch. */
+ * Shorebird patch.
+ * (3.174.0, 27-11-2026, his words: "slow network issue sarkhe dakhwat aahe wifi la connect aahe … kharach network problem asel tr as error
+ * dakhaw vinakaran nko realtime haw") THE "SLOW NETWORK" LINE ONLY FOR A SLOW NETWORK: a request on its way for 5 s asks Android's
+ * check address AT THAT MOMENT ([watch]'s timer → [checkInternet]); the line shows only when that check is slow (1.5 s or more) or
+ * fails ([netSlow]) – the phone's internet is really slow. The check fast = our server is late, not the network: no line (the page's
+ * own waiting shows). The check's result counts for 15 s; it is asked at most once in 10 s. */
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -56,6 +61,9 @@ class NetMonitor extends ChangeNotifier {
   Future<void> Function()? probe;
 
   static const window = Duration(minutes: 2), keepLast = 10, hold = Duration(seconds: 3), idle = Duration(seconds: 30), slowAfter = Duration(seconds: 5);
+
+  /// (3.174.0) Android's check this slow (ms) or failing = the phone's internet is really slow; its result counts for [checkFresh].
+  static const slowNetMs = 1500, checkFresh = Duration(seconds: 15);
 
   final Map<String, List<NetMark>> _marks = {};
   final Map<int, (String, DateTime)> _going = {};
@@ -148,7 +156,17 @@ class NetMonitor extends ChangeNotifier {
     return (w, who);
   }
 
-  /// A request on its way for longer than 5 s (the "slow network" line): its age, or null.
+  /// (3.174.0) Is the phone's internet really slow, by a fresh check (15 s)? true: slow (1.5 s or more) or none; false: fine – a late
+  /// answer is our server's; null: not checked yet (no line until it is known).
+  bool? get netSlow {
+    final at = internetAt;
+    if (at == null || now().difference(at) > checkFresh) return null;
+    if (internet != true) return true;
+    final ms = internetMs;
+    return ms != null && ms >= slowNetMs;
+  }
+
+  /// A request on its way for longer than 5 s (the "slow network" line, when [netSlow]): its age, or null.
   Duration? get slowest {
     Duration? d;
     final t = now();
@@ -182,10 +200,17 @@ class NetMonitor extends ChangeNotifier {
       _going.remove(id);
       record(server, limit.inMilliseconds, NetEnd.timeout);
     });
+    // (3.174.0) 5 s on its way: Android's check at that moment – is it the network or our server? ([netSlow] decides the line)
+    final slowT = Timer(slowAfter, () {
+      if (done) return;
+      unawaited(checkInternet());
+      update();
+    });
     void end(NetEnd e) {
       if (done) return;
       done = true;
       timer.cancel();
+      slowT.cancel();
       _going.remove(id);
       record(server, now().difference(t0).inMilliseconds, e);
     }
@@ -226,6 +251,7 @@ class NetMonitor extends ChangeNotifier {
   /// Every 5 s while the app is in front (NetHost): the 2 minutes move on; idle for 30 s → one small request to the Portal.
   void tick() {
     if (!on) return;
+    if (slowest != null) unawaited(checkInternet()); // (3.174.0) still waiting: the check again (at most once in 10 s)
     update();
     final a = lastAt;
     if (_probing || probe == null || (a != null && now().difference(a) < idle)) return;

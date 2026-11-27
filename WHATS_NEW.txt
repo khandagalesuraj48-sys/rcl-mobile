@@ -1,3 +1,3 @@
-One LION app: type your company code, sign in, then choose Vehicle or HR at your site. HR shows its subscription and Pay (testers only).
-एकच LION app: company code टाका, sign in करा, मग site वर Vehicle किंवा HR निवडा. HR मध्ये subscription आणि Pay (फक्त testers साठी).
-एक ही LION app: company code डालें, sign in करें, फिर site पर Vehicle या HR चुनें। HR में subscription और Pay (केवल testers के लिए)।
+"Slow network" shows only when your phone's internet is really slow (checked at that moment) – not when our server is late. Site page at every site with Vehicle; Pay by UPI by hand.
+"Network हळू" आता फक्त तुमचे internet खरेच हळू असेल तेव्हाच (त्या क्षणी तपासून) – आमचा server उशिरा असेल तेव्हा नाही. Vehicle असलेल्या प्रत्येक site वर site page; UPI ने हाताने Pay.
+"Network धीमा" अब केवल तब जब आपका internet सच में धीमा हो (उसी समय जाँच कर) – हमारा server देर करे तब नहीं। Vehicle वाली हर site पर site page; UPI से हाथ से Pay।

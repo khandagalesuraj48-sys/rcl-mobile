@@ -286,7 +286,9 @@ String netLineKind(NetMonitor m) {
   if (s == NetState.offline) return 'offline';
   if (s == NetState.serverDown) return 'server';
   if (s == NetState.reconnecting) return 'reconnect';
-  if (m.slowest != null) return 'slow';
+  // (3.174.0) the "slow network" line only when the phone's internet is really slow by the check made at that moment – a late answer
+  // with a fast check is our server's: no line (his word: "kharach network problem asel tr as error dakhaw vinakaran nko")
+  if (m.slowest != null && m.netSlow == true) return 'slow';
   return '';
 }
 
