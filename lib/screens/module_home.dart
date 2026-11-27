@@ -2,8 +2,9 @@
  * His words: "ekach app asel lion wali tyache madhe tab astil modual che … VTR madhe gel ki ek mast greting ani ek unique ui madhe
  * modual distil jas ki Mechanical la name apan ata VEHICLE KRAYCH AAHE ANI HR … PRATEK SITE SATHI … SELCT MODUAL ASEL"; and for HR's
  * subscription: "PRATEK EMPLOYY KADHUN GHEYCHI KI TYA COMPNY KADHUN JEWDE USER AAHET TEWDECH GHEYCH" – set in the Portal.
- *   ModuleHome  a site with Vehicle (Mechanical) and HR: the greeting, the site (a tap: another site), the two modules; the one tapped
- *               opens its own pages as before (Session.pickModule). HR's tile says when its subscription is due / paused / on trial.
+ *   ModuleHome  a site with Vehicle (Mechanical), with HR or without: the greeting, the site (a tap: another site), his modules; the one
+ *               tapped opens its own pages as before (Session.pickModule). HR's tile (where he has HR) says when its subscription is due /
+ *               paused / on trial.
  *   PayScreen   HR's subscription: the company pays (5a – Bulk: the bill of one period, the users counted per site; only the
  *               company's HR admin pays) or each employee pays (5b – Single: his own plan). Each for a month or for N days (set in
  *               the Portal). Amounts only WITH the taxes – "Including all taxes", never the GST apart (his word: "payment page war gst
@@ -148,7 +149,9 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
 
   Future<void> _read() async {
     if (!mounted) return;
-    final p = await hrPlanOf(SessionScope.read(context));
+    final s = SessionScope.read(context);
+    if (!s.siteMods.contains('hr')) return; // (no HR at this site: nothing to ask)
+    final p = await hrPlanOf(s);
     if (mounted) setState(() => _hr = p);
   }
 
@@ -291,23 +294,25 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
                   },
                 ),
               ),
-              const SizedBox(height: 14),
-              Arrive(
-                anim: _open,
-                at: .28,
-                rise: 30,
-                child: _Tile(
-                  key: const Key('mods-hr'),
-                  dark: false,
-                  icon: Icons.groups_2_outlined,
-                  title: 'HR',
-                  sub: 'Attendance · Leave · Papers · Payroll',
-                  chip: chip,
-                  chipBad: _hr?['s'] == 'paused',
-                  onChip: chip.isEmpty ? null : _pay,
-                  onTap: _openHr,
+              // (his later word: "vtr and 18 b la … kr") HR's tile only where he has HR at this site
+              if (s.siteMods.contains('hr')) const SizedBox(height: 14),
+              if (s.siteMods.contains('hr'))
+                Arrive(
+                  anim: _open,
+                  at: .28,
+                  rise: 30,
+                  child: _Tile(
+                    key: const Key('mods-hr'),
+                    dark: false,
+                    icon: Icons.groups_2_outlined,
+                    title: 'HR',
+                    sub: 'Attendance · Leave · Papers · Payroll',
+                    chip: chip,
+                    chipBad: _hr?['s'] == 'paused',
+                    onChip: chip.isEmpty ? null : _pay,
+                    onTap: _openHr,
+                  ),
                 ),
-              ),
             ]),
           ),
           Padding(
@@ -398,7 +403,7 @@ class _Tile extends StatelessWidget {
   }
 }
 
-/// Back on HR's pages (the site home's HR): the site home – where he has Vehicle and HR; otherwise as before (the app closes).
+/// Back on HR's pages (the site home's HR): the site home – at a site with Vehicle; an HR-only site as before (the app closes).
 class BackToMods extends StatelessWidget {
   const BackToMods({super.key, required this.child});
   final Widget child;
@@ -406,9 +411,9 @@ class BackToMods extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     return PopScope(
-      canPop: !s.twoMods,
+      canPop: !s.siteHome,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && s.twoMods) s.pickModule(null);
+        if (!didPop && s.siteHome) s.pickModule(null);
       },
       child: child,
     );
@@ -572,14 +577,14 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
           surfaceTintColor: Colors.transparent,
           foregroundColor: ModC.navy,
           automaticallyImplyLeading: !widget.gate,
-          leading: widget.gate && s.twoMods
+          leading: widget.gate && s.siteHome
               ? IconButton(
                   key: const Key('pay-mods'), tooltip: tr('Your modules'), icon: const Icon(Icons.arrow_back_rounded), onPressed: () => s.pickModule(null))
               : null,
           title: Text(self ? 'My HR plan' : 'HR subscription',
               mr: self ? 'माझा HR plan' : 'HR subscription', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: ModC.navy)),
           actions: [
-            if (widget.gate && !s.twoMods && s.sites.length > 1) TextButton(onPressed: s.pickAnotherSite, child: const Text('Change site')),
+            if (widget.gate && !s.siteHome && s.sites.length > 1) TextButton(onPressed: s.pickAnotherSite, child: const Text('Change site')),
             if (widget.gate) IconButton(tooltip: tr('Sign out'), icon: const Icon(Icons.logout_rounded), onPressed: () => s.signOut()),
           ],
         ),

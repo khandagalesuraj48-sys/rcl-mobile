@@ -231,8 +231,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
           setState(() => tab = 'home');
           return;
         }
-        // (3.173.0) a site with Vehicle and HR: Back on Vehicle's Home goes to the site home (the two modules)
-        if (s.twoMods) {
+        // (3.173.0) Back on Vehicle's Home goes to the site home (his modules at this site)
+        if (s.siteHome) {
           s.pickModule(null);
           return;
         }

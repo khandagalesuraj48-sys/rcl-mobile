@@ -140,7 +140,7 @@ Future<Session> ready(WidgetTester t, FakeServer srv) async {
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
     await s.chooseSite('S1');
   });
-  if (s.twoMods) s.pickModule('mechanical'); // (3.173.0) Vehicle and HR at the site: these tests are in Vehicle (the site home has its own)
+  if (s.siteHome) s.pickModule('mechanical'); // (3.173.0) a site with Vehicle opens on its site home: these tests are in Vehicle (the site home has its own)
   return s;
 }
 
@@ -12012,7 +12012,7 @@ void main() {
       await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
       await s.chooseSite('S1');
     });
-    expect(s.twoMods, isTrue);
+    expect(s.siteHome, isTrue);
     expect(s.moduleHome, isTrue);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
@@ -12070,6 +12070,30 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('mods-hr')), findsOneWidget, reason: 'back on the site home');
     expect(find.text('Subscription due'), findsNothing);
+  });
+
+  testWidgets('(3.173.0, "vtr and 18 b la nahi te kr") a site where Vehicle is his one module: the site home too – only the Vehicle tile, nothing asked of HR\'s subscription; Back from Vehicle → the site home', (t) async {
+    phone(t);
+    final srv = FakeServer(); // (S1: Mechanical only)
+    final s = make(srv);
+    await t.runAsync(() async {
+      await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+      await s.chooseSite('S1');
+    });
+    expect(s.siteMods, ['mechanical']);
+    expect(s.moduleHome, isTrue);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('mods-hello')), findsOneWidget);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget);
+    expect(find.byKey(const Key('mods-hr')), findsNothing, reason: 'no HR at this site');
+    expect(srv.payAsked, isEmpty, reason: 'no HR here: its subscription is not asked');
+    await t.tap(find.byKey(const Key('mods-vehicle')));
+    await net(t);
+    expect(s.modPick, 'mechanical');
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget);
   });
 
   testWidgets('(3.173.0) HR paused, each employee pays (Single, 15 days): "Pay" in place of HR\'s pages; the demo – straight to a UPI ID: his UPI app; HR opens when it was received', (t) async {
