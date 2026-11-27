@@ -203,7 +203,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     var k = await store!.kept();
     try {
       final info = await AttendKit.kit.info();
-      var j = await _hr({'action': 'myAttend', 'device_id': info['id']});
+      var j = await _hr({'action': 'myAttend', 'device_id': info['id'], if (info['hw'] != null) 'hw': info['hw']});
       _seen = j;
       unawaited(AttendRemind.set(j));
       await store!.keep(j, await AttendKit.kit.elapsed());
@@ -211,7 +211,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
         // the network is there: what was kept goes now, in the order it was taken
         await _sendKept(k);
         k = await store!.kept();
-        j = await _hr({'action': 'myAttend', 'device_id': info['id']});
+        j = await _hr({'action': 'myAttend', 'device_id': info['id'], if (info['hw'] != null) 'hw': info['hw']});
         _seen = j;
         unawaited(AttendRemind.set(j));
         await store!.keep(j, await AttendKit.kit.elapsed());
@@ -272,7 +272,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     // (3.136.0, rcl-hr step 16) the phone's own proof for this very punch – only when the HR server asks for it
     final pj = me?['integrity'] is Map ? (me!['integrity'] as Map)['project'] : null;
     final proof = pj is num && pj > 0 ? await AttendKit.kit.integrity(pj.toInt(), 'rcl-punch|${p.cid}') : '';
-    return _hr({...p.body(live: live, key: await attendKey(s.api.keep), proof: proof).cast<String, dynamic>(), if (outside != null) 'outside': outside}); // (3.134.0) with the phone's own key; (3.160.0) from outside: the reason and the proof
+    return _hr({...p.body(live: live, key: await attendKey(s.api.keep), proof: proof, hw: (await AttendKit.kit.info())['hw'] ?? '').cast<String, dynamic>(), if (outside != null) 'outside': outside}); // (3.134.0) with the phone's own key; (3.160.0) from outside: the reason and the proof
   }
 
   Future<void> _sendKept(List<KeptPunch> list) async {

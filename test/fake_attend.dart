@@ -10,10 +10,12 @@ class FakeAttendKit extends AttendKit {
   int? counter = 5000000;
   int clock = DateTime.utc(2026, 10, 14, 5).millisecondsSinceEpoch; // 10:30 in India
   String phone = 'and-test-phone-1';
+  /// (27-11-2026, rcl-hr step 22) the phone's DRM number (SHA-256 hex) – '' = none, as an app of before
+  String hw = '';
   final files = <String, Object>{};
 
   @override
-  Future<Map<String, String>> info() async => {'id': phone, 'model': 'Test Phone', 'os': 'Android 15'};
+  Future<Map<String, String>> info() async => {'id': phone, 'model': 'Test Phone', 'os': 'Android 15', if (hw.isNotEmpty) 'hw': hw};
   @override
   Future<bool> devOptions() async => dev;
   /// (3.136.0) the phone's Play Integrity token it gives ('' = none) and what it was asked: [project, hash]
