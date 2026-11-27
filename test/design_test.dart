@@ -51,6 +51,7 @@ Future<Session> ready(WidgetTester t, FakeServer srv) async {
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
     await s.chooseSite('S1');
   });
+  if (s.siteHome) s.pickModule('mechanical'); // (3.173.0) the site home first: these tests are in Vehicle
   return s;
 }
 

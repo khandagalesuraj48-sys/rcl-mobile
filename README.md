@@ -58,11 +58,14 @@ apan ata VEHICLE … HR MODUAL MADHE PAYMENT LAWAYCHE AAHE"; "HE BETA VERSION WA
   one code, one answer, never the list); the code is kept on the phone and shown on the navy (tap → "Change company?"). A company whose
   sign-in is at another address is not opened by this app yet ("signs in at its own address") – today only RCL exists. ELEPHANT asks no
   code. A phone already signed in is not asked until it signs out.
-* **The site home** (board 4, `screens/module_home.dart`): at a site where he has **Vehicle** (Mechanical) and **HR** (the office's or
-  "My HR"), the site opens on the greeting ("Good morning, Sujit", the day, "Have a safe and productive day"), the site (tap → another
-  site) and the two modules; **Vehicle** opens Mechanical's Home as before, **HR** the attendance app's pages. Back on either Home – and
-  Me → "Your modules" (a phone without a Back key) – brings him back; another site opens on its site home again. One module only at a
-  site: it opens at once, as before. His start page (Settings) opens once for an opening of the site, not at every return to Vehicle.
+* **The site home** (board 4, `screens/module_home.dart`): at a site where he has **Vehicle** (Mechanical) – with **HR** (the office's
+  or "My HR") or without it – the site opens on the greeting ("Good morning, Sujit", the day, "Have a safe and productive day"), the
+  site (tap → another site) and his modules; **Vehicle** opens Mechanical's Home as before, **HR** the attendance app's pages. Back on
+  either Home – and Me → "Your modules" (a phone without a Back key) – brings him back; another site opens on its site home again.
+  (Later the same day, his words with a tester's phone: "new page fkt head officela apply zal vtr and 18 b la nahi te kr" – it first
+  showed only where he had both; now also where Vehicle is his one module, with the Vehicle tile alone.) A site with HR only (an
+  employee's "My HR") opens his attendance at once, as before. His start page (Settings) opens once for an opening of the site, not at
+  every return to Vehicle.
 * **HR's subscription** (boards 5a / 5b, the Portal's step 16): the HR tile says "Subscription due" / "Paused – pay to open" / "Free
   trial till …" (the Portal's `/api/pay` `mine`; a Portal of before: nothing shown). The **Pay** screen: the company pays (Bulk – the
   users counted per site, one user's price and the total) or each employee pays (Single – his plan), for **1 month** or the **days**

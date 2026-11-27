@@ -2,8 +2,9 @@
  * His words: "ekach app asel lion wali tyache madhe tab astil modual che … VTR madhe gel ki ek mast greting ani ek unique ui madhe
  * modual distil jas ki Mechanical la name apan ata VEHICLE KRAYCH AAHE ANI HR … PRATEK SITE SATHI … SELCT MODUAL ASEL"; and for HR's
  * subscription: "PRATEK EMPLOYY KADHUN GHEYCHI KI TYA COMPNY KADHUN JEWDE USER AAHET TEWDECH GHEYCH" – set in the Portal.
- *   ModuleHome  a site with Vehicle (Mechanical) and HR: the greeting, the site (a tap: another site), the two modules; the one tapped
- *               opens its own pages as before (Session.pickModule). HR's tile says when its subscription is due / paused / on trial.
+ *   ModuleHome  a site with Vehicle (Mechanical), with HR or without: the greeting, the site (a tap: another site), his modules; the one
+ *               tapped opens its own pages as before (Session.pickModule). HR's tile (where he has HR) says when its subscription is due /
+ *               paused / on trial.
  *   PayScreen   HR's subscription: the company pays (5a – Bulk: the bill of one period, the users counted per site; only the
  *               company's HR admin pays) or each employee pays (5b – Single: his own plan). Each for a month or for N days (set in
  *               the Portal). Amounts only WITH the taxes – "Including all taxes", never the GST apart (his word: "payment page war gst
@@ -115,6 +116,7 @@ class ModuleHome extends StatefulWidget {
 
 class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   Map<String, dynamic>? _hr;
+  DateTime? _lastBack;
   late final AnimationController _open = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
 
   @override
@@ -148,7 +150,9 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
 
   Future<void> _read() async {
     if (!mounted) return;
-    final p = await hrPlanOf(SessionScope.read(context));
+    final s = SessionScope.read(context);
+    if (!s.siteMods.contains('hr')) return; // (no HR at this site: nothing to ask)
+    final p = await hrPlanOf(s);
     if (mounted) setState(() => _hr = p);
   }
 
@@ -187,137 +191,157 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
     final helloMr = now.hour < 12 ? 'शुभ सकाळ' : (now.hour < 17 ? 'शुभ दुपार' : 'शुभ संध्याकाळ');
     final chip = payChip(_hr);
     Widget arrive(double at, Widget w) => Arrive(anim: _open, at: at, child: w);
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: Scaffold(
-        backgroundColor: ModC.page,
-        body: ListView(padding: EdgeInsets.zero, children: [
-          // ---------- the navy header: the site, the lion, the day, the greeting, the wish ----------
-          Container(
-            decoration: const BoxDecoration(color: ModC.navy, borderRadius: BorderRadius.vertical(bottom: Radius.circular(32))),
-            padding: EdgeInsets.fromLTRB(20, mq.padding.top + 14, 20, 26),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Flexible(
-                  child: Semantics(
-                    button: true,
-                    label: tr('Change site'),
-                    child: InkWell(
-                      key: const Key('mods-site'),
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: _site,
-                      child: Container(
-                        constraints: const BoxConstraints(minHeight: 44),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: .10),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: ModC.goldPale.withValues(alpha: .45))),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.location_on_outlined, size: 17, color: ModC.goldPale),
-                          const SizedBox(width: 8),
-                          Flexible(
-                              child: m.Text(s.siteName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white))),
-                          if (s.sites.length > 1) ...[const SizedBox(width: 4), const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: ModC.goldPale)],
-                        ]),
+    // (3.173.0) Back on the site home: "Press Back again to leave the app" – as on Vehicle's Home before
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 3)) {
+          SystemNavigator.pop();
+          return;
+        }
+        _lastBack = now;
+        toast(context, 'Press Back again to leave the app.');
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+        child: Scaffold(
+          backgroundColor: ModC.page,
+          body: ListView(padding: EdgeInsets.zero, children: [
+            // ---------- the navy header: the site, the lion, the day, the greeting, the wish ----------
+            Container(
+              decoration: const BoxDecoration(color: ModC.navy, borderRadius: BorderRadius.vertical(bottom: Radius.circular(32))),
+              padding: EdgeInsets.fromLTRB(20, mq.padding.top + 14, 20, 26),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Flexible(
+                    child: Semantics(
+                      button: true,
+                      label: tr('Change site'),
+                      child: InkWell(
+                        key: const Key('mods-site'),
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: _site,
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: .10),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: ModC.goldPale.withValues(alpha: .45))),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.location_on_outlined, size: 17, color: ModC.goldPale),
+                            const SizedBox(width: 8),
+                            Flexible(
+                                child: m.Text(s.siteName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white))),
+                            if (s.sites.length > 1) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: ModC.goldPale)
+                            ],
+                          ]),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ModC.gold, width: 2)),
-                  alignment: Alignment.center,
-                  child: const CrestLion(size: 30, dark: true),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ModC.gold, width: 2)),
+                    alignment: Alignment.center,
+                    child: const CrestLion(size: 30, dark: true),
+                  ),
+                ]),
+                const SizedBox(height: 18),
+                arrive(0, m.Text(modDay(now), style: const TextStyle(fontSize: 14, color: ModC.goldPale))),
+                const SizedBox(height: 4),
+                arrive(
+                    .06,
+                    Text('$hello${first.isEmpty ? '' : ', $first'}',
+                        mr: '$helloMr${first.isEmpty ? '' : ', $first'}',
+                        key: const Key('mods-hello'),
+                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2))),
+                const SizedBox(height: 18),
+                arrive(
+                  .12,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    decoration: BoxDecoration(
+                        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [ModC.gold, ModC.goldPale]),
+                        borderRadius: BorderRadius.circular(18)),
+                    child: const Row(children: [
+                      Icon(Icons.wb_twilight_rounded, size: 34, color: ModC.navy),
+                      SizedBox(width: 14),
+                      Expanded(
+                          child: Text('Have a safe and productive day',
+                              mr: 'तुमचा दिवस सुरक्षित आणि छान जावो', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ModC.navy))),
+                    ]),
+                  ),
                 ),
               ]),
-              const SizedBox(height: 18),
-              arrive(0, m.Text(modDay(now), style: const TextStyle(fontSize: 14, color: ModC.goldPale))),
-              const SizedBox(height: 4),
-              arrive(
-                  .06,
-                  Text('$hello${first.isEmpty ? '' : ', $first'}',
-                      mr: '$helloMr${first.isEmpty ? '' : ', $first'}',
-                      key: const Key('mods-hello'),
-                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2))),
-              const SizedBox(height: 18),
-              arrive(
-                .12,
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                  decoration: BoxDecoration(
-                      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [ModC.gold, ModC.goldPale]),
-                      borderRadius: BorderRadius.circular(18)),
-                  child: const Row(children: [
-                    Icon(Icons.wb_twilight_rounded, size: 34, color: ModC.navy),
-                    SizedBox(width: 14),
-                    Expanded(
-                        child: Text('Have a safe and productive day',
-                            mr: 'तुमचा दिवस सुरक्षित आणि छान जावो', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ModC.navy))),
-                  ]),
+            ),
+            // ---------- the modules ----------
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                const Expanded(child: Text('Your modules', mr: 'तुमचे modules', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: ModC.navy))),
+                Flexible(
+                    child: Text('at ${s.siteName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: ModC.muted))),
+              ]),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Arrive(
+                  anim: _open,
+                  at: .2,
+                  rise: 30,
+                  child: _Tile(
+                    key: const Key('mods-vehicle'),
+                    dark: true,
+                    icon: Icons.local_shipping_outlined,
+                    title: 'Vehicle',
+                    sub: 'Diesel · Log Book · Maintenance · Billing',
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      s.pickModule('mechanical');
+                    },
+                  ),
                 ),
-              ),
-            ]),
-          ),
-          // ---------- the modules ----------
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              const Expanded(child: Text('Your modules', mr: 'तुमचे modules', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: ModC.navy))),
-              Flexible(child: Text('at ${s.siteName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: ModC.muted))),
-            ]),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Arrive(
-                anim: _open,
-                at: .2,
-                rise: 30,
-                child: _Tile(
-                  key: const Key('mods-vehicle'),
-                  dark: true,
-                  icon: Icons.local_shipping_outlined,
-                  title: 'Vehicle',
-                  sub: 'Diesel · Log Book · Maintenance · Billing',
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    s.pickModule('mechanical');
-                  },
-                ),
-              ),
-              const SizedBox(height: 14),
-              Arrive(
-                anim: _open,
-                at: .28,
-                rise: 30,
-                child: _Tile(
-                  key: const Key('mods-hr'),
-                  dark: false,
-                  icon: Icons.groups_2_outlined,
-                  title: 'HR',
-                  sub: 'Attendance · Leave · Papers · Payroll',
-                  chip: chip,
-                  chipBad: _hr?['s'] == 'paused',
-                  onChip: chip.isEmpty ? null : _pay,
-                  onTap: _openHr,
-                ),
-              ),
-            ]),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(28, 22, 28, 24 + mq.padding.bottom),
-            child: const Text('Tap a module to open its own dashboard. Changing site brings you back here.',
-                mr: 'module वर tap करा – त्याचा dashboard उघडेल. Site बदलली की पुन्हा इथे याल.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, height: 1.45, color: ModC.muted)),
-          ),
-        ]),
+                // (his later word: "vtr and 18 b la … kr") HR's tile only where he has HR at this site
+                if (s.siteMods.contains('hr')) const SizedBox(height: 14),
+                if (s.siteMods.contains('hr'))
+                  Arrive(
+                    anim: _open,
+                    at: .28,
+                    rise: 30,
+                    child: _Tile(
+                      key: const Key('mods-hr'),
+                      dark: false,
+                      icon: Icons.groups_2_outlined,
+                      title: 'HR',
+                      sub: 'Attendance · Leave · Papers · Payroll',
+                      chip: chip,
+                      chipBad: _hr?['s'] == 'paused',
+                      onChip: chip.isEmpty ? null : _pay,
+                      onTap: _openHr,
+                    ),
+                  ),
+              ]),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(28, 22, 28, 24 + mq.padding.bottom),
+              child: const Text('Tap a module to open its own dashboard. Changing site brings you back here.',
+                  mr: 'module वर tap करा – त्याचा dashboard उघडेल. Site बदलली की पुन्हा इथे याल.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, height: 1.45, color: ModC.muted)),
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -398,7 +422,7 @@ class _Tile extends StatelessWidget {
   }
 }
 
-/// Back on HR's pages (the site home's HR): the site home – where he has Vehicle and HR; otherwise as before (the app closes).
+/// Back on HR's pages (the site home's HR): the site home – at a site with Vehicle; an HR-only site as before (the app closes).
 class BackToMods extends StatelessWidget {
   const BackToMods({super.key, required this.child});
   final Widget child;
@@ -406,9 +430,9 @@ class BackToMods extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = SessionScope.of(context);
     return PopScope(
-      canPop: !s.twoMods,
+      canPop: !s.siteHome,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && s.twoMods) s.pickModule(null);
+        if (!didPop && s.siteHome) s.pickModule(null);
       },
       child: child,
     );
@@ -459,6 +483,10 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
 
   /// (the demo – straight to a UPI ID) the remark of the UPI payment made from here: HR opens when Sketchline has seen it
   String _upiRef = '';
+
+  /// (the demo) the UPI payment's UPI ID, amount and remark – shown to be paid by hand when no UPI app opens by itself (the tester's
+  /// phone of 27-11-2026: "pay mhanle ki no network mhantey" – the phone opened no app for upi://pay)
+  Map<String, String>? _upi;
 
   @override
   void initState() {
@@ -523,18 +551,31 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
       final url = '${j['url'] ?? ''}', upi = '${j['upi'] ?? ''}';
       // Razorpay's page (https), or – the demo – his UPI app (upi://pay with the amount and the remark)
       if (!url.startsWith('https://') && !upi.startsWith('upi://pay?')) throw ApiError('No payment page was given – try again.');
+      if (upi.isNotEmpty && mounted) {
+        final q = Uri.parse(upi.replaceFirst('upi://pay?', 'https://upi.pay/?')).queryParameters;
+        setState(() {
+          _upiRef = '${j['ref'] ?? q['tn'] ?? ''}';
+          _upi = {'pa': q['pa'] ?? '', 'am': q['am'] ?? '', 'tn': q['tn'] ?? _upiRef};
+        });
+      }
       _away = true;
-      final ok = await (payLaunch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(Uri.parse(upi.isNotEmpty ? upi : url));
+      bool ok;
+      try {
+        ok = await (payLaunch ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(Uri.parse(upi.isNotEmpty ? upi : url));
+      } on PlatformException {
+        ok = false; // (Android: no app on this phone takes the address – url_launcher says "ACTIVITY_NOT_FOUND")
+      }
       if (!ok) {
         _away = false;
         throw ApiError(upi.isNotEmpty
-            ? bi('No UPI app opened – install or open a UPI app (PhonePe, Google Pay, Paytm…) and try again.',
-                'UPI app उघडले नाही – PhonePe, Google Pay, Paytm… उघडून पुन्हा प्रयत्न करा.')
-            : 'The payment page could not be opened – try again.');
+            ? bi(
+                'No UPI app on this phone opened the payment. Pay by hand in your UPI app (PhonePe, Google Pay, Paytm…) – the UPI ID, the amount and the remark are below.',
+                'या phone वर कोणतेही UPI app payment साठी उघडले नाही. तुमच्या UPI app (PhonePe, Google Pay, Paytm…) मधून हाताने भरा – UPI ID, रक्कम आणि remark खाली आहेत.')
+            : bi('The payment page could not be opened – try again.', 'Payment चे पान उघडले नाही – पुन्हा प्रयत्न करा.'));
       }
-      if (upi.isNotEmpty && mounted) setState(() => _upiRef = '${j['ref'] ?? ''}');
     } catch (e) {
-      if (mounted) setState(() => _err = e is ApiError ? e.toString() : bi('No network – connect and try again.', 'नेटवर्क नाही – जोडून पुन्हा प्रयत्न करा.'));
+      final why = e is ApiError ? e.toString() : bi('The payment could not be started – try again.', 'Payment सुरू झाले नाही – पुन्हा प्रयत्न करा.');
+      if (mounted) setState(() => _err = why);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -572,14 +613,14 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
           surfaceTintColor: Colors.transparent,
           foregroundColor: ModC.navy,
           automaticallyImplyLeading: !widget.gate,
-          leading: widget.gate && s.twoMods
+          leading: widget.gate && s.siteHome
               ? IconButton(
                   key: const Key('pay-mods'), tooltip: tr('Your modules'), icon: const Icon(Icons.arrow_back_rounded), onPressed: () => s.pickModule(null))
               : null,
           title: Text(self ? 'My HR plan' : 'HR subscription',
               mr: self ? 'माझा HR plan' : 'HR subscription', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: ModC.navy)),
           actions: [
-            if (widget.gate && !s.twoMods && s.sites.length > 1) TextButton(onPressed: s.pickAnotherSite, child: const Text('Change site')),
+            if (widget.gate && !s.siteHome && s.sites.length > 1) TextButton(onPressed: s.pickAnotherSite, child: const Text('Change site')),
             if (widget.gate) IconButton(tooltip: tr('Sign out'), icon: const Icon(Icons.logout_rounded), onPressed: () => s.signOut()),
           ],
         ),
@@ -679,6 +720,32 @@ class _PayScreenState extends State<PayScreen> with WidgetsBindingObserver {
             if ('${p['why'] ?? ''}'.isNotEmpty) ...[
               const SizedBox(height: 12),
               m.Text('${p['why']}', style: const TextStyle(fontSize: 13.5, color: ModC.red)),
+            ],
+            // (the demo) the UPI payment by hand: the UPI ID, the amount, the remark – each copied with one tap
+            if (_upi != null && !_open) ...[
+              const SizedBox(height: 12),
+              _box(Column(key: const Key('pay-upi-hand'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const Text('Pay by UPI', mr: 'UPI ने भरा', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: ModC.navy)),
+                for (final (k, label, v) in [('pa', 'UPI ID', _upi!['pa'] ?? ''), ('am', 'Amount (₹)', _upi!['am'] ?? ''), ('tn', 'Remark', _upi!['tn'] ?? '')])
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(children: [
+                      SizedBox(width: 96, child: Text(label, style: const TextStyle(fontSize: 13.5, color: ModC.muted))),
+                      Expanded(
+                          child:
+                              SelectableText(v, key: Key('pay-upi-$k'), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: ModC.ink))),
+                      IconButton(
+                        key: Key('pay-copy-$k'),
+                        tooltip: tr('Copy'),
+                        icon: const Icon(Icons.copy_rounded, size: 19, color: ModC.navy),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: v));
+                          toast(context, bi('Copied', 'Copy झाले'));
+                        },
+                      ),
+                    ]),
+                  ),
+              ])),
             ],
             if (_upiRef.isNotEmpty && !_open) ...[
               const SizedBox(height: 12),

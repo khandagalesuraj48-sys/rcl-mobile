@@ -140,7 +140,7 @@ Future<Session> ready(WidgetTester t, FakeServer srv) async {
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
     await s.chooseSite('S1');
   });
-  if (s.twoMods) s.pickModule('mechanical'); // (3.173.0) Vehicle and HR at the site: these tests are in Vehicle (the site home has its own)
+  if (s.siteHome) s.pickModule('mechanical'); // (3.173.0) a site with Vehicle opens on its site home: these tests are in Vehicle (the site home has its own)
   return s;
 }
 
@@ -1014,6 +1014,9 @@ void main() {
     await t.runAsync(s.start);
     expect([s.stage, s.offline], [Stage.ready, true]);
     await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    // (3.173.0) the site home first – also with no network: Vehicle
+    await t.tap(find.byKey(const Key('mods-vehicle')));
     await net(t);
     expect(find.textContaining('No network – working from this phone'), findsOneWidget);
     await pics(t);
@@ -7497,8 +7500,13 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('home-menu')), findsOneWidget, reason: 'then Home');
     await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget, reason: '(3.173.0) then the site home');
+    await t.binding.handlePopRoute();
     await settle(t, 400);
     expect(find.text('Press Back again to leave the app.'), findsOneWidget);
+    await settle(t, 4500);
+    await t.tap(find.byKey(const Key('mods-vehicle')));
     await settle(t, 4500);
     // Reports – Overview: the figures of the month from the server's answers
     srv.dashAsked.clear();
@@ -12012,7 +12020,7 @@ void main() {
       await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
       await s.chooseSite('S1');
     });
-    expect(s.twoMods, isTrue);
+    expect(s.siteHome, isTrue);
     expect(s.moduleHome, isTrue);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
@@ -12063,8 +12071,10 @@ void main() {
     expect(srv.payAsked.last, {'action': 'link', 'site': 'S1', 'module': 'hr'});
     // Razorpay's page paid: back in the app it is read again – HR opens
     srv.hrPay = {'s': 'ok', 'who': 'company', 'till': '2026-11-13', 'canPay': true};
-    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    // (away to the payment app and back – Flutter's own order of states)
+    for (final st in const [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused, AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+      t.binding.handleAppLifecycleStateChanged(st);
+    }
     await net(t);
     expect(find.text('Paid – thank you. HR is open.'), findsOneWidget);
     await net(t);
@@ -12072,8 +12082,35 @@ void main() {
     expect(find.text('Subscription due'), findsNothing);
   });
 
-  testWidgets('(3.173.0) HR paused, each employee pays (Single, 15 days): "Pay" in place of HR\'s pages; the demo – straight to a UPI ID: his UPI app; HR opens when it was received', (t) async {
+  testWidgets('(3.173.0, "vtr and 18 b la nahi te kr") a site where Vehicle is his one module: the site home too – only the Vehicle tile, nothing asked of HR\'s subscription; Back from Vehicle → the site home', (t) async {
     phone(t);
+    final srv = FakeServer(); // (S1: Mechanical only)
+    final s = make(srv);
+    await t.runAsync(() async {
+      await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+      await s.chooseSite('S1');
+    });
+    expect(s.siteMods, ['mechanical']);
+    expect(s.moduleHome, isTrue);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('mods-hello')), findsOneWidget);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget);
+    expect(find.byKey(const Key('mods-hr')), findsNothing, reason: 'no HR at this site');
+    expect(srv.payAsked, isEmpty, reason: 'no HR here: its subscription is not asked');
+    await t.tap(find.byKey(const Key('mods-vehicle')));
+    await net(t);
+    expect(s.modPick, 'mechanical');
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget);
+  });
+
+  testWidgets('(3.173.0) HR paused, each employee pays (Single, 15 days): "Pay" in place of HR\'s pages; the demo – straight to a UPI ID: his UPI app; HR opens when it was received', (t) async {
+    // (a tall phone: the Pay screen with its UPI boxes on one screen – a list builds only what is on the screen)
+    t.view.physicalSize = const Size(1080, 4800);
+    t.view.devicePixelRatio = 3;
+    addTearDown(t.view.reset);
     final srv = FakeServer()
       ..hrSite = true
       ..hrKey = 'hrme'
@@ -12106,10 +12143,28 @@ void main() {
     expect(opened.single.queryParameters['am'], '47.20');
     expect(opened.single.queryParameters['pa'], 'owner.demo@okbank');
     expect(find.byKey(const Key('pay-upi-wait')), findsOneWidget, reason: 'HR opens when Sketchline sees it – said with its remark');
-    expect(find.textContaining('SKL-7 HR 12/01'), findsOneWidget);
+    expect(find.textContaining('SKL-7 HR 12/01'), findsWidgets);
+    // the UPI ID, the amount and the remark shown too – to pay by hand
+    expect(find.byKey(const Key('pay-upi-hand')), findsOneWidget);
+    expect(t.widget<SelectableText>(find.byKey(const Key('pay-upi-pa'))).data, 'owner.demo@okbank');
+    expect(t.widget<SelectableText>(find.byKey(const Key('pay-upi-am'))).data, '47.20');
+    // (the tester's phone of 27-11-2026: "pay mhanle ki no network mhantey") no app on the phone takes upi://pay – Android's
+    // "ACTIVITY_NOT_FOUND": said so (never "No network"), and the UPI ID, the amount and the remark to pay by hand
+    payLaunch = (u) async => throw PlatformException(code: 'ACTIVITY_NOT_FOUND', message: 'No Activity found to handle intent');
+    await t.tap(find.byKey(const Key('pay-go')));
+    await net(t);
+    expect(find.textContaining('No UPI app on this phone opened the payment'), findsOneWidget);
+    expect(find.textContaining('No network'), findsNothing);
+    expect(find.byKey(const Key('pay-upi-hand')), findsOneWidget);
+    payLaunch = (u) async {
+      opened.add(u);
+      return true;
+    };
     // back from the UPI app: not received yet – still "Pay"
-    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    // (away to the payment app and back – Flutter's own order of states)
+    for (final st in const [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused, AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+      t.binding.handleAppLifecycleStateChanged(st);
+    }
     await net(t);
     expect(find.byKey(const Key('pay-gate')), findsOneWidget);
     // the Super Admin pressed "Received" in the Portal: pulled down – HR opens

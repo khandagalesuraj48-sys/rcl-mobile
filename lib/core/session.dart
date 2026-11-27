@@ -225,26 +225,28 @@ class Session extends ChangeNotifier {
   /* (3.173.0, the approved design "LION – Modules & Subscription", his words of 27-11-2026: "ekach app asel lion wali tyache madhe tab
    * astil modual che … VTR madhe gel ki ek mast greting ani ek unique ui madhe modual distil … Mechanical la name apan ata VEHICLE
    * … 18 B LA JRI GELO TITH PN SELCT MODUAL ASEL HR MADHE JAYCHE KI VEHICLE ANI TYA NANTR MG TYA TYA MODUAL CHA DASHBORD") THE SITE
-   * HOME: at a site where he has BOTH Vehicle (Mechanical) and HR (the office's or "My HR"), the site opens on the greeting and the
-   * two modules; the one he taps opens its own pages as before; Back there and another site bring him back to it. One module only:
-   * it opens at once, as before. ELEPHANT (HR's own app) never shows it. */
+   * HOME: at a site where he has Vehicle (Mechanical) – with HR (the office's or "My HR") or without it – the site opens on the greeting
+   * and his modules; the one he taps opens its own pages as before; Back there and another site bring him back to it. (Later the same
+   * day, his words with a tester's phone: "new page fkt head officela apply zal vtr and 18 b la nahi te kr" – at first it showed only
+   * where he had both; now also where Vehicle is his one module.) A site with HR only – an employee's "My HR" – opens his attendance at
+   * once, as before (not asked). ELEPHANT (HR's own app) never shows it. */
   /// The site's modules of the site home, in the design's order: 'mechanical' (Vehicle), 'hr'.
   List<String> get siteMods => site == null ? const [] : [if (site!.module('mechanical') != null) 'mechanical', if (site!.module('hr') != null || site!.module('hrme') != null) 'hr'];
 
-  /// At this site the module is chosen on the site home.
-  bool get twoMods => !isElephant && siteMods.length > 1;
+  /// At this site the module is chosen on the site home (a site with Vehicle; LION only).
+  bool get siteHome => !isElephant && site?.module('mechanical') != null;
 
   /// The module he chose on the site home ('mechanical' / 'hr'); null – the site home itself (a new site: null again).
   String? modPick;
 
   /// The site home is on the screen.
-  bool get moduleHome => twoMods && modPick == null;
+  bool get moduleHome => siteHome && modPick == null;
 
   /// His start page (Settings) was opened for this opening of the site (screens/shell.dart) – once, not at every return to Vehicle.
   bool startPageDone = false;
 
   /// HR's own pages are on the screen (a site with HR only, ELEPHANT, or HR chosen on the site home).
-  bool get showHr => hrOnly || (twoMods && modPick == 'hr');
+  bool get showHr => hrOnly || (siteHome && modPick == 'hr');
 
   void pickModule(String? m) {
     if (modPick == m) return;
