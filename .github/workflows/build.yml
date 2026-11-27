@@ -1,6 +1,6 @@
 # Every push: the app is checked (analyze, tests), the screens are drawn and an Android app file is built; (3.19.0) the Windows
 # app and its setup are built (job "windows", file "windows-setup") and the iPhone app is built without signing (job "ios" – the
-# check that it builds; signing and TestFlight need the Apple Developer account).
+# check that it builds; the signed app for TestFlight / the App Store is appstore.yml).
 # The first run also makes the android/ and ios/ folders (flutter create + tool/patch_platforms.py) and saves them in the branch;
 # (3.19.0) the windows/ folder the same way (flutter create --platforms=windows + tool/patch_platforms.py --windows).
 # What went wrong is written as annotations (readable through the GitHub API); the screen pictures are saved in the branch
