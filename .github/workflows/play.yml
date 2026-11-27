@@ -1,10 +1,10 @@
 # PLAY – the file for the Google Play Store (3.165.0, asked 21-11-2026: "apan play store war developer account banwalell aahe …
 # first app deychi aahe"). Started by hand: Actions → play → Run workflow (the branch whose code goes to the store – main or beta).
 # It makes ONE signed bundle (.aab) of the Play Store's app:
-#   – the package si.sketchline.lion, the name LION (android/app/src/play/AndroidManifest.xml, RCL_STORE=play);
+#   – the package si.sketchline.lion, the name Sketchline Lion (android/app/src/play/AndroidManifest.xml, RCL_STORE=play);
 #   – no update of its own: Google Play updates it (lib/core/play_update.dart, --dart-define=PLAY=true);
-#   – signed with the key of the app (the private bucket app-keys – never made here, never in a file): for Google it is the
-#     UPLOAD key;
+#   – signed with the Play Store's own UPLOAD key, in the name of Sketchline Industries (made once here, kept only in the
+#     private bucket app-keys – never in a file); Google makes and keeps the app's real signing key;
 #   – its number (version code) is 100000 + this workflow's run number: always higher than the one before, as Play asks.
 # The bundle is kept with the run for 14 days (Artifacts → play-bundle): he downloads it and puts it in the Play Console himself.
 # Nothing is sent to Google from here and no release of this repository is made – the phones of today are not touched.
@@ -43,7 +43,7 @@ jobs:
           VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           BN=$(( 100000 + GITHUB_RUN_NUMBER ))
           { echo "VER=$VER"; echo "BN=$BN"; } >> "$GITHUB_ENV"
-          echo "::notice::Play Store: LION $VER ($BN) of $GITHUB_REF_NAME"
+          echo "::notice::Play Store: Sketchline Lion $VER ($BN) of $GITHUB_REF_NAME"
       - name: The two settings
         run: |
           if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "::error::Add PORTAL_SUPABASE_URL and PORTAL_SUPABASE_KEY in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
@@ -56,13 +56,23 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Signing key (the app's own – kept only in the private bucket app-keys; never made here)
+      # (21-11-2026, his word: "sketchline name haw aahe") THE PLAY STORE'S OWN UPLOAD KEY – in the name of Sketchline Industries. Made
+      # ONCE (21-11-2026, on the branch "play" – a random secret word nobody sees), kept only in the private bucket app-keys beside the
+      # key of the app given by its file. Google keeps the app's real signing key and knows THIS upload key (the bundles of 21 / 22-11);
+      # (27-11-2026) it is never made again here – a bundle signed with another key (the run of 27-11 #6, Rachana's key) is refused.
+      - name: Upload key of the Play Store's app (made once; kept only in the private bucket app-keys)
         run: |
           set -e
           cd android
           get() { curl -sS --max-time 60 -o "$2" -w "%{http_code}" "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY"; }
-          [ "$(get upload-keystore.jks upload-keystore.jks)" = "200" ] && [ "$(get key.properties key.properties)" = "200" ] || { echo "::error::The signing key is not in the bucket app-keys – run release.yml once first."; exit 1; }
+          if [ "$(get play-upload-keystore.jks play-upload-keystore.jks)" = "200" ] && [ "$(get play-key.properties key.properties)" = "200" ]; then
+            echo "the Play Store's upload key is there"
+          else
+            # (27-11-2026) never made again: Google knows THIS upload key (the bundles of 21 / 22-11-2026) – a new one would be refused
+            echo "::error::The Play Store's upload key (play-upload-keystore.jks / play-key.properties) is not in the private bucket app-keys. It is the key Google knows – do not make a new one; ask Google Play (Play Console → Test and release → App integrity → upload key reset) if it is lost."; exit 1
+          fi
           echo "::add-mask::$(grep '^storePassword=' key.properties | cut -d= -f2-)"
+          [ "$(grep '^storeFile=' key.properties | cut -d= -f2-)" = "play-upload-keystore.jks" ] || { echo "::error::play-key.properties does not name the Play upload key"; exit 1; }
       - name: Firebase settings – the file must know the Play Store's package
         env:
           GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
@@ -104,7 +114,7 @@ jobs:
           # never the debug key: the bundle's signer must be the app's own key
           OWNER=$(keytool -printcert -jarfile "lion-$VER-$BN.aab" | grep -m1 '^Owner:' || true)
           echo "::notice::signed by: $OWNER"
-          case "$OWNER" in *"Android Debug"*|"") echo "::error::the bundle is not signed with the app's key"; exit 1;; esac
+          case "$OWNER" in *"CN=Sketchline Industries"*) ;; *) echo "::error::the bundle is not signed with the Play Store's upload key (Sketchline Industries)"; exit 1;; esac
           echo "::notice::lion-$VER-$BN.aab – $(( $(stat -c %s lion-$VER-$BN.aab) / 1048576 )) MB"
       - uses: actions/upload-artifact@v4
         with:
