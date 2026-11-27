@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../screens/assistant.dart';
+import 'net_chip.dart';
 import 'scope.dart';
 import 'theme.dart';
 import 't.dart' show tr;
@@ -48,5 +49,10 @@ class AskBot extends StatelessWidget {
   }
 }
 
-/// The actions of a page's top bar with the robot at the end.
-List<Widget> withAsk([List<Widget> actions = const []]) => [...actions, const Padding(padding: EdgeInsets.only(left: 2, right: 10), child: Center(child: AskBot(size: 36)))];
+/// The actions of a page's top bar with the robot at the end – (3.171.0 patch 4, SNI picture 2) and the network's chip, hanging on
+/// the bar's lower edge on the right (NetPin: it takes nothing from the title).
+List<Widget> withAsk([List<Widget> actions = const []]) => [
+      ...actions,
+      const NetPin(),
+      const Padding(padding: EdgeInsets.only(left: 2, right: 10), child: Center(child: AskBot(size: 36))),
+    ];

@@ -5,6 +5,9 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/alerts.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/app_kind.dart';
+import 'package:rcl_mobile/core/code_words.dart';
+import 'package:rcl_mobile/core/lang.dart' show Lang;
 import 'package:rcl_mobile/core/photo.dart';
 import 'package:rcl_mobile/core/plate.dart';
 import 'package:rcl_mobile/core/format.dart' show parseKey;
@@ -357,6 +360,136 @@ void main() {
     expect(srv.calls, contains('portal:logout'));
   });
 
+  /* (25-11-2026, the Portal's rule – his answers: 6 codes, 6 wrong codes, then 15 minutes; "remaining kiti sangitle jail") */
+  test('(25-11-2026) a code sign-in on a given password: the app opened again still knows it – only the new password; after the 30 minutes the given one is asked again', () async {
+    srv
+      ..otpOn = true
+      ..mustChange = true;
+    final s1 = make();
+    await s1.otpSend('sujit.own@rcl.test');
+    await s1.otpSignIn('sujit.own@rcl.test', '482913');
+    expect(s1.stage, Stage.setPassword);
+    expect(s1.byCode, isTrue);
+    // the app opened again: the Portal's "me" says byCode
+    final s2 = make();
+    await s2.start();
+    expect(s2.stage, Stage.setPassword);
+    expect(s2.byCode, isTrue);
+    // the Portal's 30 minutes over: "Current password is wrong" → the given one is asked again
+    srv.byCode = false;
+    await s2.setOwnPassword('', 'Mule#2026x');
+    expect(s2.stage, Stage.setPassword);
+    expect(s2.byCode, isFalse);
+    expect(s2.error, contains('The 30 minutes after your code are over'));
+    // within them: set without it
+    srv.byCode = true;
+    s2.byCode = true;
+    await s2.setOwnPassword('', 'Mule#2026x');
+    expect(srv.newPassword, 'Mule#2026x');
+    expect(s2.stage, isNot(anyOf(Stage.signedOut, Stage.setPassword)));
+  });
+
+  test('(25-11-2026) a password sign-in is never "by code"', () async {
+    srv.mustChange = true;
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.stage, Stage.setPassword);
+    expect(s.byCode, isFalse);
+  });
+
+  test('(25-11-2026) the codes left after each code; the 7th blocked 15 minutes; 6 wrong codes block – said in the chosen language', () async {
+    srv.waOn = true;
+    final s = make();
+    final left = <int?>[];
+    for (var i = 0; i < 6; i++) {
+      await s.waSend('9876543210');
+      left.add(s.codesLeft);
+    }
+    expect(left, [5, 4, 3, 2, 1, 0]);
+    expect(codesLeftLine(0), contains('This is the last code for now'));
+    Object? err;
+    try {
+      await s.waSend('9876543210');
+    } catch (e) {
+      err = e;
+    }
+    expect(err, isA<ApiError>());
+    expect((err as ApiError).code, 'locked');
+    expect(codeError(err), 'Too many tries – wait 15 minutes, then ask for a new code.');
+    // wrong codes: the tries left, the 6th blocks (another number – its own count)
+    srv.waNumber = '9876500000';
+    final said = <String>[];
+    for (var i = 0; i < 6; i++) {
+      try {
+        await s.waCheck('9876500000', '111111');
+      } catch (e) {
+        said.add(codeError(e));
+      }
+    }
+    expect(said.first, 'The code is wrong or has expired. 5 tries left – after that you wait 15 minutes.');
+    expect(said[4], 'The code is wrong or has expired. 1 try left – after that you wait 15 minutes.');
+    expect(said.last, 'Too many tries – wait 15 minutes, then ask for a new code.');
+    // in Marathi and Hindi when chosen
+    final was = Lang.i.code;
+    addTearDown(() => Lang.i.code = was);
+    Lang.i.code = 'mr';
+    expect(codeError(ApiError('x', code: 'code', data: const {'left': 3})), 'Code चुकीचा आहे किंवा त्याची वेळ संपली. अजून 3 प्रयत्न – त्यानंतर 15 मिनिटे थांबावे लागेल.');
+    expect(codesLeftLine(4), 'आणखी 4 code मागता येतील, नंतर 15 मिनिटे थांबावे लागेल.');
+    Lang.i.code = 'hi';
+    expect(codeError(ApiError('x', code: 'locked', data: const {'wait': 600})), 'बहुत कोशिशें हो गईं – 10 मिनट रुकें, फिर नया code मांगें।');
+    Lang.i.code = was;
+    // an error of anything else: as the Portal said it
+    expect(codeError(ApiError('Enter your 10-digit mobile number.', code: 'mobile')), 'Enter your 10-digit mobile number.');
+  });
+
+  /* (27-11-2026, his words: "ata he prtek app vegli karaychi aahe jas apan falcon keli ani lion madhe connect keli"; his answers: each
+   * module its own app like FALCON, HR first, its name ELEPHANT) the SAME code builds ELEPHANT – HR's own app (core/app_kind.dart). */
+  test('(27-11-2026) ELEPHANT – HR\'s own app: only the sites with HR, always the attendance app\'s pages (also at a site with Mechanical); no HR anywhere: said – his work is in LION; LION as before', () async {
+    final was = appKind;
+    addTearDown(() => appKind = was);
+    // LION (the bundle): as before – the sites with Mechanical or HR; Mechanical's pages at S1
+    srv.hrSite = true;
+    var s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.sites.map((x) => x.code).toList(), ['S1', 'T2']);
+    expect(isElephant, isFalse);
+    // ELEPHANT: only S1 (HR there) – T2 has Mechanical only; at S1 the attendance app's pages although Mechanical is there too
+    appKind = () => 'elephant';
+    keep = MemoryKeep();
+    srv = FakeServer()..hrSite = true;
+    s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.sites.map((x) => x.code).toList(), ['S1'], reason: 'ELEPHANT: only the sites where he has HR');
+    if (s.stage == Stage.pickSite) await s.chooseSite('S1');
+    expect(s.stage, Stage.ready);
+    expect(s.hrOnly, isTrue, reason: 'HR\'s pages only – nothing of Mechanical');
+    expect(srv.calls, isNot(contains('portal:go:mechanical:S1')), reason: 'Mechanical is never opened in ELEPHANT');
+    // no HR at any site: the sign-in says so, and where his other work is
+    keep = MemoryKeep();
+    srv = FakeServer();
+    s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.stage, isNot(Stage.ready));
+    expect(s.error, contains('This app is for HR'));
+    expect(s.error, contains('Sketchline Lion'));
+  });
+
+  test('(27-11-2026) ELEPHANT is built as its own Play Store app: its package, its name, no "install a file", HR only, its own release numbers', () {
+    final g = File('android/app/build.gradle.kts').readAsStringSync();
+    expect(g, contains('val elephant = System.getenv("RCL_STORE") == "elephant"'));
+    expect(g, contains('applicationId = if (elephant) "si.sketchline.elephant" else if (playStore) "si.sketchline.lion" else "in.rachana.rcl.rcl_mobile"'));
+    final m = File('android/app/src/elephant/AndroidManifest.xml').readAsStringSync();
+    expect(m, contains('android:label="Sketchline Elephant" tools:replace="android:label"'));
+    expect(m, contains('android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"'));
+    final w = File('.github/workflows/elephant.yml').readAsStringSync();
+    expect(w, contains('RCL_STORE: elephant'));
+    expect(w, contains('--dart-define=PLAY=true --dart-define=APP=elephant'));
+    expect(w, contains('BN=\$(( 200000 + GITHUB_RUN_NUMBER ))'), reason: 'never the same release number as LION\'s (100000 + run)');
+    expect(w, contains("if 'si.sketchline.elephant' not in names:"));
+    expect(w, contains('shorebird release android --artifact aab'));
+    expect(w, contains('*"CN=Sketchline Industries"*'), reason: 'the same Play upload key');
+  });
+
   test('sign out: Mechanical and the Portal, nothing kept on the phone', () async {
     final s = make();
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
@@ -492,6 +625,47 @@ void main() {
     await s.dropKept('rid-refused');
     expect(s.kept, isEmpty);
     expect(await keep.read('kept_sujit@rcl.test'), isNull);
+  });
+
+  test('(3.171.0 patch 4, his pick of 25-11-2026) WITH THE APP CLOSED: an entry kept on the phone is sent by the background alarm with its OWN number – not while the app is open, not with no network; refused by the server: its words stay for Me', () async {
+    final s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    await s.chooseSite('S1');
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(keep.data[Session.kSnap], isNotNull);
+    expect(keep.data[kMechUrl], isNotEmpty, reason: 'the site\'s Mechanical address is kept for the alarm');
+    srv.down = true;
+    final d = {'no': 'Sany 210 (No.1)', 'qty': 40, 'hrReading': 4710, 'date': '2026-10-14'};
+    await s.keepEntry('saveDieselIssue', [d], 'rid-bg-1', 'Diesel Issue · 14-10-2026 · Sany 210 (No.1) · 40 L');
+    await s.keepEntry('saveLogRows', [{'rows': [{'no': 'Sany 210 (No.1)'}]}], 'rid-bg-2', 'Log Book · 14-10-2026');
+    Api bg() => Api(portalUrl: 'https://erp.test/portal', keep: keep, client: srv.client); // the alarm's own (a new start, nothing in memory)
+    // the app is open (it asked a moment ago): the alarm leaves it to the app
+    keep.data[kLiveAt] = '${DateTime.now().millisecondsSinceEpoch}';
+    srv.down = false;
+    expect(await sendKeptInBackground(bg()), 0);
+    expect(srv.saved, isEmpty);
+    // the app closed, still no network: they wait
+    keep.data.remove(kLiveAt);
+    srv.down = true;
+    expect(await sendKeptInBackground(bg()), 0);
+    expect(jsonDecode(keep.data['kept_sujit@rcl.test']!), hasLength(2));
+    // the network back: both go, each with its own number, and leave the phone
+    srv.down = false;
+    srv.rids.clear();
+    expect(await sendKeptInBackground(bg()), 2);
+    expect(srv.rids, containsAll(['saveDieselIssue:rid-bg-1', 'saveLogRows:rid-bg-2']));
+    expect(keep.data['kept_sujit@rcl.test'], isNull, reason: 'nothing waits on the phone any more');
+    // one the server refuses: kept with the server's words (Me → Waiting on this phone), never sent again by the alarm
+    srv.flowFor = '';
+    await s.loadKept();
+    await s.keepEntry('saveDieselIssue', [{'no': 'X', 'qty': 1, 'hrReading': 1}], 'rid-bg-3', 'Diesel Issue · X');
+    expect(await sendKeptInBackground(bg()), 0);
+    final left = (jsonDecode(keep.data['kept_sujit@rcl.test']!) as List).single as Map;
+    expect([left['rid'], left['state']], ['rid-bg-3', 'refused']);
+    expect('${left['msg']}', contains('Save anyway'));
+    srv.rids.clear();
+    expect(await sendKeptInBackground(bg()), 0);
+    expect(srv.rids, isEmpty, reason: 'a refused one waits for the person');
   });
 
   test('(3.85.0, asked 04-11-2026) NO NETWORK when the app opens: the site opened before opens from what this phone kept (its lists, the ERP\'s day by the phone\'s clock); an entry kept here carries the server\'s stamp and its photo; the network back: the server again, the photo then the entry – as stock short when the stock cannot cover it; signing out removes what was kept', () async {

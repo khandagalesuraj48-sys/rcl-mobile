@@ -16,6 +16,7 @@ import 'home.dart' show openHelp;
 import '../ui/scope.dart';
 import '../ui/design.dart';
 import '../ui/theme.dart';
+import '../ui/net_chip.dart' show NetChip;
 import '../ui/widgets.dart';
 import 'approvals.dart';
 import 'consent_gate.dart' show showConsent;
@@ -132,6 +133,8 @@ class _MeTabState extends State<MeTab> {
               ]),
             ),
             IconButton(tooltip: tr('My settings'), onPressed: settings, icon: const Icon(Icons.edit_outlined, color: Colors.white, size: 20)),
+            const NetChip(dark: true), // (3.171.0 patch 4 – SNI)
+            const SizedBox(width: 6),
             const AskBot(size: 36, onLight: false),
           ]),
         ),
@@ -160,6 +163,8 @@ class _MeTabState extends State<MeTab> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(s.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
                     Text(s.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: Color(0xE6FFFFFF))),
+                    // (3.171.0 patch 4 – SNI) the network's chip under his name (the name keeps its room)
+                    const Padding(padding: EdgeInsets.only(top: 6), child: NetChip(dark: true, pad: false)),
                   ]),
                 ),
               ),
@@ -195,6 +200,17 @@ class _MeTabState extends State<MeTab> {
                 onTap: s.sites.length > 1 ? () => s.pickAnotherSite() : null,
                 trailing: s.sites.length > 1 ? null : const SizedBox.shrink(),
               ),
+              // (3.173.0) Vehicle and HR at this site: back to the site home (the two modules) – also on a phone without a Back key
+              if (s.twoMods)
+                _row(
+                  key: const Key('me-mods'),
+                  pic: 'office_building',
+                  en: 'Your modules',
+                  mr: 'तुमचे modules',
+                  color: C.blueSoft,
+                  sub: bi('Vehicle · HR – choose another module', 'Vehicle · HR – दुसरे module निवडा'),
+                  onTap: () => s.pickModule(null),
+                ),
               // (3.17.0) the Super Admin's console of the whole system (the Portal's "Super Admin"), in the app's own screens
               if (s.superAdmin)
                 _row(

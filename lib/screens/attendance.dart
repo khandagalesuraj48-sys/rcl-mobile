@@ -27,6 +27,7 @@ import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
+import '../ui/net_chip.dart' show NetPin, SavedLine, afterAnswer;
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
@@ -310,7 +311,26 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     final places = _places;
     if (places.isEmpty) throw AttendProblem('No work place is set for you yet – ask the HR office.', 'तुमच्यासाठी अजून work place ठरवलेले नाही – HR office ला सांगा.', 'noplace');
     // (3.117.0) one press from the attendance app: its reading of a moment ago is used while it is young – else read now
-    final f = (widget.auto ? AttendWhere.i.fresh() : null) ?? await AttendKit.kit.where();
+    // (3.171.0 patch 1, "location fetching … khup fast hoyla haw") a reading still going on is waited for – no second one beside it;
+    // a reading of a moment ago that is not exact enough or puts him outside is not the last word: the phone is read once more, now
+    if (widget.auto) {
+      if (AttendWhere.i.busy) await AttendWhere.i.read();
+      final pre = AttendWhere.i.fresh();
+      if (pre != null) {
+        try {
+          return _at(pre, kind, outsideOk, places, show: false);
+        } on AttendProblem catch (e) {
+          if (e.code != 'accuracy' && e.code != 'outside' && e.code != 'inout') rethrow;
+        }
+      }
+    }
+    // (3.171.0 patch 1) a reading less exact than the site asks is not refused at once: the phone is asked again, within its 25 s
+    return _at(await AttendKit.kit.where(want: _maxAcc), kind, outsideOk, places);
+  }
+
+  /// The rules of a punch on one reading [f] (a made-up location, how exact, IN / OUT here, inside his work place). [show] false
+  /// (the reading of a moment ago): a place outside is not shown – the new reading decides it.
+  PlaceHit _at(AttendFix f, String kind, bool outsideOk, List<WorkPlace> places, {bool show = true}) {
     if (f.mocked) throw AttendProblem('This phone gives a made-up location: attendance cannot be marked.', 'हा phone खोटे location देत आहे: हजेरी लावता येणार नाही.', 'mock');
     if (!(f.acc >= 0) || f.acc > _maxAcc) {
       throw AttendProblem('Your location is not exact enough yet (${f.acc.round()} m): stand in the open for a moment and try again.', 'तुमचे location अजून नेमके नाही (${f.acc.round()} m): थोडा वेळ मोकळ्या जागेत उभे राहून पुन्हा करा.', 'accuracy');
@@ -318,10 +338,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
     // (3.135.0, rcl-hr step 15) only the places where he may mark THIS (IN or OUT) – the server checks the same
     final usable = kind.isEmpty ? places : places.where((p) => p.may(kind)).toList(), k = kind == 'out' ? 'OUT' : 'IN';
     if (usable.isEmpty) throw AttendProblem('You may not mark $k at any of your work places – ask the HR office.', 'तुमच्या कोणत्याही work place वर $k लावता येत नाही – HR office ला सांगा.', 'inout');
-    final h = nearestPlace(usable, f.lat, f.lng)!;
-    fix = f;
-    if (mounted) setState(() => hit = h);
-    if (!h.inside && !outsideOk) {
+    final h = nearestPlace(usable, f.lat, f.lng)!, out = !h.inside && !outsideOk;
+    if (show || !out) {
+      fix = f;
+      if (mounted) setState(() => hit = h);
+    }
+    if (out) {
       final any = usable.length < places.length ? nearestPlace(places, f.lat, f.lng) : null;
       if (any != null && any.inside) {
         final where = usable.take(3).map((p) => p.name).join(', ');
@@ -771,6 +793,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                       Row(children: [
                         IconButton(tooltip: MaterialLocalizations.of(context).backButtonTooltip, onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
                         const Expanded(child: Text('My attendance', mr: 'माझी हजेरी', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white))),
+                        const NetPin(), // (3.171.0 patch 4 – SNI picture 2: hanging on the header's lower edge)
                       ]),
                       Padding(
                         padding: const EdgeInsets.only(left: 16, right: 76, top: 2),
@@ -827,6 +850,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
                 Row(children: [
                   if (widget.embedded) const SizedBox(width: 18, height: 48) else Padding(padding: const EdgeInsets.fromLTRB(16, 4, 12, 4), child: hrIconBox(Icons.arrow_back_ios_new_rounded, size: 40, icon: 17, tooltip: MaterialLocalizations.of(context).backButtonTooltip, onTap: () => Navigator.of(context).maybePop())),
                   Expanded(child: Text('My attendance', mr: 'माझी हजेरी', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Montserrat', fontSize: 21, fontWeight: FontWeight.w800, color: sk.ink))),
+                  const NetPin(), // (3.171.0 patch 4 – SNI picture 2: hanging on the header's lower edge)
                   Padding(padding: const EdgeInsets.only(right: 16), child: hrIconBox(Icons.refresh_rounded, size: 40, icon: 20, tooltip: tr('Refresh'), onTap: busy ? null : () => _load())),
                 ]),
                 Padding(
@@ -1093,6 +1117,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     final asked = month, key = 'myMonth:$asked', kept = HrCache.now(key);
     setState(() {
       err = '';
+      _src = kept != null ? 'saved' : ''; // (3.171.0 patch 4 – SNI picture 5)
       if (kept != null) {
         _take(kept);
       } else {
@@ -1102,23 +1127,35 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
     if (kept == null) {
       final k = await HrCache.read(key);
       if (!mounted) return;
-      if (k != null && loading && month == asked) setState(() => _take(k));
+      if (k != null && loading && month == asked) {
+        setState(() {
+          _take(k);
+          _src = 'saved';
+        });
+      }
     }
     try {
       final j = await widget.ask({'action': 'myMonth', 'month': asked});
       HrCache.put(key, j);
       if (!mounted || month != asked) return; // (he went on to another month meanwhile)
-      setState(() => _take(j));
+      setState(() {
+        _take(j);
+        _src = afterAnswer(_src);
+      });
     } catch (e) {
       if (mounted && month == asked) {
         setState(() {
           loading = false;
           // (3.157.0) the month is on the page (what was read before) and only the network did not answer: nothing red
           err = e is ApiError && e.code == 'net' && every.isNotEmpty ? '' : errText(e);
+          if (e is ApiError && e.code == 'net' && every.isNotEmpty) _src = 'stale';
         });
       }
     }
   }
+
+  /// (3.171.0 patch 4 – SNI picture 5) 'saved' / 'live' / 'stale' / '' – the line under the header.
+  String _src = '';
 
   void _move(int by) {
     if (loading) return;
@@ -1473,7 +1510,9 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
               arrow('att-m-next', Icons.chevron_right_rounded, 1),
             ]),
           )),
-      body: ListView(key: const Key('att-month-page'), padding: EdgeInsets.fromLTRB(16, 6, 16, 40 + MediaQuery.paddingOf(context).bottom), children: [ // (3.154.0: its end stands clear of the bar that floats over the page)
+      body: Column(children: [
+        SavedLine(kind: _src, at: HrCache.savedAt('myMonth:$month')), // (3.171.0 patch 4 – SNI picture 5)
+        Expanded(child: ListView(key: const Key('att-month-page'), padding: EdgeInsets.fromLTRB(16, 6, 16, 40 + MediaQuery.paddingOf(context).bottom), children: [ // (3.154.0: its end stands clear of the bar that floats over the page)
         if (loading) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
         if (err.isNotEmpty) InfoLine(err, bad: true, help: false),
         if (!loading && err.isEmpty) ...[
@@ -1603,6 +1642,7 @@ class _AttendMonthScreenState extends State<AttendMonthScreen> {
             ),
           ],
         ],
+      ])),
       ]),
     );
   }

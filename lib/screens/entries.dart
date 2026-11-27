@@ -10,6 +10,7 @@ import '../core/session.dart';
 import '../ui/scope.dart';
 import '../ui/design.dart';
 import '../ui/theme.dart';
+import '../ui/net_chip.dart' show NetChip;
 import '../ui/widgets.dart';
 import 'diesel_photos.dart';
 import 'entry_more.dart';
@@ -263,7 +264,12 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Your Entries', mr: 'तुमच्या एन्ट्री', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-                Text(s.siteName, style: const TextStyle(fontSize: 14, color: C.muted, fontWeight: FontWeight.w500)),
+                // (3.171.0 patch 4 – SNI picture 2) the network's chip at the end of the site's line
+                Row(children: [
+                  Expanded(child: Text(s.siteName, style: const TextStyle(fontSize: 14, color: C.muted, fontWeight: FontWeight.w500))),
+                  const IntrinsicWidth(child: SizedBox(height: 18, child: OverflowBox(maxHeight: 26, child: NetChip(dark: false, pad: false)))),
+                  const SizedBox(width: 8),
+                ]),
               ]),
             ),
             IconButton(
@@ -405,7 +411,12 @@ class _EntriesTabState extends State<EntriesTab> with LiveWhenSeen<EntriesTab> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(k.en, maxLines: 1, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800))),
-                      Text(s.siteName, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600)),
+                      // (SNI) the network's chip at the end of the site's line – the title keeps its room
+                      Row(children: [
+                        Flexible(child: Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, color: C.muted, fontWeight: FontWeight.w600))),
+                        const SizedBox(width: 6),
+                        const IntrinsicWidth(child: SizedBox(height: 18, child: OverflowBox(maxHeight: 26, child: NetChip(dark: false, pad: false)))),
+                      ]),
                     ]),
                   ),
                   IconButton.filledTonal(

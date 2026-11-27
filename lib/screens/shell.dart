@@ -118,6 +118,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     if (!mounted) return;
     await s.checkBrief(); // (3.15.0) the daily summary, once a day – a red dot on the robot (Ask)
     if (!mounted) return;
+    // (3.173.0) his start page once for an opening of the site – not again each time Vehicle is opened from the site home
+    if (s.startPageDone) return;
+    s.startPageDone = true;
     await openStartPage(context, s, s.pref('start'), entries: _entries);
   }
 
@@ -226,6 +229,11 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         }
         if (cur != 'home') {
           setState(() => tab = 'home');
+          return;
+        }
+        // (3.173.0) a site with Vehicle and HR: Back on Vehicle's Home goes to the site home (the two modules)
+        if (s.twoMods) {
+          s.pickModule(null);
           return;
         }
         final now = DateTime.now();

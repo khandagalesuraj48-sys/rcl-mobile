@@ -1,0 +1,155 @@
+# APPSTORE – the file for the Apple App Store / TestFlight (27-11-2026, asked: "iOS app App Store war update karayche aahe ani install
+# karun ghyayche aahe … GitHub warun tumhi sarv kahi ghyave"). Started by hand: Actions → appstore → Run workflow (the branch whose
+# code goes to Apple – main or beta). No Mac of ours is needed: GitHub's macOS runner builds, signs and sends the app.
+# It makes ONE signed iPhone app (.ipa) of the store's app:
+#   – the bundle id si.sketchline.lion (ios/Runner.xcodeproj), the name on the phone "Sketchline" (ios/Runner/Info.plist);
+#   – no update of its own: Apple updates it (lib/core/update.dart returns nothing on an iPhone – the App Store's rule);
+#   – signed with the Apple Distribution certificate of the Sketchline Apple Developer account, made ONCE by the first run with the
+#     App Store Connect API key and kept only in the private bucket app-keys (ios-dist.p12 – never in a file of this repository);
+#     the provisioning profile is renewed by every run; the Xcode project is switched to manual signing on the runner only;
+#   – its number (build number) is 100000 + this workflow's run number: always higher than the one before, as Apple asks for one version;
+#   – RELEASED BY SHOREBIRD (his permanent rule of 25-11-2026: the app's updates without the store, for the App Store's app too): the
+#     release "<version>+<100000 + run>" in Shorebird, so a later fix of the Dart code reaches the iPhones as a patch too – the same
+#     patch-signing key as the Android app. Apple still gets a new .ipa when the native part changes.
+# With the box "Send to TestFlight" ticked (default) the .ipa goes to App Store Connect → TestFlight: Apple processes it (10–60 min),
+# then it is in the TestFlight app of every internal tester (App Store Connect → Users and Access; the owner adds himself). The App
+# Store review is sent from App Store Connect (web) when he says so – nothing here sends it. Box unticked: built and checked, kept
+# with the run (Artifacts → ios-ipa, 14 days), nothing sent to Apple.
+# ONCE, by hand, before the first run (Apple's side – the key cannot do these):
+#   1. Apple Developer Program for Sketchline (developer.apple.com, 99 USD a year, enrolled with lion@sketchline.si);
+#   2. App Store Connect → Users and Access → Integrations → App Store Connect API → Team Keys → + : name "lion-github-build",
+#      access Admin → download the .p8 ONCE → GitHub secrets ASC_KEY_ID (Key ID), ASC_ISSUER_ID (Issuer ID), ASC_KEY_P8 (the whole
+#      text of the .p8 file);
+#   3. run this workflow once – it makes the App ID and stops with the words for step 4;
+#   4. App Store Connect → Apps → + → New App: iOS, "Sketchline Lion", bundle ID si.sketchline.lion, SKU lion → run again.
+# The same GitHub secrets as play.yml (PORTAL_SUPABASE_URL / PORTAL_SUPABASE_KEY for the bucket, MAPS_API_KEY, FALCON_*, SHOREBIRD_TOKEN)
+# plus ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8. Never in a file, never in chat.
+name: appstore
+on:
+  workflow_dispatch:
+    inputs:
+      send:
+        description: "Send to TestFlight (unticked: build and check only, nothing goes to Apple)"
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: appstore
+  cancel-in-progress: false
+jobs:
+  appstore:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
+      SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL || secrets.FALCON_SUPABASE_URL }}   # (3.171.0) FALCON inside the app (tool/falcon_defines.sh)
+      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY || secrets.FALCON_SUPABASE_KEY }}
+      FALCON_SERVER: ${{ vars.FALCON_SERVER || secrets.FALCON_SERVER }}
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      # fastlane on a runner
+      LC_ALL: en_US.UTF-8
+      LANG: en_US.UTF-8
+      FASTLANE_SKIP_UPDATE_CHECK: "1"
+      FASTLANE_HIDE_CHANGELOG: "1"
+      FASTLANE_DISABLE_COLORS: "1"
+      FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: "120"
+    steps:
+      - uses: actions/checkout@v5
+      - name: The version and its number
+        run: |
+          set -e
+          VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          BN=$(( 100000 + GITHUB_RUN_NUMBER ))
+          { echo "VER=$VER"; echo "BN=$BN"; } >> "$GITHUB_ENV"
+          # (27-11-2026) the signing's own folder – set here: "runner" cannot be read in the job's env (GitHub refused the whole file)
+          echo "IOS_SIGN_DIR=$RUNNER_TEMP/iossign" >> "$GITHUB_ENV"
+          echo "::notice::App Store: Sketchline Lion $VER ($BN) of $GITHUB_REF_NAME – send to TestFlight: ${{ inputs.send }}"
+      - name: The settings this needs
+        run: |
+          miss=""
+          [ -z "$SB_URL" ] && miss="$miss PORTAL_SUPABASE_URL"; [ -z "$SB_KEY" ] && miss="$miss PORTAL_SUPABASE_KEY"
+          [ -z "$ASC_KEY_ID" ] && miss="$miss ASC_KEY_ID"; [ -z "$ASC_ISSUER_ID" ] && miss="$miss ASC_ISSUER_ID"; [ -z "$ASC_KEY_P8" ] && miss="$miss ASC_KEY_P8"
+          [ -z "$SHOREBIRD_TOKEN" ] && miss="$miss SHOREBIRD_TOKEN"
+          if [ -n "$miss" ]; then echo "::error::Add in GitHub → this repository → Settings → Secrets and variables → Actions:$miss (ASC_* = App Store Connect → Users and Access → Integrations → App Store Connect API → Team Keys; SHOREBIRD_TOKEN = Shorebird → Settings → Service accounts → lion-github-build → API keys)."; exit 1; fi
+          SB_URL="${SB_URL%/}"; echo "SB_URL=$SB_URL" >> "$GITHUB_ENV"
+          echo "::add-mask::$ASC_KEY_ID"; echo "::add-mask::$ASC_ISSUER_ID"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Tests (an app only when they pass)
+        run: flutter test --exclude-tags golden
+      # the Apple Distribution certificate, kept only in the private bucket app-keys after the first run (like the Android signing key)
+      - name: Signing certificate from the bucket (when it is there)
+        run: |
+          set -e
+          mkdir -p "$IOS_SIGN_DIR"; chmod 700 "$IOS_SIGN_DIR"
+          code=$(curl -sS --max-time 60 -o "$IOS_SIGN_DIR/ios-dist.p12" -w "%{http_code}" "$SB_URL/storage/v1/object/app-keys/ios-dist.p12" -H "apikey: $SB_KEY")
+          if [ "$code" = "200" ]; then echo "::notice::the signing certificate is in the bucket – used again"; else rm -f "$IOS_SIGN_DIR/ios-dist.p12"; echo "::notice::no signing certificate in the bucket yet (HTTP $code) – the first run makes it"; fi
+      - name: Certificate, App ID, profile, manual signing (ios/fastlane/Fastfile → sign)
+        working-directory: ios
+        run: fastlane ios sign
+      - name: Keep a new certificate in the bucket (first run only – never in a file of the repository)
+        run: |
+          set -e
+          new=$(ls "$IOS_SIGN_DIR"/cert/*.p12 2>/dev/null | head -1 || true)
+          if [ -z "$new" ]; then echo "no new certificate – nothing to keep"; exit 0; fi
+          put() { curl -sS -o "$IOS_SIGN_DIR/put.json" -w "%{http_code}" -X POST "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY" -H "Content-Type: application/octet-stream" -H "x-upsert: true" --data-binary "@$2"; }
+          [ "$(put ios-dist.p12 "$new")" = "200" ] || { echo "::error::Could not keep ios-dist.p12 in the bucket app-keys: $(head -c 200 "$IOS_SIGN_DIR/put.json"). The certificate of this run would be lost – it is NOT used; fix the bucket and run again."; exit 1; }
+          cer=$(ls "$IOS_SIGN_DIR"/cert/*.cer 2>/dev/null | head -1 || true); [ -n "$cer" ] && put ios-dist.cer "$cer" >/dev/null || true
+          echo "::notice::A new Apple Distribution certificate was made and kept in the bucket app-keys (ios-dist.p12). Keep a copy of it offline, like the Android key."
+      - uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+      # (27-11-2026) the patch-signing key of the app (only its PUBLIC part goes into the app) – the same as the Android releases
+      - name: Shorebird – the patch-signing key
+        run: bash tool/shorebird_keys.sh "$RUNNER_TEMP/sbkeys"
+      - name: Signed iPhone app for the App Store (released by Shorebird)
+        run: |
+          set -e
+          GM=""
+          # (20-11-2026) Google Maps for the iPhone: the key goes into Info.plist (GMSApiKey, read in AppDelegate.swift); empty = the OpenStreetMap map
+          if [ -n "$MAPS_API_KEY" ]; then plutil -replace GMSApiKey -string "$MAPS_API_KEY" ios/Runner/Info.plist; GM="--dart-define=GMAPS=true"; fi
+          FD=$(bash tool/falcon_defines.sh) || exit 1; GM="$GM $FD"   # (3.171.0) FALCON inside the app
+          DRY=""; [ "${{ inputs.send }}" = "true" ] || DRY="--dry-run"
+          # a patch of this release must be built the SAME way (the same defines) – patch.yml, when it learns the iPhone
+          shorebird release ios --export-options-plist="$IOS_SIGN_DIR/ExportOptions.plist" --no-confirm $DRY --build-name="$VER" --build-number="$BN" --split-debug-info=build/symbols --public-key-path="$RUNNER_TEMP/sbkeys/patch-public.pem" $GM 2>&1 | tee ios.txt; st=${PIPESTATUS[0]}
+          if [ $st -ne 0 ]; then msg=$(grep -iE -B4 -A10 "error|failed" ios.txt | head -90 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}'); echo "::error title=ios::$msg"; exit $st; fi
+          rm -rf "$RUNNER_TEMP/sbkeys"
+          IPA=$(ls build/ios/ipa/*.ipa 2>/dev/null | head -1 || true)
+          [ -n "$IPA" ] || { echo "::error::no .ipa was made (build/ios/ipa)"; exit 1; }
+          cp "$IPA" "lion-$VER-$BN.ipa"
+          echo "IPA_PATH=$PWD/lion-$VER-$BN.ipa" >> "$GITHUB_ENV"
+          echo "::notice::lion-$VER-$BN.ipa – $(( $(stat -f %z "lion-$VER-$BN.ipa") / 1048576 )) MB; Shorebird release $VER+$BN (the App Store's app)"
+      - name: To TestFlight (ios/fastlane/Fastfile → upload)
+        if: ${{ inputs.send }}
+        working-directory: ios
+        run: fastlane ios upload
+      - name: Not sent (the box was unticked)
+        if: ${{ !inputs.send }}
+        run: echo "::notice::Built and checked only – nothing went to Apple or Shorebird. The .ipa is with this run (Artifacts → ios-ipa)."
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-ipa
+          path: lion-*.ipa
+          if-no-files-found: ignore
+          retention-days: 14
+      # the symbol files of this release, 90 days (the lines of a fault the app reports can be read with them)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-symbols
+          path: build/symbols
+          if-no-files-found: ignore
+          retention-days: 90
+      - name: Nothing of the signing stays on the runner
+        if: always()
+        run: rm -rf "$IOS_SIGN_DIR" "$RUNNER_TEMP/sbkeys" || true

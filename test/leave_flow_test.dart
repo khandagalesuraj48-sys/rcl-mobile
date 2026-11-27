@@ -46,6 +46,43 @@ void main() {
         'month': {'credit': 1, 'added': 0, 'used': 0}, 'ledger': const [], 'requests': [Map.of(waiting), Map.of(approved)],
       };
 
+  // (3.169.0, asked 23-11-2026: "emplyee back dated leave pn apply krta yawa") From may be a day gone of THIS month (the server takes it
+  // while the month is open); a day of the month before is not offered
+  testWidgets('back-dated leave: From may be a day gone of this month – it is sent so', (t) async {
+    final sent = <Map<String, dynamic>>[];
+    await t.pumpWidget(MaterialApp(home: LeaveScreen(ask: (b) async {
+      sent.add(b);
+      switch ('${b['action']}') {
+        case 'myLeavePaperUrl':
+          return {'ok': true, 'path': 'leave/e1/${'a' * 24}.pdf', 'url': 'https://files.test/up', 'type': b['type']};
+        default:
+          return leave();
+      }
+    })));
+    await settle(t, 1500);
+    await t.tap(find.byKey(const Key('leave-new')));
+    await settle(t, 900);
+    await t.tap(find.byKey(const Key('leave-from')));
+    await settle(t, 600);
+    final dp = t.widget<CalendarDatePicker>(find.byType(CalendarDatePicker));
+    expect(dp.firstDate, DateTime(2026, 10, 1), reason: 'the 1st of this month (today is 14-10-2026)');
+    await t.tap(find.text('3'));
+    await settle(t, 300);
+    await t.tap(find.text('OK'));
+    await settle(t, 600);
+    await t.enterText(find.byKey(const Key('leave-why')), 'Fever');
+    await t.ensureVisible(find.byKey(const Key('lp-add')));
+    await t.tap(find.byKey(const Key('lp-add')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('lp-pdf')));
+    await settle(t, 600);
+    await t.ensureVisible(find.byKey(const Key('leave-send')));
+    await t.tap(find.byKey(const Key('leave-send')));
+    await settle(t, 1200);
+    final ask = sent.lastWhere((b) => b['action'] == 'leaveAsk');
+    expect([ask['from'], ask['to']], ['2026-10-03', '2026-10-14'], reason: 'from a day gone of this month; To stays today');
+  });
+
   testWidgets('the form: no paper – not sent; a paper chosen goes to its place first, then the request with it', (t) async {
     final sent = <Map<String, dynamic>>[];
     await t.pumpWidget(MaterialApp(home: LeaveScreen(ask: (b) async {

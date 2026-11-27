@@ -46,11 +46,15 @@ jobs:
   android:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75      # (25-11-2026) Shorebird builds the app bundle and the app file
     env:
       SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
       SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}   # (25-11-2026) Shorebird – the service account lion-github-build
       MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}   # (20-11-2026) the Google Maps key; empty = the OpenStreetMap map
+      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL || secrets.FALCON_SUPABASE_URL }}   # (3.171.0) FALCON inside the app (tool/falcon_defines.sh)
+      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY || secrets.FALCON_SUPABASE_KEY }}
+      FALCON_SERVER: ${{ vars.FALCON_SERVER || secrets.FALCON_SERVER }}
     steps:
       - name: The two settings
         run: |
@@ -127,25 +131,33 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules/@angular "$AGENT_TOOLSDIRECTORY/CodeQL" || true
           sudo fallocate -l 8G /rcl-swap && sudo chmod 600 /rcl-swap && sudo mkswap /rcl-swap >/dev/null && sudo swapon /rcl-swap || true
           free -m; df -h / | tail -1
+      - uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+      # (25-11-2026, Shorebird – his decision: the app's updates without the store) the patch-signing key: made once, kept only in the
+      # private bucket app-keys; a release carries only its PUBLIC part (tool/shorebird_keys.sh)
+      - name: Shorebird – its key and the patch-signing key
+        run: |
+          if [ -z "$SHOREBIRD_TOKEN" ]; then echo "::error::Add SHOREBIRD_TOKEN (Shorebird → Settings → Service accounts → lion-github-build → API keys) in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          bash tool/shorebird_keys.sh "$RUNNER_TEMP/sbkeys"
       - name: Signed Android app
         # every Android phone (ARM 32 + 64 bit); the emulator part (x86_64) is left out
         run: |
           GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"   # (20-11-2026) Google map only when the key is set, else OpenStreetMap
-          flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform android-arm,android-arm64 --split-debug-info=build/symbols $GM
+          FD=$(bash tool/falcon_defines.sh) || exit 1; GM="$GM $FD"   # (3.171.0) FALCON inside the app
+          # (25-11-2026) built and RELEASED BY SHOREBIRD (the release "<version>+<build>" in Shorebird; later fixes of its Dart code reach
+          # the phones as patches, signed with the patch-signing key – no new app file). Not published → --dry-run: built and checked,
+          # nothing sent to Shorebird.
+          DRY=""; [ "${{ inputs.publish }}" = "true" ] || DRY="--dry-run"
+          shorebird release android --artifact apk --no-confirm $DRY --target-platform android-arm,android-arm64 --build-name="$VER" --build-number="$BN" --split-debug-info=build/symbols --public-key-path="$RUNNER_TEMP/sbkeys/patch-public.pem" $GM
           SZ=$(stat -c %s build/app/outputs/flutter-apk/app-release.apk); echo "::notice::App file: $((SZ / 1048576)) MB"
       - name: The file for every phone
         run: cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.apk"
+      # (25-11-2026, Shorebird) made FROM Shorebird's file – the other processor's folder taken out, signed again, checked byte for
+      # byte (tool/abi_apks.sh): Shorebird makes one build per version, and a patch fits only the very app it released
       - name: One file per processor (3.19.1 – a phone's update downloads only its own)
         run: |
-          set -e
-          GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"
-          for a in arm64-v8a:android-arm64 armeabi-v7a:android-arm; do
-            abi=${a%%:*}; tp=${a##*:}
-            RCL_ABIS=$abi flutter build apk --release --build-name="$VER" --build-number="$BN" --target-platform $tp --split-debug-info=build/symbols $GM
-            cp build/app/outputs/flutter-apk/app-release.apk "rcl-erp-$VER-$BN.$abi.apk"
-            other=$(unzip -l "rcl-erp-$VER-$BN.$abi.apk" | awk '{print $4}' | grep '^lib/' | cut -d/ -f2 | sort -u | grep -vx "$abi" || true)
-            [ -z "$other" ] || { echo "::error::rcl-erp-$VER-$BN.$abi.apk also has the parts of: $other"; exit 1; }
-          done
+          bash tool/abi_apks.sh build/app/outputs/flutter-apk/app-release.apk "$VER" "$BN"
           for f in rcl-erp-$VER-$BN*.apk; do echo "::notice::$f: $(( $(stat -c %s "$f") / 1048576 )) MB"; done
       - name: Check the signatures (never the debug key) and the version code (the same in every file)
         run: |

@@ -1,0 +1,13 @@
+<!-- (27-11-2026, his answers: each module its own app like FALCON; HR first; its name ELEPHANT) HR'S OWN APP – laid over the main manifest
+     only when the build is made with RCL_STORE=elephant (android/app/build.gradle.kts): the name under the icon is "Sketchline Elephant"
+     (as "Sketchline Lion" – his to change); a Play Store app: the app's own "download a file and install it" update is not in it (Google
+     Play's rule) – its permission and its parts are taken out, as in src/play. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/>
+    <application android:label="Sketchline Elephant" tools:replace="android:label">
+        <provider android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+            android:authorities="${applicationId}.ota_update_provider"
+            tools:node="remove"/>
+        <receiver android:name="sk.fourq.otaupdate.InstallResultReceiver" tools:node="remove"/>
+    </application>
+</manifest>

@@ -1,0 +1,130 @@
+# ios/fastlane/Fastfile – THE IPHONE APP'S WAY TO TESTFLIGHT / THE APP STORE (27-11-2026, asked: "iOS app App Store war update karayche
+# aahe ani install karun ghyayche aahe … GitHub warun tumhi sarv kahi ghyave"). Run only by .github/workflows/appstore.yml on a macOS
+# runner – never by hand on a computer (this repository's rule: no key on anybody's computer, no secret in any file).
+#
+# Everything Apple is done with an App Store Connect API key (GitHub secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 – a Team key,
+# role Admin): no Apple ID, no password, no 2-factor code in a build.
+#   lane sign   – the Apple Distribution certificate (made once, then kept only in the private bucket app-keys as ios-dist.p12 – the
+#                 workflow brings it to $IOS_SIGN_DIR/ios-dist.p12 when it is there), the App ID si.sketchline.lion in the developer
+#                 portal (made once), the App Store provisioning profile (renewed every run), manual signing in Runner.xcodeproj
+#                 (on the runner only) and $IOS_SIGN_DIR/ExportOptions.plist for `shorebird release ios`.
+#   lane upload – the signed .ipa ($IPA_PATH) goes to TestFlight (App Store Connect). The owner installs it on the iPhone with the
+#                 TestFlight app; the App Store review itself is sent from App Store Connect (web) when he says so.
+# The ONE thing the API key cannot do (Apple's limit, fastlane "produce: partial"): make the app's record in App Store Connect.
+# That is done once by hand: App Store Connect → Apps → + → New App → iOS, name "Sketchline Lion", bundle ID si.sketchline.lion,
+# SKU lion. The sign lane checks it is there and stops with these words when it is not.
+require "securerandom"
+require "fileutils"
+require "plist"
+
+default_platform(:ios)
+
+BUNDLE_ID = "si.sketchline.lion"
+APP_NAME = "Sketchline Lion"
+PROFILE_NAME = "Sketchline Lion App Store"
+PROJECT = File.expand_path("../Runner.xcodeproj", __dir__)
+
+# The App Store Connect API key from the GitHub secrets (ASC_KEY_P8: the .p8 file's text, or the same base64-encoded).
+def asc_key
+  p8 = ENV.fetch("ASC_KEY_P8").strip
+  app_store_connect_api_key(
+    key_id: ENV.fetch("ASC_KEY_ID").strip,
+    issuer_id: ENV.fetch("ASC_ISSUER_ID").strip,
+    key_content: p8,
+    is_key_content_base64: !p8.include?("PRIVATE KEY"),
+    in_house: false,
+  )
+end
+
+def sign_dir
+  d = ENV.fetch("IOS_SIGN_DIR")
+  FileUtils.mkdir_p(d)
+  d
+end
+
+platform :ios do
+  desc "Certificate, App ID, provisioning profile, manual signing and ExportOptions.plist – for appstore.yml"
+  lane :sign do
+    key = asc_key
+    out = sign_dir
+
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: key)
+
+    # 1. The App ID in the developer portal – made once by the key itself ("Sketchline Lion", si.sketchline.lion).
+    bid = Spaceship::ConnectAPI::BundleId.find(BUNDLE_ID)
+    if bid.nil?
+      bid = Spaceship::ConnectAPI::BundleId.create(name: APP_NAME, identifier: BUNDLE_ID, platform: Spaceship::ConnectAPI::BundleIdPlatform::IOS)
+      UI.success("App ID #{BUNDLE_ID} made in the developer portal.")
+    else
+      UI.message("App ID #{BUNDLE_ID} is there (#{bid.name}).")
+    end
+
+    # 2. The app's record in App Store Connect – the one step the key cannot do; said plainly, early.
+    app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
+    UI.user_error!("App Store Connect does not have the app #{BUNDLE_ID} yet. Make it once (2 minutes): https://appstoreconnect.apple.com → Apps → + → New App → iOS, Name \"#{APP_NAME}\", Primary language English, Bundle ID \"#{APP_NAME} - #{BUNDLE_ID}\" (it is in the list now), SKU lion, User access Full → Create. Then run this workflow again.") if app.nil?
+    UI.success("App Store Connect: #{app.name} (#{app.bundle_id}, id #{app.id})")
+
+    # 3. A keychain of this run only (the runner is thrown away after it).
+    kc = File.join(out, "lion.keychain-db")
+    kc_pass = SecureRandom.hex(24)
+    create_keychain(path: kc, password: kc_pass, default_keychain: true, unlock: true, timeout: 3600, lock_when_sleeps: false, add_to_search_list: true)
+
+    # 4. The certificate kept in the private bucket (brought by the workflow) – imported, so that cert() uses it and makes no new one.
+    p12 = File.join(out, "ios-dist.p12")
+    if File.size?(p12)
+      import_certificate(certificate_path: p12, certificate_password: "", keychain_path: kc, keychain_password: kc_pass, log_output: false)
+      UI.message("The signing certificate of the bucket is in the keychain.")
+    else
+      UI.important("No signing certificate in the bucket yet – one is made now (the workflow keeps it in the bucket after this lane).")
+    end
+
+    # 5. The Apple Distribution certificate: the imported one when it is still good, else a new one (its .p12 lands in out/cert).
+    cert_out = File.join(out, "cert")
+    FileUtils.mkdir_p(cert_out)
+    get_certificates(api_key: key, generate_apple_certs: true, keychain_path: kc, keychain_password: kc_pass, output_path: cert_out, platform: "ios")
+    cert_id = lane_context[SharedValues::CERT_CERTIFICATE_ID]
+    UI.success("Apple Distribution certificate #{cert_id}")
+
+    # 6. The App Store provisioning profile of this certificate, renewed every run (force) – never a stale one.
+    get_provisioning_profile(api_key: key, app_identifier: BUNDLE_ID, provisioning_name: PROFILE_NAME, cert_id: cert_id, force: true,
+                             output_path: out, filename: "appstore.mobileprovision", platform: "ios", readonly: false)
+    profile_path = File.join(out, "appstore.mobileprovision")
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+    profile_uuid = lane_context[SharedValues::SIGH_UUID]
+    # the team's id comes out of the profile itself – no secret needed for it
+    sh("security cms -D -i '#{profile_path}' > '#{out}/profile.plist'")
+    team_id = sh("plutil -extract TeamIdentifier.0 raw -o - '#{out}/profile.plist'").strip
+    UI.success("Profile \"#{profile_name}\" (#{profile_uuid}), team #{team_id}")
+
+    # 7. Manual signing in the Xcode project – on this runner only, never committed (automatic signing needs an Apple ID in Xcode).
+    update_code_signing_settings(path: PROJECT, targets: ["Runner"], use_automatic_signing: false, team_id: team_id,
+                                 code_sign_identity: "Apple Distribution", profile_name: profile_name, profile_uuid: profile_uuid,
+                                 bundle_identifier: BUNDLE_ID)
+
+    # 8. ExportOptions.plist for `shorebird release ios` / `flutter build ipa`. manageAppVersionAndBuildNumber = false: Xcode must not
+    #    change the build number – a Shorebird patch finds its release only by the number the build was made with.
+    export = {
+      "method" => "app-store-connect",
+      "signingStyle" => "manual",
+      "teamID" => team_id,
+      "signingCertificate" => "Apple Distribution",
+      "provisioningProfiles" => { BUNDLE_ID => profile_name },
+      "uploadSymbols" => true,
+      "manageAppVersionAndBuildNumber" => false,
+      "destination" => "export",
+    }
+    File.write(File.join(out, "ExportOptions.plist"), export.to_plist)
+    File.write(File.join(out, "team_id.txt"), team_id)
+    UI.success("ExportOptions.plist written – ready for the build.")
+  end
+
+  desc "The signed .ipa ($IPA_PATH) to TestFlight – for appstore.yml"
+  lane :upload do
+    key = asc_key
+    ipa = ENV.fetch("IPA_PATH")
+    UI.user_error!("No .ipa at #{ipa}") unless File.size?(ipa)
+    upload_to_testflight(api_key: key, ipa: ipa, app_identifier: BUNDLE_ID, skip_submission: true, distribute_external: false,
+                         skip_waiting_for_build_processing: true)
+    UI.success("Sent to TestFlight – Apple processes it (10–60 minutes); then it is in the TestFlight app of every internal tester.")
+  end
+end

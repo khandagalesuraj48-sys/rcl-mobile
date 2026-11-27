@@ -13,6 +13,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import 'answers.dart';
+import 'net.dart';
 
 /// What the server answered instead of a result – its own words (English, as the web app shows them).
 class ApiError implements Exception {
@@ -61,12 +62,45 @@ class MemoryKeep implements Keep {
 String apiAppTag = '';
 
 class Api {
-  Api({required this.portalUrl, required this.keep, http.Client? client, this.timeout = const Duration(seconds: 40)}) : _c = client ?? http.Client();
+  Api({required this.portalUrl, required this.keep, http.Client? client, this.timeout = const Duration(seconds: 40)}) : _raw = client ?? http.Client();
 
   final String portalUrl; // https://oneclicksolution-erp.vercel.app/portal
   final Keep keep;
   final Duration timeout;
-  final http.Client _c;
+  final http.Client _raw;
+
+  /// (3.171.0 patch 4 – SNI) every request of our servers goes through here and is measured (core/net.dart) – the same requests as
+  /// before, nothing added.
+  late final http.Client _c = NetClient(_raw, serverOf, timeout);
+
+  /// The address of each module used on this phone (the Store, Engineering, Purchase, HR – as the Portal gave them).
+  final Map<String, String> _bases = {};
+  void _base(String key, String url) {
+    if (url.isNotEmpty) _bases[key] = url;
+  }
+
+  /// Which of our servers [u] is ('portal', 'mech', 'hr', 'store', 'eng', 'pur'); '' = not ours (a file's own link, the IFSC list).
+  String serverOf(Uri u) {
+    final s = u.toString();
+    var best = '', len = 0;
+    for (final e in {'portal': portalUrl, 'mech': mechUrl, ..._bases}.entries) {
+      var b = e.value;
+      while (b.endsWith('/')) {
+        b = b.substring(0, b.length - 1);
+      }
+      if (b.isEmpty || b.length <= len) continue;
+      if (s == b || s.startsWith('$b/') || s.startsWith('$b?')) {
+        best = e.key;
+        len = b.length;
+      }
+    }
+    return best;
+  }
+
+  /// (SNI) one small request to the Portal when nothing was measured for 30 s (its public keys – no database, nothing of the person).
+  Future<void> probe() async {
+    await _c.get(Uri.parse('$portalUrl/api/jwks')).timeout(const Duration(seconds: 15));
+  }
   final Random _rnd = Random.secure();
 
   /// Mechanical's address on the site open (from the Portal's list of modules).
@@ -177,13 +211,13 @@ class Api {
     throw ApiError('$who did not answer properly (${r.statusCode}).', status: r.statusCode);
   }
 
-  /// POST <portal>/api/auth { action, … }
+  /// POST <portal>/api/auth { action, … }  (25-11-2026) an error carries the rest of the answer in [ApiError.data] – a code's `left` / `wait`.
   Future<Map<String, dynamic>> auth(Map<String, dynamic> body) async {
     final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/auth'), headers: _portalHeaders, body: jsonEncode(body)));
     await _keepCookie(r);
     final j = _json(r, 'The Portal');
     if (r.statusCode >= 400 || j['error'] != null) {
-      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? (r.statusCode == 401 ? 'signin' : '')).toString());
+      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? (r.statusCode == 401 ? 'signin' : '')).toString(), data: j);
     }
     return j;
   }
@@ -208,6 +242,34 @@ class Api {
     }
     return j;
   }
+
+  /// (3.173.0, the Portal's step 16 – the approved design "LION – Modules & Subscription") POST <portal>/api/pay { action, … }:
+  /// `mine { site }` – his modules' subscription at the site (ok / trial / due / paused / free, who pays, the amount where he may
+  /// pay); `link { site, module }` – a Razorpay payment link (its address is opened outside the app; Razorpay takes the payment).
+  Future<Map<String, dynamic>> pay(Map<String, dynamic> body) async {
+    final r = await _send(() => _c.post(Uri.parse('$portalUrl/api/pay'), headers: _portalHeaders, body: jsonEncode(body)));
+    final j = _json(r, 'The Portal');
+    if (r.statusCode >= 400 || j['error'] != null) {
+      throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? (r.statusCode == 401 ? 'signin' : '')).toString());
+    }
+    return j;
+  }
+
+  /// (3.173.0) The ERP's main address (the Portal's without "/portal").
+  String get mainUrl => portalUrl.replaceFirst(RegExp(r'/portal/?$'), '');
+
+  /// (3.173.0, his words of 27-11-2026: "app login krayche adhi company code vichrel nantr logn page yeil") GET <main>/api/company?code=
+  /// – the company's own sign-in ({ ok, code, url }) or { ok: false }. The list of companies is never given – one code, one answer.
+  Future<Map<String, dynamic>> company(String code) async {
+    final u = Uri.parse('$mainUrl/api/company').replace(queryParameters: {'code': code});
+    final r = await _send(() => _c.get(u));
+    if (r.statusCode >= 400) throw ApiError('The company could not be checked (${r.statusCode}) – try again.', status: r.statusCode, code: 'company');
+    return _json(r, 'The ERP');
+  }
+
+  /// (3.173.0, HR's subscription) HR said "paused" (402): the company's / his HR subscription is not paid – what it said with it
+  /// (`pay`, `words`). The session shows the "Pay" screen (screens/module_home.dart).
+  void Function(Map<String, dynamic> data)? onHrPaused;
 
   /// A ticket of the Portal for [module] on [siteCode] – an answer, no page change (json=1).
   Future<String> ticket(String siteCode, [String module = 'mechanical']) async {
@@ -470,6 +532,7 @@ class Api {
 
   /// The Store's sign-in on [siteCode] (a ticket of the Portal, used once): who, Admin or User, the pages he may open.
   Future<Map<String, dynamic>> storeOpen(String siteCode, String storeUrl) async {
+    _base('store', storeUrl);
     final t = await ticket(siteCode, 'store');
     final r = await _send(() => _c.post(Uri.parse('$storeUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
     final j = _json(r, 'The Store');
@@ -483,6 +546,7 @@ class Api {
   /// POST <store>/api/items { action, … } – a new Store sign-in when it has ended (once).
   /// (3.54.0, the Store's step 2) [path] 'work': the Store's work (api/work – requirements, POs, GRN, issues, returns, reports).
   Future<Map<String, dynamic>> store(String siteCode, String storeUrl, Map<String, dynamic> body, {String path = 'items'}) async {
+    _base('store', storeUrl);
     for (var tryNo = 1;; tryNo++) {
       if (_storeCookie.isEmpty || _storeKey != '$siteCode|$storeUrl') await storeOpen(siteCode, storeUrl);
       final r = await _send(() => _c.post(Uri.parse('$storeUrl/api/$path'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _storeCookie}, body: jsonEncode(body)));
@@ -504,6 +568,7 @@ class Api {
   /// (3.59.0, Mechanical update-185) Engineering's sign-in on [siteCode] – as the Store's: a ticket of the Portal for the module
   /// 'engineering', POST <eng>/api/sso { ticket } → its cookie rcl_eng.
   Future<Map<String, dynamic>> engOpen(String siteCode, String engUrl) async {
+    _base('eng', engUrl);
     final t = await ticket(siteCode, 'engineering');
     final r = await _send(() => _c.post(Uri.parse('$engUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
     final j = _json(r, 'Engineering');
@@ -516,6 +581,7 @@ class Api {
 
   /// POST <eng>/api/eng { action, … } with his Engineering sign-in of this site – a new sign-in when it has ended (once).
   Future<Map<String, dynamic>> eng(String siteCode, String engUrl, Map<String, dynamic> body) async {
+    _base('eng', engUrl);
     for (var tryNo = 1;; tryNo++) {
       if (_engCookie.isEmpty || _engKey != '$siteCode|$engUrl') await engOpen(siteCode, engUrl);
       final r = await _send(() => _c.post(Uri.parse('$engUrl/api/eng'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _engCookie}, body: jsonEncode(body)));
@@ -537,6 +603,7 @@ class Api {
   /// user), the site open now and every site where he has Purchase (its Dashboard). (3.94.0) Its cookie (rcl_pur) is kept for the
   /// Purchase pages (api.pur).
   Future<Map<String, dynamic>> purOpen(String siteCode, String purUrl) async {
+    _base('pur', purUrl);
     final t = await ticket(siteCode, 'purchase');
     final r = await _send(() => _c.post(Uri.parse('$purUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
     final j = _json(r, 'Purchase');
@@ -550,6 +617,7 @@ class Api {
   /// (3.94.0, Purchase Phase 1) POST <purchase>/api/pur { action, … } with his Purchase sign-in of this site – the same actions,
   /// checks and access as the web's pages; a new sign-in when it has ended (once).
   Future<Map<String, dynamic>> pur(String siteCode, String purUrl, Map<String, dynamic> body) async {
+    _base('pur', purUrl);
     for (var tryNo = 1;; tryNo++) {
       if (_purCookie.isEmpty || _purKey != '$siteCode|$purUrl') await purOpen(siteCode, purUrl);
       final r = await _send(() => _c.post(Uri.parse('$purUrl/api/pur'), headers: {'Content-Type': 'application/json', 'X-RCL': '1', 'Cookie': _purCookie}, body: jsonEncode(body)));
@@ -573,6 +641,7 @@ class Api {
   /// (3.103.0, rcl-hr) HR's sign-in on [siteCode] – as Purchase's: a ticket of the Portal for [module] ('hr' – the HR office's
   /// people; 'hrme' – "My HR", an employee for himself), POST <hr>/api/sso { ticket } → its cookie rcl_hr.
   Future<Map<String, dynamic>> hrOpen(String siteCode, String hrUrl, String module) async {
+    _base('hr', hrUrl);
     final t = await ticket(siteCode, module);
     final r = await _send(() => _c.post(Uri.parse('$hrUrl/api/sso'), headers: {'Content-Type': 'application/json', 'X-RCL': '1'}, body: jsonEncode({'ticket': t})));
     final j = _json(r, 'HR');
@@ -586,6 +655,7 @@ class Api {
   /// POST <hr>/api/hr { action, … } with his HR sign-in of this site – a new sign-in when it has ended (once).
   /// [path] (3.111.0): 'hr' – HR's actions; 'face' – the face for attendance (its own endpoint of the same server, the same sign-in).
   Future<Map<String, dynamic>> hr(String siteCode, String hrUrl, String module, Map<String, dynamic> body, {String path = 'hr'}) async {
+    _base('hr', hrUrl);
     for (var tryNo = 1;; tryNo++) {
       final key = '$siteCode|$hrUrl|$module';
       if (_hrCookie.isEmpty || _hrKey != key) {
@@ -604,7 +674,9 @@ class Api {
         continue;
       }
       if (r.statusCode >= 400 || j['error'] != null) {
-        throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString(), data: {...j}..remove('error'));
+        final data = {...j}..remove('error');
+        if (r.statusCode == 402 && j['code'] == 'paused') onHrPaused?.call(data); // (3.173.0) HR's subscription is not paid
+        throw ApiError(j['error']?.toString() ?? 'Error ${r.statusCode}', status: r.statusCode, code: (j['code'] ?? '').toString(), data: data);
       }
       return j;
     }

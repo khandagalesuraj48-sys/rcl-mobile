@@ -14,6 +14,7 @@ import 'package:flutter/material.dart' as m show Text;
 import '../core/attend.dart';
 import '../core/falcon_link.dart';
 import '../screens/attendance.dart' show hrModule, hrSite;
+import '../screens/falcon_inside.dart';
 import '../screens/hr_shell.dart' show hrAsk;
 import 'hr_skin.dart';
 import 'scope.dart';
@@ -25,8 +26,10 @@ const _saffron = Color(0xFFC2560E), _saffronSoft = Color(0xFFFFF4E6), _saffronLi
 
 mixin _MessData<T extends StatefulWidget> on State<T> {
   Map<String, dynamic>? card;
-  String who = '';
+  String who = '', why = '';
   bool opening = false;
+  /// (3.170.0) HR is being asked for the card – the Super Admin sees "asking HR …" meanwhile
+  bool asking = false;
 
   @override
   void didChangeDependencies() {
@@ -40,8 +43,45 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
 
   Future<void> load({bool fresh = false}) async {
     final s = SessionScope.read(context);
+    if (mounted) setState(() => asking = true);
     final c = await FalconMess.card(s, (b) => hrAsk(s, b), fresh: fresh);
-    if (mounted) setState(() => card = c);
+    // (3.171.0 patch 2) the Mess is there: FALCON is made ready behind the app, so it opens at once (no screen of its own)
+    if (c != null) unawaited(warmFalconInside(s.email, () async => (await FalconMess.pass((b) => hrAsk(s, b)))?.pass));
+    if (mounted) {
+      setState(() {
+        asking = false;
+        card = c;
+        why = c == null ? FalconMess.why : '';
+      });
+    }
+  }
+
+  /// (3.169.0) no card: the Super Admin is told why (FALCON not connected / no mess at the site) – nobody else sees anything.
+  /// (3.170.0, asked 23-11-2026: "kahich disat nahi yellow pn nahi" → "ho kr") while HR is asked he sees "asking HR …" at once, and an
+  /// answer without words is said too – never an empty space for him.
+  Widget nothing(BuildContext context, String key) {
+    if (!SessionScope.of(context).superAdmin) return const SizedBox.shrink();
+    final said = asking ? 'asking HR …' : why.isNotEmpty ? why : 'HR gave no card and said nothing – tap to ask again.';
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: GestureDetector(
+        key: Key(key),
+        behavior: HitTestBehavior.opaque,
+        onTap: asking ? null : () => load(fresh: true),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(color: _saffronSoft, borderRadius: BorderRadius.circular(14), border: Border.all(color: _saffronLine)),
+          child: Row(children: [
+            const Icon(Icons.restaurant_rounded, size: 18, color: _saffron),
+            const SizedBox(width: 10),
+            Expanded(child: m.Text('Mess (FALCON) – Super Admin: $said', style: const TextStyle(fontSize: 12.5, color: C.ink))),
+            asking
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _saffron))
+                : const Icon(Icons.refresh_rounded, size: 18, color: _saffron),
+          ]),
+        ),
+      ),
+    );
   }
 
   MessNow? get now {
@@ -53,13 +93,37 @@ mixin _MessData<T extends StatefulWidget> on State<T> {
     if (opening) return;
     setState(() => opening = true);
     final s = SessionScope.read(context);
-    final err = await FalconMess.open((b) => hrAsk(s, b));
+    // (3.171.0 patch 2, his choice of 25-11-2026) FALCON inside this app (made ready behind it: straight on its home); else its app; else its web
+    final err = await FalconMess.open((b) => hrAsk(s, b), inside: (pass) => openFalconInside(context, pass), ready: () => falconReadyFor(s.email));
     if (!mounted) return;
     setState(() => opening = false);
     if (err.isNotEmpty) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: m.Text(err)));
   }
 
-  String placeLine(MessNow x) => x.metres == null ? x.name : x.at ? '${x.name} · ${distText(x.metres!)} · ${tr('you are at the mess')}' : '${x.name} · ${distText(x.metres!)} ${tr('away')}';
+  String placeLine(MessNow x) => x.metres == null ? x.name : x.at ? '${x.name} · ${distText(x.metres!)} · ${tr('you are at the mess')}' : '${x.name} · ${far(x)}';
+
+  /// (3.171.0 patch 3) how far – by road when FALCON has it, else the straight line said as one
+  String far(MessNow x) {
+    final s = SessionScope.read(context);
+    final road = x.myLat == null || x.messLat == null ? null : falconRoadMetres(s.email, x.myLat!, x.myLng!, x.messLat!, x.messLng!);
+    return messFar(x.metres!, road, Lang.i.code);
+  }
+
+  void _roadCame() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    falconRoads.addListener(_roadCame);
+  }
+
+  @override
+  void dispose() {
+    falconRoads.removeListener(_roadCame);
+    super.dispose();
+  }
   String mealLine(MessNow x) => x.meal.isEmpty ? tr('Closed for today') : x.now ? '${tr(mealWord(x.meal))} ${tr('now')} · ${tr('till')} ${x.to}' : '${tr(mealWord(x.meal))} · ${tr('from')} ${x.from}';
 }
 
@@ -90,7 +154,7 @@ class _MessCardState extends State<MessCard> with _MessData<MessCard> {
   @override
   Widget build(BuildContext context) {
     final x = who.isEmpty ? null : now;
-    if (x == null) return const SizedBox.shrink();
+    if (x == null) return who.isEmpty ? const SizedBox.shrink() : nothing(context, 'hh-mess-why');
     final s = sk;
     final (Color c, Color soft) = s.tint(_saffron, _saffronSoft);
     return Padding(
@@ -170,8 +234,8 @@ class _MessStripState extends State<MessStrip> with _MessData<MessStrip> {
   @override
   Widget build(BuildContext context) {
     final x = who.isEmpty ? null : now;
-    if (x == null) return const SizedBox.shrink();
-    final sub = [if (x.metres != null) x.at ? '${x.name} · ${distText(x.metres!)}' : '${x.name} · ${distText(x.metres!)} ${tr('away')}' else x.name, if (x.now) '${tr('till')} ${x.to}'].join(' · ');
+    if (x == null) return who.isEmpty ? const SizedBox.shrink() : nothing(context, 'home-mess-why');
+    final sub = [if (x.metres != null) x.at ? '${x.name} · ${distText(x.metres!)}' : '${x.name} · ${far(x)}' else x.name, if (x.now) '${tr('till')} ${x.to}'].join(' · ');
     final title = x.meal.isEmpty ? '${tr('Mess')} · ${tr('closed for today')}' : '${tr('Mess')} · ${tr(mealWord(x.meal).toLowerCase())} ${x.now ? tr('now') : '${tr('from')} ${x.from}'}';
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 10, 0, 0),

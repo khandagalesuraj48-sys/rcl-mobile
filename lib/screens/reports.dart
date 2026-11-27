@@ -17,6 +17,7 @@ import '../ui/ask_bot.dart';
 import '../ui/scope.dart';
 import '../ui/design.dart';
 import '../ui/theme.dart';
+import '../ui/net_chip.dart' show NetChip;
 import '../ui/widgets.dart';
 import 'billing.dart';
 import 'dashboard.dart';
@@ -175,7 +176,12 @@ class _ReportsTabState extends State<ReportsTab> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Reports', mr: 'रिपोर्ट्स', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-                  Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: C.muted, fontWeight: FontWeight.w500)),
+                  // (3.171.0 patch 4 – SNI picture 2) the network's chip at the end of the site's line (the title keeps its room)
+                  Row(children: [
+                    Flexible(child: Text(s.siteName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: C.muted, fontWeight: FontWeight.w500))),
+                    const SizedBox(width: 6),
+                    const IntrinsicWidth(child: SizedBox(height: 18, child: OverflowBox(maxHeight: 26, child: NetChip(dark: false, pad: false)))),
+                  ]),
                 ]),
               ),
               if (cur == 'Overview')

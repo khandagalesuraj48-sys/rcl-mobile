@@ -30,6 +30,7 @@ import '../ui/done_pop.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
+import '../ui/net_chip.dart' show SavedLine, afterAnswer;
 import '../ui/scope.dart';
 import '../ui/t.dart';
 import '../ui/design.dart';
@@ -164,6 +165,7 @@ class HrMeTab extends StatelessWidget {
       _pill(key: const Key('me-privacy'), icon: Icons.verified_user_outlined, en: 'Privacy', mr: 'Privacy', onTap: () => showConsent(context)),
       // (the look's name goes with them: a pill that keeps its own state is drawn again when the look changes)
       _RemindRow(look: sk.name),
+      if (!inErp && s.twoMods) _pill(key: const Key('me-mods'), icon: Icons.apps_rounded, en: 'Your modules', mr: 'तुमचे modules', sub: 'Vehicle · HR', onTap: () => s.pickModule(null)), // (3.173.0) back to the site home
       if (!inErp && s.sites.length > 1) _pill(key: const Key('me-site'), icon: Icons.swap_horiz_rounded, en: 'Change site', mr: 'Site बदला', sub: s.siteName, onTap: s.pickAnotherSite),
       _UpdateRow(look: sk.name), // (3.161.0, asked: "HR madhech update check ch te pn button de") also for a person who has the ERP too
       if (onPlay()) _pill(key: const Key('me-auto'), icon: Icons.autorenew_rounded, en: 'Auto update', mr: 'Auto update', sub: _t('Switch it on once in the Play Store', 'Play Store मध्ये एकदा चालू करा'), onTap: () => playAutoHelp(context)), // (3.165.0)
@@ -437,6 +439,9 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
   String err = '', busy = ''; // busy: the kind being sent
   bool loading = true;
 
+  /// (3.171.0 patch 4 – SNI picture 5) 'saved' / 'live' / 'stale' / '' – the line under the header.
+  String _src = '';
+
   @override
   void initState() {
     super.initState();
@@ -485,6 +490,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
         setState(() {
           data = k;
           loading = false;
+          _src = 'saved';
         });
       }
     }
@@ -496,6 +502,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
         data = j;
         loading = false;
         err = '';
+        _src = afterAnswer(_src);
       });
     } catch (e) {
       if (mounted) {
@@ -503,6 +510,7 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
           loading = false;
           // (3.157.0) the papers are on the page (what was read before) and only the network did not answer: nothing red
           err = e is ApiError && e.code == 'net' && data != null ? '' : errText(e);
+          if (e is ApiError && e.code == 'net' && data != null) _src = 'stale';
         });
       }
     }
@@ -798,7 +806,9 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
       appBar: hrHead(context, sky: kMeSky, title: 'My documents', mr: 'माझी कागदपत्रे', height: 100, below: [
         Text('Attach a clear photo or PDF. The three dots: edit, change or delete.', mr: 'स्पष्ट photo किंवा PDF जोडा. तीन टिंबं: edit, change किंवा delete.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.3, color: sk.onHeadSoft)),
       ]),
-      body: loading
+      body: Column(children: [
+        SavedLine(kind: _src, at: HrCache.savedAt('myDocs')), // (3.171.0 patch 4 – SNI picture 5)
+        Expanded(child: loading
           ? const SkeletonList(tiles: 0, rows: 5)
           : RefreshIndicator(
               onRefresh: _load,
@@ -850,7 +860,8 @@ class _MyDocsScreenState extends State<MyDocsScreen> {
                 ...group('ok', sk.dark ? const Color(0xFF58D68D) : const Color(0xFF0F7A45), 'Attached', 'जोडलेले', good),
                 ...group('also', sk.faint, 'You can also attach', 'हेही जोडू शकता', also),
               ]),
-            ),
+            )),
+      ]),
     );
   }
 }

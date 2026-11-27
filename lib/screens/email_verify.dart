@@ -6,9 +6,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/material.dart' as m show Text;
 import 'package:flutter/services.dart';
 
 import '../core/api.dart' show ApiError;
+import '../core/code_words.dart';
 import '../ui/hr_skin.dart';
 import '../ui/motion.dart';
 import '../ui/scope.dart';
@@ -85,7 +87,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       _count(w);
     } on ApiError catch (e) {
       if (!mounted) return;
-      setState(() => _err = e.toString());
+      setState(() => _err = codeError(e)); // (25-11-2026) blocked: the minutes to wait
       if (e.code == 'wait') {
         setState(() => _sent = true); // a code went out a moment ago: it can be typed
         _count(60);
@@ -113,7 +115,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     } on ApiError catch (e) {
       if (mounted) {
         setState(() {
-          _err = e.toString();
+          _err = codeError(e); // (25-11-2026) a wrong code: the tries left
           _code.clear();
         });
       }
@@ -175,6 +177,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           const SizedBox(height: 8),
           Text('Your user ID in the ERP stays ${s.email} – nothing of your work changes.', style: TextStyle(fontSize: 12.5, color: skApp.muted, height: 1.35)),
           if (_sent) ...[
+            // (25-11-2026) how many more codes may be asked for (then 15 minutes)
+            if (codesLeftLine(s.codesLeft).isNotEmpty)
+              Padding(padding: const EdgeInsets.only(top: 8), child: m.Text(codesLeftLine(s.codesLeft), key: const Key('ve-left'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: skApp.muted, height: 1.35))),
             const SizedBox(height: 14),
             TextField(
               key: const Key('ve-code'),

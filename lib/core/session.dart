@@ -11,6 +11,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'alerts.dart';
 import 'api.dart';
+import 'app_kind.dart';
+import 'code_words.dart';
 import 'rtc.dart';
 import 'format.dart';
 import 'fuel.dart';
@@ -207,7 +209,9 @@ bool hasKm(String w) => w == 'KM' || w == 'KM + Hrs';
 bool hasHr(String w) => w == 'Hrs' || w == 'KM + Hrs';
 
 class Session extends ChangeNotifier {
-  Session(this.api, {this.langRead});
+  Session(this.api, {this.langRead}) {
+    api.onHrPaused = (d) => hrPaused.value = d; // (3.173.0) HR's subscription not paid: the "Pay" screen over HR's pages
+  }
   final Api api;
 
   /// (15-10-2026) how the language files are read (the app's files; the tests give their own)
@@ -215,7 +219,76 @@ class Session extends ChangeNotifier {
   static const kLang = 'app_lang';
 
   /// (3.108.0) at a site where he has HR only (no Mechanical): the app's own pages for attendance – Home, Attendance, Leave, Me.
-  bool get hrOnly => site != null && site!.module('mechanical') == null;
+  /// (27-11-2026) ELEPHANT – HR's own app: always the attendance app's pages, whatever else he has at the site.
+  bool get hrOnly => site != null && (isElephant || site!.module('mechanical') == null);
+
+  /* (3.173.0, the approved design "LION – Modules & Subscription", his words of 27-11-2026: "ekach app asel lion wali tyache madhe tab
+   * astil modual che … VTR madhe gel ki ek mast greting ani ek unique ui madhe modual distil … Mechanical la name apan ata VEHICLE
+   * … 18 B LA JRI GELO TITH PN SELCT MODUAL ASEL HR MADHE JAYCHE KI VEHICLE ANI TYA NANTR MG TYA TYA MODUAL CHA DASHBORD") THE SITE
+   * HOME: at a site where he has BOTH Vehicle (Mechanical) and HR (the office's or "My HR"), the site opens on the greeting and the
+   * two modules; the one he taps opens its own pages as before; Back there and another site bring him back to it. One module only:
+   * it opens at once, as before. ELEPHANT (HR's own app) never shows it. */
+  /// The site's modules of the site home, in the design's order: 'mechanical' (Vehicle), 'hr'.
+  List<String> get siteMods => site == null ? const [] : [if (site!.module('mechanical') != null) 'mechanical', if (site!.module('hr') != null || site!.module('hrme') != null) 'hr'];
+
+  /// At this site the module is chosen on the site home.
+  bool get twoMods => !isElephant && siteMods.length > 1;
+
+  /// The module he chose on the site home ('mechanical' / 'hr'); null – the site home itself (a new site: null again).
+  String? modPick;
+
+  /// The site home is on the screen.
+  bool get moduleHome => twoMods && modPick == null;
+
+  /// His start page (Settings) was opened for this opening of the site (screens/shell.dart) – once, not at every return to Vehicle.
+  bool startPageDone = false;
+
+  /// HR's own pages are on the screen (a site with HR only, ELEPHANT, or HR chosen on the site home).
+  bool get showHr => hrOnly || (twoMods && modPick == 'hr');
+
+  void pickModule(String? m) {
+    if (modPick == m) return;
+    modPick = m;
+    notifyListeners();
+  }
+
+  /// (3.173.0, HR's subscription – the Portal's step 16) HR said "paused" (not paid): what it said (`pay`, `words`); the HR pages
+  /// show the "Pay" screen over them (screens/module_home.dart PayGate). Null – HR as always.
+  final hrPaused = ValueNotifier<Map<String, dynamic>?>(null);
+
+  /// (3.173.0, his words: "app login krayche adhi company code vichrel nantr logn page yeil") the company code typed on this phone
+  /// ('' – the sign-in screen asks it first). Kept on the phone; "Change company" forgets it.
+  static const kCompany = 'company_code';
+  String companyCode = '';
+
+  /// Checks [code] at the ERP (api/company): '' – it is a company of this app, kept; otherwise what to tell him.
+  Future<String> setCompany(String code) async {
+    final c = code.trim().toUpperCase();
+    if (!RegExp(r'^[A-Z0-9]{2,20}$').hasMatch(c)) return bi('Type your company code (letters and numbers).', 'तुमचा company code टाका (अक्षरे आणि अंक).');
+    final Map<String, dynamic> j;
+    try {
+      j = await api.company(c);
+    } on ApiError catch (e) {
+      return e.noConnection ? bi('No network – connect and try again.', 'नेटवर्क नाही – जोडून पुन्हा प्रयत्न करा.') : e.toString();
+    }
+    if (j['ok'] != true) return bi('This company code is not known. Check it with your company.', 'हा company code सापडला नाही. तुमच्या कंपनीकडून तपासा.');
+    // each company has its own sign-in (rclerp api/company.js): this app signs in at its own Portal – another company's address is not opened here yet
+    final url = '${j['url'] ?? ''}'.trim(), at = (url.startsWith('/') ? api.mainUrl + url : url).replaceFirst(RegExp(r'/+$'), '');
+    if (at != api.portalUrl.replaceFirst(RegExp(r'/+$'), '')) return bi('This company signs in at its own address – it is not in this app yet.', 'या कंपनीचे sign-in तिच्या स्वतःच्या पत्त्यावर आहे – ते अजून या app मध्ये नाही.');
+    companyCode = '${j['code'] ?? c}';
+    await api.keep.write(kCompany, companyCode);
+    error = '';
+    notifyListeners();
+    return '';
+  }
+
+  /// "Change company": the code is asked again.
+  Future<void> forgetCompany() async {
+    companyCode = '';
+    await api.keep.write(kCompany, null);
+    error = '';
+    notifyListeners();
+  }
 
   /// (3.142.0) at this site he has Mechanical as a driver of the Driver Master (Log Book – Edit only): his Log Book is the Smart Log Book
   bool get mechDriver => site?.module('mechanical')?.driver ?? false;
@@ -243,6 +316,13 @@ class Session extends ChangeNotifier {
 
   Stage stage = Stage.starting;
   String error = '';
+
+  /// (25-11-2026, his words: "login with otp krtan given password nko aahe new set kru shakel") signed in with a code (e-mail or
+  /// WhatsApp) just now: "Set your own password" asks only the new one – the Portal takes it without the given one for 30 minutes.
+  bool byCode = false;
+
+  /// (25-11-2026) the Portal's `left` of the last code asked for – the codes he may still ask for, then 15 minutes (null: not said).
+  int? codesLeft;
 
   /// (3.37.0) How far the opening is, 0 – 1 – the start screen's bar (screens/splash.dart). Each value is set when that step is
   /// really done: the sign-in kept on this phone read, the sites from the Portal, the site's sign-in, the site's lists.
@@ -468,6 +548,9 @@ class Session extends ChangeNotifier {
   static Future<void> Function(Session s)? onReady;
   static Future<void> Function(Session s)? onSignOut;
 
+  /// (3.171.0 patch 2) more that ends with the sign-out (FALCON's sign-in made ready behind this app – screens/falcon_inside.dart)
+  static final List<Future<void> Function()> signOutAlso = [];
+
   /* (3.20.1, asked 18-10-2026: "app madhun pn auto log out nko aahe") The sign-in kept on this phone could not be checked, or the
    * site could not be opened, because there is NO NETWORK or the server did not answer: the person is NOT signed out. Before,
    * he was shown the sign-in (his kept sign-in stayed, but it looked like a log-out). Now the app waits – Stage.waiting: "No
@@ -513,7 +596,7 @@ class Session extends ChangeNotifier {
     if (j == null || j['site'] != code || j['init'] is! Map || '${j['email'] ?? ''}'.isEmpty || (email.isNotEmpty && email.toLowerCase() != '${j['email']}'.toLowerCase())) return false;
     final list = [for (final x in (j['sites'] as List? ?? const [])) SiteChoice.fromJson(x)].whereType<SiteChoice>().toList();
     final sc = list.where((x) => x.code == code).firstOrNull, mech = sc?.module('mechanical');
-    if (sc == null || mech == null) return false;
+    if (sc == null || mech == null || isElephant) return false; // (27-11-2026) ELEPHANT keeps nothing of Mechanical
     if (site?.code != code) clearMemory();
     sites = list;
     site = sc;
@@ -635,6 +718,7 @@ class Session extends ChangeNotifier {
     }
     await Lang.i.set(await api.keep.read(kLang) ?? '', read: langRead);
     siteMode.value = await api.keep.read(kSiteMode) == '1';      // (3.97.0)
+    companyCode = await api.keep.read(kCompany) ?? ''; // (3.173.0) the company code typed on this phone
     if (!api.hasPortal) return _go(Stage.signedOut);
     _boot(.15);
     try {
@@ -669,6 +753,7 @@ class Session extends ChangeNotifier {
     final me = await (meF ?? api.auth({'action': 'me'}));
     if (me['signedIn'] != true) throw ApiError('Please sign in.', code: 'signin');
     // (15-10-2026) still on the password the Super Admin gave: he sets his own first (here in the app)
+    byCode = me['byCode'] == true; // (25-11-2026) still in his 30 minutes after a code: the given password is not asked
     if (me['mustChange'] == true) throw ApiError('Set your own password first.', code: 'mustchange');
     final u = (me['user'] as Map?)?.cast<String, dynamic>() ?? {};
     // (14-10-2026) the Super Admin opens every module of every site too (the Portal lists them all for him, as Admin)
@@ -685,6 +770,11 @@ class Session extends ChangeNotifier {
      * nothing of Mechanical. Before, a person with Mechanical anywhere did not see his HR-only sites at all – so he was given
      * Mechanical there too, and saw its vehicles. (3.108.0) a person with no Mechanical at all: his HR sites, as before. */
     sites = by.values.where((s) => s.module('mechanical') != null || s.module('hr') != null || s.module('hrme') != null).toList();
+    // (27-11-2026) ELEPHANT – HR's own app: only the sites where he has HR; none – his work is in LION
+    if (isElephant) sites = sites.where((s) => s.module('hr') != null || s.module('hrme') != null).toList();
+    if (sites.isEmpty && isElephant) {
+      throw ApiError('This app is for HR – you have no HR at any site yet. Your other work is in Sketchline Lion; ask the Super Admin for HR.', code: 'nosite');
+    }
     if (sites.isEmpty) throw ApiError('You have no site with Mechanical or HR yet – ask the Super Admin.', code: 'nosite');
     name = (u['name'] ?? '').toString();
     email = (u['email'] ?? '').toString();
@@ -745,17 +835,18 @@ class Session extends ChangeNotifier {
 
   /* (3.166.0, the Portal's "Login with WhatsApp OTP" of 22-11-2026 – his words: "web and app doni sathi … otp takla auto verify sign
    * in button dabayla lagu naye") A CODE BY WHATSAPP: the Portal sends the code ONLY to a mobile number that is on an active user
-   * (never the Super Admin) – the same code rules as the e-mail code (10 minutes, once, 5 wrong tries, 60 seconds between two). The
+   * (never the Super Admin) – the same code rules as the e-mail code (10 minutes, once, 60 seconds between two; 25-11-2026: 6 codes / 6 wrong codes, then 15 minutes). The
    * app only asks; the answer to "send" is the same whoever asks. */
 
   /// "Send code on WhatsApp" / "Send again" → the seconds until another may be asked.
-  Future<int> waSend(String mobile) async => _secs((await api.auth({'action': 'waSend', 'mobile': mobile.trim()}))['wait']);
+  Future<int> waSend(String mobile) async => _sent(await api.auth({'action': 'waSend', 'mobile': mobile.trim()}));
 
   /// The six digits typed (checked by themselves – no button): right → true when he must set his own password first; wrong →
   /// [ApiError] for the card to show itself (the card shakes and clears; nothing else changes).
   Future<bool> waCheck(String mobile, String code) async {
     error = '';
     final r = await api.auth({'action': 'waLogin', 'mobile': mobile.trim(), 'code': code.trim()});
+    byCode = r['byCode'] == true;
     return r['mustChange'] == true;
   }
 
@@ -771,24 +862,47 @@ class Session extends ChangeNotifier {
   }
 
   /// "Send code" of the sign-in. → the seconds until another may be asked. The answer is the same whoever asks.
-  Future<int> otpSend(String address) async => _secs((await api.auth({'action': 'otpSend', 'email': address.trim()}))['wait']);
+  Future<int> otpSend(String address) async => _sent(await api.auth({'action': 'otpSend', 'email': address.trim()}));
 
-  /// The code typed: the same sign-in as with the password.
-  Future<void> otpSignIn(String address, String code) async {
+  /* (25-11-2026, his words: "forgot kru shkel email la otp yeil forgat krun new set kru shakel … verification purn verified asel"; his
+   * answer: everybody but the Super Admin) "FORGOT PASSWORD?": a code to his e-mail (the same code and limits as the sign-in; its
+   * e-mail says "Set a new password"), then the code and the new password in one step – the Portal checks the code first, sets the
+   * password (its rules, never the one he has), ends every other sign-in of his and signs him in here. */
+
+  /// "Send code" of "Forgot password?" → the seconds until another may be asked. The answer is the same whoever asks.
+  Future<int> resetSend(String address) async => _sent(await api.auth({'action': 'otpSend', 'email': address.trim(), 'reset': true}));
+
+  /// The code and the new password: right → the app opens as after a sign-in; wrong → [ApiError] for the card (codeError).
+  Future<void> resetPassword(String address, String code, String now) async {
     error = '';
+    await api.auth({'action': 'otpReset', 'email': address.trim(), 'code': code.trim(), 'password': now});
+    byCode = false;
+    freshSignIn?.call(); // the code typed just now: the app lock does not ask again
     try {
-      final r = await api.auth({'action': 'otpLogin', 'email': address.trim(), 'code': code.trim()});
-      if (r['mustChange'] == true) return _go(Stage.setPassword);
-      freshSignIn?.call(); // the code typed just now: the app lock does not ask again
       await _afterSignIn();
     } on ApiError catch (e) {
       _go(Stage.signedOut, e.toString());
     }
   }
 
+  /// The code typed: the same sign-in as with the password.
+  Future<void> otpSignIn(String address, String code) async {
+    error = '';
+    try {
+      final r = await api.auth({'action': 'otpLogin', 'email': address.trim(), 'code': code.trim()});
+      byCode = r['byCode'] == true;
+      if (r['mustChange'] == true) return _go(Stage.setPassword);
+      freshSignIn?.call(); // the code typed just now: the app lock does not ask again
+      await _afterSignIn();
+    } on ApiError catch (e) {
+      _go(Stage.signedOut, codeError(e)); // (25-11-2026) a wrong code: the tries left; blocked: the minutes to wait
+    }
+  }
+
   /// "Verify my e-mail", step 1: a code to [address] (his own). → the seconds until another may be asked; -1 = already verified.
   Future<int> verifySend(String address) async {
     final r = await api.auth({'action': 'verifySend', 'email': address.trim()});
+    codesLeft = r['left'] is num ? (r['left'] as num).toInt() : null;
     if (r['verified'] == true) {
       _verified('${r['login'] ?? address.trim()}');
       return -1;
@@ -823,11 +937,18 @@ class Session extends ChangeNotifier {
 
   static int _secs(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 60;
 
+  /// A code asked for: [codesLeft] kept, → the seconds until another may be asked.
+  int _sent(Map<String, dynamic> r) {
+    codesLeft = r['left'] is num ? (r['left'] as num).toInt() : null;
+    return _secs(r['wait']);
+  }
+
   /// Email + password of the Portal (one password for every module).
   Future<void> signIn(String mail, String password) async {
     error = '';
     try {
       final r = await api.auth({'action': 'login', 'email': mail.trim(), 'password': password});
+      byCode = false;
       // (15-10-2026) a new user, or a one-time password of the Super Admin: he sets his own password here in the app
       if (r['mustChange'] == true) return _go(Stage.setPassword);
       freshSignIn?.call(); // (3.27.0) the password typed just now: the app lock does not ask again
@@ -859,6 +980,12 @@ class Session extends ChangeNotifier {
     try {
       await api.auth({'action': 'changePassword', 'old': given, 'password': now});
     } on ApiError catch (e) {
+      // (25-11-2026) signed in with a code more than 30 minutes ago: the given password is asked again (or a new code)
+      if (byCode && e.code == 'oldpw') {
+        byCode = false;
+        return _go(Stage.setPassword, bi('The 30 minutes after your code are over – type the password you were given, or sign in again with a new code.',
+            'Code नंतरची 30 मिनिटे संपली – दिलेला password टाका, किंवा नवीन code ने पुन्हा sign in करा.', '\n'));
+      }
       if (e.needsSignIn || e.status == 401) {
         await api.forget();
         return _go(Stage.signedOut, 'Please sign in again with the password you were given.');
@@ -893,10 +1020,14 @@ class Session extends ChangeNotifier {
   Future<void> chooseSite(String code, {Future<dynamic>? early}) async {
     final s = sites.firstWhere((x) => x.code == code);
     if (site?.code != code) clearMemory(); // (update-155) another site: nothing the screens kept of the one before
+    modPick = null; // (3.173.0) every site opens on its site home (where he has two modules)
+    hrPaused.value = null;
+    startPageDone = false;
     site = s;
     siteName = s.name;
     // (3.108.0) a site with HR only: nothing of Mechanical is asked – its lists, his settings, the notifications are Mechanical's
-    if (s.module('mechanical') == null) {
+    // (27-11-2026) ELEPHANT – HR's own app: the same at every site, also where he has Mechanical (that is LION's)
+    if (isElephant || s.module('mechanical') == null) {
       api.mechUrl = '';
       offline = false;
       await api.keepSite(code);
@@ -1487,13 +1618,13 @@ class Session extends ChangeNotifier {
 
   Future<void> dropKept(String rid) async {
     for (final x in kept.where((x) => x['rid'] == rid)) {
-      _dropFiles(x);
+      dropKeptFiles(x);
     }
     kept.removeWhere((x) => x['rid'] == rid);
     await _saveKept();
   }
 
-  void _dropFiles(Map<String, dynamic> x) {
+  static void dropKeptFiles(Map<String, dynamic> x) {
     for (final p in (x['local'] as List? ?? const []).whereType<Map>()) {
       try {
         File('${p['file']}').deleteSync();
@@ -1503,7 +1634,7 @@ class Session extends ChangeNotifier {
 
   /// (3.85.0) a kept entry's photos sent first (the server remembers a photo 6 hours: sent again when older than 5): its args with
   /// them; null = no network now (it waits); a refused photo throws its words
-  Future<List<dynamic>?> _keptArgs(Map<String, dynamic> x) async {
+  static Future<List<dynamic>?> _keptArgs(Api api, Map<String, dynamic> x) async {
     final args = [...((x['args'] as List?) ?? const [])];
     final local = (x['local'] as List? ?? const []).whereType<Map>().toList();
     if (local.isEmpty || args.isEmpty || args[0] is! Map) return args;
@@ -1533,6 +1664,35 @@ class Session extends ChangeNotifier {
     return args;
   }
 
+  /// (3.171.0 patch 4) ONE kept entry sent – the same for the app open ([sendKept]) and the app closed ([sendKeptInBackground]):
+  /// ('sent', the server's own words when it was sent for verification), ('refused', '') – the server's words in x['msg'], or
+  /// ('wait', '') – no network now. [background]: with the app closed nothing is decided for him – anything but the server's own
+  /// "not saved" waits for the app to open (it asks him there, as before).
+  static Future<(String, String)> sendOneKept(Api api, Map<String, dynamic> x, {bool background = false}) async {
+    try {
+      final args = await _keptArgs(api, x); // (3.85.0) its photos first
+      if (args == null) return ('wait', ''); // no network now
+      // (3.85.0, Mechanical update-211) the day it was made (the server's stamp); a diesel issue / transfer the stock cannot cover:
+      // kept on the server as stock short – saved by itself when the stock comes (he chose this for entries made with no network)
+      final with0 = <String, dynamic>{if ('${x['made'] ?? ''}'.isNotEmpty) 'made': '${x['made']}', if (Api.shortFns.contains('${x['fn']}')) 'short': true};
+      final r = await api.call('${x['fn']}', args, true, '${x['rid']}', with0);
+      if (r is Map && (r['ok'] == false || (r['errors'] is List && (r['errors'] as List).isNotEmpty))) {
+        final errs = (r['errors'] as List? ?? []).map((e) => e is Map ? '${e['msg'] ?? ''}' : '$e').where((e) => e.isNotEmpty).toList();
+        x['state'] = 'refused';
+        x['msg'] = errs.isEmpty ? '${r['error'] ?? r['warning'] ?? 'Not saved.'}' : errs.join(' | ');
+        return ('refused', '');
+      }
+      return ('sent', '');
+    } on ApiError catch (e) {
+      if (e.noConnection) return ('wait', '');
+      if (e.code == 'sent') return ('sent', e.message);
+      if (background) return ('wait', '');
+      x['state'] = 'refused';
+      x['msg'] = e.toString();
+      return ('refused', '');
+    }
+  }
+
   /// Sends what is kept for the site open (in the order kept); stops at the first "no network".
   Future<void> sendKept({bool again = false}) async {
     if (_sending || stage != Stage.ready) return;
@@ -1542,33 +1702,13 @@ class Session extends ChangeNotifier {
     var sent = 0, told = '';      // (3.85.0) told: the server's own words (kept as stock short / sent for verification)
     try {
       for (final x in mine) {
-        try {
-          final args = await _keptArgs(x); // (3.85.0) its photos first
-          if (args == null) break; // no network now
-          // (3.85.0, Mechanical update-211) the day it was made (the server's stamp); a diesel issue / transfer the stock cannot cover:
-          // kept on the server as stock short – saved by itself when the stock comes (he chose this for entries made with no network)
-          final with0 = <String, dynamic>{if ('${x['made'] ?? ''}'.isNotEmpty) 'made': '${x['made']}', if (Api.shortFns.contains('${x['fn']}')) 'short': true};
-          final r = await api.call('${x['fn']}', args, true, '${x['rid']}', with0);
-          if (r is Map && (r['ok'] == false || (r['errors'] is List && (r['errors'] as List).isNotEmpty))) {
-            final errs = (r['errors'] as List? ?? []).map((e) => e is Map ? '${e['msg'] ?? ''}' : '$e').where((e) => e.isNotEmpty).toList();
-            x['state'] = 'refused';
-            x['msg'] = errs.isEmpty ? '${r['error'] ?? r['warning'] ?? 'Not saved.'}' : errs.join(' | ');
-          } else {
-            _dropFiles(x);
-            kept.removeWhere((y) => y['rid'] == x['rid']);
-            sent++;
-          }
-        } on ApiError catch (e) {
-          if (e.noConnection) break;
-          if (e.code == 'sent') {
-            _dropFiles(x);
-            kept.removeWhere((y) => y['rid'] == x['rid']);
-            sent++;
-            told = e.message;
-            continue;
-          }
-          x['state'] = 'refused';
-          x['msg'] = e.toString();
+        final (what, words) = await sendOneKept(api, x);
+        if (what == 'wait') break; // no network now
+        if (what == 'sent') {
+          dropKeptFiles(x);
+          kept.removeWhere((y) => y['rid'] == x['rid']);
+          sent++;
+          if (words.isNotEmpty) told = words;
         }
       }
     } finally {
@@ -1592,6 +1732,11 @@ class Session extends ChangeNotifier {
     if (off != null) {
       try {
         await off(this).timeout(const Duration(seconds: 4));
+      } catch (_) {/* signing out never waits for it */}
+    }
+    for (final f in List.of(signOutAlso)) {
+      try {
+        await f().timeout(const Duration(seconds: 4));
       } catch (_) {/* signing out never waits for it */}
     }
     // (3.149.0, rcl-hr step 20) his place for HR stops at sign-out (what waits is sent once more – never waits long)
@@ -1625,6 +1770,61 @@ class Session extends ChangeNotifier {
     superAdmin = false;
     tester = false;
     consentNeed = '';
+    modPick = null;
+    hrPaused.value = null;
     _go(Stage.signedOut, msg);
   }
+}
+
+/* (3.171.0 patch 4, his words of 25-11-2026: "entry save asel user la stock minus disel ani jas network connect hoil app close keli purn
+ * tri lagech app swata server la data deil"; his pick: "Patch – 15 minutes") WITH THE APP CLOSED: the entries kept on this phone with no
+ * network (Diesel Issue / Inward / Transfer with their photos, Log Book – 3.85.0) are sent by the Android alarm that already runs about
+ * every 15 minutes (main.dart alertsInBackground) – the same sending as with the app open (Session.sendOneKept, the same number: saved
+ * ONCE on the server). Nothing when the app was open in the last 150 s (it sends them itself, at once). Only the site open on this
+ * phone (its Mechanical address and sign-in are kept); another site's entries wait for that site. What the server refuses keeps its
+ * words for "Me → Waiting on this phone"; anything else waits for the app (it asks him there). Gives how many were sent. */
+Future<int> sendKeptInBackground(Api api) async {
+  await api.load();
+  api.mechUrl = await api.keep.read(kMechUrl) ?? '';
+  final site = api.site ?? '';
+  if (api.mechUrl.isEmpty || (api.token ?? '').isEmpty || site.isEmpty) return 0;
+  final at = int.tryParse(await api.keep.read(kLiveAt) ?? '') ?? 0;
+  if (DateTime.now().millisecondsSinceEpoch - at < 150000) return 0;
+  var email = '';
+  try {
+    final j = jsonDecode(await api.keep.read(Session.kSnap) ?? '{}');
+    if (j is Map) email = '${j['email'] ?? ''}';
+  } catch (_) {/* nothing kept: nothing to send */}
+  if (email.isEmpty) return 0;
+  final key = 'kept_${email.toLowerCase()}';
+  Future<List<Map<String, dynamic>>> read() async {
+    try {
+      final j = jsonDecode(await api.keep.read(key) ?? '[]');
+      return j is List ? j.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList() : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  final mine = (await read()).where((x) => x['site'] == site && x['state'] == 'waiting').toList();
+  if (mine.isEmpty) return 0;
+  final sent = <String>{}, done = <Map<String, dynamic>>[];
+  for (final x in mine) {
+    final (what, _) = await Session.sendOneKept(api, x, background: true);
+    done.add(x); // (its photos sent already are remembered with it, also when it waits)
+    if (what == 'wait') break;
+    if (what == 'sent') {
+      Session.dropKeptFiles(x);
+      sent.add('${x['rid']}');
+    }
+  }
+  // the list as it is on the phone NOW (the app may have been opened meanwhile): what was sent leaves it; a refused one gets its words
+  final now = await read();
+  for (final x in done) {
+    final i = now.indexWhere((y) => y['rid'] == x['rid']);
+    if (i >= 0 && !sent.contains('${x['rid']}')) now[i] = x;
+  }
+  now.removeWhere((y) => sent.contains('${y['rid']}'));
+  await api.keep.write(key, now.isEmpty ? null : jsonEncode(now));
+  return sent.length;
 }

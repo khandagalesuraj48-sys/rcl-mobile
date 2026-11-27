@@ -22,6 +22,7 @@ import '../ui/attend_strip.dart';
 import '../ui/mess_card.dart';
 import '../ui/brand.dart' show ClientMark, ProductBlock;
 import '../ui/motion.dart';
+import '../ui/net_chip.dart' show NetChip;
 import '../ui/mail_strip.dart';
 import '../ui/ask_bot.dart';
 import '../ui/push_back.dart';
@@ -184,6 +185,10 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
   /* (3.145.0, asked 19-11-2026: "jewa jewa app open krel to pop up yeil updet cha … close ch option pn de") a newer version: its
    * Update on Home, and "Update to …?" (Update / Close) once in every opening – never a screen that stops the work */
   void _offer(Session s) {
+    if (movePlay()) {
+      offerMove(context); // (27-11-2026) the app given by its file: the Play Store's app instead – no file of ours any more
+      return;
+    }
     checkUpdate(s.api, beta: s.tester).then((u) {
       if (!mounted || u == null) return;
       setState(() => update = u);
@@ -693,7 +698,11 @@ class _HomeTabState extends State<HomeTab> with LiveWhenSeen<HomeTab> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 14, 0, 0),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(_hello, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: C.greenDark)),
+                        // (3.171.0 patch 4 – SNI picture 1, option A) on Home the network's chip sits at the end of the greeting line
+                        Row(children: [
+                          Expanded(child: Text(_hello, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: C.greenDark))),
+                          const Padding(padding: EdgeInsets.only(right: 6), child: IntrinsicWidth(child: SizedBox(height: 20, child: OverflowBox(maxHeight: 26, child: NetChip(dark: false, pad: false))))),
+                        ]),
                         Row(children: [
                           Flexible(child: Text(first.isEmpty ? 'Namaskar' : first, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, height: 1.15))),
                           const SizedBox(width: 6),

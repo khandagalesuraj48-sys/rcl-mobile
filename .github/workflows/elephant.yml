@@ -1,0 +1,122 @@
+# ELEPHANT – HR's own app for the Google Play Store (27-11-2026, his words: "ata he prtek app vegli karaychi aahe jas apan falcon keli
+# ani lion madhe connect keli"; his answers: each module its own app like FALCON, HR first, its name ELEPHANT). Started by hand: Actions →
+# elephant → Run workflow (main). The SAME code as LION (lib/core/app_kind.dart): built with RCL_STORE=elephant (the package
+# si.sketchline.elephant, the name "Sketchline Elephant" – android/app/src/elephant/AndroidManifest.xml) and --dart-define=APP=elephant
+# (HR's pages only). It makes ONE signed bundle (.aab), released by Shorebird ("<version>+<200000 + run>" – never the same as LION's),
+# signed with the same Play upload key of Sketchline Industries (the private bucket app-keys). Nothing is sent to Google: he makes the
+# app in the Play Console and puts the .aab there himself. Before the first run: Firebase must know si.sketchline.elephant (the run
+# says what to do).
+name: elephant
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: elephant
+  cancel-in-progress: false
+jobs:
+  elephant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
+      SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL || secrets.FALCON_SUPABASE_URL }}   # (3.171.0) FALCON inside the app (tool/falcon_defines.sh)
+      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY || secrets.FALCON_SUPABASE_KEY }}
+      FALCON_SERVER: ${{ vars.FALCON_SERVER || secrets.FALCON_SERVER }}
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+      RCL_STORE: elephant
+    steps:
+      - uses: actions/checkout@v5
+      - name: The version and its number
+        run: |
+          set -e
+          VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          BN=$(( 200000 + GITHUB_RUN_NUMBER ))
+          { echo "VER=$VER"; echo "BN=$BN"; } >> "$GITHUB_ENV"
+          echo "::notice::ELEPHANT (HR): Sketchline Elephant $VER ($BN) of $GITHUB_REF_NAME"
+      - name: The two settings
+        run: |
+          if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "::error::Add PORTAL_SUPABASE_URL and PORTAL_SUPABASE_KEY in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          SB_URL="${SB_URL%/}"; echo "SB_URL=$SB_URL" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      # (21-11-2026, his word: "sketchline name haw aahe") THE PLAY STORE'S OWN UPLOAD KEY – in the name of Sketchline Industries. Made
+      # ONCE (21-11-2026, on the branch "play" – a random secret word nobody sees), kept only in the private bucket app-keys beside the
+      # key of the app given by its file. Google keeps the app's real signing key and knows THIS upload key (the bundles of 21 / 22-11);
+      # (27-11-2026) it is never made again here – a bundle signed with another key (the run of 27-11 #6, Rachana's key) is refused.
+      - name: Upload key of the Play Store's app (made once; kept only in the private bucket app-keys)
+        run: |
+          set -e
+          cd android
+          get() { curl -sS --max-time 60 -o "$2" -w "%{http_code}" "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY"; }
+          if [ "$(get play-upload-keystore.jks play-upload-keystore.jks)" = "200" ] && [ "$(get play-key.properties key.properties)" = "200" ]; then
+            echo "the Play Store's upload key is there"
+          else
+            # (27-11-2026) never made again: Google knows THIS upload key (the bundles of 21 / 22-11-2026) – a new one would be refused
+            echo "::error::The Play Store's upload key (play-upload-keystore.jks / play-key.properties) is not in the private bucket app-keys. It is the key Google knows – do not make a new one; ask Google Play (Play Console → Test and release → App integrity → upload key reset) if it is lost."; exit 1
+          fi
+          echo "::add-mask::$(grep '^storePassword=' key.properties | cut -d= -f2-)"
+          [ "$(grep '^storeFile=' key.properties | cut -d= -f2-)" = "play-upload-keystore.jks" ] || { echo "::error::play-key.properties does not name the Play upload key"; exit 1; }
+      - name: Firebase settings – the file must know the Play Store's package
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GSJ" ]; then echo "::error::Add GOOGLE_SERVICES_JSON in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          printf '%s' "$GSJ" > android/app/google-services.json
+          python3 - <<'PY'
+          import json, sys
+          j = json.load(open('android/app/google-services.json'))
+          names = [c.get('client_info', {}).get('android_client_info', {}).get('package_name', '') for c in j.get('client', [])]
+          if 'si.sketchline.elephant' not in names:
+              print('::error::Firebase does not know the app si.sketchline.elephant yet. Firebase → Project settings → Add app → Android → package si.sketchline.elephant → download google-services.json → put the whole file in the GitHub secret GOOGLE_SERVICES_JSON (it keeps the apps of today too). It has: %s' % names); sys.exit(1)
+          PY
+      - run: flutter pub get
+      - name: Tests (a bundle only when they pass)
+        run: flutter test --exclude-tags golden
+      - name: Room for the Android build (swap, free disk)
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules/@angular "$AGENT_TOOLSDIRECTORY/CodeQL" || true
+          sudo fallocate -l 8G /rcl-swap && sudo chmod 600 /rcl-swap && sudo mkswap /rcl-swap >/dev/null && sudo swapon /rcl-swap || true
+      - uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+      # (27-11-2026) the patch-signing key of the app given by its file (only its PUBLIC part goes into the bundle)
+      - name: Shorebird – its key and the patch-signing key
+        run: |
+          if [ -z "$SHOREBIRD_TOKEN" ]; then echo "::error::Add SHOREBIRD_TOKEN (Shorebird → Settings → Service accounts → lion-github-build → API keys) in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          bash tool/shorebird_keys.sh "$RUNNER_TEMP/sbkeys"
+      - name: Signed bundle for the Play Store (released by Shorebird)
+        run: |
+          set -e
+          GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"
+          FD=$(bash tool/falcon_defines.sh) || exit 1; GM="$GM $FD"   # (3.171.0) FALCON inside the app
+          # (27-11-2026) a patch of this release must be built the SAME way: RCL_STORE=play, PLAY=true, the same defines (patch.yml)
+          shorebird release android --artifact aab --no-confirm --build-name="$VER" --build-number="$BN" --split-debug-info=build/symbols --public-key-path="$RUNNER_TEMP/sbkeys/patch-public.pem" --dart-define=PLAY=true --dart-define=APP=elephant $GM
+          rm -rf "$RUNNER_TEMP/sbkeys"
+          cp build/app/outputs/bundle/release/app-release.aab "elephant-$VER-$BN.aab"
+          echo "::notice::Shorebird release $VER+$BN (ELEPHANT – HR's own app)"
+          # never the debug key: the bundle's signer must be the app's own key
+          OWNER=$(keytool -printcert -jarfile "elephant-$VER-$BN.aab" | grep -m1 '^Owner:' || true)
+          echo "::notice::signed by: $OWNER"
+          case "$OWNER" in *"CN=Sketchline Industries"*) ;; *) echo "::error::the bundle is not signed with the Play Store's upload key (Sketchline Industries)"; exit 1;; esac
+          echo "::notice::elephant-$VER-$BN.aab – $(( $(stat -c %s elephant-$VER-$BN.aab) / 1048576 )) MB"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elephant-bundle
+          path: elephant-*.aab
+          retention-days: 14
+      # the symbol files of this release, 90 days (the lines of a fault the app reports can be read with them)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elephant-symbols
+          path: build/symbols
+          if-no-files-found: ignore
+          retention-days: 90

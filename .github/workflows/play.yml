@@ -1,14 +1,19 @@
 # PLAY – the file for the Google Play Store (3.165.0, asked 21-11-2026: "apan play store war developer account banwalell aahe …
 # first app deychi aahe"). Started by hand: Actions → play → Run workflow (the branch whose code goes to the store – main or beta).
 # It makes ONE signed bundle (.aab) of the Play Store's app:
-#   – the package si.sketchline.lion, the name LION (android/app/src/play/AndroidManifest.xml, RCL_STORE=play);
+#   – the package si.sketchline.lion, the name Sketchline Lion (android/app/src/play/AndroidManifest.xml, RCL_STORE=play);
 #   – no update of its own: Google Play updates it (lib/core/play_update.dart, --dart-define=PLAY=true);
-#   – signed with the key of the app (the private bucket app-keys – never made here, never in a file): for Google it is the
-#     UPLOAD key;
+#   – signed with the Play Store's own UPLOAD key, in the name of Sketchline Industries (made once here, kept only in the
+#     private bucket app-keys – never in a file); Google makes and keeps the app's real signing key;
 #   – its number (version code) is 100000 + this workflow's run number: always higher than the one before, as Play asks.
 # The bundle is kept with the run for 14 days (Artifacts → play-bundle): he downloads it and puts it in the Play Console himself.
 # Nothing is sent to Google from here and no release of this repository is made – the phones of today are not touched.
-# The same GitHub secrets as beta.yml / release.yml.
+# (27-11-2026, his words: "ata play version peksha apan khup pudhe gelo aahot … aaj lagech prt ekda play store war new updet aab file
+# deu jene krun apk and play store same astil"; with his permanent rule of 25-11-2026: the app's updates without the store, for the
+# Play Store's app too) the bundle is made and RELEASED BY SHOREBIRD: the release "<version>+<100000 + run>" in Shorebird, so a later
+# fix of the Dart code reaches the Play Store's phones as a patch too (patch.yml, "Which app": play / both) – the same patch-signing
+# key as the app given by its file. Google Play still gives a new bundle when the native part changes.
+# The same GitHub secrets as beta.yml / release.yml, and SHOREBIRD_TOKEN.
 name: play
 on:
   workflow_dispatch:
@@ -25,6 +30,10 @@ jobs:
       SB_URL: ${{ secrets.PORTAL_SUPABASE_URL }}
       SB_KEY: ${{ secrets.PORTAL_SUPABASE_KEY }}
       MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      FALCON_SUPABASE_URL: ${{ vars.FALCON_SUPABASE_URL || secrets.FALCON_SUPABASE_URL }}   # (3.171.0) FALCON inside the app (tool/falcon_defines.sh)
+      FALCON_SUPABASE_KEY: ${{ vars.FALCON_SUPABASE_KEY || secrets.FALCON_SUPABASE_KEY }}
+      FALCON_SERVER: ${{ vars.FALCON_SERVER || secrets.FALCON_SERVER }}
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
       RCL_STORE: play
     steps:
       - uses: actions/checkout@v5
@@ -34,7 +43,7 @@ jobs:
           VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           BN=$(( 100000 + GITHUB_RUN_NUMBER ))
           { echo "VER=$VER"; echo "BN=$BN"; } >> "$GITHUB_ENV"
-          echo "::notice::Play Store: LION $VER ($BN) of $GITHUB_REF_NAME"
+          echo "::notice::Play Store: Sketchline Lion $VER ($BN) of $GITHUB_REF_NAME"
       - name: The two settings
         run: |
           if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "::error::Add PORTAL_SUPABASE_URL and PORTAL_SUPABASE_KEY in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
@@ -47,13 +56,23 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Signing key (the app's own – kept only in the private bucket app-keys; never made here)
+      # (21-11-2026, his word: "sketchline name haw aahe") THE PLAY STORE'S OWN UPLOAD KEY – in the name of Sketchline Industries. Made
+      # ONCE (21-11-2026, on the branch "play" – a random secret word nobody sees), kept only in the private bucket app-keys beside the
+      # key of the app given by its file. Google keeps the app's real signing key and knows THIS upload key (the bundles of 21 / 22-11);
+      # (27-11-2026) it is never made again here – a bundle signed with another key (the run of 27-11 #6, Rachana's key) is refused.
+      - name: Upload key of the Play Store's app (made once; kept only in the private bucket app-keys)
         run: |
           set -e
           cd android
           get() { curl -sS --max-time 60 -o "$2" -w "%{http_code}" "$SB_URL/storage/v1/object/app-keys/$1" -H "apikey: $SB_KEY"; }
-          [ "$(get upload-keystore.jks upload-keystore.jks)" = "200" ] && [ "$(get key.properties key.properties)" = "200" ] || { echo "::error::The signing key is not in the bucket app-keys – run release.yml once first."; exit 1; }
+          if [ "$(get play-upload-keystore.jks play-upload-keystore.jks)" = "200" ] && [ "$(get play-key.properties key.properties)" = "200" ]; then
+            echo "the Play Store's upload key is there"
+          else
+            # (27-11-2026) never made again: Google knows THIS upload key (the bundles of 21 / 22-11-2026) – a new one would be refused
+            echo "::error::The Play Store's upload key (play-upload-keystore.jks / play-key.properties) is not in the private bucket app-keys. It is the key Google knows – do not make a new one; ask Google Play (Play Console → Test and release → App integrity → upload key reset) if it is lost."; exit 1
+          fi
           echo "::add-mask::$(grep '^storePassword=' key.properties | cut -d= -f2-)"
+          [ "$(grep '^storeFile=' key.properties | cut -d= -f2-)" = "play-upload-keystore.jks" ] || { echo "::error::play-key.properties does not name the Play upload key"; exit 1; }
       - name: Firebase settings – the file must know the Play Store's package
         env:
           GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
@@ -74,19 +93,38 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules/@angular "$AGENT_TOOLSDIRECTORY/CodeQL" || true
           sudo fallocate -l 8G /rcl-swap && sudo chmod 600 /rcl-swap && sudo mkswap /rcl-swap >/dev/null && sudo swapon /rcl-swap || true
-      - name: Signed bundle for the Play Store
+      - uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+      # (27-11-2026) the patch-signing key of the app given by its file (only its PUBLIC part goes into the bundle)
+      - name: Shorebird – its key and the patch-signing key
+        run: |
+          if [ -z "$SHOREBIRD_TOKEN" ]; then echo "::error::Add SHOREBIRD_TOKEN (Shorebird → Settings → Service accounts → lion-github-build → API keys) in GitHub → this repository → Settings → Secrets and variables → Actions."; exit 1; fi
+          bash tool/shorebird_keys.sh "$RUNNER_TEMP/sbkeys"
+      - name: Signed bundle for the Play Store (released by Shorebird)
         run: |
           set -e
           GM=""; [ -n "$MAPS_API_KEY" ] && GM="--dart-define=GMAPS=true"
-          flutter build appbundle --release --build-name="$VER" --build-number="$BN" --dart-define=PLAY=true $GM
+          FD=$(bash tool/falcon_defines.sh) || exit 1; GM="$GM $FD"   # (3.171.0) FALCON inside the app
+          # (27-11-2026) a patch of this release must be built the SAME way: RCL_STORE=play, PLAY=true, the same defines (patch.yml)
+          shorebird release android --artifact aab --no-confirm --build-name="$VER" --build-number="$BN" --split-debug-info=build/symbols --public-key-path="$RUNNER_TEMP/sbkeys/patch-public.pem" --dart-define=PLAY=true $GM
+          rm -rf "$RUNNER_TEMP/sbkeys"
           cp build/app/outputs/bundle/release/app-release.aab "lion-$VER-$BN.aab"
+          echo "::notice::Shorebird release $VER+$BN (the Play Store's app) – its patches: Actions → patch → \"Which app\": play or both"
           # never the debug key: the bundle's signer must be the app's own key
           OWNER=$(keytool -printcert -jarfile "lion-$VER-$BN.aab" | grep -m1 '^Owner:' || true)
           echo "::notice::signed by: $OWNER"
-          case "$OWNER" in *"Android Debug"*|"") echo "::error::the bundle is not signed with the app's key"; exit 1;; esac
+          case "$OWNER" in *"CN=Sketchline Industries"*) ;; *) echo "::error::the bundle is not signed with the Play Store's upload key (Sketchline Industries)"; exit 1;; esac
           echo "::notice::lion-$VER-$BN.aab – $(( $(stat -c %s lion-$VER-$BN.aab) / 1048576 )) MB"
       - uses: actions/upload-artifact@v4
         with:
           name: play-bundle
           path: lion-*.aab
           retention-days: 14
+      # the symbol files of this release, 90 days (the lines of a fault the app reports can be read with them)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: play-symbols
+          path: build/symbols
+          if-no-files-found: ignore
+          retention-days: 90

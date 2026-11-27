@@ -18,6 +18,7 @@ import 'core/device.dart';
 import 'core/lang.dart' show Lang, bi;
 import 'core/lock_gate.dart';
 import 'core/lost_photo.dart';
+import 'core/net.dart';
 import 'core/product_brand.dart';
 import 'core/push.dart' show PushTap;
 import 'core/push_fcm.dart';
@@ -26,11 +27,13 @@ import 'core/scan_link.dart';
 import 'core/session.dart';
 import 'core/play_update.dart' show playWatch;
 import 'core/update.dart' show updateContext, updateWatch, updateAway, updateBack, tellAppTag;
+import 'core/app_kind.dart' show isElephant;
 import 'screens/consent_gate.dart';
 import 'screens/docs_gate.dart';
 import 'screens/call.dart';
 import 'screens/lock.dart';
 import 'screens/login.dart';
+import 'screens/module_home.dart';
 import 'screens/scan_link_layer.dart';
 import 'screens/hr_shell.dart';
 import 'screens/shell.dart';
@@ -43,6 +46,7 @@ import 'ui/t.dart';
 import 'ui/live.dart' show appRoutes;
 import 'ui/voice_box.dart' show VoiceLayer;
 import 'ui/motion.dart';
+import 'ui/net_chip.dart';
 
 /// The sign-in kept in the phone's own safe (Android Keystore / iOS Keychain) – never in plain files.
 class SecureKeep implements Keep {
@@ -55,11 +59,17 @@ class SecureKeep implements Keep {
 
 /// (3.1.8) With the app closed: Android runs this about every 15 minutes (an alarm) – Approvals asked once, a notification when
 /// something waits for him or was sent back to him (alerts.dart).
+/// (3.171.0 patch 4, his pick of 25-11-2026) and first: the entries kept on this phone with no network go out by themselves
+/// (core/session.dart sendKeptInBackground – Diesel Issue / Inward / Transfer, Log Book).
 @pragma('vm:entry-point')
 Future<void> alertsInBackground() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final api = Api(portalUrl: kPortalUrl, keep: SecureKeep());
   try {
-    await backgroundAlerts(Api(portalUrl: kPortalUrl, keep: SecureKeep()));
+    await sendKeptInBackground(api);
+  } catch (_) {/* the next time */}
+  try {
+    await backgroundAlerts(api);
   } catch (_) {/* the next time */}
 }
 
@@ -141,6 +151,11 @@ void main() {
   () async {
     if (await Fcm.start(pushInBackground)) Fcm.listen(session);
   }();
+  // (3.171.0 patch 4 – SNI) the network as measured from the app's own requests (core/net.dart): on while the app is open (not in the
+  // background alarm); idle for 30 s in front → one small request to the Portal
+  NetMonitor.i
+    ..on = true
+    ..probe = session.api.probe;
   runApp(RclApp(session: session, lock: lock));
   Alerts.launchedWith().then((r) {
     if (r != null) Fcm.tapped(session, PushTap.of(r.payload, r.actionId));
@@ -266,6 +281,7 @@ class RclApp extends StatelessWidget {
         // (3.97.0, his design 12) Site mode: its own look (thicker lines, bigger buttons) – the app made again only when it is switched
         child: LangScope(child: ValueListenableBuilder<bool>(valueListenable: session.siteMode, builder: (_, site, __) => ListenableBuilder(listenable: HrSkin.i, builder: (_, __) => MaterialApp(
           navigatorKey: appNav,
+          scaffoldMessengerKey: netMessenger, // (SNI) the network's line under the header (ui/net_chip.dart NetHost)
           navigatorObservers: [appRoutes], // (update-155) a tab under a closed screen loads if it is old (ui/live.dart)
           title: 'Sketchline', // (3.124.0) the product's name
           debugShowCheckedModeBanner: false,
@@ -287,7 +303,9 @@ class RclApp extends StatelessWidget {
                 SessionScope.read(context).touch();
               },
               // (3.41.0) a "Scan with Mobile" QR code waiting: opened as soon as he is signed in, unlocked and at its site
-              child: LockLayer(lock: lock, nav: appNav, child: ScanLinkLayer(nav: appNav, lock: lock, child: CallLayer(nav: appNav, child: VoiceLayer(child: child!)))),
+              // (3.171.0 patch 4 – SNI) NetHost: the network's rhythm while the app is in front, its line under the header (picture 4) and the
+              // chip hanging on a full header (picture 2) – under the lock and the call's layers
+              child: LockLayer(lock: lock, nav: appNav, child: ScanLinkLayer(nav: appNav, lock: lock, child: CallLayer(nav: appNav, child: VoiceLayer(child: NetHost(child: child!))))),
             );
             return k == 1.0 ? app : MediaQuery(data: m.copyWith(textScaler: TextScaler.linear(m.textScaler.scale(1) * k)), child: app);
           },
@@ -314,12 +332,23 @@ class Gate extends StatelessWidget {
       child: switch (s.stage) {
         // (3.37.0) the start screen – one screen while the kept sign-in is checked and the site is opened: its bar goes on
         Stage.starting || Stage.opening => SplashScreen(key: const ValueKey('opening'), progress: s.boot),
-        Stage.signedOut => const LoginScreen(key: ValueKey('login')),
+        // (3.173.0) the company code first – the sign-in of that company after it (screens/login.dart)
+        Stage.signedOut => LoginScreen(key: const ValueKey('login'), askCompany: !isElephant && s.companyCode.isEmpty),
         Stage.setPassword => const LoginScreen(key: ValueKey('setpw'), setPassword: true),
         Stage.pickSite => const SitePickScreen(key: ValueKey('site')),
         // (3.108.0) HR only at this site: the app's own pages for attendance
         // (20-11-2026) the documents gate: before Home, an employee whose required papers are not done uploads them (DocsGateHost)
-        Stage.ready => ConsentGate(key: ValueKey('consent-${s.site?.code}'), child: DocsGateHost(key: ValueKey('gate-${s.site?.code}'), child: s.hrOnly ? HrShell(key: ValueKey('hr-${s.site?.code}')) : Shell(key: ValueKey('app-${s.site?.code}')))),
+        // (3.173.0, the approved design "LION – Modules & Subscription") Vehicle and HR at the site: the site home first; the module
+        // he taps opens its own pages; Back there brings him back to it (screens/module_home.dart)
+        Stage.ready => ConsentGate(
+            key: ValueKey('consent-${s.site?.code}'),
+            child: s.moduleHome
+                ? ModuleHome(key: ValueKey('mods-${s.site?.code}'))
+                : DocsGateHost(
+                    key: ValueKey('gate-${s.site?.code}'),
+                    child: s.showHr
+                        ? PayGate(child: BackToMods(child: HrShell(key: ValueKey('hr-${s.site?.code}'))))
+                        : Shell(key: ValueKey('app-${s.site?.code}')))),
         Stage.waiting => const Waiting(key: ValueKey('wait')),
       },
     );

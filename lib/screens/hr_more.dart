@@ -13,6 +13,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/material.dart' as m show Text;
 
 import '../core/api.dart' show ApiError;
+import '../core/code_words.dart';
 import '../ui/design.dart';
 import '../ui/hr_look.dart';
 import '../ui/hr_skin.dart';
@@ -49,7 +50,7 @@ class HrSignIn extends StatefulWidget {
 class _HrSignInState extends State<HrSignIn> {
   final pass = TextEditingController(), code = TextEditingController();
   bool busy = false, otp = false, sent = false, hide = true;
-  String err = '';
+  String err = '', left = ''; // (25-11-2026) left: how many more codes may be asked for
 
   @override
   void initState() {
@@ -86,7 +87,7 @@ class _HrSignInState extends State<HrSignIn> {
         widget.onDone();
       }
     } on ApiError catch (e) {
-      if (mounted) setState(() => err = e.toString());
+      if (mounted) setState(() => err = codeError(e)); // (25-11-2026) a wrong code: the tries left; blocked: the minutes to wait
     } catch (_) {
       if (mounted) setState(() => err = _t('Something went wrong – please try again.', 'काहीतरी चुकले – पुन्हा करा.'));
     } finally {
@@ -126,10 +127,16 @@ class _HrSignInState extends State<HrSignIn> {
           const SizedBox(height: 8),
           if (!sent)
             OutlinedButton(key: const Key('hr-signin-send'), onPressed: busy ? null : () => _run(() async {
-                  await api.auth({'action': 'otpSend', 'email': _mail});
-                  if (mounted) setState(() => sent = true);
+                  final r = await api.auth({'action': 'otpSend', 'email': _mail});
+                  if (mounted) {
+                    setState(() {
+                      sent = true;
+                      left = codesLeftLine(r['left']);
+                    });
+                  }
                 }, open: false), child: const Text('Send me a code', mr: 'मला code पाठवा')),
           if (sent) ...[
+            if (left.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10), child: m.Text(left, key: const Key('hr-signin-left'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: sk.muted, height: 1.35))),
             TextField(key: const Key('hr-signin-code'), controller: code, keyboardType: TextInputType.number, maxLength: 6, decoration: InputDecoration(labelText: _t('The code of your e-mail', 'E-mail वर आलेला code'), border: const OutlineInputBorder())),
             FilledButton(key: const Key('hr-signin-code-go'), onPressed: busy ? null : () => _run(() async => api.auth({'action': 'otpLogin', 'email': _mail, 'code': code.text.trim()})), child: const Text('Open HR', mr: 'HR उघडा')),
           ],

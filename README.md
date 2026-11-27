@@ -15,6 +15,139 @@ has its **own phone screens** (the desktop web stays as it is), on the same serv
   Inward and Transfer as on the web. The server decides everything; its warnings come back as "Save anyway?".
 * **Reports**, **Me** (role, site, version / update, My settings, the full web ERP, sign out).
 
+**3.171.0 patch 4 – SNI, the network as measured (25-11-2026 – the SNI audit and its five pictures; his approval: "he sagle tu dilel
+screen pn ok aahet asch banaw he kam chalu kr"; his answers: offline only Diesel Issue / Transfer / Inward and the Log Book as before –
+"baki kahich offline nakoy"; "wifi ki mobile data as nko olkhayla"; "user la app updet as nahi disle pahije"; with the app closed: the
+15-minute patch way):** ONE monitor for the app (`core/net.dart`), fed only by the app's own requests – Api's client measures every request
+of our servers (the Portal, Mechanical, HR, Store, Engineering, Purchase – `Api.serverOf`): its time and how it ended. The rules: the last
+10 answers of the last 2 minutes – middle time under 800 ms GOOD, 800 ms or more (or one over 5 s) WEAK, 2 failures UNSTABLE; no answer →
+RECONNECTING while Android's own check (connectivitycheck.gstatic.com/generate_204, once in 10 s at most) is asked: it answers → SERVER
+DOWN, it fails too → OFFLINE; a better state shows after it held 3 s. Idle in front for 30 s: one small request to the Portal
+(`/api/jwks`); in the background nothing. What he sees (`ui/net_chip.dart`): the chip on every page – in the header's row where there is room (Home's
+greeting line, HR Home), on the site's line (Entries, Reports), under his name (Me), and where a header has no room (`withAsk`, `hrHead`,
+My attendance) hanging on its lower edge at the right (`NetPin` – drawn by `NetHost` only while that page is in front) – "240 ms", "Weak · 1.8 s", "Reconnecting", "Server down", "Offline",
+"Checking" before the first answer; a tap: each server measured apart, Android's check, the last change, "Check now"; one line under the
+header (the app's message bar) for slow (a request waiting over 5 s), reconnecting, server down, no internet – × hides it until the state
+changes. HR pages shown from their saved copy (Home, Attendance month, Leave, My documents – `HrCache.savedAt`) say "Saved 10:12 AM ·
+refreshing…", then "Live · just now"; the server not answering: "Saved 10:12 AM · not live"; Leave's Apply waits for the live answer. **With
+the app closed**, the entries kept on the phone with no network go out with the existing Android alarm (about every 15 minutes –
+`sendKeptInBackground`, the same sender as with the app open: `Session.sendOneKept`, the same number, saved once); not while the app is
+open (it sends them at once itself). No Wi-Fi / mobile reading, no new plugin, no asset: Dart only – a Shorebird patch of 3.171.0 (251).
+Not verified: a real phone (the times, the alarm sending with the app closed – Shorebird's patch in the alarm's own engine is to be seen on
+a phone), FALCON (its own app, next).
+
+**ELEPHANT – HR's own app, from the same code (27-11-2026, his words: "ata he prtek app vegli karaychi aahe jas apan falcon keli ani
+lion madhe connect keli … pratek app ata wegli asel bundel asel tr lion madhe connect asel"; his answers: each module its own app like
+FALCON, its own Play Store page and inside LION too; HR first; its name ELEPHANT):** `lib/core/app_kind.dart` – `APP=lion` (the
+bundle, as before) or `APP=elephant`. ELEPHANT: only the sites where he has HR (`hr` / `hrme`), always the attendance app's pages
+(Home, Attendance, Leave, papers, Me …) – Mechanical is never opened, not even where he has it (that is LION's); no HR anywhere: "This
+app is for HR … your other work is in Sketchline Lion". Android: `RCL_STORE=elephant` → `si.sketchline.elephant`, "Sketchline Elephant"
+(`android/app/src/elephant/AndroidManifest.xml` – the name his to change), no "install a file" permission; its Play Store page in Share
+and Google Play's update. `.github/workflows/elephant.yml` (Actions → elephant): the .aab released by Shorebird as
+`<version>+<200000 + run>`, signed with the Sketchline Play upload key. **His steps before the first run:** Firebase → add the Android
+app `si.sketchline.elephant` → the new google-services.json into the secret `GOOGLE_SERVICES_JSON`; the Google Maps key → add the
+package; Play Console → Create app. **Next:** its logo (pictures first – the lion is shown until then), its patches in `patch.yml`.
+LION is not changed.
+
+**3.173.0 (beta) – one LION app: the company code, the site home with Vehicle and HR, HR's subscription (27-11-2026 – the approved
+design "LION – Modules & Subscription"; his words: "ekach app asel lion wali tyache madhe tab astil modual che … app login krayche adhi
+company code vichrel nantr logn page yeil … VTR madhe gel ki ek mast greting ani ek unique ui madhe modual distil … Mechanical la name
+apan ata VEHICLE … HR MODUAL MADHE PAYMENT LAWAYCHE AAHE"; "HE BETA VERSION WAR JAIL JYANA BETA ACCESS AHE TYANACH DISEL"; later: "montly
+… ki days war … single and bulk … demo sathi upi id … payment page war gst … dakhawayche nahi fkt line including all taxes"):**
+* **The company code first** (board 1): no code on this phone yet – the sign-in screen asks "Company code" (the ERP's `/api/company`:
+  one code, one answer, never the list); the code is kept on the phone and shown on the navy (tap → "Change company?"). A company whose
+  sign-in is at another address is not opened by this app yet ("signs in at its own address") – today only RCL exists. ELEPHANT asks no
+  code. A phone already signed in is not asked until it signs out.
+* **The site home** (board 4, `screens/module_home.dart`): at a site where he has **Vehicle** (Mechanical) and **HR** (the office's or
+  "My HR"), the site opens on the greeting ("Good morning, Sujit", the day, "Have a safe and productive day"), the site (tap → another
+  site) and the two modules; **Vehicle** opens Mechanical's Home as before, **HR** the attendance app's pages. Back on either Home – and
+  Me → "Your modules" (a phone without a Back key) – brings him back; another site opens on its site home again. One module only at a
+  site: it opens at once, as before. His start page (Settings) opens once for an opening of the site, not at every return to Vehicle.
+* **HR's subscription** (boards 5a / 5b, the Portal's step 16): the HR tile says "Subscription due" / "Paused – pay to open" / "Free
+  trial till …" (the Portal's `/api/pay` `mine`; a Portal of before: nothing shown). The **Pay** screen: the company pays (Bulk – the
+  users counted per site, one user's price and the total) or each employee pays (Single – his plan), for **1 month** or the **days**
+  the Portal set; only **"Including all taxes"** – never the GST apart. A person whose company pays and who is not its HR admin is told
+  to tell his admin. **Pay** opens Razorpay's page outside the app, or – the demo, payments straight to a UPI ID – his UPI app with the
+  amount and the remark (`SKL-…`); back in the app (or pulled down) it is read again: paid → "Paid – thank you. HR is open." (HR's
+  sign-in made again, so its new ticket carries the payment). A UPI payment opens HR only after the Super Admin pressed **Received** in
+  the Portal. HR's answer "paused" (402 – rcl-hr `lib/paygate.js`) shows the Pay screen **in place of HR's pages** until it is paid –
+  nothing is deleted. Released on **beta** only (the testers), with the Portal's "Who is asked to pay" on "Only the testers".
+* Not built: "Pay every month by itself" (UPI Autopay – Razorpay's mandates); festival / birthday wishes on the site home (no source of
+  them yet); another company's own Portal address in the app. The app's calls ring while Vehicle is open (as on Vehicle's pages before),
+  not on HR's pages.
+
+**3.172.0 – the last app given by its file (27-11-2026, his words: "ekda he new build phone play store la gel ki apan apk purn band krnar
+aahot"; his answers: it keeps working until the person has the Play Store's app, and this last version says so with the Play Store's
+button):** in the app given by its file (Android – not the Play Store's app, an iPhone or a computer), at every opening, once:
+**"Sketchline Lion is on Google Play"** – Open Play Store (its page) / Later; it says the app keeps working until he moves and to open
+it once with the network on before removing it (the entries kept on the phone are sent). No file of ours is offered any more – no APK
+after this one (`core/update.dart` `movePlay` / `offerMove`, Home and HR's opening). With it, Mechanical's `/app` page gives the Play
+Store's app (rclerp update-281). Released as beta → stable as usual, once the Play Store's update (3.171.0 / 100007) is live.
+**Taken back the same day (27-11-2026, his words: "apk sathi je updet diley te roll back kr … play store cha pop up pn band kr to
+nahi disla pahije"):** the GitHub release 3.172.0 (252) is a pre-release (he set it – nothing deleted): a phone of 3.171 is not offered
+it; `movePlay` is off (`() => false`), so no phone shows the popup and the app given by its file looks for its own update again, as
+before; a phone that took 3.172.0 gets it by a patch of 3.172.0+252 (patch.yml, "file"). The Play Store's app is not touched.
+
+**3.171.0 patch 3 (25-11-2026 – his word with FALCON's "5.9 km away" and Google Maps' 12 km: "app ase ase fake imformation denare tr
+kahich thik nahi chalnar"):** both points were right – the distance was the straight line. FALCON inside the app (its pin → its "road
+distance" commit) and the Mess card / strip now say how far **by road** (FALCON's server step /api/route – Google's Routes API, the key
+only in FALCON's Vercel) once FALCON is ready for him; until then "5.9 km in a straight line" – in English, मराठी and हिंदी
+(`messFar`, `falconRoadMetres`). Dart only – a Shorebird patch of 3.171.0 (251).
+
+**A new password with an e-mail code; the code limits (25-11-2026 – a Shorebird patch of 3.171.0, with the Portal's pull request
+"otp-password"; his words: "login with otp krtan given password nko aahe new set kru shakel … forgot kru shkel email la otp yeil forgat
+krun new set kru shakel … resend 6 time tya nantr 15 minute cha block pratek invalid otp or otp request la remaining kiti sangitle jail";
+his answers: 6 codes in all, 6 wrong codes, "Forgot password" for everybody but the Super Admin):** signed in with a code (e-mail or
+WhatsApp) on a given password, "Set your own password" asks only the new password twice (`Session.byCode` – the Portal's `byCode`, also
+from "me" when the app opens again; after the Portal's 30 minutes the given one is asked again). **"Forgot password?"** with the e-mail
+code switched on turns the card: the e-mail, "Send code", the code and the new password twice, "Set the new password" (`otpReset`) –
+the app opens; switched off, the help of before. After every code sent – sign-in by e-mail or WhatsApp, "Forgot password?", "Verify your
+e-mail", HR's sign-in again – how many more codes may be asked for; a wrong code, how many tries are left; blocked, the minutes to wait
+(`core/code_words.dart`, in English / मराठी / हिंदी; the Portal counts – the app only says what it answered; `ApiError.data` carries its
+`left` / `wait`). Dart only, no asset. Not verified: a real phone, a real e-mail.
+
+**3.171.0 patch 2 (25-11-2026 – his words: "hr aso erp aso app open zalel zale tyache maghe auto falcon pn on hoil … falcon opening chi
+screen ti yenar nahi"; "final back erp hr madhe jail app band nahi"; "kal pahile mess pasun 20 km lamb hoto but app sangat hote 5 km … ekdm
+perfect"; and his choice: FALCON always inside the ERP / HR app):** the Mess opens FALCON **inside this app first** – also when the FALCON
+app is on the phone (its app only where FALCON cannot run inside); FALCON is **made ready behind this app** when the Mess card is there
+(`warmFalconInside`: HR's pass → FALCON started, signed in, his home read – once a person a run, ended with the sign-out:
+`Session.signOutAlso`), so a tap opens straight on FALCON's home, without a pass and without FALCON's opening screen; one back returns here.
+The Mess card's distance only from an **exact** reading (± 100 m – `messExact`; a rough one from the towers can be kilometres off).
+FALCON's pin moves to its "place exact" commit (the place in about a second, Parcel only outside the mess, no HR cards, "‹ HR" back here
+instead of closing the app, Google's map everywhere). Dart only – the version stays 3.171.0; a Shorebird patch of 3.171.0 (251).
+
+**3.171.0 patch 1 (25-11-2026 – his words: "erp aso attendace app aso ki hr app aso … location fetching la time ghetey location on asla tri
+sudha he khup fast hoyla haw … ha app la user updet kryar nhi"):** the phone's place comes fast – `lib/core/gps_fast.dart`, for attendance
+(`AttendKit.where`) and the ERP's photos (`whereNow`): the phone's own reading of the last 15 s is taken at once; else the first new reading,
+asked every second (the plugin asked once in 5 s when no interval was given); on Android 13+ the phone may give its reading of the last 15 s
+at once too. Attendance: a reading less exact than the site's "exact to … m" is not refused at once – new readings are asked for until one is,
+within the same 25 s; Home's reading of a moment ago is used only when it is exact enough and inside (else the phone is read once more,
+now); a reading still going on is waited for (no second one beside it); the read-ahead's 20 s count from the reading's own time. A made-up
+location, Developer Options, the work place, the server's checks – as before. The background places (`hr_track.dart`, `vl_gps.dart`) are
+not changed. FALCON inside this app: its pin (`pubspec.yaml`) moves to FALCONAPK's commit with the same fast place (its `lib/core/geo.dart`:
+the reading of the last 15 s at once, then asked every second). **Dart only – sent as a Shorebird patch of 3.171.0 (251)** (Actions →
+patch), no new app file; the version stays 3.171.0. The FALCON app itself (FALCONAPK, not on Shorebird) gets it with its own next update.
+
+**Version 3.171.0 (23-11-2026 – his words: "app nasel tr ji app aahe tyatch open hoyla haw"; "jas ki bgh erp app madhe apan mark in button
+diley te dable ki hr pn tya madhech open hot"; "falcon seprate pn chalayla pahije ani erp hr madeh pn chalayla pahije"):** the Mess card / strip
+opens the FALCON app when it is on the phone (as before); when it is NOT, FALCON's own screens open INSIDE this app as one of its pages
+(`lib/screens/falcon_inside.dart`) – the FALCON app's own code (package `falcon` from FALCONAPK, pinned by commit in `pubspec.yaml`;
+its `lib/embed.dart`), signed in with HR's pass (no second sign-in), FALCON's database rules and server; "Back to RCL app" on FALCON's
+home and the phone's back return. The FALCON app keeps working on its own. Android, in a build that carries FALCON's settings: GitHub →
+this repository → Variables `FALCON_SUPABASE_URL`, `FALCON_SUPABASE_KEY` (the publishable key – a secret key stops the build),
+`FALCON_SERVER` (`tool/falcon_defines.sh`); without them, an iPhone, or a fault: FALCON's web as before.
+
+**Version 3.170.0 (23-11-2026 – the Super Admin saw nothing of the Mess: "kahich disat nahi yellow pn nahi" → "ho kr"):** while HR is
+asked for the Mess card the Super Admin sees "Mess (FALCON) – Super Admin: asking HR …" at once (never an empty space; an answer
+without words is said too); on HR Home he sees the card – or why there is none – even without a day of his own (he is nobody of the
+Employee Master). Everybody else: as before (`lib/ui/mess_card.dart`, `lib/screens/hr_shell.dart`).
+
+**Version 3.169.0 (23-11-2026 – asked: "emplyee back dated leave pn apply krta yawa ok ata krta yet nahi"; "ajun mala ERP and HR madhe FALCON
+connect disat nahiye"):** the leave form's From may be any day of THIS month (the HR server takes a leave from the 1st of the month while the
+month is open – rcl-hr act_leave of 21-11-2026; the calendar began at today). The Mess card: when it is not there, the Super Admin sees why –
+HR's own words ("FALCON is not connected to HR yet …", "FALCON did not answer") or "no mess of VTR is in FALCON yet" (`FalconMess.why`,
+`lib/ui/mess_card.dart`); nobody else sees anything, as before.
+
 **Version 3.168.0 (23-11-2026 – asked: "urgent fix kr employee document upload krtana app madhun photo te add krtana app restart hote"):**
 a photo of the camera or the gallery (papers, a leave's note, an entry's attachments – every `pickAttFiles`) is made smaller BY THE PHONE
 (`maxWidth` / `maxHeight` 2000, JPEG 90 – `lib/screens/attach_box.dart`) before the app reads it: a 12–50 MP photo read whole took hundreds
@@ -53,7 +186,7 @@ as before. Not seen: a real phone, a real WhatsApp message.
 **Version 3.165.0 (21-11-2026 – asked: "play store war developer account banwalell aahe … first app deychi aahe"; "si.sketchline.lion
 he tu kr"; "in app updet sadh updet he tr lawaych aahech"):** THE PLAY STORE'S APP – a second way to build the same code
 (`RCL_STORE=play`, `--dart-define=PLAY=true`; Actions → **play** makes the signed `.aab`, he puts it in the Play Console): the package
-`si.sketchline.lion`, named LION, without the "install a file" permission and without the app's own file update – Google Play updates
+`si.sketchline.lion`, named Sketchline Lion (his correction of the same day), without the "install a file" permission and without the app's own file update – Google Play updates
 it (`lib/core/play_update.dart`: Google's sheet once in an opening, the download while he works, put in at the next start or from Me →
 "Install now"); Me has "Auto update" (the two taps in the Play Store – no app can switch that setting) and Share app sends the Play
 Store's page. The code's own name (namespace, Kotlin classes, the iPhone bundle) is `si.sketchline.lion` everywhere; only the app given by its
@@ -1997,7 +2130,7 @@ site's modules as Admin (the Portal lists them all for him); before, the app sen
   * (3.19.1) A phone takes its own processor's APK (`.arm64-v8a.apk` / `.armeabi-v7a.apk`, fingerprint in "apk") – about
     half the size; a release without them: the APK for every phone.
   * Windows (3.19.0): the release's setup (.exe) and its own fingerprint ("win"); the setup closes the app and opens the new one.
-  * iPhone: App Store / TestFlight, later (the Apple Developer account).
+  * iPhone: the App Store / TestFlight (27-11-2026, `appstore.yml` – see "App Store – iPhone"); the app itself downloads nothing on an iPhone.
 
 ## Build
 GitHub Actions (`.github/workflows/build.yml`) runs on every push:
@@ -2032,6 +2165,74 @@ Fonts: Rubik and Noto Sans Devanagari (SIL Open Font License, `assets/fonts/OFL-
   repository's `main` too, the release made the stable one ("latest" when it has an app), then **`tell.yml`** tells every phone.
 * **`tell.yml`**: `version`, `build`, `topic` (`rcl-app-update` or `rcl-app-update-beta`) → `tool/fcm_topic.sh`.
 * Both workflows must be on `main` once (GitHub starts a workflow by hand only when it is on the default branch).
+
+## Updates without the store – Shorebird (25-11-2026)
+His decision: the app's updates without a new store file. The app is Flutter (its own screens – never a web page inside), so the
+web-bundle way (Capacitor) does not apply; **Shorebird** ("code push" for Flutter) is used: a fix of the app's **Dart code** reaches
+the phones as a small **patch**, downloaded in the background at an opening and in force at the next opening.
+* **Account:** Shorebird organization **Sketchline** (Hobby), owner lion@sketchline.si. The app **Sketchline Lion** –
+  `shorebird.yaml` (`app_id`, not a secret). GitHub secret **`SHOREBIRD_TOKEN`** = an API key of the service account
+  `lion-github-build` (role Developer – App manager only to make an app). Never in a file, never in chat.
+* **Releases:** `release.yml` and `beta.yml` build the app WITH Shorebird (`shorebird release android --artifact apk`): the release
+  `<version>+<build>` is kept in Shorebird. A patch reaches only an app released this way – the first such release has to reach
+  everybody once (the APK update; the Play Store and the App Store with their next file).
+* **One file per processor** (3.19.1) is made from Shorebird's file (`tool/abi_apks.sh`: the other processor's folder taken out,
+  signed again, every other entry checked byte for byte) – Shorebird makes one build per version and refuses `--split-per-abi`.
+* **Patch signing:** a key pair made once (`tool/shorebird_keys.sh`), kept only in the private bucket `app-keys`
+  (`shorebird-patch-private.pem` / `shorebird-patch-public.pem`). Every release carries the public key; a phone takes only a patch
+  signed with the private one. Never replaced (an app of before takes only patches signed with its own key).
+* **Release not published** (the box unticked): `--dry-run` – built and checked, nothing sent to Shorebird.
+* **What still needs a new app file (store / APK):** native code (Kotlin, Swift), a new plugin with native parts, a new permission,
+  `AndroidManifest.xml` / `Info.plist`, pictures and other assets, a new Flutter version.
+* **A patch (`patch.yml`, Actions → patch → Run workflow):** on `main` it patches the newest stable release (on `beta` the newest
+  beta), or the release typed as `<version>+<build>` (e.g. `3.171.0+251`). It builds the app from the branch with the release's own
+  settings (build name / number, Google Maps, FALCON, split debug info), runs the tests, and Shorebird compares it with the release:
+  only Dart code may differ – a native / plugin / permission / manifest / asset change is refused (it needs `release.yml`). Signed
+  with the private patch key (read only in that run, removed after it). Box "Send the patch" unticked: `--dry-run`. A phone downloads
+  the patch in the background at an opening and uses it from the next opening. **Beta first:** patch the beta release (run on
+  `beta`), check it on a tester's phone, then the stable one (run on `main`).
+* **A patch that went wrong:** Shorebird console → Sketchline Lion → the release → the patch → **Roll back** – the phones go back to
+  the release by themselves. A phone without internet keeps the version it has; Shorebird being down never stops the app.
+* **The Play Store's app (27-11-2026, his words: "aaj lagech prt ekda play store war new updet aab file deu jene krun apk and play store
+  same astil nantr apan apk band kru"):** `play.yml` makes the bundle WITH Shorebird (`shorebird release android --artifact aab`,
+  `RCL_STORE=play`, `PLAY=true`, the same patch-signing key): the release `<version>+<100000 + run>`. `patch.yml` → **"Which app"**:
+  **both** (default – the file's app and the Play Store's app, two patches of the same code side by side), **file** or **play**; the
+  Play Store's release is the newest bundle of `play.yml` unless typed in `play_release`; only from `main`. The bundles of before
+  27-11-2026 (3.165 / 3.166) were made without Shorebird – a phone gets patches after it took the Play Store's update to a bundle
+  made this way. A native change still needs a new bundle in the Play Console.
+* **The App Store's app (27-11-2026):** `appstore.yml` makes the iPhone app WITH Shorebird (`shorebird release ios`, the same
+  patch-signing key): the release `<version>+<100000 + run>`. `patch.yml` does not know the iPhone yet – an iPhone patch is the next
+  piece of work, after the first app is on TestFlight.
+
+## App Store – iPhone (27-11-2026)
+Asked: "iOS app App Store war update karayche aahe ani install karun ghyayche aahe … GitHub warun tumhi sarv kahi ghyave." No Mac of
+ours: `.github/workflows/appstore.yml` (Actions → **appstore** → Run workflow, on `main` or `beta`) builds, signs and sends the iPhone
+app from GitHub's macOS runner; `ios/fastlane/Fastfile` does the Apple part (lanes `sign` and `upload`).
+* **How Apple is spoken to:** an App Store Connect API **Team key** (role Admin) – GitHub secrets **`ASC_KEY_ID`**, **`ASC_ISSUER_ID`**,
+  **`ASC_KEY_P8`** (the whole text of the `.p8` file, downloadable only once). No Apple ID, password or 2-factor code in a build.
+* **Signing:** the first run makes the **Apple Distribution certificate** with that key and keeps it ONLY in the private bucket
+  **app-keys** (`ios-dist.p12`, beside the Android key – keep a copy offline); every later run takes it from there. The provisioning
+  profile "Sketchline Lion App Store" is renewed every run; `Runner.xcodeproj` is switched to manual signing on the runner only
+  (never committed – the branch keeps automatic signing for a Mac). The team id is read out of the profile – no secret for it.
+* **The app:** `shorebird release ios` with `ExportOptions.plist` (method app-store-connect, `manageAppVersionAndBuildNumber` off – Xcode
+  must not touch the build number, a patch finds its release by it), the Google Maps key in `Info.plist`, the FALCON defines, build
+  number **100000 + run number** (always higher, as Apple asks for one version). Bundle id **`si.sketchline.lion`** (the same as the Play
+  Store's package), name on the phone "Sketchline" (`CFBundleDisplayName`). The tests run first; a failed test = no app.
+  `Info.plist` says `ITSAppUsesNonExemptEncryption = false` (only the system's HTTPS) – else every TestFlight build waits for a click.
+* **Where it goes:** box **"Send to TestFlight"** ticked (default) → App Store Connect → TestFlight; Apple processes it (10–60 min),
+  then it is in the **TestFlight** app (App Store) of every internal tester – the owner adds himself under App Store Connect →
+  Users and Access, and TestFlight on the iPhone installs and updates the app. Unticked → built and checked only (Artifacts →
+  **ios-ipa**, 14 days; `--dry-run` for Shorebird). Nothing here sends the app to the **App Store review** – that is done from App
+  Store Connect (web) when he says so: screenshots, description, the privacy link (sketchline.si), the Demo Reviewer sign-in.
+* **Once, by hand (Apple's side; the key cannot do these):** (1) the Apple Developer Program for Sketchline (developer.apple.com, 99 USD
+  a year, with lion@sketchline.si – an Organization needs a D-U-N-S number, 1–2 weeks; an Individual is a day); (2) the API key (above);
+  (3) run the workflow once – it makes the **App ID** and stops with the words for step 4; (4) App Store Connect → Apps → + → New App:
+  iOS, "Sketchline Lion", bundle ID si.sketchline.lion, SKU lion → run again.
+* **Secrets:** the same as `play.yml` (`PORTAL_SUPABASE_URL`, `PORTAL_SUPABASE_KEY`, `MAPS_API_KEY`, `FALCON_*`, `SHOREBIRD_TOKEN`) plus
+  the three `ASC_*`. Never in a file, never in chat.
+* **Not verified yet:** this file was written without an Apple account – the first run on the real account is its test; what it says
+  on failure is written to be acted on (the step, the words of Apple). Push notifications on the iPhone (APNs key), Universal Links
+  and App Attest still wait for the Apple team (the notes above).
 
 ## Release (signed, a GitHub Release)
 `.github/workflows/release.yml` is run by hand on `main` (Actions → release → Run workflow), after the owner says yes.

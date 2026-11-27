@@ -1,7 +1,7 @@
 name: rcl_mobile
 description: RCL ERP – the mobile app (Android and iPhone). Its own phone screens on the same servers; one sign-in through the Portal.
 publish_to: none
-version: 3.168.0+1
+version: 3.173.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -46,6 +46,15 @@ dependencies:
   latlong2: ^0.9.1 # (3.132.0) the places on that map
   google_maps_flutter: ^2.9.0 # (20-11-2026) "jithe jithe map ahe … google mapch disayla haway" – Google map when the key is set (--dart-define=GMAPS=true); the map SDKs are free on Android/iPhone
   record: ^6.0.0 # (3.132.0, Mechanical update-263) the voice of a Smart Log Book closing, recorded while the phone listens (Android)
+  # (3.171.0, his word of 23-11-2026: "falcon seprate pn chalayla pahije … ani erp hr madeh pn") FALCON's own screens inside this app
+  # when the FALCON app is not on the phone – the FALCON app's code itself (one code for both; lib/embed.dart there), pinned
+  # (3.171.0 patch 1, 25-11-2026) FALCON's place comes fast too (its lib/core/geo.dart) – Dart only, no picture or plugin changed
+  # (3.171.0 patch 2, 25-11-2026) its place exact, Parcel only outside the mess, Google's map, the warm start (its lib/embed.dart) – Dart only
+  # (3.171.0 patch 3, 25-11-2026) its distance BY ROAD (its lib/core/road.dart – FALCON's server, Google's Routes API) – Dart only
+  falcon:
+    git:
+      url: https://github.com/khandagalesuraj48-sys/FALCONAPK.git
+      ref: 54871755cedead1ee28f7b62c224e72baf21dde0
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +80,7 @@ flutter:
     - assets/brand/site_home.jpg
     - assets/i18n/
     - assets/help/web_help.json
+    - shorebird.yaml # (25-11-2026) Shorebird – the app's id for updates without the store (read by Shorebird's engine)
   fonts:
     - family: Rubik
       fonts:

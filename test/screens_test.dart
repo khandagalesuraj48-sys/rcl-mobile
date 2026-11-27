@@ -9,10 +9,11 @@ import 'package:flutter/foundation.dart' show ComputeCallback;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rcl_mobile/screens/falcon_inside.dart';
 import 'package:rcl_mobile/core/lost_photo.dart';
 import 'package:rcl_mobile/core/app_consent.dart';
 import 'package:rcl_mobile/core/api.dart';
-import 'package:rcl_mobile/core/attend.dart' show AttendKit;
+import 'package:rcl_mobile/core/attend.dart' show AttendKit, AttendWhere;
 import 'package:rcl_mobile/core/falcon_link.dart' show FalconMess;
 import 'package:rcl_mobile/core/attend_remind.dart' show AttendRemind;
 import 'package:rcl_mobile/screens/app_lock.dart';
@@ -33,6 +34,7 @@ import 'package:rcl_mobile/core/session.dart';
 import 'package:rcl_mobile/core/sitewords.dart';
 import 'package:rcl_mobile/core/sheet_read.dart';
 import 'package:rcl_mobile/main.dart';
+import 'package:rcl_mobile/screens/module_home.dart' show payLaunch;
 import 'package:rcl_mobile/screens/label_scan.dart' show QrScanScreen;
 import 'package:rcl_mobile/core/voice.dart' as voice;
 import 'package:rcl_mobile/screens/assistant.dart' show AiHistoryScreen, AiMemoryScreen, AssistantScreen, forgetChat, moduleLook;
@@ -128,6 +130,8 @@ Future<void> attPage(WidgetTester t) async {
 
 Session make(FakeServer srv) => Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client))
   ..api.keep.write('ai_consent_ok', '1') // (20-11-2026) the assistant's one-time "Allow" (before a typed question goes to the AI service) is given already
+  ..api.keep.write(Session.kCompany, 'RCL') // (3.173.0) the company code typed on this phone already (its own tests start without it)
+  ..companyCode = 'RCL'
   ..clock = () => DateTime(2026, 10, 14, 10, 30); // (a Day-shift time: the screens are the same every run)
 
 Future<Session> ready(WidgetTester t, FakeServer srv) async {
@@ -136,6 +140,7 @@ Future<Session> ready(WidgetTester t, FakeServer srv) async {
     await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
     await s.chooseSite('S1');
   });
+  if (s.twoMods) s.pickModule('mechanical'); // (3.173.0) Vehicle and HR at the site: these tests are in Vehicle (the site home has its own)
   return s;
 }
 
@@ -9121,6 +9126,13 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9x_hr_home.png'));
     // ---- the slide: My attendance opens to mark – IN; said big, then Home again by itself: on duty
     // (3.116.0) ONE PRESS: the dial reads his place and takes the selfie by itself – no page in between, nothing to slide
+    // (3.171.0 patch 1, "location fetching … khup fast hoyla haw") Home's reading of a moment ago is not exact enough (400 m): the
+    // press does not refuse it – the phone is read once more, now, asked to be exact to the site's 100 m – and IN is marked
+    kit.acc = 400;
+    await AttendWhere.i.read();
+    expect(AttendWhere.i.fresh()?.acc, 400);
+    kit.acc = 12;
+    final readsBefore = kit.wants.length;
     await t.scrollUntilVisible(find.byKey(const Key('hh-slide')), -250, scrollable: find.byType(Scrollable).first); // (the dial is at the top of Home)
     await tapKey('hh-slide');
     expect(find.byKey(const Key('att-punch')), findsNothing);
@@ -9129,6 +9141,8 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('att-punch')), findsNothing, reason: 'Home again');
     expect(srv.hrPunches.length, 1);
+    expect(kit.wants.skip(readsBefore), contains(100.0), reason: '(3.171.0 patch 1) read once more, exact to the site\'s 100 m');
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'punch')['accuracy_m'], 12, reason: 'the new reading went with the punch, not the 400 m one');
     expect(t.widget<Text>(find.byKey(const Key('hh-big'))).data, 'On duty since 10:30');
     expect(t.widget<Text>(find.byKey(const Key('hh-in'))).data, '10:30');
     expect(find.descendant(of: find.byKey(const Key('hh-slide')), matching: find.text('PUNCH OUT')), findsOneWidget, reason: 'OUT is next');
@@ -10098,6 +10112,111 @@ void main() {
     expect(srv.calls, isNot(contains('portal:login')));
   }, tags: ['golden']);
 
+  /* (25-11-2026, his words: "login with otp krtan given password nko aahe new set kru shakel … forgot kru shkel email la otp yeil
+   * forgat krun new set kru shakel … resend 6 time tya nantr 15 minute cha block … remaining kiti sangitle jail"; his answers: 6 codes,
+   * 6 wrong codes, "Forgot password" for everybody but the Super Admin) the Portal counts; the app says what it answered. */
+  testWidgets('(25-11-2026) "Forgot password?" with the e-mail code: the e-mail, "Send code" (how many more codes), a wrong code says the tries left, the right code with the new password twice – in', (t) async {
+    phone(t);
+    final srv = FakeServer()..otpOn = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.enterText(find.byType(TextField).at(0), 'sujit.own@rcl.test');
+    await tapK(t, 'login-forgot');
+    await settle(t, 600);
+    expect(find.byKey(const Key('login-reset-title')), findsOneWidget, reason: 'the forgot card – not the help of before');
+    expect(find.byKey(const Key('forgot-ok')), findsNothing);
+    expect(t.widget<TextField>(find.byKey(const Key('login-reset-mail'))).controller!.text, 'sujit.own@rcl.test', reason: 'the e-mail typed is carried over');
+    expect(find.byKey(const Key('login-reset-code')), findsNothing, reason: 'first "Send code"');
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(srv.resetTo, ['sujit.own@rcl.test'], reason: 'the code of "Forgot password" (its e-mail says so)');
+    expect(find.byKey(const Key('login-reset-code')), findsOneWidget);
+    expect(find.text('5 more codes can be asked for, then you wait 15 minutes.'), findsOneWidget);
+    expect(t.widget<TextButton>(find.byKey(const Key('login-reset-again'))).onPressed, isNull, reason: 'the 60 seconds between two codes');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1h_forgot_password.png'));
+    // the two new passwords not the same: said here, nothing sent
+    await t.enterText(find.byKey(const Key('login-reset-code')), '482913');
+    await t.enterText(find.byType(TextField).at(2), 'Mule#2026x');
+    await t.enterText(find.byType(TextField).at(3), 'Mule#2026y');
+    await seen(t, find.byKey(const Key('login-go')));
+    await tapK(t, 'login-go');
+    await settle(t, 600);
+    expect(find.textContaining('The two new passwords are not the same.'), findsOneWidget);
+    expect(srv.calls, isNot(contains('portal:otpReset')));
+    // a wrong code: the tries left; the code box empties
+    await t.enterText(find.byKey(const Key('login-reset-code')), '111111');
+    await t.enterText(find.byType(TextField).at(3), 'Mule#2026x');
+    await seen(t, find.byKey(const Key('login-go')));
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(find.text('The code is wrong or has expired. 5 tries left – after that you wait 15 minutes.'), findsOneWidget);
+    expect(t.widget<TextField>(find.byKey(const Key('login-reset-code'))).controller!.text, '');
+    expect(s.stage, Stage.signedOut);
+    // the right code: the password set, the app opens
+    await t.enterText(find.byKey(const Key('login-reset-code')), '482913');
+    await seen(t, find.byKey(const Key('login-go')));
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(srv.newPassword, 'Mule#2026x');
+    expect(s.stage, Stage.pickSite);
+    expect(srv.calls, containsAllInOrder(['portal:otpSend', 'portal:otpReset', 'portal:otpReset', 'portal:me']));
+    expect(srv.calls, isNot(contains('portal:login')));
+  }, tags: ['golden']);
+
+  testWidgets('(25-11-2026) the e-mail code switched off: "Forgot password?" says to ask the Super Admin – as before', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await tapK(t, 'login-forgot');
+    await settle(t, 600);
+    expect(find.textContaining('Ask the Super Admin for a one-time password.'), findsOneWidget);
+    expect(find.byKey(const Key('login-reset-title')), findsNothing);
+    await tapK(t, 'forgot-ok');
+    await settle(t, 600);
+  });
+
+  testWidgets('(25-11-2026) signed in with a code on a given password: "Set your own password" asks only the new one, twice', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..otpOn = true
+      ..mustChange = true;
+    final s = make(srv);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await t.enterText(find.byType(TextField).at(0), 'sujit.own@rcl.test');
+    await tapK(t, 'login-otp');
+    await settle(t, 600);
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(find.text('5 more codes can be asked for, then you wait 15 minutes.'), findsOneWidget, reason: 'the e-mail code says it too');
+    await t.enterText(find.byKey(const Key('login-otp-code')), '482913');
+    await seen(t, find.byKey(const Key('login-go')));
+    await tapK(t, 'login-go');
+    await net(t);
+    expect(s.stage, Stage.setPassword);
+    expect(s.byCode, isTrue);
+    expect(find.byKey(const Key('login-pw-bycode')), findsOneWidget);
+    expect(find.text('Given password'), findsNothing, reason: 'the given password is not asked');
+    expect(find.byType(TextField), findsNWidgets(2), reason: 'the new password twice');
+    await pics(t);
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1i_own_password_by_code.png'));
+    await t.enterText(find.byType(TextField).at(0), 'Mule#2026x');
+    await t.enterText(find.byType(TextField).at(1), 'Mule#2026x');
+    await seen(t, find.text('Save and open'));
+    await settle(t, 400);
+    await t.tap(find.text('Save and open'));
+    await net(t);
+    expect(srv.newPassword, 'Mule#2026x');
+    expect(s.stage, Stage.pickSite);
+  }, tags: ['golden']);
+
   /* (3.166.0) THE CODE BY WHATSAPP (the Portal's "Login with WhatsApp OTP" of 22-11-2026; his design A and the motion he approved):
    * the sheet opens on it; the sixth digit checks the code by itself – no button; a wrong code shakes red and the boxes empty;
    * "Copy code" in WhatsApp and back: it fills by itself; "Use email and password" is one tap away. */
@@ -10177,7 +10296,7 @@ void main() {
     await t.enterText(find.byKey(const Key('login-wa-code')), '111111');
     await net(t, 2400);
     expect(srv.calls.where((c) => c == 'portal:waLogin').length, 1, reason: 'checked once, by itself');
-    expect(find.text('The code is wrong or has expired.'), findsOneWidget);
+    expect(find.text('The code is wrong or has expired. 5 tries left – after that you wait 15 minutes.'), findsOneWidget, reason: '(25-11-2026) the tries left');
     expect(t.widget<TextField>(find.byKey(const Key('login-wa-code'))).controller!.text, '', reason: 'the boxes emptied');
     expect(s.stage, Stage.signedOut);
     expect(find.byKey(const Key('login-wa-code')), findsOneWidget, reason: 'still on the code');
@@ -11689,7 +11808,324 @@ void main() {
     expect(srv.falconPasses, 1);
     expect(opened.toString(), startsWith('https://falcon.test/#hrpass=v1.'));
   }, tags: ['golden']);
+
+  // (3.171.0, his word of 23-11-2026: "app nasel tr ji app aahe tyatch open hoyla haw") no FALCON app on the phone: FALCON's own screens
+  // open INSIDE this app (like Mark IN opens HR) – never the web; the phone's back on FALCON's first page returns to Home
+  testWidgets('(3.171.0) ERP Home: the Mess strip opens FALCON inside this app when the FALCON app is not there; back returns', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    Uri? opened;
+    FalconMess.forget();
+    FalconMess.launchHook = (u) async {
+      opened = u;
+      return true;
+    };
+    falconInsideOnForTest = true;
+    falconStartForTest = () async {};
+    // (3.171.0 patch 2) FALCON made ready behind the app as Home opens (its warm start): who it was made ready for
+    final warmed = <String>[];
+    falconWarmForTest = (pass, who) async {
+      warmed.add(who);
+      return true;
+    };
+    falconReadyForTest = warmed.contains;
+    addTearDown(() async {
+      await forgetFalconInside();
+      AttendKit.kit = AttendKit();
+      FalconMess.launchHook = null;
+      FalconMess.forget();
+      falconInsideOnForTest = null;
+      falconStartForTest = null;
+      falconWarmForTest = null;
+      falconReadyForTest = null;
+    });
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrFalcon = CARD;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    expect([warmed.length, srv.falconPasses], [1, 1], reason: '(3.171.0 patch 2) FALCON made ready behind Home, with one pass of HR');
+    await t.tap(find.byKey(const Key('home-mess')));
+    await net(t);
+    await net(t);
+    expect(srv.falconPasses, 1, reason: 'made ready: no new pass – straight on FALCON\'s home');
+    expect(opened, isNull, reason: 'not the web');
+    expect(find.byKey(const Key('falcon-inside')), findsOneWidget, reason: 'FALCON\'s screens, a page of this app');
+    expect(find.descendant(of: find.byKey(const Key('falcon-inside')), matching: find.byType(MaterialApp)), findsOneWidget, reason: 'FALCON\'s own screens and look');
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('falcon-inside')), findsNothing, reason: 'the phone\'s back on FALCON\'s first page: back to Home');
+    expect(find.byKey(const Key('home-mess')), findsOneWidget);
+  });
+
+  // (3.169.0, asked 23-11-2026: "ajun mala ERP and HR madhe FALCON connect disat nahiye") no card: the Super Admin sees why; others nothing
+  testWidgets('(3.169.0) ERP Home: FALCON not connected – the Super Admin is told why (HR\'s words); a person who is not sees nothing', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    FalconMess.forget();
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      FalconMess.forget();
+    });
+    for (final sup in [true, false]) {
+      FalconMess.forget();
+      final srv = FakeServer()
+        ..hrSite = true
+        ..superAdmin = sup
+        ..hrFalcon = null;
+      srv.prefs['brief'] = false;
+      final s = await ready(t, srv);
+      await t.pumpWidget(RclApp(session: s));
+      await net(t);
+      await net(t);
+      expect(find.byKey(const Key('home-mess')), findsNothing, reason: 'no card');
+      if (sup) {
+        expect(find.byKey(const Key('home-mess-why')), findsOneWidget);
+        expect(find.textContaining('FALCON is not connected to HR yet'), findsOneWidget);
+      } else {
+        expect(find.byKey(const Key('home-mess-why')), findsNothing, reason: 'only the Super Admin is told');
+      }
+      await t.pumpWidget(const SizedBox());
+      await net(t);
+    }
+  });
+
+  testWidgets('(3.170.0) the Super Admin: "asking HR …" at once while HR answers, then the card; HR Home without a day of his own shows it too', (t) async {
+    phone(t);
+    AttendKit.kit = FakeAttendKit();
+    FalconMess.forget();
+    addTearDown(() {
+      AttendKit.kit = AttendKit();
+      FalconMess.forget();
+    });
+    // the ERP Home: HR is slow – he is told it is being asked, never an empty space
+    final hold = Completer<void>();
+    final srv = FakeServer()
+      ..hrSite = true
+      ..superAdmin = true
+      ..hrFalcon = CARD
+      ..hrFalconHold = hold;
+    srv.prefs['brief'] = false;
+    final s = await ready(t, srv);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('home-mess-why')), findsOneWidget);
+    expect(find.textContaining('asking HR'), findsOneWidget);
+    hold.complete();
+    await net(t);
+    await net(t);
+    expect(find.byKey(const Key('home-mess')), findsOneWidget, reason: 'HR answered: the card');
+    expect(find.textContaining('asking HR'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+    await net(t);
+
+    // HR Home: he is nobody of the Employee Master (no day) – the card is still shown to him
+    FalconMess.forget();
+    final srv2 = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..superAdmin = true
+      ..hrNoEmployee = true
+      ..hrFalcon = CARD;
+    final s2 = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv2.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s2.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    s2.superAdmin = true; // (the full app learns it from the ERP's own sign-in – this HR-only sign-in is made the Super Admin's here)
+    await t.pumpWidget(RclApp(session: s2));
+    await net(t);
+    await net(t);
+    expect(find.textContaining('Employee Master'), findsWidgets, reason: 'his day is refused, as before');
+    await t.scrollUntilVisible(find.byKey(const Key('hh-mess')), 250, scrollable: find.byType(Scrollable).first);
+    expect(find.byKey(const Key('hh-mess-super')), findsOneWidget);
+    expect(find.byKey(const Key('hh-mess')), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await net(t);
+
+    // a person who is not the Super Admin and has no day: nothing of the Mess, as before
+    FalconMess.forget();
+    final srv3 = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..hrNoEmployee = true
+      ..hrFalcon = CARD;
+    final s3 = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv3.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(() => s3.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    await t.pumpWidget(RclApp(session: s3));
+    await net(t);
+    await net(t);
+    expect(find.byKey(const Key('hh-mess')), findsNothing);
+    expect(find.byKey(const Key('hh-mess-super')), findsNothing);
+    await t.pumpWidget(const SizedBox());
+    await net(t);
+  });
+
+  // ---------------- (3.173.0) the approved design "LION – Modules & Subscription" ----------------
+  testWidgets('(3.173.0) the company code first ("company code vichrel nantr login page"): an unknown code, another company\'s address, RCL → the sign-in; "Change" asks again', (t) async {
+    phone(t);
+    final srv = FakeServer();
+    final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: srv.client), langRead: (p) async => '{}')..clock = () => DateTime(2026, 10, 14, 10, 30);
+    await t.runAsync(s.start);
+    await t.pumpWidget(RclApp(session: s));
+    await settle(t);
+    expect(find.byKey(const Key('co-title')), findsOneWidget);
+    expect(find.byKey(const Key('login-title')), findsNothing, reason: 'no sign-in before the company');
+    expect(find.textContaining('the code is the only way in'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('co-code')), 'zzz');
+    await t.tap(find.byKey(const Key('co-go')));
+    await net(t);
+    expect(find.textContaining('This company code is not known'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('co-code')), 'MILE');
+    await t.tap(find.byKey(const Key('co-go')));
+    await net(t);
+    expect(find.textContaining('signs in at its own address'), findsOneWidget, reason: 'another company\'s Portal is not opened by this app yet');
+    expect(s.companyCode, '');
+    await t.enterText(find.byKey(const Key('co-code')), 'rcl');
+    await t.tap(find.byKey(const Key('co-go')));
+    await net(t);
+    expect(srv.companyAsked, ['ZZZ', 'MILE', 'RCL'], reason: 'one code, one answer');
+    expect(find.byKey(const Key('login-title')), findsOneWidget);
+    expect(find.byKey(const Key('co-change')), findsOneWidget);
+    expect(find.text('RCL'), findsOneWidget);
+    expect(await s.api.keep.read(Session.kCompany), 'RCL', reason: 'kept on this phone');
+    await t.tap(find.byKey(const Key('co-change')));
+    await settle(t, 600);
+    await t.tap(find.byKey(const Key('co-change-yes')));
+    await net(t);
+    expect(find.byKey(const Key('co-title')), findsOneWidget);
+    expect(await s.api.keep.read(Session.kCompany), isNull);
+  });
+
+  testWidgets('(3.173.0) the site home: greeting, Vehicle and HR; each opens its own pages; Back brings him back; HR "due" → Pay (the company): users, per user and the total WITH the taxes – never GST', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrPay = {
+        's': 'due', 'who': 'company', 'grace': '2026-10-16', 'canPay': true,
+        'amount': {'total': 35400, 'units': 3, 'rateAll': 11800, 'from': '2026-10-14', 'to': '2026-11-13', 'per': '1 month', 'bySite': [{'site': 'S1', 'name': 'VTR Site – NH 848', 'n': 3}]},
+      };
+    final s = make(srv);
+    await t.runAsync(() async {
+      await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+      await s.chooseSite('S1');
+    });
+    expect(s.twoMods, isTrue);
+    expect(s.moduleHome, isTrue);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    expect(find.byKey(const Key('mods-hello')), findsOneWidget);
+    expect(find.text('Good morning, Sujit'), findsOneWidget);
+    expect(find.text('Wednesday, 14 October'), findsOneWidget);
+    expect(find.text('Vehicle'), findsOneWidget);
+    expect(find.text('Subscription due'), findsOneWidget, reason: 'HR\'s tile says it');
+    expect(srv.payAsked.where((x) => x['action'] == 'mine' && x['site'] == 'S1'), isNotEmpty);
+    // Vehicle → its own Home; Back → the site home
+    await t.tap(find.byKey(const Key('mods-vehicle')));
+    await net(t);
+    expect(s.modPick, 'mechanical');
+    expect(find.byKey(const Key('mods-vehicle')), findsNothing);
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(s.modPick, isNull);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget);
+    // HR → HR's own pages; Back → the site home
+    await t.tap(find.byKey(const Key('mods-hr')));
+    await net(t);
+    expect(s.modPick, 'hr');
+    expect(s.showHr, isTrue);
+    expect(find.byKey(const Key('mods-hr')), findsNothing);
+    await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('mods-hr')), findsOneWidget);
+    // the chip → Pay (5a): no GST anywhere, only "Including all taxes"
+    final opened = <Uri>[];
+    payLaunch = (u) async {
+      opened.add(u);
+      return true;
+    };
+    addTearDown(() => payLaunch = null);
+    await t.tap(find.byKey(const Key('mods-chip-HR')));
+    await net(t);
+    expect(find.text('HR subscription'), findsOneWidget);
+    expect(find.byKey(const Key('pay-total')), findsOneWidget);
+    expect(find.text('₹354'), findsOneWidget);
+    expect(find.byKey(const Key('pay-taxes')), findsOneWidget);
+    expect(find.text('₹118'), findsOneWidget, reason: 'one user\'s price with the taxes');
+    expect(find.textContaining('GST'), findsNothing, reason: 'his word: "gst … dakhawayche nahi"');
+    expect(find.text('1 month'), findsOneWidget);
+    expect(find.textContaining('Due · 2 days of grace left'), findsOneWidget);
+    await t.tap(find.byKey(const Key('pay-go')));
+    await net(t);
+    expect(opened.single.toString(), 'https://rzp.io/rig/x7');
+    expect(srv.payAsked.last, {'action': 'link', 'site': 'S1', 'module': 'hr'});
+    // Razorpay's page paid: back in the app it is read again – HR opens
+    srv.hrPay = {'s': 'ok', 'who': 'company', 'till': '2026-11-13', 'canPay': true};
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await net(t);
+    expect(find.text('Paid – thank you. HR is open.'), findsOneWidget);
+    await net(t);
+    expect(find.byKey(const Key('mods-hr')), findsOneWidget, reason: 'back on the site home');
+    expect(find.text('Subscription due'), findsNothing);
+  });
+
+  testWidgets('(3.173.0) HR paused, each employee pays (Single, 15 days): "Pay" in place of HR\'s pages; the demo – straight to a UPI ID: his UPI app; HR opens when it was received', (t) async {
+    phone(t);
+    final srv = FakeServer()
+      ..hrSite = true
+      ..hrKey = 'hrme'
+      ..hrOnlyUser = true
+      ..hrPausedNow = true
+      ..payWay = 'upi'
+      ..hrPay = {'s': 'paused', 'who': 'employee', 'grace': '2026-10-10', 'canPay': true, 'amount': {'total': 4720, 'units': 1, 'rateAll': 4720, 'from': '2026-10-14', 'to': '2026-10-28', 'per': '15 days', 'bySite': []}};
+    final s = make(srv);
+    await t.runAsync(() => s.signIn('sujit@rcl.test', 'Nashik#Road848!'));
+    expect(s.hrOnly, isTrue);
+    await t.pumpWidget(RclApp(session: s));
+    await net(t);
+    await net(t);
+    expect(s.hrPaused.value, isNotNull, reason: 'HR said "paused" (402)');
+    expect(find.byKey(const Key('pay-gate')), findsOneWidget);
+    expect(find.text('My HR plan'), findsOneWidget);
+    expect(find.byKey(const Key('pay-words')), findsOneWidget, reason: 'HR\'s own words');
+    expect(find.text('₹47.20'), findsOneWidget);
+    expect(find.text('/ 15 days'), findsOneWidget);
+    expect(find.textContaining('GST'), findsNothing);
+    final opened = <Uri>[];
+    payLaunch = (u) async {
+      opened.add(u);
+      return true;
+    };
+    addTearDown(() => payLaunch = null);
+    await t.tap(find.byKey(const Key('pay-go')));
+    await net(t);
+    expect(opened.single.scheme, 'upi');
+    expect(opened.single.queryParameters['am'], '47.20');
+    expect(opened.single.queryParameters['pa'], 'owner.demo@okbank');
+    expect(find.byKey(const Key('pay-upi-wait')), findsOneWidget, reason: 'HR opens when Sketchline sees it – said with its remark');
+    expect(find.textContaining('SKL-7 HR 12/01'), findsOneWidget);
+    // back from the UPI app: not received yet – still "Pay"
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await net(t);
+    expect(find.byKey(const Key('pay-gate')), findsOneWidget);
+    // the Super Admin pressed "Received" in the Portal: pulled down – HR opens
+    srv
+      ..hrPay = {'s': 'ok', 'who': 'employee', 'till': '2026-10-28', 'canPay': true}
+      ..hrPausedNow = false;
+    await t.fling(find.byType(ListView).first, const Offset(0, 400), 1200);
+    await net(t);
+    await net(t);
+    expect(s.hrPaused.value, isNull);
+    expect(find.byKey(const Key('pay-gate')), findsNothing);
+  });
 }
+
+// (3.170.0) a Mess card as HR gives it (made-up)
+const Map<String, dynamic> CARD = {'site': 'S1', 'now': '2026-10-14T05:00:00Z', 'messes': [{'name': 'VTR Camp Mess', 'lat': 18.5203, 'lng': 73.8567, 'radius_m': 100, 'meal': {'meal': 'lunch', 'from': '12:00', 'to': '14:30', 'now': true}, 'dishes': ['Dal tadka, Rice']}]};
 
 /// The face screens without a camera: what he would have shown.
 class _FakeFace extends FaceKit {
