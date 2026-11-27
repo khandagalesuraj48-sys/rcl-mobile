@@ -119,8 +119,13 @@ void main() {
     expect(u, contains('if (onPlay()) return null;'), reason: 'no file of ours is looked for in the Play Store\'s app');
     expect(u, contains('Platform.isAndroid && !onComputer && !onPlay()'), reason: 'no background download of a file there');
     final w = File('.github/workflows/play.yml').readAsStringSync();
-    expect(w, contains('flutter build appbundle --release'));
+    // (27-11-2026, "apk and play store same astil") the bundle is made and released by Shorebird – its patches reach the Play Store's app
+    expect(w, contains('shorebird release android --artifact aab'));
+    expect(w, contains('--public-key-path='), reason: 'the same patch-signing key as the app given by its file');
     expect(w, contains('--dart-define=PLAY=true'));
+    final pt = File('.github/workflows/patch.yml').readAsStringSync();
+    expect(pt, contains(r'$PLAYDEF'), reason: 'a patch of the Play Store\'s app is built as its bundle (PLAY=true)');
+    expect(pt, contains('RCL_STORE=play'));
     expect(w, contains('RCL_STORE: play'));
     expect(w, isNot(contains('gh release')), reason: 'the Play build makes no release – the phones of today are not touched');
   });
