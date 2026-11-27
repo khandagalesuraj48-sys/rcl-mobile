@@ -147,7 +147,7 @@ void main() {
     expect(find.text('90%'), findsOneWidget);
   });
 
-  testWidgets('the app at its start shows this screen with the session\'s own figure (and the sign-in after it, as before)', (t) async {
+  testWidgets('the app at its start shows this screen with the session\'s own figure (and after it the company code, then the sign-in – 3.173.0)', (t) async {
     _screen(t, 393, 852);
     final s = Session(Api(portalUrl: 'https://erp.test/portal', keep: MemoryKeep(), client: FakeServer().client));
     await t.pumpWidget(RclApp(session: s));
@@ -160,6 +160,18 @@ void main() {
     }
     expect(s.stage, Stage.signedOut);
     expect(find.byType(SplashScreen), findsNothing);
+    // (3.173.0) no company code on this phone yet: the company code first, the sign-in after it
+    expect(find.byKey(const Key('co-title')), findsOneWidget);
+    // with the code kept on this phone: the sign-in, as before
+    final keep = MemoryKeep();
+    await keep.write(Session.kCompany, 'RCL');
+    final s2 = Session(Api(portalUrl: 'https://erp.test/portal', keep: keep, client: FakeServer().client));
+    await t.pumpWidget(RclApp(session: s2));
+    await t.runAsync(s2.start);
+    for (var i = 0; i < 10; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(s2.stage, Stage.signedOut);
     expect(find.text('Sign in'), findsWidgets);
   });
 
