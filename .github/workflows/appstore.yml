@@ -52,7 +52,6 @@ jobs:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-      IOS_SIGN_DIR: ${{ runner.temp }}/iossign
       # fastlane on a runner
       LC_ALL: en_US.UTF-8
       LANG: en_US.UTF-8
@@ -68,6 +67,8 @@ jobs:
           VER=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           BN=$(( 100000 + GITHUB_RUN_NUMBER ))
           { echo "VER=$VER"; echo "BN=$BN"; } >> "$GITHUB_ENV"
+          # (27-11-2026) the signing's own folder – set here: "runner" cannot be read in the job's env (GitHub refused the whole file)
+          echo "IOS_SIGN_DIR=$RUNNER_TEMP/iossign" >> "$GITHUB_ENV"
           echo "::notice::App Store: Sketchline Lion $VER ($BN) of $GITHUB_REF_NAME – send to TestFlight: ${{ inputs.send }}"
       - name: The settings this needs
         run: |
