@@ -36,6 +36,14 @@ open (it sends them at once itself). No Wi-Fi / mobile reading, no new plugin, n
 Not verified: a real phone (the times, the alarm sending with the app closed – Shorebird's patch in the alarm's own engine is to be seen on
 a phone), FALCON (its own app, next).
 
+**3.172.0 – the last app given by its file (27-11-2026, his words: "ekda he new build phone play store la gel ki apan apk purn band krnar
+aahot"; his answers: it keeps working until the person has the Play Store's app, and this last version says so with the Play Store's
+button):** in the app given by its file (Android – not the Play Store's app, an iPhone or a computer), at every opening, once:
+**"Sketchline Lion is on Google Play"** – Open Play Store (its page) / Later; it says the app keeps working until he moves and to open
+it once with the network on before removing it (the entries kept on the phone are sent). No file of ours is offered any more – no APK
+after this one (`core/update.dart` `movePlay` / `offerMove`, Home and HR's opening). With it, Mechanical's `/app` page gives the Play
+Store's app (rclerp update-281). Released as beta → stable as usual, once the Play Store's update (3.171.0 / 100007) is live.
+
 **3.171.0 patch 3 (25-11-2026 – his word with FALCON's "5.9 km away" and Google Maps' 12 km: "app ase ase fake imformation denare tr
 kahich thik nahi chalnar"):** both points were right – the distance was the straight line. FALCON inside the app (its pin → its "road
 distance" commit) and the Mess card / strip now say how far **by road** (FALCON's server step /api/route – Google's Routes API, the key
