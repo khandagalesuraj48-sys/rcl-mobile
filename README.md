@@ -36,6 +36,19 @@ open (it sends them at once itself). No Wi-Fi / mobile reading, no new plugin, n
 Not verified: a real phone (the times, the alarm sending with the app closed – Shorebird's patch in the alarm's own engine is to be seen on
 a phone), FALCON (its own app, next).
 
+**ELEPHANT – HR's own app, from the same code (27-11-2026, his words: "ata he prtek app vegli karaychi aahe jas apan falcon keli ani
+lion madhe connect keli … pratek app ata wegli asel bundel asel tr lion madhe connect asel"; his answers: each module its own app like
+FALCON, its own Play Store page and inside LION too; HR first; its name ELEPHANT):** `lib/core/app_kind.dart` – `APP=lion` (the
+bundle, as before) or `APP=elephant`. ELEPHANT: only the sites where he has HR (`hr` / `hrme`), always the attendance app's pages
+(Home, Attendance, Leave, papers, Me …) – Mechanical is never opened, not even where he has it (that is LION's); no HR anywhere: "This
+app is for HR … your other work is in Sketchline Lion". Android: `RCL_STORE=elephant` → `si.sketchline.elephant`, "Sketchline Elephant"
+(`android/app/src/elephant/AndroidManifest.xml` – the name his to change), no "install a file" permission; its Play Store page in Share
+and Google Play's update. `.github/workflows/elephant.yml` (Actions → elephant): the .aab released by Shorebird as
+`<version>+<200000 + run>`, signed with the Sketchline Play upload key. **His steps before the first run:** Firebase → add the Android
+app `si.sketchline.elephant` → the new google-services.json into the secret `GOOGLE_SERVICES_JSON`; the Google Maps key → add the
+package; Play Console → Create app. **Next:** its logo (pictures first – the lion is shown until then), its patches in `patch.yml`.
+LION is not changed.
+
 **3.172.0 – the last app given by its file (27-11-2026, his words: "ekda he new build phone play store la gel ki apan apk purn band krnar
 aahot"; his answers: it keeps working until the person has the Play Store's app, and this last version says so with the Play Store's
 button):** in the app given by its file (Android – not the Play Store's app, an iPhone or a computer), at every opening, once:

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rcl_mobile/core/alerts.dart';
 import 'package:rcl_mobile/core/api.dart';
+import 'package:rcl_mobile/core/app_kind.dart';
 import 'package:rcl_mobile/core/code_words.dart';
 import 'package:rcl_mobile/core/lang.dart' show Lang;
 import 'package:rcl_mobile/core/photo.dart';
@@ -439,6 +440,54 @@ void main() {
     Lang.i.code = was;
     // an error of anything else: as the Portal said it
     expect(codeError(ApiError('Enter your 10-digit mobile number.', code: 'mobile')), 'Enter your 10-digit mobile number.');
+  });
+
+  /* (27-11-2026, his words: "ata he prtek app vegli karaychi aahe jas apan falcon keli ani lion madhe connect keli"; his answers: each
+   * module its own app like FALCON, HR first, its name ELEPHANT) the SAME code builds ELEPHANT – HR's own app (core/app_kind.dart). */
+  test('(27-11-2026) ELEPHANT – HR\'s own app: only the sites with HR, always the attendance app\'s pages (also at a site with Mechanical); no HR anywhere: said – his work is in LION; LION as before', () async {
+    final was = appKind;
+    addTearDown(() => appKind = was);
+    // LION (the bundle): as before – the sites with Mechanical or HR; Mechanical's pages at S1
+    srv.hrSite = true;
+    var s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.sites.map((x) => x.code).toList(), ['S1', 'T2']);
+    expect(isElephant, isFalse);
+    // ELEPHANT: only S1 (HR there) – T2 has Mechanical only; at S1 the attendance app's pages although Mechanical is there too
+    appKind = () => 'elephant';
+    keep = MemoryKeep();
+    srv = FakeServer()..hrSite = true;
+    s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.sites.map((x) => x.code).toList(), ['S1'], reason: 'ELEPHANT: only the sites where he has HR');
+    if (s.stage == Stage.pickSite) await s.chooseSite('S1');
+    expect(s.stage, Stage.ready);
+    expect(s.hrOnly, isTrue, reason: 'HR\'s pages only – nothing of Mechanical');
+    expect(srv.calls, isNot(contains('portal:go:mechanical:S1')), reason: 'Mechanical is never opened in ELEPHANT');
+    // no HR at any site: the sign-in says so, and where his other work is
+    keep = MemoryKeep();
+    srv = FakeServer();
+    s = make();
+    await s.signIn('sujit@rcl.test', 'Nashik#Road848!');
+    expect(s.stage, isNot(Stage.ready));
+    expect(s.error, contains('This app is for HR'));
+    expect(s.error, contains('Sketchline Lion'));
+  });
+
+  test('(27-11-2026) ELEPHANT is built as its own Play Store app: its package, its name, no "install a file", HR only, its own release numbers', () {
+    final g = File('android/app/build.gradle.kts').readAsStringSync();
+    expect(g, contains('val elephant = System.getenv("RCL_STORE") == "elephant"'));
+    expect(g, contains('applicationId = if (elephant) "si.sketchline.elephant" else if (playStore) "si.sketchline.lion" else "in.rachana.rcl.rcl_mobile"'));
+    final m = File('android/app/src/elephant/AndroidManifest.xml').readAsStringSync();
+    expect(m, contains('android:label="Sketchline Elephant" tools:replace="android:label"'));
+    expect(m, contains('android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"'));
+    final w = File('.github/workflows/elephant.yml').readAsStringSync();
+    expect(w, contains('RCL_STORE: elephant'));
+    expect(w, contains('--dart-define=PLAY=true --dart-define=APP=elephant'));
+    expect(w, contains('BN=\$(( 200000 + GITHUB_RUN_NUMBER ))'), reason: 'never the same release number as LION\'s (100000 + run)');
+    expect(w, contains("if 'si.sketchline.elephant' not in names:"));
+    expect(w, contains('shorebird release android --artifact aab'));
+    expect(w, contains('*"CN=Sketchline Industries"*'), reason: 'the same Play upload key');
   });
 
   test('sign out: Mechanical and the Portal, nothing kept on the phone', () async {

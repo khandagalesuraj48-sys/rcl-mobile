@@ -18,6 +18,10 @@ if (file("google-services.json").exists()) apply(plugin = "com.google.gms.google
 // file keeps the id it was installed with (below) – with another id no phone of today could take its update. The code's own
 // name (namespace, the Kotlin classes) is si.sketchline.lion for both (his word of 21-11-2026: the old name is not to be seen).
 val playStore = System.getenv("RCL_STORE") == "play"
+// (27-11-2026, his answers: each module its own app, like FALCON; HR first – ELEPHANT) HR's own app: built with RCL_STORE=elephant
+// (and --dart-define=APP=elephant – lib/core/app_kind.dart). A Play Store app like LION's: its own package, its name, no "install a
+// file" permission (src/elephant/AndroidManifest.xml); the same code as LION.
+val elephant = System.getenv("RCL_STORE") == "elephant"
 
 android {
     namespace = "si.sketchline.lion"
@@ -32,7 +36,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = if (playStore) "si.sketchline.lion" else "in.rachana.rcl.rcl_mobile"
+        applicationId = if (elephant) "si.sketchline.elephant" else if (playStore) "si.sketchline.lion" else "in.rachana.rcl.rcl_mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = maxOf(24, flutter.minSdkVersion)      // (3.27.0) the app lock (local_auth) needs Android 7 or newer
@@ -59,6 +63,7 @@ android {
     }
 
     if (playStore) sourceSets.getByName("release").manifest.srcFile("src/play/AndroidManifest.xml")
+    if (elephant) sourceSets.getByName("release").manifest.srcFile("src/elephant/AndroidManifest.xml")
 
     signingConfigs {
         create("release") {
