@@ -116,6 +116,7 @@ class ModuleHome extends StatefulWidget {
 
 class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   Map<String, dynamic>? _hr;
+  DateTime? _lastBack;
   late final AnimationController _open = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
 
   @override
@@ -190,139 +191,157 @@ class _ModuleHomeState extends State<ModuleHome> with WidgetsBindingObserver, Si
     final helloMr = now.hour < 12 ? 'शुभ सकाळ' : (now.hour < 17 ? 'शुभ दुपार' : 'शुभ संध्याकाळ');
     final chip = payChip(_hr);
     Widget arrive(double at, Widget w) => Arrive(anim: _open, at: at, child: w);
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: Scaffold(
-        backgroundColor: ModC.page,
-        body: ListView(padding: EdgeInsets.zero, children: [
-          // ---------- the navy header: the site, the lion, the day, the greeting, the wish ----------
-          Container(
-            decoration: const BoxDecoration(color: ModC.navy, borderRadius: BorderRadius.vertical(bottom: Radius.circular(32))),
-            padding: EdgeInsets.fromLTRB(20, mq.padding.top + 14, 20, 26),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Flexible(
-                  child: Semantics(
-                    button: true,
-                    label: tr('Change site'),
-                    child: InkWell(
-                      key: const Key('mods-site'),
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: _site,
-                      child: Container(
-                        constraints: const BoxConstraints(minHeight: 44),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: .10),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: ModC.goldPale.withValues(alpha: .45))),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.location_on_outlined, size: 17, color: ModC.goldPale),
-                          const SizedBox(width: 8),
-                          Flexible(
-                              child: m.Text(s.siteName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white))),
-                          if (s.sites.length > 1) ...[const SizedBox(width: 4), const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: ModC.goldPale)],
-                        ]),
+    // (3.173.0) Back on the site home: "Press Back again to leave the app" – as on Vehicle's Home before
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 3)) {
+          SystemNavigator.pop();
+          return;
+        }
+        _lastBack = now;
+        toast(context, 'Press Back again to leave the app.');
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+        child: Scaffold(
+          backgroundColor: ModC.page,
+          body: ListView(padding: EdgeInsets.zero, children: [
+            // ---------- the navy header: the site, the lion, the day, the greeting, the wish ----------
+            Container(
+              decoration: const BoxDecoration(color: ModC.navy, borderRadius: BorderRadius.vertical(bottom: Radius.circular(32))),
+              padding: EdgeInsets.fromLTRB(20, mq.padding.top + 14, 20, 26),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Flexible(
+                    child: Semantics(
+                      button: true,
+                      label: tr('Change site'),
+                      child: InkWell(
+                        key: const Key('mods-site'),
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: _site,
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: .10),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: ModC.goldPale.withValues(alpha: .45))),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.location_on_outlined, size: 17, color: ModC.goldPale),
+                            const SizedBox(width: 8),
+                            Flexible(
+                                child: m.Text(s.siteName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white))),
+                            if (s.sites.length > 1) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: ModC.goldPale)
+                            ],
+                          ]),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ModC.gold, width: 2)),
-                  alignment: Alignment.center,
-                  child: const CrestLion(size: 30, dark: true),
-                ),
-              ]),
-              const SizedBox(height: 18),
-              arrive(0, m.Text(modDay(now), style: const TextStyle(fontSize: 14, color: ModC.goldPale))),
-              const SizedBox(height: 4),
-              arrive(
-                  .06,
-                  Text('$hello${first.isEmpty ? '' : ', $first'}',
-                      mr: '$helloMr${first.isEmpty ? '' : ', $first'}',
-                      key: const Key('mods-hello'),
-                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2))),
-              const SizedBox(height: 18),
-              arrive(
-                .12,
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                  decoration: BoxDecoration(
-                      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [ModC.gold, ModC.goldPale]),
-                      borderRadius: BorderRadius.circular(18)),
-                  child: const Row(children: [
-                    Icon(Icons.wb_twilight_rounded, size: 34, color: ModC.navy),
-                    SizedBox(width: 14),
-                    Expanded(
-                        child: Text('Have a safe and productive day',
-                            mr: 'तुमचा दिवस सुरक्षित आणि छान जावो', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ModC.navy))),
-                  ]),
-                ),
-              ),
-            ]),
-          ),
-          // ---------- the modules ----------
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              const Expanded(child: Text('Your modules', mr: 'तुमचे modules', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: ModC.navy))),
-              Flexible(child: Text('at ${s.siteName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: ModC.muted))),
-            ]),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Arrive(
-                anim: _open,
-                at: .2,
-                rise: 30,
-                child: _Tile(
-                  key: const Key('mods-vehicle'),
-                  dark: true,
-                  icon: Icons.local_shipping_outlined,
-                  title: 'Vehicle',
-                  sub: 'Diesel · Log Book · Maintenance · Billing',
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    s.pickModule('mechanical');
-                  },
-                ),
-              ),
-              // (his later word: "vtr and 18 b la … kr") HR's tile only where he has HR at this site
-              if (s.siteMods.contains('hr')) const SizedBox(height: 14),
-              if (s.siteMods.contains('hr'))
-                Arrive(
-                  anim: _open,
-                  at: .28,
-                  rise: 30,
-                  child: _Tile(
-                    key: const Key('mods-hr'),
-                    dark: false,
-                    icon: Icons.groups_2_outlined,
-                    title: 'HR',
-                    sub: 'Attendance · Leave · Papers · Payroll',
-                    chip: chip,
-                    chipBad: _hr?['s'] == 'paused',
-                    onChip: chip.isEmpty ? null : _pay,
-                    onTap: _openHr,
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ModC.gold, width: 2)),
+                    alignment: Alignment.center,
+                    child: const CrestLion(size: 30, dark: true),
+                  ),
+                ]),
+                const SizedBox(height: 18),
+                arrive(0, m.Text(modDay(now), style: const TextStyle(fontSize: 14, color: ModC.goldPale))),
+                const SizedBox(height: 4),
+                arrive(
+                    .06,
+                    Text('$hello${first.isEmpty ? '' : ', $first'}',
+                        mr: '$helloMr${first.isEmpty ? '' : ', $first'}',
+                        key: const Key('mods-hello'),
+                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2))),
+                const SizedBox(height: 18),
+                arrive(
+                  .12,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    decoration: BoxDecoration(
+                        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [ModC.gold, ModC.goldPale]),
+                        borderRadius: BorderRadius.circular(18)),
+                    child: const Row(children: [
+                      Icon(Icons.wb_twilight_rounded, size: 34, color: ModC.navy),
+                      SizedBox(width: 14),
+                      Expanded(
+                          child: Text('Have a safe and productive day',
+                              mr: 'तुमचा दिवस सुरक्षित आणि छान जावो', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ModC.navy))),
+                    ]),
                   ),
                 ),
-            ]),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(28, 22, 28, 24 + mq.padding.bottom),
-            child: const Text('Tap a module to open its own dashboard. Changing site brings you back here.',
-                mr: 'module वर tap करा – त्याचा dashboard उघडेल. Site बदलली की पुन्हा इथे याल.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, height: 1.45, color: ModC.muted)),
-          ),
-        ]),
+              ]),
+            ),
+            // ---------- the modules ----------
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                const Expanded(child: Text('Your modules', mr: 'तुमचे modules', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: ModC.navy))),
+                Flexible(
+                    child: Text('at ${s.siteName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: ModC.muted))),
+              ]),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Arrive(
+                  anim: _open,
+                  at: .2,
+                  rise: 30,
+                  child: _Tile(
+                    key: const Key('mods-vehicle'),
+                    dark: true,
+                    icon: Icons.local_shipping_outlined,
+                    title: 'Vehicle',
+                    sub: 'Diesel · Log Book · Maintenance · Billing',
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      s.pickModule('mechanical');
+                    },
+                  ),
+                ),
+                // (his later word: "vtr and 18 b la … kr") HR's tile only where he has HR at this site
+                if (s.siteMods.contains('hr')) const SizedBox(height: 14),
+                if (s.siteMods.contains('hr'))
+                  Arrive(
+                    anim: _open,
+                    at: .28,
+                    rise: 30,
+                    child: _Tile(
+                      key: const Key('mods-hr'),
+                      dark: false,
+                      icon: Icons.groups_2_outlined,
+                      title: 'HR',
+                      sub: 'Attendance · Leave · Papers · Payroll',
+                      chip: chip,
+                      chipBad: _hr?['s'] == 'paused',
+                      onChip: chip.isEmpty ? null : _pay,
+                      onTap: _openHr,
+                    ),
+                  ),
+              ]),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(28, 22, 28, 24 + mq.padding.bottom),
+              child: const Text('Tap a module to open its own dashboard. Changing site brings you back here.',
+                  mr: 'module वर tap करा – त्याचा dashboard उघडेल. Site बदलली की पुन्हा इथे याल.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, height: 1.45, color: ModC.muted)),
+            ),
+          ]),
+        ),
       ),
     );
   }

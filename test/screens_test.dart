@@ -1015,6 +1015,9 @@ void main() {
     expect([s.stage, s.offline], [Stage.ready, true]);
     await t.pumpWidget(RclApp(session: s));
     await net(t);
+    // (3.173.0) the site home first – also with no network: Vehicle
+    await t.tap(find.byKey(const Key('mods-vehicle')));
+    await net(t);
     expect(find.textContaining('No network – working from this phone'), findsOneWidget);
     await pics(t);
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9a_offline_home.png'));
@@ -7497,8 +7500,13 @@ void main() {
     await net(t);
     expect(find.byKey(const Key('home-menu')), findsOneWidget, reason: 'then Home');
     await t.binding.handlePopRoute();
+    await net(t);
+    expect(find.byKey(const Key('mods-vehicle')), findsOneWidget, reason: '(3.173.0) then the site home');
+    await t.binding.handlePopRoute();
     await settle(t, 400);
     expect(find.text('Press Back again to leave the app.'), findsOneWidget);
+    await settle(t, 4500);
+    await t.tap(find.byKey(const Key('mods-vehicle')));
     await settle(t, 4500);
     // Reports – Overview: the figures of the month from the server's answers
     srv.dashAsked.clear();
