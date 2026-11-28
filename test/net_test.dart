@@ -243,17 +243,70 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
   });
 
-  test('a request on its way for more than 5 s: the "slow network" line; done: gone', () async {
+  // (3.174.2, his words: "kharach network problem asel tr as error dakhaw vinakaran nko realtime haw") the "slow network" line only
+  // when Android's check, made the moment a request has waited 5 s, is slow or fails – a fast check = our server is late: no line
+  testWidgets('a request waiting 5 s: the check at that moment; internet fast = our server is late – NO line; done: gone', (tester) async {
+    var checks = 0;
+    m.internetCheck = () async {
+      checks++;
+      return 140;
+    };
     final c = Completer<int>();
     final f = m.watch<int>('mech', c.future, const Duration(seconds: 40));
     expect(m.slowest, isNull);
+    expect(checks, 0, reason: 'nothing asked before 5 s');
     t = t.add(const Duration(seconds: 6));
+    await tester.pump(const Duration(seconds: 6));
     expect(m.slowest, const Duration(seconds: 6));
-    expect(netLineKind(m), 'slow');
+    expect(checks, 1, reason: 'the check at the 5th second – real time, not at the next tick');
+    expect(m.netSlow, isFalse);
+    expect(netLineKind(m), '', reason: 'the internet is fine (140 ms): the server is late – no "slow network" line');
     c.complete(1);
     await f;
     expect(m.slowest, isNull);
     expect(m.recent('mech').single.ms, 6000, reason: 'its real time');
+  });
+
+  testWidgets('a request waiting 5 s and the check slow (1.5 s or more) or failing: the "slow network" line – a real network problem', (tester) async {
+    m.internetCheck = () async => 2300;
+    final c = Completer<int>();
+    unawaited(m.watch<int>('mech', c.future, const Duration(seconds: 40)));
+    t = t.add(const Duration(seconds: 6));
+    await tester.pump(const Duration(seconds: 6));
+    expect(m.netSlow, isTrue);
+    expect(netLineKind(m), 'slow');
+    c.complete(1);
+    await tester.pump();
+    expect(netLineKind(m), '', reason: 'the answer came: the line goes');
+
+    m.internetCheck = () async => null;
+    t = t.add(const Duration(seconds: 20));
+    final c2 = Completer<int>();
+    unawaited(m.watch<int>('hr', c2.future, const Duration(seconds: 40)));
+    t = t.add(const Duration(seconds: 6));
+    await tester.pump(const Duration(seconds: 6));
+    expect(m.netSlow, isTrue, reason: 'the check failed: no internet');
+    expect(netLineKind(m), 'slow');
+    c2.complete(1);
+    await tester.pump();
+  });
+
+  testWidgets('the check\'s result counts for 15 s; before any check nothing is shown (not known yet)', (tester) async {
+    final gate = Completer<int?>();
+    m.internetCheck = () => gate.future;
+    final c = Completer<int>();
+    unawaited(m.watch<int>('mech', c.future, const Duration(seconds: 40)));
+    t = t.add(const Duration(seconds: 6));
+    await tester.pump(const Duration(seconds: 6));
+    expect(m.netSlow, isNull);
+    expect(netLineKind(m), '', reason: 'the check is on its way: no line yet');
+    gate.complete(3000);
+    await tester.pump();
+    expect(netLineKind(m), 'slow');
+    t = t.add(const Duration(seconds: 16));
+    expect(m.netSlow, isNull, reason: 'older than 15 s: not known again');
+    c.complete(1);
+    await tester.pump();
   });
 
   testWidgets('no answer within the limit: a timeout is counted then (a later answer is not counted again)', (tester) async {

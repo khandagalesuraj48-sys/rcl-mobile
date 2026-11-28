@@ -49,6 +49,13 @@ app `si.sketchline.elephant` → the new google-services.json into the secret `G
 package; Play Console → Create app. **Next:** its logo (pictures first – the lion is shown until then), its patches in `patch.yml`.
 LION is not changed.
 
+**3.174.2 (beta) – the "slow network" line only when the phone's internet is really slow (asked 27-11-2026: "slow network issue sarkhe
+dakhwat aahe wifi la connect aahe … kharach network problem asel tr as error dakhaw vinakaran nko realtime haw"; PR #244 put onto the
+monitor of 3.174.1; Dart only):** the moment a request has waited 5 s the app asks Android's check address (again at most once in 10 s
+while it waits); the line "Slow network – still waiting for the server" shows only when that check took 1.5 s or more or failed
+(`netSlow`, the result counts 15 s). A fast check = our server is late: no line – the page's own waiting shows. Before the check
+answers: no line.
+
 **3.174.1 (beta) – the network monitor after its audit (28-11-2026, his brief "Network Health Monitor — Audit, Optimize & Measure":
 "Do not falsely blame the internet when backend performance is the actual problem"; Dart only – it can go as a patch):**
 * **Server slow is not Internet weak** (`core/net.dart`): a slow answer (middle time 800 ms or more, or one over 5 s) is "Server slow"

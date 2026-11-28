@@ -1,3 +1,3 @@
-The network indicator now tells a slow server apart from a weak internet, and uses less data while the app is idle.
-Network चा indicator आता server हळू आहे की internet कमकुवत आहे ते वेगळे सांगतो, आणि app शांत असताना कमी data वापरतो.
-Network का indicator अब बताता है कि server धीमा है या internet कमज़ोर, और app शांत रहने पर कम data लेता है।
+"Slow network" shows only when your phone's internet is really slow (checked at that moment) – not when our server is late. Site page at every site with Vehicle; Pay by UPI by hand.
+"Network हळू" आता फक्त तुमचे internet खरेच हळू असेल तेव्हाच (त्या क्षणी तपासून) – आमचा server उशिरा असेल तेव्हा नाही. Vehicle असलेल्या प्रत्येक site वर site page; UPI ने हाताने Pay.
+"Network धीमा" अब केवल तब जब आपका internet सच में धीमा हो (उसी समय जाँच कर) – हमारा server देर करे तब नहीं। Vehicle वाली हर site पर site page; UPI से हाथ से Pay।
