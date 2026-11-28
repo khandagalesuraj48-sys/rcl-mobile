@@ -53,7 +53,7 @@ import 'package:rcl_mobile/screens/super_delete.dart' show SuperDeleteScreen;
 import 'package:rcl_mobile/screens/wa_connect.dart' show waOpen;
 import 'package:rcl_mobile/ui/help.dart' show helpPicked;
 import 'package:rcl_mobile/ui/theme.dart' show C;
-import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin, HrLook, hrRoute;
+import 'package:rcl_mobile/ui/hr_skin.dart' show HrSkin, hrRoute;
 import 'package:rcl_mobile/ui/scope.dart' show SessionScope;
 import 'package:rcl_mobile/ui/fields.dart' show TextBox, PickField, DateField;
 import 'package:rcl_mobile/screens/maintenance.dart' show AiBox;
