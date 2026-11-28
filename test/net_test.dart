@@ -11,6 +11,7 @@ import 'package:http/testing.dart';
 import 'package:rcl_mobile/core/api.dart';
 import 'package:rcl_mobile/core/net.dart';
 import 'package:rcl_mobile/ui/net_chip.dart';
+import 'package:rcl_mobile/ui/theme.dart';
 
 void main() {
   late NetMonitor m;
@@ -33,7 +34,7 @@ void main() {
     expect(m.middleAll, isNull);
   });
 
-  test('the middle time of the last 10 answers of the last 2 minutes: under 800 ms GOOD, 800 ms or more WEAK, one answer over 5 s WEAK', () {
+  test('the middle time of the last 10 answers of the last 2 minutes: under 800 ms GOOD; 800 ms or more, or one answer over 5 s: SLOW (the server) – not the network', () {
     for (final x in [200, 240, 260]) {
       ok('mech', x);
     }
@@ -43,12 +44,12 @@ void main() {
     for (final x in [900, 1200, 1800, 2000]) {
       ok('hr', x);
     }
-    expect(m.stateOf('hr'), NetState.weak);
+    expect(m.stateOf('hr'), NetState.slow, reason: '(3.174.1) a slow answer is the server\'s work until the internet itself is measured slow');
     ok('portal', 300);
     ok('portal', 5200);
     ok('portal', 310);
-    expect(m.stateOf('portal'), NetState.weak, reason: 'one answer over 5 s');
-    expect(m.worst, (NetState.weak, 'hr'));
+    expect(m.stateOf('portal'), NetState.slow, reason: 'one answer over 5 s');
+    expect(m.worst, (NetState.slow, 'hr'));
     // only the last 10 count, and only those of the last 2 minutes
     for (var i = 0; i < 10; i++) {
       ok('hr', 150);
@@ -110,11 +111,136 @@ void main() {
     for (final x in [3000, 3100, 3200, 3300, 3400]) {
       ok('mech', x);
     }
-    expect(m.worst.$1, NetState.weak);
+    expect(m.worst.$1, NetState.slow);
     expect(m.state, NetState.good, reason: 'not yet – it must hold 3 s');
     await tester.pump(const Duration(seconds: 3));
-    expect(m.state, NetState.weak);
+    expect(m.state, NetState.slow);
     expect(m.changedFrom, NetState.good);
+  });
+
+  /* (3.174.1 – his audit brief of 28-11-2026: "Do not falsely blame the internet when backend performance is the actual problem") */
+  test('(3.174.1) his screenshot: Mechanical 3.8 s, Store 2.1 s, Engineering 1.7 s, Purchase 1.5 s, nothing failed, the internet quick → SERVER SLOW, never "Weak"', () async {
+    var checks = 0;
+    m.internetCheck = () async {
+      checks++;
+      return 180;
+    };
+    ok('portal', 400);
+    ok('mech', 3800);
+    ok('store', 2100);
+    ok('eng', 1700);
+    ok('pur', 1500);
+    await Future<void>.delayed(Duration.zero);
+    expect(checks, 1, reason: 'one check of the internet tells the server\'s work from a weak network');
+    expect(m.worst, (NetState.slow, 'mech'));
+    expect(m.linkWeak, isFalse);
+    expect(m.internetWorks, isTrue);
+    // … and no second check while that one is fresh (2 minutes), however many slow answers come
+    for (var i = 0; i < 20; i++) {
+      t = t.add(const Duration(seconds: 5));
+      ok('mech', 3000);
+      m.tick();
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(checks, 1);
+  });
+
+  test('(3.174.1) the same slow answers with the internet check itself slow (1.2 s or more) or unanswered → INTERNET WEAK', () async {
+    m.internetCheck = () async => 2100;
+    ok('mech', 1500);
+    ok('mech', 1600);
+    await Future<void>.delayed(Duration.zero);
+    expect(m.stateOf('mech'), NetState.weak);
+    expect(m.linkWeak, isTrue);
+    // quick answers: good, whatever the check said
+    for (var i = 0; i < 10; i++) {
+      ok('mech', 200);
+    }
+    expect(m.stateOf('mech'), NetState.good);
+    m.reset();
+    m.internetCheck = () async => null;
+    ok('store', 1500);
+    await Future<void>.delayed(Duration.zero);
+    expect(m.stateOf('store'), NetState.weak, reason: 'slow answers and the check unanswered');
+  });
+
+  test('(3.174.1) the Internet row follows the newest proof: a check that failed, then a server answers → the internet WORKS', () async {
+    m.internetCheck = () async => null;
+    await m.checkInternet(now0: true);
+    expect(m.internetWorks, isFalse);
+    t = t.add(const Duration(seconds: 30));
+    ok('mech', 300);
+    expect(m.internet, isFalse, reason: 'the check itself is not asked again for it');
+    expect(m.internetWorks, isTrue, reason: 'a server answered after the check');
+    expect(m.lastOkAt, t);
+  });
+
+  test('(3.174.1) idle in front: the request to the Portal backs off (30 s → 60 s → 2 minutes) while all is good; a real request starts at 30 s again', () async {
+    final at = <int>[];
+    final t0 = t;
+    m.probe = () async {
+      at.add(t.difference(t0).inSeconds);
+      ok('portal', 200);
+    };
+    for (var i = 0; i < 120; i++) {
+      t = t.add(const Duration(seconds: 5));
+      m.tick();
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(at, [5, 65, 185, 305, 425, 545], reason: 'the first at once (nothing measured yet), then 60 s, then every 2 minutes – it was every 30 s');
+    // the app is used: back to 30 s
+    ok('mech', 200);
+    at.clear();
+    final t1 = t;
+    for (var i = 0; i < 14; i++) {
+      t = t.add(const Duration(seconds: 5));
+      m.tick();
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect([for (final x in at) x - t1.difference(t0).inSeconds], [30], reason: '30 s after the last real request, the next 60 s after that');
+  });
+
+  test('(3.174.1) one request on its way is shared: "Check now" pressed again and the rhythm beside it ask nothing more', () async {
+    var probes = 0, checks = 0;
+    final go = Completer<void>();
+    m
+      ..probe = () async {
+        probes++;
+        await go.future;
+      }
+      ..internetCheck = () async {
+        checks++;
+        await go.future;
+        return 150;
+      };
+    final all = [for (var i = 0; i < 5; i++) m.checkNow()];
+    m.tick();
+    expect([probes, checks], [1, 1]);
+    go.complete();
+    await Future.wait(all);
+    expect([probes, checks], [1, 1]);
+  });
+
+  testWidgets('(3.174.1) the sheet in the APP\'S OWN THEME on a 360 px phone: "Network" on one line beside "Check now" (it stood letter under letter); "Server slow" with the internet\'s own row', (tester) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    m.internetCheck = () async => 180;
+    ok('mech', 3800);
+    ok('store', 2100);
+    await tester.pumpWidget(MaterialApp(theme: appTheme(), home: const Scaffold(body: NetSheet(site: 'S1'))));
+    await tester.pump(const Duration(seconds: 4));
+    expect(tester.takeException(), isNull);
+    final title = tester.getSize(find.byKey(const Key('net-title')));
+    expect(title.height, lessThan(40), reason: 'one line');
+    expect(title.width, greaterThan(100));
+    expect(tester.getSize(find.byKey(const Key('net-check'))).width, lessThan(180), reason: 'the button its own size, not the whole width');
+    expect(find.text('Server slow'), findsOneWidget);
+    expect(find.textContaining('not your network'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('net-internet')), matching: find.text('works')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('net-server-mech')), matching: find.textContaining('slow')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 6));
   });
 
   test('a request on its way for more than 5 s: the "slow network" line; done: gone', () async {

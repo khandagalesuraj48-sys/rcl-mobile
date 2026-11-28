@@ -71,7 +71,10 @@ class Api {
 
   /// (3.171.0 patch 4 – SNI) every request of our servers goes through here and is measured (core/net.dart) – the same requests as
   /// before, nothing added.
-  late final http.Client _c = NetClient(_raw, serverOf, timeout);
+  late final http.Client _c = NetClient(_raw, serverOf, timeout, limitOf: (u) => u.path.endsWith('/api/jwks') ? probeLimit : null);
+
+  /// How long the monitor's own small request to the Portal is waited for ([probe]).
+  static const probeLimit = Duration(seconds: 15);
 
   /// The address of each module used on this phone (the Store, Engineering, Purchase, HR – as the Portal gave them).
   final Map<String, String> _bases = {};
@@ -99,7 +102,7 @@ class Api {
 
   /// (SNI) one small request to the Portal when nothing was measured for 30 s (its public keys – no database, nothing of the person).
   Future<void> probe() async {
-    await _c.get(Uri.parse('$portalUrl/api/jwks')).timeout(const Duration(seconds: 15));
+    await _c.get(Uri.parse('$portalUrl/api/jwks')).timeout(probeLimit);
   }
   final Random _rnd = Random.secure();
 

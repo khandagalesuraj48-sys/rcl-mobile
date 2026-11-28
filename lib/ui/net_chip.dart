@@ -4,7 +4,10 @@
  *   picture 3     – [showNetSheet]: a tap on it – every server measured apart, Android's check, the last change, "Check now";
  *   picture 4     – [NetHost]: one line under the header when it matters – slow (a request waiting over 5 s), reconnecting, our server
  *                   not answering, no internet; it goes by itself when the state is good again (× hides it until the next change).
- * Everything comes from core/net.dart (real requests only); nothing is shown before the first answer but "Checking". */
+ * Everything comes from core/net.dart (real requests only); nothing is shown before the first answer but "Checking".
+ * (3.174.1, the audit of 28-11-2026) "Server slow" (our server's work – the internet is quick) apart from "Internet weak"; the Internet
+ * row follows the newest proof; the sheet's heading no longer breaks letter by letter (the app's theme gives an outlined button the
+ * whole width – beside the heading it left the heading none); the hanging chip's clock runs only while a page has one. */
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -18,18 +21,19 @@ final netMessenger = GlobalKey<ScaffoldMessengerState>();
 
 Color netColor(NetState s) => switch (s) {
       NetState.good => C.green,
-      NetState.weak => C.amber,
+      NetState.slow || NetState.weak => C.amber,
       NetState.unstable || NetState.reconnecting => C.orange,
       NetState.serverDown => C.red,
       NetState.offline => const Color(0xFF667085),
       NetState.checking => const Color(0xFF98A2B3),
     };
 
-/// The chip's words: "240 ms", "Weak · 1.8 s", "Unstable", "Reconnecting", "Server down", "Offline", "Checking".
+/// The chip's words: "240 ms", "Server · 1.8 s" (our server is slow), "Weak · 1.8 s" (the internet is), "Unstable", "Reconnecting", "Server down", "Offline", "Checking".
 String netChipText(NetMonitor m) {
   final s = m.state, mid = m.middleAll;
   return switch (s) {
     NetState.good => mid == null ? w3('Good', 'चांगले', 'अच्छा') : msText(mid),
+    NetState.slow => 'Server${mid == null ? '' : ' · ${msText(mid)}'}',
     NetState.weak => '${w3('Weak', 'कमकुवत', 'कमज़ोर')}${mid == null ? '' : ' · ${msText(mid)}'}',
     NetState.unstable => w3('Unstable', 'अस्थिर', 'अस्थिर'),
     NetState.reconnecting => w3('Reconnecting', 'पुन्हा जोडत आहे', 'फिर से जुड़ रहा है'),
@@ -161,7 +165,8 @@ class _NetSheetState extends State<NetSheet> {
 
   String _word(NetState s) => switch (s) {
         NetState.good => w3('Good', 'चांगले', 'अच्छा'),
-        NetState.weak => w3('Weak', 'कमकुवत', 'कमज़ोर'),
+        NetState.slow => w3('Server slow', 'Server हळू', 'Server धीमा'),
+        NetState.weak => w3('Internet weak', 'Internet कमकुवत', 'Internet कमज़ोर'),
         NetState.unstable => w3('Unstable', 'अस्थिर', 'अस्थिर'),
         NetState.reconnecting => w3('Reconnecting', 'पुन्हा जोडत आहे', 'फिर से जुड़ रहा है'),
         NetState.serverDown => w3('Server not reachable', 'Server पोहोचत नाही', 'Server तक नहीं पहुँच रहे'),
@@ -176,7 +181,15 @@ class _NetSheetState extends State<NetSheet> {
     final fails = r.where((x) => !x.ok).length;
     return switch (s) {
       NetState.checking => w3('Nothing measured yet – it shows after the app\'s first answer.', 'अजून काहीही मोजलेले नाही – app ला पहिले उत्तर आल्यावर दिसेल.', 'अभी कुछ नहीं मापा – app के पहले जवाब के बाद दिखेगा।'),
-      NetState.good || NetState.weak => w3('Measured from the app\'s own work – no test traffic.', 'App च्या स्वतःच्या कामावरून मोजले – वेगळी चाचणी नाही.', 'App के अपने काम से मापा – कोई अलग जाँच नहीं।'),
+      NetState.good => w3('Measured from the app\'s own work – no test traffic.', 'App च्या स्वतःच्या कामावरून मोजले – वेगळी चाचणी नाही.', 'App के अपने काम से मापा – कोई अलग जाँच नहीं।'),
+      NetState.slow => m.internetAt == null || m.internet != true
+          ? w3('$name takes long to answer. Your internet is being checked.', '$name उत्तर द्यायला वेळ घेत आहे. तुमचे internet तपासत आहे.', '$name जवाब देने में समय ले रहा है। आपका internet जाँच रहा है।')
+          : w3('Your internet is quick (${msText(m.internetMs ?? 0)}). $name takes long to answer – the server\'s work, not your network.',
+              'तुमचे internet वेगात आहे (${msText(m.internetMs ?? 0)}). $name उत्तर द्यायला वेळ घेत आहे – हे server चे काम आहे, तुमचे network नाही.',
+              'आपका internet तेज़ है (${msText(m.internetMs ?? 0)})। $name जवाब देने में समय ले रहा है – यह server का काम है, आपका network नहीं।'),
+      NetState.weak => m.internet == true
+          ? w3('The internet check itself took ${msText(m.internetMs ?? 0)} – the network is weak here.', 'Internet ची तपासणीच ${msText(m.internetMs ?? 0)} घेत आहे – इथे network कमकुवत आहे.', 'Internet की जाँच ने ही ${msText(m.internetMs ?? 0)} लिए – यहाँ network कमज़ोर है।')
+          : w3('The internet check got no answer while the servers answer slowly – the network is weak here.', 'Server हळू उत्तर देत आहेत आणि internet च्या तपासणीला उत्तर नाही – इथे network कमकुवत आहे.', 'Server धीरे जवाब दे रहे हैं और internet की जाँच का जवाब नहीं – यहाँ network कमज़ोर है।'),
       NetState.unstable => w3('$fails of the last ${r.length} requests to $name failed.', '$name कडे गेलेल्या शेवटच्या ${r.length} पैकी $fails request अयशस्वी.', '$name को गए आख़िरी ${r.length} में से $fails request विफल।'),
       NetState.reconnecting => w3('A request to $name got no answer – checking the internet.', '$name ला गेलेल्या request ला उत्तर नाही – internet तपासत आहे.', '$name को गए request का जवाब नहीं – internet जाँच रहा है।'),
       NetState.serverDown => w3('Your internet works. $name is not answering ($fails of the last ${r.length}). The app asks again by itself.', 'तुमचे internet चालू आहे. $name उत्तर देत नाही (शेवटच्या ${r.length} पैकी $fails). App स्वतः पुन्हा विचारेल.', 'आपका internet चालू है। $name जवाब नहीं दे रहा (आख़िरी ${r.length} में से $fails)। App ख़ुद फिर पूछेगा।'),
@@ -199,10 +212,19 @@ class _NetSheetState extends State<NetSheet> {
             child: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Expanded(child: Text(w3('Network', 'नेटवर्क', 'नेटवर्क'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600))),
+                  Expanded(child: Text(w3('Network', 'नेटवर्क', 'नेटवर्क'), key: const Key('net-title'), maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600))),
+                  const SizedBox(width: 12),
                   OutlinedButton(
                     key: const Key('net-check'),
-                    style: OutlinedButton.styleFrom(foregroundColor: C.green, side: const BorderSide(color: Color(0xFFCFE3D8), width: 1.5), shape: const StadiumBorder()),
+                    // (3.174.1) its own size: the app's theme gives an outlined button the whole width – beside the heading that left
+                    // the heading no room ("Network" letter under letter)
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: C.green,
+                        minimumSize: const Size(0, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        side: const BorderSide(color: Color(0xFFCFE3D8), width: 1.5),
+                        shape: const StadiumBorder(),
+                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     onPressed: _busy
                         ? null
                         : () async {
@@ -220,9 +242,12 @@ class _NetSheetState extends State<NetSheet> {
                       : Container(width: 12, height: 12, decoration: BoxDecoration(color: netColor(s), shape: BoxShape.circle)),
                   const SizedBox(width: 10),
                   Flexible(child: Text(_word(s), key: const Key('net-word'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600))),
-                  if ((s == NetState.good || s == NetState.weak) && mid != null) ...[
+                  if ((s == NetState.good || s == NetState.slow || s == NetState.weak) && mid != null) ...[
                     const SizedBox(width: 10),
-                    Text('${w3('middle time', 'मधला वेळ', 'बीच का समय')} ${msText(mid)}\n${w3('the last 2 minutes', 'शेवटची 2 मिनिटे', 'आख़िरी 2 मिनट')}', style: const TextStyle(fontSize: 13, color: C.slate, height: 1.3)),
+                    Flexible(
+                      child: Text('${w3('middle time', 'मधला वेळ', 'बीच का समय')} ${msText(mid)}\n${w3('the last 2 minutes', 'शेवटची 2 मिनिटे', 'आख़िरी 2 मिनट')}',
+                          key: const Key('net-mid'), style: const TextStyle(fontSize: 13, color: C.slate, height: 1.3)),
+                    ),
                   ],
                 ]),
                 const SizedBox(height: 8),
@@ -232,21 +257,28 @@ class _NetSheetState extends State<NetSheet> {
                   ...rows,
                 ],
                 _sec(w3('This phone', 'हा फोन', 'यह फ़ोन')),
-                if (m.internetAt != null)
-                  _row(
-                    w3('Internet', 'Internet', 'Internet'),
-                    m.internet == true ? w3('works', 'चालू', 'चालू') : w3('no answer', 'उत्तर नाही', 'जवाब नहीं'),
-                    m.internet == true ? C.green : C.red,
-                    '${w3('check', 'तपासणी', 'जाँच')} ${_hm(m.internetAt!)}${m.internetMs == null ? '' : ' · ${msText(m.internetMs!)}'}',
-                  )
-                else
-                  _row(w3('Internet', 'Internet', 'Internet'), w3('not checked', 'तपासले नाही', 'नहीं जाँचा'), null, w3('only when a server fails', 'server अयशस्वी झाल्यावरच', 'server विफल होने पर ही')),
+                _internet(m),
                 if (ch != null && from != null && from != NetState.checking) _row(w3('Last change', 'शेवटचा बदल', 'आख़िरी बदलाव'), _hm(ch), null, '${_word(from)} → ${_word(s)}'),
               ]),
             ),
           );
         },
       );
+
+  /// (3.174.1) the Internet's row by the newest proof: "works" when the check answered quickly OR one of our servers answered after
+  /// it (a check that failed once never stays beside servers that answer); "weak" – the check itself was slow; "no answer".
+  Widget _internet(NetMonitor m) {
+    final name = w3('Internet', 'Internet', 'Internet'), works = m.internetWorks, at = m.internetAt, ok = m.lastOkAt;
+    if (works == null) return _row(name, w3('not checked', 'तपासले नाही', 'नहीं जाँचा'), null, w3('only when a server is slow or fails', 'server हळू किंवा अयशस्वी झाल्यावरच', 'server धीमा या विफल होने पर ही'), key: const Key('net-internet'));
+    if (!works) return _row(name, w3('no answer', 'उत्तर नाही', 'जवाब नहीं'), C.red, '${w3('check', 'तपासणी', 'जाँच')} ${at == null ? '' : _hm(at)}', key: const Key('net-internet'));
+    if (at == null || m.internet != true) {
+      // the proof is a server's answer (never checked, or a check that failed before it)
+      return _row(name, w3('works', 'चालू', 'चालू'), C.green, '${w3('a server answered', 'server ने उत्तर दिले', 'server ने जवाब दिया')} ${ok == null ? '' : _hm(ok)}', key: const Key('net-internet'));
+    }
+    final weak = m.linkWeak;
+    return _row(name, weak ? w3('weak', 'कमकुवत', 'कमज़ोर') : w3('works', 'चालू', 'चालू'), weak ? C.amber : C.green, '${w3('check', 'तपासणी', 'जाँच')} ${_hm(at)}${m.internetMs == null ? '' : ' · ${msText(m.internetMs!)}'}',
+        key: const Key('net-internet'));
+  }
 
   Widget _sec(String t) => Padding(padding: const EdgeInsets.fromLTRB(0, 16, 0, 4), child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.slate)));
 
@@ -255,7 +287,7 @@ class _NetSheetState extends State<NetSheet> {
     final down = st == NetState.serverDown || st == NetState.offline || st == NetState.reconnecting;
     return _row(
       serverName(k, widget.site),
-      down ? w3('no answer', 'उत्तर नाही', 'जवाब नहीं') : (mid == null ? '–' : msText(mid)),
+      down ? w3('no answer', 'उत्तर नाही', 'जवाब नहीं') : (mid == null ? '–' : '${msText(mid)}${st == NetState.slow ? ' · ${w3('slow', 'हळू', 'धीमा')}' : ''}'),
       netColor(st),
       '${r.length - fails} ${w3('answers', 'उत्तरे', 'जवाब')} · $fails ${w3('failed', 'अयशस्वी', 'विफल')}',
       key: Key('net-server-$k'),
@@ -267,7 +299,8 @@ class _NetSheetState extends State<NetSheet> {
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF0EEE8)))),
         child: Row(children: [
-          Expanded(child: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
+          Expanded(child: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
+          const SizedBox(width: 6),
           SizedBox(
             width: 104,
             child: Row(children: [
@@ -391,8 +424,6 @@ class _NetHangState extends State<_NetHang> {
   void initState() {
     super.initState();
     _NetPins.i.addListener(_look);
-    // a page that moves in or out, a box that opens over it: looked at again a few times a second (only while a pin exists)
-    _t = Timer.periodic(const Duration(milliseconds: 250), (_) => _look());
     WidgetsBinding.instance.addPostFrameCallback((_) => _look());
   }
 
@@ -405,6 +436,14 @@ class _NetHangState extends State<_NetHang> {
 
   void _look() {
     if (!mounted) return;
+    // a page that moves in or out, a box that opens over it: looked at again a few times a second – (3.174.1) the clock runs ONLY
+    // while a page has a pin (it ran 4 times a second for the whole life of the app before)
+    if (_NetPins.i._all.isEmpty) {
+      _t?.cancel();
+      _t = null;
+    } else {
+      _t ??= Timer.periodic(const Duration(milliseconds: 250), (_) => _look());
+    }
     final w = _NetPins.i._all.isEmpty ? null : _NetPins.i.where;
     if (w != _at) setState(() => _at = w);
   }

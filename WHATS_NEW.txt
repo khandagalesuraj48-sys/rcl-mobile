@@ -1,3 +1,3 @@
-Mark your attendance from the site home in one tap: the selfie camera opens at once. Vehicle now shows only vehicle work; Store, Purchase and Engineering have their own tiles.
-Site home वरून एका tap मध्ये हजेरी: selfie camera लगेच उघडतो. Vehicle मध्ये आता फक्त गाडीचे काम; Store, Purchase आणि Engineering चे स्वतःचे tiles.
-Site home से एक tap में हाज़िरी: selfie camera तुरंत खुलता है। Vehicle में अब सिर्फ़ गाड़ी का काम; Store, Purchase और Engineering के अपने tiles।
+The network indicator now tells a slow server apart from a weak internet, and uses less data while the app is idle.
+Network चा indicator आता server हळू आहे की internet कमकुवत आहे ते वेगळे सांगतो, आणि app शांत असताना कमी data वापरतो.
+Network का indicator अब बताता है कि server धीमा है या internet कमज़ोर, और app शांत रहने पर कम data लेता है।
