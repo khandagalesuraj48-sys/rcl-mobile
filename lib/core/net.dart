@@ -12,7 +12,19 @@
  *     last request found no connection and the check is on its way = RECONNECTING. A change shows after it held 3 s (no flicker);
  *     RECONNECTING, SERVER DOWN and OFFLINE show at once.
  * No Wi-Fi / mobile data reading (his word: everybody is on mobile data) – no new plugin: the whole of it reaches the phones as a
- * Shorebird patch. */
+ * Shorebird patch.
+ * (3.174.1, his audit brief of 28-11-2026: "Do not falsely blame the internet when backend performance is the actual problem … clear
+ * distinction between Internet Offline / Internet Weak / Backend Slow / Backend Unavailable / Good") what the audit found and changed:
+ *   – SLOW IS NOT WEAK. An answer's time is the server's work + the network; the old rule called a slow answer "Weak" – the network was
+ *     blamed for a server's 3.8 s. Now a server whose middle time is 800 ms or more (or one answer over 5 s) is [NetState.slow] ("Server
+ *     slow") while the phone's own internet check is quick, and [NetState.weak] ("Internet weak") only when that check itself took
+ *     [weakLinkMs] or more, or did not answer. The check for it: ONE request to Android's address, at most once in 2 minutes, only
+ *     while a server is slow – nothing while everything is quick.
+ *   – THE INTERNET ROW NEVER CONTRADICTS THE SERVERS: an answer of one of our servers after the last check is the proof that the
+ *     internet works ([internetWorks]) – "no answer" beside servers that all answer (a check that failed once and was never asked
+ *     again) is gone. The check itself asks a second address before it says "no answer".
+ *   – LIGHTER: the idle request to the Portal every 30 s becomes 30 s → 60 s → 2 minutes while nothing is used and all is good (any
+ *     real request starts it at 30 s again); "Check now" and the rhythm share one request on its way (no second one beside it). */
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -23,15 +35,19 @@ import 'lang.dart';
 enum NetEnd { ok, serverError, timeout, noConnection }
 
 /// From the best to the worst (the indicator shows the worst server); [checking] = nothing measured yet.
-enum NetState { checking, good, weak, unstable, reconnecting, serverDown, offline }
+/// [slow] = our SERVER answers slowly while the internet is quick (the server's work); [weak] = the INTERNET itself is slow.
+enum NetState { checking, good, slow, weak, unstable, reconnecting, serverDown, offline }
 
-int _bad(NetState s) => const {NetState.checking: -1, NetState.good: 0, NetState.weak: 1, NetState.unstable: 2, NetState.reconnecting: 3, NetState.serverDown: 4, NetState.offline: 5}[s]!;
+int _bad(NetState s) => const {NetState.checking: -1, NetState.good: 0, NetState.slow: 1, NetState.weak: 2, NetState.unstable: 3, NetState.reconnecting: 4, NetState.serverDown: 5, NetState.offline: 6}[s]!;
 
 class NetMark {
-  NetMark(this.at, this.ms, this.end);
+  NetMark(this.at, this.ms, this.end, {this.probe = false});
   final DateTime at;
   final int ms;
   final NetEnd end;
+
+  /// The monitor's own small request to the Portal (not the person's work).
+  final bool probe;
   bool get ok => end == NetEnd.ok;
 }
 
@@ -57,6 +73,10 @@ class NetMonitor extends ChangeNotifier {
 
   static const window = Duration(minutes: 2), keepLast = 10, hold = Duration(seconds: 3), idle = Duration(seconds: 30), slowAfter = Duration(seconds: 5);
 
+  /// A server's middle time from which it is "slow"; the internet check's own time from which the INTERNET is "weak" (a new
+  /// connection each time: the name, the handshake and one answer – numbers to be tuned after measuring phones at the sites).
+  static const slowMidMs = 800, weakLinkMs = 1200;
+
   final Map<String, List<NetMark>> _marks = {};
   final Map<int, (String, DateTime)> _going = {};
   int _seq = 0;
@@ -64,9 +84,11 @@ class NetMonitor extends ChangeNotifier {
   bool? internet;
   DateTime? internetAt;
   int? internetMs;
-  bool _checking = false;
+  Future<void>? _checkF;
   DateTime? _checkedAt;
-  bool _probing = false;
+  Future<void>? _probeF;
+  bool _probeOn = false;
+  int _idleN = 0; // idle requests to the Portal in a row with no real request between them
 
   NetState _shown = NetState.checking;
   Timer? _holdT;
@@ -129,10 +151,42 @@ class NetMonitor extends ChangeNotifier {
     if (m.where((x) => !x.ok).length >= 2) return NetState.unstable;
     final oks = [for (final x in m) if (x.ok) x.ms];
     if (oks.isEmpty) return NetState.unstable;
-    final mid = _middle(oks)!;
-    if (mid >= 800 || oks.any((x) => x > 5000)) return NetState.weak;
+    // (3.174.1) slow answers: the server's work unless the phone's own internet check says the internet is slow
+    if (_slowOks(oks)) return linkWeak ? NetState.weak : NetState.slow;
     return NetState.good;
   }
+
+  static bool _slowOks(List<int> oks) => oks.isNotEmpty && (_middle(oks)! >= slowMidMs || oks.any((x) => x > 5000));
+
+  /// The last answer of any of our servers (the proof that the internet works).
+  DateTime? get lastOkAt {
+    DateTime? a;
+    for (final l in _marks.values) {
+      for (final x in l.reversed) {
+        if (x.ok) {
+          if (a == null || x.at.isAfter(a)) a = x.at;
+          break;
+        }
+      }
+    }
+    return a;
+  }
+
+  /// Does the internet work – by the newest proof: an answer of one of our servers after the last check = yes, whatever that check
+  /// said; else the check's own result (null: never checked and nothing answered).
+  bool? get internetWorks {
+    final ok = lastOkAt, at = internetAt;
+    if (ok != null && (at == null || ok.isAfter(at))) return true;
+    return internet;
+  }
+
+  bool get _linkFresh => internetAt != null && now().difference(internetAt!) <= window;
+
+  /// The internet itself measured slow in the last 2 minutes (its check took [weakLinkMs] or more, or did not answer).
+  bool get linkWeak => _linkFresh && (internet == false || (internetMs ?? 0) >= weakLinkMs);
+
+  /// A slow server whose cause is not known yet (no internet check in the last 2 minutes).
+  bool get _slowUnknown => !_linkFresh && servers.any((s) => _slowOks([for (final x in recent(s)) if (x.ok) x.ms]));
 
   /// The worst server of the last 2 minutes (and which one).
   (NetState, String) get worst {
@@ -163,8 +217,10 @@ class NetMonitor extends ChangeNotifier {
   void record(String server, int ms, NetEnd end) {
     if (!on || server.isEmpty) return;
     final l = _marks.putIfAbsent(server, () => <NetMark>[]);
-    l.add(NetMark(now(), ms, end));
+    final own = _probeOn && server == 'portal';
+    l.add(NetMark(now(), ms, end, probe: own));
     if (l.length > 40) l.removeRange(0, l.length - 40);
+    if (!own) _idleN = 0; // the app is used: the idle rhythm starts at 30 s again
     if (end == NetEnd.timeout || end == NetEnd.noConnection) unawaited(checkInternet());
     update();
   }
@@ -205,43 +261,64 @@ class NetMonitor extends ChangeNotifier {
     return run();
   }
 
-  /// Android's check (at most once in 10 s; "Check now" asks it at once).
-  Future<void> checkInternet({bool now0 = false}) async {
-    if (!on || _checking) return;
+  /// Android's check (at most once in [every]; "Check now" asks it at once). One on its way is shared – never two side by side.
+  Future<void> checkInternet({bool now0 = false, Duration every = const Duration(seconds: 10)}) {
+    if (!on) return Future<void>.value();
+    final f = _checkF;
+    if (f != null) return f;
     final c = _checkedAt;
-    if (!now0 && c != null && now().difference(c) < const Duration(seconds: 10)) return;
-    _checking = true;
-    try {
-      final ms = await internetCheck();
-      internet = ms != null;
-      internetMs = ms;
-      internetAt = now();
-      _checkedAt = internetAt;
-    } finally {
-      _checking = false;
-      update();
-    }
+    if (!now0 && c != null && now().difference(c) < every) return Future<void>.value();
+    return _checkF = () async {
+      try {
+        final ms = await internetCheck();
+        internet = ms != null;
+        internetMs = ms;
+        internetAt = now();
+        _checkedAt = internetAt;
+      } finally {
+        _checkF = null;
+        update();
+      }
+    }();
   }
 
-  /// Every 5 s while the app is in front (NetHost): the 2 minutes move on; idle for 30 s → one small request to the Portal.
+  /// The small request to the Portal – one on its way is shared (the rhythm and "Check now" never ask twice).
+  Future<void> _probe() {
+    final p = probe;
+    if (p == null) return Future<void>.value();
+    final f = _probeF;
+    if (f != null) return f;
+    _probeOn = true; // (before it starts: its answer is marked as the monitor's own, not the person's work)
+    return _probeF = p().catchError((Object _) {}).whenComplete(() {
+      _probeF = null;
+      _probeOn = false;
+    });
+  }
+
+  /// How long nothing must have been measured before the next idle request: 30 s, then 60 s, then 2 minutes while all is good and
+  /// nothing is used (a real request, or a state that is not good, brings it back to 30 s).
+  Duration get idleGap => _shown == NetState.good ? idle * (1 << (_idleN > 2 ? 2 : _idleN)) : idle;
+
+  /// Every 5 s while the app is in front (NetHost): the 2 minutes move on; idle → one small request to the Portal.
   void tick() {
     if (!on) return;
     update();
     final a = lastAt;
-    if (_probing || probe == null || (a != null && now().difference(a) < idle)) return;
-    _probing = true;
-    probe!().catchError((Object _) {}).whenComplete(() => _probing = false);
+    if (_probeF != null || probe == null || (a != null && now().difference(a) < idleGap)) return;
+    _idleN++;
+    unawaited(_probe());
   }
 
   /// "Check now" (the sheet): the Portal and Android's check, at once.
   Future<void> checkNow() async {
     if (!on) return;
-    final p = probe;
-    await Future.wait([if (p != null) p().catchError((Object _) {}), checkInternet(now0: true)]);
+    await Future.wait([_probe(), checkInternet(now0: true)]);
   }
 
   /// The state shown: worse at once; better / weak / unstable after it held 3 s.
   void update() {
+    // (3.174.1) a slow server and no internet check in the last 2 minutes: one check tells the server's work from a weak internet
+    if (on && _slowUnknown) unawaited(checkInternet(every: const Duration(seconds: 60)));
     final c = worst.$1;
     if (c == _shown) {
       _holdT?.cancel();
@@ -280,8 +357,10 @@ class NetMonitor extends ChangeNotifier {
     internetAt = null;
     internetMs = null;
     _checkedAt = null;
-    _checking = false;
-    _probing = false;
+    _checkF = null;
+    _probeF = null;
+    _probeOn = false;
+    _idleN = 0;
     _holdT?.cancel();
     _holdT = null;
     _shown = NetState.checking;
@@ -290,33 +369,41 @@ class NetMonitor extends ChangeNotifier {
   }
 }
 
-/// Android's own check address (generate_204): its time, or null when it does not answer with 204 within 6 s.
+/// Android's own check address (generate_204): its time, or null when neither it nor Google's second check address answers with
+/// 204 within 6 s each (3.174.1: one address that fails alone – blocked, its name not found – is not "no internet").
 Future<int?> _gstatic() async {
-  final c = http.Client();
-  final sw = Stopwatch()..start();
-  try {
-    final r = await c.get(Uri.parse('https://connectivitycheck.gstatic.com/generate_204')).timeout(const Duration(seconds: 6));
-    return r.statusCode == 204 ? sw.elapsedMilliseconds : null;
-  } catch (_) {
-    return null;
-  } finally {
-    c.close();
+  for (final u in const ['https://connectivitycheck.gstatic.com/generate_204', 'https://www.google.com/generate_204']) {
+    final c = http.Client();
+    final sw = Stopwatch()..start();
+    try {
+      final r = await c.get(Uri.parse(u)).timeout(const Duration(seconds: 6));
+      if (r.statusCode == 204) return sw.elapsedMilliseconds;
+    } catch (_) {
+      // the next address
+    } finally {
+      c.close();
+    }
   }
+  return null;
 }
 
 /// Api's client: each request of one of our servers is measured ([serverOf] names it – '' = not ours: not measured).
 class NetClient extends http.BaseClient {
-  NetClient(this._inner, this.serverOf, this.limit);
+  NetClient(this._inner, this.serverOf, this.limit, {this.limitOf});
   final http.Client _inner;
   final String Function(Uri u) serverOf;
   final Duration limit;
+
+  /// (3.174.1) a request the app itself waits less for (the monitor's own to the Portal: 15 s) – counted as "no answer" then, not
+  /// held as "still waiting" until the long limit.
+  final Duration? Function(Uri u)? limitOf;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     final f = _inner.send(request);
     final key = serverOf(request.url);
     if (key.isEmpty) return f;
-    return NetMonitor.i.watch<http.StreamedResponse>(key, f, limit, status: (r) => r.statusCode);
+    return NetMonitor.i.watch<http.StreamedResponse>(key, f, limitOf?.call(request.url) ?? limit, status: (r) => r.statusCode);
   }
 
   @override

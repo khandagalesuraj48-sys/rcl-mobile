@@ -49,6 +49,20 @@ app `si.sketchline.elephant` → the new google-services.json into the secret `G
 package; Play Console → Create app. **Next:** its logo (pictures first – the lion is shown until then), its patches in `patch.yml`.
 LION is not changed.
 
+**3.174.1 (beta) – the network monitor after its audit (28-11-2026, his brief "Network Health Monitor — Audit, Optimize & Measure":
+"Do not falsely blame the internet when backend performance is the actual problem"; Dart only – it can go as a patch):**
+* **Server slow is not Internet weak** (`core/net.dart`): a slow answer (middle time 800 ms or more, or one over 5 s) is "Server slow"
+  while the phone's own internet check is quick, "Internet weak" only when that check itself took 1.2 s or more or did not answer. One
+  check, at most once in 2 minutes, only while a server is slow. His screenshot (Mechanical 3.8 s … nothing failed) read "Weak" before.
+* **The Internet row follows the newest proof**: a server's answer after the last check = the internet works ("no answer" beside
+  servers that all answer is gone); the check asks a second address before it says "no answer".
+* **Lighter**: the idle request to the Portal 30 s → 60 s → 2 minutes while all is good (120 → 31 an idle hour, measured in the test
+  clock); "Check now" and the rhythm share one request on its way (6 → 1); the monitor's own request counts as "no answer" after its own
+  15 s, not 40 s; the hanging chip's 250 ms clock runs only while a page has one.
+* **The sheet**: "Network" on one line (the theme's full-width outlined button left the heading no room – letter under letter); the
+  words "Server slow" / "Internet weak"; each slow server marked; long names in two lines.
+* Not changed: the servers, the limits of a request, the retries, the line under the header. Not measured: real phones, the live servers.
+
 **3.174.0 (beta) – the site home: attendance in one tap; each module only its own things (27-11-2026 – the approved design "LION –
 Quick attendance & clean modules"; his words: "vehicles and Hr … ethe attendance mark krne sathi option de … jyala access asel tya site
 madhe disel 3 site cha asel konti hi site open keli tri attendace option asel te dable ki lagech slefi sathi camera open click kel
