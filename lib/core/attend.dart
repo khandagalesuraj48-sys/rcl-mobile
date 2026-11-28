@@ -232,14 +232,15 @@ class KeptPunch {
   /// kept: the phone's clocks go with it and the server works out its moment (or keeps it for the HR Admin to look at).
   /// [key]: the phone's own key (attendKey) – read from the phone's safe when it is sent, never kept in the punch's file.
   /// [proof]: (3.136.0) the phone's Play Integrity token for this punch ('' = none) – asked when it is sent.
-  Map<String, Object?> body({required bool live, String key = '', String proof = ''}) => {
+  /// [hw]: (27-11-2026) the phone's DRM number (AttendKit.info's `hw`) – the same phone for every app of it ('' = none).
+  Map<String, Object?> body({required bool live, String key = '', String proof = '', String hw = ''}) => {
         'action': 'punch',
         'client_id': cid,
         'kind': kind,
         'lat': lat,
         'lng': lng,
         'accuracy_m': acc,
-        'device': {'id': deviceId, 'model': model, 'os': os, if (key.isNotEmpty) 'key': key},
+        'device': {'id': deviceId, 'model': model, 'os': os, if (key.isNotEmpty) 'key': key, if (hw.isNotEmpty) 'hw': hw},
         'dev_options': false,
         'mock': false,
         'at_device': atDevice,
@@ -272,18 +273,22 @@ class AttendKit {
   Map<String, String>? _info;
 
   /// This phone's own number for the app, its make and its system. Android: ANDROID_ID (the same until the phone is reset);
-  /// elsewhere a number made once and kept in the app's own files (gone when the app is removed).
+  /// elsewhere a number made once and kept in the app's own files (gone when the app is removed). (27-11-2026, his words: "device tr
+  /// same aahe n app play store aso ki apk") Android also gives `hw` – the phone's DRM number (SHA-256), the same for every app of the
+  /// phone: HR then knows the Play Store's app and the app given by its file on one phone as ONE phone (rcl-hr step 22).
   Future<Map<String, String>> info() async {
     if (_info != null) return _info!;
-    var id = '', model = '', os = '';
+    var id = '', model = '', os = '', hw = '';
     if (Platform.isAndroid) {
       try {
         final m = await _ch.invokeMapMethod<String, dynamic>('info');
         id = '${m?['id'] ?? ''}';
         model = '${m?['model'] ?? ''}';
         os = '${m?['os'] ?? ''}';
+        hw = '${m?['hw'] ?? ''}'; // (27-11-2026) the phone's DRM number (SHA-256) – the same for the Play Store's app and the APK
       } catch (_) {/* below: the app's own number */}
     }
+    if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(hw)) hw = '';
     if (id.length < 8) {
       id = ((await readText('phone.id')) ?? '').trim();
       if (id.length < 8) {
@@ -296,7 +301,7 @@ class AttendKit {
     if (model.isEmpty) model = Platform.isIOS ? 'iPhone' : Platform.operatingSystem;
     if (os.isEmpty) os = '${Platform.operatingSystem} ${Platform.operatingSystemVersion}'.trim();
     if (os.length > 40) os = os.substring(0, 40);
-    return _info = {'id': id, 'model': model, 'os': os};
+    return _info = {'id': id, 'model': model, 'os': os, if (hw.isNotEmpty) 'hw': hw};
   }
 
   /// (3.153.0, asked 20-11-2026: "pdf … direct phone madhe download hoil … notification madhe … to ghu shakel") A file of the app

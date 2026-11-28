@@ -66,6 +66,9 @@ class MainActivity : FlutterFragmentActivity() {
         }
         /* (3.103.0, HR attendance – lib/core/attend.dart, channel "rcl/attend"): what only the phone itself can say –
          *   info – this phone's own number for this app (ANDROID_ID: the same until the phone is reset), its make and Android;
+         *     (27-11-2026, his words: "device tr same aahe n app play store aso ki apk") hw – the phone's DRM number (Widevine's device
+         *     id), the SAME for every app on the phone (ANDROID_ID is not: it follows the app's signing key – the Play Store's app and
+         *     the app given by its file differ), only its SHA-256 – never the number itself; '' where the phone has none;
          *   devOptions – are Developer Options switched on (then no punch – only attendance is stopped);
          *   elapsed – the milliseconds since the phone was switched on (a counter the person cannot set): the moment of a punch
          *     taken without a network is worked out from it. */
@@ -75,7 +78,8 @@ class MainActivity : FlutterFragmentActivity() {
                     "info" -> result.success(mapOf(
                         "id" to (Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""),
                         "model" to (Build.MANUFACTURER + " " + Build.MODEL).trim(),
-                        "os" to ("Android " + Build.VERSION.RELEASE)))
+                        "os" to ("Android " + Build.VERSION.RELEASE),
+                        "hw" to drmId()))
                     "devOptions" -> result.success(Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0)
                     "elapsed" -> result.success(SystemClock.elapsedRealtime())
                     /* (3.153.0, asked 20-11-2026: "attendance pdf download … direct phone madhe download hoil, user la warti disel notification")
@@ -173,4 +177,16 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
     }
+
+    /* (27-11-2026) the phone's DRM number (Widevine's device unique id) – the same for every app of this phone, kept until the phone is
+     * reset – as SHA-256 hex: HR knows the Play Store's app and the app given by its file on ONE phone as one phone. '' when there is none. */
+    private fun drmId(): String = try {
+        val drm = android.media.MediaDrm(java.util.UUID(-0x121074568629b532L, -0x5c37d8232ae2de13L))      // Widevine edef8ba9-79d6-4ace-a3c8-27dcd51d21ed
+        try {
+            val raw = drm.getPropertyByteArray(android.media.MediaDrm.PROPERTY_DEVICE_UNIQUE_ID)
+            if (raw == null || raw.isEmpty()) "" else java.security.MessageDigest.getInstance("SHA-256").digest(raw).joinToString("") { "%02x".format(it) }
+        } finally {
+            if (Build.VERSION.SDK_INT >= 28) drm.close() else @Suppress("DEPRECATION") drm.release()
+        }
+    } catch (e: Throwable) { "" }
 }

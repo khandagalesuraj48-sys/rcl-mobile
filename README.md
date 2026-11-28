@@ -49,6 +49,14 @@ app `si.sketchline.elephant` → the new google-services.json into the secret `G
 package; Play Console → Create app. **Next:** its logo (pictures first – the lion is shown until then), its patches in `patch.yml`.
 LION is not changed.
 
+**3.172.1 – one phone, whichever app (27-11-2026, his words: "Aik n ata je user la error aahe in out nahi dakhwat device tr same aahe n
+app play store aso ki apk" → "Kr he fix"; rcl-hr step 22):** Android names the phone for an app by the app's signing key, so the Play
+Store's app and the APK on one phone gave HR two numbers – the second app had no IN / OUT ("tied to another phone"). The app now also
+sends `hw` – the phone's DRM number (Widevine's device id, the same for every app of the phone), only as a SHA-256
+(`MainActivity.drmId`, `AttendKit.info`) – with `myAttend` and every punch; HR (step 22) takes the other app of the SAME phone as that
+phone. A phone without a DRM number, or HR before step 22: as before. Needs a new app (Android code – not a Shorebird patch): the APK
+from `main` and the Play Store's app. Not verified: a real phone with both apps (the DRM number on that phone).
+
 **3.172.0 – the last app given by its file (27-11-2026, his words: "ekda he new build phone play store la gel ki apan apk purn band krnar
 aahot"; his answers: it keeps working until the person has the Play Store's app, and this last version says so with the Play Store's
 button):** in the app given by its file (Android – not the Play Store's app, an iPhone or a computer), at every opening, once:

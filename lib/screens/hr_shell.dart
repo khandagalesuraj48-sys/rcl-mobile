@@ -341,7 +341,7 @@ class _HrShellState extends State<HrShell> with WidgetsBindingObserver {
     }
     try {
       final info = await AttendKit.kit.info();
-      final d = await _hr({'action': 'myAttend', 'device_id': info['id']});
+      final d = await _hr({'action': 'myAttend', 'device_id': info['id'], if (info['hw'] != null) 'hw': info['hw']});
       HrCache.put('myAttend', d);
       await AttendStore('${s.email}|${hrSite(s)?.code ?? ''}').keep(d, await AttendKit.kit.elapsed());
       unawaited(AttendRemind.set(d)); // (3.113.0) the IN / OUT reminders, from his shift and where his day stands

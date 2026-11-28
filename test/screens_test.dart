@@ -8603,7 +8603,7 @@ void main() {
   // (3.103.0, rcl-hr – asked 12-11-2026: "PURN HR MODUAL … WEB AND APP") the app's own attendance screen
   testWidgets('(3.103.0) HR – my attendance: inside → selfie → IN; outside, a poor reading, Developer Options, a made-up location: nothing sent; no network: kept on the phone and sent later as the same punch; another phone; my month; "My HR"', (t) async {
     phone(t);
-    final kit = FakeAttendKit();
+    final kit = FakeAttendKit()..hw = 'c' * 64; // (27-11-2026, rcl-hr step 22) the phone's DRM number goes with the day and every punch
     AttendKit.kit = kit;
     final selfie = Uint8List.fromList(img.encodeJpg(img.Image(width: 64, height: 48)));
     attendSelfieForTest = (_) async => selfie;
@@ -8640,6 +8640,7 @@ void main() {
     expect(acts(), ['sso', 'myAttend']);
     expect(srv.calls.where((c) => c.startsWith('portal:go:hr:')).length, 1, reason: 'a ticket of the Portal for the module hr');
     expect(srv.hrSent.lastWhere((x) => x['action'] == 'myAttend')['device_id'], 'and-test-phone-1');
+    expect(srv.hrSent.lastWhere((x) => x['action'] == 'myAttend')['hw'], 'c' * 64, reason: '(step 22) the same phone, whichever app');
     expect(find.textContaining('Not marked yet'), findsOneWidget);
     expect(find.textContaining('Site office'), findsWidgets);
     await pics(t);
@@ -8676,6 +8677,7 @@ void main() {
     await tapKey('att-punch');
     final pin = srv.hrSent.lastWhere((x) => x['action'] == 'punch');
     expect([pin['kind'], pin['lat'], pin['accuracy_m'], pin['dev_options'], pin['mock'], (pin['device'] as Map)['id'], pin.containsKey('offline')], ['in', 18.52, 12, false, false, 'and-test-phone-1', false]);
+    expect((pin['device'] as Map)['hw'], 'c' * 64, reason: '(step 22) the phone\'s DRM number with the punch');
     expect(srv.hrPhotos.keys.toList(), [pin['client_id']]);
     expect(srv.hrPhotos.values.first > 100, true);
     expect(find.textContaining('IN marked at 10:30'), findsOneWidget);
